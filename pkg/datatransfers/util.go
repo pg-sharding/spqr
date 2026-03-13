@@ -19,15 +19,15 @@ import (
 //
 // Returns:
 // - []string: a slice of strings containing connection strings.
-func GetConnStrings(s *config.ShardConnect, applicationName string) []string {
+func GetConnStrings(s *config.ShardConnect, applicationName string) map[string]string {
 	if applicationName == "" {
 		applicationName = spqrTransferApplicationName
 	}
-	res := make([]string, len(s.Hosts))
-	for i, host := range s.Hosts {
+	res := make(map[string]string)
+	for _, host := range s.Hosts {
 		address := strings.Split(host, ":")[0]
 		port := strings.Split(host, ":")[1]
-		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, applicationName)
+		res[host] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, applicationName)
 	}
 	return res
 }
@@ -75,4 +75,41 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		_ = conn.Close(ctx)
 	}
 	return nil, spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
+}
+
+func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) {
+	for host, dsn := range GetConnStrings(s, "") {
+		connConfig, err := pgx.ParseConfig(dsn)
+		if err != nil {
+			return "", err
+		}
+		level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
+		if err != nil {
+			return "", err
+		}
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		conn, err := pgx.ConnectConfig(ctx, connConfig)
+		if err != nil {
+			return "", err
+		}
+		defer func() {
+			_ = conn.Close(ctx)
+		}()
+		var isMaster bool
+		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
+		if err = row.Scan(&isMaster); err != nil {
+			return "", err
+		}
+		if isMaster {
+			parts := strings.Split(host, ":")
+			if len(parts) == 0 {
+				return "", fmt.Errorf("malformed host address: missing port")
+			}
+			return parts[0], nil
+		}
+	}
+	return "", spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
 }

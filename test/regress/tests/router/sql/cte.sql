@@ -129,6 +129,57 @@ UPDATE table2 SET b = b + 1;
 
 SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
 
+with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
+
+SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+
+TRUNCATE table2;
+
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+
+select __spqr__ctid ('table2');
+
+TRUNCATE table2;
+
+with vals (i) as (values (201), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;
+
+-- should create overwrite query map
+with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;
+
+select __spqr__ctid ('table2');
+
+TRUNCATE table2;
+
+with vals (i) as (values (201), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;
+
+-- should create overwrite query map
+with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;
+
+select __spqr__ctid ('table2');
+
+INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+
+TRUNCATE table2;
+
+with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+
+select __spqr__ctid ('table2');
+
 DROP TABLE table1;
 DROP TABLE table2;
 DROP TABLE ref_rel_1;

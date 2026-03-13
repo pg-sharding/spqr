@@ -7,29 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
-type ColumnRef struct {
-	TableAlias string
-	ColName    string
-}
-type OptAscDesc any
-
-type SortByDefault struct {
-	OptAscDesc
-}
-type SortByAsc struct {
-	OptAscDesc
-}
-type SortByDesc struct {
-	OptAscDesc
-}
-type OrderClause any
-
-type Order struct {
-	OrderClause
-	OptAscDesc OptAscDesc
-	Col        ColumnRef
-}
-
 type GroupByClause any
 
 type GroupByClauseEmpty struct {
@@ -38,15 +15,21 @@ type GroupByClauseEmpty struct {
 
 type GroupBy struct {
 	GroupByClause
-	Col []ColumnRef
+	Col []*lyx.ColumnRef
 }
 type Show struct {
 	Cmd     string
 	Columns []string
 	Where   lyx.Node
-	Order   OrderClause
+	Order   lyx.Node
 	GroupBy GroupByClause
 }
+
+type Help struct {
+	CommandName string
+}
+
+func (*Help) iStatement() {}
 
 type Set struct {
 	Element Statement
@@ -232,6 +215,11 @@ type Invalidate struct {
 type SyncReferenceTables struct {
 	ShardID          string
 	RelationSelector string
+}
+
+type AlterReferenceTableStorage struct {
+	RelationSelector *rfqn.RelationFQN
+	Shards           []string
 }
 
 // coordinator
@@ -466,6 +454,7 @@ func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
+func (*AlterReferenceTableStorage) iStatement()  {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

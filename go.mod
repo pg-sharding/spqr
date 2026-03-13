@@ -17,7 +17,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/lib/pq v1.11.2
 	github.com/libp2p/go-reuseport v0.4.0
-	github.com/pg-sharding/lyx v0.0.0-20260226061143-37df6068970c
+	github.com/pg-sharding/lyx v0.0.0-20260310112435-c526681cc1c9
 	github.com/rs/zerolog v1.34.0
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/sevlyar/go-daemon v0.1.6
@@ -27,13 +27,14 @@ require (
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/etcd/client/v3 v3.6.8
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -94,12 +95,11 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

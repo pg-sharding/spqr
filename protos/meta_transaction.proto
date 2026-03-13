@@ -20,11 +20,16 @@ message DropKeyRangeGossip {
   repeated string id = 1;
 }
 
+message UpdateKeyRangeGossip {
+  KeyRangeInfo key_range_info = 1;
+}
+
 // This is an algebraic type. At the same time, only one command can be non-null.
 message MetaTransactionGossipCommand {
   CreateDistributionGossip createDistribution = 1;
   CreateKeyRangeGossip createKeyRange = 2;
   DropKeyRangeGossip dropKeyRange = 3;
+  UpdateKeyRangeGossip updateKeyRange = 4;
 }
 
 message MetaTransactionGossipRequest {

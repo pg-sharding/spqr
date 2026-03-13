@@ -344,11 +344,13 @@ func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...any) error {
 	return cl.ReplyDebugNotice(fmt.Sprintf(fmtString, args...))
 }
 
-func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
+func (cl *PsqlClient) ReplyWarningMsg(code string, errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{
-			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg),
+		&pgproto3.NoticeResponse{
+			Message:  errmsg,
 			Severity: "WARNING",
+			Detail:   fmt.Sprintf("client id %d", cl.ID()),
+			Code:     code,
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -359,8 +361,8 @@ func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
 	return nil
 }
 
-func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...any) error {
-	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...))
+func (cl *PsqlClient) ReplyWarningf(code string, fmtString string, args ...any) error {
+	return cl.ReplyWarningMsg(code, fmt.Sprintf(fmtString, args...))
 }
 
 func (cl *PsqlClient) ID() uint {

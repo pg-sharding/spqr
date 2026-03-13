@@ -24,22 +24,20 @@ func NewReferenceRelationServer(impl coordinator.Coordinator) *ReferenceRelation
 }
 
 func (rr *ReferenceRelationServer) CreateReferenceRelations(ctx context.Context, req *protos.CreateReferenceRelationsRequest) (*emptypb.Empty, error) {
-	if err := rr.impl.CreateReferenceRelation(ctx,
+	return nil, rr.impl.CreateReferenceRelation(ctx,
 		rrelations.RefRelationFromProto(req.Relation),
-		rrelations.AutoIncrementEntriesFromProto(req.Entries)); err != nil {
-		return nil, err
-	}
-	return nil, nil
+		rrelations.AutoIncrementEntriesFromProto(req.Entries))
 }
 
 func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, req *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
 	for _, qualName := range req.GetRelations() {
-		if err := rr.impl.DropReferenceRelation(ctx, &rfqn.RelationFQN{
-			RelationName: qualName.RelationName,
-			SchemaName:   qualName.SchemaName,
-		}); err != nil {
+		if err := rr.impl.DropReferenceRelation(ctx, rfqn.RelationFQNFromProto(qualName)); err != nil {
 			return nil, err
 		}
 	}
 	return nil, nil
+}
+
+func (rr *ReferenceRelationServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, req *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+	return nil, rr.impl.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(req.Relation), req.ShardIds)
 }

@@ -1,5 +1,4 @@
 aaaa
-abalance
 aboba
 abortable
 abracadabras
@@ -34,6 +33,7 @@ BConst
 bda
 bebc
 bemp
+benchbase
 Benro
 berule
 Bootstrapper
@@ -122,6 +122,7 @@ dssd
 dstmt
 Duis
 dumbo
+dvkashapov
 ebff
 eda
 edabaf
@@ -135,9 +136,9 @@ Elts
 emptypb
 enim
 epn
+errcounter
 errdefs
 errhint
-errcounter
 errtype
 eshkere
 etcdctl
@@ -158,6 +159,7 @@ firewalls
 fmtcheck
 forumsys
 forwardable
+fqn
 FQNTo
 frmp
 frrule
@@ -190,8 +192,10 @@ gss
 gssapi
 GSSREQ
 hashfunction
+hashicorp
 hba
 healthcheck
+helpgen
 highload
 HIy
 hostnossl
@@ -552,8 +556,8 @@ SVFOP
 SVGID
 sysbench
 syscache
-tableref
 targ
+taskgroup
 taskmgr
 tcase
 TCLOSEBR
@@ -569,6 +573,7 @@ testdb
 testutil
 texpr
 textoid
+tfstate
 tgid
 timeb
 timestamptz
@@ -652,6 +657,7 @@ xxtest
 xxtt
 yaccgen
 yandex
+yandexcloud
 yjoin
 YMid
 youtube

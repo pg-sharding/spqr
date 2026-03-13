@@ -17,4 +17,5 @@ type ReferenceRelationMgr interface {
 
 	/* Method for cluster-wide reference relation data replication */
 	SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error
+	AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error
 }

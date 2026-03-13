@@ -3,11 +3,19 @@ package meta
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/sethvargo/go-retry"
+)
+
+const (
+	MaxLockRetry  = 7
+	LockRetryStep = 500 * time.Millisecond
 )
 
 // ValidateKeyRangeForCreate validates key range before create
@@ -172,4 +180,33 @@ func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrpars
 		return nil, err
 	}
 	return keyRange, nil
+}
+
+func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error {
+	if err := mngr.BeginTran(ctx); err != nil {
+		return err
+	}
+	if err := mngr.DropKeyRange(ctx, id); err != nil {
+		return err
+	}
+	if err := mngr.CommitTran(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func LockKeyRange(ctx context.Context, mngr EntityMgr, keyRangeID string) (*kr.KeyRange, error) {
+	t := time.Now()
+	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
+		retry.NewFibonacci(LockRetryStep)),
+		func(ctx context.Context) (*kr.KeyRange, error) {
+			return mngr.LockKeyRange(ctx, keyRangeID)
+		}); err != nil {
+		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+		return nil, err
+	} else {
+		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+		return kr, nil
+	}
+
 }

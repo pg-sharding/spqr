@@ -163,6 +163,34 @@ func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterReferenceRelationStorageAdvanced mocks base method.
+func (m *MockCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReferenceRelationStorageAdvanced", ctx, relName, shs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReferenceRelationStorageAdvanced indicates an expected call of AlterReferenceRelationStorageAdvanced.
+func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorageAdvanced(ctx, relName, shs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorageAdvanced", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorageAdvanced), ctx, relName, shs)
+}
+
+// AlterSequenceDetachRelation mocks base method.
+func (m *MockCoordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterSequenceDetachRelation", ctx, rel)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterSequenceDetachRelation indicates an expected call of AlterSequenceDetachRelation.
+func (mr *MockCoordinatorMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockCoordinator)(nil).AlterSequenceDetachRelation), ctx, rel)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()
@@ -336,11 +364,12 @@ func (mr *MockCoordinatorMockRecorder) DropDistribution(ctx, id any) *gomock.Cal
 }
 
 // DropKeyRange mocks base method.
-func (m *MockCoordinator) DropKeyRange(ctx context.Context, krid string) error {
+func (m *MockCoordinator) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, krid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DropKeyRange indicates an expected call of DropKeyRange.
@@ -378,17 +407,17 @@ func (mr *MockCoordinatorMockRecorder) DropMoveTask(ctx, id any) *gomock.Call {
 }
 
 // DropMoveTaskGroup mocks base method.
-func (m *MockCoordinator) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (m *MockCoordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropMoveTaskGroup", ctx, id)
+	ret := m.ctrl.Call(m, "DropMoveTaskGroup", ctx, id, cascade)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropMoveTaskGroup indicates an expected call of DropMoveTaskGroup.
-func (mr *MockCoordinatorMockRecorder) DropMoveTaskGroup(ctx, id any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) DropMoveTaskGroup(ctx, id, cascade any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).DropMoveTaskGroup), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).DropMoveTaskGroup), ctx, id, cascade)
 }
 
 // DropRedistributeTask mocks base method.
@@ -1188,6 +1217,21 @@ func (m *MockCoordinator) UpdateCoordinator(ctx context.Context, address string)
 func (mr *MockCoordinatorMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCoordinator", reflect.TypeOf((*MockCoordinator)(nil).UpdateCoordinator), ctx, address)
+}
+
+// UpdateKeyRange mocks base method.
+func (m *MockCoordinator) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, arg1)
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateKeyRange indicates an expected call of UpdateKeyRange.
+func (mr *MockCoordinatorMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).UpdateKeyRange), ctx, arg1)
 }
 
 // WriteBalancerTask mocks base method.

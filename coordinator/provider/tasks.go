@@ -80,12 +80,16 @@ func (t TasksServer) WriteMoveTaskGroup(ctx context.Context, request *protos.Wri
 	return nil, err
 }
 
+func (t TasksServer) DropMoveTaskGroupV2(ctx context.Context, req *protos.DropMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID, req.Cascade)
+}
+
 func (t TasksServer) DropMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID)
+	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID)
+	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {

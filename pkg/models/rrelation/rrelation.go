@@ -9,8 +9,7 @@ import (
 )
 
 type ReferenceRelation struct {
-	SchemaName            string
-	TableName             string
+	RelationName          *rfqn.RelationFQN
 	SchemaVersion         uint64
 	ColumnSequenceMapping map[string]string
 	ShardIds              []string
@@ -32,16 +31,8 @@ func (r *ReferenceRelation) ListStorageRoutes() []kr.ShardKey {
 
 	return ret
 }
-
-func (r *ReferenceRelation) GetSchema() string {
-	if r.SchemaName == "" {
-		return "public"
-	}
-	return r.SchemaName
-}
-
 func (r *ReferenceRelation) QualifiedName() *rfqn.RelationFQN {
-	return &rfqn.RelationFQN{RelationName: r.TableName, SchemaName: r.GetSchema()}
+	return r.RelationName
 }
 
 func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
@@ -85,8 +76,7 @@ func AutoIncrementEntriesFromProto(inEntries []*protos.AutoIncrementEntry) []*Au
 
 func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 	return &ReferenceRelation{
-		TableName:             p.Name,
-		SchemaName:            p.SchemaName,
+		RelationName:          rfqn.RelationFQNFromProto(p.RelName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
 		ShardIds:              p.ShardIds,
@@ -95,8 +85,7 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 
 func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 	return &protos.ReferenceRelation{
-		Name:            p.TableName,
-		SchemaName:      p.SchemaName,
+		RelName:         rfqn.RelationFQNToProto(p.RelationName),
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
 		ShardIds:        p.ShardIds,
@@ -105,8 +94,8 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 
 func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 	return &qdb.ReferenceRelation{
-		TableName:             p.TableName,
-		SchemaName:            p.SchemaName,
+		TableName:             p.RelationName.RelationName,
+		SchemaName:            p.RelationName.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,
@@ -115,8 +104,7 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 
 func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
 	return &ReferenceRelation{
-		TableName:             p.TableName,
-		SchemaName:            p.SchemaName,
+		RelationName:          rfqn.RelationFQNFromFullName(p.SchemaName, p.TableName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,

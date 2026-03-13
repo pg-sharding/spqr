@@ -185,6 +185,9 @@ func TestTranGetKeyRange(t *testing.T) {
 			IsLocked:     &boolFalse,
 		}
 
+		kr1.Version = 1
+		kr2.Version = 1
+		kr2Ds2.Version = 1
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr1)
 		is.Error(err)
 		is.EqualError(err, "key range kr1 already present in qdb")
@@ -252,6 +255,8 @@ func TestTranGetKeyRange(t *testing.T) {
 		is.NoError(err)
 		//NO COMMIT QDB!!!
 
+		kr1.Version = 1
+		kr2.Version = 1
 		//drop all kr one by one
 		actualList, err := tranMngr.ListKeyRanges(ctx, "ds1")
 		is.NoError(err)

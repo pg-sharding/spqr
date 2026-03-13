@@ -70,8 +70,7 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 
 func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, rel := range req.GetRelNames() {
-		qualifiedName := &rfqn.RelationFQN{RelationName: rel.RelationName, SchemaName: rel.SchemaName}
-		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), qualifiedName); err != nil {
+		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), rfqn.RelationFQNFromProto(rel)); err != nil {
 			return nil, err
 		}
 	}
@@ -79,11 +78,13 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 }
 
 func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := d.impl.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: req.Relation.Name, SchemaName: req.Relation.SchemaName})
+	rfqn := &rfqn.RelationFQN{RelationName: req.Relation.Name, SchemaName: req.Relation.SchemaName}
+
+	ds, err := d.impl.GetRelationDistribution(ctx, rfqn)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.Relations[req.Relation.Name]
+	curRel, ok := ds.TryGetRelation(rfqn)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.Id)
 	}
@@ -151,6 +152,22 @@ func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *pr
 		return nil, err
 	}
 	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
+}
+
+func (d *DistributionsServer) GetSequenceRelations(ctx context.Context, req *protos.GetSequenceRelationsRequest) (*protos.GetSequenceRelationsReply, error) {
+	relations, err := d.impl.GetSequenceRelations(ctx, req.GetName())
+	if err != nil {
+		return nil, err
+	}
+	protoRel := make([]*protos.QualifiedName, 0, len(relations))
+	for _, rel := range relations {
+		protoRel = append(protoRel, rfqn.RelationFQNToProto(rel))
+	}
+	return &protos.GetSequenceRelationsReply{RelNames: protoRel}, nil
+}
+
+func (d *DistributionsServer) AlterSequenceDetachRelation(ctx context.Context, req *protos.AlterSequenceDetachRelationRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.AlterSequenceDetachRelation(ctx, rfqn.RelationFQNFromProto(req.GetRelationName()))
 }
 
 func (d *DistributionsServer) ListSequences(ctx context.Context, _ *emptypb.Empty) (*protos.ListSequencesReply, error) {

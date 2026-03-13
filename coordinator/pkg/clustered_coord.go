@@ -604,6 +604,8 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 	}
 
+	go qc.watchTaskGroups(context.TODO())
+
 	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
@@ -611,6 +613,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 			Msg("failed to list key ranges")
 	}
 
+	wg := sync.WaitGroup{}
 	// Finish any key range move or data transfer transaction in progress
 	for _, r := range ranges {
 		move, err := qc.GetKeyRangeMove(context.TODO(), r.KeyRangeID)
@@ -637,15 +640,17 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 
 		if krm != nil {
-			err = qc.Move(context.TODO(), krm)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("error moving key range")
-			}
+			wg.Go(func() {
+				spqrlog.Zero.Error().Str("key range id", krm.Krid).Str("shard id", krm.ShardId).Msg("finish key range move in progress")
+				if qc.Move(context.TODO(), krm) != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+				}
+			})
 		}
 	}
+	wg.Wait()
 
 	go qc.watchRouters(context.TODO())
-	go qc.watchTaskGroups(context.TODO())
 }
 
 // TODO : unit tests
@@ -706,17 +711,8 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	// TODO: move check to meta layer
-	if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
-		return err
-	}
-	return qc.db.UpdateKeyRange(ctx, keyRange.ToDB())
-}
-
-// TODO : unit tests
 func (qc *ClusteredCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
-	keyRange, err := qc.Coordinator.LockKeyRange(ctx, keyRangeID)
+	keyRange, err := meta.LockKeyRange(ctx, &qc.Coordinator, keyRangeID)
 	if err != nil {
 		return nil, err
 	}
@@ -803,22 +799,9 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
-
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
-			Id: []string{id},
-		})
-		spqrlog.Zero.Debug().Err(err).
-			Interface("response", resp).
-			Msg("drop key range response")
-		return err
-	}); err != nil {
-		return err
-	}
 
 	// Drop key range from qdb.
 	return qc.Coordinator.DropKeyRange(ctx, id)
@@ -961,8 +944,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 					return err
 				}
-				if err := qc.db.UpdateKeyRange(ctx, keyRange.ToDB()); err != nil {
+				tranMngr := meta.NewTranEntityManager(qc)
+				if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
 					return err
+				}
+				if err := tranMngr.ExecNoTran(ctx); err != nil {
+					return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 				}
 			}
 			// Notify all routers about scheme changes.
@@ -1007,8 +994,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
-			if err := qc.db.UpdateKeyRange(ctx, keyRange.ToDB()); err != nil {
+			tranMngr := meta.NewTranEntityManager(qc)
+			if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
 				return err
+			}
+			if err := tranMngr.ExecNoTran(ctx); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err
@@ -1103,12 +1094,11 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	}
 
 	schemas := make(map[string]struct{})
-	rels := make([]string, 0, len(ds.Relations))
-	for _, rel := range ds.Relations {
-		schemas[rel.GetSchema()] = struct{}{}
-		relName := strings.ToLower(rel.Relation.RelationName)
+	rels := make([]string, 0, len(ds.ListRelations()))
+	for _, rel := range ds.ListRelations() {
+		schemas[rel.Relation.GetSchema()] = struct{}{}
 		rels = append(rels, rel.QualifiedName().String())
-		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, rel.Relation)
 		if err != nil {
 			return err
 		}
@@ -1117,7 +1107,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the source shard, possible misconfiguration of schema names", rel.QualifiedName())
 		}
 		for _, col := range rel.DistributionKey {
-			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, relName, rel.GetSchema(), col.Column)
+			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, rel.Relation, col.Column)
 			if err != nil {
 				return err
 			}
@@ -1125,7 +1115,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "distribution key column \"%s\" not found in relation \"%s\" on source shard", col.Column, rel.QualifiedName())
 			}
 		}
-		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, rel.Relation)
 		if err != nil {
 			return err
 		}
@@ -1134,7 +1124,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 		// TODO check whole table schema for compatibility
 		for _, col := range rel.DistributionKey {
-			exists, err := datatransfers.CheckColumnExists(ctx, destConn, relName, rel.GetSchema(), col.Column)
+			exists, err := datatransfers.CheckColumnExists(ctx, destConn, rel.Relation, col.Column)
 			if err != nil {
 				return err
 			}
@@ -1152,21 +1142,27 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if exists {
 		replDs, err := qc.GetDistribution(ctx, distributions.REPLICATED)
 		if err != nil {
-			return fmt.Errorf("error getting replicated distribution: %s", err)
+			return fmt.Errorf(
+				"error getting replicated distribution: %s", err)
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
-		for _, r := range replDs.Relations {
-			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation.RelationName, r.GetSchema())
+
+		for _, r := range replDs.ListRelations() {
+
+			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation)
 			if err != nil {
-				return fmt.Errorf("failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
+				return fmt.Errorf(
+					"failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
 			}
 			if relExists {
-				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation.RelationName, r.GetSchema())
+				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation)
 				if err != nil {
-					return fmt.Errorf("failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
+					return fmt.Errorf(
+						"failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
 				}
 				if !destRelExists {
-					return fmt.Errorf("replicated relation \"%s\" exists on source shard, but not on destination shard", r.QualifiedName())
+					return fmt.Errorf(
+						"replicated relation \"%s\" exists on source shard, but not on destination shard", r.QualifiedName())
 				}
 				replRels = append(replRels, r.QualifiedName().String())
 			}
@@ -1241,6 +1237,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
 			if err != nil {
+				_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
 				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
 			}
 			return err
@@ -1382,7 +1379,7 @@ func (*ClusteredCoordinator) getKeyStats(
 	t := time.Now()
 	relationCount = make(map[string]int64)
 	for _, rel := range relations {
-		relExists, err := datatransfers.CheckTableExists(ctx, conn, strings.ToLower(rel.Relation.RelationName), rel.GetSchema())
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Relation)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -1730,7 +1727,9 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		return err
 	}
 	defer func() {
-		_ = sourceConn.Close(ctx)
+		if sourceConn != nil {
+			_ = sourceConn.Close(ctx)
+		}
 	}()
 
 	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
@@ -1853,7 +1852,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			}
 		}
 	}
-	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID); err != nil {
+	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID, delayedError != nil); err != nil {
 		return err
 	}
 	return delayedError
@@ -1915,6 +1914,29 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
 	}
 
+	taskId, err := qc.db.GetKeyRangeRedistributeTaskId(ctx, req.KrId)
+	if err != nil {
+		return err
+	}
+	if taskId != "" {
+		task, err := qc.db.GetRedistributeTask(ctx, taskId)
+		if err != nil {
+			return nil
+		}
+		if task == nil {
+			return fmt.Errorf("failed to redistribute key range \"%s\": it's linked to redistribute task \"%s\" not present in qdb", req.KrId, taskId)
+		}
+		taskGroupId, err := qc.db.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+		if err != nil {
+			return err
+		}
+		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId)
+		if err != nil {
+			return err
+		}
+		return qc.internalExecRedistributeTaskWrapper(ctx, req, tasks.RedistributeTaskFromDB(task, taskGroup), true)
+	}
+
 	spqrlog.Zero.Debug().Msg("process redistribute in clustered coordinator")
 
 	if _, err = qc.GetShard(ctx, req.ShardId); err != nil {
@@ -1953,24 +1975,47 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		}
 	}
 
-	/* Apply or apply nowait */
-	execCtx := context.TODO()
+	return qc.internalExecRedistributeTaskWrapper(ctx, req, &tasks.RedistributeTask{
+		ID:          uuid.NewString(),
+		TaskGroupId: req.TaskGroupId,
+		KeyRangeId:  req.KrId,
+		ShardId:     req.ShardId,
+		BatchSize:   req.BatchSize,
+		TempKrId:    uuid.NewString(),
+		State:       tasks.RedistributeTaskPlanned,
+	}, false)
+}
+
+func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
+	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+
+	execCtx, cancel := context.WithCancel(context.TODO())
+	if err := qc.db.LockRedistributeTask(execCtx, task.ID, addr); err != nil {
+		cancel()
+		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
+	}
+	// TODO: update batch size if exists
+	if !exists {
+		if err := qc.db.CreateRedistributeTask(execCtx, tasks.RedistributeTaskToDB(task)); err != nil {
+			cancel()
+			return err
+		}
+	}
 
 	/* Should we wait for the completion? */
 	if req.NoWait {
 		go func() {
-
-			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
-				ID:          uuid.NewString(),
-				TaskGroupId: req.TaskGroupId,
-				KeyRangeId:  req.KrId,
-				ShardId:     req.ShardId,
-				BatchSize:   req.BatchSize,
-				TempKrId:    uuid.NewString(),
-				State:       tasks.RedistributeTaskPlanned,
-			})
+			defer cancel()
+			err := qc.executeRedistributeTask(execCtx, task)
 			/* We have no way to report error, but at least, log it */
 			if err != nil {
+				if err2 := qc.db.DropRedistributeTaskLock(ctx, task.ID); err2 != nil {
+					spqrlog.Zero.Error().Err(err2).Msg("failed to drop redistribute task lock")
+				}
 				spqrlog.Zero.Error().Err(err).Msg("failed to execute redistribute")
 			}
 		}()
@@ -1978,22 +2023,19 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return nil
 	}
 
+	defer cancel()
+
 	ch := make(chan error)
 	go func() {
-		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
-			ID:          uuid.NewString(),
-			TaskGroupId: req.TaskGroupId,
-			KeyRangeId:  req.KrId,
-			ShardId:     req.ShardId,
-			BatchSize:   req.BatchSize,
-			TempKrId:    uuid.NewString(),
-			State:       tasks.RedistributeTaskPlanned,
-		})
+		ch <- qc.executeRedistributeTask(execCtx, task)
 	}()
 
 	for {
 		select {
 		case err := <-ch:
+			if err2 := qc.db.DropRedistributeTaskLock(ctx, task.ID); err2 != nil {
+				spqrlog.Zero.Error().Err(err2).Msg("failed to drop redistribute task lock")
+			}
 			return err
 		case <-ctx.Done():
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
@@ -2013,12 +2055,19 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
-	if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
-		return err
-	}
 	for {
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
+			if task.TaskGroup != nil {
+				if err := qc.executeMoveTaskGroup(ctx, task.TaskGroup); err != nil {
+					return err
+				}
+				task.State = tasks.RedistributeTaskMoved
+				if err := qc.db.UpdateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+					return err
+				}
+				break
+			}
 			if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
 				TaskGroupId: task.TaskGroupId,
 				KeyRangeId:  task.KeyRangeId,
@@ -2028,13 +2077,6 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				DestKrId:    task.TempKrId,
 				Type:        tasks.SplitRight,
 			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, Id: task.ID}); err != nil {
-				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
-					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
-					if err2 := qc.db.DropRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err2 != nil {
-						return err2
-					}
-					return err
-				}
 				return err
 			}
 			task.State = tasks.RedistributeTaskMoved
@@ -2602,6 +2644,52 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 	})
 }
 
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	rel, err := qc.GetReferenceRelation(ctx, relName)
+	if err != nil {
+		return err
+	}
+	shardsExSet := make(map[string]struct{})
+	shardsToAdd := make([]string, 0)
+	shardsIntersect := make([]string, 0)
+	for _, sh := range rel.ShardIds {
+		shardsExSet[sh] = struct{}{}
+	}
+	for _, sh := range shs {
+		if _, ok := shardsExSet[sh]; !ok {
+			shardsToAdd = append(shardsToAdd, sh)
+		} else if ok {
+			shardsIntersect = append(shardsIntersect, sh)
+		}
+	}
+
+	if len(shardsIntersect) < len(rel.ShardIds) {
+		// We need to drop shards
+		if err := qc.db.AlterReferenceRelationStorage(ctx, relName, shardsIntersect); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
+		}
+		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			c := proto.NewReferenceRelationsServiceClient(cc)
+			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
+				Relation: rfqn.RelationFQNToProto(relName),
+				ShardIds: shardsIntersect,
+			})
+			return err
+		}); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %s", err)
+		}
+	}
+
+	rels := []*rfqn.RelationFQN{relName}
+	for _, sh := range shardsToAdd {
+		if err := qc.SyncReferenceRelations(ctx, rels, sh); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to sync relation on shard \"%s\": %s", sh, err)
+		}
+	}
+	return nil
+}
+
 // TODO: unit tests
 func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	relName *rfqn.RelationFQN) error {
@@ -2778,6 +2866,25 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("drop sequence response")
+		return nil
+	})
+}
+
+func (qc *ClusteredCoordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	if err := qc.Coordinator.AlterSequenceDetachRelation(ctx, rel); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		_, err := cl.AlterSequenceDetachRelation(ctx, &proto.AlterSequenceDetachRelationRequest{
+			RelationName: rfqn.RelationFQNToProto(rel),
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Msg("alter sequence detach relation response")
 		return nil
 	})
 }

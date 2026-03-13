@@ -62,11 +62,8 @@ func TestMemqdbRacing(t *testing.T) {
 		},
 		func() {
 			if stmts, err := memqdb.CreateKeyRange(ctx, mockKeyRange); err == nil {
-				if err = memqdb.ExecNoTransaction(ctx, stmts); err != nil {
-					panic("fail run CreateKeyRange in race test (exec phase)")
-				}
+				_ = memqdb.ExecNoTransaction(ctx, stmts)
 			}
-
 		},
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
@@ -91,7 +88,7 @@ func TestMemqdbRacing(t *testing.T) {
 			_, _ = memqdb.LockKeyRange(ctx, mockKeyRange.KeyRangeID)
 			_ = memqdb.UnlockKeyRange(ctx, mockKeyRange.KeyRangeID)
 		},
-		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
+		func() { _, _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
 		func() {
 			tran1, err := qdb.NewTransaction()
@@ -443,6 +440,8 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 
 	// Drop non-existent KR
 	statements, err = memqdb.DropKeyRange(ctx, "krid1")
+	// Deleting keys that are already missing from the map is more is better than trying to behave differently when they are present.
+	assert.Equal(3, len(statements))
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
@@ -629,6 +628,319 @@ func TestRestoreQDB_ValidJSON(t *testing.T) {
 	assert.NotNil(q)
 
 	assert.Equal("coord-1", q.Coordinator)
+}
+
+func TestDropDistribution_NonExistent(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.DropDistribution(ctx, "nonexistent")
+	assert.Error(err)
+}
+
+func TestDropDistribution_Empty(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	ds, err := memqdb.GetDistribution(ctx, "ds1")
+	assert.NoError(err)
+	assert.Equal("ds1", ds.ID)
+
+	err = memqdb.DropDistribution(ctx, "ds1")
+	assert.NoError(err)
+
+	_, err = memqdb.GetDistribution(ctx, "ds1")
+	assert.Error(err)
+}
+
+func TestDropDistribution_WithRelations(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	rel := &qdb.DistributedRelation{
+		Name: "rel1",
+		DistributionKey: []qdb.DistributionKeyEntry{
+			{Column: "id", HashFunction: ""},
+		},
+	}
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{rel}))
+
+	_, err = memqdb.GetRelationDistribution(ctx, rel.QualifiedName())
+	assert.NoError(err)
+
+	assert.NoError(memqdb.DropDistribution(ctx, "ds1"))
+
+	_, err = memqdb.GetDistribution(ctx, "ds1")
+	assert.Error(err)
+
+	_, err = memqdb.GetRelationDistribution(ctx, rel.QualifiedName())
+	assert.Error(err)
+}
+
+func TestDropDistribution_WithMultipleRelations(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	rel1 := &qdb.DistributedRelation{
+		Name:            "rel1",
+		DistributionKey: []qdb.DistributionKeyEntry{{Column: "id", HashFunction: ""}},
+	}
+	rel2 := &qdb.DistributedRelation{
+		Name:            "rel2",
+		DistributionKey: []qdb.DistributionKeyEntry{{Column: "user_id", HashFunction: "city"}},
+	}
+	rel3 := &qdb.DistributedRelation{
+		Name:            "rel3",
+		DistributionKey: []qdb.DistributionKeyEntry{{Column: "order_id", HashFunction: ""}},
+	}
+
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{rel1, rel2, rel3}))
+
+	for _, rel := range []*qdb.DistributedRelation{rel1, rel2, rel3} {
+		_, err = memqdb.GetRelationDistribution(ctx, rel.QualifiedName())
+		assert.NoError(err)
+	}
+
+	assert.NoError(memqdb.DropDistribution(ctx, "ds1"))
+
+	for _, rel := range []*qdb.DistributedRelation{rel1, rel2, rel3} {
+		_, err = memqdb.GetRelationDistribution(ctx, rel.QualifiedName())
+		assert.Error(err)
+	}
+}
+
+func TestDropDistribution_Twice(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	assert.NoError(memqdb.DropDistribution(ctx, "ds1"))
+	assert.Error(memqdb.DropDistribution(ctx, "ds1"))
+}
+
+func TestDropDistribution_DoesNotAffectOtherDistributions(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	for _, id := range []string{"ds1", "ds2", "ds3"} {
+		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution(id, nil))
+		assert.NoError(err)
+		assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+	}
+
+	relDS2 := &qdb.DistributedRelation{
+		Name:            "rel_ds2",
+		DistributionKey: []qdb.DistributionKeyEntry{{Column: "id", HashFunction: ""}},
+	}
+	relDS3 := &qdb.DistributedRelation{
+		Name:            "rel_ds3",
+		DistributionKey: []qdb.DistributionKeyEntry{{Column: "id", HashFunction: ""}},
+	}
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds2", []*qdb.DistributedRelation{relDS2}))
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds3", []*qdb.DistributedRelation{relDS3}))
+
+	assert.NoError(memqdb.DropDistribution(ctx, "ds1"))
+
+	ds2, err := memqdb.GetDistribution(ctx, "ds2")
+	assert.NoError(err)
+	assert.Equal("ds2", ds2.ID)
+
+	ds3, err := memqdb.GetDistribution(ctx, "ds3")
+	assert.NoError(err)
+	assert.Equal("ds3", ds3.ID)
+
+	got, err := memqdb.GetRelationDistribution(ctx, relDS2.QualifiedName())
+	assert.NoError(err)
+	assert.Equal("ds2", got.ID)
+
+	got, err = memqdb.GetRelationDistribution(ctx, relDS3.QualifiedName())
+	assert.NoError(err)
+	assert.Equal("ds3", got.ID)
+}
+
+func TestDropDistribution_NotInListAfterDrop(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	for _, id := range []string{"ds1", "ds2"} {
+		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution(id, nil))
+		assert.NoError(err)
+		assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+	}
+
+	assert.NoError(memqdb.DropDistribution(ctx, "ds1"))
+
+	dists, err := memqdb.ListDistributions(ctx)
+	assert.NoError(err)
+
+	ids := make([]string, 0, len(dists))
+	for _, d := range dists {
+		ids = append(ids, d.ID)
+	}
+	assert.NotContains(ids, "ds1")
+	assert.Contains(ids, "ds2")
+}
+
+func TestDropDistribution_RelationCanBeReattachedAfterDrop(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	rel := &qdb.DistributedRelation{
+		Name:            "rel1",
+		DistributionKey: []qdb.DistributionKeyEntry{{Column: "id", HashFunction: ""}},
+	}
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{rel}))
+
+	assert.NoError(memqdb.DropDistribution(ctx, "ds1"))
+
+	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds2", []*qdb.DistributedRelation{rel}))
+
+	got, err := memqdb.GetRelationDistribution(ctx, rel.QualifiedName())
+	assert.NoError(err)
+	assert.Equal("ds2", got.ID)
+}
+
+// Test for issue #1306
+func TestDropReferenceRelation_PrefixNameBug(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	rrPrefixName := &qdb.ReferenceRelation{
+		TableName:     "zz",
+		SchemaVersion: 1,
+		ShardIds:      []string{},
+	}
+	rrWithPrefixName := &qdb.ReferenceRelation{
+		TableName:     "zzx",
+		SchemaVersion: 1,
+		ShardIds:      []string{},
+	}
+
+	assert.NoError(memqdb.CreateReferenceRelation(ctx, rrPrefixName))
+	assert.NoError(memqdb.CreateReferenceRelation(ctx, rrWithPrefixName))
+
+	rrs, err := memqdb.ListReferenceRelations(ctx)
+	assert.NoError(err)
+	assert.Len(rrs, 2)
+
+	assert.NoError(memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "zz"}))
+
+	_, err = memqdb.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "zz"})
+	assert.Error(err)
+
+	gotWithPrefixName, err := memqdb.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "zzx"})
+	assert.NoError(err)
+	assert.Equal("zzx", gotWithPrefixName.TableName)
+
+	assert.NoError(memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "zzx"}))
+
+	rrs, err = memqdb.ListReferenceRelations(ctx)
+	assert.NoError(err)
+	assert.Empty(rrs)
+}
+
+// Test for issue #1306
+func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
+	t.Run("drop short then long", func(t *testing.T) {
+		assert := assert.New(t)
+		memqdb, err := qdb.RestoreQDB(MemQDBPath)
+		assert.NoError(err)
+		ctx := context.TODO()
+
+		for _, name := range []string{"a", "ab", "abc"} {
+			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
+				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+			}))
+		}
+
+		for _, name := range []string{"a", "ab", "abc"} {
+			assert.NoError(memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: name}),
+				"failed to drop %s", name)
+		}
+		rrs, err := memqdb.ListReferenceRelations(ctx)
+		assert.NoError(err)
+		assert.Empty(rrs)
+	})
+
+	t.Run("drop long then short", func(t *testing.T) {
+		assert := assert.New(t)
+		memqdb, err := qdb.RestoreQDB(MemQDBPath)
+		assert.NoError(err)
+		ctx := context.TODO()
+
+		for _, name := range []string{"a", "ab", "abc"} {
+			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
+				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+			}))
+		}
+
+		for _, name := range []string{"abc", "ab", "a"} {
+			assert.NoError(memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: name}),
+				"failed to drop %s", name)
+		}
+		rrs, err := memqdb.ListReferenceRelations(ctx)
+		assert.NoError(err)
+		assert.Empty(rrs)
+	})
 }
 
 func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {

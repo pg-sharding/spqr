@@ -1,0 +1,50 @@
+NAME
+    REDISTRIBUTE KEY RANGE - Moves a key range to a different shard, including the actual data migration.
+
+SYNTAX
+    REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID>
+      [BATCH SIZE <batchSize>]
+      [TASK GROUP <taskGroupID>]
+      [CHECK | APPLY | NOWAIT]
+
+DESCRIPTION
+    Moves a key range to a different shard, including the actual data migration.
+
+    The operation can be run in check-only mode to validate before applying, and
+    supports batch processing to control the migration pace.
+
+WARNINGS
+    - This command is not available for installations without SPQR coordinator.
+
+PARAMETERS
+    <keyRangeID> - Identifier of the key range to redistribute
+    <shardID> - Target shard ID to migrate data to
+    <batchSize> - Number of rows to migrate per batch (optional, default 500)
+    <taskGroupID> - Task group identifier for tracking the operation (optional)
+    <CHECK> - Only validate the redistribution without applying changes
+    <APPLY> - Validate and apply the redistribution (default behavior)
+    <NOWAIT> - Start the redistribution and return immediately without waiting for completion
+
+EXAMPLES
+    Redistribute with default settings:
+        REDISTRIBUTE KEY RANGE krid1 TO sh2;
+    Redistribute with custom batch size:
+        REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 100;
+    Check redistribution without applying:
+        REDISTRIBUTE KEY RANGE krid1 TO sh2 CHECK;
+    Non-blocking redistribution:
+        REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 500 NOWAIT;
+    Redistribute with task group for tracking:
+        REDISTRIBUTE KEY RANGE krid1 TO sh2 TASK GROUP taskgroup1;
+
+TIPS
+    - Use CHECK mode first to validate before applying in production
+    - Adjust BATCH SIZE to balance migration speed vs. cluster load
+    - Use NOWAIT for large migrations and monitor progress with SHOW task_group
+    - For metadata-only changes (when data is already on the target), use MOVE KEY RANGE instead
+
+RELATED COMMANDS
+    MOVE KEY RANGE
+    SHOW KEY RANGES
+    CREATE KEY RANGE
+    SPLIT KEY RANGE

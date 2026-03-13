@@ -161,13 +161,10 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 func PlanReferenceRelationInsertValues(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
-	rv *lyx.RangeVar,
+	qualName *rfqn.RelationFQN,
 	values *lyx.ValueClause,
 	idCache IdentityRouterCache,
 ) (plan.Plan, error) {
-
-	/*  XXX: use interface call here */
-	qualName := rfqn.RelationFQNFromRangeRangeVar(rv)
 
 	rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
 	if err != nil {
@@ -227,14 +224,10 @@ func PlanDistributedRelationInsert(
 	ctx context.Context,
 	routingList [][]lyx.Node,
 	rm *rmeta.RoutingMetadataContext,
-	stmt *lyx.Insert) ([]kr.ShardKey, error) {
-
-	insertColsPos, qualName, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
-	if err != nil {
-		return nil, err
-	}
+	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
 
 	var ds *distributions.Distribution
+	var err error
 
 	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
 		return nil, err
@@ -253,7 +246,10 @@ func PlanDistributedRelationInsert(
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation := ds.GetRelation(qualName)
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
 
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
@@ -609,6 +605,8 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 		}, nil
 	case *lyx.ExplainStmt:
 		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+	case *lyx.SubLink:
+		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
@@ -705,10 +703,7 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
 
-			qualName := &rfqn.RelationFQN{
-				RelationName: q.RelationName,
-				SchemaName:   q.SchemaName,
-			}
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, rerrors.ErrComplexQuery
@@ -720,7 +715,12 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 						return nil, rerrors.ErrComplexQuery
 					}
 
-					shs, err := PlanDistributedRelationInsert(ctx, q.Values, rm, v)
+					insertColsPos, _, err := ProcessInsertFromSelectOffsets(ctx, v, rm)
+					if err != nil {
+						return nil, err
+					}
+
+					shs, err := PlanDistributedRelationInsert(ctx, q.Values, rm, insertColsPos, qualName)
 					if err != nil {
 						return nil, err
 					}

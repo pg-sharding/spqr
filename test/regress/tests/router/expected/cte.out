@@ -258,6 +258,142 @@ NOTICE: send query to shard(s) : sh1
  2 | 23 | 33
 (2 rows)
 
+with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ a  | b  | c  
+----+----+----
+  1 | 23 | 33
+  1 |    |   
+  2 | 23 | 33
+ 88 |    |   
+(4 rows)
+
+TRUNCATE table2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+NOTICE: send query to shard(s) : sh1,sh2
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  a  | b | c 
+--------------+-----+---+---
+ shard sh1    |   1 |   |  
+ shard sh2    | 188 |   |  
+(2 rows)
+
+TRUNCATE table2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (i) as (values (201), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c 
+-----+---+---
+ 201 |   |  
+ 288 |   |  
+(2 rows)
+
+-- should create overwrite query map
+with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;
+NOTICE: send query to shard(s) : sh2,sh3
+  a  | b | c 
+-----+---+---
+ 101 |   |  
+ 288 |   |  
+(2 rows)
+
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  a  | b | c 
+--------------+-----+---+---
+ shard sh2    | 101 |   |  
+ shard sh3    | 201 |   |  
+ shard sh3    | 288 |   |  
+ shard sh3    | 288 |   |  
+(4 rows)
+
+TRUNCATE table2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (i) as (values (201), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c 
+-----+---+---
+ 201 |   |  
+ 288 |   |  
+(2 rows)
+
+-- should create overwrite query map
+with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;
+NOTICE: send query to shard(s) : sh2,sh3
+  a  | b | c  
+-----+---+----
+ 101 |   |   
+ 288 |   |   
+ 288 |   | 12
+(3 rows)
+
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  a  | b | c  
+--------------+-----+---+----
+ shard sh2    | 101 |   |   
+ shard sh3    | 201 |   |   
+ shard sh3    | 288 |   |   
+ shard sh3    | 288 |   | 12
+(4 rows)
+
+INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+NOTICE: send query to shard(s) : sh1
+ a | b | c | i 
+---+---+---+---
+(0 rows)
+
+with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+NOTICE: send query to shard(s) : sh2
+ a | b | c | i 
+---+---+---+---
+(0 rows)
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c 
+-----+---+---
+ 233 | 1 |  
+(1 row)
+
+TRUNCATE table2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: send query to shard(s) : sh1,sh2,sh3
+  a  | b | c 
+-----+---+---
+  33 | 1 |  
+ 133 | 1 |  
+ 132 | 1 |  
+ 233 | 1 |  
+(4 rows)
+
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  a  | b | c 
+--------------+-----+---+---
+ shard sh1    |  33 | 1 |  
+ shard sh2    | 133 | 1 |  
+ shard sh2    | 132 | 1 |  
+ shard sh3    | 233 | 1 |  
+(4 rows)
+
 DROP TABLE table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table2;

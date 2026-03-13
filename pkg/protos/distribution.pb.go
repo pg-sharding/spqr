@@ -1270,6 +1270,138 @@ func (x *ListRelationUniqueIndexesRequest) GetRelationName() string {
 	return ""
 }
 
+type AlterSequenceDetachRelationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RelationName  *QualifiedName         `protobuf:"bytes,1,opt,name=relationName,proto3" json:"relationName,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AlterSequenceDetachRelationRequest) Reset() {
+	*x = AlterSequenceDetachRelationRequest{}
+	mi := &file_protos_distribution_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AlterSequenceDetachRelationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlterSequenceDetachRelationRequest) ProtoMessage() {}
+
+func (x *AlterSequenceDetachRelationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distribution_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlterSequenceDetachRelationRequest.ProtoReflect.Descriptor instead.
+func (*AlterSequenceDetachRelationRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distribution_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AlterSequenceDetachRelationRequest) GetRelationName() *QualifiedName {
+	if x != nil {
+		return x.RelationName
+	}
+	return nil
+}
+
+type GetSequenceRelationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSequenceRelationsRequest) Reset() {
+	*x = GetSequenceRelationsRequest{}
+	mi := &file_protos_distribution_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSequenceRelationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSequenceRelationsRequest) ProtoMessage() {}
+
+func (x *GetSequenceRelationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distribution_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSequenceRelationsRequest.ProtoReflect.Descriptor instead.
+func (*GetSequenceRelationsRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distribution_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GetSequenceRelationsRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type GetSequenceRelationsReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RelNames      []*QualifiedName       `protobuf:"bytes,1,rep,name=relNames,proto3" json:"relNames,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSequenceRelationsReply) Reset() {
+	*x = GetSequenceRelationsReply{}
+	mi := &file_protos_distribution_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSequenceRelationsReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSequenceRelationsReply) ProtoMessage() {}
+
+func (x *GetSequenceRelationsReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distribution_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSequenceRelationsReply.ProtoReflect.Descriptor instead.
+func (*GetSequenceRelationsReply) Descriptor() ([]byte, []int) {
+	return file_protos_distribution_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *GetSequenceRelationsReply) GetRelNames() []*QualifiedName {
+	if x != nil {
+		return x.RelNames
+	}
+	return nil
+}
+
 var File_protos_distribution_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_proto_rawDesc = "" +
@@ -1351,7 +1483,13 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12'\n" +
 	"\x05value\x18\x02 \x01(\v2\x11.spqr.UniqueIndexR\x05value:\x028\x01\"F\n" +
 	" ListRelationUniqueIndexesRequest\x12\"\n" +
-	"\frelationName\x18\x01 \x01(\tR\frelationName2\xcc\r\n" +
+	"\frelationName\x18\x01 \x01(\tR\frelationName\"]\n" +
+	"\"AlterSequenceDetachRelationRequest\x127\n" +
+	"\frelationName\x18\x01 \x01(\v2\x13.spqr.QualifiedNameR\frelationName\"1\n" +
+	"\x1bGetSequenceRelationsRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"L\n" +
+	"\x19GetSequenceRelationsReply\x12/\n" +
+	"\brelNames\x18\x01 \x03(\v2\x13.spqr.QualifiedNameR\brelNames2\x8d\x0f\n" +
 	"\x13DistributionService\x12V\n" +
 	"\x12CreateDistribution\x12\x1f.spqr.CreateDistributionRequest\x1a\x1d.spqr.CreateDistributionReply\"\x00\x12K\n" +
 	"\x10DropDistribution\x12\x1d.spqr.DropDistributionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
@@ -1367,7 +1505,9 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\aCurrVal\x12\x14.spqr.CurrValRequest\x1a\x12.spqr.CurrValReply\"\x00\x12C\n" +
 	"\rListSequences\x12\x16.google.protobuf.Empty\x1a\x18.spqr.ListSequencesReply\"\x00\x12_\n" +
 	"\x15ListRelationSequences\x12\".spqr.ListRelationSequencesRequest\x1a .spqr.ListRelationSequencesReply\"\x00\x12C\n" +
-	"\fDropSequence\x12\x19.spqr.DropSequenceRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
+	"\fDropSequence\x12\x19.spqr.DropSequenceRequest\x1a\x16.google.protobuf.Empty\"\x00\x12a\n" +
+	"\x1bAlterSequenceDetachRelation\x12(.spqr.AlterSequenceDetachRelationRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\\\n" +
+	"\x14GetSequenceRelations\x12!.spqr.GetSequenceRelationsRequest\x1a\x1f.spqr.GetSequenceRelationsReply\"\x00\x12K\n" +
 	"\x11ListUniqueIndexes\x12\x16.google.protobuf.Empty\x1a\x1c.spqr.ListUniqueIndexesReply\"\x00\x12k\n" +
 	"\x1dListDistributionUniqueIndexes\x12*.spqr.ListDistributionUniqueIndexesRequest\x1a\x1c.spqr.ListUniqueIndexesReply\"\x00\x12M\n" +
 	"\x11CreateUniqueIndex\x12\x1e.spqr.CreateUniqueIndexRequest\x1a\x16.google.protobuf.Empty\"\x00\x12I\n" +
@@ -1387,7 +1527,7 @@ func file_protos_distribution_proto_rawDescGZIP() []byte {
 	return file_protos_distribution_proto_rawDescData
 }
 
-var file_protos_distribution_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_protos_distribution_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_protos_distribution_proto_goTypes = []any{
 	(*CreateDistributionRequest)(nil),                      // 0: spqr.CreateDistributionRequest
 	(*CreateDistributionReply)(nil),                        // 1: spqr.CreateDistributionReply
@@ -1415,75 +1555,84 @@ var file_protos_distribution_proto_goTypes = []any{
 	(*ListDistributionUniqueIndexesRequest)(nil),           // 23: spqr.ListDistributionUniqueIndexesRequest
 	(*ListUniqueIndexesReply)(nil),                         // 24: spqr.ListUniqueIndexesReply
 	(*ListRelationUniqueIndexesRequest)(nil),               // 25: spqr.ListRelationUniqueIndexesRequest
-	nil,                                                    // 26: spqr.ListRelationSequencesReply.ColumnSequencesEntry
-	nil,                                                    // 27: spqr.ListUniqueIndexesReply.IndexesEntry
-	(*Distribution)(nil),                                   // 28: spqr.Distribution
-	(*MetaTransactionGossipCommand)(nil),                   // 29: spqr.MetaTransactionGossipCommand
-	(*DistributedRelation)(nil),                            // 30: spqr.DistributedRelation
-	(*QualifiedName)(nil),                                  // 31: spqr.QualifiedName
-	(*DistributionKeyEntry)(nil),                           // 32: spqr.DistributionKeyEntry
-	(*UniqueIndex)(nil),                                    // 33: spqr.UniqueIndex
-	(*emptypb.Empty)(nil),                                  // 34: google.protobuf.Empty
+	(*AlterSequenceDetachRelationRequest)(nil),             // 26: spqr.AlterSequenceDetachRelationRequest
+	(*GetSequenceRelationsRequest)(nil),                    // 27: spqr.GetSequenceRelationsRequest
+	(*GetSequenceRelationsReply)(nil),                      // 28: spqr.GetSequenceRelationsReply
+	nil,                                                    // 29: spqr.ListRelationSequencesReply.ColumnSequencesEntry
+	nil,                                                    // 30: spqr.ListUniqueIndexesReply.IndexesEntry
+	(*Distribution)(nil),                                   // 31: spqr.Distribution
+	(*MetaTransactionGossipCommand)(nil),                   // 32: spqr.MetaTransactionGossipCommand
+	(*DistributedRelation)(nil),                            // 33: spqr.DistributedRelation
+	(*QualifiedName)(nil),                                  // 34: spqr.QualifiedName
+	(*DistributionKeyEntry)(nil),                           // 35: spqr.DistributionKeyEntry
+	(*UniqueIndex)(nil),                                    // 36: spqr.UniqueIndex
+	(*emptypb.Empty)(nil),                                  // 37: google.protobuf.Empty
 }
 var file_protos_distribution_proto_depIdxs = []int32{
-	28, // 0: spqr.CreateDistributionRequest.distributions:type_name -> spqr.Distribution
-	29, // 1: spqr.CreateDistributionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	28, // 2: spqr.ListDistributionsReply.distributions:type_name -> spqr.Distribution
-	30, // 3: spqr.AlterDistributionAttachRequest.relations:type_name -> spqr.DistributedRelation
-	31, // 4: spqr.AlterDistributionDetachRequest.relNames:type_name -> spqr.QualifiedName
-	32, // 5: spqr.AlterDistributedRelationDistributionKeyRequest.distributionKey:type_name -> spqr.DistributionKeyEntry
-	30, // 6: spqr.AlterDistributedRelationRequest.relation:type_name -> spqr.DistributedRelation
-	28, // 7: spqr.GetDistributionReply.distribution:type_name -> spqr.Distribution
-	28, // 8: spqr.GetRelationDistributionReply.distribution:type_name -> spqr.Distribution
-	26, // 9: spqr.ListRelationSequencesReply.columnSequences:type_name -> spqr.ListRelationSequencesReply.ColumnSequencesEntry
-	33, // 10: spqr.CreateUniqueIndexRequest.idx:type_name -> spqr.UniqueIndex
-	27, // 11: spqr.ListUniqueIndexesReply.indexes:type_name -> spqr.ListUniqueIndexesReply.IndexesEntry
-	33, // 12: spqr.ListUniqueIndexesReply.IndexesEntry.value:type_name -> spqr.UniqueIndex
-	0,  // 13: spqr.DistributionService.CreateDistribution:input_type -> spqr.CreateDistributionRequest
-	3,  // 14: spqr.DistributionService.DropDistribution:input_type -> spqr.DropDistributionRequest
-	34, // 15: spqr.DistributionService.ListDistributions:input_type -> google.protobuf.Empty
-	4,  // 16: spqr.DistributionService.AlterDistributionAttach:input_type -> spqr.AlterDistributionAttachRequest
-	5,  // 17: spqr.DistributionService.AlterDistributionDetach:input_type -> spqr.AlterDistributionDetachRequest
-	8,  // 18: spqr.DistributionService.AlterDistributedRelation:input_type -> spqr.AlterDistributedRelationRequest
-	6,  // 19: spqr.DistributionService.AlterDistributedRelationSchema:input_type -> spqr.AlterDistributedRelationSchemaRequest
-	7,  // 20: spqr.DistributionService.AlterDistributedRelationDistributionKey:input_type -> spqr.AlterDistributedRelationDistributionKeyRequest
-	9,  // 21: spqr.DistributionService.GetDistribution:input_type -> spqr.GetDistributionRequest
-	11, // 22: spqr.DistributionService.GetRelationDistribution:input_type -> spqr.GetRelationDistributionRequest
-	13, // 23: spqr.DistributionService.NextRange:input_type -> spqr.NextRangeRequest
-	15, // 24: spqr.DistributionService.CurrVal:input_type -> spqr.CurrValRequest
-	34, // 25: spqr.DistributionService.ListSequences:input_type -> google.protobuf.Empty
-	19, // 26: spqr.DistributionService.ListRelationSequences:input_type -> spqr.ListRelationSequencesRequest
-	18, // 27: spqr.DistributionService.DropSequence:input_type -> spqr.DropSequenceRequest
-	34, // 28: spqr.DistributionService.ListUniqueIndexes:input_type -> google.protobuf.Empty
-	23, // 29: spqr.DistributionService.ListDistributionUniqueIndexes:input_type -> spqr.ListDistributionUniqueIndexesRequest
-	21, // 30: spqr.DistributionService.CreateUniqueIndex:input_type -> spqr.CreateUniqueIndexRequest
-	22, // 31: spqr.DistributionService.DropUniqueIndex:input_type -> spqr.DropUniqueIndexRequest
-	25, // 32: spqr.DistributionService.ListRelationUniqueIndexes:input_type -> spqr.ListRelationUniqueIndexesRequest
-	1,  // 33: spqr.DistributionService.CreateDistribution:output_type -> spqr.CreateDistributionReply
-	34, // 34: spqr.DistributionService.DropDistribution:output_type -> google.protobuf.Empty
-	2,  // 35: spqr.DistributionService.ListDistributions:output_type -> spqr.ListDistributionsReply
-	34, // 36: spqr.DistributionService.AlterDistributionAttach:output_type -> google.protobuf.Empty
-	34, // 37: spqr.DistributionService.AlterDistributionDetach:output_type -> google.protobuf.Empty
-	34, // 38: spqr.DistributionService.AlterDistributedRelation:output_type -> google.protobuf.Empty
-	34, // 39: spqr.DistributionService.AlterDistributedRelationSchema:output_type -> google.protobuf.Empty
-	34, // 40: spqr.DistributionService.AlterDistributedRelationDistributionKey:output_type -> google.protobuf.Empty
-	10, // 41: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
-	12, // 42: spqr.DistributionService.GetRelationDistribution:output_type -> spqr.GetRelationDistributionReply
-	14, // 43: spqr.DistributionService.NextRange:output_type -> spqr.NextRangeReply
-	16, // 44: spqr.DistributionService.CurrVal:output_type -> spqr.CurrValReply
-	17, // 45: spqr.DistributionService.ListSequences:output_type -> spqr.ListSequencesReply
-	20, // 46: spqr.DistributionService.ListRelationSequences:output_type -> spqr.ListRelationSequencesReply
-	34, // 47: spqr.DistributionService.DropSequence:output_type -> google.protobuf.Empty
-	24, // 48: spqr.DistributionService.ListUniqueIndexes:output_type -> spqr.ListUniqueIndexesReply
-	24, // 49: spqr.DistributionService.ListDistributionUniqueIndexes:output_type -> spqr.ListUniqueIndexesReply
-	34, // 50: spqr.DistributionService.CreateUniqueIndex:output_type -> google.protobuf.Empty
-	34, // 51: spqr.DistributionService.DropUniqueIndex:output_type -> google.protobuf.Empty
-	24, // 52: spqr.DistributionService.ListRelationUniqueIndexes:output_type -> spqr.ListUniqueIndexesReply
-	33, // [33:53] is the sub-list for method output_type
-	13, // [13:33] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	31, // 0: spqr.CreateDistributionRequest.distributions:type_name -> spqr.Distribution
+	32, // 1: spqr.CreateDistributionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	31, // 2: spqr.ListDistributionsReply.distributions:type_name -> spqr.Distribution
+	33, // 3: spqr.AlterDistributionAttachRequest.relations:type_name -> spqr.DistributedRelation
+	34, // 4: spqr.AlterDistributionDetachRequest.relNames:type_name -> spqr.QualifiedName
+	35, // 5: spqr.AlterDistributedRelationDistributionKeyRequest.distributionKey:type_name -> spqr.DistributionKeyEntry
+	33, // 6: spqr.AlterDistributedRelationRequest.relation:type_name -> spqr.DistributedRelation
+	31, // 7: spqr.GetDistributionReply.distribution:type_name -> spqr.Distribution
+	31, // 8: spqr.GetRelationDistributionReply.distribution:type_name -> spqr.Distribution
+	29, // 9: spqr.ListRelationSequencesReply.columnSequences:type_name -> spqr.ListRelationSequencesReply.ColumnSequencesEntry
+	36, // 10: spqr.CreateUniqueIndexRequest.idx:type_name -> spqr.UniqueIndex
+	30, // 11: spqr.ListUniqueIndexesReply.indexes:type_name -> spqr.ListUniqueIndexesReply.IndexesEntry
+	34, // 12: spqr.AlterSequenceDetachRelationRequest.relationName:type_name -> spqr.QualifiedName
+	34, // 13: spqr.GetSequenceRelationsReply.relNames:type_name -> spqr.QualifiedName
+	36, // 14: spqr.ListUniqueIndexesReply.IndexesEntry.value:type_name -> spqr.UniqueIndex
+	0,  // 15: spqr.DistributionService.CreateDistribution:input_type -> spqr.CreateDistributionRequest
+	3,  // 16: spqr.DistributionService.DropDistribution:input_type -> spqr.DropDistributionRequest
+	37, // 17: spqr.DistributionService.ListDistributions:input_type -> google.protobuf.Empty
+	4,  // 18: spqr.DistributionService.AlterDistributionAttach:input_type -> spqr.AlterDistributionAttachRequest
+	5,  // 19: spqr.DistributionService.AlterDistributionDetach:input_type -> spqr.AlterDistributionDetachRequest
+	8,  // 20: spqr.DistributionService.AlterDistributedRelation:input_type -> spqr.AlterDistributedRelationRequest
+	6,  // 21: spqr.DistributionService.AlterDistributedRelationSchema:input_type -> spqr.AlterDistributedRelationSchemaRequest
+	7,  // 22: spqr.DistributionService.AlterDistributedRelationDistributionKey:input_type -> spqr.AlterDistributedRelationDistributionKeyRequest
+	9,  // 23: spqr.DistributionService.GetDistribution:input_type -> spqr.GetDistributionRequest
+	11, // 24: spqr.DistributionService.GetRelationDistribution:input_type -> spqr.GetRelationDistributionRequest
+	13, // 25: spqr.DistributionService.NextRange:input_type -> spqr.NextRangeRequest
+	15, // 26: spqr.DistributionService.CurrVal:input_type -> spqr.CurrValRequest
+	37, // 27: spqr.DistributionService.ListSequences:input_type -> google.protobuf.Empty
+	19, // 28: spqr.DistributionService.ListRelationSequences:input_type -> spqr.ListRelationSequencesRequest
+	18, // 29: spqr.DistributionService.DropSequence:input_type -> spqr.DropSequenceRequest
+	26, // 30: spqr.DistributionService.AlterSequenceDetachRelation:input_type -> spqr.AlterSequenceDetachRelationRequest
+	27, // 31: spqr.DistributionService.GetSequenceRelations:input_type -> spqr.GetSequenceRelationsRequest
+	37, // 32: spqr.DistributionService.ListUniqueIndexes:input_type -> google.protobuf.Empty
+	23, // 33: spqr.DistributionService.ListDistributionUniqueIndexes:input_type -> spqr.ListDistributionUniqueIndexesRequest
+	21, // 34: spqr.DistributionService.CreateUniqueIndex:input_type -> spqr.CreateUniqueIndexRequest
+	22, // 35: spqr.DistributionService.DropUniqueIndex:input_type -> spqr.DropUniqueIndexRequest
+	25, // 36: spqr.DistributionService.ListRelationUniqueIndexes:input_type -> spqr.ListRelationUniqueIndexesRequest
+	1,  // 37: spqr.DistributionService.CreateDistribution:output_type -> spqr.CreateDistributionReply
+	37, // 38: spqr.DistributionService.DropDistribution:output_type -> google.protobuf.Empty
+	2,  // 39: spqr.DistributionService.ListDistributions:output_type -> spqr.ListDistributionsReply
+	37, // 40: spqr.DistributionService.AlterDistributionAttach:output_type -> google.protobuf.Empty
+	37, // 41: spqr.DistributionService.AlterDistributionDetach:output_type -> google.protobuf.Empty
+	37, // 42: spqr.DistributionService.AlterDistributedRelation:output_type -> google.protobuf.Empty
+	37, // 43: spqr.DistributionService.AlterDistributedRelationSchema:output_type -> google.protobuf.Empty
+	37, // 44: spqr.DistributionService.AlterDistributedRelationDistributionKey:output_type -> google.protobuf.Empty
+	10, // 45: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
+	12, // 46: spqr.DistributionService.GetRelationDistribution:output_type -> spqr.GetRelationDistributionReply
+	14, // 47: spqr.DistributionService.NextRange:output_type -> spqr.NextRangeReply
+	16, // 48: spqr.DistributionService.CurrVal:output_type -> spqr.CurrValReply
+	17, // 49: spqr.DistributionService.ListSequences:output_type -> spqr.ListSequencesReply
+	20, // 50: spqr.DistributionService.ListRelationSequences:output_type -> spqr.ListRelationSequencesReply
+	37, // 51: spqr.DistributionService.DropSequence:output_type -> google.protobuf.Empty
+	37, // 52: spqr.DistributionService.AlterSequenceDetachRelation:output_type -> google.protobuf.Empty
+	28, // 53: spqr.DistributionService.GetSequenceRelations:output_type -> spqr.GetSequenceRelationsReply
+	24, // 54: spqr.DistributionService.ListUniqueIndexes:output_type -> spqr.ListUniqueIndexesReply
+	24, // 55: spqr.DistributionService.ListDistributionUniqueIndexes:output_type -> spqr.ListUniqueIndexesReply
+	37, // 56: spqr.DistributionService.CreateUniqueIndex:output_type -> google.protobuf.Empty
+	37, // 57: spqr.DistributionService.DropUniqueIndex:output_type -> google.protobuf.Empty
+	24, // 58: spqr.DistributionService.ListRelationUniqueIndexes:output_type -> spqr.ListUniqueIndexesReply
+	37, // [37:59] is the sub-list for method output_type
+	15, // [15:37] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_protos_distribution_proto_init() }
@@ -1500,7 +1649,7 @@ func file_protos_distribution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_distribution_proto_rawDesc), len(file_protos_distribution_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   28,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

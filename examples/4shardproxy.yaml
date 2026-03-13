@@ -28,6 +28,7 @@ memqdb_backup_path: "memqdb.json"
 query_routing:
     enhanced_multishard_processing: true
     strict_operators: true
+    allow_postprocessing: true
     allow_split_update: true
 
 frontend_tls:

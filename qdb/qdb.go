@@ -3,13 +3,10 @@ package qdb
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
-
-const LockRetryStep = 500 * time.Millisecond
 
 type ShardingSchemaKeeper interface {
 	// RecordKeyRangeMove persists start of key range movement in distributed storage
@@ -57,9 +54,12 @@ type TXManager interface {
 	BeginTransaction(ctx context.Context, transaction *QdbTransaction) error
 }
 
-type TaskGroupStateKeeper interface {
+type TaskStateKeeper interface {
 	TryTaskGroupLock(ctx context.Context, tgId string, holder string) error
 	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
+	DropTaskGroupLock(ctx context.Context, tgId string) error
+	LockRedistributeTask(ctx context.Context, id string, holder string) error
+	DropRedistributeTaskLock(ctx context.Context, id string) error
 }
 
 // QDB is a generic interface used by both the coordinator and the router.
@@ -69,12 +69,11 @@ type QDB interface {
 	// Key ranges
 	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
-	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
+	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	DropKeyRange(ctx context.Context, id string) ([]QdbStatement, error)
 	DropKeyRangeAll(ctx context.Context) error
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
-	NoWaitLockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, id string) error
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
@@ -139,6 +138,7 @@ type QDB interface {
 	UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	DropRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	GetRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string) (string, error)
+	GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error)
 
 	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
@@ -197,7 +197,7 @@ type XQDB interface {
 	ShardingSchemaKeeper
 	TransferXactKeeper
 	TXManager
-	TaskGroupStateKeeper
+	TaskStateKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }
@@ -205,7 +205,7 @@ type XQDB interface {
 func NewXQDB(qdbType string) (XQDB, error) {
 	switch qdbType {
 	case "etcd":
-		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr, config.CoordinatorConfig().EtcdMaxSendBytes)
+		return NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, config.CoordinatorConfig().EtcdMaxSendBytes)
 	case "mem":
 		return GetMemQDB()
 	default:

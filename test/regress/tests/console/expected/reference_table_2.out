@@ -1,0 +1,111 @@
+CREATE REFERENCE TABLE zz;
+   create reference table    
+-----------------------------
+ table    -> zz
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+CREATE REFERENCE TABLE zz2 ON sh3, sh4;
+ create reference table 
+------------------------
+ table    -> zz2
+ shard id -> sh3,sh4
+(2 rows)
+
+CREATE REFERENCE RELATION zz2;
+ERROR:  reference relation zz2 already exists
+SYNC REFERENCE TABLES ON sh1;
+ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
+SYNC REFERENCE TABLE zz2 ON sh1;
+ERROR:  request is unprocessable in router
+ALTER REFERENCE TABLE zz2 STORAGE TO (sh1, sh3, sh4);
+ relation | shard 
+----------+-------
+ zz2      | sh1
+ zz2      | sh3
+ zz2      | sh4
+(3 rows)
+
+ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
+          alter relation          
+----------------------------------
+ distribution id -> REPLICATED
+ relation name   -> my_schema.zz2
+(2 rows)
+
+ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 DISTRIBUTION KEY id;
+ERROR:  setting distribution key is forbidden for reference relations
+ALTER REFERENCE TABLE zz2 STORAGE TO (sh3);
+ relation | shard 
+----------+-------
+ zz2      | sh3
+(1 row)
+
+SHOW reference_relations;
+ table_name | schema_name | schema_version |      shards       | column_sequence_mapping 
+------------+-------------+----------------+-------------------+-------------------------
+ zz         | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+ zz2        | my_schema   | 1              | [sh3 sh4]         | map[]
+(2 rows)
+
+DROP REFERENCE RELATION zz2;
+ relation_name 
+---------------
+ zz2
+(1 row)
+
+--should fail
+DROP REFERENCE RELATION zz2;
+ERROR:  reference relation "zz2" not found
+CREATE REFERENCE RELATION r;
+   create reference table    
+-----------------------------
+ table    -> r
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+DROP DISTRIBUTION 'REPLICATED' CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+(1 row)
+
+SHOW relations WHERE distribution_id = 'REPLICATED';
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+(0 rows)
+
+CREATE REFERENCE RELATION r;
+   create reference table    
+-----------------------------
+ table    -> r
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+CREATE REFERENCE RELATION nsp1.rr;
+   create reference table    
+-----------------------------
+ table    -> nsp1.rr
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+SHOW relations WHERE distribution_id = 'REPLICATED';
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+ r             | REPLICATED      |                  | public
+ rr            | REPLICATED      |                  | nsp1
+(2 rows)
+
+SHOW reference_relations;
+ table_name | schema_name | schema_version |      shards       | column_sequence_mapping 
+------------+-------------+----------------+-------------------+-------------------------
+ r          | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+ rr         | nsp1        | 1              | [sh1 sh2 sh3 sh4] | map[]
+(2 rows)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+(1 row)
+

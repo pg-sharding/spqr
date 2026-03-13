@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -30,16 +31,9 @@ func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *empt
 	return &protos.DropAllKeyRangesResponse{}, nil
 }
 
-// DropKeyRange implements proto.KeyRangeServiceServer.
+// DEPRECATED
 func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
-	for _, id := range request.Id {
-		err := c.impl.DropKeyRange(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &protos.ModifyReply{}, nil
+	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange in CoordinatorService). Use ExecuteNoTran or CommitTran")
 }
 
 // DEPRECATED
@@ -50,7 +44,7 @@ func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		_, err := c.impl.LockKeyRange(ctx, id)
+		_, err := meta.LockKeyRange(ctx, c.impl, id)
 		if err != nil {
 			return nil, err
 		}

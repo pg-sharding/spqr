@@ -86,28 +86,36 @@ func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]str
 
 // GetSequenceColumns implements meta.EntityMgr.
 func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceRelations not implemented")
+	c := proto.NewDistributionServiceClient(a.conn)
+	resp, err := c.GetSequenceRelations(ctx, &proto.GetSequenceRelationsRequest{Name: seqName})
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
+	result := make([]*rfqn.RelationFQN, 0, len(resp.GetRelNames()))
+	for _, relName := range resp.GetRelNames() {
+		result = append(result, rfqn.RelationFQNFromProto(relName))
+	}
+	return result, nil
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
-	c := proto.NewReferenceRelationsServiceClient(a.conn)
-
-	qRels := []*proto.QualifiedName{}
-	for _, r := range ids {
-		qRels = append(qRels, rfqn.RelationFQNToProto(r))
-	}
-
-	_, err := c.SyncReferenceRelations(ctx, &proto.SyncReferenceRelationsRequest{
-		Relations: qRels,
-		ShardId:   destShard,
-	})
-	return spqrerror.CleanGrpcError(err)
+	return fmt.Errorf("request is unprocessable in router")
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
 func (a *Adapter) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	return fmt.Errorf("AlterReferenceRelationStorage should not be used in proxy adapter")
+}
+
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
+		Relation: rfqn.RelationFQNToProto(relName),
+		ShardIds: shs,
+	})
+	return err
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
@@ -275,6 +283,11 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 // DEPRECATED
 func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
+}
+
+// DEPRECATED
+func (a *Adapter) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (UpdateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -539,22 +552,9 @@ func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	return spqrerror.CleanGrpcError(err)
 }
 
-// TODO : unit tests
-
-// DropKeyRange drops a key range using the provided ID.
-//
-// Parameters:
-// - ctx (context.Context): The context for the request.
-// - krid (string): The ID of the key range to unlock.
-//
-// Returns:
-// - error: An error if the key range drop fails, otherwise nil.
-func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
-	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
-		Id: []string{krid},
-	})
-	return spqrerror.CleanGrpcError(err)
+// DEPRECATED
+func (a *Adapter) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -1083,9 +1083,9 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.DropMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.DropMoveTaskGroupV2(ctx, &proto.DropMoveTaskGroupRequest{ID: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 
@@ -1250,7 +1250,7 @@ func (a *Adapter) DropBalancerTask(ctx context.Context) error {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - address (string): The address of the coordinator to update.
+// - address (string): The address of the coordinator to Create.
 //
 // Returns:
 // - error: An error if the update operation fails, otherwise nil.
@@ -1328,6 +1328,18 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 	}
 
 	return resp.ColumnSequences, nil
+}
+
+func (a *Adapter) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.AlterSequenceDetachRelation(ctx, &proto.AlterSequenceDetachRelationRequest{
+		RelationName: rfqn.RelationFQNToProto(rel),
+	})
+	if err != nil {
+		return spqrerror.CleanGrpcError(err)
+	}
+
+	return nil
 }
 
 func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {

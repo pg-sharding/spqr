@@ -41,9 +41,9 @@ type ScatterPlan struct {
 	IsDDL  bool
 	Forced bool
 
-	PrepareRunF func() error
+	PrepareRunF func() error `json:"-"`
 
-	RunF func(server.Server) error
+	RunF func(server.Server) error `json:"-"`
 
 	OverwriteQuery map[string]string
 	/* Empty means execute everywhere */
@@ -412,6 +412,8 @@ func Combine(p1, p2 Plan) Plan {
 		switch shq2 := p2.(type) {
 		case *ScatterPlan:
 			maps.Copy(merged, shq2.OverwriteQuery)
+		case *RandomDispatchPlan:
+			return p1
 		}
 
 		return &ScatterPlan{

@@ -59,10 +59,17 @@ func (l *LocalQrouterServer) CreateReferenceRelations(ctx context.Context, reque
 // CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 
-	if err := l.mgr.AlterReferenceRelationStorage(ctx, &rfqn.RelationFQN{
-		RelationName: request.Relation.RelationName,
-		SchemaName:   request.Relation.SchemaName,
-	}, request.ShardIds); err != nil {
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +80,7 @@ func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, 
 func (l *LocalQrouterServer) DropReferenceRelations(ctx context.Context, r *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
 	for _, qualName := range r.GetRelations() {
 		/* XXX: fix this to support schema */
-		if err := l.mgr.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: qualName.RelationName, SchemaName: qualName.SchemaName}); err != nil {
+		if err := l.mgr.DropReferenceRelation(ctx, rfqn.RelationFQNFromProto(qualName)); err != nil {
 			return nil, err
 		}
 	}
@@ -213,11 +220,13 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := l.mgr.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName})
+	rfqn := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
+
+	ds, err := l.mgr.GetRelationDistribution(ctx, rfqn)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.Relations[request.Relation.Name]
+	curRel, ok := ds.TryGetRelation(rfqn)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
 	}
@@ -301,14 +310,9 @@ func (l *LocalQrouterServer) CloseRouter(ctx context.Context, _ *emptypb.Empty) 
 }
 
 // TODO : unit tests
+
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
-	for _, id := range request.Id {
-		err := l.mgr.DropKeyRange(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &protos.ModifyReply{}, nil
+	return nil, fmt.Errorf("DEPRECATED (DropKeyRange), remove after meta transaction implementation")
 }
 
 // TODO : unit tests
@@ -387,7 +391,7 @@ func (l *LocalQrouterServer) ListAllKeyRanges(ctx context.Context, _ *emptypb.Em
 // TODO : unit tests
 func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if _, err := l.mgr.LockKeyRange(ctx, id); err != nil {
+		if _, err := meta.LockKeyRange(ctx, l.mgr, id); err != nil {
 			return nil, err
 		}
 	}
@@ -609,13 +613,18 @@ func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *pr
 }
 
 // TODO: unit tests
+func (l *LocalQrouterServer) DropMoveTaskGroupV2(ctx context.Context, req *protos.DropMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, req.Cascade)
+}
+
+// TODO: unit tests
 func (l *LocalQrouterServer) DropMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 // TODO: unit tests
@@ -687,6 +696,12 @@ func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.
 // TODO : unit tests
 func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.DropSequenceRequest) (*emptypb.Empty, error) {
 	err := l.mgr.DropSequence(ctx, request.Name, request.Force)
+	return nil, err
+}
+
+func (l *LocalQrouterServer) AlterSequenceDetachRelation(ctx context.Context, request *protos.AlterSequenceDetachRelationRequest) (*emptypb.Empty, error) {
+	rel := rfqn.RelationFQNFromProto(request.RelationName)
+	err := l.mgr.AlterSequenceDetachRelation(ctx, rel)
 	return nil, err
 }
 

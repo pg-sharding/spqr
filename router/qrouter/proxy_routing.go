@@ -85,7 +85,7 @@ func (qr *ProxyQrouter) planFromClauseList(
 func (qr *ProxyQrouter) planInsertV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt *lyx.Insert, rf *lyx.RangeVar) (plan.Plan, error) {
+	stmt *lyx.Insert, qualName *rfqn.RelationFQN) (plan.Plan, error) {
 
 	p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 	if err != nil {
@@ -104,16 +104,95 @@ func (qr *ProxyQrouter) planInsertV1(
 
 		p, _ = qr.planQueryV1(ctx, rm, subS)
 
-		/* try target list */
-		spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
-		/* this target list for some insert (...) sharding column */
+		if len(subS.FromClause) == 1 {
+
+			switch sRv := subS.FromClause[0].(type) {
+			case *lyx.RangeVar:
+
+				var ds *distributions.Distribution
+				var err error
+
+				if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
+					return nil, err
+				}
+
+				/* Omit distributed relations */
+				if ds.Id == distributions.REPLICATED {
+					break
+				}
+
+				insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+				if err != nil {
+					return nil, err
+				}
+
+				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
+				if err != nil {
+					return nil, err
+				}
+
+				for i, colRef := range subS.TargetList {
+					switch cc := colRef.(type) {
+					case *lyx.ColumnRef:
+
+						/* Check if this is actual sharding column reference.
+						* Currently, only single-column case is supported.
+						 */
+						if !slices.Contains(cols, stmt.Columns[i]) {
+							spqrlog.Zero.Debug().Str("column name", cc.ColName).Msg("skip column reference")
+							continue
+						}
+
+						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
+							CTEName:   sRv.RelationName,
+							ValueName: cc.ColName,
+						}]; ok {
+
+							rList := [][]lyx.Node{}
+							for _, vv := range v {
+								/* XXX: ugly hack. We want this list size to match insert columns*/
+								inner := []lyx.Node{}
+								for range len(insertColsPos) {
+									inner = append(inner, vv)
+								}
+								rList = append(rList, inner)
+							}
+
+							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, insertColsPos, qualName)
+							if err != nil {
+								return nil, err
+							}
+							for _, sh := range shs {
+								if sh.Name != shs[0].Name {
+
+									/* try to rewrite, but only for simple protocol */
+									if len(rm.ParamRefs) == 0 {
+										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs)
+									}
+
+									return nil, rerrors.ErrComplexQuery
+								}
+							}
+							if len(shs) > 0 {
+								p = plan.Combine(p, &plan.ShardDispatchPlan{
+									ExecTarget:         shs[0],
+									TargetSessionAttrs: config.TargetSessionAttrsRW,
+								})
+							}
+							return p, nil
+						}
+					}
+				}
+			}
+		}
+
+		/* try target list, check if
+		* this target list has sharding column for some insert (...) */
 
 		routingList = [][]lyx.Node{subS.TargetList}
 		/* record all values from tl */
 
-		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-
-		if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
 		} else if rs {
 			rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
@@ -148,7 +227,13 @@ func (qr *ProxyQrouter) planInsertV1(
 			}
 			return nil, rerrors.ErrComplexQuery
 		} else {
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+
+			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+			if err != nil {
+				return nil, err
+			}
+
+			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -170,11 +255,11 @@ func (qr *ProxyQrouter) planInsertV1(
 		/* record all values from values scan */
 		routingList = subS.Values
 
-		if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
 		} else if rs {
 			/* If reference relation, use planner v2 */
-			p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
+			p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, qualName, subS, qr.idRangeCache)
 
 			if err != nil {
 				return nil, err
@@ -187,7 +272,12 @@ func (qr *ProxyQrouter) planInsertV1(
 			}
 			return p, nil
 		} else {
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+			if err != nil {
+				return nil, err
+			}
+
+			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -282,12 +372,12 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, rerrors.ErrComplexQuery
 		}
 
-		p, err := qr.planInsertV1(ctx, rm, stmt, rf)
+		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+		p, err := qr.planInsertV1(ctx, rm, stmt, qualName)
 		if err != nil {
 			return nil, err
 		}
-
-		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
 
 		/* plan one slice per unique index */
 		iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
@@ -339,7 +429,6 @@ func (qr *ProxyQrouter) planQueryV1(
 		/* rewrite initial query adding insert */
 
 		rewriteQuery, err := planner.RewriteDistributedRelInsertForIndexes(rm.Query, iis)
-
 		if err != nil {
 			return nil, err
 		}
@@ -410,7 +499,10 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, err
 		}
 
-		distributedRelation := ds.GetRelation(qualName)
+		distributedRelation, ok := ds.TryGetRelation(qualName)
+		if !ok {
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_OBJECT_NOT_EXIST)
+		}
 
 		for _, is := range iis {
 
@@ -584,12 +676,6 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			// iis := make([]*distributions.UniqueIndex, 0)
-
-			// for _, is := range iisMP {
-			// 	iis = append(iis, is)
-			// }
-
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 
 		default:
@@ -641,12 +727,6 @@ func (qr *ProxyQrouter) planQueryV1(
 				/* simple case */
 				return p, nil
 			}
-
-			// iis := make([]*distributions.UniqueIndex, 0)
-
-			// for _, is := range iisMP {
-			// 	iis = append(iis, is)
-			// }
 
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		default:
@@ -802,7 +882,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 
 		if rm.SPH.EnhancedMultiShardProcessing() {
 			var err error
-			if v.SubPlan == nil {
+			if v.SubPlan == nil && v.OverwriteQuery == nil {
 				switch rm.Stmt.(type) {
 				case *lyx.Select:
 				default:
@@ -844,6 +924,251 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	}
 }
 
+func (qr *ProxyQrouter) addSortToPlan(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	p plan.Plan,
+) (plan.Plan, error) {
+	/* No point in cluster-wide sorting */
+	if len(p.ExecutionTargets()) == 1 {
+		return p, nil
+	}
+
+	scatterSlice, ok := p.(*plan.ScatterPlan)
+
+	if !ok {
+		return p, nil
+	}
+
+	spqrlog.Zero.Debug().
+		Msgf("plan select sort postprocessing %+v", p)
+
+	switch stmt := rm.Stmt.(type) {
+	case *lyx.Select:
+		/* This currently support sorting for one column. */
+		for _, n := range stmt.SortClause {
+			switch sb := n.(type) {
+			case *lyx.SortBy:
+				colRef, ok := sb.Node.(*lyx.ColumnRef)
+
+				if !ok {
+					return p, nil
+				}
+				/* We can sort by column reference only if we know type of column.
+				* For now, all we know in advance is type of distribution column. */
+				rfqn, err := rm.ResolveRelationByAlias(colRef.TableAlias)
+				if err != nil {
+					/* We can receive `complex query` error from ResolveRelationByAlias.
+					* log it and ignore */
+					spqrlog.Zero.
+						Error().
+						Str("alias", colRef.TableAlias).
+						Err(err).Msg("failed to resolve relation by alias")
+					return p, nil
+				}
+
+				d, err := rm.GetRelationDistribution(ctx, rfqn)
+				if err != nil {
+					return nil, err
+				}
+				r, ok := d.TryGetRelation(rfqn)
+				if !ok {
+					return p, nil
+				}
+				tp, ok := r.GetDistributionKeyColumnType(d, colRef.ColName)
+				if !ok {
+					return p, nil
+				}
+
+				/* TODO: refactor this */
+				if tp != qdb.ColumnTypeVarchar && tp != qdb.ColumnTypeVarcharHashed && tp != qdb.ColumnTypeVarcharDeprecated {
+					return p, nil
+				}
+				columnOff := -1
+				for i, tle := range stmt.TargetList {
+					switch cf := tle.(type) {
+					case *lyx.ColumnRef:
+						if cf.ColName == colRef.ColName {
+							columnOff = i
+						}
+					}
+				}
+
+				/* XXX: error out here? */
+				if columnOff == -1 {
+					return p, nil
+				}
+
+				/* Okay, we are ready for result post-processing sort.*/
+
+				retSlice := &plan.VirtualPlan{
+					TTS: &tupleslot.TupleTableSlot{},
+				}
+
+				retSlice.SubPlan = scatterSlice
+
+				scatterSlice.OverwriteQuery = map[string]string{}
+
+				for _, sh := range scatterSlice.ExecTargets {
+					scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+				}
+
+				scatterSlice.RunF = func(serv server.Server) error {
+					spqrlog.Zero.Debug().Msg("run bottom-level plan slice")
+					for _, sh := range serv.Datashards() {
+						if !slices.ContainsFunc(scatterSlice.ExecTargets, func(el kr.ShardKey) bool {
+							return sh.Name() == el.Name
+						}) {
+							continue
+						}
+
+						var errmsg *pgproto3.ErrorResponse
+					shLoop:
+						for {
+							msg, err := serv.ReceiveShard(sh.ID())
+							if err != nil {
+								return err
+							}
+
+							switch v := msg.(type) {
+							case *pgproto3.ReadyForQuery:
+								if v.TxStatus == byte(txstatus.TXERR) {
+									return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+								}
+								break shLoop
+							case *pgproto3.RowDescription:
+								if len(retSlice.TTS.Desc) == 0 {
+									retSlice.TTS.Desc = v.Fields
+								}
+							case *pgproto3.ErrorResponse:
+								errmsg = v
+							case *pgproto3.DataRow:
+								vals := make([][]byte, len(v.Values))
+								copy(vals, v.Values)
+								retSlice.TTS.Raw = append(retSlice.TTS.Raw, vals)
+							default:
+								/* All ok? */
+							}
+						}
+					}
+
+					retSlice.TTS.Raw, err = engine.ProcessOrderBy(retSlice.TTS.Raw, retSlice.TTS.Desc.GetColumnsMap(), sb)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				}
+
+				return retSlice, nil
+			default:
+				/* ??? */
+			}
+		}
+
+	}
+
+	return p, nil
+}
+
+func (qr *ProxyQrouter) addLimitToPlan(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	p plan.Plan,
+) (plan.Plan, error) {
+	scatterSlice, ok := p.(*plan.ScatterPlan)
+
+	if !ok {
+		return p, nil
+	}
+
+	spqrlog.Zero.Debug().
+		Msgf("plan select limit postprocessing %+v", p)
+
+	switch stmt := rm.Stmt.(type) {
+	case *lyx.Select:
+		if stmt.Limit == nil {
+			return p, nil
+		}
+
+		limitVal := 0
+		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
+
+		if !ok {
+			/* no support */
+			return p, nil
+		}
+		limitVal = q.Value
+
+		retSlice := &plan.VirtualPlan{
+			TTS: &tupleslot.TupleTableSlot{},
+		}
+
+		retSlice.SubPlan = scatterSlice
+
+		scatterSlice.OverwriteQuery = map[string]string{}
+
+		for _, sh := range scatterSlice.ExecTargets {
+			scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+		}
+
+		scatterSlice.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level plan slice")
+			for _, sh := range serv.Datashards() {
+				if !slices.ContainsFunc(scatterSlice.ExecTargets, func(el kr.ShardKey) bool {
+					return sh.Name() == el.Name
+				}) {
+					continue
+				}
+
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.RowDescription:
+						if len(retSlice.TTS.Desc) == 0 {
+							retSlice.TTS.Desc = v.Fields
+						}
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					case *pgproto3.DataRow:
+
+						if len(retSlice.TTS.Raw) < limitVal {
+							vals := make([][]byte, len(v.Values))
+							copy(vals, v.Values)
+							retSlice.TTS.Raw = append(retSlice.TTS.Raw, vals)
+						}
+
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		return retSlice, nil
+	}
+	return p, nil
+}
+
 func (qr *ProxyQrouter) plannerV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -867,6 +1192,21 @@ func (qr *ProxyQrouter) plannerV1(
 			ExecTargets: qr.DataShardsRoutes(),
 		}
 	}
+
+	/* Okay, we got some plan. If case of multishard processing,
+	* fix bogus limit support, if enabled. */
+
+	if config.RouterConfig().Qr.AllowPostProcessing {
+		p, err = qr.addSortToPlan(ctx, rm, p)
+		if err != nil {
+			return nil, err
+		}
+		p, err = qr.addLimitToPlan(ctx, rm, p)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return p, nil
 }
 
@@ -1023,6 +1363,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 		var distribCols []string
 		var d *distributions.Distribution
 		var r *distributions.DistributedRelation
+		var ok bool
 
 		var rqdn *rfqn.RelationFQN
 
@@ -1036,8 +1377,12 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				return nil, err
 			}
 
-			r = d.GetRelation(rqdn)
-			distribCols, err = r.GetDistributionKeyColumns()
+			r, ok = d.TryGetRelation(rqdn)
+			if !ok {
+				/* We are updating non-distributed relation */
+				return nil, nil
+			}
+			distribCols, err = r.GetDistributionKeyColumnNames()
 			if err != nil {
 				return nil, err
 			}

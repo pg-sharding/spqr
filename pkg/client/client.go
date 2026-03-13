@@ -44,8 +44,8 @@ type Client interface {
 	ReplyDebugNotice(msg string) error
 	ReplyDebugNoticef(fmt string, args ...any) error
 
-	ReplyWarningMsg(msg string) error
-	ReplyWarningf(fmt string, args ...any) error
+	ReplyWarningMsg(code string, msg string) error
+	ReplyWarningf(code string, fmt string, args ...any) error
 	DefaultReply() error
 
 	Init(cfg *tls.Config) error

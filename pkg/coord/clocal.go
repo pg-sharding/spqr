@@ -179,8 +179,14 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
 		return err
 	}
-	return lc.qdb.UpdateKeyRange(ctx, reqKr.ToDB())
-
+	tranMngr := meta.NewTranEntityManager(lc)
+	if err := tranMngr.UpdateKeyRange(ctx, reqKr); err != nil {
+		return err
+	}
+	if err := tranMngr.ExecNoTran(ctx); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+	}
+	return nil
 }
 
 // BatchMoveKeyRange is disabled in LocalCoordinator
@@ -432,11 +438,6 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ stri
 // StopMoveTaskGroup implements meta.EntityMgr.
 func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ string) error {
 	return ErrNotCoordinator
-}
-
-// AlterReferenceRelationStorage implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
-	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.

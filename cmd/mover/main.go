@@ -156,7 +156,7 @@ func main() {
 		return
 	}
 
-	db, err := qdb.NewEtcdQDB(*etcdAddr, 0)
+	db, err := qdb.NewEtcdQDB([]string{*etcdAddr}, 0)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
@@ -207,6 +207,7 @@ func main() {
 		return
 	}
 
+	/* Fix this to use ListRelations() */
 	if err := moveData(ctx,
 		connFrom, connTo, keyRange, nextKeyRange,
 		distributions.DistributionFromDB(dbDs).Relations); err != nil {

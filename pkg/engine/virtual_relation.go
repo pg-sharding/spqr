@@ -301,12 +301,9 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 		Desc: GetVPHeader("table_name", "schema_name", "schema_version", "shards", "column_sequence_mapping"),
 	}
 	for _, r := range rrs {
-		schema := r.SchemaName
-		if schema == "" {
-			schema = "$search_path"
-		}
+		schema := r.RelationName.GetSchema()
 		tts.Raw = append(tts.Raw, [][]byte{
-			[]byte(r.TableName),
+			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
@@ -416,10 +413,7 @@ func RelationsVirtualRelationScan(
 				}
 				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
-			schema := rel.Relation.SchemaName
-			if schema == "" {
-				schema = "$search_path"
-			}
+			schema := rel.Relation.GetSchema()
 			tts.WriteDataRow(rel.Relation.RelationName, ds, strings.Join(dsKey, ","), schema)
 			c++
 		}
@@ -677,11 +671,21 @@ func TaskGroupBoundsCacheVirtualRelationScan(boundsMap map[string][][][]byte, in
 
 func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("redistribute_task_id", "key_range_id", "destination_shard_id", "batch_size"),
+		Desc: GetVPHeader(
+			"redistribute_task_id",
+			"task_group_id",
+			"key_range_id",
+			"destination_shard_id",
+			"batch_size"),
 	}
 	for _, task := range tasks {
+		id := ""
+		if task.TaskGroup != nil {
+			id = task.TaskGroup.ID
+		}
 		tts.WriteDataRow(
 			task.ID,
+			id,
 			task.KeyRangeId,
 			task.ShardId,
 			strconv.FormatInt(int64(task.BatchSize), 10),
