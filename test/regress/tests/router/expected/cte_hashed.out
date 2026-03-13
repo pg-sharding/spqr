@@ -60,9 +60,12 @@ CREATE DISTRIBUTED RELATION table2 (a HASH MURMUR) FOR DISTRIBUTION ds1;
 \c regress
 CREATE TABLE table1(i INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE table2(a INT, b INT, c INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE ref_rel_1(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 WITH s AS (
 	SELECT 1 FROM table1 WHERE i = 10
