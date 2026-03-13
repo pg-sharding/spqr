@@ -51,7 +51,7 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 	for _, dsn := range GetConnStrings(s, applicationName) {
 		conn, err := connectDsn(ctx, dsn)
 		if err != nil {
-			return nil, err
+			return nil, retry.RetryableError(err)
 		}
 		var isMaster bool
 		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
@@ -70,7 +70,7 @@ func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) 
 	for host, dsn := range GetConnStrings(s, "") {
 		conn, err := connectDsn(ctx, dsn)
 		if err != nil {
-			return "", err
+			return "", retry.RetryableError(err)
 		}
 		defer func() {
 			_ = conn.Close(ctx)
