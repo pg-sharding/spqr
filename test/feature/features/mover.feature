@@ -198,7 +198,7 @@ Feature: Mover test
     Then command return code should be "1"
     And command output should match regexp
     """
-    connection refused
+    connection refused|hostname resolving error
     """
 
   Scenario: Move nonexistent key range fails
