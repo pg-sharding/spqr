@@ -25,6 +25,8 @@ const (
 	MapFreq                 = "Freq"
 	MapLocks                = "Locks"
 	MapKrVersions           = "KrVersions"
+	MapSequences            = "Sequences"
+	MapSequenceToValues     = "SequenceToValues"
 )
 
 type MemQDB struct {
@@ -1547,13 +1549,31 @@ func (q *MemQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskG
 	return q.TaskGroupIDToStatus, nil
 }
 
-func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) error {
+// ==============================================================================
+//                                 SEQUENCES
+// ==============================================================================
+
+func (q *MemQDB) createSequenceQdbStatements(seqName string, initialValue int64) ([]QdbStatement, error) {
+	cmd1, err := NewQdbStatementExt(CMD_PUT, seqName, true, MapSequences)
+	if err != nil {
+		return nil, err
+	}
+	cmd2, err := NewQdbStatementExt(CMD_PUT, seqName, initialValue, MapSequenceToValues)
+	if err != nil {
+		return nil, err
+	}
+	return []QdbStatement{*cmd1, *cmd2}, nil
+}
+
+func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).Msg("memqdb: alter sequence attach")
+	return q.createSequenceQdbStatements(seqName, initialValue)
+}
 
-	q.Sequences[seqName] = true
-	q.SequenceToValues[seqName] = initialValue
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
+func (q *MemQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
+	_, ok := q.Sequences[seqName]
+	return ok, nil
 }
 
 func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
@@ -1786,6 +1806,36 @@ func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 	}
 }
 
+func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.Sequences, stmt.Key), nil
+	case CMD_PUT:
+		val, ok := stmt.Value.(bool)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for MapSequences, bool is expected", stmt.Value)
+		}
+		return NewUpdateCommand(q.Sequences, stmt.Key, val), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (Sequences)", stmt.CmdType)
+	}
+}
+
+func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.SequenceToValues, stmt.Key), nil
+	case CMD_PUT:
+		val, ok := stmt.Value.(int64)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for MapSequenceToValues, int64 is expected", stmt.Value)
+		}
+		return NewUpdateCommand(q.SequenceToValues, stmt.Key, val), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (SequenceToValues)", stmt.CmdType)
+	}
+}
+
 func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
 	memOperations := make([]Command, 0, len(operations))
 	for _, stmt := range operations {
@@ -1822,6 +1872,18 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 			memOperations = append(memOperations, operation)
 		case MapKrVersions:
 			operation, err := q.toKrVersion(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
+		case MapSequences:
+			operation, err := q.toSequences(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
+		case MapSequenceToValues:
+			operation, err := q.toSequenceToValues(stmt)
 			if err != nil {
 				return nil, err
 			}
