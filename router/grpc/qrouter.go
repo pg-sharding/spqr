@@ -20,7 +20,9 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -128,7 +130,15 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 }
 
 func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
-	if err := l.mgr.AddDataShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
+	if request == nil || request.GetShard() == nil {
+		return nil, status.Error(codes.InvalidArgument, "shard field is required")
+	}
+
+	shard := topology.DataShardFromProto(request.GetShard())
+	if err := topology.ValidateDataShardHosts(ctx, shard); err != nil {
+		return nil, err
+	}
+	if err := l.mgr.AddDataShard(ctx, shard); err != nil {
 		return nil, err
 	}
 	return nil, nil

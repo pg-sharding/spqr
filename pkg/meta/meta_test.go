@@ -3,7 +3,9 @@ package meta_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -104,6 +106,67 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	assert.Nil(t, errKr)
 	assert.Equal(t, actualKr, expectedKr)
 }
+
+func TestCreateShardValidatesReachableHosts(t *testing.T) {
+	ctx := context.Background()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:    "sh-new",
+		Hosts: []string{listener.Addr().String()},
+	}
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(t, err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.NoError(t, err)
+
+	_, err = memqdb.GetShard(ctx, "sh-new")
+	assert.NoError(t, err)
+}
+
+func TestCreateShardRejectsUnreachableHosts(t *testing.T) {
+	ctx := context.Background()
+	addr := func() string {
+		const maxAttempts = 10
+		for i := 0; i < maxAttempts; i++ {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			assert.NoError(t, err)
+			candidate := listener.Addr().String()
+			_ = listener.Close()
+
+			conn, dialErr := net.DialTimeout("tcp", candidate, 100*time.Millisecond)
+			if dialErr != nil {
+				return candidate
+			}
+			_ = conn.Close()
+		}
+		t.Fatalf("failed to get an unreachable tcp address")
+		return ""
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:    "sh-bad",
+		Hosts: []string{addr},
+	}
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(t, err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.ErrorContains(t, err, "not reachable")
+
+	_, err = memqdb.GetShard(ctx, "sh-bad")
+	assert.Error(t, err)
+}
+
 func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	ctx := context.Background()
 	statement := spqrparser.DistributionDefinition{
