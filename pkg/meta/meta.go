@@ -586,6 +586,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
 		})
+		if err := topology.ValidateDataShardHosts(ctx, dataShard); err != nil {
+			return nil, err
+		}
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
 			return nil, err
 		}
