@@ -48,6 +48,7 @@ CREATE DISTRIBUTED RELATION def_sh_xx DISTRIBUTION KEY id IN ds1;
 \c regress
 CREATE TABLE def_sh_xx(id INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO def_sh_xx (id) VALUES (-30);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO def_sh_xx (id) VALUES (-21);

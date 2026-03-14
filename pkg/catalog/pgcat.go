@@ -14,5 +14,5 @@ const INT8OID = 20 /* #no-spell-check-line */
 // INT4OID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L72 /* #no-spell-check-line */
 const INT4OID = 23 /* #no-spell-check-line */
 
-// ARRAYOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L34 /* #no-spell-check-line */
-const ARRAYOID = 16 /* #no-spell-check-line */
+// BOOLOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L34 /* #no-spell-check-line */
+const BOOLOID = 16 /* #no-spell-check-line */

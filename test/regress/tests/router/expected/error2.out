@@ -37,6 +37,7 @@ LINE 1: INSERT INTO tt (id, data) VALUES (2, 'valid');
 -- create table after error
 CREATE TABLE tt(id INT PRIMARY KEY, data TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- insert initial data
 INSERT INTO tt (id, data) VALUES (1, 'first');
 NOTICE: send query to shard(s) : sh1

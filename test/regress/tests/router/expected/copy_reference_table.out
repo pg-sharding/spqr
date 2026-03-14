@@ -23,7 +23,9 @@ CREATE REFERENCE TABLE test_ref_rel_2;
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test_ref_rel_2(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

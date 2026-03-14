@@ -38,9 +38,12 @@ SHOW sequences;
 \c regress
 CREATE TABLE test(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test2(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test3(a INT, b INT, c INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (16) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

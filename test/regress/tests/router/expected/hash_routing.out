@@ -37,6 +37,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxhash DISTRIBUTION KEY col1 HASH FUNCTIO
 \c regress
 CREATE TABLE xxhash (col1 varchar);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxhash (col1) VALUES ('Hello, world!');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxhash (col1) VALUES ('test');

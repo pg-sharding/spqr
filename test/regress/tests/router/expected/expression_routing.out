@@ -54,6 +54,7 @@ CREATE TABLE tr (id1 INT, val TEXT);
 ERROR:  error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no matching distribution found
 CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';

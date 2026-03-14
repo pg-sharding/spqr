@@ -72,6 +72,7 @@ func randomHex(n int) (string, error) {
 
 	invalidate             *Invalidate
 	sync_reference_tables  *SyncReferenceTables
+	alter_reference_table_storage *AlterReferenceTableStorage
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -102,13 +103,13 @@ func randomHex(n int) (string, error) {
 	distribution_selector  *DistributionSelector
 	aiEntrieslist          []*AutoIncrementEntry
 
-    colref                 ColumnRef
-	colreflist			   []ColumnRef
+    colref                 *lyx.ColumnRef
+	colreflist			   []*lyx.ColumnRef
     where                  lyx.Node
 	expr				   lyx.Node
 
-	order_clause 		   OrderClause
-	opt_asc_desc		   OptAscDesc
+	order_clause 		   lyx.Node
+	opt_asc_desc		   int
 
 	group_clause		   GroupByClause
 
@@ -187,7 +188,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
-%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -258,6 +259,7 @@ func randomHex(n int) (string, error) {
 
 %type<invalidate> invalidate_stmt
 %type<sync_reference_tables> sync_reference_tables_stmt
+%type<alter_reference_table_storage> alter_reference_table_storage_stmt
 
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
@@ -421,6 +423,10 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
+	| alter_reference_table_storage_stmt
+	{
+		setParseTree(yylex, $1)
+	}
 	| create_distributed_relation_stmt
 	{
 		setParseTree(yylex, $1)
@@ -494,7 +500,7 @@ qualified_name:
 
 ColRef:
     any_id {
-        $$ = ColumnRef{
+        $$ = &lyx.ColumnRef{
             ColName: $1,
         }
     }
@@ -504,7 +510,7 @@ ColRef_list:
     {
       $$ = append($1, $3)
     } | ColRef {
-      $$ = []ColumnRef {
+      $$ = []*lyx.ColumnRef {
 		  $1,
 	  }
     } 
@@ -677,7 +683,7 @@ show_statement_type:
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr:
+			ErrorStr, StartupFinishedStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -1060,16 +1066,19 @@ create_distributed_relation_stmt:
 	}
 
 
-opt_asc_desc: ASC							{ $$ = &SortByAsc{} }
-			| DESC							{ $$ = &SortByDesc{} }
-			| /*EMPTY*/						{ $$ = &SortByDefault{} }
+opt_asc_desc: ASC							{ $$ = lyx.SORTBY_ASC }
+			| DESC							{ $$ = lyx.SORTBY_DESC }
+			| /*EMPTY*/						{ $$ = lyx.SORTBY_DEFAULT }
 
 order_clause:
     ORDER BY ColRef opt_asc_desc 
 	{
-		$$ = &Order{Col:$3, OptAscDesc:$4}
+		$$ = &lyx.SortBy{
+			Node: $3,
+			SortbyDir: $4,
+		}
 	} 
-	| /* empty */    {$$ = OrderClause(nil)}
+	| /* empty */    {$$ = nil}
 
 
 group_clause:
@@ -1478,6 +1487,15 @@ sync_reference_tables_stmt:
 		$$ = &SyncReferenceTables {
 			ShardID: $6,
 			RelationSelector: $4,
+		}
+	}
+
+alter_reference_table_storage_stmt:
+	ALTER REFERENCE table_or_relation qualified_name STORAGE TO TOPENBR any_id_list TCLOSEBR
+	{
+		$$ = &AlterReferenceTableStorage {
+			RelationSelector: $4,
+			Shards: $8,
 		}
 	}
 

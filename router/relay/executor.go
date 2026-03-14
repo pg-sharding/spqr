@@ -888,6 +888,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		}
 	}
 
+	var overwriteCC *pgproto3.CommandComplete
 	switch q := topPlan.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
@@ -957,6 +958,10 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
+	case *plan.ScatterPlan:
+		if q.OverwriteCC != nil {
+			overwriteCC = q.OverwriteCC
+		}
 	}
 
 	if serv == nil {
@@ -990,7 +995,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 
 			return s.copyFromExecutor()
 		case *pgproto3.DataRow:
-			if replyCl {
+			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
 				case *plan.DataRowFilter:
 					if v.FilterIndex == recvIndex {
@@ -1024,13 +1029,17 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			* original CommandComplete may differ from any of
 			* received from slices (including output slice). */
 			if replyCl {
-				s.cacheCC.CommandTag = append([]byte(nil), v.CommandTag...)
+				if overwriteCC != nil {
+					s.es.cc = overwriteCC
+				} else {
+					s.cacheCC.CommandTag = append([]byte(nil), v.CommandTag...)
 
-				s.es.cc = &s.cacheCC
+					s.es.cc = &s.cacheCC
+				}
 			}
 		case *pgproto3.RowDescription:
 			if s.es.expectRowDesc {
-				if replyCl {
+				if replyCl && overwriteCC == nil {
 					err = s.Client().Send(msg)
 					if err != nil {
 						return err

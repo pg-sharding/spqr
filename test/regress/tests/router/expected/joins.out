@@ -42,7 +42,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
 SET __spqr__engine_v2 TO on;
 CREATE TABLE xjoin(id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE yjoin(w_id int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xjoin (id) values(1);
 NOTICE: send query to shard(s) : sh1

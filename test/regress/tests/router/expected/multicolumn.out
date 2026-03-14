@@ -85,7 +85,9 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION mcol_dt DISTRIBUTION KEY id, addr;
 \c regress
 CREATE TABLE mcol_sh(id INT, seq INT, val INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE mcol_dt(id INT, addr TEXT, val INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO mcol_sh (id, seq, val) VALUES (0, 10, 1);
 NOTICE: send query to shard(s) : sh1

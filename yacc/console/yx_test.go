@@ -355,7 +355,7 @@ func TestGroupBy(t *testing.T) {
 				Cmd: spqrparser.BackendConnectionsStr,
 
 				Where:   &lyx.AExprEmpty{},
-				GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
+				GroupBy: spqrparser.GroupBy{Col: []*lyx.ColumnRef{{ColName: "hostname"}}},
 			},
 			err: nil,
 		},
@@ -364,7 +364,7 @@ func TestGroupBy(t *testing.T) {
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.BackendConnectionsStr,
 				Where:   &lyx.AExprEmpty{},
-				GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "user"}, {ColName: "dbname"}}},
+				GroupBy: spqrparser.GroupBy{Col: []*lyx.ColumnRef{{ColName: "user"}, {ColName: "dbname"}}},
 			},
 			err: nil,
 		},
@@ -405,9 +405,9 @@ func TestOrderBy(t *testing.T) {
 
 				Where:   &lyx.AExprEmpty{},
 				GroupBy: spqrparser.GroupByClauseEmpty{},
-				Order: &spqrparser.Order{
-					Col:        spqrparser.ColumnRef{ColName: "hostname"},
-					OptAscDesc: &spqrparser.SortByDefault{},
+				Order: &lyx.SortBy{
+					Node:      &lyx.ColumnRef{ColName: "hostname"},
+					SortbyDir: lyx.SORTBY_DEFAULT,
 				},
 			},
 			err: nil,

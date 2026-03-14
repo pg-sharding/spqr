@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/sethvargo/go-retry"
 )
 
 // GetConnStrings generates connection strings based on the ShardConnect fields.
@@ -48,21 +49,9 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		applicationName = spqrTransferApplicationName + "_" + taskGroupId
 	}
 	for _, dsn := range GetConnStrings(s, applicationName) {
-		connConfig, err := pgx.ParseConfig(dsn)
+		conn, err := connectDsn(ctx, dsn)
 		if err != nil {
-			return nil, err
-		}
-		level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
-		if err != nil {
-			return nil, err
-		}
-		connConfig.Tracer = &tracelog.TraceLog{
-			Logger:   &spqrlog.ZeroTraceLogger{},
-			LogLevel: level,
-		}
-		conn, err := pgx.ConnectConfig(ctx, connConfig)
-		if err != nil {
-			return nil, err
+			return nil, retry.RetryableError(err)
 		}
 		var isMaster bool
 		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
@@ -74,26 +63,14 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		}
 		_ = conn.Close(ctx)
 	}
-	return nil, spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
+	return nil, retry.RetryableError(spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master"))
 }
 
 func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) {
 	for host, dsn := range GetConnStrings(s, "") {
-		connConfig, err := pgx.ParseConfig(dsn)
+		conn, err := connectDsn(ctx, dsn)
 		if err != nil {
-			return "", err
-		}
-		level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
-		if err != nil {
-			return "", err
-		}
-		connConfig.Tracer = &tracelog.TraceLog{
-			Logger:   &spqrlog.ZeroTraceLogger{},
-			LogLevel: level,
-		}
-		conn, err := pgx.ConnectConfig(ctx, connConfig)
-		if err != nil {
-			return "", err
+			return "", retry.RetryableError(err)
 		}
 		defer func() {
 			_ = conn.Close(ctx)
@@ -112,4 +89,21 @@ func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) 
 		}
 	}
 	return "", spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
+}
+
+func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {
+	connConfig, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
+	if err != nil {
+		return nil, err
+	}
+	connConfig.Tracer = &tracelog.TraceLog{
+		Logger:   &spqrlog.ZeroTraceLogger{},
+		LogLevel: level,
+	}
+	connConfig.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	return pgx.ConnectConfig(ctx, connConfig)
 }

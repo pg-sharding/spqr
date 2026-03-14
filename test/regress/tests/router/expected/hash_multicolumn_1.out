@@ -47,6 +47,7 @@ CREATE DISTRIBUTED RELATION hash_multi_xx DISTRIBUTION KEY col1, col2 HASH FUNCT
 \c regress
 CREATE TABLE hash_multi_xx(col1 INT, col2 TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'abwqqwqabba');
 NOTICE: send query to shard(s) : sh4
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'abwqqwqabba');

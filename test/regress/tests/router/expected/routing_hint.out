@@ -59,6 +59,7 @@ CREATE DISTRIBUTED RELATION test_h DISTRIBUTION KEY id HASH FUNCTION MURMUR IN d
 \c regress
 CREATE TABLE test(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- TODO: specify distribution as well as sharding_key
 INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh1
@@ -67,6 +68,7 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh2
 CREATE TABLE test_h(id TEXT, age int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
 NOTICE: send query to shard(s) : sh1

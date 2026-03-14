@@ -103,28 +103,36 @@ CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
 \c regress
 CREATE TABLE r(i int, j int, k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- unique index is actually a reverse index (just another table)
 CREATE TABLE ui(j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui USING btree(j);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE r2(i int, j int, k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- unique index is actually a reverse index (just another table)
 CREATE TABLE ui1(j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui1 USING btree(j);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE ui2(k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui2 USING btree(k);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE r3(i int, j int, k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE ch3(j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- unique index is actually a reverse index (just another table)
 CREATE TABLE ui3(j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui3 USING btree(j, k);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

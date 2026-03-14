@@ -3,7 +3,7 @@ coordinator_port: 7002
 grpc_api_port: 7003
 qdb_addr: '[regress_qdb_0_1]:2379'
 log_level: debug
-shard_data: '/spqr/test/feature/conf/shard_data_replica_first.yaml'
+shard_data: '/spqr/test/feature/conf/shard_data.yaml'
 frontend_rules:
   - db: regress
     usr: regress
@@ -11,4 +11,3 @@ frontend_rules:
       auth_method: clear_text
       password: password
 data_move_disable_triggers: true
-forbid_direct_shard_queries: true

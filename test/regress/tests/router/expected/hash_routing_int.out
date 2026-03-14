@@ -37,6 +37,7 @@ DROP TABLE IF EXISTS xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xx (col1 INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (col1) VALUES (1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (2);
