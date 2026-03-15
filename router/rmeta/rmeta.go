@@ -144,7 +144,7 @@ func (rm *RoutingMetadataContext) ResolveTypedParamRef(paramResCodes []int16, in
 	if len(paramResCodes) < ind {
 		return nil, plan.ErrResolvingValue
 	}
-	if ind < len(paramResCodes) {
+	if ind >= len(paramResCodes) {
 		return nil, plan.ErrResolvingValue
 	}
 	fc := paramResCodes[ind]
