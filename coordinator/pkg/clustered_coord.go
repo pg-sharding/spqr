@@ -741,7 +741,7 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
-	keyRange, err := meta.LockKeyRange(ctx, &qc.Coordinator, keyRangeID)
+	keyRange, err := qc.Coordinator.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
 		return nil, err
 	}
