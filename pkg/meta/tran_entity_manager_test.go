@@ -496,7 +496,7 @@ func TestTranListSequences(t *testing.T) {
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
-		memqdb.CreateSequence(ctx, "test1", 1)
+		err = memqdb.CreateSequence(ctx, "test1", 1)
 		is.NoError(err)
 
 		tranMngr := meta.NewTranEntityManager(mngr)
