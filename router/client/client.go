@@ -871,6 +871,10 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 	return cl.csm
 }
 
+func (cl *PsqlClient) CancelPID() uint32 {
+	return cl.cancel_pid
+}
+
 var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {

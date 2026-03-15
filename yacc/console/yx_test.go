@@ -45,6 +45,17 @@ func TestSimple(t *testing.T) {
 		},
 
 		{
+			query: "SHOW clients (client_id, user)",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.ClientsStr,
+				Columns: []string{"client_id", "user"},
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
 			query: "\nSHOW \n relations",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,
