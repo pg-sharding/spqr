@@ -500,7 +500,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address", "is_alive",
+		"client_id", "cancel_pid", "user", "dbname", "server_id", "router_address", "is_alive",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -517,6 +517,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 		quantiles := statistics.GetQuantiles()
 		rowData := [][]byte{
 			fmt.Appendf(nil, "%d", cl.ID()),
+			fmt.Appendf(nil, "%d", cl.CancelPID()),
 			[]byte(cl.Usr()),
 			[]byte(cl.DB()),
 			[]byte(hostname),
