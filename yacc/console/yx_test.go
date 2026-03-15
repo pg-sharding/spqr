@@ -1415,6 +1415,24 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t RENAME DISTRIBUTION KEY old_col TO new_col;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "t",
+						},
+						Element: &spqrparser.RenameDistributionKey{
+							OldName: "old_col",
+							NewName: "new_col",
+						},
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

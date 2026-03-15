@@ -36,6 +36,22 @@ SHOW relations;
  a             | ds1             | ("another", identity) | public
 (1 row)
 
+ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION KEY another TO renamed_col;
+          rename distribution key          
+-------------------------------------------
+ distribution id -> ds1
+ relation name   -> a
+ renamed column  -> another to renamed_col
+(3 rows)
+
+SHOW relations;
+ relation_name | distribution_id |     distribution_key      | schema_name  
+---------------+-----------------+---------------------------+--------------
+ a             | ds1             | ("renamed_col", identity) | $search_path
+(1 row)
+
+ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION KEY nonexistent TO fail_col;
+ERROR:  column "nonexistent" not found in distribution key of relation "a"
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
 ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error
 ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
@@ -46,9 +62,9 @@ ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |   distribution_key    | schema_name 
----------------+-----------------+-----------------------+-------------
- a             | ds1             | ("another", identity) | schema_name
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | schema_name
 (1 row)
 
 ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh_no_exist;
@@ -75,10 +91,10 @@ CREATE DISTRIBUTED RELATION schema_name2.aa DISTRIBUTION KEY another2 IN ds2;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |    distribution_key    | schema_name  
----------------+-----------------+------------------------+--------------
- a             | ds1             | ("another", identity)  | schema_name
- aa            | ds2             | ("another2", identity) | schema_name2
+ relation_name | distribution_id |     distribution_key      | schema_name  
+---------------+-----------------+---------------------------+--------------
+ a             | ds1             | ("renamed_col", identity) | schema_name
+ aa            | ds2             | ("another2", identity)    | schema_name2
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;

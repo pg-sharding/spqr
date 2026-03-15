@@ -852,6 +852,50 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		}
 
 		return tts, nil
+	case *spqrparser.RenameDistributionKey:
+		ds, err := mngr.GetDistribution(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+		rel := ds.Relations[relationName.RelationName]
+		if rel == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
+		}
+		newKey := make([]distributions.DistributionKeyEntry, len(rel.DistributionKey))
+		copy(newKey, rel.DistributionKey)
+		found := false
+		for i, entry := range newKey {
+			if entry.Column == stmt.OldName {
+				newKey[i].Column = stmt.NewName
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+				"column \"%s\" not found in distribution key of relation \"%s\"", stmt.OldName, relationName.String())
+		}
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("rename distribution key"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
+				},
+				{
+					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+				},
+				{
+					fmt.Appendf(nil, "renamed column  -> %s to %s", stmt.OldName, stmt.NewName),
+				},
+			},
+		}
+
+		return tts, nil
 	default:
 		return nil, fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
 	}
