@@ -383,7 +383,7 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 	case virtual.VirtualAwaitTask:
 
 		if len(args) != 1 {
-			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualAwaitTask)
 		}
 
 		mgr, cf, err := coord.DistributedMgr(ctx, rm.Mgr)
@@ -434,7 +434,7 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 		/*  XXX: unite this code with client interactor internals */
 
 		if len(args) != 1 {
-			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualConsoleExecute)
 		}
 
 		switch v := args[0].(type) {
@@ -491,6 +491,24 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 		}
 
 		switch v := args[0].(type) {
+		case *lyx.ParamRef:
+
+			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+			if err != nil {
+				return nil, err
+			}
+
+			/* Assert here? */
+			val := sVal.(string)
+
+			return meta.ProcessShow(ctx, &spqrparser.Show{
+				Cmd:     val,
+				Where:   &lyx.AExprEmpty{},
+				Order:   nil,
+				GroupBy: nil,
+			}, rm.Mgr, rm.CSM, true)
 		case *lyx.AExprSConst:
 			return meta.ProcessShow(ctx, &spqrparser.Show{
 				Cmd:     v.Value,

@@ -12,3 +12,13 @@ const (
 	/* isolation tester support function */
 	VirtualAwaitTask = "__spqr__await_task"
 )
+
+func IsVirtualFuncName(n string) bool {
+	switch n {
+	case VirtualFuncIsReady, VirtualShards, VirtualShow, VirtualConsoleExecute,
+		VirtualCTID, VirtualFuncHosts, VirtualAwaitTask:
+		return true
+	default:
+		return false
+	}
+}
