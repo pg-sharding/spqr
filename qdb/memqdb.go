@@ -1789,46 +1789,28 @@ func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
 	memOperations := make([]Command, 0, len(operations))
 	for _, stmt := range operations {
+		var converterToCmd func(QdbStatement) (Command, error)
 		switch stmt.Extension {
 		case MapRelationDistribution:
-			if operation, err := q.toRelationDistributionOperation(stmt); err != nil {
-				return nil, err
-			} else {
-				memOperations = append(memOperations, operation)
-			}
+			converterToCmd = q.toRelationDistributionOperation
 		case MapDistributions:
-			if operation, err := q.toDistributions(stmt); err != nil {
-				return nil, err
-			} else {
-				memOperations = append(memOperations, operation)
-			}
+			converterToCmd = q.toDistributions
 		case MapKrs:
-			operation, err := q.toKeyRange(stmt)
-			if err != nil {
-				return nil, err
-			}
-			memOperations = append(memOperations, operation)
+			converterToCmd = q.toKeyRange
 		case MapFreq:
-			operation, err := q.toFreq(stmt)
-			if err != nil {
-				return nil, err
-			}
-			memOperations = append(memOperations, operation)
+			converterToCmd = q.toFreq
 		case MapLocks:
-			operation, err := q.toLock(stmt)
-			if err != nil {
-				return nil, err
-			}
-			memOperations = append(memOperations, operation)
+			converterToCmd = q.toLock
 		case MapKrVersions:
-			operation, err := q.toKrVersion(stmt)
-			if err != nil {
-				return nil, err
-			}
-			memOperations = append(memOperations, operation)
+			converterToCmd = q.toKrVersion
 		default:
 			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
 		}
+		operation, err := converterToCmd(stmt)
+		if err != nil {
+			return nil, err
+		}
+		memOperations = append(memOperations, operation)
 	}
 	return memOperations, nil
 }
