@@ -145,11 +145,11 @@ func sequenceNodePath(key string) string {
 
 func relationSequenceMappingNodePath(relation *rfqn.RelationFQN) string {
 	/* XXX: migrate here */
-	return path.Join(columnSequenceMappingNamespace, relation.RelationName)
+	return path.Join(columnSequenceMappingNamespace, relation.RelationName) + "/"
 }
 
 func columnSequenceMappingNodePath(relation *rfqn.RelationFQN, colName string) string {
-	return path.Join(relationSequenceMappingNodePath(relation), colName)
+	return path.Join(columnSequenceMappingNamespace, relation.RelationName, colName)
 }
 
 func taskGroupNodePath(id string) string {

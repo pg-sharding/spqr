@@ -51,7 +51,7 @@ echo "go test!"
 insert_greeting "console"
 run_tests "console" "regress_router" "7432"
 #TODO: fix bugs, remove commented 'run_tests'
-#run_tests "router" "regress_router" "6432"
+run_tests "router" "regress_router" "6432"
 #run_tests "pooler" "regress_pooler" "6432"
 sleep 10
 echo "kill cluster"
