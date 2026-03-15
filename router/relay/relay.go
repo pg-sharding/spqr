@@ -29,6 +29,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/slice"
+	"github.com/pg-sharding/spqr/router/virtual"
 	"golang.org/x/exp/slices"
 )
 
@@ -481,6 +482,126 @@ var (
 	}
 )
 
+func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *pgproto3.Parse) error {
+
+	startTime := time.Now()
+
+	// analyze statement and maybe rewrite query
+
+	query := currentMsg.Query
+	_, _, err := rst.Parse(query, true)
+	if err != nil {
+		return err
+	}
+
+	/* XXX: check that we have reference relation insert here */
+	stmt := rst.qp.Stmt()
+
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt)
+	if err != nil {
+		return err
+	}
+
+	rst.savedRM[currentMsg.Name] = rm
+
+	def := &prepstatement.PreparedStatementDefinition{
+		Name:          currentMsg.Name,
+		Query:         query,
+		ParameterOIDs: currentMsg.ParameterOIDs,
+	}
+
+	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
+	* or select __spqr__virtual_func()? ?*/
+	switch parsed := stmt.(type) {
+	case *lyx.Insert:
+		switch parsed.SubSelect.(type) {
+		case *lyx.ValueClause:
+
+			switch rf := parsed.TableRef.(type) {
+			case *lyx.RangeVar:
+				qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+				if ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, qualName); err != nil {
+					return err
+				} else if ds.Id == distributions.REPLICATED {
+					rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName)
+					if err != nil {
+						return err
+					}
+
+					if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	case *lyx.Select:
+		if len(parsed.TargetList) == 1 {
+			switch tle := parsed.TargetList[0].(type) {
+			case *lyx.FuncApplication:
+				if virtual.IsVirtualFuncName(tle.Name) {
+					// ok
+					rst.Client().StorePreparedStatement(def)
+
+					if err := rst.Client().Send(&pgproto3.ParseComplete{}); err != nil {
+						return err
+					}
+
+					/* Do not deploy our virtual functions to postgres. */
+					return nil
+				}
+			}
+		}
+	}
+
+	p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
+	if err != nil {
+		return err
+	}
+
+	rst.routingDecisionPlan = p
+
+	rst.Client().StorePreparedStatement(def)
+
+	hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.Name)
+
+	spqrlog.Zero.Debug().
+		Str("name", currentMsg.Name).
+		Str("query", currentMsg.Query).
+		Uint64("hash", hash).
+		Uint("client", rst.Client().ID()).
+		Msg("Parsing prepared statement")
+
+	if config.RouterConfig().PgprotoDebug {
+		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", currentMsg.Name, currentMsg.Query, hash); err != nil {
+			return err
+		}
+	}
+
+	/* TODO: refactor code to make this less ugly */
+	saveTxStatus := rst.qse.TxStatus()
+
+	_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
+	if err != nil {
+		return err
+	}
+
+	rst.qse.SetTxStatus(saveTxStatus)
+
+	// tdb: fix this
+	rst.plainQ = currentMsg.Query
+
+	if err := rst.Client().Send(retMsg); err != nil {
+		return err
+	}
+
+	if err := fin(); err != nil {
+		return err
+	}
+
+	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
+	return nil
+}
+
 // TODO : unit tests
 // If we enter this function, then we need to process whole messages buffer
 // in current statement pipeline bounds.
@@ -519,103 +640,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 		switch currentMsg := msg.(type) {
 		case *pgproto3.Parse:
-			startTime := time.Now()
-
-			// analyze statement and maybe rewrite query
-
-			query := currentMsg.Query
-			_, _, err := rst.Parse(query, true)
-			if err != nil {
+			if err := rst.relayParsePrepared(ctx, currentMsg); err != nil {
 				return err
 			}
-
-			/* XXX: check that we have reference relation insert here */
-			stmt := rst.qp.Stmt()
-
-			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt)
-			if err != nil {
-				return err
-			}
-
-			rst.savedRM[currentMsg.Name] = rm
-
-			def := &prepstatement.PreparedStatementDefinition{
-				Name:          currentMsg.Name,
-				Query:         query,
-				ParameterOIDs: currentMsg.ParameterOIDs,
-			}
-
-			/* XXX: very stupid here - is query exactly like insert into ref_rel values()?*/
-			switch parsed := stmt.(type) {
-			case *lyx.Insert:
-				switch parsed.SubSelect.(type) {
-				case *lyx.ValueClause:
-
-					switch rf := parsed.TableRef.(type) {
-					case *lyx.RangeVar:
-						qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-						if ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, qualName); err != nil {
-							return err
-						} else if ds.Id == distributions.REPLICATED {
-							rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName)
-							if err != nil {
-								return err
-							}
-
-							if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
-								return err
-							}
-						}
-					}
-				}
-			}
-
-			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
-			if err != nil {
-				return err
-			}
-
-			rst.routingDecisionPlan = p
-
-			rst.Client().StorePreparedStatement(def)
-
-			hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.Name)
-
-			spqrlog.Zero.Debug().
-				Str("name", currentMsg.Name).
-				Str("query", currentMsg.Query).
-				Uint64("hash", hash).
-				Uint("client", rst.Client().ID()).
-				Msg("Parsing prepared statement")
-
-			if config.RouterConfig().PgprotoDebug {
-				if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", currentMsg.Name, currentMsg.Query, hash); err != nil {
-					return err
-				}
-			}
-
-			/* TODO: refactor code to make this less ugly */
-			saveTxStatus := rst.qse.TxStatus()
-
-			_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
-			if err != nil {
-				return err
-			}
-
-			rst.qse.SetTxStatus(saveTxStatus)
-
-			// tdb: fix this
-			rst.plainQ = currentMsg.Query
-
-			if err := rst.Client().Send(retMsg); err != nil {
-				return err
-			}
-
-			if err := fin(); err != nil {
-				return err
-			}
-
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
 		case *pgproto3.Bind:
 			startTime := time.Now()
 
