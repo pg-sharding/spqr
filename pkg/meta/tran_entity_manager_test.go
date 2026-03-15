@@ -488,3 +488,28 @@ func TestTranState(t *testing.T) {
 		is.EqualError(err, "can't double transaction")
 	})
 }
+
+func TestTranListSequences(t *testing.T) {
+	t.Run("test with save changes", func(t *testing.T) {
+		is := assert.New(t)
+		ctx := context.Background()
+		memqdb, err := prepareDB(ctx)
+		assert.NoError(t, err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		memqdb.CreateSequence(ctx, "test1", 1)
+
+		tranMngr := meta.NewTranEntityManager(mngr)
+		err = tranMngr.CreateSequence(ctx, "test2", 2)
+		is.NoError(err)
+		//NO COMMIT QDB!!!
+		err = tranMngr.CreateSequence(ctx, "test2", 2)
+		is.Error(err)
+		//NO COMMIT QDB!!!
+
+		//check List
+		actualList, err := tranMngr.ListSequences(ctx)
+		is.NoError(err)
+		is.Len(actualList, 2)
+		is.Equal([]string{"test2", "test1"}, actualList)
+	})
+}
