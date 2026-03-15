@@ -69,6 +69,7 @@ type Client interface {
 
 	Shards() []shard.ShardHostInstance
 	Cancel() error
+	CancelPID() uint32
 	CancelMsg() *pgproto3.CancelRequest
 
 	Reply(msg string) error

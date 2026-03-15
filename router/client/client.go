@@ -871,6 +871,10 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 	return cl.csm
 }
 
+func (cl *PsqlClient) CancelPID() uint32 {
+	return cl.cancel_pid
+}
+
 var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {
@@ -957,6 +961,10 @@ func (c NoopClient) Shards() []shard.ShardHostInstance {
 
 func (c NoopClient) Conn() net.Conn {
 	return nil
+}
+
+func (c NoopClient) CancelPID() uint32 {
+	return 100
 }
 
 type MockShard struct {
