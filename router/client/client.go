@@ -963,6 +963,10 @@ func (c NoopClient) Conn() net.Conn {
 	return nil
 }
 
+func (c NoopClient) CancelPID() uint32 {
+	return 100
+}
+
 type MockShard struct {
 	shard.ShardHostInstance
 
