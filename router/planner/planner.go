@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -378,7 +379,10 @@ func PlanDistributedRelationInsert(
 	return tupleShards, nil
 }
 
-func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
+func MetadataVirtualFunctionCall(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	fname string,
+	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch fname {
 	case virtual.VirtualAwaitTask:
 
@@ -480,6 +484,54 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
+
+	case virtual.PGIsolationTestSessionIsBlocked:
+		if len(args) != 2 {
+			return nil, fmt.Errorf("%s function only accept two arguments", virtual.PGIsolationTestSessionIsBlocked)
+		}
+
+		lockedVirtualPID := uint(0)
+		lockedByVirtualPIDs := []uint32{}
+
+		switch v := args[0].(type) {
+		case *lyx.AExprIConst:
+			lockedVirtualPID = uint(v.Value)
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		_ = rm.CSM.ClientPoolForeach(func(client client.ClientInfo) error {
+			if client.ID() == lockedVirtualPID {
+				lockedByVirtualPIDs = client.CancellableIDs()
+			}
+			return nil
+		})
+		res := byte('t')
+
+		/* Not attached? XXX: fix this, support proper handling of second arg */
+		if len(lockedByVirtualPIDs) == 0 {
+			res = byte('f')
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte("locked"),
+					DataTypeOID:          catalog.BOOLOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+
+			Raw: [][][]byte{{{res}}},
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("%v", res))
+
+		return tts, nil
 
 		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShow:
@@ -599,8 +651,10 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
-func (plr *PlannerV2) RetrieveTuples(ctx context.Context,
-	rm *rmeta.RoutingMetadataContext, n lyx.Node) (*tupleslot.TupleTableSlot, error) {
+func (plr *PlannerV2) RetrieveTuples(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if strings.HasPrefix(q.Name, "__spqr__") {
@@ -613,7 +667,8 @@ func (plr *PlannerV2) RetrieveTuples(ctx context.Context,
 	return nil, nil
 }
 
-func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
+func (plr *PlannerV2) PlanDistributedQuery(
+	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 

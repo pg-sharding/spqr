@@ -10,7 +10,8 @@ const (
 	VirtualFuncHosts = "__spqr__host_status"
 
 	/* isolation tester support function */
-	VirtualAwaitTask = "__spqr__await_task"
+	VirtualAwaitTask                = "__spqr__await_task"
+	PGIsolationTestSessionIsBlocked = "pg_isolation_test_session_is_blocked"
 )
 
 func IsVirtualFuncName(n string) bool {
