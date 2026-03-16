@@ -941,6 +941,8 @@ func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Co
 		if err != nil {
 			return nil
 		}
+		defer tx.Rollback(ctx)
+
 		for _, rel := range relations {
 			row := tx.QueryRow(ctx, fmt.Sprintf("SELECT count(*) > 0 as table_exists FROM spqr_metadata.spqr_distributed_relations WHERE reloid = '%s'::regclass::oid;", rel.String()))
 			exists := false
