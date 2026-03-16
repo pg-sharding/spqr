@@ -69,7 +69,7 @@ type Client interface {
 
 	Shards() []shard.ShardHostInstance
 	Cancel() error
-	/* Returns list of resource (connection) IDs, assotiated with this client */
+	/* Returns list of resource (connection) IDs, associated with this client */
 	CancellableIDs() []uint32
 	CancelPID() uint32
 	CancelMsg() *pgproto3.CancelRequest
