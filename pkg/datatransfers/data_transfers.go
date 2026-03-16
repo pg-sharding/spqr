@@ -941,7 +941,12 @@ func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Co
 		if err != nil {
 			return nil
 		}
-		defer tx.Rollback(ctx)
+		defer func() {
+			err := tx.Rollback(ctx)
+			if err != nil {
+				spqrlog.Zero.Err(err).Msg("failed to rollback spqrguard transaction")
+			}
+		}()
 
 		for _, rel := range relations {
 			row := tx.QueryRow(ctx, fmt.Sprintf("SELECT count(*) > 0 as table_exists FROM spqr_metadata.spqr_distributed_relations WHERE reloid = '%s'::regclass::oid;", rel.String()))
