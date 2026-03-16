@@ -17,7 +17,7 @@ const (
 func IsVirtualFuncName(n string) bool {
 	switch n {
 	case VirtualFuncIsReady, VirtualShards, VirtualShow, VirtualConsoleExecute,
-		VirtualCTID, VirtualFuncHosts, VirtualAwaitTask:
+		VirtualCTID, VirtualFuncHosts, VirtualAwaitTask, PGIsolationTestSessionIsBlocked:
 		return true
 	default:
 		return false

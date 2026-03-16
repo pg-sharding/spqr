@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -383,6 +382,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
+
 	switch fname {
 	case virtual.VirtualAwaitTask:
 
@@ -529,8 +529,6 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			Raw: [][][]byte{{{res}}},
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("%v", res))
-
 		return tts, nil
 
 		/*  De-support? use __spqr__show(shards)*/
@@ -657,7 +655,7 @@ func (plr *PlannerV2) RetrieveTuples(
 	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
-		if strings.HasPrefix(q.Name, "__spqr__") {
+		if virtual.IsVirtualFuncName(q.Name) {
 			tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
 			return tts, err
 		}
