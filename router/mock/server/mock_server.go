@@ -75,6 +75,20 @@ func (mr *MockServerMockRecorder) Cancel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockServer)(nil).Cancel))
 }
 
+// CancellableIDs mocks base method.
+func (m *MockServer) CancellableIDs() []uint32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancellableIDs")
+	ret0, _ := ret[0].([]uint32)
+	return ret0
+}
+
+// CancellableIDs indicates an expected call of CancellableIDs.
+func (mr *MockServerMockRecorder) CancellableIDs() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancellableIDs", reflect.TypeOf((*MockServer)(nil).CancellableIDs))
+}
+
 // DataPending mocks base method.
 func (m *MockServer) DataPending() bool {
 	m.ctrl.T.Helper()

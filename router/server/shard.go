@@ -205,6 +205,15 @@ func (srv *ShardServer) Cancel() error {
 	return (*v).Cancel()
 }
 
+// CancellableIDs implements [Server].
+func (srv *ShardServer) CancellableIDs() []uint32 {
+	v := srv.shard.Load()
+	if v == nil {
+		return nil
+	}
+	return (*v).CancellableIDs()
+}
+
 // TODO : unit tests
 func (srv *ShardServer) SetTxStatus(tx txstatus.TXStatus) {
 	v := srv.shard.Load()

@@ -1251,6 +1251,17 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 			}
 
 			switch v := f.Args[0].(type) {
+			case *lyx.ParamRef:
+				queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+
+				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+				if err != nil {
+					return nil, err
+				}
+
+				/* Assert here? */
+				relation = sVal.(string)
+
 			case *lyx.AExprSConst:
 				relation = v.Value
 			default:
