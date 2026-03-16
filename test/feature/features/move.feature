@@ -1066,3 +1066,157 @@ Feature: Move test
       }
     ]
     """
+  
+  Scenario: MOVE KEY RANGE works with hashed compound keys, murmur3 hash
+    When I execute SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    CREATE DISTRIBUTION ds2 COLUMN TYPES INTEGER HASH;
+    CREATE KEY RANGE krid4 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE krid5 FROM 1073741824 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE krid3 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    CREATE RELATION xMoveStr (MURMUR [a_id varchar hash, b_id int hash]) FOR DISTRIBUTION ds2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    # TODO: rewrite values
+    """
+    CREATE TABLE xMoveStr(a_id text, b_id int8);
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('a', 1); -- krid5
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('b', 2); -- krid4
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('c', 3); -- krid3
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('d', 4); -- krid4
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('f', 6); -- krid3
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('g', 111); -- krid5
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__ctid('xmovestr');
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "__spqr__ctid": "shard sh1",
+        "a_id": "a",
+        "b_id": 1
+      },
+      {
+        "__spqr__ctid": "shard sh1",
+        "a_id": "b",
+        "b_id": 2
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "c",
+        "b_id": 3
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "d",
+        "b_id": 4
+      },
+      {
+        "__spqr__ctid": "shard sh1",
+        "a_id": "f",
+        "b_id": 6
+      },
+      {
+        "__spqr__ctid": "shard sh1",
+        "a_id": "g",
+        "b_id": 111
+      }
+    ]
+    """
+    When I execute SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid5 to sh2
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__ctid('xmovestr');
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "a",
+        "b_id": 1
+      },
+      {
+        "__spqr__ctid": "shard sh1",
+        "a_id": "b",
+        "b_id": 2
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "c",
+        "b_id": 3
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "d",
+        "b_id": 4
+      },
+      {
+        "__spqr__ctid": "shard sh1",
+        "a_id": "f",
+        "b_id": 6
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "g",
+        "b_id": 111
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
+      },
+      {
+      "key_range_id":    "krid2",
+      "distribution_id":"ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
+      },
+      {
+      "key_range_id":    "krid3",
+      "distribution_id":"ds2",
+      "lower_bound":     "0",
+      "shard_id":        "sh1",
+      "locked":          "false"
+      },
+      {
+      "key_range_id":    "krid4",
+      "distribution_id":"ds2",
+      "lower_bound":     "2147483648",
+      "shard_id":        "sh2",
+      "locked":          "false"
+      },
+      {
+      "key_range_id":    "krid5",
+      "distribution_id":"ds2",
+      "lower_bound":     "1073741824",
+      "shard_id":        "sh2",
+      "locked":          "false"
+      }
+    ]
+    """
