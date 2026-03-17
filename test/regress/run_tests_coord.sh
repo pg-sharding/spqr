@@ -47,7 +47,7 @@ sleep 10
 echo "init cluster"
 run_tests "init_cluster" "regress_coordinator" "7002"
 sleep 10
-echo "go test1 !"
+echo "go test!"
 
 run_tests "console" "regress_coordinator" "7002"
 if test -f /regress/tests/console/regression.diffs; then mkdir /regress/tests/console_coordinator && mv /regress/tests/console/regression.diffs /regress/tests/console_coordinator/regression.diffs; fi
