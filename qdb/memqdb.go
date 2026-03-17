@@ -1572,6 +1572,8 @@ func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue 
 }
 
 func (q *MemQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	_, ok := q.Sequences[seqName]
 	return ok, nil
 }

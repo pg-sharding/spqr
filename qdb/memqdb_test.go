@@ -129,6 +129,7 @@ func TestMemqdbRacing(t *testing.T) {
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
+		func() { _, _ = memqdb.CheckSequence(ctx, "testSeq") },
 	}
 	for range 1000 {
 		for _, m := range methods {
