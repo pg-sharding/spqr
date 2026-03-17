@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/sethvargo/go-retry"
 	"github.com/spaolacci/murmur3"
@@ -877,15 +878,6 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 	return false, conName, nil
 }
 
-func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string, extversion string) (bool, error) {
-	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s' and extversion = '%s'", extname, extversion))
-	count := 0
-	if err := res.Scan(&count); err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
 // getEntriesCount retrieves the number of entries from a database table based on the provided condition.
 //
 // Parameters:
@@ -930,7 +922,7 @@ func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.
 
 func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Conn) error {
 	return func(ctx context.Context, conn *pgx.Conn) error {
-		if hasSPQRGuard, err := CheckExtension(ctx, conn, "spqrguard", "2.2"); err != nil {
+		if hasSPQRGuard, err := shard.CheckExtension(ctx, conn, "spqrguard", "2.2"); err != nil {
 			return err
 		} else if !hasSPQRGuard {
 			// TODO: should we return error?
