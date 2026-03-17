@@ -523,16 +523,42 @@ func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, up
 			break
 		}
 
-		fqCol := ""
-		if prefix != "" {
-			fqCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
+		colExpr := ""
+		var err error
+		if len(entry.Expr.ColRefs) > 0 {
+			br := &strings.Builder{}
+			for i, colRef := range entry.Expr.ColRefs {
+				fqCol := ""
+				if prefix != "" {
+					fqCol = fmt.Sprintf("%s.%s", prefix, colRef.ColName)
+				} else {
+					fqCol = colRef.ColName
+				}
+				hashedCol, err := distributions.GetHashedColumn(fqCol, entry.HashFunction)
+				if err != nil {
+					return "", err
+				}
+				if i > 0 {
+					fmt.Fprint(br, ", ")
+				}
+				fmt.Fprint(br, hashedCol)
+			}
+			colExpr, err = distributions.GetHashedColumn(fmt.Sprintf("ARRAY[%s]", br.String()), entry.HashFunction)
+			if err != nil {
+				return "", err
+			}
 		} else {
-			fqCol = entry.Column
-		}
+			fqCol := ""
+			if prefix != "" {
+				fqCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
+			} else {
+				fqCol = entry.Column
+			}
 
-		hashedCol, err := distributions.GetHashedColumn(fqCol, entry.HashFunction)
-		if err != nil {
-			return "", err
+			colExpr, err = distributions.GetHashedColumn(fqCol, entry.HashFunction)
+			if err != nil {
+				return "", err
+			}
 		}
 
 		krTmp := KeyRange{
@@ -541,9 +567,9 @@ func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, up
 		}
 
 		if upperBound != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, kRange.SendFunc(i), hashedCol, krTmp.SendFunc(i))
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", colExpr, kRange.SendFunc(i), colExpr, krTmp.SendFunc(i))
 		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, kRange.SendFunc(i))
+			buf[i] = fmt.Sprintf("%s >= %s", colExpr, kRange.SendFunc(i))
 		}
 	}
 	return strings.Join(buf, " AND "), nil
