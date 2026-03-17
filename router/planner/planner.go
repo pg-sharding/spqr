@@ -308,14 +308,14 @@ func PlanDistributedRelationInsert(
 						return nil, err
 					}
 
-					lExpr, err := hashfunction.ApplyNonIdentHashFunction(itemVal, cr.ColType, hf)
+					hashedCol, err := hashfunction.ApplyNonIdentHashFunction(itemVal, cr.ColType, hf)
 
 					if err != nil {
 						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 						return nil, err
 					}
 
-					acc = append(acc, hashfunction.EncodeUInt64(uint64(lExpr))...)
+					acc = append(acc, hashfunction.EncodeUInt64(uint64(hashedCol))...)
 				}
 
 				/* because we take hash of bytes */
