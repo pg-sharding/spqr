@@ -1105,18 +1105,8 @@ Feature: Move test
       },
       {
         "__spqr__ctid": "shard sh1",
-        "a_id": "b",
-        "b_id": 2
-      },
-      {
-        "__spqr__ctid": "shard sh2",
         "a_id": "c",
         "b_id": 3
-      },
-      {
-        "__spqr__ctid": "shard sh2",
-        "a_id": "d",
-        "b_id": 4
       },
       {
         "__spqr__ctid": "shard sh1",
@@ -1127,6 +1117,16 @@ Feature: Move test
         "__spqr__ctid": "shard sh1",
         "a_id": "g",
         "b_id": 111
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "b",
+        "b_id": 2
+      },
+      {
+        "__spqr__ctid": "shard sh2",
+        "a_id": "d",
+        "b_id": 4
       }
     ]
     """
@@ -1144,19 +1144,19 @@ Feature: Move test
     """
     [
       {
-        "__spqr__ctid": "shard sh2",
-        "a_id": "a",
-        "b_id": 1
+        "__spqr__ctid": "shard sh1",
+        "a_id": "c",
+        "b_id": 3
       },
       {
         "__spqr__ctid": "shard sh1",
-        "a_id": "b",
-        "b_id": 2
+        "a_id": "f",
+        "b_id": 6
       },
       {
         "__spqr__ctid": "shard sh2",
-        "a_id": "c",
-        "b_id": 3
+        "a_id": "b",
+        "b_id": 2
       },
       {
         "__spqr__ctid": "shard sh2",
@@ -1164,9 +1164,9 @@ Feature: Move test
         "b_id": 4
       },
       {
-        "__spqr__ctid": "shard sh1",
-        "a_id": "f",
-        "b_id": 6
+        "__spqr__ctid": "shard sh2",
+        "a_id": "a",
+        "b_id": 1
       },
       {
         "__spqr__ctid": "shard sh2",
