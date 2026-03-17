@@ -51,4 +51,5 @@ service ReferenceRelationsService {
   rpc AlterReferenceRelationStorage(AlterReferenceRelationStorageRequest) returns (google.protobuf.Empty) {}
 
   rpc SyncReferenceRelations(SyncReferenceRelationsRequest) returns (google.protobuf.Empty) {} 
+  rpc AlterReferenceRelationStorageAdvanced(AlterReferenceRelationStorageRequest) returns (google.protobuf.Empty) {}
 }

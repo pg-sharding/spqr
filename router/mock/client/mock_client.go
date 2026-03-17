@@ -206,6 +206,34 @@ func (mr *MockRouterClientMockRecorder) CancelMsg() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelMsg", reflect.TypeOf((*MockRouterClient)(nil).CancelMsg))
 }
 
+// CancelPID mocks base method.
+func (m *MockRouterClient) CancelPID() uint32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelPID")
+	ret0, _ := ret[0].(uint32)
+	return ret0
+}
+
+// CancelPID indicates an expected call of CancelPID.
+func (mr *MockRouterClientMockRecorder) CancelPID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelPID", reflect.TypeOf((*MockRouterClient)(nil).CancelPID))
+}
+
+// CancellableIDs mocks base method.
+func (m *MockRouterClient) CancellableIDs() []uint32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancellableIDs")
+	ret0, _ := ret[0].([]uint32)
+	return ret0
+}
+
+// CancellableIDs indicates an expected call of CancellableIDs.
+func (mr *MockRouterClientMockRecorder) CancellableIDs() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancellableIDs", reflect.TypeOf((*MockRouterClient)(nil).CancellableIDs))
+}
+
 // CleanupStatementSet mocks base method.
 func (m *MockRouterClient) CleanupStatementSet() {
 	m.ctrl.T.Helper()

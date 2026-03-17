@@ -15,6 +15,7 @@ enable_role_system: true
 roles_file: /spqr/test/regress/conf/roles.yaml
 notice_message_format: "{shard}"
 query_routing:
+    forbid_direct_shard_queries: true
     enhanced_multishard_processing: true
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key

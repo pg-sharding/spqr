@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -12,12 +13,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/server"
 )
 
-func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
+func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, setUpSpqrguard bool) (plan.Plan, error) {
 
 	switch node := stmt.(type) {
 
@@ -57,7 +60,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			IsDDL: true,
 		}, nil
 	case *lyx.CreateTable:
-		ds, err := PlanCreateTable(ctx, rm, node)
+		p, err := PlanCreateTable(ctx, rm, node)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +70,107 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		if err := CheckRelationIsRoutable(ctx, rm.Mgr, node); err != nil {
 			return nil, err
 		}
-		return ds, nil
+
+		if !setUpSpqrguard {
+			return &plan.ScatterPlan{
+				IsDDL: true,
+			}, nil
+		}
+
+		tmpPlan := &plan.ScatterPlan{
+			IsDDL:    true,
+			SubSlice: p,
+			OverwriteCC: &pgproto3.CommandComplete{
+				CommandTag: []byte("CREATE TABLE"),
+			},
+		}
+
+		/* TODO: do we need this? */
+		p.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level insert slice")
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+		rvNode, ok := node.TableRv.(*lyx.RangeVar)
+		if !ok {
+			// check for setting as well?
+			return nil, fmt.Errorf("cannot mark relation in spqrguard: unknown relation name")
+		}
+		relFQN := rfqn.RelationFQNFromFullName(rvNode.SchemaName, rvNode.RelationName)
+		tmpPlan.OverwriteQuery = make(map[string]string)
+		p.OverwriteQuery = make(map[string]string)
+		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", relFQN.String())
+		if node.IfNotExists {
+			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relFQN.String())
+		}
+		shards, err := rm.Mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		targets := make([]kr.ShardKey, len(shards))
+		for i, sh := range shards {
+			tmpPlan.OverwriteQuery[sh.ID] = oq
+			p.OverwriteQuery[sh.ID] = rm.Query
+			targets[i] = kr.ShardKey{
+				Name: sh.ID,
+			}
+		}
+		p.ExecTargets = targets
+
+		/* TODO: do we need this? */
+		tmpPlan.RunF = func(serv server.Server) error {
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						/* TODO: add setting for ignoring this error */
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		return tmpPlan, nil
 	case *lyx.VacuumStmt:
 		/* Send vacuum to each shard */
 		return &plan.ScatterPlan{

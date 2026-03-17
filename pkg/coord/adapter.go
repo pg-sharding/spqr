@@ -60,6 +60,10 @@ func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("Adapter.Cache not implemented")
 }
 
+func (a *Adapter) StartupFinished() bool {
+	return true
+}
+
 // TODO : unit tests
 // TODO : implement
 
@@ -106,6 +110,16 @@ func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.Relati
 // AlterReferenceRelationStorage implements meta.EntityMgr.
 func (a *Adapter) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	return fmt.Errorf("AlterReferenceRelationStorage should not be used in proxy adapter")
+}
+
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
+		Relation: rfqn.RelationFQNToProto(relName),
+		ShardIds: shs,
+	})
+	return err
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.

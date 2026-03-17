@@ -11,6 +11,7 @@ show_notice_messages: false
 maintain_params: true
 
 query_routing:
+  forbid_direct_shard_queries: true
   default_target_session_attrs: read-write
 
 frontend_rules:

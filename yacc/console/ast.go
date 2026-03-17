@@ -217,6 +217,11 @@ type SyncReferenceTables struct {
 	RelationSelector string
 }
 
+type AlterReferenceTableStorage struct {
+	RelationSelector *rfqn.RelationFQN
+	Shards           []string
+}
+
 // coordinator
 
 type RegisterRouter struct {
@@ -404,6 +409,7 @@ const (
 	TaskGroupsExtendedStr = "task_groups_ext"
 	RedistributeTasksStr  = "redistribute_tasks"
 	ErrorStr              = "errors"
+	StartupFinishedStr    = "startup_finished"
 )
 
 // not SHOW target
@@ -449,6 +455,7 @@ func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
+func (*AlterReferenceTableStorage) iStatement()  {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

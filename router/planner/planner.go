@@ -3,12 +3,12 @@ package planner
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -47,7 +47,7 @@ func (p *PlannerV2) Ready() bool {
 	return true
 }
 
-func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
+func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (*plan.ScatterPlan, error) {
 	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
 
 		switch q := v.TableRv.(type) {
@@ -97,9 +97,11 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	}
 
 	/*XXX: fix this */
-	return &plan.ScatterPlan{
+	p := &plan.ScatterPlan{
 		IsDDL: true,
-	}, nil
+	}
+
+	return p, nil
 }
 
 func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
@@ -306,14 +308,14 @@ func PlanDistributedRelationInsert(
 						return nil, err
 					}
 
-					lExpr, err := hashfunction.ApplyNonIdentHashFunction(itemVal, cr.ColType, hf)
+					hashedCol, err := hashfunction.ApplyNonIdentHashFunction(itemVal, cr.ColType, hf)
 
 					if err != nil {
 						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 						return nil, err
 					}
 
-					acc = append(acc, hashfunction.EncodeUInt64(uint64(lExpr))...)
+					acc = append(acc, hashfunction.EncodeUInt64(uint64(hashedCol))...)
 				}
 
 				/* because we take hash of bytes */
@@ -376,12 +378,16 @@ func PlanDistributedRelationInsert(
 	return tupleShards, nil
 }
 
-func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
+func MetadataVirtualFunctionCall(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	fname string,
+	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
+
 	switch fname {
 	case virtual.VirtualAwaitTask:
 
 		if len(args) != 1 {
-			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualAwaitTask)
 		}
 
 		mgr, cf, err := coord.DistributedMgr(ctx, rm.Mgr)
@@ -432,7 +438,7 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 		/*  XXX: unite this code with client interactor internals */
 
 		if len(args) != 1 {
-			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualConsoleExecute)
 		}
 
 		switch v := args[0].(type) {
@@ -479,6 +485,52 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 			return nil, rerrors.ErrComplexQuery
 		}
 
+	case virtual.PGIsolationTestSessionIsBlocked:
+		if len(args) != 2 {
+			return nil, fmt.Errorf("%s function only accept two arguments", virtual.PGIsolationTestSessionIsBlocked)
+		}
+
+		lockedVirtualPID := uint(0)
+		lockedByVirtualPIDs := []uint32{}
+
+		switch v := args[0].(type) {
+		case *lyx.AExprIConst:
+			lockedVirtualPID = uint(v.Value)
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		_ = rm.CSM.ClientPoolForeach(func(client client.ClientInfo) error {
+			if client.ID() == lockedVirtualPID {
+				lockedByVirtualPIDs = client.CancellableIDs()
+			}
+			return nil
+		})
+		res := byte('t')
+
+		/* Not attached? XXX: fix this, support proper handling of second arg */
+		if len(lockedByVirtualPIDs) == 0 {
+			res = byte('f')
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte("locked"),
+					DataTypeOID:          catalog.BOOLOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+
+			Raw: [][][]byte{{{res}}},
+		}
+
+		return tts, nil
+
 		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShow:
 
@@ -489,6 +541,24 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 		}
 
 		switch v := args[0].(type) {
+		case *lyx.ParamRef:
+
+			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+			if err != nil {
+				return nil, err
+			}
+
+			/* Assert here? */
+			val := sVal.(string)
+
+			return meta.ProcessShow(ctx, &spqrparser.Show{
+				Cmd:     val,
+				Where:   &lyx.AExprEmpty{},
+				Order:   nil,
+				GroupBy: nil,
+			}, rm.Mgr, rm.CSM, true)
 		case *lyx.AExprSConst:
 			return meta.ProcessShow(ctx, &spqrparser.Show{
 				Cmd:     v.Value,
@@ -579,11 +649,13 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
-func (plr *PlannerV2) RetrieveTuples(ctx context.Context,
-	rm *rmeta.RoutingMetadataContext, n lyx.Node) (*tupleslot.TupleTableSlot, error) {
+func (plr *PlannerV2) RetrieveTuples(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
-		if strings.HasPrefix(q.Name, "__spqr__") {
+		if virtual.IsVirtualFuncName(q.Name) {
 			tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
 			return tts, err
 		}
@@ -593,7 +665,8 @@ func (plr *PlannerV2) RetrieveTuples(ctx context.Context,
 	return nil, nil
 }
 
-func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
+func (plr *PlannerV2) PlanDistributedQuery(
+	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 

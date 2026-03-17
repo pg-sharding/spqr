@@ -24,6 +24,7 @@ CREATE TABLE zz(i int, j int, k int);
 ERROR:  error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found
 CREATE TABLE zz(i int, j int, k int) /* __spqr__auto_distribution: REPLICATED */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz (i,j,k) VALUES(1,2,3);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz (i,j,k) VALUES(2,3,4);
@@ -72,11 +73,13 @@ ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution
 -- should succeed .
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;': relation "d_zz" is already attached
 -- should succeed .
 CREATE TABLE IF NOT EXISTS d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO d_zz (i, j) VALUES(1,2); 
 NOTICE: send query to shard(s) : sh1

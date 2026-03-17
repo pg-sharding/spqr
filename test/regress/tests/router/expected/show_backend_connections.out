@@ -46,6 +46,7 @@ create key range from 0 route to sh1 for distribution ds1;
 \c regress
 create table test(id int) /* target-session-attrs: read-write */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 select * from test /* target-session-attrs: read-only */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id 

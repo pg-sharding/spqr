@@ -19,7 +19,13 @@ ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
 SYNC REFERENCE TABLE zz2 ON sh1;
 ERROR:  request is unprocessable in router
 ALTER REFERENCE TABLE zz2 STORAGE TO (sh1, sh3, sh4);
-ERROR:  request is unprocessable in router
+ relation | shard 
+----------+-------
+ zz2      | sh1
+ zz2      | sh3
+ zz2      | sh4
+(3 rows)
+
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
           alter relation          
 ----------------------------------
@@ -30,7 +36,11 @@ ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 DISTRIBUTION KEY id;
 ERROR:  setting distribution key is forbidden for reference relations
 ALTER REFERENCE TABLE zz2 STORAGE TO (sh3);
-ERROR:  request is unprocessable in router
+ relation | shard 
+----------+-------
+ zz2      | sh3
+(1 row)
+
 SHOW reference_relations;
  table_name | schema_name | schema_version |      shards       | column_sequence_mapping 
 ------------+-------------+----------------+-------------------+-------------------------

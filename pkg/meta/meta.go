@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg"
@@ -58,6 +59,8 @@ type EntityMgr interface {
 	QDB() qdb.QDB
 	DCStateKeeper() qdb.DCStateKeeper
 	Cache() *cache.SchemaCache
+
+	StartupFinished() bool
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
@@ -1182,6 +1185,17 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		return tts, nil
+	case *spqrparser.AlterReferenceTableStorage:
+		if err := mgr.AlterReferenceRelationStorageAdvanced(ctx, stmt.RelationSelector, stmt.Shards); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("relation", "shard"),
+		}
+		for _, sh := range stmt.Shards {
+			tts.WriteDataRow(stmt.RelationSelector.String(), sh)
+		}
+		return tts, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1927,6 +1941,24 @@ func processShowInner(ctx context.Context,
 				berule.KeepAlive.String(),
 				berule.TcpUserTimeout.String(),
 			)
+		}
+		return tts, nil
+	case spqrparser.StartupFinishedStr:
+		startupFinished := mngr.StartupFinished()
+		res := 'f'
+		if startupFinished {
+			res = 't'
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: tupleslot.TupleDesc{
+				pgproto3.FieldDescription{
+					Name:         []byte("startup_finished"),
+					DataTypeOID:  catalog.BOOLOID,
+					TypeModifier: -1,
+					DataTypeSize: 1,
+				},
+			},
+			Raw: [][][]byte{{{byte(res)}}},
 		}
 		return tts, nil
 	default:

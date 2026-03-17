@@ -20,11 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ReferenceRelationsService_CreateReferenceRelations_FullMethodName      = "/spqr.ReferenceRelationsService/CreateReferenceRelations"
-	ReferenceRelationsService_DropReferenceRelations_FullMethodName        = "/spqr.ReferenceRelationsService/DropReferenceRelations"
-	ReferenceRelationsService_ListReferenceRelations_FullMethodName        = "/spqr.ReferenceRelationsService/ListReferenceRelations"
-	ReferenceRelationsService_AlterReferenceRelationStorage_FullMethodName = "/spqr.ReferenceRelationsService/AlterReferenceRelationStorage"
-	ReferenceRelationsService_SyncReferenceRelations_FullMethodName        = "/spqr.ReferenceRelationsService/SyncReferenceRelations"
+	ReferenceRelationsService_CreateReferenceRelations_FullMethodName              = "/spqr.ReferenceRelationsService/CreateReferenceRelations"
+	ReferenceRelationsService_DropReferenceRelations_FullMethodName                = "/spqr.ReferenceRelationsService/DropReferenceRelations"
+	ReferenceRelationsService_ListReferenceRelations_FullMethodName                = "/spqr.ReferenceRelationsService/ListReferenceRelations"
+	ReferenceRelationsService_AlterReferenceRelationStorage_FullMethodName         = "/spqr.ReferenceRelationsService/AlterReferenceRelationStorage"
+	ReferenceRelationsService_SyncReferenceRelations_FullMethodName                = "/spqr.ReferenceRelationsService/SyncReferenceRelations"
+	ReferenceRelationsService_AlterReferenceRelationStorageAdvanced_FullMethodName = "/spqr.ReferenceRelationsService/AlterReferenceRelationStorageAdvanced"
 )
 
 // ReferenceRelationsServiceClient is the client API for ReferenceRelationsService service.
@@ -36,6 +37,7 @@ type ReferenceRelationsServiceClient interface {
 	ListReferenceRelations(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListReferenceRelationsReply, error)
 	AlterReferenceRelationStorage(ctx context.Context, in *AlterReferenceRelationStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SyncReferenceRelations(ctx context.Context, in *SyncReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AlterReferenceRelationStorageAdvanced(ctx context.Context, in *AlterReferenceRelationStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type referenceRelationsServiceClient struct {
@@ -96,6 +98,16 @@ func (c *referenceRelationsServiceClient) SyncReferenceRelations(ctx context.Con
 	return out, nil
 }
 
+func (c *referenceRelationsServiceClient) AlterReferenceRelationStorageAdvanced(ctx context.Context, in *AlterReferenceRelationStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ReferenceRelationsService_AlterReferenceRelationStorageAdvanced_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ReferenceRelationsServiceServer is the server API for ReferenceRelationsService service.
 // All implementations must embed UnimplementedReferenceRelationsServiceServer
 // for forward compatibility.
@@ -105,6 +117,7 @@ type ReferenceRelationsServiceServer interface {
 	ListReferenceRelations(context.Context, *emptypb.Empty) (*ListReferenceRelationsReply, error)
 	AlterReferenceRelationStorage(context.Context, *AlterReferenceRelationStorageRequest) (*emptypb.Empty, error)
 	SyncReferenceRelations(context.Context, *SyncReferenceRelationsRequest) (*emptypb.Empty, error)
+	AlterReferenceRelationStorageAdvanced(context.Context, *AlterReferenceRelationStorageRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedReferenceRelationsServiceServer()
 }
 
@@ -129,6 +142,9 @@ func (UnimplementedReferenceRelationsServiceServer) AlterReferenceRelationStorag
 }
 func (UnimplementedReferenceRelationsServiceServer) SyncReferenceRelations(context.Context, *SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SyncReferenceRelations not implemented")
+}
+func (UnimplementedReferenceRelationsServiceServer) AlterReferenceRelationStorageAdvanced(context.Context, *AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AlterReferenceRelationStorageAdvanced not implemented")
 }
 func (UnimplementedReferenceRelationsServiceServer) mustEmbedUnimplementedReferenceRelationsServiceServer() {
 }
@@ -242,6 +258,24 @@ func _ReferenceRelationsService_SyncReferenceRelations_Handler(srv interface{}, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ReferenceRelationsService_AlterReferenceRelationStorageAdvanced_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterReferenceRelationStorageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReferenceRelationsServiceServer).AlterReferenceRelationStorageAdvanced(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReferenceRelationsService_AlterReferenceRelationStorageAdvanced_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReferenceRelationsServiceServer).AlterReferenceRelationStorageAdvanced(ctx, req.(*AlterReferenceRelationStorageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ReferenceRelationsService_ServiceDesc is the grpc.ServiceDesc for ReferenceRelationsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -268,6 +302,10 @@ var ReferenceRelationsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SyncReferenceRelations",
 			Handler:    _ReferenceRelationsService_SyncReferenceRelations_Handler,
+		},
+		{
+			MethodName: "AlterReferenceRelationStorageAdvanced",
+			Handler:    _ReferenceRelationsService_AlterReferenceRelationStorageAdvanced_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

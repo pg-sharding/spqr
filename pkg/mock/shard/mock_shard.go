@@ -539,6 +539,20 @@ func (mr *MockShardHostInstanceMockRecorder) Cancel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockShardHostInstance)(nil).Cancel))
 }
 
+// CancellableIDs mocks base method.
+func (m *MockShardHostInstance) CancellableIDs() []uint32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancellableIDs")
+	ret0, _ := ret[0].([]uint32)
+	return ret0
+}
+
+// CancellableIDs indicates an expected call of CancellableIDs.
+func (mr *MockShardHostInstanceMockRecorder) CancellableIDs() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancellableIDs", reflect.TypeOf((*MockShardHostInstance)(nil).CancellableIDs))
+}
+
 // Cleanup mocks base method.
 func (m *MockShardHostInstance) Cleanup(rule *config.FrontendRule) error {
 	m.ctrl.T.Helper()

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -101,11 +103,10 @@ func TestMultiShardRouting(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "create table xx (i int);",
+			query: "create table xx(i int)",
 			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
-			err: nil,
 		},
 		{
 			query: "DROP TABLE copy_test;",
@@ -193,6 +194,121 @@ func TestMultiShardRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		assert.Equal(tt.exp, tmp, tt.query)
+	}
+}
+
+func TestCreateTable(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   plan.Plan
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "ds1"
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"xx": {
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+		},
+	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	shardMapping := map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+
+	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query: "create table xx (i int);",
+			exp: &plan.ScatterPlan{
+				SubSlice: &plan.ScatterPlan{
+					IsDDL: true,
+					OverwriteQuery: map[string]string{
+						"sh1": "create table xx (i int);",
+						"sh2": "create table xx (i int);",
+					},
+					ExecTargets: []kr.ShardKey{
+						{Name: "sh1"},
+						{Name: "sh2"},
+					},
+				},
+				IsDDL: true,
+				OverwriteQuery: map[string]string{
+					"sh1": "SELECT spqr_metadata.mark_distributed_relation('xx')",
+					"sh2": "SELECT spqr_metadata.mark_distributed_relation('xx')",
+				},
+				OverwriteCC: &pgproto3.CommandComplete{
+					CommandTag: []byte("CREATE TABLE"),
+				},
+			},
+
+			err: nil,
+		},
+		{
+			query: "create table if not exists xx (i int);",
+			exp: &plan.ScatterPlan{
+				SubSlice: &plan.ScatterPlan{
+					IsDDL: true,
+					OverwriteQuery: map[string]string{
+						"sh1": "create table if not exists xx (i int);",
+						"sh2": "create table if not exists xx (i int);",
+					},
+					ExecTargets: []kr.ShardKey{
+						{Name: "sh1"},
+						{Name: "sh2"},
+					},
+				},
+				IsDDL: true,
+				OverwriteQuery: map[string]string{
+					"sh1": "INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('xx'::regclass::oid) ON CONFLICT DO NOTHING",
+					"sh2": "INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('xx'::regclass::oid) ON CONFLICT DO NOTHING",
+				},
+				OverwriteCC: &pgproto3.CommandComplete{
+					CommandTag: []byte("CREATE TABLE"),
+				},
+			},
+
+			err: nil,
+		},
+	} {
+		parserRes, _, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+		dh.SetPreferredEngine("", "")
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		if diff := cmp.Diff(tt.exp, tmp, cmpopts.IgnoreFields(plan.ScatterPlan{}, "RunF"), cmpopts.IgnoreUnexported(plan.ScatterPlan{})); diff != "" {
+			assert.Fail(diff, tt.query)
+		}
 	}
 }
 
@@ -2412,12 +2528,12 @@ func TestRouteWithRules_Select(t *testing.T) {
 					Desc: []pgproto3.FieldDescription{
 						{
 							Name:         []byte("pg_is_in_recovery"),
-							DataTypeOID:  catalog.ARRAYOID,
+							DataTypeOID:  catalog.BOOLOID,
 							TypeModifier: -1,
 							DataTypeSize: 1,
 						},
 					},
-					Raw: [][][]byte{[][]byte{{byte('t')}}},
+					Raw: [][][]byte{{{byte('t')}}},
 				}},
 			err: nil,
 		},
@@ -2466,7 +2582,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 					Desc: []pgproto3.FieldDescription{
 						{
 							Name:         []byte("pg_is_in_recovery"),
-							DataTypeOID:  catalog.ARRAYOID,
+							DataTypeOID:  catalog.BOOLOID,
 							TypeModifier: -1,
 							DataTypeSize: 1,
 						},
@@ -2485,7 +2601,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 					Desc: []pgproto3.FieldDescription{
 						{
 							Name:         []byte("__spqr__is_ready"),
-							DataTypeOID:  catalog.ARRAYOID,
+							DataTypeOID:  catalog.BOOLOID,
 							TypeModifier: -1,
 							DataTypeSize: 1,
 						},

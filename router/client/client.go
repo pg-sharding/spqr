@@ -421,6 +421,18 @@ func (cl *PsqlClient) Cancel() error {
 	return (*serv).Cancel()
 }
 
+/* This method can be called concurrently with Unroute() */
+func (cl *PsqlClient) CancellableIDs() []uint32 {
+	serv := cl.serverP.Load()
+
+	if serv == nil || *serv == nil {
+		/* TBD: raise error here sometimes? */
+		return nil
+	}
+
+	return (*serv).CancellableIDs()
+}
+
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
 		return fmt.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
@@ -871,6 +883,10 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 	return cl.csm
 }
 
+func (cl *PsqlClient) CancelPID() uint32 {
+	return cl.cancel_pid
+}
+
 var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {
@@ -957,6 +973,10 @@ func (c NoopClient) Shards() []shard.ShardHostInstance {
 
 func (c NoopClient) Conn() net.Conn {
 	return nil
+}
+
+func (c NoopClient) CancelPID() uint32 {
+	return 100
 }
 
 type MockShard struct {

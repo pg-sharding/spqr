@@ -304,7 +304,7 @@ Feature: Reference relation test
   
     When I run SQL on host "coordinator"
     """
-    SYNC REFERENCE TABLE t ON sh3;
+    ALTER REFERENCE TABLE t STORAGE TO (sh1, sh2, sh3);
     """
     Then command return code should be "0"
 
@@ -337,7 +337,7 @@ Feature: Reference relation test
   
     When I run SQL on host "shard1"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -355,7 +355,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -403,4 +403,73 @@ Scenario: Ref relation sync fails when reference relations are locked in spqrgua
     And SQL error on host "coordinator" should match regexp
     """
     reference relations already locked
+    """
+
+Scenario: Dropping shard from reference relation metadata works
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1, sh2;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int);
+    INSERT INTO t (id) VALUES(1);
+    """
+    
+    When I run SQL on host "coordinator"
+    """
+    ALTER REFERENCE TABLE t STORAGE TO (sh1);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW reference_relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+        "table_name": "t",
+        "schema_name": "public",
+        "schema_version": "1",
+        "shards": "[sh1]"
+    }]
+    """
+
+    When I execute SQL on host "router"
+    """
+    INSERT INTO t (id) VALUES (2);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM t
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1
+        },
+        {
+            "id": 2
+        }
+    ]
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM t
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1
+        }
+    ]
     """

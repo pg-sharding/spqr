@@ -28,7 +28,7 @@ test: reference_table
 test: insert_processing
 test: sequence
 test: cte
-test: cte_hashed.sql
+test: cte_hashed
 test: ddl
 test: engine_v2
 test: subplan

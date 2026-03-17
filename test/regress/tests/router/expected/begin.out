@@ -35,6 +35,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test_beg DISTRIBUTION KEY id;
 SET __spqr__engine_v2 TO off;
 CREATE TABLE test_beg(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);

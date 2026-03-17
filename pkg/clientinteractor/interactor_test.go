@@ -270,6 +270,7 @@ func TestClientsOrderBy(t *testing.T) {
 	ca.EXPECT().Send(gomock.Any()).AnyTimes()
 	ca.EXPECT().Shards().AnyTimes()
 	ca.EXPECT().ID().AnyTimes()
+	ca.EXPECT().CancelPID().AnyTimes()
 	ca.EXPECT().Usr().AnyTimes()
 	ca.EXPECT().DB().AnyTimes()
 	ca.EXPECT().Conn().AnyTimes().Return(nil)

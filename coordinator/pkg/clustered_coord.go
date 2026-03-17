@@ -313,6 +313,8 @@ type ClusteredCoordinator struct {
 
 	routerConnCache map[string]*grpc.ClientConn
 	routerConnMutex sync.RWMutex
+
+	startupFinished bool
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -321,6 +323,10 @@ func (qc *ClusteredCoordinator) QDB() qdb.QDB {
 
 func (qc *ClusteredCoordinator) Cache() *cache.SchemaCache {
 	return qc.cache
+}
+
+func (qc *ClusteredCoordinator) StartupFinished() bool {
+	return qc.startupFinished
 }
 
 var _ coordinator.Coordinator = &ClusteredCoordinator{}
@@ -602,6 +608,9 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 				}
 			}
 		}
+		if err := qc.setUpSPQRGuard(ctx); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")
+		}
 	}
 
 	go qc.watchTaskGroups(context.TODO())
@@ -650,7 +659,27 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 	}
 	wg.Wait()
 
+	qc.startupFinished = true
+
 	go qc.watchRouters(context.TODO())
+}
+
+// TODO: move down
+func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("start setting up spqrguard")
+
+	relations := make([]*rfqn.RelationFQN, 0)
+	dss, err := qc.ListDistributions(ctx)
+	if err != nil {
+		return err
+	}
+	for _, ds := range dss {
+		for _, rel := range ds.FQNRelations {
+			relations = append(relations, rel.Relation)
+		}
+	}
+
+	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(relations))
 }
 
 // TODO : unit tests
@@ -1185,7 +1214,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
-	hasSpqrHash, err := datatransfers.CheckHashExtension(ctx, sourceConn)
+	hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.1")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
 	}
@@ -1193,7 +1222,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
 	}
 
-	hasSpqrHash, err = datatransfers.CheckHashExtension(ctx, destConn)
+	hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.1")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
 	}
@@ -2644,6 +2673,52 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 	})
 }
 
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	rel, err := qc.GetReferenceRelation(ctx, relName)
+	if err != nil {
+		return err
+	}
+	shardsExSet := make(map[string]struct{})
+	shardsToAdd := make([]string, 0)
+	shardsIntersect := make([]string, 0)
+	for _, sh := range rel.ShardIds {
+		shardsExSet[sh] = struct{}{}
+	}
+	for _, sh := range shs {
+		if _, ok := shardsExSet[sh]; !ok {
+			shardsToAdd = append(shardsToAdd, sh)
+		} else if ok {
+			shardsIntersect = append(shardsIntersect, sh)
+		}
+	}
+
+	if len(shardsIntersect) < len(rel.ShardIds) {
+		// We need to drop shards
+		if err := qc.db.AlterReferenceRelationStorage(ctx, relName, shardsIntersect); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
+		}
+		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			c := proto.NewReferenceRelationsServiceClient(cc)
+			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
+				Relation: rfqn.RelationFQNToProto(relName),
+				ShardIds: shardsIntersect,
+			})
+			return err
+		}); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %s", err)
+		}
+	}
+
+	rels := []*rfqn.RelationFQN{relName}
+	for _, sh := range shardsToAdd {
+		if err := qc.SyncReferenceRelations(ctx, rels, sh); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to sync relation on shard \"%s\": %s", sh, err)
+		}
+	}
+	return nil
+}
+
 // TODO: unit tests
 func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	relName *rfqn.RelationFQN) error {
@@ -2703,6 +2778,16 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 	if err := qc.Coordinator.AlterDistributionAttach(ctx, id, rels); err != nil {
 		return err
 	}
+
+	rfqns := make([]*rfqn.RelationFQN, len(rels))
+	for i, rel := range rels {
+		rfqns[i] = rel.Relation
+	}
+	go func() {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns)); err != nil {
+			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
+		}
+	}()
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)

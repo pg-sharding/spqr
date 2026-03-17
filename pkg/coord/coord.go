@@ -37,9 +37,18 @@ func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
 	}
 }
 
-// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (lc *Coordinator) StartupFinished() bool {
+	return true
+}
+
+// AlterReferenceRelationStorage alters shards, on which reference relation is contained.
 func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
+}
+
+// AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
+func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	return ErrNotCoordinator
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.

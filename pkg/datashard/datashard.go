@@ -166,6 +166,13 @@ func (sh *Conn) Cancel() error {
 	return pgiTmp.Cancel(msg)
 }
 
+// CancellableIDs returns a single-elements list containing
+// shard connection cancel ID.
+func (sh *Conn) CancellableIDs() []uint32 {
+
+	return []uint32{sh.backend_key_pid}
+}
+
 // TODO : unit tests
 
 // Send sends a FrontendMessage to the shard connection.
@@ -423,6 +430,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			"client_encoding":  "UTF8",
 			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
+			"spqrguard.prevent_distributed_table_modify": "off",
 		},
 	}
 
