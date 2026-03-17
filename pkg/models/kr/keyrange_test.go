@@ -149,6 +149,40 @@ func TestGetKRCondition(t *testing.T) {
 			expected:   "",
 			err:        spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"nonexistent\""),
 		},
+		// expression routing, murmur hash
+		{
+			ds: &distributions.Distribution{ColTypes: []string{qdb.ColumnTypeInteger}},
+			rel: &distributions.DistributedRelation{
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{HashFunction: "murmur", Expr: distributions.RoutingExpr{ColRefs: []distributions.TypedColRef{{ColName: "a"}, {ColName: "b"}}}},
+				},
+			},
+			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []any{0}, ColumnTypes: []string{qdb.ColumnTypeInteger}},
+			upperBound: []any{1000},
+			prefix:     "",
+			expected:   "spqrhash_murmur3(ARRAY[spqrhash_murmur3(a), spqrhash_murmur3(b)]) >= 0 AND spqrhash_murmur3(ARRAY[spqrhash_murmur3(a), spqrhash_murmur3(b)]) < 1000",
+			err:        nil,
+		},
+		// expression routing, city hash
+		{
+			ds: &distributions.Distribution{ColTypes: []string{qdb.ColumnTypeInteger}},
+			rel: &distributions.DistributedRelation{
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{HashFunction: "city", Expr: distributions.RoutingExpr{ColRefs: []distributions.TypedColRef{{ColName: "a"}, {ColName: "b"}}}},
+				},
+			},
+			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []any{0}, ColumnTypes: []string{qdb.ColumnTypeInteger}},
+			upperBound: []any{1000},
+			prefix:     "",
+			expected:   "spqrhash_city32(ARRAY[spqrhash_city32(a), spqrhash_city32(b)]) >= 0 AND spqrhash_city32(ARRAY[spqrhash_city32(a), spqrhash_city32(b)]) < 1000",
+			err:        nil,
+		},
 	} {
 		cond, err := kr.GetKRCondition(c.rel, c.krg, c.upperBound, c.prefix)
 		if c.err != nil {
