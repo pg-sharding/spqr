@@ -603,7 +603,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 					continue
 				}
 				newShard := qdb.NewShard(id, cfg.Hosts)
-				newShard.TLS = topology.TlsConfigToDB(cfg.TLS)
+				newShard.TLS = topology.TLSConfigToDB(cfg.TLS)
 				if err := qc.db.AddShard(context.TODO(), newShard); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
