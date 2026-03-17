@@ -877,8 +877,8 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 	return false, conName, nil
 }
 
-func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string) (bool, error) {
-	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s'", extname))
+func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string, extversion string) (bool, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s' and extversion = '%s'", extname, extversion))
 	count := 0
 	if err := res.Scan(&count); err != nil {
 		return false, err
@@ -930,7 +930,7 @@ func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.
 
 func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Conn) error {
 	return func(ctx context.Context, conn *pgx.Conn) error {
-		if hasSPQRGuard, err := CheckExtension(ctx, conn, "spqrguard"); err != nil {
+		if hasSPQRGuard, err := CheckExtension(ctx, conn, "spqrguard", "2.2"); err != nil {
 			return err
 		} else if !hasSPQRGuard {
 			// TODO: should we return error?

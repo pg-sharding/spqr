@@ -1214,7 +1214,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
-	hasSpqrHash, err := datatransfers.CheckExtension(ctx, sourceConn, "spqrhash")
+	hasSpqrHash, err := datatransfers.CheckExtension(ctx, sourceConn, "spqrhash", "1.1")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
 	}
@@ -1222,7 +1222,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
 	}
 
-	hasSpqrHash, err = datatransfers.CheckExtension(ctx, destConn, "spqrhash")
+	hasSpqrHash, err = datatransfers.CheckExtension(ctx, destConn, "spqrhash", "1.1")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
 	}
