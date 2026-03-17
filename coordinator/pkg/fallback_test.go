@@ -20,8 +20,8 @@ import (
 // mockShardClient is a lightweight manual mock for proto.ShardServiceClient
 // used exclusively in fallback tests.
 type mockShardClient struct {
-	getShardFn   func(ctx context.Context, in *proto.ShardRequest, opts ...grpc.CallOption) (*proto.ShardReply, error)
-	dropShardFn  func(ctx context.Context, in *proto.DropShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	getShardFn     func(ctx context.Context, in *proto.ShardRequest, opts ...grpc.CallOption) (*proto.ShardReply, error)
+	dropShardFn    func(ctx context.Context, in *proto.DropShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	addDataShardFn func(ctx context.Context, in *proto.AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
