@@ -705,6 +705,20 @@ func (mr *MockRouterClientMockRecorder) ReplyBindComplete() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyBindComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyBindComplete))
 }
 
+// ReplyCloseComplete mocks base method.
+func (m *MockRouterClient) ReplyCloseComplete() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyCloseComplete")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyCloseComplete indicates an expected call of ReplyCloseComplete.
+func (mr *MockRouterClientMockRecorder) ReplyCloseComplete() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyCloseComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyCloseComplete))
+}
+
 // ReplyDebugNotice mocks base method.
 func (m *MockRouterClient) ReplyDebugNotice(msg string) error {
 	m.ctrl.T.Helper()

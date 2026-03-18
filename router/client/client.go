@@ -60,6 +60,7 @@ type RouterClient interface {
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
+	ReplyCloseComplete() error
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -305,6 +306,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 
 var (
 	bindCMsg  = &pgproto3.BindComplete{}
+	closeCMsg = &pgproto3.CloseComplete{}
 	parseCMsg = &pgproto3.ParseComplete{}
 )
 
@@ -314,6 +316,10 @@ func (cl *PsqlClient) ReplyParseComplete() error {
 
 func (cl *PsqlClient) ReplyBindComplete() error {
 	return cl.Send(bindCMsg)
+}
+
+func (cl *PsqlClient) ReplyCloseComplete() error {
+	return cl.Send(closeCMsg)
 }
 
 func (cl *PsqlClient) Reset() error {

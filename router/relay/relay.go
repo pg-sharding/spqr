@@ -990,7 +990,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				if currentMsg.Name != "" {
 					delete(rst.executeMp, currentMsg.Name)
 				}
-			} else /* Statement */ {
+				if err := rst.Client().ReplyCloseComplete(); err != nil {
+					return err
+				}
+			} else if currentMsg.ObjectType == 'S' /* Statement */ {
 
 				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
 
@@ -999,7 +1002,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
 				} else {
 					rst.Client().ClosePreparedStatement(currentMsg.Name)
+					if err := rst.Client().ReplyCloseComplete(); err != nil {
+						return err
+					}
 				}
+			} else {
+				/* Send proper protocol error. */
+				/* this prepared statement was not prepared by client */
+				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
 			}
 		default:
 			panic(fmt.Sprintf("unexpected query type %v", msg))
