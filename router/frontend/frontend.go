@@ -26,7 +26,10 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil
-	case *pgproto3.Sync, *pgproto3.Flush:
+	case *pgproto3.Flush:
+		/* Ignore. XXX: proper support in future? */
+		return nil
+	case *pgproto3.Sync:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
