@@ -71,6 +71,7 @@ type TranEntityManager struct {
 	EntityMgr
 	distributions MetaEntityList[*distributions.Distribution]
 	keyRanges     MetaEntityList[*kr.KeyRange]
+	sequences     MetaEntityList[int64]
 	state         TransactionState
 }
 
@@ -84,10 +85,12 @@ type TranEntityManager struct {
 func NewTranEntityManager(mngr EntityMgr) *TranEntityManager {
 	distrList := NewMetaEntityList[*distributions.Distribution]()
 	keyRangesList := NewMetaEntityList[*kr.KeyRange]()
+	sequencesList := NewMetaEntityList[int64]()
 	return &TranEntityManager{
 		EntityMgr:     mngr,
 		distributions: *distrList,
 		keyRanges:     *keyRangesList,
+		sequences:     *sequencesList,
 		state:         NewTransactionState(),
 	}
 }
@@ -281,6 +284,44 @@ func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution stri
 	}
 	return result, nil
 
+}
+
+func (t *TranEntityManager) ListSequences(ctx context.Context) ([]string, error) {
+	list, err := t.EntityMgr.ListSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]string, 0, len(list)+len(t.sequences.Items()))
+	for seqName := range t.sequences.Items() {
+		result = append(result, seqName)
+	}
+	for _, seqName := range list {
+		if _, ok := t.sequences.DeletedItems()[seqName]; ok {
+			continue
+		}
+		if _, ok := t.sequences.Items()[seqName]; ok {
+			continue
+		}
+		result = append(result, seqName)
+	}
+	return result, nil
+}
+
+func (t *TranEntityManager) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+	commands := []*proto.MetaTransactionGossipCommand{
+		{CreateSequence: &proto.CreateSequenceGossip{
+			SeqName:      seqName,
+			InitialValue: initialValue,
+		}},
+	}
+	if _, ok := t.sequences.Items()[seqName]; ok {
+		return fmt.Errorf("sequence %s already present in qdb", seqName)
+	}
+	if err := t.state.Append(commands); err != nil {
+		return err
+	}
+	t.sequences.Save(seqName, initialValue)
+	return nil
 }
 
 type MetaEntityList[T any] struct {
