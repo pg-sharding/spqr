@@ -525,9 +525,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
 
-			/*XXX: reuse pgproto3.ProtocolVersion32 once new version is released
-			* https://github.com/jackc/pgx/blob/cfa2617/pgproto3/startup_message.go#L15 */
-		case pgproto3.ProtocolVersionNumber, 196610:
+		case pgproto3.ProtocolVersionNumber:
 			// reuse
 			sm = &pgproto3.StartupMessage{}
 			err = sm.Decode(msg)
