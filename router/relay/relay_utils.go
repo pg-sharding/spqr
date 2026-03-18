@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal string) error {
@@ -93,17 +94,8 @@ recvLoop:
 			cp := *q
 			rd.ParamDesc = &cp
 		case *pgproto3.RowDescription:
-			// copy
-			rd.RowDesc = &pgproto3.RowDescription{}
-
-			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
-
-			for i := range len(q.Fields) {
-				s := make([]byte, len(q.Fields[i].Name))
-				copy(s, q.Fields[i].Name)
-
-				rd.RowDesc.Fields[i] = q.Fields[i]
-				rd.RowDesc.Fields[i].Name = s
+			rd.RowDesc = &pgproto3.RowDescription{
+				Fields: xproto.CopyFieldDescriptions(q.Fields),
 			}
 		case *pgproto3.ReadyForQuery:
 			break recvLoop
@@ -183,17 +175,8 @@ recvLoop:
 			saveCloseComplete = q
 
 		case *pgproto3.RowDescription:
-			// copy
-			rd.rd = &pgproto3.RowDescription{}
-
-			rd.rd.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
-
-			for i := range len(q.Fields) {
-				s := make([]byte, len(q.Fields[i].Name))
-				copy(s, q.Fields[i].Name)
-
-				rd.rd.Fields[i] = q.Fields[i]
-				rd.rd.Fields[i].Name = s
+			rd.rd = &pgproto3.RowDescription{
+				Fields: xproto.CopyFieldDescriptions(q.Fields),
 			}
 		default:
 			return nil, fmt.Errorf("received unexpected message type %T", msg)
