@@ -490,19 +490,31 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function only accept two arguments", virtual.PGIsolationTestSessionIsBlocked)
 		}
 
-		lockedVirtualPID := uint(0)
+		lockedVirtualPID := uint32(0)
 		lockedByVirtualPIDs := []uint32{}
 
 		switch v := args[0].(type) {
 		case *lyx.AExprIConst:
-			lockedVirtualPID = uint(v.Value)
+			lockedVirtualPID = uint32(v.Value)
+		case *lyx.ParamRef:
+
+			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeUinteger)
+			if err != nil {
+				return nil, err
+			}
+
+			lockedVirtualPID = uint32(sVal.(uint64))
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
 
 		_ = rm.CSM.ClientPoolForeach(func(client client.ClientInfo) error {
-			if client.ID() == lockedVirtualPID {
+			if client.CancelPID() == lockedVirtualPID {
 				lockedByVirtualPIDs = client.CancellableIDs()
+
+				spqrlog.Zero.Debug().Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
 			}
 			return nil
 		})
