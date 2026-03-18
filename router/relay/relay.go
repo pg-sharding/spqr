@@ -990,6 +990,16 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				if currentMsg.Name != "" {
 					delete(rst.executeMp, currentMsg.Name)
 				}
+			} else /* Statement */ {
+
+				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
+
+				if def == nil {
+					/* this prepared statement was not prepared by client */
+					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+				} else {
+					rst.Client().ClosePreparedStatement(currentMsg.Name)
+				}
 			}
 		default:
 			panic(fmt.Sprintf("unexpected query type %v", msg))

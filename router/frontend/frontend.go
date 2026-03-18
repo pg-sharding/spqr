@@ -26,7 +26,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil
-	case *pgproto3.Sync:
+	case *pgproto3.Sync, *pgproto3.Flush:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
@@ -36,6 +36,13 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
+		return nil
+	case *pgproto3.Close:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
+
+		rst.AddExtendedProtocMessage(q)
 		return nil
 	case *pgproto3.Query:
 		rps.OnRequest()
