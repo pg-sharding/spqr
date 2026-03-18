@@ -84,6 +84,7 @@ type ShardHostInstance interface {
 	Cleanup(rule *config.FrontendRule) error
 	Instance() conn.DBInstance
 	Cancel() error
+	CancellableIDs() []uint32
 	Params() ParameterSet
 	Close() error
 }

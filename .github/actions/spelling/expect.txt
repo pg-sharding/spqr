@@ -149,6 +149,7 @@ Excepteur
 exercitationem
 expd
 extldflags
+extversion
 FAFBFF
 fdw
 feda
@@ -646,6 +647,7 @@ Xcpbs
 xerrors
 xjoin
 xmove
+xmovestr
 xproto
 XQDB
 xtab

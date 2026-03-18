@@ -421,6 +421,18 @@ func (cl *PsqlClient) Cancel() error {
 	return (*serv).Cancel()
 }
 
+/* This method can be called concurrently with Unroute() */
+func (cl *PsqlClient) CancellableIDs() []uint32 {
+	serv := cl.serverP.Load()
+
+	if serv == nil || *serv == nil {
+		/* TBD: raise error here sometimes? */
+		return nil
+	}
+
+	return (*serv).CancellableIDs()
+}
+
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
 		return fmt.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
