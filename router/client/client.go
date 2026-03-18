@@ -254,6 +254,11 @@ func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementD
 	cl.prepStmtsHash[d.Name] = hash
 }
 
+func (cl *PsqlClient) ClosePreparedStatement(name string) {
+	delete(cl.prepStmts, name)
+	delete(cl.prepStmtsHash, name)
+}
+
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	if v, ok := cl.prepStmts[name]; ok {
 		return v.Query
@@ -519,6 +524,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			default:
 				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
+
 		case pgproto3.ProtocolVersionNumber:
 			// reuse
 			sm = &pgproto3.StartupMessage{}

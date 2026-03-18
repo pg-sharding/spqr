@@ -260,6 +260,18 @@ func (mr *MockRouterClientMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockRouterClient)(nil).Close))
 }
 
+// ClosePreparedStatement mocks base method.
+func (m *MockRouterClient) ClosePreparedStatement(name string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ClosePreparedStatement", name)
+}
+
+// ClosePreparedStatement indicates an expected call of ClosePreparedStatement.
+func (mr *MockRouterClientMockRecorder) ClosePreparedStatement(name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClosePreparedStatement", reflect.TypeOf((*MockRouterClient)(nil).ClosePreparedStatement), name)
+}
+
 // CommitActiveSet mocks base method.
 func (m *MockRouterClient) CommitActiveSet() {
 	m.ctrl.T.Helper()
