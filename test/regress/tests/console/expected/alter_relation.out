@@ -36,8 +36,8 @@ SHOW relations;
  a             | ds1             | ("another", identity) | public
 (1 row)
 
-ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION KEY another TO renamed_col;
-          rename distribution key          
+ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION COLUMN another TO renamed_col;
+        rename distribution column         
 -------------------------------------------
  distribution id -> ds1
  relation name   -> a
@@ -50,8 +50,14 @@ SHOW relations;
  a             | ds1             | ("renamed_col", identity) | $search_path
 (1 row)
 
-ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION KEY nonexistent TO fail_col;
+ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION COLUMN nonexistent TO fail_col;
 ERROR:  column "nonexistent" not found in distribution key of relation "a"
+SHOW relations;
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | public
+(1 row)
+
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
 ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error
 ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;

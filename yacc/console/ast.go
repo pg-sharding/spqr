@@ -319,13 +319,13 @@ type AlterRelationDistributionKey struct {
 func (*AlterRelationDistributionKey) iStatement()     {}
 func (*AlterRelationDistributionKey) iAlterRelation() {}
 
-type RenameDistributionKey struct {
+type RenameDistributionColumn struct {
 	OldName string
 	NewName string
 }
 
-func (*RenameDistributionKey) iStatement()     {}
-func (*RenameDistributionKey) iAlterRelation() {}
+func (*RenameDistributionColumn) iStatement()     {}
+func (*RenameDistributionColumn) iAlterRelation() {}
 
 type DetachRelation struct {
 	RelationName *rfqn.RelationFQN

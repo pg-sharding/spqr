@@ -244,7 +244,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 	})
 }
 
-func TestRenameDistributionKeySuccess(t *testing.T) {
+func TestRenameDistributionColumnSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -282,7 +282,7 @@ func TestRenameDistributionKeySuccess(t *testing.T) {
 			Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 			Element: &spqrparser.AlterRelationV2{
 				RelationName: &rfqn.RelationFQN{RelationName: "t"},
-				Element: &spqrparser.RenameDistributionKey{
+				Element: &spqrparser.RenameDistributionColumn{
 					OldName: "SITEID",
 					NewName: "siteid",
 				},
@@ -295,7 +295,7 @@ func TestRenameDistributionKeySuccess(t *testing.T) {
 	assert.NotNil(t, tts)
 }
 
-func TestRenameDistributionKeyColumnNotFound(t *testing.T) {
+func TestRenameDistributionColumnNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -323,7 +323,7 @@ func TestRenameDistributionKeyColumnNotFound(t *testing.T) {
 			Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 			Element: &spqrparser.AlterRelationV2{
 				RelationName: &rfqn.RelationFQN{RelationName: "t"},
-				Element: &spqrparser.RenameDistributionKey{
+				Element: &spqrparser.RenameDistributionColumn{
 					OldName: "nonexistent",
 					NewName: "new_col",
 				},
@@ -336,7 +336,7 @@ func TestRenameDistributionKeyColumnNotFound(t *testing.T) {
 	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
 }
 
-func TestRenameDistributionKeyRelationNotAttached(t *testing.T) {
+func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -358,7 +358,7 @@ func TestRenameDistributionKeyRelationNotAttached(t *testing.T) {
 			Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 			Element: &spqrparser.AlterRelationV2{
 				RelationName: &rfqn.RelationFQN{RelationName: "missing_rel"},
-				Element: &spqrparser.RenameDistributionKey{
+				Element: &spqrparser.RenameDistributionColumn{
 					OldName: "col",
 					NewName: "new_col",
 				},

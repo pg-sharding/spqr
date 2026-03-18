@@ -852,7 +852,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		}
 
 		return tts, nil
-	case *spqrparser.RenameDistributionKey:
+	case *spqrparser.RenameDistributionColumn:
 		ds, err := mngr.GetDistribution(ctx, dsId)
 		if err != nil {
 			return nil, err
@@ -881,7 +881,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("rename distribution key"),
+			Desc: engine.GetVPHeader("rename distribution column"),
 			Raw: [][][]byte{
 				{
 					fmt.Appendf(nil, "distribution id -> %s", dsId),

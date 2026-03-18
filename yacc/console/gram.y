@@ -989,10 +989,10 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name RENAME DISTRIBUTION KEY any_id TO any_id {
+	ALTER RELATION qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
-			Element: &RenameDistributionKey{
+			Element: &RenameDistributionColumn{
 				OldName: $7,
 				NewName: $9,
 			},

@@ -153,6 +153,73 @@ This command is used to alter an existing distribution. You can detach a relatio
 ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 ```
 
+### ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY
+
+Replaces the entire distribution key of an already attached relation. Unlike `RENAME DISTRIBUTION COLUMN`, this does not validate against the existing key — it overwrites column names and hash functions in one shot.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
+  DISTRIBUTION KEY <keys> [HASH FUNCTION <hash_function_name>]
+
+where keys is a comma-separated list of column names
+where hash_function_name is one of: IDENTITY, MURMUR, CITY
+```
+
+**Examples:**
+
+```sql
+-- Replace the distribution key with a new column name
+ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+
+-- Replace with a composite key
+ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
+```
+
+<Warning>
+This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
+</Warning>
+
+### ALTER DISTRIBUTION ALTER RELATION SCHEMA
+
+Changes the schema associated with an attached relation in the distribution metadata.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
+  SCHEMA <schema_name>
+```
+
+**Example:**
+
+```sql
+ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
+```
+
+### ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN
+
+Renames a column in the distribution key of an attached relation. This is useful when a relation was attached with an incorrectly cased column name (e.g., `SITEID` instead of `siteid`), causing SPQR to fail routing queries because PostgreSQL normalizes unquoted identifiers to lowercase.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
+  RENAME DISTRIBUTION COLUMN <old_column_name> TO <new_column_name>
+```
+
+For composite (multi-column) distribution keys, call this command once per column that needs renaming.
+
+**Example:**
+
+```sql
+-- Fix a single column name
+ALTER DISTRIBUTION ds1 ALTER RELATION users RENAME DISTRIBUTION COLUMN SITEID TO siteid;
+
+-- Fix multiple columns in a composite key (one at a time)
+ALTER DISTRIBUTION ds1 ALTER RELATION events RENAME DISTRIBUTION COLUMN RegionID TO region_id;
+ALTER DISTRIBUTION ds1 ALTER RELATION events RENAME DISTRIBUTION COLUMN EventID TO event_id;
+```
+
+<Warning>
+This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only. Verify that old and new column names still route data to the correct shards before resuming traffic.
+</Warning>
+
 ### ALTER DISTRIBUTION DROP DEFAULT SHARD
 This command is used to add default shard to an existing distribution.
 
