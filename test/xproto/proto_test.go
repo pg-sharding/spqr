@@ -3289,6 +3289,49 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 				},
 			},
 		},
+
+		/* Same test with flush. */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SHOW transaction_read_only",
+				},
+				&pgproto3.Flush{},
+				&pgproto3.Bind{},
+				&pgproto3.Flush{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Flush{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("transaction_read_only"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("off"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SHOW"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
