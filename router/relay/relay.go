@@ -985,15 +985,18 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
-			/*  */
-			if currentMsg.ObjectType == 'P' {
+			/* Validate ObjectType */
+			switch currentMsg.ObjectType {
+			case 'P':
+				/* Portal */
 				if currentMsg.Name != "" {
 					delete(rst.executeMp, currentMsg.Name)
 				}
 				if err := rst.Client().ReplyCloseComplete(); err != nil {
 					return err
 				}
-			} else if currentMsg.ObjectType == 'S' /* Statement */ {
+			case 'S':
+				/* Statement */
 
 				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
 
@@ -1006,7 +1009,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						return err
 					}
 				}
-			} else {
+			default:
 				/* Send proper protocol error. */
 				/* this prepared statement was not prepared by client */
 				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
