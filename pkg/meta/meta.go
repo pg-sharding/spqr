@@ -834,7 +834,11 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 
 		return tts, nil
 	case *spqrparser.AlterRelationDistributionKey:
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+		newKey := distributions.DistributionKeyFromSQL(stmt.DistributionKey)
+		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
+			return nil, err
+		}
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
 			return nil, err
 		}
 
@@ -857,24 +861,17 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err != nil {
 			return nil, err
 		}
-		rel := ds.Relations[relationName.RelationName]
+		rel := ds.GetRelation(relationName)
 		if rel == nil {
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
 				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
 		}
-		newKey := make([]distributions.DistributionKeyEntry, len(rel.DistributionKey))
-		copy(newKey, rel.DistributionKey)
-		found := false
-		for i, entry := range newKey {
-			if entry.Column == stmt.OldName {
-				newKey[i].Column = stmt.NewName
-				found = true
-				break
-			}
+		newKey, err := rel.RenameKeyColumn(stmt.OldName, stmt.NewName)
+		if err != nil {
+			return nil, err
 		}
-		if !found {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
-				"column \"%s\" not found in distribution key of relation \"%s\"", stmt.OldName, relationName.String())
+		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
+			return nil, err
 		}
 		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
 			return nil, err

@@ -38,6 +38,60 @@ func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
 	return *r.Relation
 }
 
+// RenameKeyColumn returns a copy of the distribution key with oldName replaced by newName.
+// Rejects the rename if the column is referenced by a unique index or if the
+// relation uses expression-based routing only.
+func (r *DistributedRelation) RenameKeyColumn(oldName, newName string) ([]DistributionKeyEntry, error) {
+	hasColumnEntries := false
+	for _, entry := range r.DistributionKey {
+		if entry.Column != "" {
+			hasColumnEntries = true
+			break
+		}
+	}
+	if !hasColumnEntries {
+		return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+			"relation uses expression-based routing; column rename is not supported")
+	}
+
+	if _, hasIndex := r.UniqueIndexesByColumn[oldName]; hasIndex {
+		return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+			"cannot rename column \"%s\": referenced by a unique index", oldName)
+	}
+
+	newKey := make([]DistributionKeyEntry, len(r.DistributionKey))
+	copy(newKey, r.DistributionKey)
+	for i, entry := range newKey {
+		if entry.Column == "" {
+			continue
+		}
+		if entry.Column == oldName {
+			newKey[i].Column = newName
+			return newKey, nil
+		}
+	}
+	return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+		"column \"%s\" not found in distribution key", oldName)
+}
+
+// CheckDuplicateKeyColumns validates that no two column-based entries in the
+// distribution key share the same column name. Expression-routing entries
+// (Column == "") are skipped.
+func CheckDuplicateKeyColumns(key []DistributionKeyEntry) error {
+	seen := make(map[string]struct{})
+	for _, entry := range key {
+		if entry.Column == "" {
+			continue
+		}
+		if _, exists := seen[entry.Column]; exists {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+				"duplicate column \"%s\" in distribution key", entry.Column)
+		}
+		seen[entry.Column] = struct{}{}
+	}
+	return nil
+}
+
 const (
 	REPLICATED = "REPLICATED"
 )

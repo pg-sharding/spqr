@@ -155,13 +155,15 @@ ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 
 ### ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY
 
-Replaces the entire distribution key of an already attached relation. Unlike `RENAME DISTRIBUTION COLUMN`, this does not validate against the existing key — it overwrites column names and hash functions in one shot.
+Replaces the entire distribution key of an already attached relation. This overwrites all column names and hash functions in one shot — it does not patch individual columns. Use this when you need to change the key structure entirely, or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not support).
+
+The new key must have the same number of entries as the distribution's column types. Duplicate column names in the new key are rejected.
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
   DISTRIBUTION KEY <keys> [HASH FUNCTION <hash_function_name>]
 
-where keys is a comma-separated list of column names
+where keys is a comma-separated list of column names or expression entries
 where hash_function_name is one of: IDENTITY, MURMUR, CITY
 ```
 
@@ -173,6 +175,9 @@ ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
 
 -- Replace with a composite key
 ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
+
+-- Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
+ALTER DISTRIBUTION ds1 ALTER RELATION tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
 ```
 
 <Warning>
@@ -196,7 +201,9 @@ ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
 
 ### ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN
 
-Renames a column in the distribution key of an attached relation. This is useful when a relation was attached with an incorrectly cased column name (e.g., `SITEID` instead of `siteid`), causing SPQR to fail routing queries because PostgreSQL normalizes unquoted identifiers to lowercase.
+A metadata-only fix that renames a column in the distribution key of an attached relation. This does **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only updates the column name stored in SPQR's distribution metadata.
+
+The primary use case is fixing a case mismatch between the column name in SPQR metadata and the actual PostgreSQL column. Because PostgreSQL normalizes unquoted identifiers to lowercase, attaching a relation with `W_ID` when the table column is `w_id` breaks routing: INSERTs fail and SELECTs scatter to all shards.
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
@@ -205,19 +212,30 @@ ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
 
 For composite (multi-column) distribution keys, call this command once per column that needs renaming.
 
-**Example:**
+**Example — fixing a casing typo that breaks routing:**
 
 ```sql
--- Fix a single column name
-ALTER DISTRIBUTION ds1 ALTER RELATION users RENAME DISTRIBUTION COLUMN SITEID TO siteid;
+-- Relation was attached with wrong casing
+ALTER DISTRIBUTION ds1 ATTACH RELATION rc_test DISTRIBUTION KEY W_ID;
 
--- Fix multiple columns in a composite key (one at a time)
-ALTER DISTRIBUTION ds1 ALTER RELATION events RENAME DISTRIBUTION COLUMN RegionID TO region_id;
-ALTER DISTRIBUTION ds1 ALTER RELATION events RENAME DISTRIBUTION COLUMN EventID TO event_id;
+-- INSERTs fail ("too complex query to route") and SELECTs scatter to all shards
+-- because the router can't match table column "w_id" to metadata "W_ID"
+
+-- Fix the metadata
+ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+
+-- Routing now targets the correct shard
 ```
 
+**Fails when:**
+
+- The old column name is not present in the current distribution key.
+- The column is referenced by a unique index.
+- The relation uses expression-based routing (use `ALTER RELATION DISTRIBUTION KEY` to replace the full key instead).
+- The rename would create duplicate column names in the key.
+
 <Warning>
-This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only. Verify that old and new column names still route data to the correct shards before resuming traffic.
+This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
 </Warning>
 
 ### ALTER DISTRIBUTION DROP DEFAULT SHARD

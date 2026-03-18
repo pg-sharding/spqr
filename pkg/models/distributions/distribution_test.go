@@ -211,3 +211,99 @@ func TestHashableKeyChecks(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckDuplicateKeyColumns(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.NoError(distributions.CheckDuplicateKeyColumns([]distributions.DistributionKeyEntry{
+		{Column: "a", HashFunction: "identity"},
+		{Column: "b", HashFunction: "identity"},
+	}))
+
+	err := distributions.CheckDuplicateKeyColumns([]distributions.DistributionKeyEntry{
+		{Column: "a", HashFunction: "identity"},
+		{Column: "a", HashFunction: "identity"},
+	})
+	assert.Error(err)
+	assert.ErrorContains(err, "duplicate column \"a\"")
+
+	assert.NoError(distributions.CheckDuplicateKeyColumns([]distributions.DistributionKeyEntry{
+		{Column: "", HashFunction: "murmur"},
+		{Column: "", HashFunction: "murmur"},
+	}), "expression entries with empty Column should not trigger duplicates")
+
+	assert.NoError(distributions.CheckDuplicateKeyColumns([]distributions.DistributionKeyEntry{}))
+}
+
+func TestRenameKeyColumnDuplicate(t *testing.T) {
+	rel := &distributions.DistributedRelation{
+		Relation: &rfqn.RelationFQN{RelationName: "t"},
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "a", HashFunction: "identity"},
+			{Column: "b", HashFunction: "identity"},
+		},
+	}
+
+	newKey, err := rel.RenameKeyColumn("a", "c")
+	assert.NoError(t, err)
+	assert.Equal(t, "c", newKey[0].Column)
+	assert.Equal(t, "b", newKey[1].Column)
+
+	_, err = rel.RenameKeyColumn("nonexistent", "x")
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "not found in distribution key")
+}
+
+func TestRenameKeyColumnUniqueIndex(t *testing.T) {
+	rel := &distributions.DistributedRelation{
+		Relation: &rfqn.RelationFQN{RelationName: "t"},
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "a", HashFunction: "identity"},
+		},
+		UniqueIndexesByColumn: map[string]*distributions.UniqueIndex{
+			"a": {ID: "idx1", Columns: []string{"a"}},
+		},
+	}
+
+	_, err := rel.RenameKeyColumn("a", "b")
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "cannot rename column \"a\": referenced by a unique index")
+}
+
+func TestRenameKeyColumnExpressionOnly(t *testing.T) {
+	rel := &distributions.DistributedRelation{
+		Relation: &rfqn.RelationFQN{RelationName: "t"},
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "", HashFunction: "murmur", Expr: distributions.RoutingExpr{
+				ColRefs: []distributions.TypedColRef{{ColName: "id1", ColType: "int"}},
+			}},
+		},
+	}
+
+	_, err := rel.RenameKeyColumn("id1", "new_id")
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "expression-based routing; column rename is not supported")
+}
+
+func TestRenameKeyColumnMixedColumnAndExpression(t *testing.T) {
+	rel := &distributions.DistributedRelation{
+		Relation: &rfqn.RelationFQN{RelationName: "t"},
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "tenant_id", HashFunction: "identity"},
+			{Column: "", HashFunction: "murmur", Expr: distributions.RoutingExpr{
+				ColRefs: []distributions.TypedColRef{{ColName: "id1", ColType: "int"}},
+			}},
+		},
+	}
+
+	newKey, err := rel.RenameKeyColumn("tenant_id", "site_id")
+	assert.NoError(t, err)
+	assert.Equal(t, "site_id", newKey[0].Column)
+	assert.Equal(t, "", newKey[1].Column, "expression entry should be untouched")
+	assert.Len(t, newKey[1].Expr.ColRefs, 1, "expression ColRefs should be preserved")
+
+	_, err = rel.RenameKeyColumn("id1", "new_id")
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "not found in distribution key",
+		"column names inside Expr.ColRefs cannot be renamed via this command")
+}
