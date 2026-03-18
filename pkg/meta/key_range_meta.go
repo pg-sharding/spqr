@@ -195,6 +195,15 @@ func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error
 	return nil
 }
 
+// locks key range with retries
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - mngr (TranEntityManager): The entity manager used to manage the entities.
+// - keyRangeID (string): key range to lock
+// Returns:
+// - *kr.KeyRange: locked key range.
+// - error: An error if the locking any issues.
 func LockKeyRange(ctx context.Context, mngr EntityMgr, keyRangeID string) (*kr.KeyRange, error) {
 	t := time.Now()
 	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,

@@ -1029,7 +1029,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Lock:
-		if _, err := mgr.LockKeyRange(ctx, stmt.KeyRangeID); err != nil {
+		if _, err := LockKeyRange(ctx, mgr, stmt.KeyRangeID); err != nil {
 			return nil, err
 		}
 
