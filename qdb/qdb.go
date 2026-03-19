@@ -174,8 +174,6 @@ const (
 // Distributed (2pc) commit state keeper.
 // Could be ether local storage or ETCD
 type DCStateKeeper interface {
-	TopologyKeeper
-
 	RecordTwoPhaseMembers(gid string, shards []string) error
 	ChangeTxStatus(gid string, state string) error
 
@@ -184,6 +182,11 @@ type DCStateKeeper interface {
 
 	TXStatus(gid string) string
 	TXCohortShards(gid string) []string
+}
+
+type XDCStateKeeper interface {
+	TopologyKeeper
+	DCStateKeeper
 }
 
 // XQDB means extended QDB
@@ -213,7 +216,7 @@ func NewXQDB(qdbType string) (XQDB, error) {
 	}
 }
 
-func NewDataPlaneTwoPhaseStateKeeper(qdbType string) (DCStateKeeper, error) {
+func NewDataPlaneTwoPhaseStateKeeper(qdbType string) (XDCStateKeeper, error) {
 	switch qdbType {
 	/* ETCD to be supported */
 	case "mem":
