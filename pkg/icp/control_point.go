@@ -20,6 +20,8 @@ const (
 type ICPContextHolder interface {
 	Wait()
 	Wake()
+
+	CancelPID() uint32
 }
 
 /* XXX: store name -> action? */
@@ -29,6 +31,8 @@ var (
 	cpsMp        = map[string]func(ICPContextHolder){}
 	cpsContextMp = map[string]ICPContextHolder{}
 	cpsResetMp   = map[string]func(ICPContextHolder){}
+
+	BlockedPIDs = map[uint32]struct{}{}
 )
 
 var (
@@ -57,6 +61,7 @@ func getAction(name string, A *spqrparser.ICPointAction) func(ICPContextHolder) 
 			cpsContextMp[name] = c
 			// nil is ok.
 			if c != nil {
+				BlockedPIDs[c.CancelPID()] = struct{}{}
 				c.Wait()
 			}
 		}
@@ -72,6 +77,8 @@ func getResetAction(A *spqrparser.ICPointAction) func(ICPContextHolder) {
 			// nil is ok.
 			if c != nil {
 				c.Wake()
+
+				delete(BlockedPIDs, c.CancelPID())
 			}
 		}
 	default:

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -518,11 +519,17 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			}
 			return nil
 		})
-		res := byte('t')
+		res := byte('f')
 
 		/* Not attached? XXX: fix this, support proper handling of second arg */
-		if len(lockedByVirtualPIDs) == 0 {
-			res = byte('f')
+		if len(lockedByVirtualPIDs) != 0 {
+			res = byte('t')
+		}
+
+		spqrlog.Zero.Debug().Msgf("blocked pids %+v", icp.BlockedPIDs)
+
+		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
+			res = byte('t')
 		}
 
 		tts := &tupleslot.TupleTableSlot{
