@@ -782,7 +782,11 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		if len(qs.FromClause) == 0 {
 			if len(qs.TargetList) == 1 {
 
-				tts, err := planner.RetrieveTuples(ctx, rm, qs.TargetList[0])
+				tts, err := planner.RetrieveTuples(
+					ctx,
+					rm,
+					qr,
+					qs.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
@@ -798,7 +802,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 			switch q := qs.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := planner.RetrieveTuples(ctx, rm, q.Arg)
+				tts, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
 				if err != nil {
 					return nil, err
 				}

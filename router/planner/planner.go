@@ -381,6 +381,7 @@ func PlanDistributedRelationInsert(
 
 func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
 
@@ -662,6 +663,28 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		return tts, nil
+	case virtual.VirtualFuncIsReady:
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{pgproto3.FieldDescription{
+				Name:                 []byte(virtual.VirtualFuncIsReady),
+				DataTypeOID:          catalog.BOOLOID,
+				TypeModifier:         -1,
+				DataTypeSize:         1,
+				TableAttributeNumber: 0,
+				TableOID:             0,
+				Format:               0,
+			},
+			},
+		}
+
+		if plr.Ready() {
+			tts.Raw = [][][]byte{[][]byte{[]byte{'t'}}}
+		} else {
+			tts.Raw = [][][]byte{[][]byte{[]byte{'f'}}}
+		}
+
+		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
@@ -669,11 +692,13 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
 	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
-			tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+			tts, err := MetadataVirtualFunctionCall(ctx,
+				rm, plr, q.Name, q.Args)
 			return tts, err
 		}
 	}
@@ -707,7 +732,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := RetrieveTuples(ctx, rm, v.TargetList[0])
+				tts, err := RetrieveTuples(ctx, rm, plr, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
@@ -741,7 +766,10 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := RetrieveTuples(ctx, rm, q.Arg)
+				tts, err := RetrieveTuples(
+					ctx,
+					rm,
+					plr, q.Arg)
 				if err != nil {
 					return nil, err
 				}
