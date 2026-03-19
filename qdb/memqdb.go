@@ -692,10 +692,13 @@ func (q *MemQDB) OpenRouter(_ context.Context, id string) error {
 func (q *MemQDB) CloseRouter(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("router", id).
-		Msg("memqdb: open router")
+		Msg("memqdb: close router")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	if _, ok := q.Routers[id]; !ok {
+		return fmt.Errorf("failed to close router: router \"%s\" not found", id)
+	}
 	q.Routers[id].State = CLOSED
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))

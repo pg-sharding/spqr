@@ -644,6 +644,7 @@ worldmock
 wrongpassword
 xact
 Xcpbs
+XDC
 xerrors
 xjoin
 xmove

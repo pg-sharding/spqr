@@ -206,7 +206,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> SECONDS WAIT PANIC
+%token<str> SECONDS WAIT PANIC SLEEP
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -1564,10 +1564,14 @@ opt_duration:
 	}
 
 opt_icp_action:
-	WAIT opt_duration {
+	SLEEP opt_duration {
 		$$ = &ICPointAction{
 			Act: "sleep",
 			Timeout: $2,
+		}
+	} | WAIT {
+		$$ = &ICPointAction{
+			Act: "wait",
 		}
 	} | PANIC {
 		$$ = &ICPointAction{

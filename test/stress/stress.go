@@ -118,7 +118,7 @@ var cmdTest = &cobra.Command{
 
 func init() {
 	cmd.PersistentFlags().IntVarP(&par, "parallel", "p", 10, "# of workers")
-	cmd.PersistentFlags().StringVarP(&hostname, "host", "", "spqr_router_1_1", "")
+	cmd.PersistentFlags().StringVarP(&hostname, "host", "", "spqr_router_1", "")
 	cmd.PersistentFlags().StringVarP(&relation, "rel", "r", "x", "")
 	cmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "dbtpcc", "")
 	cmd.PersistentFlags().StringVarP(&username, "username", "u", "user1", "")

@@ -260,6 +260,18 @@ func (mr *MockRouterClientMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockRouterClient)(nil).Close))
 }
 
+// ClosePreparedStatement mocks base method.
+func (m *MockRouterClient) ClosePreparedStatement(name string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ClosePreparedStatement", name)
+}
+
+// ClosePreparedStatement indicates an expected call of ClosePreparedStatement.
+func (mr *MockRouterClientMockRecorder) ClosePreparedStatement(name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClosePreparedStatement", reflect.TypeOf((*MockRouterClient)(nil).ClosePreparedStatement), name)
+}
+
 // CommitActiveSet mocks base method.
 func (m *MockRouterClient) CommitActiveSet() {
 	m.ctrl.T.Helper()
@@ -691,6 +703,20 @@ func (m *MockRouterClient) ReplyBindComplete() error {
 func (mr *MockRouterClientMockRecorder) ReplyBindComplete() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyBindComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyBindComplete))
+}
+
+// ReplyCloseComplete mocks base method.
+func (m *MockRouterClient) ReplyCloseComplete() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyCloseComplete")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyCloseComplete indicates an expected call of ReplyCloseComplete.
+func (mr *MockRouterClientMockRecorder) ReplyCloseComplete() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyCloseComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyCloseComplete))
 }
 
 // ReplyDebugNotice mocks base method.
@@ -1413,4 +1439,28 @@ func (m *MockRouterClient) Usr() string {
 func (mr *MockRouterClientMockRecorder) Usr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockRouterClient)(nil).Usr))
+}
+
+// Wait mocks base method.
+func (m *MockRouterClient) Wait() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Wait")
+}
+
+// Wait indicates an expected call of Wait.
+func (mr *MockRouterClientMockRecorder) Wait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockRouterClient)(nil).Wait))
+}
+
+// Wake mocks base method.
+func (m *MockRouterClient) Wake() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Wake")
+}
+
+// Wake indicates an expected call of Wake.
+func (mr *MockRouterClientMockRecorder) Wake() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wake", reflect.TypeOf((*MockRouterClient)(nil).Wake))
 }
