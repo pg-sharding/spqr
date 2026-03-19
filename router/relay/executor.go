@@ -273,7 +273,7 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 	serv := s.cl.Server()
 
 	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
-		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl.ID(), serv); err != nil {
+		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
 			// serv.SetTxStatus(st)

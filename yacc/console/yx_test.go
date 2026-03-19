@@ -2058,7 +2058,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' wait 10 seconds",
+			query: "attach control point 'p1' sleep 10 seconds",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2071,13 +2071,24 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' wait",
+			query: "attach control point 'p1' sleep",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
 				A: &spqrparser.ICPointAction{
 					Act:     "sleep",
 					Timeout: time.Duration(1 * time.Minute),
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' wait",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "wait",
 				},
 			},
 			err: nil,

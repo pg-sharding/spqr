@@ -602,7 +602,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	}
 
 	if config.CoordinatorConfig().EnableICP {
-		if err := icp.CheckControlPoint(icp.CopyDataCP); err != nil {
+		if err := icp.CheckControlPoint(nil, icp.CopyDataCP); err != nil {
 			spqrlog.Zero.Info().Str("cp", icp.CopyDataCP).Err(err).Msg("error while checking control point")
 		}
 	}
