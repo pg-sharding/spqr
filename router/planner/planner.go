@@ -666,7 +666,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
-func (plr *PlannerV2) RetrieveTuples(
+func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
@@ -707,7 +707,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := plr.RetrieveTuples(ctx, rm, v.TargetList[0])
+				tts, err := RetrieveTuples(ctx, rm, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
@@ -741,7 +741,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := plr.RetrieveTuples(ctx, rm, q.Arg)
+				tts, err := RetrieveTuples(ctx, rm, q.Arg)
 				if err != nil {
 					return nil, err
 				}

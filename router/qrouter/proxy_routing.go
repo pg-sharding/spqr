@@ -777,6 +777,26 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	case *lyx.Select:
 
+		/* Special case for `select * from __spqr__show('obj')` */
+
+		if len(qs.FromClause) == 1 {
+
+			switch q := qs.FromClause[0].(type) {
+			case *lyx.SubSelect:
+				tts, err := planner.RetrieveTuples(ctx, rm, q.Arg)
+				if err != nil {
+					return nil, err
+				}
+				if tts != nil {
+					return &plan.VirtualPlan{
+						TTS: tts,
+					}, nil
+				}
+			default:
+				break
+			}
+		}
+
 		/*
 		 *  Sometimes we have problems with some cases. For example, if a client
 		 *  tries to access information schema AND other relation in same TX.
