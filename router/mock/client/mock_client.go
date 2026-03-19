@@ -1440,3 +1440,27 @@ func (mr *MockRouterClientMockRecorder) Usr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockRouterClient)(nil).Usr))
 }
+
+// Wait mocks base method.
+func (m *MockRouterClient) Wait() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Wait")
+}
+
+// Wait indicates an expected call of Wait.
+func (mr *MockRouterClientMockRecorder) Wait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockRouterClient)(nil).Wait))
+}
+
+// Wake mocks base method.
+func (m *MockRouterClient) Wake() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Wake")
+}
+
+// Wake indicates an expected call of Wake.
+func (mr *MockRouterClientMockRecorder) Wake() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wake", reflect.TypeOf((*MockRouterClient)(nil).Wake))
+}

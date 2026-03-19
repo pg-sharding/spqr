@@ -103,10 +103,24 @@ type PsqlClient struct {
 
 	ec errcounter.ErrCounter
 
+	icpChan chan struct{}
+
 	serverP atomic.Pointer[server.Server]
 }
 
 var _ RouterClient = &PsqlClient{}
+
+// Wait implements [RouterClient].
+func (r *PsqlClient) Wait() {
+	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waiting with client")
+	<-r.icpChan
+}
+
+// Wake implements [RouterClient].
+func (r *PsqlClient) Wake() {
+	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waking up client")
+	r.icpChan <- struct{}{}
+}
 
 // Add implements statistics.StatHolder.
 func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
@@ -192,6 +206,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		startupMsg:          &pgproto3.StartupMessage{},
 		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash:       map[string]uint64{},
+
+		icpChan: make(chan struct{}),
 
 		serverP: atomic.Pointer[server.Server]{},
 	}

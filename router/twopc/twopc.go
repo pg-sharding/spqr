@@ -12,6 +12,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/server"
+
+	"github.com/pg-sharding/spqr/pkg/client"
 )
 
 const (
@@ -21,7 +23,9 @@ const (
 	COMMIT_STRATEGY_2PC = "2pc"
 )
 
-func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txstatus.TXStatus, error) {
+func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
+	cl client.Client,
+	s server.Server) (txstatus.TXStatus, error) {
 
 	/*
 	* go along first phase
@@ -69,23 +73,27 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 	}
 
 	if config.RouterConfig().EnableICP {
-		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP); err != nil {
-			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseDecisionCP); err != nil {
+			spqrlog.Zero.Info().
+				Uint("client", cl.ID()).
+				Str("txid", gid).
+				Err(err).
+				Msg("error while checking control point")
 		}
 	}
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP2); err != nil {
+		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP1); err != nil {
 			return txstatus.TXERR, err
 		}
 	}
 
-	spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Msg("first phase succeeded")
+	spqrlog.Zero.Info().Uint("client", cl.ID()).Str("txid", gid).Msg("first phase succeeded")
 
 	if config.RouterConfig().EnableICP {
-		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP2); err != nil {
-			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseDecisionCP2); err != nil {
+			spqrlog.Zero.Info().Uint("client", cl.ID()).Str("txid", gid).Err(err).Msg("error while checking control point")
 		}
 	}
 
@@ -101,9 +109,23 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 			return txstatus.TXERR, err
 		}
 
-		spqrlog.Zero.Info().Uint("client", clid).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+		if txstatus.TXStatus(st) != txstatus.TXIDLE {
+			/* assert st == txtstatus.TXERR? */
+			/* XXX: We now should discard all connection
+			* and let recovery algorithm complete tx */
+			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member responce")
+		}
+
+		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
 
 		retST = txstatus.TXStatus(st)
+	}
+
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
+	if q != nil {
+		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP2); err != nil {
+			return txstatus.TXERR, err
+		}
 	}
 
 	return retST, nil

@@ -17,24 +17,31 @@ const (
 	CopyDataCP = "copy_data_cp"
 )
 
+type ICPContextHolder interface {
+	Wait()
+	Wake()
+}
+
 /* XXX: store name -> action? */
 var (
 	/* Lets keep it simple - performance does not matter here */
-	mu    sync.Mutex
-	cpsMp = map[string]func(){}
+	mu         sync.Mutex
+	cpsMp      = map[string]func(ICPContextHolder){}
+	cpsCTXMp   = map[string]ICPContextHolder{}
+	cpsResetMp = map[string]func(ICPContextHolder){}
 )
 
 var (
-	defaultPanicAction = func() {
+	defaultPanicAction = func(ICPContextHolder) {
 		panic("reached control point")
 	}
 
-	defaultSleepAction = func() {
+	defaultSleepAction = func(ICPContextHolder) {
 		time.Sleep(1 * time.Minute)
 	}
 )
 
-func getAction(A *spqrparser.ICPointAction) func() {
+func getAction(name string, A *spqrparser.ICPointAction) func(ICPContextHolder) {
 	switch A.Act {
 	case "panic":
 		return defaultPanicAction
@@ -42,11 +49,35 @@ func getAction(A *spqrparser.ICPointAction) func() {
 		if A.Timeout == time.Duration(0) {
 			return defaultSleepAction
 		}
-		return func() {
+		return func(ICPContextHolder) {
 			time.Sleep(A.Timeout)
+		}
+	case "wait":
+		return func(c ICPContextHolder) {
+			cpsCTXMp[name] = c
+			// nil is ok.
+			if c != nil {
+				c.Wait()
+			}
 		}
 	default:
 		return defaultPanicAction
+	}
+}
+
+func getResetAction(A *spqrparser.ICPointAction) func(ICPContextHolder) {
+	switch A.Act {
+	case "wait":
+		return func(c ICPContextHolder) {
+			// nil is ok.
+			if c != nil {
+				c.Wake()
+			}
+		}
+	default:
+		return func(ICPContextHolder) {
+			// noop
+		}
 	}
 }
 
@@ -62,7 +93,9 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	}
 
 	/* OK */
-	cpsMp[name] = getAction(A)
+
+	cpsMp[name] = getAction(name, A)
+	cpsResetMp[name] = getResetAction(A)
 
 	return nil
 }
@@ -74,21 +107,34 @@ func ResetICP(name string) error {
 	switch name {
 	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP:
 		/* OK */
+
+		f, ok := cpsResetMp[name]
+
+		if !ok {
+			return fmt.Errorf("control point not attached: %s", name)
+		}
+
+		// nil is ok
+		c := cpsCTXMp[name]
+		f(c)
+
 		delete(cpsMp, name)
+		delete(cpsResetMp, name)
 		return nil
 	}
 
 	return fmt.Errorf("unknown control point name %s", name)
 }
 
-func CheckControlPoint(name string) error {
+func CheckControlPoint(c ICPContextHolder, name string) error {
 	mu.Lock()
-	defer mu.Unlock()
-
-	/* XXX: support more behaviour modes */
-	if act, ok := cpsMp[name]; ok {
-		spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
-		act()
+	{
+		/* XXX: support more behaviour modes */
+		if act, ok := cpsMp[name]; ok {
+			spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
+			defer act(c)
+		}
 	}
+	mu.Unlock()
 	return nil
 }
