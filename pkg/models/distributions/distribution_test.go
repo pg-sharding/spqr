@@ -307,3 +307,66 @@ func TestRenameKeyColumnMixedColumnAndExpression(t *testing.T) {
 	assert.ErrorContains(t, err, "not found in distribution key",
 		"column names inside Expr.ColRefs cannot be renamed via this command")
 }
+
+func TestIsExpressionRouting(t *testing.T) {
+	columnOnly := &distributions.DistributedRelation{
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "a", HashFunction: "identity"},
+			{Column: "b", HashFunction: "identity"},
+		},
+	}
+	assert.False(t, columnOnly.IsExpressionRouting())
+
+	exprOnly := &distributions.DistributedRelation{
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "", HashFunction: "murmur", Expr: distributions.RoutingExpr{
+				ColRefs: []distributions.TypedColRef{{ColName: "id1", ColType: "int"}},
+			}},
+		},
+	}
+	assert.True(t, exprOnly.IsExpressionRouting())
+
+	mixed := &distributions.DistributedRelation{
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "tenant_id", HashFunction: "identity"},
+			{Column: "", HashFunction: "murmur", Expr: distributions.RoutingExpr{
+				ColRefs: []distributions.TypedColRef{{ColName: "id1", ColType: "int"}},
+			}},
+		},
+	}
+	assert.False(t, mixed.IsExpressionRouting())
+
+	empty := &distributions.DistributedRelation{
+		DistributionKey: []distributions.DistributionKeyEntry{},
+	}
+	assert.False(t, empty.IsExpressionRouting())
+}
+
+func TestGetColumn(t *testing.T) {
+	rel := &distributions.DistributedRelation{
+		DistributionKey: []distributions.DistributionKeyEntry{
+			{Column: "a", HashFunction: "identity"},
+			{Column: "", HashFunction: "murmur", Expr: distributions.RoutingExpr{
+				ColRefs: []distributions.TypedColRef{{ColName: "id1", ColType: "int"}},
+			}},
+			{Column: "b", HashFunction: "identity"},
+		},
+	}
+
+	entry, idx := rel.GetColumn("a")
+	assert.NotNil(t, entry)
+	assert.Equal(t, 0, idx)
+	assert.Equal(t, "a", entry.Column)
+
+	entry, idx = rel.GetColumn("b")
+	assert.NotNil(t, entry)
+	assert.Equal(t, 2, idx)
+
+	entry, idx = rel.GetColumn("nonexistent")
+	assert.Nil(t, entry)
+	assert.Equal(t, -1, idx)
+
+	entry, idx = rel.GetColumn("id1")
+	assert.Nil(t, entry, "expression ColRef names are not matched by GetColumn")
+	assert.Equal(t, -1, idx)
+}
