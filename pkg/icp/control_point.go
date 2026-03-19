@@ -25,10 +25,10 @@ type ICPContextHolder interface {
 /* XXX: store name -> action? */
 var (
 	/* Lets keep it simple - performance does not matter here */
-	mu         sync.Mutex
-	cpsMp      = map[string]func(ICPContextHolder){}
-	cpsCTXMp   = map[string]ICPContextHolder{}
-	cpsResetMp = map[string]func(ICPContextHolder){}
+	mu           sync.Mutex
+	cpsMp        = map[string]func(ICPContextHolder){}
+	cpsContextMp = map[string]ICPContextHolder{}
+	cpsResetMp   = map[string]func(ICPContextHolder){}
 )
 
 var (
@@ -54,7 +54,7 @@ func getAction(name string, A *spqrparser.ICPointAction) func(ICPContextHolder) 
 		}
 	case "wait":
 		return func(c ICPContextHolder) {
-			cpsCTXMp[name] = c
+			cpsContextMp[name] = c
 			// nil is ok.
 			if c != nil {
 				c.Wait()
@@ -115,7 +115,7 @@ func ResetICP(name string) error {
 		}
 
 		// nil is ok
-		c := cpsCTXMp[name]
+		c := cpsContextMp[name]
 		f(c)
 
 		delete(cpsMp, name)

@@ -113,7 +113,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
-			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member responce")
+			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member response")
 		}
 
 		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
