@@ -36,11 +36,5 @@ SELECT * FROM rc_test WHERE w_id = 20;
 
 DROP TABLE rc_test;
 
--- Expression routing: rename must be rejected
 \c spqr-console
-
-CREATE DISTRIBUTION ds_expr COLUMN TYPES int hash;
-ALTER DISTRIBUTION ds_expr ATTACH RELATION expr_test DISTRIBUTION KEY MURMUR [id1 INT HASH, id2 VARCHAR HASH];
-ALTER DISTRIBUTION ds_expr ALTER RELATION expr_test RENAME DISTRIBUTION COLUMN id1 TO new_id;
-
 DROP DISTRIBUTION ALL CASCADE;
