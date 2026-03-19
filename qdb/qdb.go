@@ -174,11 +174,9 @@ const (
 // Distributed (2pc) commit state keeper.
 // Could be ether local storage or ETCD
 type DCStateKeeper interface {
-	TopologyKeeper
-
 	RecordTwoPhaseMembers(gid string, shards []string) error
 	ChangeTxStatus(gid string, state string) error
-
+  
 	AcquireTxOwnership(gid string) bool
 	ReleaseTxOwnership(gid string)
 
