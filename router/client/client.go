@@ -577,7 +577,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		cl.be = backend
 
 		cl.cancel_key = rand.Uint32()
-		cl.cancel_pid = rand.Uint32()
+		cl.cancel_pid = uint32(rand.Int31())
 
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
