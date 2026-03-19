@@ -526,8 +526,6 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			res = byte('t')
 		}
 
-		spqrlog.Zero.Debug().Msgf("blocked pids %+v", icp.BlockedPIDs)
-
 		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
 			res = byte('t')
 		}
