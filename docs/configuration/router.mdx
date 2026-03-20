@@ -92,7 +92,7 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 | Setting                  | Description                                     |  Possible Values |
 |--------------------------|------------------------------------------------|------------------|
-| `maintain_params`        | Whether to maintain parameters flag.            | `true`, `false`  |
+| `maintain_params`        | When enabled, forwards all session parameters (`application_name`, `search_path`, `lock_timeout`, etc.) to shard backends during query deployment. Can be overridden by the [`__spqr__maintain_params`](/routing/hints#spqr-maintain-params) hint. | `true`, `false`  |
 | `world_shard_fallback`   | Whether to enable fallback to world shard.      | `true`, `false`  |
 
 ## Query Routing Settings
