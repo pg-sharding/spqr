@@ -1631,6 +1631,21 @@ func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(gid, state any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), gid, state)
 }
 
+// ListTXNames mocks base method.
+func (m *MockDCStateKeeper) ListTXNames() ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTXNames")
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTXNames indicates an expected call of ListTXNames.
+func (mr *MockDCStateKeeperMockRecorder) ListTXNames() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockDCStateKeeper)(nil).ListTXNames))
+}
+
 // RecordTwoPhaseMembers mocks base method.
 func (m *MockDCStateKeeper) RecordTwoPhaseMembers(gid string, shards []string) error {
 	m.ctrl.T.Helper()
@@ -1864,6 +1879,21 @@ func (m *MockXDCStateKeeper) ListShards(ctx context.Context) ([]*qdb.Shard, erro
 func (mr *MockXDCStateKeeperMockRecorder) ListShards(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListShards), ctx)
+}
+
+// ListTXNames mocks base method.
+func (m *MockXDCStateKeeper) ListTXNames() ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTXNames")
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTXNames indicates an expected call of ListTXNames.
+func (mr *MockXDCStateKeeperMockRecorder) ListTXNames() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListTXNames))
 }
 
 // OpenRouter mocks base method.

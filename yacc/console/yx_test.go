@@ -2057,7 +2057,7 @@ func TestICP(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "attach control point 'p1'",
+			query: "attach control point p1",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2068,7 +2068,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' sleep 10 seconds",
+			query: "attach control point p1 sleep 10 seconds",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2081,7 +2081,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' sleep",
+			query: "attach control point p1 sleep",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2093,7 +2093,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' wait",
+			query: "attach control point p1 wait",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2104,7 +2104,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' panic",
+			query: "attach control point p1 panic",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2115,7 +2115,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "detach control point 'p1'",
+			query: "detach control point p1",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: false,

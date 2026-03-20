@@ -12,6 +12,7 @@ time_quantiles_str:
 world_shard_fallback: true
 show_notice_messages: false
 enable_role_system: true
+enable_icp: true
 roles_file: /spqr/test/regress/conf/roles.yaml
 use_coordinator_init: true
 notice_message_format: "{shard}"
