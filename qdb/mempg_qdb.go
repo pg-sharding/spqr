@@ -64,11 +64,7 @@ func (q *MemPgQDB) AddShard(_ context.Context, shard *Shard) error {
 		return fmt.Errorf("shard with id %s already exists", shard.ID)
 	}
 
-	if err := q.pgDb.AddShard(shard); err != nil {
-		return err
-	}
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard), NewAppendCommand(q.pgDb.Shards, shard))
 }
 
 func (q *MemPgQDB) DropShard(_ context.Context, id string) error {

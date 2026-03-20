@@ -28,7 +28,7 @@ const (
 type PgQDB struct {
 	mu sync.Mutex
 
-	shards  []*Shard
+	Shards  []*Shard `json:"shards"`
 	TxLocks map[string]struct{}
 	pooler  map[string]*pgxpool.Pool
 }
@@ -79,10 +79,10 @@ func (q *PgQDB) AcquireTxOwnership(txid string) bool {
 // ChangeTxStatus implements [DCStateKeeper].
 func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 	ctx := context.TODO()
-	if len(q.shards) == 0 {
+	if len(q.Shards) == 0 {
 		return fmt.Errorf("could not save info to shard: no shards found")
 	}
-	conn, err := q.getShardMasterConn(ctx, q.shards[0])
+	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
 	if err != nil {
 		return err
 	}
@@ -110,10 +110,10 @@ func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 // RecordTwoPhaseMembers implements [DCStateKeeper].
 func (q *PgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
 	ctx := context.TODO()
-	if len(q.shards) == 0 {
+	if len(q.Shards) == 0 {
 		return fmt.Errorf("could not save info to shard: no shards found")
 	}
-	conn, err := q.getShardMasterConn(ctx, q.shards[0])
+	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
 	if err != nil {
 		return err
 	}
@@ -135,10 +135,10 @@ func (q *PgQDB) ReleaseTxOwnership(txid string) {
 // TXCohortShards implements [DCStateKeeper].
 func (q *PgQDB) TXCohortShards(txid string) ([]string, error) {
 	ctx := context.TODO()
-	if len(q.shards) == 0 {
+	if len(q.Shards) == 0 {
 		return nil, fmt.Errorf("could not get info from shard: no shards found")
 	}
-	conn, err := q.getShardMasterConn(ctx, q.shards[0])
+	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
 	if err != nil {
 		return nil, err
 	}
@@ -153,10 +153,10 @@ func (q *PgQDB) TXCohortShards(txid string) ([]string, error) {
 // TXStatus implements [DCStateKeeper].
 func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	ctx := context.TODO()
-	if len(q.shards) == 0 {
+	if len(q.Shards) == 0 {
 		return "", fmt.Errorf("could not get info from shard: no shards found")
 	}
-	conn, err := q.getShardMasterConn(ctx, q.shards[0])
+	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
 	if err != nil {
 		return "", err
 	}
@@ -179,14 +179,9 @@ func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	}
 }
 
-func (q *PgQDB) AddShard(shard *Shard) error {
-	q.shards = append(q.shards, shard)
-	return nil
-}
-
 func NewPgQDB(shards []*Shard) *PgQDB {
 	return &PgQDB{
-		shards: shards,
+		Shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
 	}
 }

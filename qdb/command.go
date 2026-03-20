@@ -88,6 +88,29 @@ func (c *DropCommand[T]) Undo() error {
 	return nil
 }
 
+func NewAppendCommand[T any](m []T, el T) *AppendCommand[T] {
+	return &AppendCommand[T]{m: m}
+}
+
+type AppendCommand[T any] struct {
+	m    []T
+	copy []T
+	el   T
+}
+
+func (c *AppendCommand[T]) Do() error {
+	c.copy = make([]T, 0)
+	copy(c.copy, c.m)
+	c.m = append(c.m, c.el)
+
+	return nil
+}
+
+func (c *AppendCommand[T]) Undo() error {
+	copy(c.m, c.copy)
+	return nil
+}
+
 func NewCustomCommand(do func() error, undo func() error) *CustomCommand {
 	return &CustomCommand{do: do, undo: undo}
 }
