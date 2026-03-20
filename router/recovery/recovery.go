@@ -233,18 +233,28 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
 	/* Always be tidy */
 	defer d.d.ReleaseTxOwnership(gid)
 
-	status := d.d.TXStatus(gid)
+	status, err := d.d.TXStatus(gid)
+	if err != nil {
+		return err
+	}
 	switch status {
 	case qdb.TwoPhaseInitState:
 		/* TX owner did not made a decision to commit, rollback  */
-
-		if err := d.executeRollbackShards(d.d.TXCohortShards(gid), gid); err != nil {
+		shards, err := d.d.TXCohortShards(gid)
+		if err != nil {
+			return err
+		}
+		if err := d.executeRollbackShards(shards, gid); err != nil {
 			return err
 		}
 
 		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2Rejected)
 	case qdb.TwoPhaseP1:
-		if err := d.executeCommitShards(d.d.TXCohortShards(gid), gid); err != nil {
+		shards, err := d.d.TXCohortShards(gid)
+		if err != nil {
+			return err
+		}
+		if err := d.executeCommitShards(shards, gid); err != nil {
 			return err
 		}
 		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2)
