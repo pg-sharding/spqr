@@ -1395,7 +1395,13 @@ func ProcessShowExtended(ctx context.Context,
 		}
 	case spqrparser.TwoPhaseTXStr:
 
-		txs, err := mngr.DCStateKeeper().ListTXNames()
+		d := mngr.DCStateKeeper()
+
+		if d == nil {
+			return nil, fmt.Errorf("two state transactions status keeper")
+		}
+
+		txs, err := d.ListTXNames()
 		if err != nil {
 			return nil, err
 		}
@@ -1406,8 +1412,8 @@ func ProcessShowExtended(ctx context.Context,
 
 		for _, gid := range txs {
 
-			st := mngr.DCStateKeeper().TXStatus(gid)
-			members := mngr.DCStateKeeper().TXCohortShards(gid)
+			st := d.TXStatus(gid)
+			members := d.TXCohortShards(gid)
 
 			tts.WriteDataRow(gid, st, fmt.Sprintf("%+v", members))
 		}
