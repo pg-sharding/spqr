@@ -124,7 +124,11 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		* 3) another recovery routine raced with us and won the race.
 		*/
 
-		if d.d.AcquireTxOwnership(gid) {
+		acq, err := d.d.AcquireTxOwnership(gid)
+		if err != nil {
+			return err
+		}
+		if acq {
 			/* Try to fix things  */
 			if err := d.Recover2PhaseCommitTX(gid); err != nil {
 				spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")

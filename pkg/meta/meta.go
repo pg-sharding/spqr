@@ -1412,10 +1412,16 @@ func ProcessShowExtended(ctx context.Context,
 
 		for _, gid := range txs {
 
-			st := d.TXStatus(gid)
-			members := d.TXCohortShards(gid)
+			st, err := d.TXStatus(gid)
+			if err != nil {
+				return nil, err
+			}
+			members, err := d.TXCohortShards(gid)
+			if err != nil {
+				return nil, err
+			}
 
-			tts.WriteDataRow(gid, st, fmt.Sprintf("%+v", members))
+			tts.WriteDataRow(gid, string(st), fmt.Sprintf("%+v", members))
 		}
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
