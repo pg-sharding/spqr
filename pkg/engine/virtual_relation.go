@@ -93,10 +93,17 @@ func KeyRangeVirtualRelationScanExtended(
 
 	distToKrs := make(map[string][]*kr.KeyRange)
 	for _, keyRange := range krs {
-		distToKrs[keyRange.Distribution] = append(distToKrs[keyRange.Distribution], keyRange)
 		if len(keyRange.LowerBound) == 0 {
 			return nil, fmt.Errorf("malformed key range %v", keyRange.ID)
 		}
+		distToKrs[keyRange.Distribution] = append(distToKrs[keyRange.Distribution], keyRange)
+	}
+	for distID, distKrs := range distToKrs {
+		colTypes := distMap[distID].ColTypes
+		sort.Slice(distKrs, func(i, j int) bool {
+			return kr.CmpRangesLess(distKrs[i].LowerBound, distKrs[j].LowerBound, colTypes)
+		})
+		distToKrs[distID] = distKrs
 	}
 
 	for _, keyRange := range krs {
@@ -113,7 +120,6 @@ func KeyRangeVirtualRelationScanExtended(
 
 		distKrs := distToKrs[keyRange.Distribution]
 
-		/* TODO: Fix this AI mess  */
 		var nextKr *kr.KeyRange
 		for i, kr := range distKrs {
 			if kr.ID == keyRange.ID && i < len(distKrs)-1 {
