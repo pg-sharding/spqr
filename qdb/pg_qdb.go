@@ -18,6 +18,13 @@ import (
 //     updated_at TIMESTAMPTZ
 // );
 
+const (
+	pgStatePlanned    = "planned"
+	pgStateCommitting = "committing"
+	pgStateCommitted  = "comitted"
+	pgStateRejected   = "rejected"
+)
+
 type PgQDB struct {
 	mu sync.Mutex
 
@@ -77,7 +84,20 @@ func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 		return err
 	}
 	// TODO: convert status
-	_, err = conn.Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1 WHERE id = $2", state, txid)
+	pgState := ""
+	switch state {
+	case TwoPhaseInitState:
+		pgState = pgStatePlanned
+	case TwoPhaseP1:
+		pgState = pgStateCommitting
+	case TwoPhaseP2:
+		pgState = pgStateCommitted
+	case TwoPhaseP2Rejected:
+		pgState = pgStateRejected
+	default:
+		return fmt.Errorf("unknown tx state value \"%s\"", state)
+	}
+	_, err = conn.Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1 WHERE id = $2", pgState, txid)
 	if err != nil {
 		return err
 	}
@@ -133,8 +153,18 @@ func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	if err = row.Scan(&status); err != nil {
 		return "", err
 	}
-	// TODO: convert with value check
-	return TwoPhaseTxState(status), nil
+	switch status {
+	case pgStatePlanned:
+		return TwoPhaseInitState, nil
+	case pgStateCommitting:
+		return TwoPhaseP1, nil
+	case pgStateCommitted:
+		return TwoPhaseP2, nil
+	case pgStateRejected:
+		return TwoPhaseP2Rejected, nil
+	default:
+		return TwoPhaseTxState(""), fmt.Errorf("unknown tx state in postgres: \"%s\"", status)
+	}
 }
 
 func NewPgQDB(shards []*Shard) *PgQDB {
