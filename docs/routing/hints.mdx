@@ -167,6 +167,36 @@ This parameter is particularly useful for:
 
 For more details on transaction control, see [Distributed Transactions](/sharding/distributed_transactions).
 
+### __spqr__maintain_params
+
+Controls whether SPQR forwards session parameters (such as `application_name`, `lock_timeout`, `search_path`, `statement_timeout`, etc.) to shard backends when deploying queries.
+
+Without this hint, parameters set via `SET` are only stored in the router's session state and never reach the shards. This is particularly important when using `__spqr__execute_on` inside a transaction with session-level settings.
+
+<Tip>This hint overrides the [`maintain_params`](/configuration/router#feature-flags) router configuration setting.</Tip>
+
+Possible values:
+- `true` - Forward all session parameters to shard backends
+- `false` - Do not forward session parameters (default)
+
+When enabled, SPQR sends a `RESET ALL` followed by `SET` statements for each non-internal session parameter to all allocated shard connections. Internal parameters (`user`, `database`, `options`, `password`) and `__spqr__*` virtual parameters are excluded.
+
+**Examples:**
+
+```sql
+-- Enable parameter forwarding
+SET __spqr__maintain_params TO true;
+
+-- These will now be forwarded to the shard
+SET application_name = 'maintainer';
+SET lock_timeout = '1800s';
+
+BEGIN;
+SET __spqr__execute_on = 'shard1';
+SELECT run_maintenance('my_table');
+COMMIT;
+```
+
 ### __spqr__execute_on
 
 The `__spqr__execute_on` parameter is used to specify the shard on which a query should be executed.
