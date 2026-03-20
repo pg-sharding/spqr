@@ -2,7 +2,11 @@ package qdb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type MemPgQDB struct {
@@ -23,6 +27,46 @@ func NewMemPgQDB(backupPath string) (*MemPgQDB, error) {
 		MemQDB: memQDB,
 		pgDb:   NewPgQDB([]*Shard{}),
 	}, nil
+}
+
+func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
+	qdb, err := NewMemPgQDB(backupPath)
+	if err != nil {
+		return nil, err
+	}
+	if backupPath == "" {
+		return qdb, nil
+	}
+	if _, err := os.Stat(backupPath); err != nil {
+		spqrlog.Zero.Info().Err(err).Msg("mempgqdb backup file not exists. Creating new one")
+		f, err := os.Create(backupPath)
+		if err != nil {
+			return nil, err
+		}
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+			}
+		}(f)
+		return qdb, nil
+	}
+	data, err := os.ReadFile(backupPath)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, qdb)
+
+	for kr, locked := range qdb.Freq {
+		if locked {
+			qdb.Locks[kr].Lock()
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return qdb, nil
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
