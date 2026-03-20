@@ -56,6 +56,16 @@ func TestSimple(t *testing.T) {
 		},
 
 		{
+			query: "SHOW two_phase_tx",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.TwoPhaseTXStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
 			query: "\nSHOW \n relations",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,
