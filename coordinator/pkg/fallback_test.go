@@ -26,7 +26,7 @@ type mockShardClient struct {
 }
 
 func (m *mockShardClient) ListShards(_ context.Context, _ *emptypb.Empty, _ ...grpc.CallOption) (*proto.ListShardsReply, error) {
-	panic("ListShards not expected in fallback tests")
+	return nil, status.Errorf(codes.Unimplemented, "ListShards not expected in fallback tests")
 }
 
 func (m *mockShardClient) AddDataShard(ctx context.Context, in *proto.AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -34,7 +34,7 @@ func (m *mockShardClient) AddDataShard(ctx context.Context, in *proto.AddShardRe
 }
 
 func (m *mockShardClient) UpdateShard(_ context.Context, _ *proto.UpdateShardRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
-	panic("UpdateShard not expected in fallback tests")
+	return nil, status.Errorf(codes.Unimplemented, "UpdateShard not expected in fallback tests")
 }
 
 func (m *mockShardClient) DropShard(ctx context.Context, in *proto.DropShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -42,7 +42,7 @@ func (m *mockShardClient) DropShard(ctx context.Context, in *proto.DropShardRequ
 }
 
 func (m *mockShardClient) AddWorldShard(_ context.Context, _ *proto.AddWorldShardRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
-	panic("AddWorldShard not expected in fallback tests")
+	return nil, status.Errorf(codes.Unimplemented, "AddWorldShard not expected in fallback tests")
 }
 
 func (m *mockShardClient) GetShard(ctx context.Context, in *proto.ShardRequest, opts ...grpc.CallOption) (*proto.ShardReply, error) {
