@@ -1872,7 +1872,7 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 }
 
 // ChangeTxStatus implements DCStateKeeper.
-func (q *MemQDB) ChangeTxStatus(id string, state string) error {
+func (q *MemQDB) ChangeTxStatus(id string, state TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Msg("memqdb: ChangeTxStatus")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1929,17 +1929,26 @@ func (q *MemQDB) RecordTwoPhaseMembers(id string, shards []string) error {
 }
 
 // TXCohortShards implements DCStateKeeper.
-func (q *MemQDB) TXCohortShards(gid string) []string {
+func (q *MemQDB) TXCohortShards(gid string) ([]string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return q.TwoPhaseTx[gid].SHardsIds
+
+	if tx, ok := q.TwoPhaseTx[gid]; !ok {
+		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+	} else {
+		return tx.SHardsIds, nil
+	}
 }
 
 // TXStatus implements DCStateKeeper.
-func (q *MemQDB) TXStatus(gid string) string {
+func (q *MemQDB) TXStatus(gid string) (TwoPhaseTxState, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return q.TwoPhaseTx[gid].State
+	if tx, ok := q.TwoPhaseTx[gid]; !ok {
+		return "", fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+	} else {
+		return tx.State, nil
+	}
 }
 
 // ==============================================================================
