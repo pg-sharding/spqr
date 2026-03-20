@@ -70,7 +70,7 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *MemPgQDB) AcquireTxOwnership(txid string) bool {
+func (q *MemPgQDB) AcquireTxOwnership(txid string) (bool, error) {
 	return q.pgDb.AcquireTxOwnership(txid)
 }
 
@@ -85,8 +85,8 @@ func (q *MemPgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
-func (q *MemPgQDB) ReleaseTxOwnership(txid string) {
-	q.pgDb.ReleaseTxOwnership(txid)
+func (q *MemPgQDB) ReleaseTxOwnership(txid string) error {
+	return q.pgDb.ReleaseTxOwnership(txid)
 }
 
 // TXCohortShards implements [DCStateKeeper].
@@ -97,6 +97,10 @@ func (q *MemPgQDB) TXCohortShards(txid string) ([]string, error) {
 // TXStatus implements [DCStateKeeper].
 func (q *MemPgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	return q.TXStatus(txid)
+}
+
+func (q *MemPgQDB) ListTXNames() ([]string, error) {
+	return q.pgDb.ListTXNames()
 }
 
 // TODO : unit tests

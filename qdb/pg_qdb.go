@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,9 +29,9 @@ const (
 type PgQDB struct {
 	mu sync.Mutex
 
-	Shards  []*Shard `json:"shards"`
-	TxLocks map[string]struct{}
-	pooler  map[string]*pgxpool.Pool
+	Shards []*Shard `json:"shards"`
+	Txs    map[string]*pgx.Tx
+	pooler map[string]*pgxpool.Pool
 }
 
 func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *Shard) (*pgxpool.Conn, error) {
@@ -64,29 +65,56 @@ func (q *PgQDB) getHostConn(ctx context.Context, dsn string) (*pgxpool.Conn, err
 	return pool.Acquire(ctx)
 }
 
+func (q *PgQDB) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if tx, ok := q.Txs[txid]; ok {
+		return tx, nil
+	}
+	if len(q.Shards) == 0 {
+		return nil, fmt.Errorf("could not lock transaction on shard: no shards found")
+	}
+	conn, err := q.getShardMasterConn(context.Background(), q.Shards[0])
+	if err != nil {
+		return nil, err
+	}
+	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.Exec(ctx, "SELECT pg_advisory_lock(id) FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	if err != nil {
+		return nil, err
+	}
+	q.Txs[txid] = &tx
+	return &tx, nil
+}
+
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgQDB) AcquireTxOwnership(txid string) bool {
+func (q *PgQDB) AcquireTxOwnership(txid string) (bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.TxLocks[txid]; ok {
-		return false
+	if _, ok := q.Txs[txid]; ok {
+		return false, nil
 	}
-	q.TxLocks[txid] = struct{}{}
-	return true
+
+	ctx := context.Background()
+
+	_, err := q.getTx(ctx, txid)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
 func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 	ctx := context.TODO()
-	if len(q.Shards) == 0 {
-		return fmt.Errorf("could not save info to shard: no shards found")
-	}
-	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
+	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return err
 	}
-	// TODO: convert status
 	pgState := ""
 	switch state {
 	case TwoPhaseInitState:
@@ -100,7 +128,7 @@ func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 	default:
 		return fmt.Errorf("unknown tx state value \"%s\"", state)
 	}
-	_, err = conn.Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1 WHERE id = $2", pgState, txid)
+	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1 WHERE id = $2", pgState, txid)
 	if err != nil {
 		return err
 	}
@@ -110,14 +138,11 @@ func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 // RecordTwoPhaseMembers implements [DCStateKeeper].
 func (q *PgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
 	ctx := context.TODO()
-	if len(q.Shards) == 0 {
-		return fmt.Errorf("could not save info to shard: no shards found")
-	}
-	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
+	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return err
 	}
-	_, err = conn.Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1 WHERE id = $2", shards, txid)
+	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1 WHERE id = $2", shards, txid)
 	if err != nil {
 		return err
 	}
@@ -125,24 +150,27 @@ func (q *PgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
-func (q *PgQDB) ReleaseTxOwnership(txid string) {
+func (q *PgQDB) ReleaseTxOwnership(txid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.TxLocks, txid)
+	if tx, ok := q.Txs[txid]; ok {
+		if err := (*tx).Commit(context.TODO()); err != nil {
+			return err
+		}
+		delete(q.Txs, txid)
+	}
+	return nil
 }
 
 // TXCohortShards implements [DCStateKeeper].
 func (q *PgQDB) TXCohortShards(txid string) ([]string, error) {
 	ctx := context.TODO()
-	if len(q.Shards) == 0 {
-		return nil, fmt.Errorf("could not get info from shard: no shards found")
-	}
-	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
+	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return nil, err
 	}
-	row := conn.QueryRow(ctx, "SELECT members FROM spqr_metadata.spqr_tx_status id = $1", txid)
+	row := (*tx).QueryRow(ctx, "SELECT members FROM spqr_metadata.spqr_tx_status id = $1", txid)
 	var members []string
 	if err := row.Scan(&members); err != nil {
 		return nil, err
@@ -153,14 +181,11 @@ func (q *PgQDB) TXCohortShards(txid string) ([]string, error) {
 // TXStatus implements [DCStateKeeper].
 func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	ctx := context.TODO()
-	if len(q.Shards) == 0 {
-		return "", fmt.Errorf("could not get info from shard: no shards found")
-	}
-	conn, err := q.getShardMasterConn(ctx, q.Shards[0])
+	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return "", err
 	}
-	row := conn.QueryRow(ctx, "SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	row := (*tx).QueryRow(ctx, "SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
 	status := ""
 	if err = row.Scan(&status); err != nil {
 		return "", err
@@ -177,6 +202,17 @@ func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	default:
 		return "", fmt.Errorf("unknown tx state in postgres: \"%s\"", status)
 	}
+}
+
+func (q *PgQDB) ListTXNames() ([]string, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	res := make([]string, 0, len(q.Txs))
+	for id := range q.Txs {
+		res = append(res, id)
+	}
+
+	return res, nil
 }
 
 func NewPgQDB(shards []*Shard) *PgQDB {

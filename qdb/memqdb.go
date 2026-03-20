@@ -1885,21 +1885,21 @@ func (q *MemQDB) ChangeTxStatus(id string, state TwoPhaseTxState) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
 }
 
-func (q *MemQDB) AcquireTxOwnership(id string) bool {
+func (q *MemQDB) AcquireTxOwnership(id string) (bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	if info, ok := q.TwoPhaseTx[id]; ok {
 		if info.Locked {
-			return false
+			return false, nil
 		}
 		info.Locked = true
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
-func (q *MemQDB) ReleaseTxOwnership(gid string) {
+func (q *MemQDB) ReleaseTxOwnership(gid string) error {
 	spqrlog.Zero.Debug().Str("gid", gid).Msg("memqdb: ReleaseTxOwnership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1907,6 +1907,7 @@ func (q *MemQDB) ReleaseTxOwnership(gid string) {
 	if info, ok := q.TwoPhaseTx[gid]; ok {
 		info.Locked = false
 	}
+	return nil
 }
 
 // RecordTwoPhaseMembers implements DCStateKeeper.

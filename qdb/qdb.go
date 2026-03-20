@@ -181,8 +181,8 @@ type DCStateKeeper interface {
 
 	ListTXNames() ([]string, error)
 
-	AcquireTxOwnership(gid string) bool
-	ReleaseTxOwnership(gid string)
+	AcquireTxOwnership(gid string) (bool, error)
+	ReleaseTxOwnership(gid string) error
 
 	TXStatus(gid string) (TwoPhaseTxState, error)
 	TXCohortShards(gid string) ([]string, error)
