@@ -309,3 +309,49 @@ func TestQDBShardJSON_OmitsNilTLS(t *testing.T) {
 	_, hasTLS := raw["tls"]
 	assert.False(hasTLS, "JSON should not contain 'tls' key when TLS is nil")
 }
+
+func TestShardConfigEqual_HostsWithAZ(t *testing.T) {
+	assert := assert.New(t)
+
+	// Coordinator shard has hosts with availability zone (host:port:az format).
+	coordShard := topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"host1:5432:ru-spb-1a"},
+	})
+	// Router shard went through proto round-trip, so AZ was stripped.
+	routerShard := topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"host1:5432"},
+	})
+
+	assert.True(
+		topology.ShardConfigEqual(coordShard, routerShard),
+		"shards with same host:port but different AZ representation should be equal",
+	)
+}
+
+func TestShardConfigEqual_DifferentHosts(t *testing.T) {
+	assert := assert.New(t)
+
+	a := topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"host1:5432"},
+	})
+	b := topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"host2:5432"},
+	})
+
+	assert.False(topology.ShardConfigEqual(a, b))
+}
+
+func TestShardConfigEqual_DifferentTLS(t *testing.T) {
+	assert := assert.New(t)
+
+	a := topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"host1:5432"},
+		TLS:      &config.TLSConfig{SslMode: "require"},
+	})
+	b := topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"host1:5432"},
+		TLS:      &config.TLSConfig{SslMode: "disable"},
+	})
+
+	assert.False(topology.ShardConfigEqual(a, b))
+}

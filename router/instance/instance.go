@@ -130,10 +130,11 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	// request router
 	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
 
-	// Wire pool invalidation: when ALTER SHARD updates the shard config via gRPC,
-	// mark idle pooled connections for that shard as stale so new connections use the new config.
-	if lcImpl, ok := lc.(*coord.LocalInstanceMetadataMgr); ok {
-		lcImpl.PoolInvalidator = func(shardID string) {
+	type poolInvalidatable interface {
+		SetPoolInvalidator(func(string))
+	}
+	if pi, ok := lc.(poolInvalidatable); ok {
+		pi.SetPoolInvalidator(func(shardID string) {
 			if err := rr.ForEach(func(sh shard.ShardHostCtl) error {
 				if sh.ShardKeyName() == shardID {
 					sh.MarkStale()
@@ -144,7 +145,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 					Str("shard", shardID).
 					Msg("pool invalidation: error iterating connections")
 			}
-		}
+		})
 	}
 
 	stchan := make(chan struct{})

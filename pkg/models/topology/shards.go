@@ -177,7 +177,7 @@ func ShardConfigEqual(a, b *DataShard) bool {
 	if a.Cfg == nil || b.Cfg == nil {
 		return false
 	}
-	if !slices.Equal(a.Cfg.RawHosts, b.Cfg.RawHosts) {
+	if !slices.Equal(a.Cfg.Hosts(), b.Cfg.Hosts()) {
 		return false
 	}
 	return tlsConfigEqual(a.Cfg.TLS, b.Cfg.TLS)

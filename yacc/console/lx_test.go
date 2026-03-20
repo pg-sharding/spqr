@@ -426,14 +426,13 @@ func TestDefaultShard(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE SHARD sh1 WITH HOSTS TLS SSLMODE",
+			query: "CREATE SHARD sh1 WITH HOSTS SSLMODE",
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.SHARD,
 				spqrparser.IDENT,
 				spqrparser.WITH,
 				spqrparser.HOSTS,
-				spqrparser.TLS,
 				spqrparser.SSLMODE,
 			},
 		},

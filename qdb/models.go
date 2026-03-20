@@ -87,10 +87,10 @@ func (r Router) Addr() string {
 }
 
 type TLSConfig struct {
-	SslMode      string `json:"sslmode"`
-	CertFile     string `json:"cert_file"`
-	KeyFile      string `json:"key_file"`
-	RootCertFile string `json:"root_cert_file"`
+	SslMode      string `json:"sslmode,omitempty"`
+	CertFile     string `json:"cert_file,omitempty"`
+	KeyFile      string `json:"key_file,omitempty"`
+	RootCertFile string `json:"root_cert_file,omitempty"`
 }
 
 type Shard struct {

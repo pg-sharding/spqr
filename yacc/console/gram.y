@@ -200,7 +200,7 @@ func randomHex(n int) (string, error) {
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
 %token <str> STALE CLIENTS
-%token <str> TLS SSLMODE CERT_FILE KEY_FILE ROOT_CERT_FILE
+%token <str> SSLMODE CERT_FILE KEY_FILE ROOT_CERT_FILE
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -276,7 +276,7 @@ func randomHex(n int) (string, error) {
 %type<str> col_types_elem
 %type<bool> opt_cascade
 %type<str> opt_default_shard
-%type<str> opt_tls_sslmode
+%type<shard> opt_shard_tls
 
 %type<alter_shard> alter_shard_options
 
@@ -830,10 +830,10 @@ alter_stmt:
 	}
 
 alter_shard_options:
-	alter_shard_options TLS SSLMODE any_val
+	alter_shard_options SSLMODE any_val
 	{
 		$$ = $1
-		$$.SslMode = $4
+		$$.SslMode = $3
 	}
 	|
 	alter_shard_options WITH HOSTS any_id_list
@@ -842,27 +842,27 @@ alter_shard_options:
 		$$.Hosts = $4
 	}
 	|
-	alter_shard_options TLS CERT_FILE any_val
+	alter_shard_options CERT_FILE any_val
 	{
 		$$ = $1
-		$$.CertFile = $4
+		$$.CertFile = $3
 	}
 	|
-	alter_shard_options TLS KEY_FILE any_val
+	alter_shard_options KEY_FILE any_val
 	{
 		$$ = $1
-		$$.KeyFile = $4
+		$$.KeyFile = $3
 	}
 	|
-	alter_shard_options TLS ROOT_CERT_FILE any_val
+	alter_shard_options ROOT_CERT_FILE any_val
 	{
 		$$ = $1
-		$$.RootCertFile = $4
+		$$.RootCertFile = $3
 	}
 	|
-	TLS SSLMODE any_val
+	SSLMODE any_val
 	{
-		$$ = &AlterShard{SslMode: $3}
+		$$ = &AlterShard{SslMode: $2}
 	}
 	|
 	WITH HOSTS any_id_list
@@ -870,19 +870,19 @@ alter_shard_options:
 		$$ = &AlterShard{Hosts: $3}
 	}
 	|
-	TLS CERT_FILE any_val
+	CERT_FILE any_val
 	{
-		$$ = &AlterShard{CertFile: $3}
+		$$ = &AlterShard{CertFile: $2}
 	}
 	|
-	TLS KEY_FILE any_val
+	KEY_FILE any_val
 	{
-		$$ = &AlterShard{KeyFile: $3}
+		$$ = &AlterShard{KeyFile: $2}
 	}
 	|
-	TLS ROOT_CERT_FILE any_val
+	ROOT_CERT_FILE any_val
 	{
-		$$ = &AlterShard{RootCertFile: $3}
+		$$ = &AlterShard{RootCertFile: $2}
 	}
 
 distribution_alter_stmt:
@@ -1396,28 +1396,53 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list opt_tls_sslmode
+	SHARD any_id WITH HOSTS any_id_list opt_shard_tls
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: $5, SslMode: $6}
+		sd := $6
+		sd.Id = $2
+		sd.Hosts = $5
+		$$ = sd
 	}
 	|
-	SHARD WITH HOSTS any_id_list opt_tls_sslmode
+	SHARD WITH HOSTS any_id_list opt_shard_tls
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4, SslMode: $5}
+		sd := $5
+		sd.Id = "shard" + str
+		sd.Hosts = $4
+		$$ = sd
 	}
 
-opt_tls_sslmode:
-	TLS SSLMODE any_val
+opt_shard_tls:
+	opt_shard_tls SSLMODE any_val
 	{
-		$$ = $3
+		$$ = $1
+		$$.SslMode = $3
+	}
+	|
+	opt_shard_tls CERT_FILE any_val
+	{
+		$$ = $1
+		$$.CertFile = $3
+	}
+	|
+	opt_shard_tls KEY_FILE any_val
+	{
+		$$ = $1
+		$$.KeyFile = $3
+	}
+	|
+	opt_shard_tls ROOT_CERT_FILE any_val
+	{
+		$$ = $1
+		$$.RootCertFile = $3
 	}
 	| /* empty */
 	{
-		$$ = ""
+		$$ = &ShardDefinition{}
 	}
 
 any_id_list:

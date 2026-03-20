@@ -102,8 +102,8 @@ Feature: TLS connections to shards via coordinator
     # invalidates pooled connections, no restart needed
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS SSLMODE 'require';
-    ALTER SHARD sh2 TLS SSLMODE 'require';
+    ALTER SHARD sh1 SSLMODE 'require';
+    ALTER SHARD sh2 SSLMODE 'require';
     """
     Then command return code should be "0"
 
@@ -220,8 +220,8 @@ Feature: TLS connections to shards via coordinator
     """
     DROP SHARD sh1 CASCADE;
     DROP SHARD sh2 CASCADE;
-    CREATE SHARD sh1 WITH HOSTS 'spqr_shard_1:6432','spqr_shard_1_replica:6432' TLS SSLMODE 'require';
-    CREATE SHARD sh2 WITH HOSTS 'spqr_shard_2:6432','spqr_shard_2_replica:6432' TLS SSLMODE 'require';
+    CREATE SHARD sh1 WITH HOSTS 'spqr_shard_1:6432','spqr_shard_1_replica:6432' SSLMODE 'require';
+    CREATE SHARD sh2 WITH HOSTS 'spqr_shard_2:6432','spqr_shard_2_replica:6432' SSLMODE 'require';
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -322,7 +322,7 @@ Feature: TLS connections to shards via coordinator
     # ALTER SHARD — change only sslmode (use 'disable' so connections still work)
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS SSLMODE 'disable'
+    ALTER SHARD sh1 SSLMODE 'disable'
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -344,7 +344,7 @@ Feature: TLS connections to shards via coordinator
     # ALTER SHARD — set cert_file (metadata-only, won't affect connections with sslmode=disable)
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS CERT_FILE '/path/to/cert.pem'
+    ALTER SHARD sh1 CERT_FILE '/path/to/cert.pem'
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -355,7 +355,7 @@ Feature: TLS connections to shards via coordinator
     # ALTER SHARD — set key_file
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS KEY_FILE '/path/to/key.pem'
+    ALTER SHARD sh1 KEY_FILE '/path/to/key.pem'
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -366,7 +366,7 @@ Feature: TLS connections to shards via coordinator
     # ALTER SHARD — set root_cert_file
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS ROOT_CERT_FILE '/path/to/ca.pem'
+    ALTER SHARD sh1 ROOT_CERT_FILE '/path/to/ca.pem'
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -378,7 +378,7 @@ Feature: TLS connections to shards via coordinator
     # Use sslmode=disable so routing still works on sh2
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh2 TLS SSLMODE 'disable' TLS CERT_FILE '/etc/ssl/cert.pem' TLS KEY_FILE '/etc/ssl/key.pem' TLS ROOT_CERT_FILE '/etc/ssl/ca.pem' WITH HOSTS 'spqr_shard_2:6432','spqr_shard_2_replica:6432'
+    ALTER SHARD sh2 SSLMODE 'disable' CERT_FILE '/etc/ssl/cert.pem' KEY_FILE '/etc/ssl/key.pem' ROOT_CERT_FILE '/etc/ssl/ca.pem' WITH HOSTS 'spqr_shard_2:6432','spqr_shard_2_replica:6432'
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -449,7 +449,7 @@ Feature: TLS connections to shards via coordinator
     # ALTER SHARD with invalid sslmode should fail
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS SSLMODE 'bogus'
+    ALTER SHARD sh1 SSLMODE 'bogus'
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -460,7 +460,7 @@ Feature: TLS connections to shards via coordinator
     # CREATE SHARD with invalid sslmode should fail
     When I run SQL on host "coordinator"
     """
-    CREATE SHARD sh_bad WITH HOSTS 'localhost:5432' TLS SSLMODE 'not-a-mode'
+    CREATE SHARD sh_bad WITH HOSTS 'localhost:5432' SSLMODE 'not-a-mode'
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -561,8 +561,8 @@ Feature: TLS connections to shards via coordinator
     # Change shard config while router is unregistered
     When I run SQL on host "coordinator"
     """
-    ALTER SHARD sh1 TLS SSLMODE 'require';
-    ALTER SHARD sh2 TLS SSLMODE 'require';
+    ALTER SHARD sh1 SSLMODE 'require';
+    ALTER SHARD sh2 SSLMODE 'require';
     """
     Then command return code should be "0"
 

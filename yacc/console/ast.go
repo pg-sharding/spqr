@@ -105,9 +105,12 @@ type KeyRangeDefinition struct {
 }
 
 type ShardDefinition struct {
-	Id      string
-	Hosts   []string
-	SslMode string
+	Id           string
+	Hosts        []string
+	SslMode      string
+	CertFile     string
+	KeyFile      string
+	RootCertFile string
 }
 
 type AlterShard struct {

@@ -737,13 +737,13 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 	return nil
 }
 
-// traverseRoutersAll is like traverseRouters but does not fast-fail.
+// traverseRoutersBestEffort is like traverseRouters but does not fast-fail.
 // It attempts the callback on every opened router and returns a combined
 // error (via errors.Join) if any router(s) failed, so that healthy routers
 // are not blocked by a single unhealthy one.  Use this for propagation
 // operations (e.g. UpdateShard) where partial success is better than
 // all-or-nothing.
-func (qc *ClusteredCoordinator) traverseRoutersAll(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
+func (qc *ClusteredCoordinator) traverseRoutersBestEffort(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
 	spqrlog.Zero.Debug().Msg("qdb coordinator traverse (all routers)")
 	t := time.Now()
 
@@ -2734,7 +2734,10 @@ func fallbackDropAndAdd(ctx context.Context, cl proto.ShardServiceClient, shard 
 	// 3. Re-add with the new config, retrying up to 3 times for transient errors.
 	newShardProto := topology.DataShardToProto(shard)
 	var addErr error
-	const maxAddAttempts = 3
+	const (
+		maxAddAttempts  = 3
+		baseBackoffStep = 200 * time.Millisecond
+	)
 	for attempt := 0; attempt < maxAddAttempts; attempt++ {
 		if _, addErr = cl.AddDataShard(ctx, &proto.AddShardRequest{Shard: newShardProto}); addErr == nil {
 			return nil // success
@@ -2747,7 +2750,7 @@ func fallbackDropAndAdd(ctx context.Context, cl proto.ShardServiceClient, shard 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Duration(attempt+1) * 200 * time.Millisecond):
+		case <-time.After(time.Duration(attempt+1) * baseBackoffStep):
 		}
 	}
 
@@ -2780,7 +2783,7 @@ func (qc *ClusteredCoordinator) UpdateShard(ctx context.Context, shard *topology
 		return err
 	}
 
-	return qc.traverseRoutersAll(ctx, func(cc *grpc.ClientConn) error {
+	return qc.traverseRoutersBestEffort(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.UpdateShard(ctx, &proto.UpdateShardRequest{
 			Shard: topology.DataShardToProto(shard),

@@ -1722,7 +1722,7 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432" TLS SSLMODE 'require';`,
+			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432" SSLMODE 'require';`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
 					Id:      "sh1",
@@ -1733,12 +1733,37 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: `CREATE SHARD sh1 WITH HOSTS "host1:6432", "host2:6432" TLS SSLMODE 'verify-full';`,
+			query: `CREATE SHARD sh1 WITH HOSTS "host1:6432", "host2:6432" SSLMODE 'verify-full';`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
 					Id:      "sh1",
 					Hosts:   []string{"host1:6432", "host2:6432"},
 					SslMode: "verify-full",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: `CREATE SHARD sh1 WITH HOSTS "host1:6432" SSLMODE 'verify-full' CERT_FILE '/cert.pem' KEY_FILE '/key.pem' ROOT_CERT_FILE '/ca.pem';`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id:           "sh1",
+					Hosts:        []string{"host1:6432"},
+					SslMode:      "verify-full",
+					CertFile:     "/cert.pem",
+					KeyFile:      "/key.pem",
+					RootCertFile: "/ca.pem",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: `CREATE SHARD sh1 WITH HOSTS "host1:6432" CERT_FILE '/cert.pem';`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id:       "sh1",
+					Hosts:    []string{"host1:6432"},
+					CertFile: "/cert.pem",
 				},
 			},
 			err: nil,
@@ -1979,7 +2004,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh1 TLS SSLMODE 'require';",
+			query: "ALTER SHARD sh1 SSLMODE 'require';",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Id:      "sh1",
@@ -1989,7 +2014,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh2 TLS SSLMODE 'verify-full';",
+			query: "ALTER SHARD sh2 SSLMODE 'verify-full';",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Id:      "sh2",
@@ -2009,7 +2034,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh1 TLS CERT_FILE '/path/to/cert.pem';",
+			query: "ALTER SHARD sh1 CERT_FILE '/path/to/cert.pem';",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Id:       "sh1",
@@ -2019,7 +2044,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh1 TLS KEY_FILE '/path/to/key.pem';",
+			query: "ALTER SHARD sh1 KEY_FILE '/path/to/key.pem';",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Id:      "sh1",
@@ -2029,7 +2054,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh1 TLS ROOT_CERT_FILE '/path/to/ca.pem';",
+			query: "ALTER SHARD sh1 ROOT_CERT_FILE '/path/to/ca.pem';",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Id:           "sh1",
@@ -2039,7 +2064,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh1 TLS SSLMODE 'verify-full' TLS CERT_FILE '/cert.pem' TLS KEY_FILE '/key.pem' TLS ROOT_CERT_FILE '/ca.pem';",
+			query: "ALTER SHARD sh1 SSLMODE 'verify-full' CERT_FILE '/cert.pem' KEY_FILE '/key.pem' ROOT_CERT_FILE '/ca.pem';",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Id:           "sh1",
