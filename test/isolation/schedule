@@ -4,3 +4,4 @@ test: simple_move_data
 test: simple_move_subsequent
 test: move_schema_qualify
 test: move_fqn_relations
+test: 2pc

@@ -1584,14 +1584,14 @@ opt_icp_action:
 	}
 
 icp_stmt:
-	ATTACH CONTROL POINT SCONST opt_icp_action {
+	ATTACH CONTROL POINT IDENT opt_icp_action {
 		$$ = &InstanceControlPoint {
 			Name: string($4),
 			Enable: true,
 			A:		$5,
 		}
 	} | 
-	DETACH CONTROL POINT SCONST {
+	DETACH CONTROL POINT IDENT {
 		$$ = &InstanceControlPoint {
 			Name: string($4),
 			Enable: false,

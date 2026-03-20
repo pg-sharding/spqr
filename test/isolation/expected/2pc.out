@@ -1,0 +1,85 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1_report s1_ev2 s1_c_str s1_begin s2_attach_cp s2_attach_after_cp s2_show_2pc_tx s1_ddl s1_commit s2_show_2pc_tx s2_detach_cp s2_show_2pc_tx s2_detach_after_cp s2_show_2pc_tx
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table                
+----------------------------
+relation name   -> r_2pc_aux
+distribution id -> d        
+(2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
+bound -> 200 
+(1 row)
+
+add key range
+-------------
+bound -> 100 
+(1 row)
+
+add key range
+-------------
+bound -> 0   
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s1_c_str: SET __spqr__commit_strategy TO 2pc;
+step s1_begin: BEGIN;
+step s2_attach_cp: select __spqr__console_execute('ATTACH CONTROL POINT 2pc_decision_cp wait') /*__spqr__preferred_engine: v2 */;
+control point       
+--------------------
+ATTACH CONTROL POINT
+(1 row)
+
+step s2_attach_after_cp: select __spqr__console_execute('ATTACH CONTROL POINT 2pc_after_decision_cp wait') /*__spqr__preferred_engine: v2 */;
+control point       
+--------------------
+ATTACH CONTROL POINT
+(1 row)
+
+step s2_show_2pc_tx: select __spqr__console_execute('SHOW two_phase_tx(status);');
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_ddl: ALTER TABLE r_2pc_aux ADD COLUMN z INT;
+step s1_commit: COMMIT; <waiting ...>
+step s2_show_2pc_tx: select __spqr__console_execute('SHOW two_phase_tx(status);');
+status     
+-----------
+TxInitState
+(1 row)
+
+step s2_detach_cp: select __spqr__console_execute('DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */;
+control point       
+--------------------
+DETACH CONTROL POINT
+(1 row)
+
+step s2_show_2pc_tx: select __spqr__console_execute('SHOW two_phase_tx(status);');
+status     
+-----------
+PrepareDone
+(1 row)
+
+step s2_detach_after_cp: select __spqr__console_execute('DETACH CONTROL POINT 2pc_after_decision_cp') /*__spqr__preferred_engine: v2 */;
+control point       
+--------------------
+DETACH CONTROL POINT
+(1 row)
+
+step s1_commit: <... completed>
+step s2_show_2pc_tx: select __spqr__console_execute('SHOW two_phase_tx(status);');
+status
+------
+Done  
+(1 row)
+
