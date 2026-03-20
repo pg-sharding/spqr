@@ -54,8 +54,8 @@ step s1_commit         { COMMIT; }
 session s2
 step s2_attach_cp           { select __spqr__console_execute('ATTACH CONTROL POINT 2pc_decision_cp wait') /*__spqr__preferred_engine: v2 */; }
 step s2_attach_after_cp     { select __spqr__console_execute('ATTACH CONTROL POINT 2pc_after_decision_cp wait') /*__spqr__preferred_engine: v2 */; }
-step s2_dettach_cp          { select __spqr__console_execute('DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */; }
-step s2_dettach_after_cp    { select __spqr__console_execute('DETACH CONTROL POINT 2pc_after_decision_cp') /*__spqr__preferred_engine: v2 */; }
+step s2_detach_cp          { select __spqr__console_execute('DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */; }
+step s2_detach_after_cp    { select __spqr__console_execute('DETACH CONTROL POINT 2pc_after_decision_cp') /*__spqr__preferred_engine: v2 */; }
 
 step s2_show_2pc_tx              { select __spqr__console_execute('SHOW two_phase_tx(status);'); }
 
@@ -68,7 +68,7 @@ permutation
     s1_ddl
     s1_commit
     s2_show_2pc_tx
-    s2_dettach_cp
+    s2_detach_cp
     s2_show_2pc_tx
-    s2_dettach_after_cp
+    s2_detach_after_cp
     s2_show_2pc_tx

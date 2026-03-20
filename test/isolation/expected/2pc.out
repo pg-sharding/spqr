@@ -1,6 +1,6 @@
 Parsed test spec with 2 sessions
 
-starting permutation: s1_report s1_ev2 s1_c_str s1_begin s2_attach_cp s2_attach_after_cp s2_show_2pc_tx s1_ddl s1_commit s2_show_2pc_tx s2_dettach_cp s2_show_2pc_tx s2_dettach_after_cp s2_show_2pc_tx
+starting permutation: s1_report s1_ev2 s1_c_str s1_begin s2_attach_cp s2_attach_after_cp s2_show_2pc_tx s1_ddl s1_commit s2_show_2pc_tx s2_detach_cp s2_show_2pc_tx s2_detach_after_cp s2_show_2pc_tx
 add distribution    
 --------------------
 distribution id -> d
@@ -58,7 +58,7 @@ status
 TxInitState
 (1 row)
 
-step s2_dettach_cp: select __spqr__console_execute('DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */;
+step s2_detach_cp: select __spqr__console_execute('DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */;
 control point       
 --------------------
 DETACH CONTROL POINT
@@ -70,7 +70,7 @@ status
 PrepareDone
 (1 row)
 
-step s2_dettach_after_cp: select __spqr__console_execute('DETACH CONTROL POINT 2pc_after_decision_cp') /*__spqr__preferred_engine: v2 */;
+step s2_detach_after_cp: select __spqr__console_execute('DETACH CONTROL POINT 2pc_after_decision_cp') /*__spqr__preferred_engine: v2 */;
 control point       
 --------------------
 DETACH CONTROL POINT
