@@ -177,6 +177,8 @@ type DCStateKeeper interface {
 	RecordTwoPhaseMembers(gid string, shards []string) error
 	ChangeTxStatus(gid string, state string) error
 
+	ListTXNames() ([]string, error)
+
 	AcquireTxOwnership(gid string) bool
 	ReleaseTxOwnership(gid string)
 

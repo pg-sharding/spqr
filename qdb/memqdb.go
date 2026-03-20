@@ -67,6 +67,16 @@ type MemQDB struct {
 	/* caches */
 }
 
+// ListTXNames implements [DCStateKeeper].
+func (q *MemQDB) ListTXNames() ([]string, error) {
+	rt := []string{}
+
+	for _, tx := range q.TwoPhaseTx {
+		rt = append(rt, tx.Gid)
+	}
+	return rt, nil
+}
+
 var _ XQDB = &MemQDB{}
 var _ DCStateKeeper = &MemQDB{}
 

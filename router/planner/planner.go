@@ -385,6 +385,8 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
 
+	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
+
 	switch fname {
 	case virtual.VirtualAwaitTask:
 
@@ -558,6 +560,8 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
 		}
 
+		var target string
+
 		switch v := args[0].(type) {
 		case *lyx.ParamRef:
 
@@ -571,22 +575,19 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			/* Assert here? */
 			val := sVal.(string)
 
-			return meta.ProcessShow(ctx, &spqrparser.Show{
-				Cmd:     val,
-				Where:   &lyx.AExprEmpty{},
-				Order:   nil,
-				GroupBy: nil,
-			}, rm.Mgr, rm.CSM, true)
+			target = val
 		case *lyx.AExprSConst:
-			return meta.ProcessShow(ctx, &spqrparser.Show{
-				Cmd:     v.Value,
-				Where:   &lyx.AExprEmpty{},
-				Order:   nil,
-				GroupBy: nil,
-			}, rm.Mgr, rm.CSM, true)
+			target = v.Value
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
+
+		return meta.ProcessShow(ctx, &spqrparser.Show{
+			Cmd:     target,
+			Where:   &lyx.AExprEmpty{},
+			Order:   nil,
+			GroupBy: nil,
+		}, rm.Mgr, rm.CSM, true)
 
 		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShards:
