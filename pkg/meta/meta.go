@@ -1393,6 +1393,30 @@ func ProcessShowExtended(ctx context.Context,
 		for k, v := range counters {
 			tts.WriteDataRow(k, fmt.Sprintf("%v", v))
 		}
+	case spqrparser.TwoPhaseTXStr:
+
+		d := mngr.DCStateKeeper()
+
+		if d == nil {
+			return nil, fmt.Errorf("two state transactions status keeper")
+		}
+
+		txs, err := d.ListTXNames()
+		if err != nil {
+			return nil, err
+		}
+
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("gid", "status", "members"),
+		}
+
+		for _, gid := range txs {
+
+			st := d.TXStatus(gid)
+			members := d.TXCohortShards(gid)
+
+			tts.WriteDataRow(gid, st, fmt.Sprintf("%+v", members))
+		}
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {

@@ -153,6 +153,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
 ) (*ProxyQrouter, error) {
+
 	proxy := &ProxyQrouter{
 		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    &atomic.Bool{},

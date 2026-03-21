@@ -777,13 +777,32 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	case *lyx.Select:
 
-		/* Special case for `select * from __spqr__show('obj')` */
+		/* Special case for `select __spqr__show('obj')`, or other purely virtual functions */
 
-		if len(qs.FromClause) == 1 {
+		if len(qs.FromClause) == 0 {
+			if len(qs.TargetList) == 1 {
+
+				tts, err := planner.RetrieveTuples(
+					ctx,
+					rm,
+					qr,
+					qs.TargetList[0])
+				if err != nil {
+					return nil, err
+				}
+
+				if tts != nil {
+					return &plan.VirtualPlan{
+						TTS: tts,
+					}, nil
+				}
+			}
+		} else if len(qs.FromClause) == 1 {
+			/* Special case for `select * from __spqr__show('obj')` */
 
 			switch q := qs.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := planner.RetrieveTuples(ctx, rm, q.Arg)
+				tts, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
 				if err != nil {
 					return nil, err
 				}

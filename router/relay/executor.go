@@ -39,7 +39,6 @@ type QueryStateExecutorImpl struct {
 
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
-	d        qdb.DCStateKeeper
 
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
@@ -47,6 +46,8 @@ type QueryStateExecutorImpl struct {
 	poolMgr poolmgr.PoolMgr
 
 	mgr meta.EntityMgr
+
+	d qdb.DCStateKeeper
 
 	es ExecutorState
 }
