@@ -23,7 +23,7 @@ ERROR:  key range krid3 intersects with key range krid2 in QDB
 SHOW key_ranges;
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
- krid1        | sh1      | ds1             | 0           | false
+ krid1        | sh1      | ds1             | 0           | false1
  krid2        | sh2      | ds1             | 11          | false
 (2 rows)
 
