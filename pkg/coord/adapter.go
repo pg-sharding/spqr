@@ -424,7 +424,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 			continue
 		}
 		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "unvalid unite request")
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
 		}
 	}
 
