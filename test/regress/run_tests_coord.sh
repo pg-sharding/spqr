@@ -79,7 +79,7 @@ run_tests "kill_cluster" "regress_coordinator" "7002"
 sleep 10
 run_tests "coordinator" "regress_coordinator" "7002"
 
-# Сompare the results of the local and qdb coordinators
+# Compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
 
 save_diffs /regress/tests/common/
