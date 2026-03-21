@@ -40,6 +40,18 @@ https://github.com/pg-sharding/spqr/tree/master/docs
     done
 }
 
+ERR_OUTPUT_DIR=/tmp/regress_diffs
+
+save_diffs() {
+    mkdir -p $ERR_OUTPUT_DIR
+    
+    diff_files=$(find "$1" -name regression.diffs)
+    for diff_file in ${diff_files}; do
+        mv $diff_file $ERR_OUTPUT_DIR/$(basename $diff_file)
+    done
+    
+}
+
 
 
 echo "wait for services started"
@@ -50,10 +62,14 @@ sleep 10
 echo "go test!"
 
 run_tests "console" "regress_coordinator" "7002"
-if test -f /regress/tests/console/regression.diffs; then mkdir /regress/tests/console_coordinator && mv /regress/tests/console/regression.diffs /regress/tests/console_coordinator/regression.diffs; fi
+
+save_diffs /regress/tests/console/
+
 insert_greeting "console"
+
 run_tests "console" "regress_router" "7432"
-if test -f /regress/tests/console/regression.diffs; then mkdir /regress/tests/console_router && mv /regress/tests/console/regression.diffs /regress/tests/console_router/regression.diffs; fi
+
+save_diffs /regress/tests/console/
 
 run_tests "router" "regress_router" "6432"
 run_tests "pooler" "regress_pooler" "6432"
@@ -63,16 +79,17 @@ run_tests "kill_cluster" "regress_coordinator" "7002"
 sleep 10
 run_tests "coordinator" "regress_coordinator" "7002"
 
-# these tests are to compare the results of the local and qdb coordinators
+# Сompare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
-if test -f /regress/tests/common/regression.diffs; then mkdir /regress/tests/common_coordinator && mv /regress/tests/common/regression.diffs /regress/tests/common_coordinator/regression.diffs; fi
+
+save_diffs /regress/tests/common/
 
 #TODO: fix bugs, remove commented 'run_tests'
 #insert_greeting "common"
 #run_tests "common" "regress_router" "7432"
 
 # test if diffs are empty
-cat /regress/tests/**/regression.diffs > /regress/tests/combined.diffs 2>&-
+cat $ERR_OUTPUT_DIR/regression.diffs > /regress/tests/combined.diffs 2>&-
 
 if test -s /regress/tests/combined.diffs; then
     exit 1
