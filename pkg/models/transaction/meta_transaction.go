@@ -70,6 +70,7 @@ const (
 	GR_CreateKeyRange
 	GR_DropKeyRange
 	GR_UpdateKeyRange
+	GR_CreateSequence
 )
 
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
@@ -138,5 +139,6 @@ func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, boo
 	result = checkCommandPart(request.CreateKeyRange, result, GR_CreateKeyRange)
 	result = checkCommandPart(request.DropKeyRange, result, GR_DropKeyRange)
 	result = checkCommandPart(request.UpdateKeyRange, result, GR_UpdateKeyRange)
+	result = checkCommandPart(request.CreateSequence, result, GR_CreateSequence)
 	return result, result != GR_UNKNOWN && result != GR_ERROR
 }

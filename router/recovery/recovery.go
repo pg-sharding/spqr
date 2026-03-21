@@ -15,7 +15,7 @@ import (
 )
 
 type TwoPCWatchDog struct {
-	d  qdb.DCStateKeeper
+	d  qdb.XDCStateKeeper
 	be *config.BackendRule
 	p  pool.MultiShardTSAPool
 }

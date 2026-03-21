@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -380,8 +381,11 @@ func PlanDistributedRelationInsert(
 
 func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
+
+	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
 	switch fname {
 	case virtual.VirtualAwaitTask:
@@ -490,27 +494,43 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function only accept two arguments", virtual.PGIsolationTestSessionIsBlocked)
 		}
 
-		lockedVirtualPID := uint(0)
+		lockedVirtualPID := uint32(0)
 		lockedByVirtualPIDs := []uint32{}
 
 		switch v := args[0].(type) {
 		case *lyx.AExprIConst:
-			lockedVirtualPID = uint(v.Value)
+			lockedVirtualPID = uint32(v.Value)
+		case *lyx.ParamRef:
+
+			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeUinteger)
+			if err != nil {
+				return nil, err
+			}
+
+			lockedVirtualPID = uint32(sVal.(uint64))
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
 
 		_ = rm.CSM.ClientPoolForeach(func(client client.ClientInfo) error {
-			if client.ID() == lockedVirtualPID {
+			if client.CancelPID() == lockedVirtualPID {
 				lockedByVirtualPIDs = client.CancellableIDs()
+
+				spqrlog.Zero.Debug().Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
 			}
 			return nil
 		})
-		res := byte('t')
+		res := byte('f')
 
 		/* Not attached? XXX: fix this, support proper handling of second arg */
-		if len(lockedByVirtualPIDs) == 0 {
-			res = byte('f')
+		if len(lockedByVirtualPIDs) != 0 {
+			res = byte('t')
+		}
+
+		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
+			res = byte('t')
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -540,6 +560,8 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
 		}
 
+		var target string
+
 		switch v := args[0].(type) {
 		case *lyx.ParamRef:
 
@@ -553,22 +575,19 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			/* Assert here? */
 			val := sVal.(string)
 
-			return meta.ProcessShow(ctx, &spqrparser.Show{
-				Cmd:     val,
-				Where:   &lyx.AExprEmpty{},
-				Order:   nil,
-				GroupBy: nil,
-			}, rm.Mgr, rm.CSM, true)
+			target = val
 		case *lyx.AExprSConst:
-			return meta.ProcessShow(ctx, &spqrparser.Show{
-				Cmd:     v.Value,
-				Where:   &lyx.AExprEmpty{},
-				Order:   nil,
-				GroupBy: nil,
-			}, rm.Mgr, rm.CSM, true)
+			target = v.Value
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
+
+		return meta.ProcessShow(ctx, &spqrparser.Show{
+			Cmd:     target,
+			Where:   &lyx.AExprEmpty{},
+			Order:   nil,
+			GroupBy: nil,
+		}, rm.Mgr, rm.CSM, true)
 
 		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShards:
@@ -645,18 +664,42 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		return tts, nil
+	case virtual.VirtualFuncIsReady:
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{pgproto3.FieldDescription{
+				Name:                 []byte(virtual.VirtualFuncIsReady),
+				DataTypeOID:          catalog.BOOLOID,
+				TypeModifier:         -1,
+				DataTypeSize:         1,
+				TableAttributeNumber: 0,
+				TableOID:             0,
+				Format:               0,
+			},
+			},
+		}
+
+		if plr.Ready() {
+			tts.Raw = [][][]byte{[][]byte{[]byte{'t'}}}
+		} else {
+			tts.Raw = [][][]byte{[][]byte{[]byte{'f'}}}
+		}
+
+		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
-func (plr *PlannerV2) RetrieveTuples(
+func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
 	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
-			tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+			tts, err := MetadataVirtualFunctionCall(ctx,
+				rm, plr, q.Name, q.Args)
 			return tts, err
 		}
 	}
@@ -690,7 +733,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := plr.RetrieveTuples(ctx, rm, v.TargetList[0])
+				tts, err := RetrieveTuples(ctx, rm, plr, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
@@ -724,7 +767,10 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := plr.RetrieveTuples(ctx, rm, q.Arg)
+				tts, err := RetrieveTuples(
+					ctx,
+					rm,
+					plr, q.Arg)
 				if err != nil {
 					return nil, err
 				}

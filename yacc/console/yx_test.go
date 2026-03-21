@@ -56,6 +56,16 @@ func TestSimple(t *testing.T) {
 		},
 
 		{
+			query: "SHOW two_phase_tx",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.TwoPhaseTXStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
 			query: "\nSHOW \n relations",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,
@@ -2047,7 +2057,7 @@ func TestICP(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "attach control point 'p1'",
+			query: "attach control point p1",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2058,7 +2068,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' wait 10 seconds",
+			query: "attach control point p1 sleep 10 seconds",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2071,7 +2081,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' wait",
+			query: "attach control point p1 sleep",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2083,7 +2093,18 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' panic",
+			query: "attach control point p1 wait",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "wait",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point p1 panic",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
@@ -2094,7 +2115,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "detach control point 'p1'",
+			query: "detach control point p1",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: false,

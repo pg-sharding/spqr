@@ -100,4 +100,5 @@ var reservedWords = map[string]int{
 	"nowait":       NOWAIT,
 	"help":         HELP,
 	"storage":      STORAGE,
+	"sleep":        SLEEP,
 }

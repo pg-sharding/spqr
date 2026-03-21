@@ -116,8 +116,8 @@ services:
             - qdb01
     qdb01:
         image: 'quay.io/coreos/etcd:v3.6.4'
-        container_name: spqr_qdb_0_1
-        hostname: spqr_qdb_0_1
+        container_name: spqr_qdb
+        hostname: spqr_qdb
         environment:
             ALLOW_NONE_AUTHENTICATION: "yes"
             ETCD_LOG_LEVEL: "debug"
@@ -131,8 +131,8 @@ services:
         ports:
             - "8432:6432"
             - "7013:7000"
-        hostname: spqr_router_1_1
-        container_name: spqr_router_1_1
+        hostname: spqr_router_1
+        container_name: spqr_router_1
         environment:
             - ROUTER_CONFIG=/spqr/docker/router/cfg.yaml
             - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg.yaml
@@ -144,8 +144,8 @@ services:
         ports:
             - "8433:6432"
             - "7023:7003"
-        hostname: spqr_router_1_2
-        container_name: spqr_router_1_2
+        hostname: spqr_router_2
+        container_name: spqr_router_2
         environment:
             - ROUTER_CONFIG=/spqr/docker/router/cfg2.yaml
             - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg2.yaml

@@ -60,6 +60,7 @@ type RouterClient interface {
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
+	ReplyCloseComplete() error
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -102,10 +103,24 @@ type PsqlClient struct {
 
 	ec errcounter.ErrCounter
 
+	icpChan chan struct{}
+
 	serverP atomic.Pointer[server.Server]
 }
 
 var _ RouterClient = &PsqlClient{}
+
+// Wait implements [RouterClient].
+func (r *PsqlClient) Wait() {
+	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waiting with client")
+	<-r.icpChan
+}
+
+// Wake implements [RouterClient].
+func (r *PsqlClient) Wake() {
+	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waking up client")
+	r.icpChan <- struct{}{}
+}
 
 // Add implements statistics.StatHolder.
 func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
@@ -192,6 +207,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash:       map[string]uint64{},
 
+		icpChan: make(chan struct{}),
+
 		serverP: atomic.Pointer[server.Server]{},
 	}
 
@@ -254,6 +271,11 @@ func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementD
 	cl.prepStmtsHash[d.Name] = hash
 }
 
+func (cl *PsqlClient) ClosePreparedStatement(name string) {
+	delete(cl.prepStmts, name)
+	delete(cl.prepStmtsHash, name)
+}
+
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	if v, ok := cl.prepStmts[name]; ok {
 		return v.Query
@@ -300,6 +322,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 
 var (
 	bindCMsg  = &pgproto3.BindComplete{}
+	closeCMsg = &pgproto3.CloseComplete{}
 	parseCMsg = &pgproto3.ParseComplete{}
 )
 
@@ -309,6 +332,10 @@ func (cl *PsqlClient) ReplyParseComplete() error {
 
 func (cl *PsqlClient) ReplyBindComplete() error {
 	return cl.Send(bindCMsg)
+}
+
+func (cl *PsqlClient) ReplyCloseComplete() error {
+	return cl.Send(closeCMsg)
 }
 
 func (cl *PsqlClient) Reset() error {
@@ -519,6 +546,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			default:
 				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
+
 		case pgproto3.ProtocolVersionNumber:
 			// reuse
 			sm = &pgproto3.StartupMessage{}
@@ -549,7 +577,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		cl.be = backend
 
 		cl.cancel_key = rand.Uint32()
-		cl.cancel_pid = rand.Uint32()
+		cl.cancel_pid = uint32(rand.Int31())
 
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).

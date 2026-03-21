@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/virtual"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -473,7 +474,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						for _, is := range iis {
 							for _, col := range is.Columns {
 								colValues[col] = append(colValues[col],
-									v.Values[ind])
+									slices.Clone(v.Values[ind]))
 								ind++
 							}
 						}
@@ -776,6 +777,45 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	case *lyx.Select:
 
+		/* Special case for `select __spqr__show('obj')`, or other purely virtual functions */
+
+		if len(qs.FromClause) == 0 {
+			if len(qs.TargetList) == 1 {
+
+				tts, err := planner.RetrieveTuples(
+					ctx,
+					rm,
+					qr,
+					qs.TargetList[0])
+				if err != nil {
+					return nil, err
+				}
+
+				if tts != nil {
+					return &plan.VirtualPlan{
+						TTS: tts,
+					}, nil
+				}
+			}
+		} else if len(qs.FromClause) == 1 {
+			/* Special case for `select * from __spqr__show('obj')` */
+
+			switch q := qs.FromClause[0].(type) {
+			case *lyx.SubSelect:
+				tts, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
+				if err != nil {
+					return nil, err
+				}
+				if tts != nil {
+					return &plan.VirtualPlan{
+						TTS: tts,
+					}, nil
+				}
+			default:
+				break
+			}
+		}
+
 		/*
 		 *  Sometimes we have problems with some cases. For example, if a client
 		 *  tries to access information schema AND other relation in same TX.
@@ -1042,9 +1082,7 @@ func (qr *ProxyQrouter) addSortToPlan(
 							case *pgproto3.ErrorResponse:
 								errmsg = v
 							case *pgproto3.DataRow:
-								vals := make([][]byte, len(v.Values))
-								copy(vals, v.Values)
-								retSlice.TTS.Raw = append(retSlice.TTS.Raw, vals)
+								retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 							default:
 								/* All ok? */
 							}
@@ -1149,9 +1187,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 					case *pgproto3.DataRow:
 
 						if len(retSlice.TTS.Raw) < limitVal {
-							vals := make([][]byte, len(v.Values))
-							copy(vals, v.Values)
-							retSlice.TTS.Raw = append(retSlice.TTS.Raw, vals)
+							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
 					default:
@@ -1322,7 +1358,7 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 					case *pgproto3.ErrorResponse:
 						errmsg = v
 					case *pgproto3.DataRow:
-						vals := v.Values
+						vals := xproto.CopyByteSlices(v.Values)
 
 						vals = append([][]byte{fmt.Appendf(nil, "shard %s", sh.Name())}, vals...)
 

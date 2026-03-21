@@ -81,6 +81,10 @@ type Client interface {
 	SetAuthType(uint32) error
 
 	SetErrCounter(errcounter.ErrCounter)
+
+	// [icp.ICPContextHolder] support functions
+	Wait()
+	Wake()
 }
 
 type InteractRunner interface {

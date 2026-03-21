@@ -37,13 +37,6 @@ if [[ -z "$POSTGRES_DB" ]]; then
     exit 1
 fi
 
-# Create users
-sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE ROLE $POSTGRES_USER WITH LOGIN SUPERUSER" -d postgres >> $SETUP_LOG 2>&1 || {
-    echo "ERROR: users creation failed, examine the log"
-    cat "$SETUP_LOG"
-    exit 1
-}
-
 # Create databases
 sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POSTGRES_DB" -d postgres >> $SETUP_LOG 2>&1 || {
     echo "ERROR: databases creation failed, examine the log"
@@ -52,18 +45,21 @@ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POST
 }
 
 
-# # Create extension
- sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS postgres_fdw; CREATE EXTENSION IF NOT EXISTS pg_stat_statements; CREATE EXTENSION IF NOT EXISTS pg_stat_kcache; CREATE EXTENSION IF NOT EXISTS pg_comment_stats; CREATE EXTENSION IF NOT EXISTS spqrhash; SET allow_system_table_mods TO true; CREATE EXTENSION IF NOT EXISTS spqrguard;" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
-     echo "ERROR: extensions creation failed, examine the log"
-     cat "$SETUP_LOG"
-     exit 1
- }
+# Create extension
+for extension in postgres_fdw pg_stat_statements pg_stat_kcache pg_comment_stats spqrhash spqrguard
+do
+    sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS ${extension};" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
+        echo "ERROR: extension creation failed, examine the log"
+        cat "$SETUP_LOG"
+        exit 1
+    }
+done
 
-# # Grant permissions
-# sudo -u postgres psql -p 6432 -h localhost -U postgres -c "ALTER ROLE $POSTGRES_USER SUPERUSER" -d db1 >> $SETUP_LOG 2>&1 || {
-#     echo "ERROR: users creation failed, examine the log"
-#     cat "$SETUP_LOG"
-#     exit 1
-# }
+# Create users
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE ROLE $POSTGRES_USER WITH LOGIN SUPERUSER" -d postgres >> $SETUP_LOG 2>&1 || {
+    echo "ERROR: users creation failed, examine the log"
+    cat "$SETUP_LOG"
+    exit 1
+}
 
 sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/pg_ctl -D /var/lib/postgresql/$POSTGRES_VERSION/main/ stop
