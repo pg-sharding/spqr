@@ -10,12 +10,12 @@ import (
 )
 
 func TestGetMaxTxnBatchSize(t *testing.T) {
-	t.Run("qdb_max_txn_ops is not setted, coord config is not setted", func(t *testing.T) {
+	t.Run("qdb_max_txn_ops has not been set, coord config has not been set", func(t *testing.T) {
 		is := assert.New(t)
 		actual := getMaxTxnBatchSize(&config.Router{}, nil)
 		is.Equal(uint16(qdb.DefaultMaxTxnSize), actual)
 	})
-	t.Run("qdb_max_txn_ops is setted, coord config is not setted", func(t *testing.T) {
+	t.Run("qdb_max_txn_ops  has been set, coord config has not been set", func(t *testing.T) {
 		is := assert.New(t)
 		actual := getMaxTxnBatchSize(&config.Router{QdbMaxTxnOps: 56}, nil)
 		is.Equal(uint16(56), actual)

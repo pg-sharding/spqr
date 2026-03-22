@@ -16,7 +16,7 @@ func TestGetMaxTxnBatchSize(t *testing.T) {
 		is.Equal(uint16(110), actual)
 	})
 
-	t.Run("etcd_max_txn_ops is not setted", func(t *testing.T) {
+	t.Run("etcd_max_txn_ops has not been set", func(t *testing.T) {
 		is := assert.New(t)
 		actual := getMaxTxnBatchSize(&config.Coordinator{})
 		is.Equal(uint16(qdb.DefaultMaxTxnSize), actual)
