@@ -700,6 +700,20 @@ func (mr *MockCoordinatorMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockCoordinator)(nil).GetTaskGroupStatus), ctx, id)
 }
 
+// GetTxnBatchSize mocks base method.
+func (m *MockCoordinator) GetTxnBatchSize() uint16 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTxnBatchSize")
+	ret0, _ := ret[0].(uint16)
+	return ret0
+}
+
+// GetTxnBatchSize indicates an expected call of GetTxnBatchSize.
+func (mr *MockCoordinatorMockRecorder) GetTxnBatchSize() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxnBatchSize", reflect.TypeOf((*MockCoordinator)(nil).GetTxnBatchSize))
+}
+
 // IsReadOnly mocks base method.
 func (m *MockCoordinator) IsReadOnly() bool {
 	m.ctrl.T.Helper()

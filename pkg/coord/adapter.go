@@ -23,7 +23,8 @@ import (
 )
 
 type Adapter struct {
-	conn *grpc.ClientConn
+	conn        *grpc.ClientConn
+	maxTxnBatch uint16
 }
 
 var _ meta.EntityMgr = &Adapter{}
@@ -35,9 +36,10 @@ var _ meta.EntityMgr = &Adapter{}
 //
 // Returns:
 // - a pointer to an Adapter object.
-func NewAdapter(conn *grpc.ClientConn) *Adapter {
+func NewAdapter(conn *grpc.ClientConn, maxTxnBatch uint16) *Adapter {
 	return &Adapter{
-		conn: conn,
+		conn:        conn,
+		maxTxnBatch: maxTxnBatch,
 	}
 }
 
@@ -1374,6 +1376,10 @@ func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error)
 			return transactionMeta, nil
 		}
 	}
+}
+
+func (a *Adapter) GetTxnBatchSize() uint16 {
+	return a.maxTxnBatch
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.
