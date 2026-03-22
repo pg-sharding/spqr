@@ -150,4 +150,22 @@ func TestGetGossipRequestType(t *testing.T) {
 		is.False(ok)
 		is.Equal(GR_ERROR, actual)
 	})
+
+	t.Run("happy path proto.CreateSequenceGossip", func(t *testing.T) {
+		cmd := &proto.MetaTransactionGossipCommand{
+			CreateSequence: &proto.CreateSequenceGossip{},
+		}
+		actual, ok := GetGossipRequestType(cmd)
+		is.True(ok)
+		is.Equal(GR_CreateSequence, actual)
+	})
+	t.Run("fail proto.CreateSequenceGossip", func(t *testing.T) {
+		cmd := &proto.MetaTransactionGossipCommand{
+			CreateSequence: &proto.CreateSequenceGossip{},
+			CreateKeyRange: &proto.CreateKeyRangeGossip{},
+		}
+		actual, ok := GetGossipRequestType(cmd)
+		is.False(ok)
+		is.Equal(GR_ERROR, actual)
+	})
 }

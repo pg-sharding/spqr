@@ -410,6 +410,7 @@ const (
 	RedistributeTasksStr  = "redistribute_tasks"
 	ErrorStr              = "errors"
 	StartupFinishedStr    = "startup_finished"
+	TwoPhaseTXStr         = "two_phase_tx"
 )
 
 // not SHOW target

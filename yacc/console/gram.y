@@ -206,7 +206,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> SECONDS WAIT PANIC
+%token<str> SECONDS WAIT PANIC SLEEP
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -683,7 +683,7 @@ show_statement_type:
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr, StartupFinishedStr:
+			ErrorStr, StartupFinishedStr, TwoPhaseTXStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -1564,10 +1564,14 @@ opt_duration:
 	}
 
 opt_icp_action:
-	WAIT opt_duration {
+	SLEEP opt_duration {
 		$$ = &ICPointAction{
 			Act: "sleep",
 			Timeout: $2,
+		}
+	} | WAIT {
+		$$ = &ICPointAction{
+			Act: "wait",
 		}
 	} | PANIC {
 		$$ = &ICPointAction{
@@ -1580,14 +1584,14 @@ opt_icp_action:
 	}
 
 icp_stmt:
-	ATTACH CONTROL POINT SCONST opt_icp_action {
+	ATTACH CONTROL POINT IDENT opt_icp_action {
 		$$ = &InstanceControlPoint {
 			Name: string($4),
 			Enable: true,
 			A:		$5,
 		}
 	} | 
-	DETACH CONTROL POINT SCONST {
+	DETACH CONTROL POINT IDENT {
 		$$ = &InstanceControlPoint {
 			Name: string($4),
 			Enable: false,

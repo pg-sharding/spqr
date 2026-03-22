@@ -499,6 +499,15 @@ func (m *MultiShardServer) Cancel() error {
 	return nil
 }
 
+// CancellableIDs implements [Server].
+func (m *MultiShardServer) CancellableIDs() []uint32 {
+	var ids []uint32
+	for _, sh := range m.activeShards {
+		ids = append(ids, sh.CancellableIDs()...)
+	}
+	return ids
+}
+
 func (m *MultiShardServer) SetTxStatus(tx txstatus.TXStatus) {
 	m.status = tx
 }

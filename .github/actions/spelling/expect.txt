@@ -149,6 +149,7 @@ Excepteur
 exercitationem
 expd
 extldflags
+extversion
 FAFBFF
 fdw
 feda
@@ -643,9 +644,11 @@ worldmock
 wrongpassword
 xact
 Xcpbs
+XDC
 xerrors
 xjoin
 xmove
+xmovestr
 xproto
 XQDB
 xtab

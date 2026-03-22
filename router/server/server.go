@@ -34,6 +34,7 @@ type Server interface {
 	Datashards() []shard.ShardHostInstance
 
 	Cancel() error
+	CancellableIDs() []uint32
 
 	Reset() error
 	Sync() int64
