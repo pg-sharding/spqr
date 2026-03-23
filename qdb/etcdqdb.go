@@ -1171,7 +1171,7 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relation *rfqn.Relat
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "replicated relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relation)
 	}
 
 	var refRel *ReferenceRelation
