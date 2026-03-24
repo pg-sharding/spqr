@@ -147,7 +147,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if config.RouterConfig().WithCoordinator {
+		if config.RouterConfig().WithCoordinator || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {

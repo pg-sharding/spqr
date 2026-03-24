@@ -3,10 +3,14 @@ package qdb
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 // Table declaration
@@ -26,18 +30,25 @@ const (
 	pgStateRejected   = "rejected"
 )
 
+type ShardConn struct {
+	Id  string               `json:"id"`
+	Cfg *config.ShardConnect `json:"cfg"`
+}
+
 type PgQDB struct {
 	mu sync.Mutex
 
-	Shards []*Shard `json:"shards"`
-	Txs    map[string]*pgx.Tx
+	Shards []*ShardConn       `json:"shards"`
+	Txs    map[string]*pgx.Tx `json:"-"`
 	pooler map[string]*pgxpool.Pool
 }
 
-func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *Shard) (*pgxpool.Conn, error) {
-	for _, dsn := range shard.RawHosts {
+func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *ShardConn) (*pgxpool.Conn, error) {
+	errs := make([]string, 0)
+	for _, dsn := range shard.Cfg.GetConnStrings() {
 		conn, err := q.getHostConn(ctx, dsn)
 		if err != nil {
+			errs = append(errs, fmt.Sprintf("\"%s\": %s", dsn, err))
 			continue
 		}
 		var isMaster bool
@@ -49,7 +60,7 @@ func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *Shard) (*pgxpool.
 			return conn, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to find master")
+	return nil, fmt.Errorf("unable to find master: %s", strings.Join(errs, ", "))
 }
 
 func (q *PgQDB) getHostConn(ctx context.Context, dsn string) (*pgxpool.Conn, error) {
@@ -74,6 +85,7 @@ func (q *PgQDB) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
 	if len(q.Shards) == 0 {
 		return nil, fmt.Errorf("could not lock transaction on shard: no shards found")
 	}
+
 	conn, err := q.getShardMasterConn(context.Background(), q.Shards[0])
 	if err != nil {
 		return nil, err
@@ -215,9 +227,27 @@ func (q *PgQDB) ListTXNames() ([]string, error) {
 	return res, nil
 }
 
-func NewPgQDB(shards []*Shard) *PgQDB {
+func NewPgQDB(shardsMap *config.DatatransferConnections) *PgQDB {
+	shardsArr := make([]*ShardConn, 0, len(shardsMap.ShardsData))
+
+	for id, shardConn := range shardsMap.ShardsData {
+		shardsArr = append(shardsArr, &ShardConn{
+			Id:  id,
+			Cfg: shardConn,
+		})
+	}
+
+	slices.SortFunc(shardsArr, func(l, r *ShardConn) int { return strings.Compare(l.Id, r.Id) })
+
 	return &PgQDB{
-		Shards: shards,
+		Shards: shardsArr,
+		pooler: make(map[string]*pgxpool.Pool),
+	}
+}
+
+func NewPgQDBFromShardArray(shardsArr []*ShardConn) *PgQDB {
+	return &PgQDB{
+		Shards: shardsArr,
 		pooler: make(map[string]*pgxpool.Pool),
 	}
 }

@@ -1,11 +1,10 @@
 package qdb
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -23,9 +22,13 @@ func NewMemPgQDB(backupPath string) (*MemPgQDB, error) {
 	if err != nil {
 		return nil, err
 	}
+	shardsCfg, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return nil, err
+	}
 	return &MemPgQDB{
 		MemQDB: memQDB,
-		pgDb:   NewPgQDB([]*Shard{}),
+		pgDb:   NewPgQDB(shardsCfg),
 	}, nil
 }
 
@@ -101,27 +104,4 @@ func (q *MemPgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 
 func (q *MemPgQDB) ListTXNames() ([]string, error) {
 	return q.pgDb.ListTXNames()
-}
-
-// TODO : unit tests
-func (q *MemPgQDB) AddShard(_ context.Context, shard *Shard) error {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	if _, ok := q.Shards[shard.ID]; ok {
-		return fmt.Errorf("shard with id %s already exists", shard.ID)
-	}
-
-	tmp := q.pgDb.Shards
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard), NewCustomCommand(func() error {
-		q.pgDb.Shards = append(q.pgDb.Shards, shard)
-		return nil
-	}, func() error {
-		q.pgDb.Shards = tmp
-		return nil
-	}))
-}
-
-func (q *MemPgQDB) DropShard(_ context.Context, id string) error {
-	return fmt.Errorf("method DropShard ubsupported in MemPgQDB")
 }
