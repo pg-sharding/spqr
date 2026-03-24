@@ -1952,8 +1952,12 @@ func (q *MemQDB) TXStatus(gid string) (TwoPhaseTxState, error) {
 	}
 }
 
-func (q *MemQDB) GetTxMetaStorage() []string {
-	return []string{"local"}
+func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {
+	return fmt.Errorf("setting two-phase transaction metadata storage is forbidden in MemQDB")
+}
+
+func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
+	return []string{"local"}, nil
 }
 
 // ==============================================================================

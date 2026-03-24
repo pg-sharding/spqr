@@ -173,6 +173,11 @@ const (
 	TwoPhaseP2Rejected TwoPhaseTxState = "DoneRejected"
 )
 
+type TwoPhaseTxMetaKeeper interface {
+	SetTxMetaStorage(context.Context, []string) error
+	GetTxMetaStorage(context.Context) ([]string, error)
+}
+
 // Distributed (2pc) commit state keeper.
 // Could be ether local storage or ETCD
 type DCStateKeeper interface {
@@ -186,13 +191,12 @@ type DCStateKeeper interface {
 
 	TXStatus(gid string) (TwoPhaseTxState, error)
 	TXCohortShards(gid string) ([]string, error)
-
-	GetTxMetaStorage() []string
 }
 
 type XDCStateKeeper interface {
 	TopologyKeeper
 	DCStateKeeper
+	TwoPhaseTxMetaKeeper
 }
 
 // XQDB means extended QDB
@@ -207,6 +211,7 @@ type XQDB interface {
 	TransferXactKeeper
 	TXManager
 	TaskStateKeeper
+	TwoPhaseTxMetaKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }

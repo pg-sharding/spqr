@@ -1,7 +1,9 @@
 package qdb
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -106,6 +108,10 @@ func (q *MemPgQDB) ListTXNames() ([]string, error) {
 	return q.pgDb.ListTXNames()
 }
 
-func (q *MemPgQDB) GetTxMetaStorage() []string {
-	return q.pgDb.GetTxMetaStorage()
+func (q *MemPgQDB) SetTxMetaStorage(context.Context, []string) error {
+	return fmt.Errorf("setting two-phase transaction metadata storage is forbidden in MemQDB")
+}
+
+func (q *MemPgQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
+	return q.pgDb.GetTxMetaStorage(), nil
 }
