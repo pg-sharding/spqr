@@ -834,7 +834,11 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 
 		return tts, nil
 	case *spqrparser.AlterRelationDistributionKey:
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+		newKey := distributions.DistributionKeyFromSQL(stmt.DistributionKey)
+		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
+			return nil, err
+		}
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
 			return nil, err
 		}
 
@@ -847,6 +851,43 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 
 				{
 					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+				},
+			},
+		}
+
+		return tts, nil
+	case *spqrparser.RenameDistributionColumn:
+		ds, err := mngr.GetDistribution(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+		rel := ds.GetRelation(relationName)
+		if rel == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
+		}
+		newKey, err := rel.RenameKeyColumn(stmt.OldName, stmt.NewName)
+		if err != nil {
+			return nil, err
+		}
+		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
+			return nil, err
+		}
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("rename distribution column"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
+				},
+				{
+					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+				},
+				{
+					fmt.Appendf(nil, "renamed column  -> %s to %s", stmt.OldName, stmt.NewName),
 				},
 			},
 		}
