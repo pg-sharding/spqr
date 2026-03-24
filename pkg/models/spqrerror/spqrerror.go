@@ -35,6 +35,8 @@ const (
 	PG_ERRCODE_PROTOCOL_VIOLATION         = "08P01"
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
 	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
+
+	PG_ERRCODE_UNDEFINED_TABLE = "42P01"
 )
 
 var ExistingErrorCodeMap = map[string]string{

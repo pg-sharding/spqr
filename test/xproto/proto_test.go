@@ -6408,3 +6408,212 @@ func TestClose(t *testing.T) {
 		}
 	}
 }
+
+func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	for gr, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_1",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+
+					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_2",
+					Query: "SELECT nonexistent_column FROM nonexistent_table",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_3",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_3",
+					DestinationPortal: "portal_3",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "wrong_portal",
+				},
+				&pgproto3.Execute{
+					Portal: "portal_3",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_PORTAl_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_4",
+					Query: "SELECT 2",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_4",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent_2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_4",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("2")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("2")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				retMsgType.File = ""
+				retMsgType.Line = 0
+				retMsgType.SeverityUnlocalized = ""
+				retMsgType.Routine = ""
+				retMsgType.Detail = ""
+				retMsgType.Message = ""
+				retMsgType.Position = 0
+
+				switch me := msg.(type) {
+				case *pgproto3.ErrorResponse:
+					if me.Code == "" {
+						retMsgType.Code = ""
+					}
+				}
+
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter %d", gr, ind))
+		}
+	}
+}

@@ -180,6 +180,10 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
+	if serv == nil {
+		return nil, nil, server.ErrMultiShardSyncBroken
+	}
+
 	shards := serv.Datashards()
 	if len(shards) == 0 {
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
@@ -827,6 +831,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 					p := rst.bindQueryPlan
 					if currentMsg.Name != "" {
+						if _, ok := rst.executeMp[currentMsg.Name]; !ok {
+							return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, fmt.Sprintf("portal \"%s\" does not exists", currentMsg.Name))
+						}
 						p = rst.bindQueryPlanMP[currentMsg.Name]
 					}
 
