@@ -26,7 +26,7 @@ import (
 const (
 	pgStatePlanned    = "planned"
 	pgStateCommitting = "committing"
-	pgStateCommitted  = "comitted"
+	pgStateCommitted  = "committed"
 	pgStateRejected   = "rejected"
 )
 
@@ -94,7 +94,7 @@ func (q *PgQDB) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = tx.Exec(ctx, "SELECT pg_advisory_lock(id) FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	_, err = tx.Exec(ctx, "SELECT id FROM spqr_metadata.spqr_tx_status WHERE id = $1 FOR UPDATE", txid)
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +242,7 @@ func NewPgQDB(shardsMap *config.DatatransferConnections) *PgQDB {
 	return &PgQDB{
 		Shards: shardsArr,
 		pooler: make(map[string]*pgxpool.Pool),
+		Txs:    map[string]*pgx.Tx{},
 	}
 }
 
@@ -249,6 +250,7 @@ func NewPgQDBFromShardArray(shardsArr []*ShardConn) *PgQDB {
 	return &PgQDB{
 		Shards: shardsArr,
 		pooler: make(map[string]*pgxpool.Pool),
+		Txs:    map[string]*pgx.Tx{},
 	}
 }
 
