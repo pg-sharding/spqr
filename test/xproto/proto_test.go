@@ -6474,7 +6474,6 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Position: 32,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6588,6 +6587,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				retMsgType.Detail = ""
 				retMsgType.Message = ""
 				retMsgType.Code = ""
+				retMsgType.Position = 0
 			case *pgproto3.RowDescription:
 				for i := range retMsgType.Fields {
 					retMsgType.Fields[i].TableOID = 0
