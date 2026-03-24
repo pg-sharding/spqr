@@ -227,6 +227,14 @@ func (q *PgQDB) ListTXNames() ([]string, error) {
 	return res, nil
 }
 
+func (q *PgQDB) GetTxMetaStorage() []string {
+	res := make([]string, len(q.Shards))
+	for i, sh := range q.Shards {
+		res[i] = sh.Id
+	}
+	return res
+}
+
 func NewPgQDB(shardsMap *config.DatatransferConnections) *PgQDB {
 	shardsArr := make([]*ShardConn, 0, len(shardsMap.ShardsData))
 
@@ -246,6 +254,7 @@ func NewPgQDB(shardsMap *config.DatatransferConnections) *PgQDB {
 	}
 }
 
+// TODO: do we need this?
 func NewPgQDBFromShardArray(shardsArr []*ShardConn) *PgQDB {
 	return &PgQDB{
 		Shards: shardsArr,

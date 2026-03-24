@@ -105,3 +105,7 @@ func (q *MemPgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 func (q *MemPgQDB) ListTXNames() ([]string, error) {
 	return q.pgDb.ListTXNames()
 }
+
+func (q *MemPgQDB) GetTxMetaStorage() []string {
+	return q.pgDb.GetTxMetaStorage()
+}

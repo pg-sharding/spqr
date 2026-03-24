@@ -1952,6 +1952,10 @@ func (q *MemQDB) TXStatus(gid string) (TwoPhaseTxState, error) {
 	}
 }
 
+func (q *MemQDB) GetTxMetaStorage() []string {
+	return []string{"local"}
+}
+
 // ==============================================================================
 //                               TASK GROUP STATE
 // ==============================================================================

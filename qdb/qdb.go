@@ -186,6 +186,8 @@ type DCStateKeeper interface {
 
 	TXStatus(gid string) (TwoPhaseTxState, error)
 	TXCohortShards(gid string) ([]string, error)
+
+	GetTxMetaStorage() []string
 }
 
 type XDCStateKeeper interface {
