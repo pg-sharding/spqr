@@ -10,11 +10,10 @@ Feature: MemQDB with PG dc state keeper test
     Given cluster is up and running
     And host "coordinator2" is stopped
     And host "coordinator2" is started
+    And I wait for host "coordinator" to finish startup
 
     When I run SQL on host "coordinator"
     """
-    CREATE SHARD sh1 WITH HOSTS "spqr_shard_1:6432","spqr_shard_1_replica:6432";
-    CREATE SHARD sh2 WITH HOSTS "spqr_shard_2:6432","spqr_shard_2_replica:6432";
     REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     """
     Then command return code should be "0"
