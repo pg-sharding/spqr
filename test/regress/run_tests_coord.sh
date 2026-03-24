@@ -67,14 +67,17 @@ run_tests "kill_cluster" "regress_coordinator" "7002"
 sleep 10
 run_tests "coordinator" "regress_coordinator" "7002"
 
+echo "init cluster"
+run_tests "init_cluster" "regress_coordinator" "7002"
+sleep 10
+echo "go test!"
 # Compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
-
 save_diffs /regress/tests/common/
 
-#TODO: fix bugs, remove commented 'run_tests'
-#insert_greeting "common"
-#run_tests "common" "regress_router" "7432"
+insert_greeting "common"
+run_tests "common" "regress_router" "7432"
+save_diffs /regress/tests/common/
 
 # test if diffs are empty
 cat $ERR_OUTPUT_DIR/regression.diffs > /regress/tests/combined.diffs 2>&-
