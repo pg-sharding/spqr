@@ -1,15 +1,7 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"os"
-	"strings"
 	"time"
-
-	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v2"
 )
 
 var cfgCoordinator Coordinator
@@ -50,6 +42,20 @@ type Coordinator struct {
 	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 }
 
+func (c *Coordinator) ApplyDefaults() {
+	c.DataMoveBoundBatchSize = 10_000
+	c.DataMoveQueryLogLevel = "debug"
+	c.DataMoveAwaitPIDException = "true"
+}
+
+func (c *Coordinator) PostProcess() error {
+	if c.QdbAddr != "" && c.QdbAddrs == nil {
+		c.QdbAddrs = []string{c.QdbAddr}
+	}
+
+	return nil
+}
+
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
 //
 // Parameters:
@@ -59,59 +65,14 @@ type Coordinator struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
-	cCfg := Coordinator{
-		DataMoveBoundBatchSize:    10_000,
-		DataMoveQueryLogLevel:     "debug",
-		DataMoveAwaitPIDException: "true",
-	}
-	file, err := os.Open(cfgPath)
-	if err != nil {
-		return "", err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("failed to close config file: %v", err)
-		}
-	}(file)
-
-	if err := initCoordinatorConfig(file, cfgPath, &cCfg); err != nil {
-		return "", err
-	}
-
-	if cCfg.QdbAddr != "" && cCfg.QdbAddrs == nil {
-		cCfg.QdbAddrs = []string{cCfg.QdbAddr}
-	}
-
-	configBytes, err := json.MarshalIndent(&cCfg, "", "  ")
+	c := &Coordinator{}
+	configStr, err := LoadConfig(cfgPath, c)
 	if err != nil {
 		return "", err
 	}
 
-	cfgCoordinator = cCfg
-	return string(configBytes), nil
-}
-
-// initCoordinatorConfig initializes the coordinator configuration based on the file content and file format.
-//
-// Parameters:
-//   - file (*os.File): the file containing the configuration data.
-//   - filepath (string): the path of the configuration file.
-//
-// Returns:
-//   - error: an error if any occurred during the initialization process.
-func initCoordinatorConfig(file *os.File, filepath string, cfg *Coordinator) error {
-	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfg)
-		return err
-	}
-	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfg)
-	}
-	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfg)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
+	cfgCoordinator = *c
+	return configStr, nil
 }
 
 // CoordinatorConfig returns a pointer to the Coordinator configuration.

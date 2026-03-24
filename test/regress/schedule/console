@@ -3,6 +3,7 @@ test: show_shards
 test: show_routers
 test: show_key_ranges
 test: show_distributions
+test: show_file_settings
 test: show_version
 test: show_relations
 test: show_time_quantiles

@@ -1,16 +1,5 @@
 package config
 
-import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"os"
-	"strings"
-
-	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v2"
-)
-
 const defaultBalancerTimeout = 60
 
 type Balancer struct {
@@ -34,6 +23,22 @@ type Balancer struct {
 	TimeoutSec int `json:"timeout" yaml:"timeout" toml:"timeout"`
 }
 
+func (b *Balancer) ApplyDefaults() {
+
+}
+
+func (b *Balancer) PostProcess() error {
+	if b.TimeoutSec == 0 {
+		b.TimeoutSec = defaultBalancerTimeout
+	}
+
+	if b.MaxFitCoefficient == 0 {
+		b.MaxFitCoefficient = 0.8
+	}
+
+	return nil
+}
+
 var cfgBalancer Balancer
 
 // LoadBalancerCfg loads the balancer configuration from the specified file path.
@@ -45,57 +50,14 @@ var cfgBalancer Balancer
 //   - string: JSON-formatted config
 //   - error: an error if any occurred during the loading process.
 func LoadBalancerCfg(cfgPath string) (string, error) {
-	file, err := os.Open(cfgPath)
-	if err != nil {
-		return "", err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("failed to close config file: %v", err)
-		}
-	}(file)
-
-	if err := initBalancerConfig(file, cfgPath); err != nil {
-		return "", err
-	}
-
-	if cfgBalancer.TimeoutSec == 0 {
-		cfgBalancer.TimeoutSec = defaultBalancerTimeout
-	}
-
-	if cfgBalancer.MaxFitCoefficient == 0 {
-		cfgBalancer.MaxFitCoefficient = 0.8
-	}
-
-	configBytes, err := json.MarshalIndent(cfgBalancer, "", "  ")
+	b := &Balancer{}
+	configStr, err := LoadConfig(cfgPath, b)
 	if err != nil {
 		return "", err
 	}
 
-	return string(configBytes), nil
-}
-
-// initBalancerConfig initializes the balancer configuration based on the file content and file format.
-//
-// Parameters:
-//   - file (*os.File): the file containing the configuration data.
-//   - filepath (string): the path of the configuration file.
-//
-// Returns:
-//   - error: an error if any occurred during the initialization process.
-func initBalancerConfig(file *os.File, filepath string) error {
-	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgBalancer)
-		return err
-	}
-	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgBalancer)
-	}
-	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfgBalancer)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
+	cfgBalancer = *b
+	return configStr, nil
 }
 
 // BalancerConfig returns a pointer to the Balancer configuration.

@@ -1,20 +1,17 @@
 package config
 
-import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"os"
-	"strings"
-
-	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v2"
-)
-
 var cfgRoles Roles
 
 type Roles struct {
 	TableGroups []TableGroup `json:"table_groups" toml:"table_groups" yaml:"table_groups"`
+}
+
+func (r *Roles) ApplyDefaults() {
+
+}
+
+func (r *Roles) PostProcess() error {
+	return nil
 }
 
 type TableGroup struct {
@@ -35,42 +32,14 @@ type TableGroup struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadRolesCfg(cfgPath string) (string, error) {
-	file, err := os.Open(cfgPath)
-	if err != nil {
-		return "", err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("failed to close config file: %v", err)
-		}
-	}(file)
-
-	if err := initRolesConfig(file, cfgPath); err != nil {
-		return "", err
-	}
-
-	configBytes, err := json.MarshalIndent(&cfgRoles, "", "  ")
+	r := &Roles{}
+	configStr, err := LoadConfig(cfgPath, r)
 	if err != nil {
 		return "", err
 	}
 
-	return string(configBytes), nil
-}
-
-// TODO use intiConfig
-func initRolesConfig(file *os.File, filepath string) error {
-	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgRoles)
-		return err
-	}
-	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgRoles)
-	}
-	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfgRoles)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
+	cfgRoles = *r
+	return configStr, nil
 }
 
 // RolesConfig returns a pointer to the ACLs configuration.

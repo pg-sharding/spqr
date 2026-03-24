@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -9,11 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/router/statistics"
-	"gopkg.in/yaml.v2"
 )
 
 type PoolMode string
@@ -128,6 +125,39 @@ type Router struct {
 	StoreTxDataPostgresql bool `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
 }
 
+func (r *Router) ApplyDefaults() {
+	r.LogMinDurationStatement = -1
+}
+
+func (r *Router) PostProcess() error {
+	if err := validateRouterConfig(r); err != nil {
+		cfgRouter = *r
+		return err
+	}
+
+	if len(r.TimeQuantilesStr) > 0 {
+		if err := statistics.InitStatisticsStr(r.TimeQuantilesStr); err != nil {
+			return err
+		}
+	} else {
+		statistics.InitStatistics(r.TimeQuantiles)
+	}
+
+	rps.SetEnableRPSAggregation(r.Qr.RouterRpsAggregation)
+
+	/* init default_target_session_attrs as read-write if nothing else specified */
+	if r.Qr.DefaultTSA == "" {
+		r.Qr.DefaultTSA = TargetSessionAttrsSmartRW
+	}
+
+	/* init default notice message format if not specified */
+	if r.NoticeMessageFormat == "" {
+		r.NoticeMessageFormat = "{shard}@{host}"
+	}
+
+	return nil
+}
+
 type QRouter struct {
 	DefaultRouteBehaviour        DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
 	DefaultTSA                   string                `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
@@ -237,86 +267,15 @@ func ValueOrDefaultDuration(value time.Duration, def time.Duration) time.Duratio
 // Returns:
 //   - error: An error if any occurred during the loading process.
 func LoadRouterCfg(cfgPath string) (string, error) {
-	rcfg := generateDefaultConfig()
-	file, err := os.Open(cfgPath)
+	r := &Router{}
+	configStr, err := LoadConfig(cfgPath, r)
 	if err != nil {
-		cfgRouter = rcfg
-		return "", err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("failed to close config file: %v", err)
-		}
-	}(file)
-
-	if err := initRouterConfig(file, &rcfg); err != nil {
-		cfgRouter = rcfg
-		return "", err
-	}
-
-	if err := validateRouterConfig(&rcfg); err != nil {
-		cfgRouter = rcfg
-		return "", err
-	}
-
-	if len(rcfg.TimeQuantilesStr) > 0 {
-		if err := statistics.InitStatisticsStr(rcfg.TimeQuantilesStr); err != nil {
-			return "", err
-		}
-	} else {
-		statistics.InitStatistics(rcfg.TimeQuantiles)
-	}
-
-	rps.SetEnableRPSAggregation(rcfg.Qr.RouterRpsAggregation)
-
-	/* init default_target_session_attrs as read-write if nothing else specified */
-	if rcfg.Qr.DefaultTSA == "" {
-		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
-	}
-
-	/* init default notice message format if not specified */
-	if rcfg.NoticeMessageFormat == "" {
-		rcfg.NoticeMessageFormat = "{shard}@{host}"
-	}
-
-	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
-	if err != nil {
-		cfgRouter = rcfg
 		return "", err
 	}
 
 	// log.Println("Running config:", string(configBytes))
-	cfgRouter = rcfg
-	return string(configBytes), nil
-}
-
-func generateDefaultConfig() Router {
-	return Router{
-		LogMinDurationStatement: -1,
-	}
-}
-
-// initRouterConfig initializes the router configuration from a file.
-//
-// Parameters:
-// - file: *os.File - the file to read the configuration from.
-// - cfgRouter: *Router - a pointer to the router configuration struct.
-//
-// Returns:
-// - error: an error if the configuration file format is unknown or if there was an error decoding the file.
-func initRouterConfig(file *os.File, cfgRouter *Router) error {
-	if strings.HasSuffix(file.Name(), ".toml") {
-		_, err := toml.NewDecoder(file).Decode(cfgRouter)
-		return err
-	}
-	if strings.HasSuffix(file.Name(), ".yaml") {
-		return yaml.NewDecoder(file).Decode(cfgRouter)
-	}
-	if strings.HasSuffix(file.Name(), ".json") {
-		return json.NewDecoder(file).Decode(cfgRouter)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
+	cfgRouter = *r
+	return configStr, nil
 }
 
 // validateRouterConfig checks the validity of the router configuration.
