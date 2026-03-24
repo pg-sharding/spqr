@@ -6474,6 +6474,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Position: 32,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
