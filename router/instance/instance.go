@@ -130,23 +130,18 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	// request router
 	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
 
-	type poolInvalidatable interface {
-		SetPoolInvalidator(func(string))
-	}
-	if pi, ok := lc.(poolInvalidatable); ok {
-		pi.SetPoolInvalidator(func(shardID string) {
-			if err := rr.ForEach(func(sh shard.ShardHostCtl) error {
-				if sh.ShardKeyName() == shardID {
-					sh.MarkStale()
-				}
-				return nil
-			}); err != nil {
-				spqrlog.Zero.Error().Err(err).
-					Str("shard", shardID).
-					Msg("pool invalidation: error iterating connections")
+	lc.(*coord.LocalInstanceMetadataMgr).SetPoolInvalidator(func(shardID string) {
+		if err := rr.ForEach(func(sh shard.ShardHostCtl) error {
+			if sh.ShardKeyName() == shardID {
+				sh.MarkStale()
 			}
-		})
-	}
+			return nil
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).
+				Str("shard", shardID).
+				Msg("pool invalidation: error iterating connections")
+		}
+	})
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)

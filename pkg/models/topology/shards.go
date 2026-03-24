@@ -2,6 +2,7 @@ package topology
 
 import (
 	"context"
+	"reflect"
 	"slices"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -144,23 +145,13 @@ func DataShardToDB(shard *DataShard) *qdb.Shard {
 	}
 }
 
-// tlsConfigEqual reports whether two TLS configs are semantically equal.
-func tlsConfigEqual(a, b *config.TLSConfig) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.SslMode == b.SslMode &&
-		a.CertFile == b.CertFile &&
-		a.KeyFile == b.KeyFile &&
-		a.RootCertFile == b.RootCertFile
-}
-
 // ShardConfigEqual reports whether two DataShards have identical configuration
 // (hosts and TLS). This is used by SyncRouterMetadata to detect shards
 // that exist on both the coordinator and the router but have drifted.
+//
+// Note: we compare Hosts() (parsed addresses) instead of RawHosts so that
+// availability-zone suffixes in the raw format don't cause spurious drift.
+// This prevents using reflect.DeepEqual on the full DataShard struct.
 func ShardConfigEqual(a, b *DataShard) bool {
 	if a == nil && b == nil {
 		return true
@@ -177,23 +168,7 @@ func ShardConfigEqual(a, b *DataShard) bool {
 	if a.Cfg == nil || b.Cfg == nil {
 		return false
 	}
-	if !slices.Equal(a.Cfg.Hosts(), b.Cfg.Hosts()) {
-		return false
-	}
-	return tlsConfigEqual(a.Cfg.TLS, b.Cfg.TLS)
+	return slices.Equal(a.Cfg.Hosts(), b.Cfg.Hosts()) &&
+		reflect.DeepEqual(a.Cfg.TLS, b.Cfg.TLS)
 }
 
-// validSslModes is the set of SSL modes recognised by SPQR.
-var validSslModes = map[string]bool{
-	"disable":     true,
-	"allow":       true,
-	"prefer":      true,
-	"require":     true,
-	"verify-ca":   true,
-	"verify-full": true,
-}
-
-// ValidSslMode reports whether mode is a recognised SSL mode.
-func ValidSslMode(mode string) bool {
-	return validSslModes[mode]
-}

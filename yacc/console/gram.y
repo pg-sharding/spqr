@@ -26,6 +26,11 @@ func randomHex(n int) (string, error) {
 	}
 	return hex.EncodeToString(bytes), nil
 }
+
+var validSslModes = map[string]bool{
+	"disable": true, "allow": true, "prefer": true,
+	"require": true, "verify-ca": true, "verify-full": true,
+}
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -832,6 +837,10 @@ alter_stmt:
 alter_shard_options:
 	alter_shard_options SSLMODE any_val
 	{
+		if !validSslModes[$3] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
+			return 1
+		}
 		$$ = $1
 		$$.SslMode = $3
 	}
@@ -862,6 +871,10 @@ alter_shard_options:
 	|
 	SSLMODE any_val
 	{
+		if !validSslModes[$2] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $2))
+			return 1
+		}
 		$$ = &AlterShard{SslMode: $2}
 	}
 	|
@@ -1419,6 +1432,10 @@ shard_define_stmt:
 opt_shard_tls:
 	opt_shard_tls SSLMODE any_val
 	{
+		if !validSslModes[$3] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
+			return 1
+		}
 		$$ = $1
 		$$.SslMode = $3
 	}

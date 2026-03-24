@@ -235,13 +235,13 @@ func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topolog
 		Str("node", ds.ID).
 		Msg("updating datashard node in local coordinator")
 
+	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+		return err
+	}
 	if lc.updateShardsMapping {
 		lc.shardMappingMutex.Lock()
 		lc.shardMapping[ds.ID] = ds.Cfg
 		lc.shardMappingMutex.Unlock()
-	}
-	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
-		return err
 	}
 	if lc.poolInvalidator != nil {
 		lc.poolInvalidator(ds.ID)

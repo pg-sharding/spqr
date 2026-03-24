@@ -99,10 +99,11 @@ type Shard struct {
 	TLS      *TLSConfig `json:"tls,omitempty"`
 }
 
-func NewShard(ID string, hosts []string) *Shard {
+func NewShard(ID string, hosts []string, tls *TLSConfig) *Shard {
 	return &Shard{
 		ID:       ID,
 		RawHosts: hosts,
+		TLS:      tls,
 	}
 }
 

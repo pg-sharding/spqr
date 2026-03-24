@@ -582,9 +582,6 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return tts, nil
 	case *spqrparser.ShardDefinition:
-		if stmt.SslMode != "" && !topology.ValidSslMode(stmt.SslMode) {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", stmt.SslMode)
-		}
 		shardCfg := &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
@@ -673,9 +670,6 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
 	case *spqrparser.AlterShard:
-		if stmt.SslMode != "" && !topology.ValidSslMode(stmt.SslMode) {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", stmt.SslMode)
-		}
 		existing, err := mngr.GetShard(ctx, stmt.Id)
 		if err != nil {
 			return nil, err
