@@ -6453,6 +6453,8 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+
+					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6504,6 +6506,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.BindComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Code:     spqrerror.PG_PORTAl_DOES_NOT_EXISTS,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6549,6 +6552,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6586,8 +6590,15 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				retMsgType.Routine = ""
 				retMsgType.Detail = ""
 				retMsgType.Message = ""
-				retMsgType.Code = ""
 				retMsgType.Position = 0
+
+				switch me := msg.(type) {
+				case *pgproto3.ErrorResponse:
+					if me.Code == "" {
+						retMsgType.Code = ""
+					}
+				}
+
 			case *pgproto3.RowDescription:
 				for i := range retMsgType.Fields {
 					retMsgType.Fields[i].TableOID = 0
