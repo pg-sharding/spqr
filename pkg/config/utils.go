@@ -147,7 +147,6 @@ func CompareConfigs(cfg1 any, cfg2 any) ([]ConfigFieldState, error) {
 		v2 = v2.Elem()
 
 		t1 = v1.Type()
-		t2 = v2.Type()
 	}
 
 	if t1.Kind() != reflect.Struct {
