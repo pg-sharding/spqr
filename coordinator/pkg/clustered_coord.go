@@ -673,9 +673,20 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	relsSet := make(map[string]struct{})
 	for _, ds := range dss {
+		if ds.Id == distributions.REPLICATED {
+			continue
+		}
 		for _, rel := range ds.FQNRelations {
 			relations = append(relations, rel.Relation)
+			relsSet[rel.Relation.String()] = struct{}{}
+		}
+		for _, rel := range ds.Relations {
+			if _, ok := relsSet[rel.Relation.String()]; !ok {
+				relations = append(relations, rel.Relation)
+				relsSet[rel.Relation.String()] = struct{}{}
+			}
 		}
 	}
 
