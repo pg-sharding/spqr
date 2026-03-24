@@ -1647,7 +1647,7 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 
-	case spqrparser.FileSettings:
+	case spqrparser.FileSettingsStr:
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader(
 				"name",
