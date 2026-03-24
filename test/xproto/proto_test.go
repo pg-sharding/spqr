@@ -6453,7 +6453,6 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6550,7 +6549,6 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
