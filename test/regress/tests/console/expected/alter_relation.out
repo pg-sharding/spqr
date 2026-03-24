@@ -45,9 +45,9 @@ ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION COLUMN another TO re
 (3 rows)
 
 SHOW relations;
- relation_name | distribution_id |     distribution_key      | schema_name  
----------------+-----------------+---------------------------+--------------
- a             | ds1             | ("renamed_col", identity) | $search_path
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | public
 (1 row)
 
 ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION COLUMN nonexistent TO fail_col;
