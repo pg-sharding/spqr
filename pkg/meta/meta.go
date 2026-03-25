@@ -1403,7 +1403,7 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, fmt.Errorf("two state transactions status keeper")
 		}
 
-		txs, err := d.ListTXNames()
+		txs, err := d.ListTXNames(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -1414,11 +1414,11 @@ func ProcessShowExtended(ctx context.Context,
 
 		for _, gid := range txs {
 
-			st, err := d.TXStatus(gid)
+			st, err := d.TXStatus(ctx, gid)
 			if err != nil {
 				return nil, err
 			}
-			members, err := d.TXCohortShards(gid)
+			members, err := d.TXCohortShards(ctx, gid)
 			if err != nil {
 				return nil, err
 			}

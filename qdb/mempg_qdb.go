@@ -74,37 +74,37 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *MemPgQDB) AcquireTxOwnership(txid string) (bool, error) {
-	return q.stateKeeper.AcquireTxOwnership(txid)
+func (q *MemPgQDB) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
+	return q.stateKeeper.AcquireTxOwnership(ctx, txid)
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
-func (q *MemPgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
-	return q.stateKeeper.ChangeTxStatus(txid, state)
+func (q *MemPgQDB) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
+	return q.stateKeeper.ChangeTxStatus(ctx, txid, state)
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
-func (q *MemPgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
-	return q.stateKeeper.RecordTwoPhaseMembers(txid, shards)
+func (q *MemPgQDB) RecordTwoPhaseMembers(ctx context.Context, txid string, shards []string) error {
+	return q.stateKeeper.RecordTwoPhaseMembers(ctx, txid, shards)
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
-func (q *MemPgQDB) ReleaseTxOwnership(txid string) error {
-	return q.stateKeeper.ReleaseTxOwnership(txid)
+func (q *MemPgQDB) ReleaseTxOwnership(ctx context.Context, txid string) error {
+	return q.stateKeeper.ReleaseTxOwnership(ctx, txid)
 }
 
 // TXCohortShards implements [DCStateKeeper].
-func (q *MemPgQDB) TXCohortShards(txid string) ([]string, error) {
-	return q.stateKeeper.TXCohortShards(txid)
+func (q *MemPgQDB) TXCohortShards(ctx context.Context, txid string) ([]string, error) {
+	return q.stateKeeper.TXCohortShards(ctx, txid)
 }
 
 // TXStatus implements [DCStateKeeper].
-func (q *MemPgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
-	return q.stateKeeper.TXStatus(txid)
+func (q *MemPgQDB) TXStatus(ctx context.Context, txid string) (TwoPhaseTxState, error) {
+	return q.stateKeeper.TXStatus(ctx, txid)
 }
 
-func (q *MemPgQDB) ListTXNames() ([]string, error) {
-	return q.stateKeeper.ListTXNames()
+func (q *MemPgQDB) ListTXNames(ctx context.Context) ([]string, error) {
+	return q.stateKeeper.ListTXNames(ctx)
 }
 
 func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {

@@ -124,15 +124,22 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		* 3) another recovery routine raced with us and won the race.
 		*/
 
-		acq, err := d.d.AcquireTxOwnership(gid)
-		if err != nil {
-			return err
-		}
-		if acq {
-			/* Try to fix things  */
-			if err := d.Recover2PhaseCommitTX(gid); err != nil {
-				spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+		if err := func() error {
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			acq, err := d.d.AcquireTxOwnership(ctx, gid)
+			if err != nil {
+				return err
 			}
+			if acq {
+				/* Try to fix things  */
+				if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
+					spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+				}
+			}
+			return nil
+		}(); err != nil {
+			return err
 		}
 	}
 
@@ -233,18 +240,18 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 	return nil
 }
 
-func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
+func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) error {
 	/* Always be tidy */
-	defer func() { _ = d.d.ReleaseTxOwnership(gid) }()
+	defer func() { _ = d.d.ReleaseTxOwnership(ctx, gid) }()
 
-	status, err := d.d.TXStatus(gid)
+	status, err := d.d.TXStatus(ctx, gid)
 	if err != nil {
 		return err
 	}
 	switch status {
 	case qdb.TwoPhaseInitState:
 		/* TX owner did not made a decision to commit, rollback  */
-		shards, err := d.d.TXCohortShards(gid)
+		shards, err := d.d.TXCohortShards(ctx, gid)
 		if err != nil {
 			return err
 		}
@@ -252,16 +259,16 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
 			return err
 		}
 
-		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2Rejected)
+		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2Rejected)
 	case qdb.TwoPhaseP1:
-		shards, err := d.d.TXCohortShards(gid)
+		shards, err := d.d.TXCohortShards(ctx, gid)
 		if err != nil {
 			return err
 		}
 		if err := d.executeCommitShards(shards, gid); err != nil {
 			return err
 		}
-		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2)
+		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2)
 	case qdb.TwoPhaseP2Rejected, qdb.TwoPhaseP2:
 		return nil
 	default:

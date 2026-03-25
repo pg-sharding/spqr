@@ -30,7 +30,7 @@ const (
 )
 
 type PgDCStateKeeper struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	shards  *config.DatatransferConnections
 	txs     map[string]*pgx.Tx `json:"-"`
@@ -110,15 +110,13 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) AcquireTxOwnership(txid string) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	if _, ok := q.txs[txid]; ok {
 		return false, nil
 	}
-
-	ctx := context.Background()
 
 	_, err := q.getTx(ctx, txid)
 	if err != nil {
@@ -128,8 +126,7 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(txid string) (bool, error) {
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
-func (q *PgDCStateKeeper) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
-	ctx := context.TODO()
+func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return err
@@ -155,8 +152,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(txid string, state TwoPhaseTxState) err
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
-func (q *PgDCStateKeeper) RecordTwoPhaseMembers(txid string, shards []string) error {
-	ctx := context.TODO()
+func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string, shards []string) error {
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return err
@@ -169,7 +165,7 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(txid string, shards []string) er
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) ReleaseTxOwnership(txid string) error {
+func (q *PgDCStateKeeper) ReleaseTxOwnership(_ context.Context, txid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -183,8 +179,7 @@ func (q *PgDCStateKeeper) ReleaseTxOwnership(txid string) error {
 }
 
 // TXCohortShards implements [DCStateKeeper].
-func (q *PgDCStateKeeper) TXCohortShards(txid string) ([]string, error) {
-	ctx := context.TODO()
+func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]string, error) {
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return nil, err
@@ -198,8 +193,7 @@ func (q *PgDCStateKeeper) TXCohortShards(txid string) ([]string, error) {
 }
 
 // TXStatus implements [DCStateKeeper].
-func (q *PgDCStateKeeper) TXStatus(txid string) (TwoPhaseTxState, error) {
-	ctx := context.TODO()
+func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTxState, error) {
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return "", err
@@ -223,7 +217,7 @@ func (q *PgDCStateKeeper) TXStatus(txid string) (TwoPhaseTxState, error) {
 	}
 }
 
-func (q *PgDCStateKeeper) ListTXNames() ([]string, error) {
+func (q *PgDCStateKeeper) ListTXNames(_ context.Context) ([]string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	res := make([]string, 0, len(q.txs))
@@ -235,6 +229,8 @@ func (q *PgDCStateKeeper) ListTXNames() ([]string, error) {
 }
 
 func (q *PgDCStateKeeper) GetTxMetaStorage() []string {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	return q.storage
 }
 
@@ -251,6 +247,7 @@ func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
 
 func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {
 	return &PgDCStateKeeper{
+		mu:     sync.RWMutex{},
 		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
 		txs:    map[string]*pgx.Tx{},
