@@ -1,0 +1,1 @@
+SHOW two_phase_tx_metadata_storage;

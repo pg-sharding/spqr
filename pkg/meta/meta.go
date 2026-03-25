@@ -1467,12 +1467,8 @@ func ProcessShowExtended(ctx context.Context,
 			tts.WriteDataRow(gid, string(st), fmt.Sprintf("%+v", members))
 		}
 	case spqrparser.TwoPhaseTXStorageStr:
-		d := mngr.DCStateKeeper()
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("storage"),
-		}
-		if d == nil {
-			return tts, nil
 		}
 		storageList, err := mngr.GetTwoPhaseTxMetaStorage(ctx)
 		if err != nil {

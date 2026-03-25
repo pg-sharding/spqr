@@ -1,0 +1,5 @@
+SHOW version;
+ storage
+---------
+ local
+(1 row)
