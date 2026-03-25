@@ -230,13 +230,17 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
 		}, 0, nil
 	case InitialState:
+
 		m.copyBuf = nil
 		var saveRd *pgproto3.RowDescription = nil
 		var saveCC *pgproto3.CommandComplete = nil
+		var saveBC *pgproto3.BindComplete = nil
 		var saveRFQ *pgproto3.ReadyForQuery = nil
 		var saveCIn *pgproto3.CopyInResponse = nil
 		/* Step one: ensure all shard backend are started */
+	initLoop:
 		for i := range m.activeShards {
+
 			/* maybe query ass partially dispatched */
 			if m.activeShards[i].Sync() == 0 {
 				continue
@@ -265,7 +269,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					continue
 				case *pgproto3.BindComplete:
 					// that's also ok
-					continue
+					/* We should not expect any descibe or row description by default. */
+					m.states[i] = DatarowState
+					saveBC = retMsg
+					continue initLoop
 				case *pgproto3.CopyOutResponse:
 					return nil, 0, ErrMultiShardSyncBroken
 				case *pgproto3.CopyInResponse:
@@ -324,6 +331,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		if saveRFQ != nil {
 			m.multistate = InitialState
 			return saveRFQ, 0, nil
+		}
+		if saveBC != nil {
+			m.multistate = RunningState
+			return saveBC, 0, nil
 		}
 		if m.multistate == CopyInState {
 			m.multistate = RunningState
