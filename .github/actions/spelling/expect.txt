@@ -303,6 +303,8 @@ lval
 maxuint
 mcol
 mdblocales
+mempg
+mempgqdb
 memqdb
 metadb
 MGhyjwicp
@@ -400,6 +402,7 @@ pgsync
 PGUSER
 pgx
 pgxconn
+pgxpool
 PIDs
 pitr
 pkgclient
@@ -600,6 +603,7 @@ tstmt
 tupleslot
 tupletableslot
 twopc
+twophasetxmeta
 TXACT
 txactive
 txbefore
