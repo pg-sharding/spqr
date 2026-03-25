@@ -10,8 +10,6 @@ router_mode: PROXY
 log_level: debug
 query_routing:
   forbid_direct_shard_queries: true
-store_tx_data_postgresql: true
-memqdb_backup_path: qdb.backup
 time_quantiles:
   - 0.8
 frontend_tls:
