@@ -162,28 +162,30 @@ type QDB interface {
 	AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error
 }
 
+type TwoPhaseTxState string
+
 /* XXX: note that this is data-plane two phase transaction state,
 * not control-plane transfer task state */
 const (
-	TwoPhaseInitState  = "TxInitState"
-	TwoPhaseP1         = "PrepareDone"
-	TwoPhaseP2         = "Done"
-	TwoPhaseP2Rejected = "DoneRejected"
+	TwoPhaseInitState  TwoPhaseTxState = "TxInitState"
+	TwoPhaseP1         TwoPhaseTxState = "PrepareDone"
+	TwoPhaseP2         TwoPhaseTxState = "Done"
+	TwoPhaseP2Rejected TwoPhaseTxState = "DoneRejected"
 )
 
 // Distributed (2pc) commit state keeper.
 // Could be ether local storage or ETCD
 type DCStateKeeper interface {
-	RecordTwoPhaseMembers(gid string, shards []string) error
-	ChangeTxStatus(gid string, state string) error
+	RecordTwoPhaseMembers(ctx context.Context, gid string, shards []string) error
+	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState) error
 
-	ListTXNames() ([]string, error)
+	ListTXNames(ctx context.Context) ([]string, error)
 
-	AcquireTxOwnership(gid string) bool
-	ReleaseTxOwnership(gid string)
+	AcquireTxOwnership(ctx context.Context, gid string) (bool, error)
+	ReleaseTxOwnership(ctx context.Context, gid string) error
 
-	TXStatus(gid string) string
-	TXCohortShards(gid string) []string
+	TXStatus(ctx context.Context, gid string) (TwoPhaseTxState, error)
+	TXCohortShards(ctx context.Context, gid string) ([]string, error)
 }
 
 type XDCStateKeeper interface {
@@ -205,6 +207,11 @@ type XQDB interface {
 	TaskStateKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
+}
+
+type StateKeeperQDB interface {
+	XQDB
+	DCStateKeeper
 }
 
 func NewXQDB(qdbType string) (XQDB, error) {
