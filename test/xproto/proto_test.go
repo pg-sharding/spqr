@@ -657,7 +657,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 1"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -813,7 +813,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -1911,8 +1911,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					// XXX: FIX	CommandTag: []byte("SELECT 2"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -1938,8 +1937,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					// XXX: FIX	CommandTag: []byte("SELECT 1"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 1"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -2937,9 +2935,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					/* XXX: fix that */
-					// CommandTag: []byte("SELECT 0"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 0"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -2965,9 +2961,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					/* XXX: fix that */
-					// CommandTag: []byte("SELECT 1"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 1"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
