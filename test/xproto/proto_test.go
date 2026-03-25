@@ -6662,6 +6662,18 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 				&pgproto3.Bind{
 					PreparedStatement: "P0",
 				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Execute{},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 			},
