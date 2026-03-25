@@ -30,3 +30,8 @@ func (l *TwoPhaseTxMetaServer) GetTwoPhaseTxMetaStorage(ctx context.Context, _ *
 	}
 	return &proto.TwoPhaseTxMetaStorageReply{Storage: storage}, nil
 }
+
+// SetTwoPhaseTxMetaStorage implements [proto.TwoPhaseTxMetaServiceServer].
+func (l *TwoPhaseTxMetaServer) SetTwoPhaseTxMetaStorage(ctx context.Context, req *proto.SetTwoPhaseTxMetaStorageRequest) (*emptypb.Empty, error) {
+	return nil, l.impl.SetTwoPhaseTxMetaStorage(ctx, req.Storage)
+}

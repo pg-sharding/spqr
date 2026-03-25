@@ -66,14 +66,61 @@ func (x *TwoPhaseTxMetaStorageReply) GetStorage() []string {
 	return nil
 }
 
+type SetTwoPhaseTxMetaStorageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Storage       []string               `protobuf:"bytes,1,rep,name=storage,proto3" json:"storage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetTwoPhaseTxMetaStorageRequest) Reset() {
+	*x = SetTwoPhaseTxMetaStorageRequest{}
+	mi := &file_protos_two_phase_tx_meta_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetTwoPhaseTxMetaStorageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetTwoPhaseTxMetaStorageRequest) ProtoMessage() {}
+
+func (x *SetTwoPhaseTxMetaStorageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_two_phase_tx_meta_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetTwoPhaseTxMetaStorageRequest.ProtoReflect.Descriptor instead.
+func (*SetTwoPhaseTxMetaStorageRequest) Descriptor() ([]byte, []int) {
+	return file_protos_two_phase_tx_meta_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SetTwoPhaseTxMetaStorageRequest) GetStorage() []string {
+	if x != nil {
+		return x.Storage
+	}
+	return nil
+}
+
 var File_protos_two_phase_tx_meta_proto protoreflect.FileDescriptor
 
 const file_protos_two_phase_tx_meta_proto_rawDesc = "" +
 	"\n" +
 	"\x1eprotos/two_phase_tx_meta.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
 	"\x1aTwoPhaseTxMetaStorageReply\x12\x18\n" +
-	"\astorage\x18\x01 \x03(\tR\astorage2m\n" +
-	"\x15TwoPhaseTxMetaService\x12T\n" +
+	"\astorage\x18\x01 \x03(\tR\astorage\";\n" +
+	"\x1fSetTwoPhaseTxMetaStorageRequest\x12\x18\n" +
+	"\astorage\x18\x01 \x03(\tR\astorage2\xc8\x01\n" +
+	"\x15TwoPhaseTxMetaService\x12Y\n" +
+	"\x18SetTwoPhaseTxMetaStorage\x12%.spqr.SetTwoPhaseTxMetaStorageRequest\x1a\x16.google.protobuf.Empty\x12T\n" +
 	"\x18GetTwoPhaseTxMetaStorage\x12\x16.google.protobuf.Empty\x1a .spqr.TwoPhaseTxMetaStorageReplyB\fZ\n" +
 	"spqr/protob\x06proto3"
 
@@ -89,16 +136,19 @@ func file_protos_two_phase_tx_meta_proto_rawDescGZIP() []byte {
 	return file_protos_two_phase_tx_meta_proto_rawDescData
 }
 
-var file_protos_two_phase_tx_meta_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_protos_two_phase_tx_meta_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_protos_two_phase_tx_meta_proto_goTypes = []any{
-	(*TwoPhaseTxMetaStorageReply)(nil), // 0: spqr.TwoPhaseTxMetaStorageReply
-	(*emptypb.Empty)(nil),              // 1: google.protobuf.Empty
+	(*TwoPhaseTxMetaStorageReply)(nil),      // 0: spqr.TwoPhaseTxMetaStorageReply
+	(*SetTwoPhaseTxMetaStorageRequest)(nil), // 1: spqr.SetTwoPhaseTxMetaStorageRequest
+	(*emptypb.Empty)(nil),                   // 2: google.protobuf.Empty
 }
 var file_protos_two_phase_tx_meta_proto_depIdxs = []int32{
-	1, // 0: spqr.TwoPhaseTxMetaService.GetTwoPhaseTxMetaStorage:input_type -> google.protobuf.Empty
-	0, // 1: spqr.TwoPhaseTxMetaService.GetTwoPhaseTxMetaStorage:output_type -> spqr.TwoPhaseTxMetaStorageReply
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	1, // 0: spqr.TwoPhaseTxMetaService.SetTwoPhaseTxMetaStorage:input_type -> spqr.SetTwoPhaseTxMetaStorageRequest
+	2, // 1: spqr.TwoPhaseTxMetaService.GetTwoPhaseTxMetaStorage:input_type -> google.protobuf.Empty
+	2, // 2: spqr.TwoPhaseTxMetaService.SetTwoPhaseTxMetaStorage:output_type -> google.protobuf.Empty
+	0, // 3: spqr.TwoPhaseTxMetaService.GetTwoPhaseTxMetaStorage:output_type -> spqr.TwoPhaseTxMetaStorageReply
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -115,7 +165,7 @@ func file_protos_two_phase_tx_meta_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_two_phase_tx_meta_proto_rawDesc), len(file_protos_two_phase_tx_meta_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

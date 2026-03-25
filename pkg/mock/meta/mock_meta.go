@@ -1053,6 +1053,20 @@ func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id)
 }
 
+// SetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockEntityMgr) SetTwoPhaseTxMetaStorage(arg0 context.Context, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTwoPhaseTxMetaStorage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTwoPhaseTxMetaStorage indicates an expected call of SetTwoPhaseTxMetaStorage.
+func (mr *MockEntityMgrMockRecorder) SetTwoPhaseTxMetaStorage(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockEntityMgr)(nil).SetTwoPhaseTxMetaStorage), arg0, arg1)
+}
+
 // ShareKeyRange mocks base method.
 func (m *MockEntityMgr) ShareKeyRange(id string) error {
 	m.ctrl.T.Helper()

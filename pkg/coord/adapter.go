@@ -1448,3 +1448,8 @@ func (a *Adapter) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error
 	}
 	return resp.Storage, nil
 }
+
+// GetTwoPhaseTxMetaStorage implements [meta.EntityMgr].
+func (a *Adapter) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []string) error {
+	panic("not implemented")
+}

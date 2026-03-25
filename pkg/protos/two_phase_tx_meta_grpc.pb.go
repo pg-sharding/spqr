@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	TwoPhaseTxMetaService_SetTwoPhaseTxMetaStorage_FullMethodName = "/spqr.TwoPhaseTxMetaService/SetTwoPhaseTxMetaStorage"
 	TwoPhaseTxMetaService_GetTwoPhaseTxMetaStorage_FullMethodName = "/spqr.TwoPhaseTxMetaService/GetTwoPhaseTxMetaStorage"
 )
 
@@ -27,6 +28,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TwoPhaseTxMetaServiceClient interface {
+	SetTwoPhaseTxMetaStorage(ctx context.Context, in *SetTwoPhaseTxMetaStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetTwoPhaseTxMetaStorage(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TwoPhaseTxMetaStorageReply, error)
 }
 
@@ -36,6 +38,16 @@ type twoPhaseTxMetaServiceClient struct {
 
 func NewTwoPhaseTxMetaServiceClient(cc grpc.ClientConnInterface) TwoPhaseTxMetaServiceClient {
 	return &twoPhaseTxMetaServiceClient{cc}
+}
+
+func (c *twoPhaseTxMetaServiceClient) SetTwoPhaseTxMetaStorage(ctx context.Context, in *SetTwoPhaseTxMetaStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, TwoPhaseTxMetaService_SetTwoPhaseTxMetaStorage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *twoPhaseTxMetaServiceClient) GetTwoPhaseTxMetaStorage(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TwoPhaseTxMetaStorageReply, error) {
@@ -52,6 +64,7 @@ func (c *twoPhaseTxMetaServiceClient) GetTwoPhaseTxMetaStorage(ctx context.Conte
 // All implementations must embed UnimplementedTwoPhaseTxMetaServiceServer
 // for forward compatibility.
 type TwoPhaseTxMetaServiceServer interface {
+	SetTwoPhaseTxMetaStorage(context.Context, *SetTwoPhaseTxMetaStorageRequest) (*emptypb.Empty, error)
 	GetTwoPhaseTxMetaStorage(context.Context, *emptypb.Empty) (*TwoPhaseTxMetaStorageReply, error)
 	mustEmbedUnimplementedTwoPhaseTxMetaServiceServer()
 }
@@ -63,6 +76,9 @@ type TwoPhaseTxMetaServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTwoPhaseTxMetaServiceServer struct{}
 
+func (UnimplementedTwoPhaseTxMetaServiceServer) SetTwoPhaseTxMetaStorage(context.Context, *SetTwoPhaseTxMetaStorageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetTwoPhaseTxMetaStorage not implemented")
+}
 func (UnimplementedTwoPhaseTxMetaServiceServer) GetTwoPhaseTxMetaStorage(context.Context, *emptypb.Empty) (*TwoPhaseTxMetaStorageReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTwoPhaseTxMetaStorage not implemented")
 }
@@ -85,6 +101,24 @@ func RegisterTwoPhaseTxMetaServiceServer(s grpc.ServiceRegistrar, srv TwoPhaseTx
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&TwoPhaseTxMetaService_ServiceDesc, srv)
+}
+
+func _TwoPhaseTxMetaService_SetTwoPhaseTxMetaStorage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTwoPhaseTxMetaStorageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TwoPhaseTxMetaServiceServer).SetTwoPhaseTxMetaStorage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TwoPhaseTxMetaService_SetTwoPhaseTxMetaStorage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TwoPhaseTxMetaServiceServer).SetTwoPhaseTxMetaStorage(ctx, req.(*SetTwoPhaseTxMetaStorageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _TwoPhaseTxMetaService_GetTwoPhaseTxMetaStorage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -112,6 +146,10 @@ var TwoPhaseTxMetaService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "spqr.TwoPhaseTxMetaService",
 	HandlerType: (*TwoPhaseTxMetaServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SetTwoPhaseTxMetaStorage",
+			Handler:    _TwoPhaseTxMetaService_SetTwoPhaseTxMetaStorage_Handler,
+		},
 		{
 			MethodName: "GetTwoPhaseTxMetaStorage",
 			Handler:    _TwoPhaseTxMetaService_GetTwoPhaseTxMetaStorage_Handler,

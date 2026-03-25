@@ -3,7 +3,6 @@ package qdb
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 
@@ -30,22 +29,18 @@ const (
 	pgStateRejected   = "rejected"
 )
 
-type ShardConn struct {
-	Id  string               `json:"id"`
-	Cfg *config.ShardConnect `json:"cfg"`
-}
-
 type PgQDB struct {
 	mu sync.Mutex
 
-	Shards []*ShardConn       `json:"shards"`
-	Txs    map[string]*pgx.Tx `json:"-"`
-	pooler map[string]*pgxpool.Pool
+	shards  *config.DatatransferConnections
+	Txs     map[string]*pgx.Tx `json:"-"`
+	storage []string
+	pooler  map[string]*pgxpool.Pool
 }
 
-func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *ShardConn) (*pgxpool.Conn, error) {
+func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
 	errs := make([]string, 0)
-	for _, dsn := range shard.Cfg.GetConnStrings() {
+	for _, dsn := range shard.GetConnStrings() {
 		conn, err := q.getHostConn(ctx, dsn)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("\"%s\": %s", dsn, err))
@@ -76,17 +71,29 @@ func (q *PgQDB) getHostConn(ctx context.Context, dsn string) (*pgxpool.Conn, err
 	return pool.Acquire(ctx)
 }
 
+func (q *PgQDB) getStorageShardConnect() (*config.ShardConnect, error) {
+	if len(q.storage) == 0 {
+		return nil, fmt.Errorf("could not lock transaction on shard: no shards found")
+	}
+	if cfg, ok := q.shards.ShardsData[q.storage[0]]; ok {
+		return cfg, nil
+	} else {
+		return nil, fmt.Errorf("shard \"%s\" not found in config", q.storage[0])
+	}
+}
+
 func (q *PgQDB) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if tx, ok := q.Txs[txid]; ok {
 		return tx, nil
 	}
-	if len(q.Shards) == 0 {
-		return nil, fmt.Errorf("could not lock transaction on shard: no shards found")
-	}
 
-	conn, err := q.getShardMasterConn(context.Background(), q.Shards[0])
+	shardCfg, err := q.getStorageShardConnect()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := q.getShardMasterConn(context.Background(), shardCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -228,36 +235,23 @@ func (q *PgQDB) ListTXNames() ([]string, error) {
 }
 
 func (q *PgQDB) GetTxMetaStorage() []string {
-	res := make([]string, len(q.Shards))
-	for i, sh := range q.Shards {
-		res[i] = sh.Id
-	}
-	return res
+	return q.storage
 }
 
-func NewPgQDB(shardsMap *config.DatatransferConnections) *PgQDB {
-	shardsArr := make([]*ShardConn, 0, len(shardsMap.ShardsData))
+func (q *PgQDB) SetTxMetaStorage(storage []string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	for id, shardConn := range shardsMap.ShardsData {
-		shardsArr = append(shardsArr, &ShardConn{
-			Id:  id,
-			Cfg: shardConn,
-		})
+	if q.storage != nil {
+		return fmt.Errorf("could not set two-phase tx meta storage twice")
 	}
-
-	slices.SortFunc(shardsArr, func(l, r *ShardConn) int { return strings.Compare(l.Id, r.Id) })
-
-	return &PgQDB{
-		Shards: shardsArr,
-		pooler: make(map[string]*pgxpool.Pool),
-		Txs:    map[string]*pgx.Tx{},
-	}
+	q.storage = storage
+	return nil
 }
 
-// TODO: do we need this?
-func NewPgQDBFromShardArray(shardsArr []*ShardConn) *PgQDB {
+func NewPgQDB(shards *config.DatatransferConnections) *PgQDB {
 	return &PgQDB{
-		Shards: shardsArr,
+		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
 		Txs:    map[string]*pgx.Tx{},
 	}

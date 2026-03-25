@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -796,6 +797,11 @@ func (l *LocalQrouterServer) GetTwoPhaseTxMetaStorage(ctx context.Context, _ *em
 		return nil, err
 	}
 	return &protos.TwoPhaseTxMetaStorageReply{Storage: storage}, nil
+}
+
+// SetTwoPhaseTxMetaStorage implements [proto.TwoPhaseTxMetaServiceServer].
+func (l *LocalQrouterServer) SetTwoPhaseTxMetaStorage(ctx context.Context, req *proto.SetTwoPhaseTxMetaStorageRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.SetTwoPhaseTxMetaStorage(ctx, req.Storage)
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
