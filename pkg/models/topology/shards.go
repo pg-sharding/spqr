@@ -171,4 +171,3 @@ func ShardConfigEqual(a, b *DataShard) bool {
 	return slices.Equal(a.Cfg.Hosts(), b.Cfg.Hosts()) &&
 		reflect.DeepEqual(a.Cfg.TLS, b.Cfg.TLS)
 }
-

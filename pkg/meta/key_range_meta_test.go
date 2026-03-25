@@ -96,7 +96,7 @@ func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	assert.NoError(t, meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -111,7 +111,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -126,7 +126,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -143,7 +143,7 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -160,7 +160,7 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -176,7 +176,7 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr2 := meta.NewTranEntityManager(mngr)
@@ -201,7 +201,7 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr2 := meta.NewTranEntityManager(mngr)

@@ -2264,15 +2264,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 					switch st.Code() {
 					case codes.Canceled:
 						if st.Message() == "grpc: the client connection is closing" {
-							// Connection broken — abort immediately as retryable.
 							return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s: %w", sh.ID, err))...))
 						}
 					case codes.Unimplemented:
-						spqrlog.Zero.Warn().
-							Str("shard", sh.ID).
-							Msg("router does not support UpdateShard; please upgrade the router")
-						shardErrs = append(shardErrs, fmt.Errorf("shard %s: router does not support UpdateShard RPC; please upgrade all routers", sh.ID))
-						continue
+						return fmt.Errorf("router does not support UpdateShard RPC; please upgrade all routers before changing shard configuration")
 					}
 				}
 				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard update failed; continuing to next shard")

@@ -33,12 +33,6 @@ type LocalInstanceMetadataMgr struct {
 	poolInvalidator func(shardID string)
 }
 
-// SetPoolInvalidator registers a callback that is invoked after a shard
-// config change to mark idle pooled connections for that shard as stale.
-func (lc *LocalInstanceMetadataMgr) SetPoolInvalidator(fn func(shardID string)) {
-	lc.poolInvalidator = fn
-}
-
 const DefaultRouterId = "r1"
 const DefaultLocalRouterState = "OPENED"
 
@@ -475,16 +469,19 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 // NewLocalInstanceMetadataMgr creates a new LocalCoordinator instance.
 //
 // Parameters:
-// - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//   - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//   - poolInvalidator: optional callback invoked after shard config updates to
+//     mark idle pooled connections for that shard as stale.
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard, updateShardsMapping bool) meta.EntityMgr {
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard, updateShardsMapping bool, poolInvalidator func(shardID string)) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
 		Coordinator:         NewCoordinator(db, d),
 		cache:               cache,
 		shardMapping:        shardMapping,
 		shardMappingMutex:   sync.Mutex{},
 		updateShardsMapping: updateShardsMapping,
+		poolInvalidator:     poolInvalidator,
 	}
 }
