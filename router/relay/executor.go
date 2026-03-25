@@ -1050,7 +1050,10 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return fmt.Errorf("unexpected row description in slice deploy")
 			}
 		case *pgproto3.ParameterStatus:
-			/* do not resent this to client */
+			err = s.Client().Send(msg)
+			if err != nil {
+				return err
+			}
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:

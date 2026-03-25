@@ -1275,6 +1275,11 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 					CommandTag: []byte("SET"),
 				},
 
+				&pgproto3.ParameterStatus{
+					Name:  "search_path",
+					Value: "lol",
+				},
+
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
 				},
@@ -1307,6 +1312,11 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ParameterStatus{
+					Name:  "search_path",
+					Value: `"$user", public`,
 				},
 
 				&pgproto3.ReadyForQuery{
