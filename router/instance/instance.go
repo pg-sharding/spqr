@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -86,8 +87,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	if err != nil {
 		return nil, err
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache, config.RouterConfig().ShardMapping, config.RouterConfig().ManageShardsByCoordinator)
-
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
 		// systemd notifier
@@ -104,10 +103,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	spqrlog.Zero.Debug().
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
-
-	var seqMngr sequences.SequenceMgr = lc
-	idRangeSize := config.RouterConfig().IdentityRangeSize
-	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	// frontend
 	frTLS, err := config.RouterConfig().FrontendTLS.Init(config.RouterConfig().Host)
@@ -128,6 +123,28 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 
 	// request router
 	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	lc := coord.NewLocalInstanceMetadataMgr(
+		db,
+		d,
+		cache,
+		config.RouterConfig().ShardMapping,
+		config.RouterConfig().ManageShardsByCoordinator,
+		func(shardID string) {
+			if err := rr.ForEach(func(sh shard.ShardHostCtl) error {
+				if sh.ShardKeyName() == shardID {
+					sh.MarkStale()
+				}
+				return nil
+			}); err != nil {
+				spqrlog.Zero.Error().Err(err).
+					Str("shard", shardID).
+					Msg("pool invalidation: error iterating connections")
+			}
+		},
+	)
+	var seqMngr sequences.SequenceMgr = lc
+	idRangeSize := config.RouterConfig().IdentityRangeSize
+	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)

@@ -1207,6 +1207,20 @@ func (mr *MockEntityMgrMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).UpdateKeyRange), ctx, arg1)
 }
 
+// UpdateShard mocks base method.
+func (m *MockEntityMgr) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockEntityMgrMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockEntityMgr)(nil).UpdateShard), ctx, shard)
+}
+
 // WriteBalancerTask mocks base method.
 func (m *MockEntityMgr) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
 	m.ctrl.T.Helper()

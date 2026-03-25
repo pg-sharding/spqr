@@ -266,6 +266,20 @@ func (mr *MockTopologyKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).OpenRouter), ctx, rID)
 }
 
+// UpdateShard mocks base method.
+func (m *MockTopologyKeeper) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockTopologyKeeperMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockTopologyKeeper)(nil).UpdateShard), ctx, shard)
+}
+
 // MockTransferXactKeeper is a mock of TransferXactKeeper interface.
 type MockTransferXactKeeper struct {
 	ctrl     *gomock.Controller
@@ -1700,268 +1714,18 @@ func (mr *MockDCStateKeeperMockRecorder) TXStatus(gid any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).TXStatus), gid)
 }
 
-// MockXDCStateKeeper is a mock of XDCStateKeeper interface.
-type MockXDCStateKeeper struct {
-	ctrl     *gomock.Controller
-	recorder *MockXDCStateKeeperMockRecorder
-	isgomock struct{}
-}
-
-// MockXDCStateKeeperMockRecorder is the mock recorder for MockXDCStateKeeper.
-type MockXDCStateKeeperMockRecorder struct {
-	mock *MockXDCStateKeeper
-}
-
-// NewMockXDCStateKeeper creates a new mock instance.
-func NewMockXDCStateKeeper(ctrl *gomock.Controller) *MockXDCStateKeeper {
-	mock := &MockXDCStateKeeper{ctrl: ctrl}
-	mock.recorder = &MockXDCStateKeeperMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockXDCStateKeeper) EXPECT() *MockXDCStateKeeperMockRecorder {
-	return m.recorder
-}
-
-// AcquireTxOwnership mocks base method.
-func (m *MockXDCStateKeeper) AcquireTxOwnership(gid string) bool {
+// UpdateShard mocks base method.
+func (m *MockDCStateKeeper) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", gid)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(gid any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), gid)
-}
-
-// AddRouter mocks base method.
-func (m *MockXDCStateKeeper) AddRouter(ctx context.Context, r *qdb.Router) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddRouter", ctx, r)
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddRouter indicates an expected call of AddRouter.
-func (mr *MockXDCStateKeeperMockRecorder) AddRouter(ctx, r any) *gomock.Call {
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockDCStateKeeperMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRouter", reflect.TypeOf((*MockXDCStateKeeper)(nil).AddRouter), ctx, r)
-}
-
-// AddShard mocks base method.
-func (m *MockXDCStateKeeper) AddShard(ctx context.Context, shard *qdb.Shard) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddShard", ctx, shard)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddShard indicates an expected call of AddShard.
-func (mr *MockXDCStateKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).AddShard), ctx, shard)
-}
-
-// ChangeTxStatus mocks base method.
-func (m *MockXDCStateKeeper) ChangeTxStatus(gid, state string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", gid, state)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(gid, state any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), gid, state)
-}
-
-// CloseRouter mocks base method.
-func (m *MockXDCStateKeeper) CloseRouter(ctx context.Context, rID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CloseRouter", ctx, rID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CloseRouter indicates an expected call of CloseRouter.
-func (mr *MockXDCStateKeeperMockRecorder) CloseRouter(ctx, rID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseRouter", reflect.TypeOf((*MockXDCStateKeeper)(nil).CloseRouter), ctx, rID)
-}
-
-// DeleteRouter mocks base method.
-func (m *MockXDCStateKeeper) DeleteRouter(ctx context.Context, rID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRouter", ctx, rID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteRouter indicates an expected call of DeleteRouter.
-func (mr *MockXDCStateKeeperMockRecorder) DeleteRouter(ctx, rID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockXDCStateKeeper)(nil).DeleteRouter), ctx, rID)
-}
-
-// DeleteRouterAll mocks base method.
-func (m *MockXDCStateKeeper) DeleteRouterAll(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRouterAll", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteRouterAll indicates an expected call of DeleteRouterAll.
-func (mr *MockXDCStateKeeperMockRecorder) DeleteRouterAll(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouterAll", reflect.TypeOf((*MockXDCStateKeeper)(nil).DeleteRouterAll), ctx)
-}
-
-// DropShard mocks base method.
-func (m *MockXDCStateKeeper) DropShard(ctx context.Context, shardID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropShard", ctx, shardID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DropShard indicates an expected call of DropShard.
-func (mr *MockXDCStateKeeperMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).DropShard), ctx, shardID)
-}
-
-// GetShard mocks base method.
-func (m *MockXDCStateKeeper) GetShard(ctx context.Context, shardID string) (*qdb.Shard, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShard", ctx, shardID)
-	ret0, _ := ret[0].(*qdb.Shard)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetShard indicates an expected call of GetShard.
-func (mr *MockXDCStateKeeperMockRecorder) GetShard(ctx, shardID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).GetShard), ctx, shardID)
-}
-
-// ListRouters mocks base method.
-func (m *MockXDCStateKeeper) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRouters", ctx)
-	ret0, _ := ret[0].([]*qdb.Router)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListRouters indicates an expected call of ListRouters.
-func (mr *MockXDCStateKeeperMockRecorder) ListRouters(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListRouters), ctx)
-}
-
-// ListShards mocks base method.
-func (m *MockXDCStateKeeper) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListShards", ctx)
-	ret0, _ := ret[0].([]*qdb.Shard)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListShards indicates an expected call of ListShards.
-func (mr *MockXDCStateKeeperMockRecorder) ListShards(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListShards), ctx)
-}
-
-// ListTXNames mocks base method.
-func (m *MockXDCStateKeeper) ListTXNames() ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTXNames")
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListTXNames indicates an expected call of ListTXNames.
-func (mr *MockXDCStateKeeperMockRecorder) ListTXNames() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListTXNames))
-}
-
-// OpenRouter mocks base method.
-func (m *MockXDCStateKeeper) OpenRouter(ctx context.Context, rID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OpenRouter", ctx, rID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// OpenRouter indicates an expected call of OpenRouter.
-func (mr *MockXDCStateKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockXDCStateKeeper)(nil).OpenRouter), ctx, rID)
-}
-
-// RecordTwoPhaseMembers mocks base method.
-func (m *MockXDCStateKeeper) RecordTwoPhaseMembers(gid string, shards []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", gid, shards)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RecordTwoPhaseMembers indicates an expected call of RecordTwoPhaseMembers.
-func (mr *MockXDCStateKeeperMockRecorder) RecordTwoPhaseMembers(gid, shards any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockXDCStateKeeper)(nil).RecordTwoPhaseMembers), gid, shards)
-}
-
-// ReleaseTxOwnership mocks base method.
-func (m *MockXDCStateKeeper) ReleaseTxOwnership(gid string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ReleaseTxOwnership", gid)
-}
-
-// ReleaseTxOwnership indicates an expected call of ReleaseTxOwnership.
-func (mr *MockXDCStateKeeperMockRecorder) ReleaseTxOwnership(gid any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).ReleaseTxOwnership), gid)
-}
-
-// TXCohortShards mocks base method.
-func (m *MockXDCStateKeeper) TXCohortShards(gid string) []string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXCohortShards", gid)
-	ret0, _ := ret[0].([]string)
-	return ret0
-}
-
-// TXCohortShards indicates an expected call of TXCohortShards.
-func (mr *MockXDCStateKeeperMockRecorder) TXCohortShards(gid any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXCohortShards), gid)
-}
-
-// TXStatus mocks base method.
-func (m *MockXDCStateKeeper) TXStatus(gid string) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXStatus", gid)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// TXStatus indicates an expected call of TXStatus.
-func (mr *MockXDCStateKeeperMockRecorder) TXStatus(gid any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXStatus), gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockDCStateKeeper)(nil).UpdateShard), ctx, shard)
 }
 
 // MockXQDB is a mock of XQDB interface.
@@ -3346,6 +3110,20 @@ func (m *MockXQDB) UpdateRedistributeTask(ctx context.Context, task *qdb.Redistr
 func (mr *MockXQDBMockRecorder) UpdateRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).UpdateRedistributeTask), ctx, task)
+}
+
+// UpdateShard mocks base method.
+func (m *MockXQDB) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockXQDBMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockXQDB)(nil).UpdateShard), ctx, shard)
 }
 
 // WriteBalancerTask mocks base method.

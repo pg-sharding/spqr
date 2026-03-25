@@ -29,6 +29,8 @@ type LocalInstanceMetadataMgr struct {
 	updateShardsMapping bool
 	shardMapping        map[string]*config.Shard
 	shardMappingMutex   sync.Mutex
+
+	poolInvalidator func(shardID string)
 }
 
 const DefaultRouterId = "r1"
@@ -220,6 +222,25 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		lc.shardMappingMutex.Unlock()
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
+}
+
+func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topology.DataShard) error {
+	spqrlog.Zero.Info().
+		Str("node", ds.ID).
+		Msg("updating datashard node in local coordinator")
+
+	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+		return err
+	}
+	if lc.updateShardsMapping {
+		lc.shardMappingMutex.Lock()
+		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMappingMutex.Unlock()
+	}
+	if lc.poolInvalidator != nil {
+		lc.poolInvalidator(ds.ID)
+	}
+	return nil
 }
 
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
@@ -448,16 +469,19 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 // NewLocalInstanceMetadataMgr creates a new LocalCoordinator instance.
 //
 // Parameters:
-// - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//   - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//   - poolInvalidator: optional callback invoked after shard config updates to
+//     mark idle pooled connections for that shard as stale.
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard, updateShardsMapping bool) meta.EntityMgr {
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard, updateShardsMapping bool, poolInvalidator func(shardID string)) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
 		Coordinator:         NewCoordinator(db, d),
 		cache:               cache,
 		shardMapping:        shardMapping,
 		shardMappingMutex:   sync.Mutex{},
 		updateShardsMapping: updateShardsMapping,
+		poolInvalidator:     poolInvalidator,
 	}
 }
