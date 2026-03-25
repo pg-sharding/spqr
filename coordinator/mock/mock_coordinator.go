@@ -700,6 +700,21 @@ func (mr *MockCoordinatorMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockCoordinator)(nil).GetTaskGroupStatus), ctx, id)
 }
 
+// GetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockCoordinator) GetTwoPhaseTxMetaStorage(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwoPhaseTxMetaStorage", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwoPhaseTxMetaStorage indicates an expected call of GetTwoPhaseTxMetaStorage.
+func (mr *MockCoordinatorMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockCoordinator)(nil).GetTwoPhaseTxMetaStorage), arg0)
+}
+
 // IsReadOnly mocks base method.
 func (m *MockCoordinator) IsReadOnly() bool {
 	m.ctrl.T.Helper()

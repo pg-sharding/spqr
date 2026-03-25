@@ -699,6 +699,21 @@ func (mr *MockEntityMgrMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockEntityMgr)(nil).GetTaskGroupStatus), ctx, id)
 }
 
+// GetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockEntityMgr) GetTwoPhaseTxMetaStorage(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwoPhaseTxMetaStorage", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwoPhaseTxMetaStorage indicates an expected call of GetTwoPhaseTxMetaStorage.
+func (mr *MockEntityMgrMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockEntityMgr)(nil).GetTwoPhaseTxMetaStorage), arg0)
+}
+
 // ListAllKeyRanges mocks base method.
 func (m *MockEntityMgr) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	m.ctrl.T.Helper()
