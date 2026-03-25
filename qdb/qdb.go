@@ -227,6 +227,8 @@ func NewXQDB(qdbType string) (XQDB, error) {
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, config.CoordinatorConfig().EtcdMaxSendBytes)
 	case "mem":
 		return GetMemQDB()
+	case "mem_pg":
+		return GetMemPgQDB()
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}
@@ -237,6 +239,8 @@ func NewDataPlaneTwoPhaseStateKeeper(qdbType string) (XDCStateKeeper, error) {
 	/* ETCD to be supported */
 	case "mem":
 		return GetMemQDB()
+	case "mem_pg":
+		return GetMemPgQDB()
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}

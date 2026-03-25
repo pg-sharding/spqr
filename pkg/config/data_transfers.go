@@ -80,3 +80,13 @@ func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }
+
+func (sc *ShardConnect) GetConnStrings() []string {
+	res := make([]string, len(sc.Hosts))
+	for i, h := range sc.Hosts {
+		hostname := strings.Split(h, ":")[0]
+		port := strings.Split(h, ":")[1]
+		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sc.User, hostname, port, sc.DB, sc.Password)
+	}
+	return res
+}
