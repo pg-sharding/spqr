@@ -11,6 +11,7 @@ show_notice_messages: true
 query_routing:
   forbid_direct_shard_queries: true
 store_tx_data_postgresql: true
+use_coordinator_init: true
 frontend_rules:
   - db: regress
     usr: regress
