@@ -1953,7 +1953,7 @@ func (q *MemQDB) ListTXNames(_ context.Context) ([]string, error) {
 }
 
 func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {
-	return fmt.Errorf("setting two-phase transaction metadata storage is forbidden in MemQDB")
+	return nil
 }
 
 func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
