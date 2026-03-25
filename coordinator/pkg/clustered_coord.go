@@ -607,6 +607,20 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("failed to add shard")
 				}
 			}
+			shardList, err := qc.db.GetTxMetaStorage(ctx)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
+			} else if len(shardList) == 0 {
+				shardIds := make([]string, 0, len(shards.ShardsData))
+				for id := range shards.ShardsData {
+					shardIds = append(shardIds, id)
+				}
+				firstShardId := slices.Min(shardIds)
+				s := []string{firstShardId}
+				if err := qc.db.SetTxMetaStorage(ctx, s); err != nil {
+					spqrlog.Zero.Error().Err(err).Strs("shard ids", s).Msg("failed to set two phase tx storage shards")
+				}
+			}
 		}
 		if err := qc.setUpSPQRGuard(ctx); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")

@@ -1526,7 +1526,7 @@ yydefault:
 				IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 				MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 				TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-				ErrorStr, StartupFinishedStr, TwoPhaseTXStr:
+				ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr

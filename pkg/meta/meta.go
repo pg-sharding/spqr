@@ -23,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	"github.com/pg-sharding/spqr/pkg/models/twophasetxmeta"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -53,6 +54,7 @@ type EntityMgr interface {
 	sequences.SequenceMgr
 	rrelation.ReferenceRelationMgr
 	mtran.TransactionMgr
+	twophasetxmeta.TwoPhaseTxMetaMgr
 
 	ShareKeyRange(id string) error
 
@@ -1464,6 +1466,22 @@ func ProcessShowExtended(ctx context.Context,
 
 			tts.WriteDataRow(gid, string(st), fmt.Sprintf("%+v", members))
 		}
+	case spqrparser.TwoPhaseTXStorageStr:
+		d := mngr.DCStateKeeper()
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("storage"),
+		}
+		if d == nil {
+			return tts, nil
+		}
+		storageList, err := mngr.GetTwoPhaseTxMetaStorage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, st := range storageList {
+			tts.WriteDataRow(st)
+		}
+		return tts, nil
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
