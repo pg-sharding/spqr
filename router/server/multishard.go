@@ -42,6 +42,8 @@ type MultiShardServer struct {
 
 	multistate MultishardState
 
+	dataRowCnt int
+
 	pool pool.MultiShardTSAPool
 
 	status txstatus.TXStatus
@@ -70,6 +72,7 @@ func NewMultiShardServerFromShard(pool pool.MultiShardTSAPool, sh shard.ShardHos
 			sh,
 		},
 		multistate: InitialState,
+		dataRowCnt: 0,
 		states:     []ShardState{ShardRFQState},
 		status:     sh.TxStatus(),
 	}
@@ -149,6 +152,7 @@ func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa 
 	}
 	m.states = append(m.states, ShardRFQState)
 	m.multistate = InitialState
+	m.dataRowCnt = 0
 
 	return nil
 }
@@ -231,6 +235,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		}, 0, nil
 	case InitialState:
 
+		m.dataRowCnt = 0
+
 		m.copyBuf = nil
 		var saveRd *pgproto3.RowDescription = nil
 		var saveCC *pgproto3.CommandComplete = nil
@@ -238,7 +244,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		var saveRFQ *pgproto3.ReadyForQuery = nil
 		var saveCIn *pgproto3.CopyInResponse = nil
 		/* Step one: ensure all shard backend are started */
-	initLoop:
+
 		for i := range m.activeShards {
 
 			/* maybe query ass partially dispatched */
@@ -269,10 +275,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					continue
 				case *pgproto3.BindComplete:
 					// that's also ok
-					/* We should not expect any descibe or row description by default. */
+					/* We should not expect any describe or row description by default. */
 					m.states[i] = DatarowState
 					saveBC = retMsg
-					continue initLoop
 				case *pgproto3.CopyOutResponse:
 					return nil, 0, ErrMultiShardSyncBroken
 				case *pgproto3.CopyInResponse:
@@ -349,6 +354,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			CommandTag: []byte{},
 		}, 0, nil
 	case RunningState:
+		anyCCTag := []byte{}
 		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
 			// some shards may be in cc state
@@ -371,9 +377,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				return nil, 0, err
 			}
 
-			switch msg.(type) {
+			switch mTpd := msg.(type) {
+			case *pgproto3.DataRow:
+				m.dataRowCnt += 1
+
+				return msg, uint(i), nil
 			case *pgproto3.CommandComplete:
 				//
+				anyCCTag = mTpd.CommandTag
 				m.states[i] = ShardCCState
 			case *pgproto3.ReadyForQuery:
 				m.states[i] = ErrorState
@@ -386,8 +397,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		}
 		// all shard are in RFQ state
 		m.multistate = CommandCompleteState
+		if m.dataRowCnt != 0 {
+			anyCCTag = fmt.Appendf(nil, "SELECT %d", m.dataRowCnt)
+		}
 		return &pgproto3.CommandComplete{
-			CommandTag: []byte{}, // XXX : fix this
+			CommandTag: anyCCTag,
 		}, 0, nil
 	case CommandCompleteState:
 		spqrlog.Zero.Info().Msg("multishard server: enter rfq await mode")
