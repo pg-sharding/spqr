@@ -657,7 +657,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 1"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -813,7 +813,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -1911,8 +1911,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					// XXX: FIX	CommandTag: []byte("SELECT 2"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -1938,8 +1937,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					// XXX: FIX	CommandTag: []byte("SELECT 1"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 1"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -2624,7 +2622,6 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				&pgproto3.BindComplete{},
 				&pgproto3.NoData{},
 				&pgproto3.CommandComplete{
-
 					CommandTag: []byte("DROP SCHEMA"),
 				},
 				&pgproto3.ReadyForQuery{
@@ -2702,6 +2699,70 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				&pgproto3.BindComplete{},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("UPDATE 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Query{String: `BEGIN;`},
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_t_s_d_1",
+					Query: "INSERT INTO t2 (id) values(1)/* __spqr__engine_v2: true */;",
+				},
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_t_s_d_2",
+					Query: "SELECT FROM t2 /* __spqr__engine_v2: true */;",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_t_s_d_1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_t_s_d_2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: `ROLLBACK;`},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -2874,9 +2935,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					/* XXX: fix that */
-					// CommandTag: []byte("SELECT 0"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 0"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -2902,9 +2961,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					/* XXX: fix that */
-					// CommandTag: []byte("SELECT 1"),
-					CommandTag: []byte{},
+					CommandTag: []byte("SELECT 1"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
