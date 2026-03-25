@@ -29,16 +29,16 @@ const (
 	pgStateRejected   = "rejected"
 )
 
-type PgQDB struct {
+type PgDCStateKeeper struct {
 	mu sync.Mutex
 
 	shards  *config.DatatransferConnections
-	Txs     map[string]*pgx.Tx `json:"-"`
+	txs     map[string]*pgx.Tx `json:"-"`
 	storage []string
 	pooler  map[string]*pgxpool.Pool
 }
 
-func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
+func (q *PgDCStateKeeper) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
 	errs := make([]string, 0)
 	for _, dsn := range shard.GetConnStrings() {
 		conn, err := q.getHostConn(ctx, dsn)
@@ -58,7 +58,7 @@ func (q *PgQDB) getShardMasterConn(ctx context.Context, shard *config.ShardConne
 	return nil, fmt.Errorf("unable to find master: %s", strings.Join(errs, ", "))
 }
 
-func (q *PgQDB) getHostConn(ctx context.Context, dsn string) (*pgxpool.Conn, error) {
+func (q *PgDCStateKeeper) getHostConn(ctx context.Context, dsn string) (*pgxpool.Conn, error) {
 	var pool *pgxpool.Pool
 	ok := false
 	if pool, ok = q.pooler[dsn]; !ok {
@@ -71,7 +71,7 @@ func (q *PgQDB) getHostConn(ctx context.Context, dsn string) (*pgxpool.Conn, err
 	return pool.Acquire(ctx)
 }
 
-func (q *PgQDB) getStorageShardConnect() (*config.ShardConnect, error) {
+func (q *PgDCStateKeeper) getStorageShardConnect() (*config.ShardConnect, error) {
 	if len(q.storage) == 0 {
 		return nil, fmt.Errorf("could not lock transaction on shard: no shards found")
 	}
@@ -82,10 +82,10 @@ func (q *PgQDB) getStorageShardConnect() (*config.ShardConnect, error) {
 	}
 }
 
-func (q *PgQDB) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
+func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if tx, ok := q.Txs[txid]; ok {
+	if tx, ok := q.txs[txid]; ok {
 		return tx, nil
 	}
 
@@ -105,16 +105,16 @@ func (q *PgQDB) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	q.Txs[txid] = &tx
+	q.txs[txid] = &tx
 	return &tx, nil
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgQDB) AcquireTxOwnership(txid string) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(txid string) (bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.Txs[txid]; ok {
+	if _, ok := q.txs[txid]; ok {
 		return false, nil
 	}
 
@@ -128,7 +128,7 @@ func (q *PgQDB) AcquireTxOwnership(txid string) (bool, error) {
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
-func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
+func (q *PgDCStateKeeper) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 	ctx := context.TODO()
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
@@ -155,7 +155,7 @@ func (q *PgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
-func (q *PgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
+func (q *PgDCStateKeeper) RecordTwoPhaseMembers(txid string, shards []string) error {
 	ctx := context.TODO()
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
@@ -169,21 +169,21 @@ func (q *PgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
-func (q *PgQDB) ReleaseTxOwnership(txid string) error {
+func (q *PgDCStateKeeper) ReleaseTxOwnership(txid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if tx, ok := q.Txs[txid]; ok {
+	if tx, ok := q.txs[txid]; ok {
 		if err := (*tx).Commit(context.TODO()); err != nil {
 			return err
 		}
-		delete(q.Txs, txid)
+		delete(q.txs, txid)
 	}
 	return nil
 }
 
 // TXCohortShards implements [DCStateKeeper].
-func (q *PgQDB) TXCohortShards(txid string) ([]string, error) {
+func (q *PgDCStateKeeper) TXCohortShards(txid string) ([]string, error) {
 	ctx := context.TODO()
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
@@ -198,7 +198,7 @@ func (q *PgQDB) TXCohortShards(txid string) ([]string, error) {
 }
 
 // TXStatus implements [DCStateKeeper].
-func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
+func (q *PgDCStateKeeper) TXStatus(txid string) (TwoPhaseTxState, error) {
 	ctx := context.TODO()
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
@@ -223,22 +223,22 @@ func (q *PgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
 	}
 }
 
-func (q *PgQDB) ListTXNames() ([]string, error) {
+func (q *PgDCStateKeeper) ListTXNames() ([]string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	res := make([]string, 0, len(q.Txs))
-	for id := range q.Txs {
+	res := make([]string, 0, len(q.txs))
+	for id := range q.txs {
 		res = append(res, id)
 	}
 
 	return res, nil
 }
 
-func (q *PgQDB) GetTxMetaStorage() []string {
+func (q *PgDCStateKeeper) GetTxMetaStorage() []string {
 	return q.storage
 }
 
-func (q *PgQDB) SetTxMetaStorage(storage []string) error {
+func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -249,12 +249,12 @@ func (q *PgQDB) SetTxMetaStorage(storage []string) error {
 	return nil
 }
 
-func NewPgQDB(shards *config.DatatransferConnections) *PgQDB {
-	return &PgQDB{
+func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {
+	return &PgDCStateKeeper{
 		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
-		Txs:    map[string]*pgx.Tx{},
+		txs:    map[string]*pgx.Tx{},
 	}
 }
 
-var _ DCStateKeeper = &PgQDB{}
+var _ DCStateKeeper = &PgDCStateKeeper{}

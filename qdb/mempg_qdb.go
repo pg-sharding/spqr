@@ -12,7 +12,7 @@ import (
 type MemPgQDB struct {
 	*MemQDB
 
-	pgDb *PgQDB
+	stateKeeper *PgDCStateKeeper
 }
 
 var _ XQDB = &MemPgQDB{}
@@ -28,8 +28,8 @@ func NewMemPgQDB(backupPath string) (*MemPgQDB, error) {
 		return nil, err
 	}
 	return &MemPgQDB{
-		MemQDB: memQDB,
-		pgDb:   NewPgQDB(shardsCfg),
+		MemQDB:      memQDB,
+		stateKeeper: NewPgQDB(shardsCfg),
 	}, nil
 }
 
@@ -75,42 +75,42 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 
 // AcquireTxOwnership implements [DCStateKeeper].
 func (q *MemPgQDB) AcquireTxOwnership(txid string) (bool, error) {
-	return q.pgDb.AcquireTxOwnership(txid)
+	return q.stateKeeper.AcquireTxOwnership(txid)
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
 func (q *MemPgQDB) ChangeTxStatus(txid string, state TwoPhaseTxState) error {
-	return q.pgDb.ChangeTxStatus(txid, state)
+	return q.stateKeeper.ChangeTxStatus(txid, state)
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
 func (q *MemPgQDB) RecordTwoPhaseMembers(txid string, shards []string) error {
-	return q.pgDb.RecordTwoPhaseMembers(txid, shards)
+	return q.stateKeeper.RecordTwoPhaseMembers(txid, shards)
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
 func (q *MemPgQDB) ReleaseTxOwnership(txid string) error {
-	return q.pgDb.ReleaseTxOwnership(txid)
+	return q.stateKeeper.ReleaseTxOwnership(txid)
 }
 
 // TXCohortShards implements [DCStateKeeper].
 func (q *MemPgQDB) TXCohortShards(txid string) ([]string, error) {
-	return q.pgDb.TXCohortShards(txid)
+	return q.stateKeeper.TXCohortShards(txid)
 }
 
 // TXStatus implements [DCStateKeeper].
 func (q *MemPgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
-	return q.pgDb.TXStatus(txid)
+	return q.stateKeeper.TXStatus(txid)
 }
 
 func (q *MemPgQDB) ListTXNames() ([]string, error) {
-	return q.pgDb.ListTXNames()
+	return q.stateKeeper.ListTXNames()
 }
 
 func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {
-	return q.pgDb.SetTxMetaStorage(storage)
+	return q.stateKeeper.SetTxMetaStorage(storage)
 }
 
 func (q *MemPgQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
-	return q.pgDb.GetTxMetaStorage(), nil
+	return q.stateKeeper.GetTxMetaStorage(), nil
 }
