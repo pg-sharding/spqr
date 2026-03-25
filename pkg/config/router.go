@@ -77,6 +77,7 @@ type Router struct {
 	ExitOnInitSQLError        bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
 	UseCoordinatorInit        bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 	ManageShardsByCoordinator bool   `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
+	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"etcd_max_txn_ops" yaml:"etcd_max_txn_ops"`
 
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`

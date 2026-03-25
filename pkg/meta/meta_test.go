@@ -71,7 +71,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, qdb.DefaultMaxTxnSize)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
@@ -86,7 +86,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, qdb.DefaultMaxTxnSize)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -113,7 +113,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, qdb.DefaultMaxTxnSize)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
@@ -174,7 +174,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, qdb.DefaultMaxTxnSize)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
@@ -210,7 +210,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, qdb.DefaultMaxTxnSize)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{

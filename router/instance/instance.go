@@ -73,7 +73,7 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, ns string, maxTxnBatchSize uint16) (*InstanceImpl, error) {
 
 	db, err := qdb.GetMemQDB()
 	if err != nil {
@@ -86,7 +86,9 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	if err != nil {
 		return nil, err
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache, config.RouterConfig().ShardMapping, config.RouterConfig().ManageShardsByCoordinator)
+	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache,
+		config.RouterConfig().ShardMapping,
+		config.RouterConfig().ManageShardsByCoordinator, maxTxnBatchSize)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {

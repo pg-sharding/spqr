@@ -24,16 +24,18 @@ import (
 )
 
 type Coordinator struct {
-	qdb qdb.XQDB
-	dcs qdb.DCStateKeeper
+	qdb         qdb.XQDB
+	dcs         qdb.DCStateKeeper
+	maxTxnBatch uint16
 }
 
 var _ meta.EntityMgr = &Coordinator{}
 
-func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
+func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper, maxTxnBatch uint16) Coordinator {
 	return Coordinator{
-		qdb: q,
-		dcs: d,
+		qdb:         q,
+		dcs:         d,
+		maxTxnBatch: maxTxnBatch,
 	}
 }
 
@@ -1276,6 +1278,10 @@ func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, e
 		}
 		return mtran.NewMetaTransaction(*qdbTran), nil
 	}
+}
+
+func (lc *Coordinator) GetTxnBatchSize() uint16 {
+	return lc.maxTxnBatch
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.
