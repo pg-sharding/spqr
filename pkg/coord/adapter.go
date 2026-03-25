@@ -1440,6 +1440,11 @@ func (a *Adapter) ListRelationIndexes(ctx context.Context, relName *rfqn.Relatio
 }
 
 // GetTwoPhaseTxMetaStorage implements [meta.EntityMgr].
-func (a *Adapter) GetTwoPhaseTxMetaStorage(context.Context) ([]string, error) {
-	panic("unimplemented")
+func (a *Adapter) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
+	c := proto.NewTwoPhaseTxMetaServiceClient(a.conn)
+	resp, err := c.GetTwoPhaseTxMetaStorage(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Storage, nil
 }

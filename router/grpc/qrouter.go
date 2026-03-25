@@ -38,6 +38,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedBalancerTaskServiceServer
 	protos.UnimplementedReferenceRelationsServiceServer
 	protos.UnimplementedMetaTransactionGossipServiceServer
+	protos.UnimplementedTwoPhaseTxMetaServiceServer
 
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
@@ -788,6 +789,15 @@ func (l *LocalQrouterServer) ListDistributionUniqueIndexes(ctx context.Context, 
 	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
 }
 
+// GetTwoPhaseTxMetaStorage implements [proto.TwoPhaseTxMetaServiceServer].
+func (l *LocalQrouterServer) GetTwoPhaseTxMetaStorage(ctx context.Context, _ *emptypb.Empty) (*protos.TwoPhaseTxMetaStorageReply, error) {
+	storage, err := l.mgr.GetTwoPhaseTxMetaStorage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.TwoPhaseTxMetaStorageReply{Storage: storage}, nil
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -810,6 +820,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterReferenceRelationsServiceServer(server, lqr)
 	protos.RegisterMetaTransactionGossipServiceServer(server, lqr)
 	protos.RegisterShardServiceServer(server, lqr)
+	protos.RegisterTwoPhaseTxMetaServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -824,3 +835,4 @@ var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
 var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}
 var _ protos.MetaTransactionGossipServiceServer = &LocalQrouterServer{}
+var _ protos.TwoPhaseTxMetaServiceServer = &LocalQrouterServer{}
