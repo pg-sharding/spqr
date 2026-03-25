@@ -235,7 +235,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 
 func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
 	/* Always be tidy */
-	defer d.d.ReleaseTxOwnership(gid)
+	defer func() { _ = d.d.ReleaseTxOwnership(gid) }()
 
 	status, err := d.d.TXStatus(gid)
 	if err != nil {

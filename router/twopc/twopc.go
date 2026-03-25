@@ -54,7 +54,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		* recovery goroutines. We are holding lock on this GID while alive.
 		 */
 
-		defer q.ReleaseTxOwnership(gid)
+		defer func() { _ = q.ReleaseTxOwnership(gid) }()
 	}
 
 	retST := txstatus.TXERR

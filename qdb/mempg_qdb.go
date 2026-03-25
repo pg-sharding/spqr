@@ -100,7 +100,7 @@ func (q *MemPgQDB) TXCohortShards(txid string) ([]string, error) {
 
 // TXStatus implements [DCStateKeeper].
 func (q *MemPgQDB) TXStatus(txid string) (TwoPhaseTxState, error) {
-	return q.TXStatus(txid)
+	return q.pgDb.TXStatus(txid)
 }
 
 func (q *MemPgQDB) ListTXNames() ([]string, error) {
