@@ -1451,5 +1451,7 @@ func (a *Adapter) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error
 
 // GetTwoPhaseTxMetaStorage implements [meta.EntityMgr].
 func (a *Adapter) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []string) error {
-	panic("not implemented")
+	c := proto.NewTwoPhaseTxMetaServiceClient(a.conn)
+	_, err := c.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
+	return err
 }
