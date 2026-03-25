@@ -1,6 +1,7 @@
 package twopc
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -26,6 +27,7 @@ const (
 func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	cl client.Client,
 	s server.Server) (txstatus.TXStatus, error) {
+	ctx := context.TODO()
 
 	/*
 	* go along first phase
@@ -45,7 +47,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	}
 
 	if q != nil {
-		if err := q.RecordTwoPhaseMembers(gid, shs); err != nil {
+		if err := q.RecordTwoPhaseMembers(ctx, gid, shs); err != nil {
 			return txstatus.TXERR, err
 		}
 
@@ -54,7 +56,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		* recovery goroutines. We are holding lock on this GID while alive.
 		 */
 
-		defer q.ReleaseTxOwnership(gid)
+		defer func() { _ = q.ReleaseTxOwnership(ctx, gid) }()
 	}
 
 	retST := txstatus.TXERR
@@ -84,7 +86,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP1); err != nil {
+		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP1); err != nil {
 			return txstatus.TXERR, err
 		}
 	}
@@ -123,7 +125,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP2); err != nil {
+		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2); err != nil {
 			return txstatus.TXERR, err
 		}
 	}
