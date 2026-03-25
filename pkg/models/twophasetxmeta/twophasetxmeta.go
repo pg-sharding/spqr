@@ -1,5 +1,7 @@
-package twophasetx
+package twophasetxmeta
+
+import "context"
 
 type TwoPhaseTxMetaMgr interface {
-	GetTwoPhaseTxMetaStorage() (string, error)
+	GetTwoPhaseTxMetaStorage(context.Context) ([]string, error)
 }
