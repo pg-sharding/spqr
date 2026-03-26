@@ -98,6 +98,7 @@ dbpool
 dbtpcc
 dbutils
 dcd
+dcs
 ddl
 debian
 denchick
@@ -601,6 +602,7 @@ tstmt
 tupleslot
 tupletableslot
 twopc
+twophasetxmeta
 TXACT
 txactive
 txbefore

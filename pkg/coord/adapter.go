@@ -1438,3 +1438,20 @@ func (a *Adapter) ListRelationIndexes(ctx context.Context, relName *rfqn.Relatio
 	}
 	return res, nil
 }
+
+// GetTwoPhaseTxMetaStorage implements [meta.EntityMgr].
+func (a *Adapter) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
+	c := proto.NewTwoPhaseTxMetaServiceClient(a.conn)
+	resp, err := c.GetTwoPhaseTxMetaStorage(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Storage, nil
+}
+
+// GetTwoPhaseTxMetaStorage implements [meta.EntityMgr].
+func (a *Adapter) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []string) error {
+	c := proto.NewTwoPhaseTxMetaServiceClient(a.conn)
+	_, err := c.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
+	return err
+}
