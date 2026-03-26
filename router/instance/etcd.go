@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/sethvargo/go-retry"
 )
 
 type EtcdMetadataBootstrapper struct {
@@ -133,30 +134,27 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		}
 	}
 
-	retryCnt := 50
+	// TODO: initialize two-phase meta storage
+	storage, err := etcdConn.GetTxMetaStorage(ctx)
+	if err != nil {
+		return err
+	}
+	if err := r.Console().Mgr().SetTwoPhaseTxMetaStorage(ctx, storage); err != nil {
+		return err
+	}
 
-	for {
+	c, err := retry.DoValue(ctx, retry.WithMaxRetries(50, retry.NewConstant(time.Second)), func(ctx context.Context) (string, error) {
 		c, err := etcdConn.GetCoordinator(ctx)
 		if err != nil {
-			if retryCnt > 0 {
-				/* await the router to appear */
-				select {
-				case <-ctx.Done():
-					return nil
-				case <-time.After(time.Second):
-
-					retryCnt--
-					continue
-				}
-			}
-			return err
+			return "", retry.RetryableError(err)
 		}
-
-		err = r.Console().Mgr().UpdateCoordinator(ctx, c)
-
-		if err == nil {
-			break
-		}
+		return c, nil
+	})
+	if err != nil {
+		return err
+	}
+	err = r.Console().Mgr().UpdateCoordinator(ctx, c)
+	if err != nil {
 		return err
 	}
 

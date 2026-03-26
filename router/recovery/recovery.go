@@ -31,7 +31,7 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 
 	wd.p.SetRule(wd.be)
 
-	db, err := qdb.GetMemQDB()
+	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
 	}

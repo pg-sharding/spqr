@@ -1657,105 +1657,105 @@ func (m *MockDCStateKeeper) EXPECT() *MockDCStateKeeperMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string) (bool, error) {
+func (m *MockDCStateKeeper) AcquireTxOwnership(gid string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", gid)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), gid)
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockDCStateKeeper) ChangeTxStatus(gid string, state qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", gid, state)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(gid, state any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), gid, state)
 }
 
 // ListTXNames mocks base method.
-func (m *MockDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
+func (m *MockDCStateKeeper) ListTXNames() ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTXNames", ctx)
+	ret := m.ctrl.Call(m, "ListTXNames")
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListTXNames indicates an expected call of ListTXNames.
-func (mr *MockDCStateKeeperMockRecorder) ListTXNames(ctx any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ListTXNames() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockDCStateKeeper)(nil).ListTXNames), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockDCStateKeeper)(nil).ListTXNames))
 }
 
 // RecordTwoPhaseMembers mocks base method.
-func (m *MockDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, gid string, shards []string) error {
+func (m *MockDCStateKeeper) RecordTwoPhaseMembers(gid string, shards []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", ctx, gid, shards)
+	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", gid, shards)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RecordTwoPhaseMembers indicates an expected call of RecordTwoPhaseMembers.
-func (mr *MockDCStateKeeperMockRecorder) RecordTwoPhaseMembers(ctx, gid, shards any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) RecordTwoPhaseMembers(gid, shards any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockDCStateKeeper)(nil).RecordTwoPhaseMembers), ctx, gid, shards)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockDCStateKeeper)(nil).RecordTwoPhaseMembers), gid, shards)
 }
 
 // ReleaseTxOwnership mocks base method.
-func (m *MockDCStateKeeper) ReleaseTxOwnership(ctx context.Context, gid string) error {
+func (m *MockDCStateKeeper) ReleaseTxOwnership(gid string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReleaseTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "ReleaseTxOwnership", gid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReleaseTxOwnership indicates an expected call of ReleaseTxOwnership.
-func (mr *MockDCStateKeeperMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ReleaseTxOwnership(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).ReleaseTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).ReleaseTxOwnership), gid)
 }
 
 // TXCohortShards mocks base method.
-func (m *MockDCStateKeeper) TXCohortShards(ctx context.Context, gid string) ([]string, error) {
+func (m *MockDCStateKeeper) TXCohortShards(gid string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXCohortShards", ctx, gid)
+	ret := m.ctrl.Call(m, "TXCohortShards", gid)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TXCohortShards indicates an expected call of TXCohortShards.
-func (mr *MockDCStateKeeperMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) TXCohortShards(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockDCStateKeeper)(nil).TXCohortShards), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockDCStateKeeper)(nil).TXCohortShards), gid)
 }
 
 // TXStatus mocks base method.
-func (m *MockDCStateKeeper) TXStatus(ctx context.Context, gid string) (qdb.TwoPhaseTxState, error) {
+func (m *MockDCStateKeeper) TXStatus(gid string) (qdb.TwoPhaseTxState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXStatus", ctx, gid)
+	ret := m.ctrl.Call(m, "TXStatus", gid)
 	ret0, _ := ret[0].(qdb.TwoPhaseTxState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TXStatus indicates an expected call of TXStatus.
-func (mr *MockDCStateKeeperMockRecorder) TXStatus(ctx, gid any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) TXStatus(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).TXStatus), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).TXStatus), gid)
 }
 
 // MockXDCStateKeeper is a mock of XDCStateKeeper interface.
@@ -1783,18 +1783,18 @@ func (m *MockXDCStateKeeper) EXPECT() *MockXDCStateKeeperMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockXDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string) (bool, error) {
+func (m *MockXDCStateKeeper) AcquireTxOwnership(gid string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", gid)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), gid)
 }
 
 // AddRouter mocks base method.
@@ -1826,17 +1826,17 @@ func (mr *MockXDCStateKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call 
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockXDCStateKeeper) ChangeTxStatus(gid string, state qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", gid, state)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(gid, state any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), gid, state)
 }
 
 // CloseRouter mocks base method.
@@ -1956,18 +1956,18 @@ func (mr *MockXDCStateKeeperMockRecorder) ListShards(ctx any) *gomock.Call {
 }
 
 // ListTXNames mocks base method.
-func (m *MockXDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
+func (m *MockXDCStateKeeper) ListTXNames() ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTXNames", ctx)
+	ret := m.ctrl.Call(m, "ListTXNames")
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListTXNames indicates an expected call of ListTXNames.
-func (mr *MockXDCStateKeeperMockRecorder) ListTXNames(ctx any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ListTXNames() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListTXNames), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockXDCStateKeeper)(nil).ListTXNames))
 }
 
 // OpenRouter mocks base method.
@@ -1985,31 +1985,31 @@ func (mr *MockXDCStateKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call 
 }
 
 // RecordTwoPhaseMembers mocks base method.
-func (m *MockXDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, gid string, shards []string) error {
+func (m *MockXDCStateKeeper) RecordTwoPhaseMembers(gid string, shards []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", ctx, gid, shards)
+	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", gid, shards)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RecordTwoPhaseMembers indicates an expected call of RecordTwoPhaseMembers.
-func (mr *MockXDCStateKeeperMockRecorder) RecordTwoPhaseMembers(ctx, gid, shards any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) RecordTwoPhaseMembers(gid, shards any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockXDCStateKeeper)(nil).RecordTwoPhaseMembers), ctx, gid, shards)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockXDCStateKeeper)(nil).RecordTwoPhaseMembers), gid, shards)
 }
 
 // ReleaseTxOwnership mocks base method.
-func (m *MockXDCStateKeeper) ReleaseTxOwnership(ctx context.Context, gid string) error {
+func (m *MockXDCStateKeeper) ReleaseTxOwnership(gid string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReleaseTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "ReleaseTxOwnership", gid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReleaseTxOwnership indicates an expected call of ReleaseTxOwnership.
-func (mr *MockXDCStateKeeperMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ReleaseTxOwnership(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).ReleaseTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).ReleaseTxOwnership), gid)
 }
 
 // SetTxMetaStorage mocks base method.
@@ -2027,33 +2027,33 @@ func (mr *MockXDCStateKeeperMockRecorder) SetTxMetaStorage(arg0, arg1 any) *gomo
 }
 
 // TXCohortShards mocks base method.
-func (m *MockXDCStateKeeper) TXCohortShards(ctx context.Context, gid string) ([]string, error) {
+func (m *MockXDCStateKeeper) TXCohortShards(gid string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXCohortShards", ctx, gid)
+	ret := m.ctrl.Call(m, "TXCohortShards", gid)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TXCohortShards indicates an expected call of TXCohortShards.
-func (mr *MockXDCStateKeeperMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) TXCohortShards(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXCohortShards), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXCohortShards), gid)
 }
 
 // TXStatus mocks base method.
-func (m *MockXDCStateKeeper) TXStatus(ctx context.Context, gid string) (qdb.TwoPhaseTxState, error) {
+func (m *MockXDCStateKeeper) TXStatus(gid string) (qdb.TwoPhaseTxState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXStatus", ctx, gid)
+	ret := m.ctrl.Call(m, "TXStatus", gid)
 	ret0, _ := ret[0].(qdb.TwoPhaseTxState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TXStatus indicates an expected call of TXStatus.
-func (mr *MockXDCStateKeeperMockRecorder) TXStatus(ctx, gid any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) TXStatus(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXStatus), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXStatus), gid)
 }
 
 // MockXQDB is a mock of XQDB interface.
@@ -3550,18 +3550,18 @@ func (m *MockStateKeeperQDB) EXPECT() *MockStateKeeperQDBMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockStateKeeperQDB) AcquireTxOwnership(ctx context.Context, gid string) (bool, error) {
+func (m *MockStateKeeperQDB) AcquireTxOwnership(gid string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", gid)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).AcquireTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).AcquireTxOwnership), gid)
 }
 
 // AddMoveTaskGroupStopFlag mocks base method.
@@ -3747,17 +3747,17 @@ func (mr *MockStateKeeperQDBMockRecorder) BeginTransaction(ctx, transaction any)
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockStateKeeperQDB) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockStateKeeperQDB) ChangeTxStatus(gid string, state qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", gid, state)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockStateKeeperQDBMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ChangeTxStatus(gid, state any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).ChangeTxStatus), gid, state)
 }
 
 // CheckDistribution mocks base method.
@@ -4669,18 +4669,18 @@ func (mr *MockStateKeeperQDBMockRecorder) ListShards(ctx any) *gomock.Call {
 }
 
 // ListTXNames mocks base method.
-func (m *MockStateKeeperQDB) ListTXNames(ctx context.Context) ([]string, error) {
+func (m *MockStateKeeperQDB) ListTXNames() ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTXNames", ctx)
+	ret := m.ctrl.Call(m, "ListTXNames")
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListTXNames indicates an expected call of ListTXNames.
-func (mr *MockStateKeeperQDBMockRecorder) ListTXNames(ctx any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ListTXNames() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockStateKeeperQDB)(nil).ListTXNames), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTXNames", reflect.TypeOf((*MockStateKeeperQDB)(nil).ListTXNames))
 }
 
 // ListTaskGroups mocks base method.
@@ -4800,31 +4800,31 @@ func (mr *MockStateKeeperQDBMockRecorder) RecordTransferTx(ctx, key, info any) *
 }
 
 // RecordTwoPhaseMembers mocks base method.
-func (m *MockStateKeeperQDB) RecordTwoPhaseMembers(ctx context.Context, gid string, shards []string) error {
+func (m *MockStateKeeperQDB) RecordTwoPhaseMembers(gid string, shards []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", ctx, gid, shards)
+	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", gid, shards)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RecordTwoPhaseMembers indicates an expected call of RecordTwoPhaseMembers.
-func (mr *MockStateKeeperQDBMockRecorder) RecordTwoPhaseMembers(ctx, gid, shards any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) RecordTwoPhaseMembers(gid, shards any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockStateKeeperQDB)(nil).RecordTwoPhaseMembers), ctx, gid, shards)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockStateKeeperQDB)(nil).RecordTwoPhaseMembers), gid, shards)
 }
 
 // ReleaseTxOwnership mocks base method.
-func (m *MockStateKeeperQDB) ReleaseTxOwnership(ctx context.Context, gid string) error {
+func (m *MockStateKeeperQDB) ReleaseTxOwnership(gid string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReleaseTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "ReleaseTxOwnership", gid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReleaseTxOwnership indicates an expected call of ReleaseTxOwnership.
-func (mr *MockStateKeeperQDBMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ReleaseTxOwnership(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).ReleaseTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).ReleaseTxOwnership), gid)
 }
 
 // RemoveTransferTx mocks base method.
@@ -4884,33 +4884,33 @@ func (mr *MockStateKeeperQDBMockRecorder) ShareKeyRange(id any) *gomock.Call {
 }
 
 // TXCohortShards mocks base method.
-func (m *MockStateKeeperQDB) TXCohortShards(ctx context.Context, gid string) ([]string, error) {
+func (m *MockStateKeeperQDB) TXCohortShards(gid string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXCohortShards", ctx, gid)
+	ret := m.ctrl.Call(m, "TXCohortShards", gid)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TXCohortShards indicates an expected call of TXCohortShards.
-func (mr *MockStateKeeperQDBMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) TXCohortShards(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXCohortShards), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXCohortShards), gid)
 }
 
 // TXStatus mocks base method.
-func (m *MockStateKeeperQDB) TXStatus(ctx context.Context, gid string) (qdb.TwoPhaseTxState, error) {
+func (m *MockStateKeeperQDB) TXStatus(gid string) (qdb.TwoPhaseTxState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXStatus", ctx, gid)
+	ret := m.ctrl.Call(m, "TXStatus", gid)
 	ret0, _ := ret[0].(qdb.TwoPhaseTxState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TXStatus indicates an expected call of TXStatus.
-func (mr *MockStateKeeperQDBMockRecorder) TXStatus(ctx, gid any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) TXStatus(gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXStatus), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXStatus), gid)
 }
 
 // TryCoordinatorLock mocks base method.
