@@ -570,7 +570,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		/* setup client params */
 
 		for k, v := range sm.Parameters {
-			cl.SetParam(k, v)
+			cl.SetParam(k, v, false)
 		}
 
 		cl.startupMsg = sm

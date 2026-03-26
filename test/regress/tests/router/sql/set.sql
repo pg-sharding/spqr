@@ -33,3 +33,13 @@ SET application_name TO 'regress_tx';
 SHOW application_name;
 COMMIT;
 SHOW application_name;
+
+BEGIN;
+SET application_name TO 'regress_local';
+SHOW application_name;
+SAVEPOINT s1;
+SET LOCAL application_name TO 'regress_sp1';
+SHOW application_name;
+ROLLBACK TO s1;
+SHOW application_name;
+ROLLBACK;

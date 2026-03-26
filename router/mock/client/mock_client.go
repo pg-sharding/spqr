@@ -1198,15 +1198,15 @@ func (mr *MockRouterClientMockRecorder) SetMaintainParams(level, val any) *gomoc
 }
 
 // SetParam mocks base method.
-func (m *MockRouterClient) SetParam(arg0, arg1 string) {
+func (m *MockRouterClient) SetParam(arg0, arg1 string, arg2 bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetParam", arg0, arg1)
+	m.ctrl.Call(m, "SetParam", arg0, arg1, arg2)
 }
 
 // SetParam indicates an expected call of SetParam.
-func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1 any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1, arg2)
 }
 
 // SetParamFormatCodes mocks base method.

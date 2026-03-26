@@ -291,14 +291,25 @@ func (cl *SimpleSessionParamHandler) CommitActiveSet() {
 	cl.statementParamSet = map[string]string{}
 	cl.localTxParamSet = map[string]string{}
 
+	spqrlog.Zero.Debug().Interface("", *cl).Msg("here999")
+
 	cl.txCnt = 0
 }
 
 func (cl *SimpleSessionParamHandler) Params() map[string]string {
-	return cl.activeParamSet
+	params := copymap(cl.activeParamSet)
+	for k, v := range cl.localTxParamSet {
+		params[k] = v
+	}
+	return params
 }
 
-func (cl *SimpleSessionParamHandler) SetParam(name, value string) {
+func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) {
+	paramMap := cl.activeParamSet
+	if isLocal {
+		paramMap = cl.localTxParamSet
+	}
+
 	spqrlog.Zero.Debug().
 		Str("name", name).
 		Str("value", value).
@@ -350,11 +361,11 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string) {
 				Str("opname", opname).
 				Str("opvalue", opvalue).
 				Msg("parsed pgoption param")
-			cl.activeParamSet[opname] = opvalue
+			paramMap[opname] = opvalue
 		}
 
 	} else {
-		cl.activeParamSet[name] = value
+		paramMap[name] = value
 	}
 }
 

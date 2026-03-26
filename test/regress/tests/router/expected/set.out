@@ -92,3 +92,27 @@ SHOW application_name;
  regress_tx
 (1 row)
 
+BEGIN;
+SET application_name TO 'regress_local';
+SHOW application_name;
+ application_name 
+------------------
+ regress_local
+(1 row)
+
+SAVEPOINT s1;
+SET LOCAL application_name TO 'regress_sp1';
+SHOW application_name;
+ application_name 
+------------------
+ regress_sp1
+(1 row)
+
+ROLLBACK TO s1;
+SHOW application_name;
+ application_name 
+------------------
+ regress_local
+(1 row)
+
+ROLLBACK;

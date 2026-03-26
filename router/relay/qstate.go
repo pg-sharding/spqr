@@ -506,7 +506,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						return nil, err
 					}
 				} else {
-					if err := rst.QueryExecutor().ExecSet(rst, query, name, val); err != nil {
+					if err := rst.QueryExecutor().ExecSet(rst, query, name, val, q.IsLocal); err != nil {
 						return nil, err
 					}
 				}
@@ -615,10 +615,10 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 			hintVal != distributions.REPLICATED {
 			return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
 		} else {
-			rst.Client().SetParam(name, hintVal)
+			rst.Client().SetParam(name, hintVal, isLocal)
 		}
 	default:
-		rst.Client().SetParam(name, hintVal)
+		rst.Client().SetParam(name, hintVal, isLocal)
 	}
 
 	return rst.QueryExecutor().ReplyCommandComplete("SET")
