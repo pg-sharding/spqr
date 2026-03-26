@@ -1174,7 +1174,7 @@ Feature: Coordinator test
   Scenario: Coordinator sets shards for two-phase transactions metadata storage
     When I run SQL on host "coordinator"
     """
-    SHOW two_phase_tx_metadata_storage;
+    SHOW DCS_storage;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly

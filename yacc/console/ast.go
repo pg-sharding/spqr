@@ -419,7 +419,7 @@ const (
 	ErrorStr              = "errors"
 	StartupFinishedStr    = "startup_finished"
 	TwoPhaseTXStr         = "two_phase_tx"
-	TwoPhaseTXStorageStr  = "two_phase_tx_metadata_storage"
+	TwoPhaseTXStorageStr  = "DCS_storage"
 )
 
 // not SHOW target
