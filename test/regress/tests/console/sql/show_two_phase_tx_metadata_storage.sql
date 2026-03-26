@@ -1,1 +1,1 @@
-SHOW DCS_storage;
+SHOW dcs_storage;

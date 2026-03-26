@@ -1,6 +1,6 @@
 SHOW dcs_storage;
  storage 
 ---------
- local
+ sh1
 (1 row)
 
