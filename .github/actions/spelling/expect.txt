@@ -98,6 +98,7 @@ dbpool
 dbtpcc
 dbutils
 dcd
+dcs
 ddl
 debian
 denchick
