@@ -21,6 +21,9 @@ type TwoPCWatchDog struct {
 }
 
 func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
+	if be == nil {
+		return nil, fmt.Errorf("invalid watchdog config: nil backend rule")
+	}
 	wd := &TwoPCWatchDog{
 		be: be,
 	}

@@ -2347,6 +2347,25 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		return err
 	}
 
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewConstant(time.Second)), func(ctx context.Context) error {
+		cc, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+
+		storage, err := qc.db.GetTxMetaStorage(ctx)
+		if err != nil {
+			return err
+		}
+
+		s := proto.NewTwoPhaseTxMetaServiceClient(cc)
+		// Ignore the error
+		_, _ = s.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
 		cc, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
