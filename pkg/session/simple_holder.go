@@ -1,22 +1,42 @@
 package session
 
 import (
-	"maps"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
+type ParamHistory interface {
+	Commit()
+	Set(entry ParamEntry)
+	RollbackTo(txCnt int)
+
+	CleanupStatementSet()
+}
+
+type ParamEntry struct {
+	Tx    int
+	Value string
+
+	// simple
+	IsLocal bool
+
+	// virtual
+	Levels map[string]string
+}
+
+func (lhs ParamEntry) EqualIgnoringValue(rhs ParamEntry) bool {
+	return lhs.Tx == rhs.Tx && lhs.IsLocal == rhs.IsLocal
+}
+
 type SimpleSessionParamHandler struct {
-	beginTxParamSet   map[string]string
-	localTxParamSet   map[string]string
-	statementParamSet map[string]string
-	activeParamSet    map[string]string
+	params map[string]ParamHistory
+
+	activeParamSet map[string]string
+	virtualParams  map[string]struct{}
 
 	startupParameters map[string]string
 
-	savepointParamSet  map[string]map[string]string
 	savepointTxCounter map[string]int
 
 	txCnt int
@@ -35,47 +55,27 @@ type SimpleSessionParamHandler struct {
 	maintain_params    bool
 }
 
-func copymap(params map[string]string) map[string]string {
-	ret := make(map[string]string)
-
-	maps.Copy(ret, params)
-
-	return ret
-}
-
 func (cl *SimpleSessionParamHandler) resolveVirtualBoolParam(name string, defaultVal bool) bool {
-	if val, ok := cl.localTxParamSet[name]; ok {
-		return val == "ok"
-	}
-	if val, ok := cl.statementParamSet[name]; ok {
-		return val == "ok"
-	}
-	if val, ok := cl.activeParamSet[name]; ok {
-		return val == "ok"
+	v, ok := cl.activeParamSet[name]
+	if ok {
+		return v == "ok"
 	}
 	return defaultVal
 }
 
 func (cl *SimpleSessionParamHandler) recordVirtualParam(level string, name string, val string) {
-	switch level {
-	case VirtualParamLevelLocal:
-		cl.localTxParamSet[name] = val
-	case VirtualParamLevelStatement:
-		cl.statementParamSet[name] = val
-	default:
-		cl.activeParamSet[name] = val
-	}
+	cl.getParamHistory(name, true).Set(ParamEntry{
+		Tx: cl.txCnt,
+		Levels: map[string]string{
+			level: val,
+		},
+	})
 }
 
 func (cl *SimpleSessionParamHandler) resolveVirtualStringParam(name string, defaultVal string) string {
-	if val, ok := cl.localTxParamSet[name]; ok {
-		return val
-	}
-	if val, ok := cl.statementParamSet[name]; ok {
-		return val
-	}
-	if val, ok := cl.activeParamSet[name]; ok {
-		return val
+	v, ok := cl.activeParamSet[name]
+	if ok {
+		return v
 	}
 	return defaultVal
 }
@@ -285,31 +285,20 @@ func (cl *SimpleSessionParamHandler) ResetTsa() {
 /* TX management */
 
 func (cl *SimpleSessionParamHandler) CommitActiveSet() {
-	cl.beginTxParamSet = nil
-	cl.savepointParamSet = nil
-	cl.savepointTxCounter = nil
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
+	cl.savepointTxCounter = map[string]int{}
 
-	spqrlog.Zero.Debug().Interface("", *cl).Msg("here999")
+	for _, history := range cl.params {
+		history.Commit()
+	}
 
 	cl.txCnt = 0
 }
 
 func (cl *SimpleSessionParamHandler) Params() map[string]string {
-	params := copymap(cl.activeParamSet)
-	for k, v := range cl.localTxParamSet {
-		params[k] = v
-	}
-	return params
+	return cl.activeParamSet
 }
 
 func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) {
-	paramMap := cl.activeParamSet
-	if isLocal {
-		paramMap = cl.localTxParamSet
-	}
-
 	spqrlog.Zero.Debug().
 		Str("name", name).
 		Str("value", value).
@@ -361,38 +350,40 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) 
 				Str("opname", opname).
 				Str("opvalue", opvalue).
 				Msg("parsed pgoption param")
-			paramMap[opname] = opvalue
+			cl.getParamHistory(opname, false).Set(ParamEntry{
+				Tx:      cl.txCnt,
+				Value:   opvalue,
+				IsLocal: isLocal,
+			})
 		}
 
 	} else {
-		paramMap[name] = value
+		cl.getParamHistory(name, false).Set(ParamEntry{
+			Tx:      cl.txCnt,
+			Value:   value,
+			IsLocal: isLocal,
+		})
 	}
 }
 
 func (cl *SimpleSessionParamHandler) ResetAll() {
 	cl.activeParamSet = cl.startupParameters
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
+	cl.params = map[string]ParamHistory{}
 }
 
 func (cl *SimpleSessionParamHandler) RollbackToSP(name string) {
-	cl.activeParamSet = cl.savepointParamSet[name]
 	targetTxCnt := cl.savepointTxCounter[name]
-	for k := range cl.savepointParamSet {
-		if cl.savepointTxCounter[k] > targetTxCnt {
-			delete(cl.savepointTxCounter, k)
-			delete(cl.savepointParamSet, k)
-		}
+
+	for _, history := range cl.params {
+		history.RollbackTo(targetTxCnt)
 	}
-	/* XXX: not exactly correct with rollback to SP */
-	cl.statementParamSet = map[string]string{}
-	/* XXX: not exactly correct with rollback to SP */
-	cl.localTxParamSet = map[string]string{}
 
 	cl.txCnt = targetTxCnt + 1
 }
 
 func (cl *SimpleSessionParamHandler) ResetParam(name string) {
+	delete(cl.params, name)
+
 	if val, ok := cl.startupParameters[name]; ok {
 		cl.activeParamSet[name] = val
 	} else {
@@ -404,31 +395,27 @@ func (cl *SimpleSessionParamHandler) ResetParam(name string) {
 }
 
 func (cl *SimpleSessionParamHandler) StartTx() {
-	cl.beginTxParamSet = copymap(cl.activeParamSet)
-	cl.savepointParamSet = nil
-	cl.savepointTxCounter = nil
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
-	cl.txCnt = 0
+	cl.savepointTxCounter = map[string]int{}
+	cl.txCnt = 1
 }
 
 func (cl *SimpleSessionParamHandler) CleanupStatementSet() {
-	cl.statementParamSet = map[string]string{}
+	for _, history := range cl.params {
+		history.CleanupStatementSet()
+	}
 }
 
 func (cl *SimpleSessionParamHandler) Savepoint(name string) {
-	cl.savepointParamSet[name] = copymap(cl.activeParamSet)
 	cl.savepointTxCounter[name] = cl.txCnt
 	cl.txCnt++
 }
 
 func (cl *SimpleSessionParamHandler) Rollback() {
-	cl.activeParamSet = copymap(cl.beginTxParamSet)
-	cl.beginTxParamSet = nil
-	cl.savepointParamSet = nil
-	cl.savepointTxCounter = nil
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
+	cl.savepointTxCounter = map[string]int{}
+
+	for _, history := range cl.params {
+		history.RollbackTo(0)
+	}
 
 	cl.txCnt = 0
 }
@@ -437,13 +424,27 @@ func (cl *SimpleSessionParamHandler) SetStartupParams(m map[string]string) {
 	cl.startupParameters = m
 }
 
+func (cl *SimpleSessionParamHandler) getParamHistory(name string, isVirtual bool) ParamHistory {
+	if h, ok := cl.params[name]; ok {
+		return h
+	} else {
+		var h ParamHistory
+		if isVirtual {
+			h = &VirtualParamHistory{globalMap: cl.activeParamSet, name: name}
+		} else {
+			h = &SimpleParamHistory{globalMap: cl.activeParamSet, name: name}
+		}
+		cl.params[name] = h
+		return h
+	}
+}
+
 func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
 	return &SimpleSessionParamHandler{
-		beginTxParamSet:   map[string]string{},
-		localTxParamSet:   map[string]string{},
-		statementParamSet: map[string]string{},
+		params: map[string]ParamHistory{},
 
 		startupParameters: map[string]string{},
+		virtualParams:     map[string]struct{}{},
 
 		activeParamSet: map[string]string{
 			SPQR_DISTRIBUTION:            "default",

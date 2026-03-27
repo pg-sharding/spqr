@@ -13,6 +13,19 @@ func TestSimpleSet(t *testing.T) {
 	}{
 		{
 			func(t SessionParamsHolder) {
+				t.SetTsa(VirtualParamLevelLocal, "read-write")
+				t.StartTx()
+				t.SetTsa(VirtualParamLevelLocal, "read-only")
+				t.CommitActiveSet()
+			},
+			map[string]string{
+				"__spqr__distribution":            "default",
+				"__spqr__default_route_behaviour": "",
+				"__spqr__target_session_attrs":    "read-write",
+			},
+		},
+		{
+			func(t SessionParamsHolder) {
 				t.SetParam("x", "1", false)
 				t.StartTx()
 				t.SetParam("x", "2", true)
@@ -37,7 +50,29 @@ func TestSimpleSet(t *testing.T) {
 			map[string]string{
 				"__spqr__distribution":            "default",
 				"__spqr__default_route_behaviour": "",
-				"x":                               "2",
+				"x":                               "1",
+			},
+		},
+		{
+			func(t SessionParamsHolder) {
+				t.StartTx()
+				t.SetParam("x", "1", false)
+				t.Rollback()
+			},
+			map[string]string{
+				"__spqr__distribution":            "default",
+				"__spqr__default_route_behaviour": "",
+			},
+		},
+		{
+			func(t SessionParamsHolder) {
+				t.StartTx()
+				t.SetTsa(VirtualParamLevelStatement, "read-write")
+			},
+			map[string]string{
+				"__spqr__distribution":            "default",
+				"__spqr__default_route_behaviour": "",
+				"__spqr__target_session_attrs":    "read-write",
 			},
 		},
 	}
