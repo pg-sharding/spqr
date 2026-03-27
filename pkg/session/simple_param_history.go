@@ -15,21 +15,23 @@ func (s *SimpleParamHistory) Commit() {
 	if i >= 0 {
 		entry := s.history[i]
 		entry.Tx = 0
-		s.history = []ParamEntry{entry}
+		s.history = s.history[:1]
+		s.history[0] = entry
 	} else {
-		s.history = nil
+		s.history = s.history[:0]
 	}
 
 	s.updateInGlobal()
 }
 
 func (s *SimpleParamHistory) Set(entry ParamEntry) {
-	if len(s.history) == 0 {
+	n := len(s.history)
+	if n == 0 {
 		s.history = append(s.history, entry)
 	} else {
-		lastEntry := s.history[len(s.history)-1]
+		lastEntry := s.history[n-1]
 		if lastEntry.EqualIgnoringValue(entry) {
-			s.history[len(s.history)-1] = entry
+			s.history[n-1] = entry
 		} else {
 			s.history = append(s.history, entry)
 		}
@@ -43,22 +45,19 @@ func (s *SimpleParamHistory) RollbackTo(txCnt int) {
 	for ; i >= 0 && s.history[i].Tx > txCnt; i-- {
 	}
 
-	if i >= 0 {
-		s.history = s.history[:i+1]
-	} else {
-		s.history = nil
-	}
+	s.history = s.history[:i+1]
 
 	s.updateInGlobal()
 }
 
 func (s *SimpleParamHistory) updateInGlobal() {
-	if len(s.history) > 0 {
-		lastEntry := s.history[len(s.history)-1]
+	n := len(s.history)
+	if n > 0 {
+		lastEntry := s.history[n-1]
 		if lastEntry.Action == ParamActionReset && lastEntry.Value == "" {
 			delete(s.globalMap, s.name)
 		} else {
-			s.globalMap[s.name] = s.history[len(s.history)-1].Value
+			s.globalMap[s.name] = lastEntry.Value
 		}
 	} else {
 		delete(s.globalMap, s.name)
@@ -73,7 +72,6 @@ func (s *SimpleParamHistory) Reset(tx int, defaultValue *string) {
 	val := ""
 	if defaultValue != nil {
 		val = *defaultValue
-		s.globalMap[s.name] = val
 	}
 	s.history = append(s.history, ParamEntry{
 		Tx:     tx,
