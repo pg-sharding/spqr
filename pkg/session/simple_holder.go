@@ -43,7 +43,6 @@ type SimpleSessionParamHandler struct {
 	params map[string]ParamHistory
 
 	activeParamSet map[string]string
-	virtualParams  map[string]struct{}
 
 	startupParameters map[string]string
 
@@ -459,7 +458,6 @@ func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehavio
 		params: map[string]ParamHistory{},
 
 		startupParameters: map[string]string{},
-		virtualParams:     map[string]struct{}{},
 
 		activeParamSet: map[string]string{
 			SPQR_DISTRIBUTION:            "default",

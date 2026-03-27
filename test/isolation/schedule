@@ -1,1 +1,8 @@
-test: set
+test: simple
+test: simple_lock_kr
+test: simple_move_data
+test: simple_move_subsequent
+test: move_schema_qualify
+test: move_fqn_relations
+test: 2pc
+test: set_param

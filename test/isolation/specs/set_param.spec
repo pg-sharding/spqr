@@ -54,6 +54,3 @@ step s3_clean { select __spqr__console_execute('drop distribution all cascade') 
 
 # ok
 permutation s1_set s2_set s1_show_sh1 s2_show s1_show_sh2 s3_clean
-
-
-# should fail
