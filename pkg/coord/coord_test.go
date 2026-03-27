@@ -15,7 +15,6 @@ import (
 
 const MemQDBPath = ""
 
-var boolTrue bool = true
 var boolFalse bool = false
 
 var mockShard1 = &qdb.Shard{
@@ -54,12 +53,13 @@ func TestSplitKeyRange(t *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
-		assert.NoError(t, err)
+		is.NoError(err)
 		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
 		err = tranMngr.CreateDistribution(ctx, ds1)
+		is.NoError(err)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
@@ -91,12 +91,13 @@ func TestSplitKeyRange(t *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
-		assert.NoError(t, err)
+		is.NoError(err)
 		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
 		err = tranMngr.CreateDistribution(ctx, ds1)
+		is.NoError(err)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
@@ -104,6 +105,7 @@ func TestSplitKeyRange(t *testing.T) {
 			LowerBound:   []any{int64(1)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
 			IsLocked:     &boolFalse,
+			Version:      1,
 		}
 		err = tranMngr.CreateKeyRange(ctx, kr1, []string{qdb.ColumnTypeInteger})
 		is.NoError(err)
@@ -132,8 +134,13 @@ func TestSplitKeyRange(t *testing.T) {
 				LowerBound:   []any{int64(5)},
 				ColumnTypes:  []string{qdb.ColumnTypeInteger},
 				IsLocked:     &boolFalse,
+				Version:      1,
 			},
 		}
-		is.Equal(expected, actual)
+		// IsLocked is not values of bool :(
+		is.Equal([]bool{false, false}, []bool{*actual[0].IsLocked, *actual[0].IsLocked})
+		actual[0].IsLocked = &boolFalse
+		actual[1].IsLocked = &boolFalse
+		is.Equal(expected, []kr.KeyRange{*actual[0], *actual[1]})
 	})
 }
