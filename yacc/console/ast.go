@@ -420,6 +420,7 @@ const (
 	StartupFinishedStr    = "startup_finished"
 	TwoPhaseTXStr         = "two_phase_tx"
 	TwoPhaseTXStorageStr  = "dcs_storage"
+	FileSettingsStr       = "file_settings"
 )
 
 // not SHOW target

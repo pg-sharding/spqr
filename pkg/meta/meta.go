@@ -1646,6 +1646,28 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
+	case spqrparser.FileSettingsStr:
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(
+				"name",
+				"setting",
+				"applied",
+			),
+		}
+
+		changes, err := config.ConfigChanges()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, setting := range changes {
+			tts.WriteDataRow(
+				setting.FieldName,
+				setting.FieldValue,
+				fmt.Sprintf("%v", setting.Applied),
+			)
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

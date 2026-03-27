@@ -683,7 +683,8 @@ show_statement_type:
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr:
+			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
+			FileSettingsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
