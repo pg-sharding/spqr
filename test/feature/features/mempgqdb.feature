@@ -191,6 +191,17 @@ Feature: MemQDB with PG dc state keeper test
       "count": 0
     }]
     """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(gid) FROM pg_prepared_xacts
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "count": 0
+    }]
+    """
     When I run SQL on host "shard1"
     """
     SELECT id, members, status FROM spqr_metadata.spqr_tx_status
@@ -273,6 +284,17 @@ Feature: MemQDB with PG dc state keeper test
       "count": 0
     }]
     """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(gid) FROM pg_prepared_xacts
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "count": 0
+    }]
+    """
     When I run SQL on host "shard1"
     """
     SELECT id, members, status FROM spqr_metadata.spqr_tx_status
@@ -285,5 +307,46 @@ Feature: MemQDB with PG dc state keeper test
       "members": "{sh1,sh2}",
       "status": "committed"
     }]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
+    """
+    Then command return code should be "0"
+    And SQL result should match json_regexp
+    """
+    [{
+      "id": ".*",
+      "members": "{sh1,sh2}",
+      "status": "committed"
+    }]
+    """
+    When I run SQL on host "router"
+    """
+    set __spqr__execute_on to sh2; 
+    select id from test_table;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [ 
+        {
+            "id": 1
+        }
+    ]
+    """
+    When I run SQL on host "router"
+    """
+    set __spqr__execute_on to sh1; 
+    select id from test_table;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [ 
+        {
+            "id": 1
+        }
+    ]
     """
 
