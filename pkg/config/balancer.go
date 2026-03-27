@@ -23,6 +23,8 @@ type Balancer struct {
 	TimeoutSec int `json:"timeout" yaml:"timeout" toml:"timeout"`
 }
 
+var _ Config = &Balancer{}
+
 func (b *Balancer) ApplyDefaults() {
 
 }

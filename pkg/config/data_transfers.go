@@ -11,6 +11,8 @@ type DatatransferConnections struct {
 	ShardsData map[string]*ShardConnect `json:"shards" toml:"shards" yaml:"shards"`
 }
 
+var _ Config = &DatatransferConnections{}
+
 func (dc *DatatransferConnections) ApplyDefaults() {
 
 }

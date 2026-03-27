@@ -42,6 +42,8 @@ type Coordinator struct {
 	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 }
 
+var _ Config = &Coordinator{}
+
 func (c *Coordinator) ApplyDefaults() {
 	c.DataMoveBoundBatchSize = 10_000
 	c.DataMoveQueryLogLevel = "debug"

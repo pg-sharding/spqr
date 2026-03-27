@@ -6,6 +6,8 @@ type Roles struct {
 	TableGroups []TableGroup `json:"table_groups" toml:"table_groups" yaml:"table_groups"`
 }
 
+var _ Config = &Roles{}
+
 func (r *Roles) ApplyDefaults() {
 
 }
