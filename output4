@@ -1,0 +1,286 @@
+(using postmaster on regress_router, port 6432)
+============== running regression test queries        ==============
+test copy_routing                 ... FAILED      123 ms
+
+======================
+ 1 of 1 tests failed. 
+======================
+
+The differences that caused some tests to fail can be viewed in the
+file "/regress/tests/router/regression.diffs".  A copy of the test summary that you see
+above is saved in the file "/regress/tests/router/regression.out".
+
+diff -U3 /regress/tests/router/expected/copy_routing.out /regress/tests/router/results/copy_routing.out
+--- /regress/tests/router/expected/copy_routing.out	2026-03-20 11:17:28.550415080 +0200
++++ /regress/tests/router/results/copy_routing.out	2026-03-27 19:53:02.828350198 +0300
+@@ -135,7 +135,7 @@
+ (7 rows)
+ 
+ COPY copy_test(id) FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id 
+@@ -147,21 +147,19 @@
+   7
+  10
+  15
+- 16
+  99
+  99
+-(10 rows)
++(9 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+  id  
+ -----
+  101
+- 116
+  120
+  199
+  199
+-(5 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+@@ -169,15 +167,17 @@
+ -----
+  200
+  201
+- 216
+  290
+  299
+-(5 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+   id   
+ -------
++    16
++   116
++   216
+    300
+    301
+    301
+@@ -187,13 +187,13 @@
+    399
+    616
+  10001
+-(9 rows)
++(12 rows)
+ 
+ TRUNCATE copy_test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ /* test conditional copy */
+ COPY copy_test(id) FROM STDIN WHERE id <= 10 OR id % 2 = 1;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id 
+@@ -201,11 +201,11 @@
+   1
+   2
+   3
+-  4
+   5
+-  6
++  7
+  10
+- 11
++ 15
++ 99
+  99
+ (9 rows)
+ 
+@@ -214,110 +214,128 @@
+  id  
+ -----
+  101
++ 120
++ 199
+  199
+-(2 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+  id  
+ -----
++ 200
+  201
++ 290
+  299
+-(2 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+  id  
+ -----
++   1
++   2
++   3
++   4
++   5
++   6
++  10
++  11
++  99
++ 101
++ 199
++ 201
++ 299
+  301
+-(1 row)
++(14 rows)
+ 
+ /* copy with several columns */
+ COPY copy_test_mult (id, uid) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id | uid 
+ ----+-----
+-  1 |  14
+-  2 |  14
+- 16 |  14
+- 99 |  14
+-(4 rows)
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- id  | uid 
+------+-----
+- 101 |  14
+- 165 |  14
+- 199 |  14
+-(3 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- id  | uid 
+------+-----
+- 202 |  14
+- 203 |  14
+-(2 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+    id    | uid 
+ ---------+-----
++       1 |  14
++       2 |  14
++      16 |  14
++      99 |  14
++     101 |  14
++     165 |  14
++     199 |  14
++     202 |  14
++     203 |  14
+  2012021 |  14
+-(1 row)
++(10 rows)
+ 
+ COPY copy_test_mult (uid, id) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id | uid 
+ ----+-----
+-  1 |  14
+-  2 |  14
+- 16 |  14
+- 16 |   7
+- 99 |  14
+-(5 rows)
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- id  | uid 
+------+-----
+- 101 |  14
+- 116 |   7
+- 165 |  14
+- 199 |  14
+-(4 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- id  | uid 
+------+-----
+- 202 |  14
+- 203 |  14
+- 216 |   7
+-(3 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+    id    | uid 
+ ---------+-----
++       1 |  14
++       2 |  14
++      16 |  14
++      16 |   7
++      99 |  14
++     101 |  14
++     116 |   7
++     165 |  14
++     199 |  14
++     202 |  14
++     203 |  14
++     216 |   7
+      316 |   7
+  2012021 |  14
+-(2 rows)
++(14 rows)
+ 
+ COPY copy_test_mult (uid, id) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-ERROR:  insufficient data in routing tuple
++NOTICE: send query to shard(s) : sh4
++ERROR:  missing data for column "id"
++CONTEXT:  COPY copy_test_mult, line 2: "7"
+ DROP TABLE copy_test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE copy_test_mult;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE copy_test_multi_multi;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+(using postmaster on regress_coordinator, port 7002)
+============== running regression test queries        ==============
+test unite                        ... ok        26596 ms
+test split                        ... ok           62 ms
+test key_range                    ... ok           23 ms
+
+=====================
+ All 3 tests passed. 
+=====================
+

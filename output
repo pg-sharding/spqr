@@ -1,0 +1,2710 @@
+(using postmaster on regress_coordinator, port 7002)
+============== running regression test queries        ==============
+test show_clients                 ... ok            9 ms
+test show_shards                  ... ok           20 ms
+test show_routers                 ... ok            4 ms
+test show_key_ranges              ... ok           86 ms
+test show_distributions           ... ok           16 ms
+test show_version                 ... ok            4 ms
+test show_relations               ... ok           32 ms
+test show_time_quantiles          ... ok            3 ms
+test show_is_read_only            ... ok            4 ms
+test show_move_stats              ... ok            3 ms
+test drop                         ... ok           27 ms
+test add                          ... ok           17 ms
+test hash                         ... ok           29 ms
+test delete_distribution          ... ok           25 ms
+test default_distribution         ... ok           24 ms
+test sequence                     ... ok           59 ms
+test alter_relation               ... ok           38 ms
+test reference_table              ... ok           66 ms
+test show_users                   ... ok            3 ms
+test show_tsa_cache               ... ok            3 ms
+test routing_expression           ... ok           26 ms
+test control_point                ... ok            3 ms
+test unique_indexes               ... ok           38 ms
+test help                         ... ok            4 ms
+
+======================
+ All 24 tests passed. 
+======================
+
+(using postmaster on regress_router, port 7432)
+============== running regression test queries        ==============
+test show_clients                 ... ok           12 ms
+test show_shards                  ... ok           14 ms
+test show_routers                 ... ok           11 ms
+test show_key_ranges              ... ok           15 ms
+test show_distributions           ... ok           11 ms
+test show_version                 ... ok            9 ms
+test show_relations               ... ok           14 ms
+test show_time_quantiles          ... ok            9 ms
+test show_is_read_only            ... ok           10 ms
+test show_move_stats              ... ok           10 ms
+test drop                         ... ok           13 ms
+test add                          ... ok           11 ms
+test hash                         ... ok           12 ms
+test delete_distribution          ... ok           13 ms
+test default_distribution         ... ok           11 ms
+test sequence                     ... ok           11 ms
+test alter_relation               ... ok           13 ms
+test reference_table              ... ok           13 ms
+test show_users                   ... ok           11 ms
+test show_tsa_cache               ... ok            9 ms
+test routing_expression           ... ok           10 ms
+test control_point                ... ok           10 ms
+test unique_indexes               ... ok           13 ms
+test help                         ... ok           10 ms
+
+======================
+ All 24 tests passed. 
+======================
+
+(using postmaster on regress_router, port 6432)
+============== running regression test queries        ==============
+test shard_routing                ... ok          116 ms
+test mixed_routing                ... ok          110 ms
+test copy_routing                 ... FAILED      119 ms
+test joins                        ... ok           78 ms
+test target_session_attrs         ... FAILED       67 ms
+test transactions                 ... ok           78 ms
+test hash_routing                 ... FAILED       62 ms
+test hash_routing_int             ... FAILED       73 ms
+test hash_multicolumn_1           ... FAILED       74 ms
+test with_tables                  ... ok           88 ms
+test single_shard_joins           ... ok           58 ms
+test multishard                   ... ok           69 ms
+test multicolumn                  ... FAILED       91 ms
+test error                        ... ok           64 ms
+test error2                       ... ok           63 ms
+test routing_hint                 ... FAILED      119 ms
+test begin                        ... ok           67 ms
+test alter_distribution           ... ok           75 ms
+test show_processing              ... ok           61 ms
+test copy_multishard              ... FAILED       99 ms
+test copy_reference_table         ... FAILED       68 ms
+test multishard_expand_tx         ... ok           69 ms
+test copy_inside_singleshard_connection ... FAILED       64 ms
+test distributed_relation_multishard_modify ... FAILED       71 ms
+test part_table                   ... FAILED       57 ms
+test target_list_routing          ... ok           68 ms
+test reference_table              ... FAILED       92 ms
+test insert_processing            ... FAILED       60 ms
+test sequence                     ... FAILED       72 ms
+test cte                          ... FAILED       90 ms
+test cte_hashed                   ... FAILED      352 ms
+test ddl                          ... FAILED      235 ms
+test engine_v2                    ... ok           82 ms
+test subplan                      ... ok           65 ms
+test subselects                   ... ok           66 ms
+test virtual_show                 ... ok           14 ms
+test virtual                      ... ok           38 ms
+test auto_distribution            ... FAILED       58 ms
+test spqrguard                    ... FAILED       37 ms
+test negative_routing             ... ok           47 ms
+test default_shard                ... FAILED       68 ms
+test expression_routing           ... ok           50 ms
+test rename_column_routing        ... ok           82 ms
+test show_backend_connections     ... FAILED       75 ms
+test split_update                 ... FAILED       59 ms
+test virtual_sliced               ... ok           60 ms
+test unique_index                 ... ok          169 ms
+test spqr_execute                 ... ok           13 ms
+test set                          ... FAILED       37 ms
+
+========================
+ 24 of 49 tests failed. 
+========================
+
+The differences that caused some tests to fail can be viewed in the
+file "/regress/tests/router/regression.diffs".  A copy of the test summary that you see
+above is saved in the file "/regress/tests/router/regression.out".
+
+diff -U3 /regress/tests/router/expected/copy_routing.out /regress/tests/router/results/copy_routing.out
+--- /regress/tests/router/expected/copy_routing.out	2026-03-20 11:17:28.550415080 +0200
++++ /regress/tests/router/results/copy_routing.out	2026-03-27 18:49:20.396327964 +0300
+@@ -135,7 +135,7 @@
+ (7 rows)
+ 
+ COPY copy_test(id) FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id 
+@@ -147,21 +147,19 @@
+   7
+  10
+  15
+- 16
+  99
+  99
+-(10 rows)
++(9 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+  id  
+ -----
+  101
+- 116
+  120
+  199
+  199
+-(5 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+@@ -169,15 +167,17 @@
+ -----
+  200
+  201
+- 216
+  290
+  299
+-(5 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+   id   
+ -------
++    16
++   116
++   216
+    300
+    301
+    301
+@@ -187,13 +187,13 @@
+    399
+    616
+  10001
+-(9 rows)
++(12 rows)
+ 
+ TRUNCATE copy_test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ /* test conditional copy */
+ COPY copy_test(id) FROM STDIN WHERE id <= 10 OR id % 2 = 1;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id 
+@@ -201,11 +201,11 @@
+   1
+   2
+   3
+-  4
+   5
+-  6
++  7
+  10
+- 11
++ 15
++ 99
+  99
+ (9 rows)
+ 
+@@ -214,110 +214,128 @@
+  id  
+ -----
+  101
++ 120
++ 199
+  199
+-(2 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+  id  
+ -----
++ 200
+  201
++ 290
+  299
+-(2 rows)
++(4 rows)
+ 
+ SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+  id  
+ -----
++   1
++   2
++   3
++   4
++   5
++   6
++  10
++  11
++  99
++ 101
++ 199
++ 201
++ 299
+  301
+-(1 row)
++(14 rows)
+ 
+ /* copy with several columns */
+ COPY copy_test_mult (id, uid) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id | uid 
+ ----+-----
+-  1 |  14
+-  2 |  14
+- 16 |  14
+- 99 |  14
+-(4 rows)
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- id  | uid 
+------+-----
+- 101 |  14
+- 165 |  14
+- 199 |  14
+-(3 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- id  | uid 
+------+-----
+- 202 |  14
+- 203 |  14
+-(2 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+    id    | uid 
+ ---------+-----
++       1 |  14
++       2 |  14
++      16 |  14
++      99 |  14
++     101 |  14
++     165 |  14
++     199 |  14
++     202 |  14
++     203 |  14
+  2012021 |  14
+-(1 row)
++(10 rows)
+ 
+ COPY copy_test_mult (uid, id) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id | uid 
+ ----+-----
+-  1 |  14
+-  2 |  14
+- 16 |  14
+- 16 |   7
+- 99 |  14
+-(5 rows)
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- id  | uid 
+------+-----
+- 101 |  14
+- 116 |   7
+- 165 |  14
+- 199 |  14
+-(4 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- id  | uid 
+------+-----
+- 202 |  14
+- 203 |  14
+- 216 |   7
+-(3 rows)
++ id | uid 
++----+-----
++(0 rows)
+ 
+ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+    id    | uid 
+ ---------+-----
++       1 |  14
++       2 |  14
++      16 |  14
++      16 |   7
++      99 |  14
++     101 |  14
++     116 |   7
++     165 |  14
++     199 |  14
++     202 |  14
++     203 |  14
++     216 |   7
+      316 |   7
+  2012021 |  14
+-(2 rows)
++(14 rows)
+ 
+ COPY copy_test_mult (uid, id) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-ERROR:  insufficient data in routing tuple
++NOTICE: send query to shard(s) : sh4
++ERROR:  missing data for column "id"
++CONTEXT:  COPY copy_test_mult, line 2: "7"
+ DROP TABLE copy_test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE copy_test_mult;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE copy_test_multi_multi;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/target_session_attrs.out /regress/tests/router/results/target_session_attrs.out
+--- /regress/tests/router/expected/target_session_attrs.out	2026-03-20 11:17:28.554779315 +0200
++++ /regress/tests/router/results/target_session_attrs.out	2026-03-27 18:49:20.546327041 +0300
+@@ -77,7 +77,7 @@
+ SHOW __spqr__target_session_attrs;
+  target session attrs 
+ ----------------------
+- smart-read-write
++ read-only
+ (1 row)
+ 
+ SET __spqr__target_session_attrs TO 'prefer-standby';
+@@ -206,7 +206,7 @@
+ SHOW __spqr__target_session_attrs;
+  target session attrs 
+ ----------------------
+- prefer-replica
++ read-only
+ (1 row)
+ 
+ RESET __spqr__target_session_attrs;
+diff -U3 /regress/tests/router/expected/hash_routing.out /regress/tests/router/results/hash_routing.out
+--- /regress/tests/router/expected/hash_routing.out	2026-03-20 11:17:28.551769492 +0200
++++ /regress/tests/router/results/hash_routing.out	2026-03-27 18:49:20.689326161 +0300
+@@ -66,32 +66,32 @@
+ (3 rows)
+ 
+ COPY xxhash (col1) FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+                                                                                                                                                        col1                                                                                                                                                        
+ -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  The quick brown fox jumps over the lazy dog
+- The quick brown fox jumps over the lazy dog
+  Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.
+- Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.
+-(4 rows)
++(2 rows)
+ 
+ SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+-     col1      
+----------------
++                                                                                                                                                       col1                                                                                                                                                        
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  0
+  0
+  Hello, world!
+  Hello, world!
++ The quick brown fox jumps over the lazy dog
+  test
+  test
+-(6 rows)
++ Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.
++(8 rows)
+ 
+ --TEARDOWN
+ DROP TABLE xxhash;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/hash_routing_int.out /regress/tests/router/results/hash_routing_int.out
+--- /regress/tests/router/expected/hash_routing_int.out	2026-03-20 11:17:28.551916366 +0200
++++ /regress/tests/router/results/hash_routing_int.out	2026-03-27 18:49:20.763325705 +0300
+@@ -111,66 +111,65 @@
+ (11 rows)
+ 
+ COPY xx (col1) FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+     col1    
+ ------------
+           1
+-          1
+           5
+-          5
+-          6
+           6
+           9
+-          9
+-         11
+          11
+       65538
+-      65538
+       65539
+-      65539
+- 2147483645
+  2147483645
+  2147483647
+- 2147483647
+-(18 rows)
++(9 rows)
+ 
+ SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+     col1    
+ ------------
++          1
+           2
+           2
+           3
+           3
+           4
+           4
++          5
++          6
+           7
+           7
+           8
+           8
++          9
+          10
+          10
++         11
+       65535
+       65535
+       65536
+       65536
+       65537
+       65537
++      65538
++      65539
+  2147483644
+  2147483644
++ 2147483645
+  2147483646
+  2147483646
+-(22 rows)
++ 2147483647
++(31 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 1;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1 
+ ------
+     1
+-    1
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 2;
+ NOTICE: send query to shard(s) : sh2
+@@ -197,20 +196,18 @@
+ (2 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 5;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1 
+ ------
+     5
+-    5
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 6;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1 
+ ------
+     6
+-    6
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 7;
+ NOTICE: send query to shard(s) : sh2
+@@ -229,12 +226,11 @@
+ (2 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 9;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1 
+ ------
+     9
+-    9
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 10;
+ NOTICE: send query to shard(s) : sh2
+@@ -245,12 +241,11 @@
+ (2 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 11;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1 
+ ------
+    11
+-   11
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 65535;
+ NOTICE: send query to shard(s) : sh2
+@@ -277,20 +272,18 @@
+ (2 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 65538;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1  
+ -------
+  65538
+- 65538
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 65539;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  col1  
+ -------
+  65539
+- 65539
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 2147483644;
+ NOTICE: send query to shard(s) : sh2
+@@ -301,12 +294,11 @@
+ (2 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 2147483645;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+     col1    
+ ------------
+  2147483645
+- 2147483645
+-(2 rows)
++(1 row)
+ 
+ SELECT * FROM xx WHERE col1 = 2147483646;
+ NOTICE: send query to shard(s) : sh2
+@@ -317,15 +309,14 @@
+ (2 rows)
+ 
+ SELECT * FROM xx WHERE col1 = 2147483647;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+     col1    
+ ------------
+  2147483647
+- 2147483647
+-(2 rows)
++(1 row)
+ 
+ DROP TABLE xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/hash_multicolumn_1.out /regress/tests/router/results/hash_multicolumn_1.out
+--- /regress/tests/router/expected/hash_multicolumn_1.out	2026-03-20 11:17:28.551632284 +0200
++++ /regress/tests/router/results/hash_multicolumn_1.out	2026-03-27 18:49:20.839325238 +0300
+@@ -112,9 +112,9 @@
+ (4 rows)
+ 
+ TRUNCATE hash_multi_xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ COPY hash_multi_xx (col1, col2)  FROM STDIN DELIMITER '|';
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  col1 |  col2  
+@@ -146,14 +146,23 @@
+ NOTICE: send query to shard(s) : sh4
+  col1 |    col2     
+ ------+-------------
+-    1 | abwqqwqabba
++    0 | ababbxxxa
++    0 | ababba
++    0 | ababdfba
++    0 | abwqqwqabba
++    0 | 232892
++    1 | dejwio
++    1 | dejwiewdewo
++    1 | 232892
++    1 | ababxxxxba
+     1 | abawqqqwbba
++    1 | ababxaxasba
++    1 | abwqqwqabba
+     1 | ababbxxxa
+-    1 | dejwiewdewo
+-(4 rows)
++(13 rows)
+ 
+ DROP TABLE hash_multi_xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/multicolumn.out /regress/tests/router/results/multicolumn.out
+--- /regress/tests/router/expected/multicolumn.out	2026-03-20 11:17:28.552480448 +0200
++++ /regress/tests/router/results/multicolumn.out	2026-03-27 18:49:21.151323330 +0300
+@@ -223,9 +223,9 @@
+ (3 rows)
+ 
+ TRUNCATE mcol_sh;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ COPY mcol_sh (val, seq, id) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh1*/;
+ NOTICE: send query to shard(s) : sh1
+  id | seq | val 
+@@ -243,7 +243,7 @@
+   0 | 100 |   6
+   0 | 200 |   1
+   1 |   1 |   1
+-  1 |   2 |   1
++  2 |   2 |   1
+  99 |   0 |   3
+  99 | 100 |   3
+ (6 rows)
+@@ -261,50 +261,63 @@
+ NOTICE: send query to shard(s) : sh4
+   id  | seq | val 
+ ------+-----+-----
++    0 |  10 |   1
++    0 |  50 |   3
++    0 |  99 |   3
++    0 |  99 |   3
++    0 | 100 |   6
++    0 | 200 |   1
++    1 |   1 |   1
++    1 |   2 |   1
++   99 |   0 |   3
++   99 | 100 |   3
++  100 |  10 |   1
++  100 |  90 |   1
++  100 |  99 |   3
+   100 | 100 |   3
+  2000 |  10 |   1
+  2000 | 200 |   1
+-(3 rows)
++(16 rows)
+ 
+ COPY mcol_dt (id, addr, val) FROM stdin;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh1*/;
+ NOTICE: send query to shard(s) : sh1
+- id | addr  | val 
+-----+-------+-----
+-  0 | aaaaa |   1
+-(1 row)
++ id | addr | val 
++----+------+-----
++(0 rows)
+ 
+ SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh2*/;
+ NOTICE: send query to shard(s) : sh2
+- id  | addr  | val 
+------+-------+-----
+-   0 | zzzzz |   2
+-  50 | dssd  |   4
+-  50 | sb    |   3
+- 100 | aaaa  |   5
+-(4 rows)
++ id | addr | val 
++----+------+-----
++(0 rows)
+ 
+ SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh3*/;
+ NOTICE: send query to shard(s) : sh3
+- id  | addr  | val 
+------+-------+-----
+- 100 | aaaaa |   6
+-(1 row)
++ id | addr | val 
++----+------+-----
++(0 rows)
+ 
+ SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh4*/;
+ NOTICE: send query to shard(s) : sh4
+  id  | addr  | val 
+ -----+-------+-----
++   0 | aaaaa |   1
++   0 | zzzzz |   2
++  50 | dssd  |   4
++  50 | sb    |   3
++ 100 | aaaa  |   5
++ 100 | aaaaa |   6
+  100 | zzzzz |   9
+  150 | zzzzz |   7
+  150 | zzzzz |   8
+-(3 rows)
++(9 rows)
+ 
+ DROP TABLE mcol_sh;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE mcol_dt;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/routing_hint.out /regress/tests/router/results/routing_hint.out
+--- /regress/tests/router/expected/routing_hint.out	2026-03-20 11:17:28.553341028 +0200
++++ /regress/tests/router/results/routing_hint.out	2026-03-27 18:49:21.401321812 +0300
+@@ -68,17 +68,17 @@
+ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
+ NOTICE: send query to shard(s) : sh2
+ CREATE TABLE test_h(id TEXT, age int);
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+ NOTICE: send query to shard(s) : sh1
++ERROR:  relation "test_h" does not exist
++LINE 1: INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__s...
++                    ^
+ SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+ NOTICE: send query to shard(s) : sh1
+-  id   | age 
+--------+-----
+- a1210 |  16
+-(1 row)
+-
++ERROR:  relation "test_h" does not exist
++LINE 1: SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__...
++                      ^
+ INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
+ NOTICE: send query to shard(s) : sh2
+ SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
+@@ -90,20 +90,20 @@
+ 
+ INSERT INTO test_h(id, age) VALUES ('a121012', 16) /*__spqr__sharding_key: a121012, __spqr__distribution: ds2  */;
+ NOTICE: send query to shard(s) : sh1
++ERROR:  relation "test_h" does not exist
++LINE 1: INSERT INTO test_h(id, age) VALUES ('a121012', 16) /*__spqr_...
++                    ^
+ SELECT * FROM test_h /*__spqr__sharding_key: a121012, __spqr__distribution: ds2  */;
+ NOTICE: send query to shard(s) : sh1
+-   id    | age 
+----------+-----
+- a1210   |  16
+- a121012 |  16
+-(2 rows)
+-
++ERROR:  relation "test_h" does not exist
++LINE 1: SELECT * FROM test_h /*__spqr__sharding_key: a121012, __spqr...
++                      ^
+ -- parse all comments in query, ignore output
+ SELECT FROM test_h /*__spqr__sharding_key: a121012 */ /* __spqr__distribution: ds2  */;
+ NOTICE: send query to shard(s) : sh1
+---
+-(2 rows)
+-
++ERROR:  relation "test_h" does not exist
++LINE 1: SELECT FROM test_h /*__spqr__sharding_key: a121012 */ /* __s...
++                    ^
+ -- test transaction support for route-local variables;
+ SET __spqr__distribution = 'ds1';
+ SHOW __spqr__distribution;
+@@ -221,12 +221,12 @@
+ 
+ -- After stmt select from sh1, not sh2
+ SELECT * FROM test ORDER BY id;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+  id | age 
+ ----+-----
+-  1 |   1
+-  5 |   5
+- 10 |  10
++ 15 |  15
++ 20 |  20
++ 25 |  25
+ (3 rows)
+ 
+ SHOW __spqr__scatter_query; -- error
+@@ -290,6 +290,7 @@
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ DROP TABLE test_h;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  table "test_h" does not exist
+ DROP TABLE test_unmatch;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ \c spqr-console
+diff -U3 /regress/tests/router/expected/copy_multishard.out /regress/tests/router/results/copy_multishard.out
+--- /regress/tests/router/expected/copy_multishard.out	2026-03-20 11:17:28.550172539 +0200
++++ /regress/tests/router/results/copy_multishard.out	2026-03-27 18:49:21.711319930 +0300
+@@ -128,30 +128,44 @@
+ (22 rows)
+ 
+ TRUNCATE xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ ERROR:  new row for relation "xx" violates check constraint "xx_j_check"
+ DETAIL:  Failing row contains (1, 11).
+-CONTEXT:  COPY xx, line 2: "1|11"
++CONTEXT:  COPY xx, line 3: "1|11"
+ TABLE xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+  i | j 
+ ---+---
+ (0 rows)
+ 
+ BEGIN;
+ COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ ERROR:  new row for relation "xx" violates check constraint "xx_j_check"
+ DETAIL:  Failing row contains (1, 11).
+ CONTEXT:  COPY xx, line 3: "1|11"
+ ROLLBACK;
+ TABLE xx;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- i | j 
+----+---
+-(0 rows)
++          i          |          j          
++---------------------+---------------------
++                   1 |                   1
++                   5 |                   5
++                   6 |                   6
++                   9 |                   9
++   72057594037927938 |   72057594037927938
++  144115188075855871 |  144115188075855871
++ 9223372036854775806 | 9223372036854775806
++                   1 |                   1
++                   5 |                   5
++                   6 |                   6
++                   9 |                   9
++          4294967298 |          4294967298
++  144115188075855871 |  144115188075855871
++ 9223372036854775806 | 9223372036854775806
++(14 rows)
+ 
+ BEGIN;
+ COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
+@@ -159,9 +173,23 @@
+ ROLLBACK;
+ TABLE xx;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- i | j 
+----+---
+-(0 rows)
++          i          |          j          
++---------------------+---------------------
++                   1 |                   1
++                   5 |                   5
++                   6 |                   6
++                   9 |                   9
++   72057594037927938 |   72057594037927938
++  144115188075855871 |  144115188075855871
++ 9223372036854775806 | 9223372036854775806
++                   1 |                   1
++                   5 |                   5
++                   6 |                   6
++                   9 |                   9
++          4294967298 |          4294967298
++  144115188075855871 |  144115188075855871
++ 9223372036854775806 | 9223372036854775806
++(14 rows)
+ 
+ SET __spqr__engine_v2 TO false;
+ DROP TABLE xx;
+diff -U3 /regress/tests/router/expected/copy_reference_table.out /regress/tests/router/results/copy_reference_table.out
+--- /regress/tests/router/expected/copy_reference_table.out	2026-03-20 11:17:28.550277622 +0200
++++ /regress/tests/router/results/copy_reference_table.out	2026-03-27 18:49:21.780319511 +0300
+@@ -72,9 +72,9 @@
+ (4 rows)
+ 
+ DROP TABLE test_ref_rel;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ DROP TABLE test_ref_rel_2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/copy_inside_singleshard_connection.out /regress/tests/router/results/copy_inside_singleshard_connection.out
+--- /regress/tests/router/expected/copy_inside_singleshard_connection.out	2026-02-26 14:55:11.389232559 +0200
++++ /regress/tests/router/results/copy_inside_singleshard_connection.out	2026-03-27 18:49:21.916318686 +0300
+@@ -1,6 +1,7 @@
+ \c regress
+ CREATE TABLE copy_test (id int)  /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "copy_test" already exists
+ SET __spqr__execute_on TO sh1;
+ INSERT INTO copy_test VALUES(1);
+ NOTICE: send query to shard(s) : sh1
+@@ -9,7 +10,16 @@
+  id 
+ ----
+   1
+-(1 row)
++  1
++  2
++  3
++  5
++  7
++ 10
++ 15
++ 99
++ 99
++(10 rows)
+ 
+ COPY copy_test(id) FROM STDIN WHERE id <= 10;
+ NOTICE: send query to shard(s) : sh1
+@@ -19,11 +29,20 @@
+ ----
+   1
+   1
++  1
+   2
++  2
++  3
+   3
+   4
+   5
+-(6 rows)
++  5
++  7
++ 10
++ 15
++ 99
++ 99
++(15 rows)
+ 
+ RESET __spqr__execute_on;
+ \c spqr-console
+@@ -76,25 +95,38 @@
+ -----
+    1
+    1
++   1
++   2
+    2
+    3
++   3
+    4
+    5
++   5
++   7
++  10
+   10
++  15
++  99
++  99
+  112
+  113
+  114
+  115
+-(11 rows)
++(20 rows)
+ 
+ SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- id 
+-----
+-(0 rows)
++ id  
++-----
++ 101
++ 120
++ 199
++ 199
++(4 rows)
+ 
+ DROP TABLE IF EXISTS copy_test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/distributed_relation_multishard_modify.out /regress/tests/router/results/distributed_relation_multishard_modify.out
+--- /regress/tests/router/expected/distributed_relation_multishard_modify.out	2026-03-20 11:17:28.550967578 +0200
++++ /regress/tests/router/results/distributed_relation_multishard_modify.out	2026-03-27 18:49:21.988318249 +0300
+@@ -64,16 +64,17 @@
+ (5 rows)
+ 
+ DELETE FROM distrr_mm_test  WHERE id IN (2, 35) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2
++NOTICE: send query to shard(s) : sh2
+ SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id |  t  
+ ----+-----
+   1 | 'u'
++  2 | 'u'
+   3 | m
+   4 | 'u'
+   5 | 'u'
+-(4 rows)
++(5 rows)
+ 
+ SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+@@ -87,16 +88,16 @@
+ 
+ -- This insert should succeed regardless of engine V2
+ INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: false*/;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+ INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh2
+ -- This insert should fail even with engine V2
+ INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;
+-NOTICE: send query to shard(s) : sh1,sh2
++NOTICE: send query to shard(s) : sh2
+ INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2
++NOTICE: send query to shard(s) : sh2
+ DROP TABLE distrr_mm_test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/part_table.out /regress/tests/router/results/part_table.out
+--- /regress/tests/router/expected/part_table.out	2026-03-20 11:17:28.553052321 +0200
++++ /regress/tests/router/results/part_table.out	2026-03-27 18:49:22.046317900 +0300
+@@ -97,7 +97,7 @@
+ 
+ --TEARDOWN
+ DROP TABLE xxhash_part;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/reference_table.out /regress/tests/router/results/reference_table.out
+--- /regress/tests/router/expected/reference_table.out	2026-03-20 11:17:28.553179570 +0200
++++ /regress/tests/router/results/reference_table.out	2026-03-27 18:49:22.209316924 +0300
+@@ -70,7 +70,7 @@
+ \c regress
+ CREATE TABLE test_ref_rel(i int, j int);
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  failed to run inner slice, tx status error: relation "test_ref_rel" already exists
+ CREATE SCHEMA sh1;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ CREATE TABLE sh1.test_ref_rel_rel(i int, j int);
+@@ -84,13 +84,49 @@
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ COPY test_ref_rel FROM STDIN;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  multishard state is out of sync
++1	2
++2	3
++3	4
++4	5
++\.
++invalid command \.
+ COPY sh1.test_ref_rel_rel FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  syntax error
++1	2
++2	3
++3	4
++4	5
++\.
++invalid command \.
+ COPY test_ref_rel_part FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  syntax error
++1	2
++2	3
++3	4
++4	5
++\.
++invalid command \.
+ COPY test_distr_ref_rel(id, val) FROM STDIN WITH DELIMITER '|';
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  syntax error
++1|2
++2|3
++4|5
++50|51
++100|101
++101|102
++150|151
++199|200
++200|201
++201|202
++250|251
++299|300
++300|301
++350|351
++\.
++invalid command \.
+ set __spqr__default_route_behaviour to allow;
++ERROR:  syntax error
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  i | j 
+@@ -104,160 +140,114 @@
+ set __spqr__default_route_behaviour to block;
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- i | j 
+----+---
+- 1 | 2
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(4 rows)
+-
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_o...
++                      ^
+ INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: tru...
++                    ^
+ WITH data(x,z) AS (VALUES(1,3)) INSERT INTO test_ref_rel SELECT * FROM data;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: WITH data(x,z) AS (VALUES(1,3)) INSERT INTO test_ref_rel SEL...
++                                                    ^
+ INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true...
++                    ^
+ INSERT INTO sh1.test_ref_rel_rel SELECT 1 /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  i | j 
+ ---+---
+  1 | 2
+- 1 | 3
+- 1 |  
+- 1 |  
+  2 | 3
+  3 | 4
+  4 | 5
+-(7 rows)
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- i | j 
+----+---
+- 1 | 2
+- 1 | 3
+- 1 |  
+- 1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(7 rows)
+-
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_o...
++                      ^
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+  i | j 
+ ---+---
+  1 | 2
+- 1 | 3
+- 1 |  
+- 1 |  
+  2 | 3
+  3 | 4
+  4 | 5
+-(7 rows)
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+  i | j 
+ ---+---
+  1 | 2
+- 1 | 3
+- 1 |  
+- 1 |  
+  2 | 3
+  3 | 4
+  4 | 5
+-(7 rows)
++(4 rows)
+ 
+ SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  i | j 
+ ---+---
+- 1 | 2
+- 1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(5 rows)
++(0 rows)
+ 
+ SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+  i | j 
+ ---+---
+- 1 | 2
+  1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(5 rows)
++(1 row)
+ 
+ SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+  i | j 
+ ---+---
+- 1 | 2
+- 1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(5 rows)
++(0 rows)
+ 
+ SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+  i | j 
+ ---+---
+- 1 | 2
+- 1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(5 rows)
++(0 rows)
+ 
+ UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ UPDATE test_ref_rel SET i = - i WHERE i IN (3, 4) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- i  | j 
+-----+---
+- -4 | 4
+- -3 | 3
+-  2 | 2
+-  2 | 3
+-  2 |  
+-  2 |  
+-  5 | 5
+-(7 rows)
++ i | j 
++---+---
++ 1 | 2
++ 2 | 3
++ 3 | 4
++ 4 | 5
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- i  | j 
+-----+---
+- -4 | 4
+- -3 | 3
+-  2 | 2
+-  2 | 3
+-  2 |  
+-  2 |  
+-  5 | 5
+-(7 rows)
+-
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_o...
++                      ^
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- i  | j 
+-----+---
+- -4 | 4
+- -3 | 3
+-  2 | 2
+-  2 | 3
+-  2 |  
+-  2 |  
+-  5 | 5
+-(7 rows)
++ i | j 
++---+---
++ 1 | 2
++ 2 | 3
++ 3 | 4
++ 4 | 5
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+@@ -266,41 +256,36 @@
+  -4 | 4
+  -3 | 3
+   2 | 2
+-  2 | 3
+-  2 |  
+-  2 |  
+   5 | 5
+-(7 rows)
++(4 rows)
+ 
+ DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ -- check data
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- i  | j 
+-----+---
+- -4 | 4
+- -3 | 3
+-  5 | 5
+-(3 rows)
++ i | j 
++---+---
++ 1 | 2
++ 2 | 3
++ 3 | 4
++ 4 | 5
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- i  | j 
+-----+---
+- -4 | 4
+- -3 | 3
+-  5 | 5
+-(3 rows)
+-
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_o...
++                      ^
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- i  | j 
+-----+---
+- -4 | 4
+- -3 | 3
+-  5 | 5
+-(3 rows)
++ i | j 
++---+---
++ 1 | 2
++ 2 | 3
++ 3 | 4
++ 4 | 5
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+@@ -312,21 +297,15 @@
+ (3 rows)
+ 
+ INSERT INTO test_ref_rel_part VALUES(1) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh3
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO test_ref_rel_part SELECT 1 /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh3
++NOTICE: send query to shard(s) : sh4
+ -- check data on partially distributed reference relation
+ SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  i | j 
+ ---+---
+- 1 | 2
+- 1 |  
+- 1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(6 rows)
++(0 rows)
+ 
+ SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+@@ -338,25 +317,21 @@
+ NOTICE: send query to shard(s) : sh3
+  i | j 
+ ---+---
+- 1 | 2
+- 1 |  
+- 1 |  
+- 2 | 3
+- 3 | 4
+- 4 | 5
+-(6 rows)
++(0 rows)
+ 
+ SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+  i | j 
+ ---+---
+-(0 rows)
++ 1 |  
++ 1 |  
++(2 rows)
+ 
+ /* Check execution for returning clause */
+ TRUNCATE test_ref_rel;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO test_ref_rel VALUES(1,3),(2,4),(3,-1) RETURNING *;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+  i | j  
+ ---+----
+  1 |  3
+@@ -370,7 +345,7 @@
+ set i = 11
+ where i <= 3 and j < 0
+ returning i, j;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+  i  | j  
+ ----+----
+  11 | -1
+@@ -380,30 +355,28 @@
+ -- check data on partially distributed reference relation
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- i | j  
+----+----
+- 1 |  3
+- 2 |  4
+- 3 | -1
+-(3 rows)
++ i | j 
++---+---
++ 1 | 2
++ 2 | 3
++ 3 | 4
++ 4 | 5
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- i | j  
+----+----
+- 1 |  3
+- 2 |  4
+- 3 | -1
+-(3 rows)
+-
++ERROR:  relation "test_ref_rel" does not exist
++LINE 1: SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_o...
++                      ^
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- i | j  
+----+----
+- 1 |  3
+- 2 |  4
+- 3 | -1
+-(3 rows)
++ i | j 
++---+---
++ 1 | 2
++ 2 | 3
++ 3 | 4
++ 4 | 5
++(4 rows)
+ 
+ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+@@ -421,56 +394,50 @@
+ (0 rows)
+ 
+ SELECT FROM test_distr_ref_rel a, test_ref_rel b WHERE a.id = 133;
+-NOTICE: send query to shard(s) : sh2
++NOTICE: send query to shard(s) : sh4
+ --
+ (0 rows)
+ 
+ SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 33;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+ --
+ (0 rows)
+ 
+ SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 233;
+-NOTICE: send query to shard(s) : sh3
++NOTICE: send query to shard(s) : sh4
+ --
+ (0 rows)
+ 
+ SET __spqr__preferred_engine TO v2;
+ SELECT __spqr__show('reference_relations');
+-    table_name     | schema_name | schema_version |      shards       | column_sequence_mapping 
+--------------------+-------------+----------------+-------------------+-------------------------
+- test_ref_rel      | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+- test_ref_rel_part | public      | 1              | [sh1 sh3]         | map[]
+- test_ref_rel_rel  | sh1         | 1              | [sh1 sh2 sh3 sh4] | map[]
+-(3 rows)
+-
++NOTICE: send query to shard(s) : sh4
++ERROR:  function __spqr__show(unknown) does not exist
++LINE 1: SELECT __spqr__show('reference_relations');
++               ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ SELECT * FROM __spqr__show('reference_relations');
+-    table_name     | schema_name | schema_version |      shards       | column_sequence_mapping 
+--------------------+-------------+----------------+-------------------+-------------------------
+- test_ref_rel      | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+- test_ref_rel_part | public      | 1              | [sh1 sh3]         | map[]
+- test_ref_rel_rel  | sh1         | 1              | [sh1 sh2 sh3 sh4] | map[]
+-(3 rows)
+-
++NOTICE: send query to shard(s) : sh4
++ERROR:  function __spqr__show(unknown) does not exist
++LINE 1: SELECT * FROM __spqr__show('reference_relations');
++                      ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ SET __spqr__preferred_engine TO '';
+ SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
+-    table_name     | schema_name | schema_version |      shards       | column_sequence_mapping 
+--------------------+-------------+----------------+-------------------+-------------------------
+- test_ref_rel      | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+- test_ref_rel_part | public      | 1              | [sh1 sh3]         | map[]
+- test_ref_rel_rel  | sh1         | 1              | [sh1 sh2 sh3 sh4] | map[]
+-(3 rows)
+-
++NOTICE: send query to shard(s) : sh4
++ERROR:  function __spqr__show(unknown) does not exist
++LINE 1: SELECT __spqr__show('reference_relations') /*  __spqr__prefe...
++               ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ DROP TABLE test_ref_rel;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE sh1.test_ref_rel_rel;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP SCHEMA sh1;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE test_ref_rel_part;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE test_distr_ref_rel;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/insert_processing.out /regress/tests/router/results/insert_processing.out
+--- /regress/tests/router/expected/insert_processing.out	2026-03-20 11:17:28.552028866 +0200
++++ /regress/tests/router/results/insert_processing.out	2026-03-27 18:49:22.271316553 +0300
+@@ -121,7 +121,7 @@
+ (3 rows)
+ 
+ explain (COSTS OFF ) SELECT * FROM xx_insert_rel WHERE a = 1 ORDER BY 1,2,3;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+            QUERY PLAN            
+ ---------------------------------
+  Sort
+@@ -131,7 +131,7 @@
+ (4 rows)
+ 
+ DROP TABLE xx_insert_rel;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/sequence.out /regress/tests/router/results/sequence.out
+--- /regress/tests/router/expected/sequence.out	2026-03-20 11:17:28.553461819 +0200
++++ /regress/tests/router/results/sequence.out	2026-03-27 18:49:22.345316110 +0300
+@@ -61,40 +61,38 @@
+ (3 rows)
+ 
+ INSERT INTO test2(age) VALUES (16) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ INSERT INTO test2(age) VALUES (17) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ INSERT INTO test2(age) VALUES (18) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ -- asserting error
+ INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;
+-ERROR:  error processing query 'INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;': too complex query to route
++NOTICE: send query to shard(s) : sh2
+ SELECT * FROM test2 /* __spqr__execute_on: sh2 */ ORDER BY id, age;
+ NOTICE: send query to shard(s) : sh2
+  id | age 
+ ----+-----
+- 20 |  16
+- 21 |  17
+- 22 |  18
+-(3 rows)
++  1 |    
++    |  16
++    |  17
++    |  18
++(4 rows)
+ 
+ INSERT INTO test3(b,c) VALUES (1001, 1002),(101, 102), (999, 998) /* __spqr__engine_v2: true */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh2
+ SELECT * FROM test3 /* __spqr__execute_on: sh4 */ ORDER BY 1,2,3;
+ NOTICE: send query to shard(s) : sh4
+-  a  |  b   |  c   
+------+------+------
+- 102 | 1001 | 1002
+- 103 |  101 |  102
+- 104 |  999 |  998
+-(3 rows)
++ a | b | c 
++---+---+---
++(0 rows)
+ 
+ DROP TABLE test;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE test2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE test3;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/cte.out /regress/tests/router/results/cte.out
+--- /regress/tests/router/expected/cte.out	2026-03-20 11:17:28.550531329 +0200
++++ /regress/tests/router/results/cte.out	2026-03-27 18:49:22.436315565 +0300
+@@ -159,22 +159,22 @@
+ (0 rows)
+ 
+ INSERT INTO table2 (a,b,c) VALUES (1, 22, 33);
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO table2 (a,b,c) VALUES (2, 22, 33);
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO table2 (a,b,c) VALUES (101, 22, 33);
+-NOTICE: send query to shard(s) : sh2
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO table2 (a,b,c) VALUES (301, 22, 33);
+ NOTICE: send query to shard(s) : sh4
+ WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+  a | b  | c  | x | y | z 
+ ---+----+----+---+---+---
+  1 | 22 | 33 | 1 | 2 | 3
+ (1 row)
+ 
+ WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v WHERE t.a = v.x;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+  a | b  | c  | x | y | z 
+ ---+----+----+---+---+---
+  1 | 22 | 33 | 1 | 2 | 3
+@@ -192,7 +192,7 @@
+ FROM table2 r
+ JOIN vals 
+ 	ON r.a = vals.x;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+  a | b  | c  | x | y | z 
+ ---+----+----+---+---+---
+  1 | 22 | 33 | 1 | 2 | 4
+@@ -210,7 +210,7 @@
+ FROM table2 r
+ JOIN vals 
+ 	ON r.a = vals.x;
+-NOTICE: send query to shard(s) : sh1,sh2,sh4
++NOTICE: send query to shard(s) : sh4
+   a  | b  | c  |  x  
+ -----+----+----+-----
+    1 | 22 | 33 |   1
+@@ -231,7 +231,7 @@
+ FROM table2 r
+ JOIN vals 
+ 	ON r.a = vals.x;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+  a | b  | c  | y | z | x 
+ ---+----+----+---+---+---
+  1 | 22 | 33 | 2 | 4 | 1
+@@ -252,45 +252,39 @@
+         ON r.a = vals.x
+ )
+ UPDATE table2 SET b = b + 1;
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- a | b  | c  
+----+----+----
+- 1 | 23 | 33
+- 2 | 23 | 33
+-(2 rows)
++ a | b | c 
++---+---+---
++(0 rows)
+ 
+ with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
+ NOTICE: send query to shard(s) : sh1
+ SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- a  | b  | c  
+-----+----+----
+-  1 | 23 | 33
+-  1 |    |   
+-  2 | 23 | 33
+- 88 |    |   
+-(4 rows)
++ a  | b | c 
++----+---+---
++  1 |   |  
++ 88 |   |  
++(2 rows)
+ 
+ TRUNCATE table2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+-NOTICE: send query to shard(s) : sh1,sh2
++NOTICE: send query to shard(s) : sh1
+ select __spqr__ctid ('table2');
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    |   1 |   |  
+- shard sh2    | 188 |   |  
+-(2 rows)
+-
++NOTICE: send query to shard(s) : sh1
++ERROR:  function __spqr__ctid(unknown) does not exist
++LINE 1: select __spqr__ctid ('table2');
++               ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ TRUNCATE table2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ with vals (i) as (values (201), (288)),
+ 	z as (insert into table2 (a)
+ 		select i from vals returning *) table z;
+-NOTICE: send query to shard(s) : sh3
++NOTICE: send query to shard(s) : sh1
+   a  | b | c 
+ -----+---+---
+  201 |   |  
+@@ -301,7 +295,7 @@
+ with vals (i) as (values (101), (288)),
+ 	z as (insert into table2 (a)
+ 		select i from vals returning *) table z;
+-NOTICE: send query to shard(s) : sh2,sh3
++NOTICE: send query to shard(s) : sh1
+   a  | b | c 
+ -----+---+---
+  101 |   |  
+@@ -309,22 +303,18 @@
+ (2 rows)
+ 
+ select __spqr__ctid ('table2');
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh2    | 101 |   |  
+- shard sh3    | 201 |   |  
+- shard sh3    | 288 |   |  
+- shard sh3    | 288 |   |  
+-(4 rows)
+-
++NOTICE: send query to shard(s) : sh1
++ERROR:  function __spqr__ctid(unknown) does not exist
++LINE 1: select __spqr__ctid ('table2');
++               ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ TRUNCATE table2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ with vals (i) as (values (201), (288)),
+ 	z as (insert into table2 (a) select i from vals returning *),
+ 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+ 			table z union all table zz;
+-NOTICE: send query to shard(s) : sh3
++NOTICE: send query to shard(s) : sh1
+   a  | b | c 
+ -----+---+---
+  201 |   |  
+@@ -336,7 +326,7 @@
+ 	z as (insert into table2 (a) select i from vals returning *),
+ 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+ 			table z union all table zz;
+-NOTICE: send query to shard(s) : sh2,sh3
++NOTICE: send query to shard(s) : sh1
+   a  | b | c  
+ -----+---+----
+  101 |   |   
+@@ -345,17 +335,13 @@
+ (3 rows)
+ 
+ select __spqr__ctid ('table2');
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c  
+---------------+-----+---+----
+- shard sh2    | 101 |   |   
+- shard sh3    | 201 |   |   
+- shard sh3    | 288 |   |   
+- shard sh3    | 288 |   | 12
+-(4 rows)
+-
++NOTICE: send query to shard(s) : sh1
++ERROR:  function __spqr__ctid(unknown) does not exist
++LINE 1: select __spqr__ctid ('table2');
++               ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+ NOTICE: send query to shard(s) : sh1
+  a | b | c | i 
+@@ -363,46 +349,42 @@
+ (0 rows)
+ 
+ with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+-NOTICE: send query to shard(s) : sh2
++NOTICE: send query to shard(s) : sh1
+  a | b | c | i 
+ ---+---+---+---
+ (0 rows)
+ 
+ with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+-NOTICE: send query to shard(s) : sh3
++NOTICE: send query to shard(s) : sh1
+   a  | b | c 
+ -----+---+---
+  233 | 1 |  
+ (1 row)
+ 
+ TRUNCATE table2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3
++NOTICE: send query to shard(s) : sh1
+   a  | b | c 
+ -----+---+---
+-  33 | 1 |  
++ 233 | 1 |  
+  133 | 1 |  
+  132 | 1 |  
+- 233 | 1 |  
++  33 | 1 |  
+ (4 rows)
+ 
+ select __spqr__ctid ('table2');
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    |  33 | 1 |  
+- shard sh2    | 133 | 1 |  
+- shard sh2    | 132 | 1 |  
+- shard sh3    | 233 | 1 |  
+-(4 rows)
+-
++NOTICE: send query to shard(s) : sh1
++ERROR:  function __spqr__ctid(unknown) does not exist
++LINE 1: select __spqr__ctid ('table2');
++               ^
++HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ DROP TABLE table1;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ DROP TABLE table2;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ DROP TABLE ref_rel_1;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh1
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/cte_hashed.out /regress/tests/router/results/cte_hashed.out
+--- /regress/tests/router/expected/cte_hashed.out	2026-03-20 11:17:28.550637121 +0200
++++ /regress/tests/router/results/cte_hashed.out	2026-03-27 18:49:22.790313445 +0300
+@@ -60,13 +60,13 @@
+ \c regress
+ CREATE TABLE table1(i INT PRIMARY KEY);
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  failed to run inner slice, tx status error: relation "table1" already exists
+ CREATE TABLE table2(a INT, b INT, c INT);
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  failed to run inner slice, tx status error: relation "table2" already exists
+ CREATE TABLE ref_rel_1(i int, j int);
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  failed to run inner slice, tx status error: relation "ref_rel_1" already exists
+ WITH s AS (
+ 	SELECT 1 FROM table1 WHERE i = 10
+ ) TABLE s;
+@@ -114,10 +114,9 @@
+ 	SELECT 1 FROM table1 WHERE i = 210
+ ), s2 AS (SELECT * FROM table1 WHERE i = 288) TABLE s2;
+ NOTICE: send query to shard(s) : sh1,sh2
+- i 
+----
+-(0 rows)
+-
++ERROR:  relation "table1" does not exist
++LINE 2:  SELECT 1 FROM table1 WHERE i = 210
++                       ^
+ -- XXX: fix parser to allow this
+ --WITH s AS (
+ --	SELECT 1 FROM table1 WHERE i = 210
+@@ -130,13 +129,7 @@
+ NOTICE: send query to shard(s) : sh2
+ select __spqr__ctid ('table1');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid | i  
+---------------+----
+- shard sh2    | 11
+- shard sh2    | 12
+- shard sh4    | 10
+-(3 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table1" does not exist
+ INSERT INTO table2 (a,b,c) VALUES (1, 22, 33), (2, 23, 34), (3, 24, 35), (4, 25, 36);
+ NOTICE: send query to shard(s) : sh2,sh3,sh4
+ WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
+@@ -184,11 +177,15 @@
+ JOIN vals 
+ 	ON r.a = vals.x;
+ NOTICE: send query to shard(s) : sh2,sh4
+- a | b  | c  | x 
+----+----+----+---
+- 1 | 22 | 33 | 1
+- 2 | 23 | 34 | 2
+-(2 rows)
++  a  | b  | c  |  x  
++-----+----+----+-----
++   1 | 22 | 33 |   1
++   1 | 23 | 33 |   1
++   2 | 23 | 33 |   2
++ 101 | 23 | 33 | 101
++ 301 | 23 | 33 | 301
++   2 | 23 | 34 |   2
++(6 rows)
+ 
+ WITH vals (y, z, x) AS (
+     VALUES (
+@@ -226,129 +223,87 @@
+ NOTICE: send query to shard(s) : sh2
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid | a | b  | c  
+---------------+---+----+----
+- shard sh2    | 1 | 23 | 33
+- shard sh3    | 3 | 24 | 35
+- shard sh4    | 2 | 23 | 34
+- shard sh4    | 4 | 25 | 36
+-(4 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ with vals (z) as (values (1), (44), (55), (88)) insert into table2 (a) select z from vals;
+ NOTICE: send query to shard(s) : sh1,sh2,sh4
++ERROR:  relation "table2" does not exist
++LINE 1: with vals (z) as (values (1), (44), (55), (88)) insert into ...
++                                                   ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid | a  | b  | c  
+---------------+----+----+----
+- shard sh1    | 88 |    |   
+- shard sh2    |  1 | 23 | 33
+- shard sh2    |  1 |    |   
+- shard sh2    | 44 |    |   
+- shard sh3    |  3 | 24 | 35
+- shard sh4    |  2 | 23 | 34
+- shard sh4    |  4 | 25 | 36
+- shard sh4    | 55 |    |   
+-(8 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ with vals (z) as (values (1), (2), (288), (388), (188)) insert into table2 (a) select z from vals;
+ NOTICE: send query to shard(s) : sh1,sh2,sh4
++ERROR:  relation "table2" does not exist
++LINE 1: with vals (z) as (values (1), (2), (288), (388), (188)) inse...
++                                                    ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 288 |   |  
+- shard sh2    |   1 |   |  
+- shard sh2    | 388 |   |  
+- shard sh2    | 188 |   |  
+- shard sh4    |   2 |   |  
+-(5 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ -- should create overwrite query map
+ with vals (i) as (values (101), (288)),
+ 	z as (insert into table2 (a)
+ 		select i from vals returning *) table z;
+ NOTICE: send query to shard(s) : sh1,sh2
+-  a  | b | c 
+------+---+---
+- 288 |   |  
+- 101 |   |  
+-(2 rows)
+-
++ERROR:  relation "table2" does not exist
++LINE 2:  z as (insert into table2 (a)
++                    ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 288 |   |  
+- shard sh2    | 101 |   |  
+-(2 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ -- should create overwrite query map
+ with vals (i) as (values (101), (288)),
+ 	z as (insert into table2 (a) select i from vals returning *),
+ 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+ 			table z union all table zz;
+ NOTICE: send query to shard(s) : sh1,sh2
+-  a  | b | c 
+------+---+---
+- 288 |   |  
+- 101 |   |  
+-(2 rows)
+-
++ERROR:  relation "table2" does not exist
++LINE 2:  z as (insert into table2 (a) select i from vals returning *...
++                    ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 288 |   |  
+- shard sh2    | 101 |   |  
+-(2 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "ref_rel_1" does not exist
++LINE 1: INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
++                    ^
+ SET __spqr__engine_v2 to false;
+ with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
+ NOTICE: send query to shard(s) : sh4
+ -- 3 out of 4 shards.
+ with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+ NOTICE: send query to shard(s) : sh1,sh2,sh4
++ERROR:  relation "ref_rel_1" does not exist
++LINE 1: ...101),(102),(103),(104),(105)), vals_ext as (select vals.* fr...
++                                                             ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 288 |   |  
+- shard sh1    | 102 |   |  
+- shard sh2    | 101 |   |  
+- shard sh2    | 101 |   |  
+- shard sh2    | 104 |   |  
+- shard sh2    | 105 |   |  
+- shard sh4    | 100 |   |  
+- shard sh4    | 103 |   |  
+-(8 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ -- all shards.
+ with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "ref_rel_1" does not exist
++LINE 1: ...101),(102),(103),(104),(105), (112)), vals_ext as (select va...
++                                                             ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 102 |   |  
+- shard sh2    | 101 |   |  
+- shard sh2    | 104 |   |  
+- shard sh2    | 105 |   |  
+- shard sh3    | 112 |   |  
+- shard sh4    | 103 |   |  
+-(6 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+ NOTICE: send query to shard(s) : sh2
+   a  | b | c 
+@@ -368,54 +323,37 @@
+ 
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh2    | 233 | 1 |  
+- shard sh2    | 233 | 1 |  
+- shard sh2    | 132 | 1 |  
+- shard sh2    |  33 | 1 |  
+- shard sh4    | 133 | 1 |  
+-(5 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ SET __spqr__engine_v2 to true;
+ with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
+ NOTICE: send query to shard(s) : sh4
+ -- 3 out of 4 shards.
+ with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+ NOTICE: send query to shard(s) : sh1,sh2,sh4
++ERROR:  relation "ref_rel_1" does not exist
++LINE 1: ...101),(102),(103),(104),(105)), vals_ext as (select vals.* fr...
++                                                             ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 102 |   |  
+- shard sh2    | 101 |   |  
+- shard sh2    | 104 |   |  
+- shard sh2    | 105 |   |  
+- shard sh4    | 100 |   |  
+- shard sh4    | 103 |   |  
+-(6 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ -- all shards.
+ with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "ref_rel_1" does not exist
++LINE 1: ...101),(102),(103),(104),(105), (112)), vals_ext as (select va...
++                                                             ^
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh1    | 102 |   |  
+- shard sh2    | 101 |   |  
+- shard sh2    | 104 |   |  
+- shard sh2    | 105 |   |  
+- shard sh3    | 112 |   |  
+- shard sh4    | 103 |   |  
+-(6 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+ NOTICE: send query to shard(s) : sh2
+   a  | b | c 
+@@ -435,23 +373,19 @@
+ 
+ select __spqr__ctid ('table2');
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- __spqr__ctid |  a  | b | c 
+---------------+-----+---+---
+- shard sh2    | 233 | 1 |  
+- shard sh2    | 233 | 1 |  
+- shard sh2    | 132 | 1 |  
+- shard sh2    |  33 | 1 |  
+- shard sh4    | 133 | 1 |  
+-(5 rows)
+-
++ERROR:  failed to run inner slice, tx status error: relation "table2" does not exist
+ TRUNCATE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  relation "table2" does not exist
+ DROP TABLE table1;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  table "table1" does not exist
+ DROP TABLE table2;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  table "table2" does not exist
+ DROP TABLE ref_rel_1;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  table "ref_rel_1" does not exist
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/ddl.out /regress/tests/router/results/ddl.out
+--- /regress/tests/router/expected/ddl.out	2026-03-20 11:17:28.550745787 +0200
++++ /regress/tests/router/results/ddl.out	2026-03-27 18:49:23.026312034 +0300
+@@ -41,6 +41,7 @@
+ \c regress
+ CREATE SCHEMA sh1;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  schema "sh1" already exists
+ CREATE TABLE table_1(id INT PRIMARY KEY);
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+@@ -70,6 +71,9 @@
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ DROP SCHEMA sh1;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  cannot drop schema sh1 because other objects depend on it
++DETAIL:  table sh1.test_ref_rel_rel depends on schema sh1
++HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+ DROP TABLE table_1 CASCADE;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ DROP TABLE table_2;
+diff -U3 /regress/tests/router/expected/auto_distribution.out /regress/tests/router/results/auto_distribution.out
+--- /regress/tests/router/expected/auto_distribution.out	2026-03-20 11:17:28.549889665 +0200
++++ /regress/tests/router/results/auto_distribution.out	2026-03-27 18:49:23.356310085 +0300
+@@ -69,52 +69,49 @@
+ 
+ -- should fail
+ CREATE TABLE d_zz (i int, j int);
+-ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found
++NOTICE: send query to shard(s) : sh4
+ -- should succeed .
+ CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
++ERROR:  relation "d_zz" already exists
+ -- should fail.
+ CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
+-ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;': relation "d_zz" is already attached
++NOTICE: send query to shard(s) : sh4
++ERROR:  relation "d_zz" already exists
+ -- should succeed .
+ CREATE TABLE IF NOT EXISTS d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO d_zz (i, j) VALUES(1,2); 
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO d_zz (i, j) VALUES(2,3); 
+-NOTICE: send query to shard(s) : sh1
++NOTICE: send query to shard(s) : sh4
+ TABLE d_zz /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- i | j 
+----+---
+- 1 | 2
+- 2 | 3
+-(2 rows)
+-
++ERROR:  relation "d_zz" does not exist
++LINE 1: TABLE d_zz /* __spqr__execute_on: sh1 */;
++              ^
+ TABLE d_zz /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+- i | j 
+----+---
+-(0 rows)
+-
++ERROR:  relation "d_zz" does not exist
++LINE 1: TABLE d_zz /* __spqr__execute_on: sh2 */;
++              ^
+ TABLE d_zz /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+- i | j 
+----+---
+-(0 rows)
+-
++ERROR:  relation "d_zz" does not exist
++LINE 1: TABLE d_zz /* __spqr__execute_on: sh3 */;
++              ^
+ TABLE d_zz /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+  i | j 
+ ---+---
+-(0 rows)
++ 1 | 2
++ 2 | 3
++(2 rows)
+ 
+ DROP TABLE zz;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE d_zz;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/spqrguard.out /regress/tests/router/results/spqrguard.out
+--- /regress/tests/router/expected/spqrguard.out	2026-03-20 11:17:28.554082901 +0200
++++ /regress/tests/router/results/spqrguard.out	2026-03-27 18:49:23.394309860 +0300
+@@ -32,7 +32,7 @@
+ (1 row)
+ 
+ INSERT INTO guard_zz (i) VALUES(1);
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+ INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh2 */;
+@@ -42,7 +42,7 @@
+ INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+ INSERT INTO guard_zz (i) VALUES(1);
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ ERROR:  unable to modify SPQR reference relation within read-only transaction
+ DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+@@ -53,9 +53,9 @@
+ DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+ INSERT INTO guard_zz (i) VALUES(1);
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ DROP TABLE guard_zz;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/default_shard.out /regress/tests/router/results/default_shard.out
+--- /regress/tests/router/expected/default_shard.out	2026-03-20 11:17:28.550862787 +0200
++++ /regress/tests/router/results/default_shard.out	2026-03-27 18:49:23.513309158 +0300
+@@ -101,9 +101,9 @@
+ (2 rows)
+ 
+ TRUNCATE def_sh_xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ COPY def_sh_xx (id) FROM STDIN;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+  id  
+@@ -131,14 +131,21 @@
+ 
+ SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+- id 
+-----
+-  0
+-  1
+-(2 rows)
++ id  
++-----
++ -30
++ -21
++ -20
++ -19
++ -11
++ -10
++  -9
++   0
++   1
++(9 rows)
+ 
+ DROP TABLE def_sh_xx;
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++NOTICE: send query to shard(s) : sh4
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/show_backend_connections.out /regress/tests/router/results/show_backend_connections.out
+--- /regress/tests/router/expected/show_backend_connections.out	2026-03-20 11:17:28.553683569 +0200
++++ /regress/tests/router/results/show_backend_connections.out	2026-03-27 18:49:23.723307917 +0300
+@@ -46,13 +46,12 @@
+ \c regress
+ create table test(id int) /* target-session-attrs: read-write */;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  failed to run inner slice, tx status error: relation "test" already exists
+ select * from test /* target-session-attrs: read-only */;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+- id 
+-----
+-(0 rows)
+-
++ERROR:  relation "test" does not exist
++LINE 1: select * from test /* target-session-attrs: read-only */;
++                      ^
+ \c spqr-console
+ 
+ 		SPQR router admin console
+@@ -64,42 +63,31 @@
+ SHOW backend_connections GROUP BY user;
+   user   | count 
+ ---------+-------
+- regress |     8
++ regress |     2
+ (1 row)
+ 
+ SHOW backend_connections GROUP BY hostname;
+-         hostname          | count 
+----------------------------+-------
+- spqr_shard_1:6432         |     1
+- spqr_shard_1_replica:6432 |     1
+- spqr_shard_2:6432         |     1
+- spqr_shard_2_replica:6432 |     1
+- spqr_shard_3:6432         |     1
+- spqr_shard_3_replica:6432 |     1
+- spqr_shard_4:6432         |     1
+- spqr_shard_4_replica:6432 |     1
+-(8 rows)
++     hostname      | count 
++-------------------+-------
++ spqr_shard_1:6432 |     1
++ spqr_shard_2:6432 |     1
++(2 rows)
+ 
+ SHOW backend_connections GROUP BY unknown;
+ ERROR:  failed to resolve 'unknown' column offset
+ SHOW backend_connections GROUP BY user, hostname;
+-  user   |         hostname          | count 
+----------+---------------------------+-------
+- regress | spqr_shard_1:6432         |     1
+- regress | spqr_shard_1_replica:6432 |     1
+- regress | spqr_shard_2:6432         |     1
+- regress | spqr_shard_2_replica:6432 |     1
+- regress | spqr_shard_3:6432         |     1
+- regress | spqr_shard_3_replica:6432 |     1
+- regress | spqr_shard_4:6432         |     1
+- regress | spqr_shard_4_replica:6432 |     1
+-(8 rows)
++  user   |     hostname      | count 
++---------+-------------------+-------
++ regress | spqr_shard_1:6432 |     1
++ regress | spqr_shard_2:6432 |     1
++(2 rows)
+ 
+ SHOW backend_connections GROUP BY user, unknown;
+ ERROR:  failed to resolve 'unknown' column offset
+ \c regress
+ drop table test;
+ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
++ERROR:  table "test" does not exist
+ \c spqr-console
+ 
+ 		SPQR router admin console
+diff -U3 /regress/tests/router/expected/split_update.out /regress/tests/router/results/split_update.out
+--- /regress/tests/router/expected/split_update.out	2026-03-20 11:17:28.553940818 +0200
++++ /regress/tests/router/results/split_update.out	2026-03-27 18:49:23.784307557 +0300
+@@ -72,23 +72,21 @@
+ (1 row)
+ 
+ UPDATE r SET i = 201 WHERE i = 110;
+-NOTICE: send query to shard(s) : sh2
+-NOTICE: send query to shard(s) : sh3
+ NOTICE: send query to shard(s) : sh3
+ SELECT * FROM r /* __spqr__execute_on: sh2 */;
+ NOTICE: send query to shard(s) : sh2
+   i  |  j  |   t   
+ -----+-----+-------
+  150 | 151 | yyyyy
+-(1 row)
++ 110 | 101 | cccc
++(2 rows)
+ 
+ SELECT * FROM r /* __spqr__execute_on: sh3 */;
+ NOTICE: send query to shard(s) : sh3
+   i  |  j  |  t   
+ -----+-----+------
+  200 | 201 | dddd
+- 201 | 101 | cccc
+-(2 rows)
++(1 row)
+ 
+ BEGIN;
+ SELECT * FROM r /* __spqr__execute_on: sh1 */;
+@@ -107,23 +105,21 @@
+ (1 row)
+ 
+ UPDATE r SET i = 401 WHERE i = 10;
+-NOTICE: send query to shard(s) : sh1
+-NOTICE: send query to shard(s) : sh4
+ NOTICE: send query to shard(s) : sh4
+ SELECT * FROM r /* __spqr__execute_on: sh1 */;
+ NOTICE: send query to shard(s) : sh1
+- i | j  |  t   
+----+----+------
+- 0 | 10 | aaaa
+-(1 row)
++ i  | j  |  t   
++----+----+------
++  0 | 10 | aaaa
++ 10 | 11 | bbbb
++(2 rows)
+ 
+ SELECT * FROM r /* __spqr__execute_on: sh4 */;
+ NOTICE: send query to shard(s) : sh4
+   i  |  j  |  t   
+ -----+-----+------
+  300 | 301 | eeee
+- 401 |  11 | bbbb
+-(2 rows)
++(1 row)
+ 
+ COMMIT;
+ DROP TABLE r;
+diff -U3 /regress/tests/router/expected/set.out /regress/tests/router/results/set.out
+--- /regress/tests/router/expected/set.out	2026-03-27 17:59:15.804660215 +0300
++++ /regress/tests/router/results/set.out	2026-03-27 18:49:24.068305885 +0300
+@@ -123,5 +123,6 @@
+ (1 row)
+ 
+ SHOW x;
++NOTICE: send query to shard(s) : sh3
+ ERROR:  unrecognized configuration parameter "x"
+ ROLLBACK;
+(using postmaster on regress_pooler, port 6432)
+============== running regression test queries        ==============
+test error                        ... ok           19 ms
+test copy                         ... FAILED       17 ms
+
+======================
+ 1 of 2 tests failed. 
+======================
+
+The differences that caused some tests to fail can be viewed in the
+file "/regress/tests/pooler/regression.diffs".  A copy of the test summary that you see
+above is saved in the file "/regress/tests/pooler/regression.out".
+
+diff -U3 /regress/tests/pooler/expected/copy.out /regress/tests/pooler/results/copy.out
+--- /regress/tests/pooler/expected/copy.out	2025-07-13 20:26:19.743732862 +0300
++++ /regress/tests/pooler/results/copy.out	2026-03-27 18:49:24.112305629 +0300
+@@ -1,8 +1,16 @@
+ BEGIN;
+ CREATE TABLE copy_test(id INTEGER);
++ERROR:  relation "copy_test" already exists
+ SELECT FROM copy_test WHERE id = 29;
+---
+-(0 rows)
+-
++ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ COPY copy_test(id) FROM STDIN;
++ERROR:  current transaction is aborted, commands ignored until end of transaction block
++10
++112
++113
++114
++115
++\.
++invalid command \.
+ ROLLBACK;
++ERROR:  syntax error
+(using postmaster on regress_coordinator, port 7002)
+============== running regression test queries        ==============
+test coordinator                  ... ok          499 ms
+test redistribute                 ... ok          323 ms
+
+=====================
+ All 2 tests passed. 
+=====================
+
+(using postmaster on regress_coordinator, port 7002)
+============== running regression test queries        ==============
+test unite                        ... ok        26586 ms
+test split                        ... ok           59 ms
+test key_range                    ... ok           22 ms
+
+=====================
+ All 3 tests passed. 
+=====================
+
+(using postmaster on regress_router, port 7432)
+============== running regression test queries        ==============
+test unite                        ... ok           12 ms
+test split                        ... ok           14 ms
+test key_range                    ... ok           11 ms
+
+=====================
+ All 3 tests passed. 
+=====================
+

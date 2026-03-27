@@ -99,6 +99,8 @@ func (s *VirtualParamHistory) CleanupStatementSet() {
 			s.history = s.history[:len(s.history)-1]
 		}
 	}
+
+	s.updateInGlobal()
 }
 
 func (s *VirtualParamHistory) Reset(tx int, defaultValue *string) {
