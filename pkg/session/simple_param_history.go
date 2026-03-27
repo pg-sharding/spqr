@@ -16,7 +16,6 @@ func (s *SimpleParamHistory) Commit() {
 		entry := s.history[i]
 		entry.Tx = 0
 		s.history = []ParamEntry{entry}
-
 	} else {
 		s.history = nil
 	}
@@ -55,7 +54,12 @@ func (s *SimpleParamHistory) RollbackTo(txCnt int) {
 
 func (s *SimpleParamHistory) updateInGlobal() {
 	if len(s.history) > 0 {
-		s.globalMap[s.name] = s.history[len(s.history)-1].Value
+		lastEntry := s.history[len(s.history)-1]
+		if lastEntry.Action == ParamActionReset && lastEntry.Value == "" {
+			delete(s.globalMap, s.name)
+		} else {
+			s.globalMap[s.name] = s.history[len(s.history)-1].Value
+		}
 	} else {
 		delete(s.globalMap, s.name)
 	}
@@ -63,4 +67,18 @@ func (s *SimpleParamHistory) updateInGlobal() {
 
 func (s *SimpleParamHistory) CleanupStatementSet() {
 
+}
+
+func (s *SimpleParamHistory) Reset(tx int, defaultValue *string) {
+	val := ""
+	if defaultValue != nil {
+		val = *defaultValue
+		s.globalMap[s.name] = val
+	}
+	s.history = append(s.history, ParamEntry{
+		Tx:     tx,
+		Action: ParamActionReset,
+		Value:  val,
+	})
+	s.updateInGlobal()
 }

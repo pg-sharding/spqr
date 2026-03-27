@@ -75,6 +75,19 @@ func TestSimpleSet(t *testing.T) {
 				"__spqr__target_session_attrs":    "read-write",
 			},
 		},
+		{
+			func(t SessionParamsHolder) {
+				t.SetParam("x", "1", false)
+				t.StartTx()
+				t.ResetAll()
+				t.Rollback()
+			},
+			map[string]string{
+				"__spqr__distribution":            "default",
+				"__spqr__default_route_behaviour": "",
+				"x":                               "1",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -83,5 +96,18 @@ func TestSimpleSet(t *testing.T) {
 
 		actualParams := h.Params()
 		assert.Equal(t, tc.expectedParams, actualParams)
+	}
+}
+
+func BenchmarkSimple(b *testing.B) {
+	h := NewSimpleHandler("", false, "", "")
+	for range b.N {
+		h.Params()
+		h.SetParam("x", "1", false)
+		h.StartTx()
+		h.SetParam("x", "2", true)
+		h.ResetAll()
+		h.CommitActiveSet()
+		h.Params()
 	}
 }

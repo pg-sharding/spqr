@@ -35,11 +35,15 @@ COMMIT;
 SHOW application_name;
 
 BEGIN;
-SET application_name TO 'regress_local';
+RESET application_name;
 SHOW application_name;
-SAVEPOINT s1;
-SET LOCAL application_name TO 'regress_sp1';
+ROLLBACK;
+
+BEGIN;
+SET x TO '1';
+SHOW x;
 SHOW application_name;
-ROLLBACK TO s1;
+RESET ALL;
 SHOW application_name;
+SHOW x;
 ROLLBACK;

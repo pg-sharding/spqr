@@ -10,13 +10,23 @@ type ParamHistory interface {
 	Commit()
 	Set(entry ParamEntry)
 	RollbackTo(txCnt int)
+	Reset(txCnt int, defaultValue *string)
 
 	CleanupStatementSet()
 }
 
+type ParamAction int
+
+const (
+	ParamActionSet = iota
+	ParamActionReset
+)
+
 type ParamEntry struct {
 	Tx    int
 	Value string
+
+	Action ParamAction
 
 	// simple
 	IsLocal bool
@@ -367,8 +377,12 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) 
 }
 
 func (cl *SimpleSessionParamHandler) ResetAll() {
-	cl.activeParamSet = cl.startupParameters
-	cl.params = map[string]ParamHistory{}
+	for param := range cl.params {
+		cl.ResetParam(param)
+	}
+	for k := range cl.startupParameters {
+		cl.ResetParam(k)
+	}
 }
 
 func (cl *SimpleSessionParamHandler) RollbackToSP(name string) {
@@ -382,13 +396,14 @@ func (cl *SimpleSessionParamHandler) RollbackToSP(name string) {
 }
 
 func (cl *SimpleSessionParamHandler) ResetParam(name string) {
-	delete(cl.params, name)
-
-	if val, ok := cl.startupParameters[name]; ok {
-		cl.activeParamSet[name] = val
-	} else {
-		delete(cl.activeParamSet, name)
+	if history, ok := cl.params[name]; ok {
+		var defaultValue *string
+		if v, ok := cl.startupParameters[name]; ok {
+			defaultValue = &v
+		}
+		history.Reset(cl.txCnt, defaultValue)
 	}
+
 	spqrlog.Zero.Debug().
 		Interface("activeParamSet", cl.activeParamSet).
 		Msg("activeParamSet are now")

@@ -100,3 +100,12 @@ func (s *VirtualParamHistory) CleanupStatementSet() {
 		}
 	}
 }
+
+func (s *VirtualParamHistory) Reset(tx int, defaultValue *string) {
+	if defaultValue != nil {
+		s.globalMap[s.name] = *defaultValue
+	} else {
+		delete(s.globalMap, s.name)
+	}
+	s.history = nil
+}

@@ -93,26 +93,35 @@ SHOW application_name;
 (1 row)
 
 BEGIN;
-SET application_name TO 'regress_local';
+RESET application_name;
 SHOW application_name;
  application_name 
 ------------------
- regress_local
+ pg_regress/set
 (1 row)
 
-SAVEPOINT s1;
-SET LOCAL application_name TO 'regress_sp1';
+ROLLBACK;
+BEGIN;
+SET x TO '1';
+SHOW x;
+ x 
+---
+ 1
+(1 row)
+
 SHOW application_name;
  application_name 
 ------------------
- regress_sp1
+ regress_tx
 (1 row)
 
-ROLLBACK TO s1;
+RESET ALL;
 SHOW application_name;
  application_name 
 ------------------
- regress_local
+ pg_regress/set
 (1 row)
 
+SHOW x;
+ERROR:  unrecognized configuration parameter "x"
 ROLLBACK;
