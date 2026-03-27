@@ -7,6 +7,8 @@ CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 
 \c regress
 
+SET __spqr__reply_notice TO false;
+
 SET application_name TO 'regress';
 SHOW application_name;
 
