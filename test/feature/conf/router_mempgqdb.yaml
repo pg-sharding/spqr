@@ -15,11 +15,18 @@ use_coordinator_init: true
 enable_icp: true
 enable_2pc_watchdog: true
 watchdog_backend_rule:
-  usr: user1
-  db: db1
+  db: regress
+  usr: regress
   connection_limit: 50
   pool_discard: true
   pool_rollback: true
+  auth_rules:
+    sh1:
+      auth_method: md5
+      password: 12345678
+    sh2:
+      auth_method: md5
+      password: 12345678
 frontend_rules:
   - db: regress
     usr: regress
