@@ -133,10 +133,11 @@ func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distribu
 }
 
 // CreateKeyRange implements [EntityMgr].
-func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange, colTypes []string) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{CreateKeyRange: &proto.CreateKeyRangeGossip{
 			KeyRangeInfo: kr.ToProto(),
+			ColumnTypes:  colTypes,
 		}},
 	}
 	if err := t.state.Append(commands); err != nil {
@@ -163,10 +164,11 @@ func (t *TranEntityManager) DropKeyRange(ctx context.Context, idKeyRange string)
 }
 
 // UpdateKeyRange implements [EntityMgr].
-func (t *TranEntityManager) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (t *TranEntityManager) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange, colTypes []string) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{UpdateKeyRange: &proto.UpdateKeyRangeGossip{
 			KeyRangeInfo: kr.ToProto(),
+			ColumnTypes:  colTypes,
 		}},
 	}
 	if err := t.state.Append(commands); err != nil {

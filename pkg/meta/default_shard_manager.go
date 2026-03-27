@@ -82,7 +82,7 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 		return err
 	}
 	tranMngr := NewTranEntityManager(manager.mngr)
-	if err := CreateKeyRangeStrict(ctx, tranMngr, keyRange); err != nil {
+	if err := CreateKeyRangeStrict(ctx, tranMngr, keyRange, manager.distribution.ColTypes); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error (2) when adding default key range for: " +
 			manager.distribution.Id)
 		return err
