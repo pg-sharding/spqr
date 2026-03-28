@@ -207,7 +207,8 @@ services:
       - feature_test_network
     entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
   ldapserver:
-    image: "osixia/openldap:latest"
+    image: "osixia/openldap:1.5.0"
+    privileged: true
     hostname: regress_ldap_server
     container_name: regress_ldap_server
     environment: &ldap-env
@@ -223,18 +224,19 @@ services:
       - "1389:389"
       - "1636:636"
     healthcheck: &ldap-healthcheck
-      test: ldapwhoami -D "cn=regress,dc=example,dc=com" -w 12345678
+      test: ldapwhoami -H ldap://127.0.0.1:389 -D "cn=regress,dc=example,dc=com" -w 12345678
       interval: 10s
       timeout: 3s
       retries: 50
     networks:
       - feature_test_network
   ldapserver2:
-    image: "osixia/openldap:latest"
+    image: "osixia/openldap:1.5.0"
+    privileged: true
     hostname: regress_ldap_server_2
     container_name: regress_ldap_server_2
-    environment: 
-     <<: *ldap-env
+    environment:
+      <<: *ldap-env
     ports:
       - "2389:389"
       - "2636:636"
