@@ -6,7 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
-type ParamHistory interface {
+type ParamVisibility interface {
 	Commit()
 	Set(entry ParamEntry)
 	RollbackTo(txCnt int)
@@ -40,7 +40,7 @@ func (lhs ParamEntry) EqualIgnoringValue(rhs ParamEntry) bool {
 }
 
 type SimpleSessionParamHandler struct {
-	params map[string]ParamHistory
+	params map[string]ParamVisibility
 
 	activeParamSet map[string]string
 
@@ -73,7 +73,7 @@ func (cl *SimpleSessionParamHandler) resolveVirtualBoolParam(name string, defaul
 }
 
 func (cl *SimpleSessionParamHandler) recordVirtualParam(level string, name string, val string) {
-	cl.getParamHistory(name, true).Set(ParamEntry{
+	cl.getParamVisibility(name, true).Set(ParamEntry{
 		Tx: cl.txCnt,
 		Levels: map[string]string{
 			level: val,
@@ -296,8 +296,8 @@ func (cl *SimpleSessionParamHandler) ResetTsa() {
 func (cl *SimpleSessionParamHandler) CommitActiveSet() {
 	cl.savepointTxCounter = map[string]int{}
 
-	for _, history := range cl.params {
-		history.Commit()
+	for _, vis := range cl.params {
+		vis.Commit()
 	}
 
 	cl.txCnt = 0
@@ -359,7 +359,7 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) 
 				Str("opname", opname).
 				Str("opvalue", opvalue).
 				Msg("parsed pgoption param")
-			cl.getParamHistory(opname, false).Set(ParamEntry{
+			cl.getParamVisibility(opname, false).Set(ParamEntry{
 				Tx:      cl.txCnt,
 				Value:   opvalue,
 				IsLocal: isLocal,
@@ -367,7 +367,7 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) 
 		}
 
 	} else {
-		cl.getParamHistory(name, false).Set(ParamEntry{
+		cl.getParamVisibility(name, false).Set(ParamEntry{
 			Tx:      cl.txCnt,
 			Value:   value,
 			IsLocal: isLocal,
@@ -387,20 +387,20 @@ func (cl *SimpleSessionParamHandler) ResetAll() {
 func (cl *SimpleSessionParamHandler) RollbackToSP(name string) {
 	targetTxCnt := cl.savepointTxCounter[name]
 
-	for _, history := range cl.params {
-		history.RollbackTo(targetTxCnt)
+	for _, vis := range cl.params {
+		vis.RollbackTo(targetTxCnt)
 	}
 
 	cl.txCnt = targetTxCnt + 1
 }
 
 func (cl *SimpleSessionParamHandler) ResetParam(name string) {
-	if history, ok := cl.params[name]; ok {
+	if vis, ok := cl.params[name]; ok {
 		var defaultValue *string
 		if v, ok := cl.startupParameters[name]; ok {
 			defaultValue = &v
 		}
-		history.Reset(cl.txCnt, defaultValue)
+		vis.Reset(cl.txCnt, defaultValue)
 	}
 
 	spqrlog.Zero.Debug().
@@ -414,8 +414,8 @@ func (cl *SimpleSessionParamHandler) StartTx() {
 }
 
 func (cl *SimpleSessionParamHandler) CleanupStatementSet() {
-	for _, history := range cl.params {
-		history.CleanupStatementSet()
+	for _, vis := range cl.params {
+		vis.CleanupStatementSet()
 	}
 }
 
@@ -427,8 +427,8 @@ func (cl *SimpleSessionParamHandler) Savepoint(name string) {
 func (cl *SimpleSessionParamHandler) Rollback() {
 	cl.savepointTxCounter = map[string]int{}
 
-	for _, history := range cl.params {
-		history.RollbackTo(0)
+	for _, vis := range cl.params {
+		vis.RollbackTo(0)
 	}
 
 	cl.txCnt = 0
@@ -438,15 +438,15 @@ func (cl *SimpleSessionParamHandler) SetStartupParams(m map[string]string) {
 	cl.startupParameters = m
 }
 
-func (cl *SimpleSessionParamHandler) getParamHistory(name string, isVirtual bool) ParamHistory {
+func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual bool) ParamVisibility {
 	if h, ok := cl.params[name]; ok {
 		return h
 	} else {
-		var h ParamHistory
+		var h ParamVisibility
 		if isVirtual {
-			h = &VirtualParamHistory{globalMap: cl.activeParamSet, name: name}
+			h = &VirtualParamVisibility{globalMap: cl.activeParamSet, name: name}
 		} else {
-			h = &SimpleParamHistory{globalMap: cl.activeParamSet, name: name}
+			h = &SimpleParamVisibility{globalMap: cl.activeParamSet, name: name}
 		}
 		cl.params[name] = h
 		return h
@@ -455,7 +455,7 @@ func (cl *SimpleSessionParamHandler) getParamHistory(name string, isVirtual bool
 
 func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
 	return &SimpleSessionParamHandler{
-		params: map[string]ParamHistory{},
+		params: map[string]ParamVisibility{},
 
 		startupParameters: map[string]string{},
 
