@@ -402,6 +402,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				} else {
 					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
 				}
+			case session.SPQR_COMMIT_STRATEGY:
+				ReplyVirtualParamState(rst.Client(), "commit strategy", []byte(rst.Client().CommitStrategy()))
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
@@ -617,6 +619,8 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 		} else {
 			rst.Client().SetParam(name, hintVal, isLocal)
 		}
+	case session.SPQR_COMMIT_STRATEGY:
+		rst.Client().SetCommitStrategy(hintVal)
 	default:
 		rst.Client().SetParam(name, hintVal, isLocal)
 	}
