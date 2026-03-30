@@ -178,7 +178,7 @@ func (d *TwoPCWatchDog) executeCommitShards(shs []string, gid string) error {
 	for _, sh := range shs {
 		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
 			Name: sh,
-		}, tsa.TSA(config.TargetSessionAttrsAny))
+		}, tsa.TSA(config.TargetSessionAttrsRW))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
@@ -222,7 +222,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 	for _, sh := range shs {
 		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
 			Name: sh,
-		}, tsa.TSA(config.TargetSessionAttrsAny))
+		}, tsa.TSA(config.TargetSessionAttrsRW))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
@@ -231,6 +231,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 			return err
 		} else if !res {
 			/* tx already committed */
+			spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
 			continue
 		}
 
@@ -272,8 +273,10 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 			return err
 		}
 		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2)
-	case qdb.TwoPhaseP2Rejected, qdb.TwoPhaseP2:
+	case qdb.TwoPhaseP2:
 		return nil
+	case qdb.TwoPhaseP2Rejected:
+		return fmt.Errorf("unexpected 'rejected' tx status in Recover2PhaseCommitTx, gid \"%s\"", gid)
 	default:
 		return fmt.Errorf("unexpected 2pc state: %s", status)
 	}
