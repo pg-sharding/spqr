@@ -9,8 +9,8 @@ func CurrenRowToMap(r pgx.Rows) (map[string]any, error) {
 	}
 
 	rowmap := make(map[string]any)
-	descs := r.FieldDescriptions()
-	for i, column := range descs {
+	ds := r.FieldDescriptions()
+	for i, column := range ds {
 		rowmap[column.Name] = values[i]
 	}
 
