@@ -122,7 +122,7 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Str("gid", txid).Str("state", string(state)).Msg("pg dc state keeper: change tx state")
 	tx, err := q.getTx(ctx, txid)
-	defer (*tx).Rollback(ctx)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string, shards []string) error {
 	spqrlog.Zero.Debug().Str("gid", txid).Strs("shards", shards).Msg("pg dc state keeper: record tx members")
 	tx, err := q.getTx(ctx, txid)
-	defer (*tx).Rollback(ctx)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func (q *PgDCStateKeeper) ReleaseTxOwnership(_ context.Context, txid string) err
 func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]string, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: get tx cohort shards")
 	tx, err := q.getTx(ctx, txid)
-	defer (*tx).Rollback(ctx)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]st
 func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTxState, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: get tx status")
 	tx, err := q.getTx(ctx, txid)
-	defer (*tx).Rollback(ctx)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return "", err
 	}
