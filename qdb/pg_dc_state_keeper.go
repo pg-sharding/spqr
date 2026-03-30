@@ -106,6 +106,7 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 
 // AcquireTxOwnership implements [DCStateKeeper].
 func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -119,6 +120,7 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 
 // ChangeTxStatus implements [DCStateKeeper].
 func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
+	spqrlog.Zero.Debug().Str("gid", txid).Str("state", string(state)).Msg("pg dc state keeper: change tx state")
 	tx, err := q.getTx(ctx, txid)
 	defer (*tx).Rollback(ctx)
 	if err != nil {
@@ -149,6 +151,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
 func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string, shards []string) error {
+	spqrlog.Zero.Debug().Str("gid", txid).Strs("shards", shards).Msg("pg dc state keeper: record tx members")
 	tx, err := q.getTx(ctx, txid)
 	defer (*tx).Rollback(ctx)
 	if err != nil {
@@ -175,6 +178,7 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 
 // ReleaseTxOwnership implements [DCStateKeeper].
 func (q *PgDCStateKeeper) ReleaseTxOwnership(_ context.Context, txid string) error {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: release tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -184,6 +188,7 @@ func (q *PgDCStateKeeper) ReleaseTxOwnership(_ context.Context, txid string) err
 
 // TXCohortShards implements [DCStateKeeper].
 func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]string, error) {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: get tx cohort shards")
 	tx, err := q.getTx(ctx, txid)
 	defer (*tx).Rollback(ctx)
 	if err != nil {
@@ -199,6 +204,7 @@ func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]st
 
 // TXStatus implements [DCStateKeeper].
 func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTxState, error) {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: get tx status")
 	tx, err := q.getTx(ctx, txid)
 	defer (*tx).Rollback(ctx)
 	if err != nil {
