@@ -26,7 +26,7 @@ type Conn struct {
 	dedicated          conn.DBInstance
 	ps                 shard.ParameterSet
 	backend_key_pid    uint32
-	backend_key_secret uint32
+	backend_key_secret []byte
 
 	sync_in  int64
 	sync_out int64
@@ -483,7 +483,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			sh.backend_key_secret = v.SecretKey
 			spqrlog.Zero.Debug().
 				Uint32("process-id", v.ProcessID).
-				Uint32("secret-key", v.SecretKey).
+				Bytes("secret-key", v.SecretKey).
 				Msg("backend key data")
 		default:
 			spqrlog.Zero.Debug().
