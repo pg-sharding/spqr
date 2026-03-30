@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/spaolacci/murmur3"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -30,7 +31,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/slice"
 	"github.com/pg-sharding/spqr/router/virtual"
-	"golang.org/x/exp/slices"
 )
 
 type RelayStateMgr interface {
@@ -206,6 +206,41 @@ shardLoop:
 		switch replyMsg.(type) {
 		case *pgproto3.ErrorResponse:
 			break shardLoop
+		}
+	}
+	return rd, replyMsg, nil
+}
+func (rst *RelayStateImpl) gangDeployPrepStmtByShard(shardStmt map[string]*prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+	serv := rst.Client().Server()
+
+	if serv == nil {
+		return nil, nil, server.ErrMultiShardSyncBroken
+	}
+
+	shards := serv.Datashards()
+	if len(shards) == 0 {
+		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+	}
+
+	var rd *prepstatement.PreparedStatementDescriptor
+	var replyMsg pgproto3.BackendMessage
+
+shardLoop:
+	for i, shard := range shards {
+		if d, ok := shardStmt[shard.Name()]; ok {
+			shardRd, shardReplyMsg, err := gangMemberDeployPreparedStatement(shard, murmur3.Sum64([]byte(d.Query)), d)
+			if err != nil {
+				return nil, nil, err
+			}
+			if i == 0 {
+				rd = shardRd
+				replyMsg = shardReplyMsg
+			}
+			/* If prepared statement is not actually deployed by backend, return quickly */
+			switch replyMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				break shardLoop
+			}
 		}
 	}
 	return rd, replyMsg, nil
@@ -584,19 +619,10 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 	/* TODO: refactor code to make this less ugly */
 	saveTxStatus := rst.qse.TxStatus()
 
-	_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
-	if err != nil {
-		return err
-	}
-
 	rst.qse.SetTxStatus(saveTxStatus)
 
 	// tdb: fix this
 	rst.plainQ = currentMsg.Query
-
-	if err := rst.Client().Send(retMsg); err != nil {
-		return err
-	}
 
 	if err := fin(); err != nil {
 		return err
@@ -751,7 +777,27 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					if currentMsg.DestinationPortal != "" {
 						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
 					}
-					switch p.(type) {
+					switch planVal := p.(type) {
+					case *plan.ScatterPlan:
+						err := rst.PrepareTargetDispatchExecutionSlice(p)
+						if err != nil {
+							return err
+						}
+						shardStmt := make(map[string]*prepstatement.PreparedStatementDefinition)
+						def := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
+						for shard, query := range planVal.OverwriteQuery {
+							shardStmt[shard] = &prepstatement.PreparedStatementDefinition{
+								Name:          fmt.Sprintf("%d", hash),
+								Query:         query,
+								ParameterOIDs: def.ParameterOIDs,
+							}
+						}
+						_, _, err = rst.gangDeployPrepStmtByShard(shardStmt)
+
+						if err != nil {
+							return err
+						}
+						return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
 					case *plan.VirtualPlan:
 					default:
 						err := rst.PrepareTargetDispatchExecutionSlice(p)
@@ -772,9 +818,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						if err != nil {
 							return err
 						}
+						return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
 					}
-
-					return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
+					return nil
 				}
 
 				/* only populate map for non-empty portal */
@@ -847,10 +893,50 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						}); err != nil {
 							return err
 						}
+					case *plan.ScatterPlan:
+						if len(q.OverwriteQuery) == 0 {
+							spqrlog.Zero.Debug().
+								Msg("scatter prep statement")
+							err := rst.PrepareTargetDispatchExecutionSlice(p)
+							if err != nil {
+								return err
+							}
 
+							rst.routingDecisionPlan = p
+
+							if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
+								return err
+							}
+
+							var bnd *pgproto3.Bind
+
+							if currentMsg.Name == "" {
+								bnd = &rst.saveBind
+							} else {
+								bnd = rst.saveBindNamed[currentMsg.Name]
+							}
+
+							cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, bnd)
+							if err != nil {
+								return err
+							}
+							if cachedPd.rd != nil {
+								// send to the client
+								if err := rst.Client().Send(cachedPd.rd); err != nil {
+									return err
+								}
+							}
+							if cachedPd.nodata != nil {
+								// send to the client
+								if err := rst.Client().Send(cachedPd.nodata); err != nil {
+									return err
+								}
+							}
+
+							rst.savedPortalDesc[rst.lastBindName] = cachedPd
+						}
 					default:
 						/* SingleShard or random shard plans */
-
 						err := rst.PrepareTargetDispatchExecutionSlice(p)
 						if err != nil {
 							return err
@@ -894,8 +980,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				/* q.ObjectType == 'S' */
 				spqrlog.Zero.Debug().
-					Uint("client", rst.Client().ID()).
-					Str("stmt-name", currentMsg.Name).
 					Msg("Describe prep statement")
 
 				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
@@ -905,42 +989,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
 				}
 
-				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
+				_, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 				if err != nil {
 					return err
-				}
-
-				rst.routingDecisionPlan = p
-
-				rd, _, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
-				if err != nil {
-					return err
-				}
-
-				desc := rd.ParamDesc
-				if desc != nil {
-					// if we did overwrite something - remove our
-					// columns from output
-					for ind := range def.OverwriteRemoveParamIds {
-						// NB: ind are zero - indexed
-						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
-					}
-
-					if err := rst.Client().Send(desc); err != nil {
-						return err
-					}
-				}
-
-				if rd.NoData {
-					if err := rst.Client().Send(pgNoData); err != nil {
-						return err
-					}
-				} else {
-					if rd.RowDesc != nil {
-						if err := rst.Client().Send(rd.RowDesc); err != nil {
-							return err
-						}
-					}
 				}
 
 				if err := fin(); err != nil {
@@ -1154,7 +1205,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		Str("db", rst.Client().DB()).
 		Int("curr routes len", len(rst.QueryExecutor().ActiveShards())).
 		Msg("preparing relay step for client on target route")
-
 	if rst.holdRouting {
 		return nil
 	}
