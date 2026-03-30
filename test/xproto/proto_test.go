@@ -6794,7 +6794,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 	}
 }
 
-func TestParseError(t *testing.T) {
+func TestParseErrorThenReuseName(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -6830,11 +6830,34 @@ func TestParseError(t *testing.T) {
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
+
+				// reuse the name
+				&pgproto3.Parse{
+					Name:  "err_test_1",
+					Query: "select 2",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 					Code:     spqrerror.PG_SYNTAX_ERROR,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("2")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
