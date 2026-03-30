@@ -439,10 +439,10 @@ func (mr *MockRouterClientMockRecorder) ExecuteOn() *gomock.Call {
 }
 
 // GetCancelKey mocks base method.
-func (m *MockRouterClient) GetCancelKey() uint32 {
+func (m *MockRouterClient) GetCancelKey() []byte {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCancelKey")
-	ret0, _ := ret[0].(uint32)
+	ret0, _ := ret[0].([]byte)
 	return ret0
 }
 

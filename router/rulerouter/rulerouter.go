@@ -359,7 +359,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	if v, ok := r.clmp.Load(csm.ProcessID); ok {
 		cl := v.(rclient.RouterClient)
 
-		if bytes.Compare(cl.GetCancelKey(), csm.SecretKey) != 0 {
+		if !bytes.Equal(cl.GetCancelKey(), csm.SecretKey) {
 			return fmt.Errorf("cancel secret does not match")
 		}
 
