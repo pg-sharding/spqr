@@ -1,26 +1,17 @@
 package testutil
 
-import "database/sql"
+import "github.com/jackc/pgx/v5"
 
-func CurrenRowToMap(r *sql.Rows) (map[string]any, error) {
+func CurrenRowToMap(r pgx.Rows) (map[string]any, error) {
+	values, err := r.Values()
+	if err != nil {
+		return nil, err
+	}
+
 	rowmap := make(map[string]any)
-	columns, err := r.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	values := make([]any, len(columns))
-	for i := range values {
-		values[i] = new(any)
-	}
-
-	err = r.Scan(values...)
-	if err != nil {
-		return nil, err
-	}
-
-	for i, column := range columns {
-		rowmap[column] = *(values[i].(*any))
+	descs := r.FieldDescriptions()
+	for i, column := range descs {
+		rowmap[column.Name] = values[i]
 	}
 
 	return rowmap, nil
