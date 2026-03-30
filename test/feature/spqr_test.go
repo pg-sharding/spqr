@@ -387,36 +387,36 @@ func (tctx *testContext) trySetupConnection(ctx context.Context, user, service s
 }
 
 func (tctx *testContext) getPostgresqlConnection(ctx context.Context, user, host string) (*pgx.Conn, error) {
-	var db *pgx.Conn
+	var conn *pgx.Conn
 	dbs, ok := tctx.userDbs[user]
 	if !ok {
 		var err error
-		db, err = tctx.trySetupConnection(ctx, user, host)
+		conn, err = tctx.trySetupConnection(ctx, user, host)
 		if err != nil {
 			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
 		}
 	} else {
-		db, ok = dbs[host]
+		conn, ok = dbs[host]
 		if !ok {
 			var err error
-			db, err = tctx.trySetupConnection(ctx, user, host)
+			conn, err = tctx.trySetupConnection(ctx, user, host)
 			if err != nil {
 				return nil, fmt.Errorf("postgresql %s is not in cluster", host)
 			}
 		}
 	}
 	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
-		return db, nil
+		return conn, nil
 	}
-	err := db.Ping(ctx)
+	err := conn.Ping(ctx)
 	if err == nil {
-		return db, nil
+		return conn, nil
 	}
 	addr, err := tctx.composer.GetAddr(host, spqrPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
 	}
-	db, err = tctx.connectPostgresql(ctx, addr, user, postgresqlConnectTimeout)
+	conn, err = tctx.connectPostgresql(ctx, addr, user, postgresqlConnectTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgresql %s: %s", host, err)
 	}
@@ -424,8 +424,8 @@ func (tctx *testContext) getPostgresqlConnection(ctx context.Context, user, host
 	if _, ok := tctx.userDbs[user]; !ok {
 		tctx.userDbs[user] = make(map[string]*pgx.Conn)
 	}
-	tctx.userDbs[user][host] = db
-	return db, nil
+	tctx.userDbs[user][host] = conn
+	return conn, nil
 }
 
 func (tctx *testContext) prepareQueryPostgresql(ctx context.Context, host, user, query string) error {
@@ -569,10 +569,10 @@ func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, bod
 	return execErr
 }
 
-func (tctx *testContext) doPostgresqlQuery(ctx context.Context, db *pgx.Conn, query string, args []any) ([]map[string]any, error) {
+func (tctx *testContext) doPostgresqlQuery(ctx context.Context, conn *pgx.Conn, query string, args []any) ([]map[string]any, error) {
 	var rows pgx.Rows
 	var err error
-	rows, err = db.Query(ctx, query, args...)
+	rows, err = conn.Query(ctx, query, args...)
 	if err != nil {
 		log.Printf("query error %#v\n", err)
 		return nil, err
