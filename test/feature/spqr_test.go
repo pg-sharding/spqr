@@ -251,8 +251,6 @@ type pingFunc func(ctx context.Context, conn *pgx.Conn) bool
 
 func postgresqlPingFunc(addr string) pingFunc {
 	return func(ctx context.Context, conn *pgx.Conn) bool {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
 		err := conn.Ping(ctx)
 		if err != nil {
 			log.Printf("failed to ping postgres at %s: %s", addr, err)
@@ -504,7 +502,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 			continue
 		}
 		tctx.sqlQueryResult = nil
-		result, err = tctx.doPostgresqlQuery(ctx, db, q, timeout, args)
+		result, err = tctx.doPostgresqlQuery(ctx, db, q, args)
 		tctx.commandRetcode = 0
 		tctx.sqlQueryResult = result
 		if err != nil {
@@ -571,9 +569,7 @@ func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, bod
 	return execErr
 }
 
-func (tctx *testContext) doPostgresqlQuery(ctx context.Context, db *pgx.Conn, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+func (tctx *testContext) doPostgresqlQuery(ctx context.Context, db *pgx.Conn, query string, args []any) ([]map[string]any, error) {
 	var rows pgx.Rows
 	var err error
 	rows, err = db.Query(ctx, query, args...)
