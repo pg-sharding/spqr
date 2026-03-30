@@ -8,6 +8,7 @@ Feature: MemQDB with PG dc state keeper test
     ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb.yaml
     """
     Given cluster is up and running
+    And host "router2" is stopped
     And host "coordinator2" is stopped
     And host "coordinator2" is started
     And I wait for host "coordinator" to finish startup
@@ -324,7 +325,7 @@ Feature: MemQDB with PG dc state keeper test
     When I run SQL on host "router"
     """
     set __spqr__execute_on to sh2; 
-    select id from test_table;
+    select id from t;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -338,7 +339,7 @@ Feature: MemQDB with PG dc state keeper test
     When I run SQL on host "router"
     """
     set __spqr__execute_on to sh1; 
-    select id from test_table;
+    select id from t;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
