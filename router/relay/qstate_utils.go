@@ -75,42 +75,42 @@ func DispatchSlice(qd *QueryDesc,
 		} else {
 			for _, targ := range et {
 
-				if qd.simple {
+				/*
+				* This is only execution patch for non-top level slice
+				 */
 
-					/*
-					* This is only execution patch for non-top level slice
-					 */
+				if ovMsg := P.GetGangMemberMsg(targ); ovMsg != "" {
+					/* Uh, oh, this is very ugly hack */
 
-					if ovMsg := P.GetGangMemberMsg(targ); ovMsg != "" {
-						/* Uh, oh, this is very ugly hack */
+					if err := serv.SendShard(&pgproto3.Query{
+						String: ovMsg,
+					}, targ); err != nil {
+						return err
+					}
 
-						if err := serv.SendShard(&pgproto3.Query{
-							String: ovMsg,
-						}, targ); err != nil {
-							return err
-						}
+					/* Here we have msg flow discrepancy xproto, fix it */
 
-					} else {
+				} else {
 
+					if qd.simple {
 						/* Assert for IsQuery here? */
 						if err := serv.SendShard(qd.Msg, targ); err != nil {
 							return err
 						}
 
-					}
+					} else {
+						/* this message is actually bind */
+						if err := serv.SendShard(qd.Msg, targ); err != nil {
+							return err
+						}
 
-				} else {
-					/* this message is actually bind */
-					if err := serv.SendShard(qd.Msg, targ); err != nil {
-						return err
-					}
+						if err := serv.SendShard(qd.exec, targ); err != nil {
+							return err
+						}
 
-					if err := serv.SendShard(qd.exec, targ); err != nil {
-						return err
-					}
-
-					if err := serv.SendShard(pgsync, targ); err != nil {
-						return err
+						if err := serv.SendShard(pgsync, targ); err != nil {
+							return err
+						}
 					}
 				}
 			}
