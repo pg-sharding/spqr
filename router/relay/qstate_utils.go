@@ -79,24 +79,35 @@ func DispatchSlice(qd *QueryDesc,
 				* This is only execution patch for non-top level slice
 				 */
 
-				if ovMsg := P.GetGangMemberMsg(targ); ovMsg != "" {
-					/* Uh, oh, this is very ugly hack */
+				if qd.simple {
+					if ovMsg := P.GetGangMemberMsg(targ); ovMsg != "" {
+						/* Uh, oh, this is very ugly hack */
 
-					if err := serv.SendShard(&pgproto3.Query{
-						String: ovMsg,
-					}, targ); err != nil {
-						return err
-					}
+						if err := serv.SendShard(&pgproto3.Query{
+							String: ovMsg,
+						}, targ); err != nil {
+							return err
+						}
 
-					/* Here we have msg flow discrepancy xproto, fix it */
+						/* Here we have msg flow discrepancy xproto, fix it */
 
-				} else {
-
-					if qd.simple {
+					} else {
 						/* Assert for IsQuery here? */
 						if err := serv.SendShard(qd.Msg, targ); err != nil {
 							return err
 						}
+					}
+				} else {
+					if ovMsg := P.GetGangMemberMsg(targ); qd.ParamsNum == 0 && ovMsg != "" {
+						/* Uh, oh, this is very ugly hack */
+
+						if err := serv.SendShard(&pgproto3.Query{
+							String: ovMsg,
+						}, targ); err != nil {
+							return err
+						}
+
+						/* Here we have msg flow discrepancy xproto, fix it */
 
 					} else {
 						/* this message is actually bind */
