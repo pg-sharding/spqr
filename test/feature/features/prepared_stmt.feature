@@ -72,3 +72,78 @@ Feature: Prepared statement feature test
         }
     ]
     """
+
+ Scenario: Distributed relation prepared statement with query rewriting
+    #
+    # Make host "coordinator" take control
+    #
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_multishard_quering.yaml
+    """
+    Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds1 COLUMN TYPES varchar hash;
+    CREATE KEY RANGE krid2 FROM 3505849917 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION users DISTRIBUTION KEY user_id HASH FUNCTION MURMUR;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    create table users (user_id text, name text);
+    """
+    Then command return code should be "0"
+
+    When I prepare SQL on host "router"
+    """
+    INSERT INTO users(user_id, name) VALUES ('user1', 'name1'), ('user2', 'name2') /*__spqr__engine_v2: true*/
+    """
+    Then command return code should be "0"
+
+    When I run prepared SQL on host "router"
+    """
+    INSERT INTO users(user_id, name) VALUES ('user1', 'name1'), ('user2', 'name2') /*__spqr__engine_v2: true*/
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    select user_id, name from users;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "user_id": "user1",
+            "name": "name1"
+        }
+    ]
+    """
+
+    When I run SQL on host "shard2"
+    """
+    select user_id, name from users ;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "user_id": "user2",
+            "name": "name2"
+        }
+    ]
+    """
