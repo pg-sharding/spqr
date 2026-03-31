@@ -535,9 +535,8 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 					if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
 						return err
 					}
-				} else {
-					/* Distributted relation. */
 				}
+				/* else istributed relation. */
 			}
 		}
 	case *lyx.Select:
