@@ -11,12 +11,14 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal string) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto3.Bind, portal string) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
 	qd := &QueryDesc{
-		Msg: bind,
+		Msg:       bind,
+		ParamsNum: len(bind.Parameters),
+		simple:    forceSimple,
 	}
 
 	if portal == "" {

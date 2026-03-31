@@ -180,6 +180,10 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
+	if serv == nil {
+		return nil, nil, server.ErrMultiShardSyncBroken
+	}
+
 	shards := serv.Datashards()
 	if len(shards) == 0 {
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
@@ -532,6 +536,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 						return err
 					}
 				}
+				/* else distributed relation. */
 			}
 		}
 	case *lyx.Select:
@@ -747,6 +752,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					if currentMsg.DestinationPortal != "" {
 						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
 					}
+					forceSimple := false
+
+					switch q := p.(type) {
+					case *plan.ScatterPlan:
+						forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
+					default:
+					}
 					switch p.(type) {
 					case *plan.VirtualPlan:
 					default:
@@ -770,7 +782,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						}
 					}
 
-					return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
+					return BindAndReadSliceResult(rst, forceSimple, bnd, currentMsg.DestinationPortal)
 				}
 
 				/* only populate map for non-empty portal */
@@ -827,6 +839,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 					p := rst.bindQueryPlan
 					if currentMsg.Name != "" {
+						if _, ok := rst.executeMp[currentMsg.Name]; !ok {
+							return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, fmt.Sprintf("portal \"%s\" does not exists", currentMsg.Name))
+						}
 						p = rst.bindQueryPlanMP[currentMsg.Name]
 					}
 

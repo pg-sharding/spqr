@@ -281,7 +281,7 @@ type TwoPCInfo struct {
 	Gid       string   `json:"gid"`
 	SHardsIds []string `json:"shard_ids"`
 
-	State string `json:"state"`
+	State TwoPhaseTxState `json:"state"`
 
 	/* ephemeral part of state */
 	Locked bool `json:"-"`

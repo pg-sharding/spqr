@@ -24,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	"github.com/pg-sharding/spqr/pkg/models/twophasetxmeta"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -54,6 +55,7 @@ type EntityMgr interface {
 	sequences.SequenceMgr
 	rrelation.ReferenceRelationMgr
 	mtran.TransactionMgr
+	twophasetxmeta.TwoPhaseTxMetaMgr
 
 	ShareKeyRange(id string) error
 
@@ -854,7 +856,11 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 
 		return tts, nil
 	case *spqrparser.AlterRelationDistributionKey:
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+		newKey := distributions.DistributionKeyFromSQL(stmt.DistributionKey)
+		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
+			return nil, err
+		}
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
 			return nil, err
 		}
 
@@ -867,6 +873,43 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 
 				{
 					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+				},
+			},
+		}
+
+		return tts, nil
+	case *spqrparser.RenameDistributionColumn:
+		ds, err := mngr.GetDistribution(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+		rel := ds.GetRelation(relationName)
+		if rel == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
+		}
+		newKey, err := rel.RenameKeyColumn(stmt.OldName, stmt.NewName)
+		if err != nil {
+			return nil, err
+		}
+		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
+			return nil, err
+		}
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("rename distribution column"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
+				},
+				{
+					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+				},
+				{
+					fmt.Appendf(nil, "renamed column  -> %s to %s", stmt.OldName, stmt.NewName),
 				},
 			},
 		}
@@ -1421,7 +1464,7 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, fmt.Errorf("two state transactions status keeper")
 		}
 
-		txs, err := d.ListTXNames()
+		txs, err := d.ListTXNames(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -1432,11 +1475,29 @@ func ProcessShowExtended(ctx context.Context,
 
 		for _, gid := range txs {
 
-			st := d.TXStatus(gid)
-			members := d.TXCohortShards(gid)
+			st, err := d.TXStatus(ctx, gid)
+			if err != nil {
+				return nil, err
+			}
+			members, err := d.TXCohortShards(ctx, gid)
+			if err != nil {
+				return nil, err
+			}
 
-			tts.WriteDataRow(gid, st, fmt.Sprintf("%+v", members))
+			tts.WriteDataRow(gid, string(st), fmt.Sprintf("%+v", members))
 		}
+	case spqrparser.TwoPhaseTXStorageStr:
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("storage"),
+		}
+		storageList, err := mngr.GetTwoPhaseTxMetaStorage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, st := range storageList {
+			tts.WriteDataRow(st)
+		}
+		return tts, nil
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
@@ -1604,6 +1665,28 @@ func ProcessShowExtended(ctx context.Context,
 		tts, err = engine.RedistributeTasksVirtualRelationScan(redistributeTasks)
 		if err != nil {
 			return nil, err
+		}
+
+	case spqrparser.FileSettingsStr:
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(
+				"name",
+				"setting",
+				"applied",
+			),
+		}
+
+		changes, err := config.ConfigChanges()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, setting := range changes {
+			tts.WriteDataRow(
+				setting.FieldName,
+				setting.FieldValue,
+				fmt.Sprintf("%v", setting.Applied),
+			)
 		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand

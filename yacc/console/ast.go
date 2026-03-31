@@ -319,6 +319,14 @@ type AlterRelationDistributionKey struct {
 func (*AlterRelationDistributionKey) iStatement()     {}
 func (*AlterRelationDistributionKey) iAlterRelation() {}
 
+type RenameDistributionColumn struct {
+	OldName string
+	NewName string
+}
+
+func (*RenameDistributionColumn) iStatement()     {}
+func (*RenameDistributionColumn) iAlterRelation() {}
+
 type DetachRelation struct {
 	RelationName *rfqn.RelationFQN
 }
@@ -411,6 +419,8 @@ const (
 	ErrorStr              = "errors"
 	StartupFinishedStr    = "startup_finished"
 	TwoPhaseTXStr         = "two_phase_tx"
+	TwoPhaseTXStorageStr  = "dcs_storage"
+	FileSettingsStr       = "file_settings"
 )
 
 // not SHOW target

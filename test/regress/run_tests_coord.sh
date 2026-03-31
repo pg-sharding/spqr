@@ -4,6 +4,8 @@ export PGDATABASE=regress
 export PGUSER=regress
 export PGSSLMODE=allow
 
+source ./regress_utils.sh 
+
 run_tests () {
     DIR=$1  # router
     HOST=$2 # regress_router
@@ -40,20 +42,6 @@ https://github.com/pg-sharding/spqr/tree/master/docs
     done
 }
 
-ERR_OUTPUT_DIR=/tmp/regress_diffs
-
-save_diffs() {
-    mkdir -p $ERR_OUTPUT_DIR
-    
-    diff_files=$(find "$1" -name regression.diffs)
-    for diff_file in ${diff_files}; do
-        mv $diff_file $ERR_OUTPUT_DIR/$(basename $diff_file)
-    done
-    
-}
-
-
-
 echo "wait for services started"
 sleep 10
 echo "init cluster"
@@ -79,14 +67,17 @@ run_tests "kill_cluster" "regress_coordinator" "7002"
 sleep 10
 run_tests "coordinator" "regress_coordinator" "7002"
 
+echo "init cluster"
+run_tests "init_cluster" "regress_coordinator" "7002"
+sleep 10
+echo "go test!"
 # Compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
-
 save_diffs /regress/tests/common/
 
-#TODO: fix bugs, remove commented 'run_tests'
-#insert_greeting "common"
-#run_tests "common" "regress_router" "7432"
+insert_greeting "common"
+run_tests "common" "regress_router" "7432"
+save_diffs /regress/tests/common/
 
 # test if diffs are empty
 cat $ERR_OUTPUT_DIR/regression.diffs > /regress/tests/combined.diffs 2>&-

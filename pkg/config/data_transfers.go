@@ -1,19 +1,24 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"gopkg.in/yaml.v2"
 )
 
 type DatatransferConnections struct {
 	ShardsData map[string]*ShardConnect `json:"shards" toml:"shards" yaml:"shards"`
+}
+
+var _ Config = &DatatransferConnections{}
+
+func (dc *DatatransferConnections) ApplyDefaults() {
+
+}
+
+func (dc *DatatransferConnections) PostProcess() error {
+	return nil
 }
 
 type ShardConnect struct {
@@ -32,51 +37,23 @@ type ShardConnect struct {
 // - *DatatransferConnections: A pointer to the loaded DatatransferConnections struct.
 // - error: An error if the file cannot be opened or the configuration cannot be initialized.
 func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
-	var cfg DatatransferConnections
-	file, err := os.Open(cfgPath)
+	s := &DatatransferConnections{}
+	configStr, err := LoadConfig(cfgPath, s)
 	if err != nil {
-		return nil, fmt.Errorf("could not open file \"%s\": %s", cfgPath, err)
+		return nil, err
 	}
 
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("failed to close config file: %v", err)
-		}
-	}(file)
+	spqrlog.Zero.Debug().Str("config", configStr).Msg("got shard data config")
 
-	if err := initShardDataConfig(file, &cfg); err != nil {
-		return &cfg, err
-	}
-
-	configBytes, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return &cfg, err
-	}
-
-	spqrlog.Zero.Debug().Str("config", string(configBytes)).Msg("got shard data config")
-
-	return &cfg, nil
+	return s, nil
 }
 
-// initShardDataConfig initializes the shard data configuration from the given file.
-//
-// Parameters:
-// - file (*os.File): The file containing the configuration data.
-// - cfg (*DatatransferConnections): A pointer to the DatatransferConnections struct to be initialized.
-//
-// Returns:
-// - error: An error if the file cannot be decoded or if the file format is unknown.
-func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
-	if strings.HasSuffix(file.Name(), ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfg)
-		return err
+func (sc *ShardConnect) GetConnStrings() []string {
+	res := make([]string, len(sc.Hosts))
+	for i, h := range sc.Hosts {
+		hostname := strings.Split(h, ":")[0]
+		port := strings.Split(h, ":")[1]
+		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sc.User, hostname, port, sc.DB, sc.Password)
 	}
-	if strings.HasSuffix(file.Name(), ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfg)
-	}
-	if strings.HasSuffix(file.Name(), ".json") {
-		return json.NewDecoder(file).Decode(&cfg)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
+	return res
 }
