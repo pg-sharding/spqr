@@ -752,11 +752,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					if currentMsg.DestinationPortal != "" {
 						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
 					}
-					forseSimple := false
+					forceSimple := false
 
 					switch q := p.(type) {
 					case *plan.ScatterPlan:
-						forseSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
+						forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
 					default:
 					}
 					switch p.(type) {
@@ -782,7 +782,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						}
 					}
 
-					return BindAndReadSliceResult(rst, forseSimple, bnd, currentMsg.DestinationPortal)
+					return BindAndReadSliceResult(rst, forceSimple, bnd, currentMsg.DestinationPortal)
 				}
 
 				/* only populate map for non-empty portal */
