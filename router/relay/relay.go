@@ -536,6 +536,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 						return err
 					}
 				}
+				/* else distributed relation. */
 			}
 		}
 	case *lyx.Select:
@@ -751,6 +752,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					if currentMsg.DestinationPortal != "" {
 						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
 					}
+					forceSimple := false
+
+					switch q := p.(type) {
+					case *plan.ScatterPlan:
+						forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
+					default:
+					}
 					switch p.(type) {
 					case *plan.VirtualPlan:
 					default:
@@ -774,7 +782,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						}
 					}
 
-					return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
+					return BindAndReadSliceResult(rst, forceSimple, bnd, currentMsg.DestinationPortal)
 				}
 
 				/* only populate map for non-empty portal */
