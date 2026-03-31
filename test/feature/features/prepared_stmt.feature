@@ -79,7 +79,7 @@ Feature: Prepared statement feature test
     #
     Given cluster environment is
     """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_multishard_quering.yaml
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_multishard_query.yaml
     """
     Given cluster is up and running
     And host "coordinator2" is stopped
