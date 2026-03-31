@@ -536,7 +536,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 						return err
 					}
 				}
-				/* else istributed relation. */
+				/* else distributed relation. */
 			}
 		}
 	case *lyx.Select:

@@ -16,7 +16,9 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
 	qd := &QueryDesc{
-		Msg: bind,
+		Msg:       bind,
+		ParamsNum: len(bind.Parameters),
+		simple:    len(bind.Parameters) == 0,
 	}
 
 	if portal == "" {
