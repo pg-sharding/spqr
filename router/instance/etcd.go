@@ -136,6 +136,7 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 
 	// TODO: initialize two-phase meta storage
 	storage, err := etcdConn.GetTxMetaStorage(ctx)
+	spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
 	if err != nil {
 		return err
 	}
