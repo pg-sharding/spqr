@@ -46,3 +46,4 @@ test: split_update
 test: virtual_sliced
 test: unique_index
 test: spqr_execute
+test: default_shard_uuid
