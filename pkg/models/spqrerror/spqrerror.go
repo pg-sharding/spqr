@@ -37,6 +37,7 @@ const (
 	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
 
 	PG_ERRCODE_UNDEFINED_TABLE = "42P01"
+	PG_SYNTAX_ERROR            = "42601"
 )
 
 var ExistingErrorCodeMap = map[string]string{
