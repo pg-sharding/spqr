@@ -54,7 +54,7 @@ type MoveTasksServiceClient interface {
 	// Deprecated: Do not use.
 	DropMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DropMoveTaskGroupV2(ctx context.Context, in *DropMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RetryMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RetryMoveTaskGroup(ctx context.Context, in *RetryMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	StopMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetMoveTaskGroupBoundsCache(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*MoveTaskGroupBoundsCache, error)
 	GetMoveTaskGroupStatus(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*MoveTaskGroupStatus, error)
@@ -172,7 +172,7 @@ func (c *moveTasksServiceClient) DropMoveTaskGroupV2(ctx context.Context, in *Dr
 	return out, nil
 }
 
-func (c *moveTasksServiceClient) RetryMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *moveTasksServiceClient) RetryMoveTaskGroup(ctx context.Context, in *RetryMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MoveTasksService_RetryMoveTaskGroup_FullMethodName, in, out, cOpts...)
@@ -239,7 +239,7 @@ type MoveTasksServiceServer interface {
 	// Deprecated: Do not use.
 	DropMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	DropMoveTaskGroupV2(context.Context, *DropMoveTaskGroupRequest) (*emptypb.Empty, error)
-	RetryMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
+	RetryMoveTaskGroup(context.Context, *RetryMoveTaskGroupRequest) (*emptypb.Empty, error)
 	StopMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	GetMoveTaskGroupBoundsCache(context.Context, *MoveTaskGroupSelector) (*MoveTaskGroupBoundsCache, error)
 	GetMoveTaskGroupStatus(context.Context, *MoveTaskGroupSelector) (*MoveTaskGroupStatus, error)
@@ -284,7 +284,7 @@ func (UnimplementedMoveTasksServiceServer) DropMoveTaskGroup(context.Context, *M
 func (UnimplementedMoveTasksServiceServer) DropMoveTaskGroupV2(context.Context, *DropMoveTaskGroupRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DropMoveTaskGroupV2 not implemented")
 }
-func (UnimplementedMoveTasksServiceServer) RetryMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error) {
+func (UnimplementedMoveTasksServiceServer) RetryMoveTaskGroup(context.Context, *RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryMoveTaskGroup not implemented")
 }
 func (UnimplementedMoveTasksServiceServer) StopMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error) {
@@ -501,7 +501,7 @@ func _MoveTasksService_DropMoveTaskGroupV2_Handler(srv interface{}, ctx context.
 }
 
 func _MoveTasksService_RetryMoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MoveTaskGroupSelector)
+	in := new(RetryMoveTaskGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -513,7 +513,7 @@ func _MoveTasksService_RetryMoveTaskGroup_Handler(srv interface{}, ctx context.C
 		FullMethod: MoveTasksService_RetryMoveTaskGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MoveTasksServiceServer).RetryMoveTaskGroup(ctx, req.(*MoveTaskGroupSelector))
+		return srv.(MoveTasksServiceServer).RetryMoveTaskGroup(ctx, req.(*RetryMoveTaskGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

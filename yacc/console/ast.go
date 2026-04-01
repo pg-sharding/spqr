@@ -357,7 +357,8 @@ type SequenceSelector struct {
 func (*SequenceSelector) iDrop() {}
 
 type RetryMoveTaskGroup struct {
-	ID string
+	ID     string
+	NoWait bool
 }
 
 func (*RetryMoveTaskGroup) iStatement() {}
