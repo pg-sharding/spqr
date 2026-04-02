@@ -346,13 +346,13 @@ func (s *QueryStateExecutorImpl) ReplyCommandComplete(commandTag string) error {
 	return nil
 }
 
-func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string) error {
+func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string, isLocal bool) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
 		return s.ReplyCommandComplete("SET")
 	}
 	if !s.poolMgr.ConnectionActive(s) {
-		s.Client().SetParam(name, value)
+		s.Client().SetParam(name, value, isLocal)
 		return s.ReplyCommandComplete("SET")
 	}
 
@@ -360,7 +360,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
 		return err
 	}
-	s.Client().SetParam(name, value)
+	s.Client().SetParam(name, value, isLocal)
 
 	return nil
 }

@@ -2539,7 +2539,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		"DateStyle":       "ISO",
 	}
 	for k, v := range params {
-		cl.SetParam(k, v)
+		cl.SetParam(k, v, false)
 	}
 
 	r.SetParams(cl.Params())
