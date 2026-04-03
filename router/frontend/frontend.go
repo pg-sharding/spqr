@@ -31,6 +31,10 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		return nil
 	case *pgproto3.Sync:
 
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
 		if err := rst.CompleteRelay(); err != nil {
 			return err
 		}
