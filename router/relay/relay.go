@@ -1033,8 +1033,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			panic(fmt.Sprintf("unexpected query type %v", msg))
 		}
 	}
-
-	return rst.CompleteRelay()
+	return nil
 }
 
 // TODO : unit tests

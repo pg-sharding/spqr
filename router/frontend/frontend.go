@@ -30,9 +30,8 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		/* Ignore. XXX: proper support in future? */
 		return nil
 	case *pgproto3.Sync:
-		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+		if err := rst.CompleteRelay(); err != nil {
 			return err
 		}
 
@@ -95,6 +94,12 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		q = &cpQ
 
 		rst.AddExtendedProtocMessage(q)
+
+		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
 		return nil
 	case *pgproto3.Bind:
 		// copy interface
