@@ -46,6 +46,7 @@ type RelayStateMgr interface {
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	CompleteRelay() error
+	CompleteRelayClient() error
 	Close() error
 	Client() client.RouterClient
 
@@ -409,6 +410,10 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	shardMatches := strings.Join(shardInfos, ",")
 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
+}
+
+func (rst *RelayStateImpl) CompleteRelayClient() error {
+	return rst.Client().Send(rst.QueryExecutor().RFQ())
 }
 
 func (rst *RelayStateImpl) CompleteRelay() error {
@@ -1034,7 +1039,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		}
 	}
 
-	return rst.CompleteRelay()
+	if err := rst.CompleteRelay(); err != nil {
+		return err
+	}
+
+	return rst.CompleteRelayClient()
 }
 
 // TODO : unit tests
