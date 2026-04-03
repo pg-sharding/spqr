@@ -2642,25 +2642,36 @@ func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 	return rels, nil
 }
 
-func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+// ==============================================================================
+//                                 SEQUENCES
+// ==============================================================================
+
+func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")
+	key := sequenceNodePath(seqName)
+	statement, err := NewQdbStatement(CMD_PUT, key, fmt.Sprintf("%d", initialValue))
+	if err != nil {
+		return nil, err
+	}
+	return []QdbStatement{*statement}, nil
+}
 
+func (q *EtcdQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
 	key := sequenceNodePath(seqName)
 	resp, err := q.cli.Get(ctx, key)
 	if err != nil {
-		return err
+		return false, err
 	}
-
-	if len(resp.Kvs) == 0 {
-		_, err := q.cli.Put(ctx, key, fmt.Sprintf("%d", initialValue))
-		if err != nil {
-			return err
-		}
+	if len(resp.Kvs) == 1 {
+		return true, nil
 	}
-
-	return nil
+	if len(resp.Kvs) > 1 {
+		return false, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+			"multiple sequence entries (%s) expected exactly one", seqName)
+	}
+	return false, nil
 }
 
 func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) error {

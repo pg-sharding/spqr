@@ -77,9 +77,19 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 	if err != nil {
 		return err
 	}
-
 	for colName, SeqName := range rel.ColumnSequenceMapping {
-		if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
+		ok, err := lc.qdb.CheckSequence(ctx, SeqName)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return fmt.Errorf("the sequence %s already exists", SeqName)
+		}
+		statements, err := lc.qdb.CreateSequence(ctx, SeqName, 0)
+		if err != nil {
+			return err
+		}
+		if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 			return err
 		}
 		qualifiedName := rel.QualifiedName()
