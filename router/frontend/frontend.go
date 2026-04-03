@@ -171,12 +171,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 		default:
 			switch err.(type) {
 			case *spqrerror.SpqrError:
-				if rerr := rst.Client().ReplyErr(err); rerr != nil {
+				if rerr := rst.ResetWithError(err); rerr != nil {
 					return rerr
 				}
 			default:
 				/* try to report error to user  */
-				_ = rst.Client().ReplyErr(err)
+				_ = rst.ResetWithError(err)
 				return err
 			}
 		}

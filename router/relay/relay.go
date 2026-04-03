@@ -444,6 +444,9 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ResetWithError(err error) error {
+
+	// XXX: use rst.QueryExecutor().FailStatement
+
 	_ = rst.Client().ReplyErr(err)
 	return rst.Reset()
 }
