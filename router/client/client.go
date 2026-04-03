@@ -828,13 +828,7 @@ func (cl *PsqlClient) replyErrMsgHint(
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{
-			Message:  clErrMsg,
-			Severity: "ERROR",
-			Code:     code,
-			Hint:     hint,
-			Position: pos,
-		},
+		spqrerror.ErrorMsgFromErr(clErrMsg, code, hint, pos),
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(s),
 		},
