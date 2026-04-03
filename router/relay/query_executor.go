@@ -70,6 +70,7 @@ type QueryStateExecutor interface {
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
+	RFQ() *pgproto3.ReadyForQuery
 
 	ReplyEmptyQuery()
 	FailStatement(err *pgproto3.ErrorResponse)

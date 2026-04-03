@@ -117,7 +117,11 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, err
 		}
 
-		return pd, rst.CompleteRelay()
+		if err := rst.CompleteRelay(); err != nil {
+			return nil, err
+		}
+
+		return pd, rst.CompleteRelayClient()
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:

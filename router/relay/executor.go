@@ -43,6 +43,8 @@ type QueryStateExecutorImpl struct {
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
 
+	cacheRFQ pgproto3.ReadyForQuery
+
 	poolMgr poolmgr.PoolMgr
 
 	mgr meta.EntityMgr
@@ -1082,14 +1084,10 @@ func (s *QueryStateExecutorImpl) Client() client.RouterClient {
 
 func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 
+	s.cacheRFQ.TxStatus = byte(s.TxStatus())
 	/* move this logic to executor */
 	switch s.TxStatus() {
 	case txstatus.TXIDLE:
-		if err := s.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(s.TxStatus()),
-		}); err != nil {
-			return err
-		}
 
 		if err := s.poolMgr.TXEndCB(mgr); err != nil {
 			return err
@@ -1102,9 +1100,7 @@ func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 		fallthrough
 	case txstatus.TXACT:
 		/* preserve same route. Do not unroute */
-		return s.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(s.TxStatus()),
-		})
+		return nil
 	default:
 		return fmt.Errorf("unknown tx status %v", s.TxStatus())
 	}
@@ -1157,6 +1153,10 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 
 func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
 	s.es.replyEmptyQuery = true
+}
+
+func (s *QueryStateExecutorImpl) RFQ() *pgproto3.ReadyForQuery {
+	return &s.cacheRFQ
 }
 
 func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
