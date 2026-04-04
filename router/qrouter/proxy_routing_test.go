@@ -2550,7 +2550,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
+			exp:          &plan.ScatterPlan{ExecTargets: []kr.ShardKey{{Name: "sh1", RO: false}, {Name: "sh2", RO: false}}},
 			err:          nil,
 		},
 		{
