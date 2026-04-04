@@ -80,7 +80,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			* override `query` */
 		} else {
 			if _, ok := state.(parser.ParseStateTXRollback); !ok {
-				return nil, err
+				return nil, errAbortedTx
 			}
 		}
 	}
