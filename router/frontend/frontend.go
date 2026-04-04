@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -173,15 +172,10 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			return nil
 			// ok
 		default:
-			switch err.(type) {
-			case *spqrerror.SpqrError:
-				if rerr := rst.ResetWithError(err); rerr != nil {
-					return rerr
-				}
-			default:
-				/* try to report error to user  */
-				_ = rst.ResetWithError(err)
-				return err
+			/* try to report error to user  */
+
+			if rerr := rst.ResetWithError(err); rerr != nil {
+				return rerr
 			}
 		}
 	}

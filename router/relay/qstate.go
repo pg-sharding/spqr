@@ -67,7 +67,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
-		return nil, rst.ResetWithError(err)
+		return nil, err
 	}
 
 	txbefore := rst.QueryExecutor().TxStatus()
@@ -117,11 +117,11 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, err
 		}
 
-		return pd, rst.CompleteRelayClient()
+		return pd, nil
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
-		return nil, rst.ResetWithError(err)
+		return nil, err
 		// ok
 	default:
 		spqrlog.Zero.Error().
@@ -132,7 +132,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
-		return nil, rst.ResetWithError(err)
+		return nil, err
 	}
 }
 
