@@ -143,13 +143,16 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 	/*
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
-
+	haveReplicated := false
+	haveDistributed := false
+	noRoute2DistributedRel := false
 	for qualName := range rm.Rels {
 		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)
 		if err != nil {
 			return nil, err
 		} else if ds.Id == distributions.REPLICATED {
+			haveReplicated = true
 			var shs []kr.ShardKey
 			if IsRelationCatalog(&qualName) {
 				shs = nil
@@ -166,7 +169,7 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 			})
 			continue
 		}
-
+		haveDistributed = true
 		relation, exists := ds.TryGetRelation(&qualName)
 		if !exists {
 			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
@@ -176,8 +179,13 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 		if err != nil {
 			return nil, err
 		}
+		noRoute2DistributedRel = noRoute2DistributedRel || tmp == nil
 
 		queryPlan = plan.Combine(queryPlan, tmp)
+	}
+	// no random if have ambiguity in route
+	if haveReplicated && haveDistributed && noRoute2DistributedRel {
+		return nil, nil
 	}
 
 	return queryPlan, nil
