@@ -3,7 +3,9 @@ package meta_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -15,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
@@ -104,6 +107,95 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	assert.Nil(t, errKr)
 	assert.Equal(t, actualKr, expectedKr)
 }
+
+func TestCreateShardValidatesReachableHosts(t *testing.T) {
+	ctx := context.Background()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:    "sh-new",
+		Hosts: []string{listener.Addr().String()},
+	}
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(t, err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.NoError(t, err)
+
+	_, err = memqdb.GetShard(ctx, "sh-new")
+	assert.NoError(t, err)
+}
+
+func TestCreateShardRejectsUnreachableHosts(t *testing.T) {
+	ctx := context.Background()
+	addr := func() string {
+		const maxAttempts = 10
+		for i := 0; i < maxAttempts; i++ {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			assert.NoError(t, err)
+			candidate := listener.Addr().String()
+			_ = listener.Close()
+
+			conn, dialErr := net.DialTimeout("tcp", candidate, 100*time.Millisecond)
+			if dialErr != nil {
+				return candidate
+			}
+			_ = conn.Close()
+		}
+		t.Fatalf("failed to get an unreachable tcp address")
+		return ""
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:    "sh-bad",
+		Hosts: []string{addr},
+	}
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(t, err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.ErrorContains(t, err, "not reachable")
+
+	_, err = memqdb.GetShard(ctx, "sh-bad")
+	assert.Error(t, err)
+}
+
+func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
+	ctx := context.Background()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:    "sh-new",
+		Hosts: []string{listener.Addr().String()},
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mngr := mockmgr.NewMockEntityMgr(ctrl)
+	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, fmt.Errorf("rpc error: code = Unknown desc = unknown shard sh-new"))
+	mngr.EXPECT().AddDataShard(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, shard *topology.DataShard) error {
+		assert.Equal(t, "sh-new", shard.ID)
+		assert.Equal(t, []string{listener.Addr().String()}, shard.Cfg.RawHosts)
+		return nil
+	})
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.NoError(t, err)
+}
+
 func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	ctx := context.Background()
 	statement := spqrparser.DistributionDefinition{

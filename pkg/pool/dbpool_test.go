@@ -40,23 +40,23 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
 		key.Name: {
 			RawHosts: []string{
-				"h1",
-				"h2",
-				"h3",
+				"h1:6432",
+				"h2:6432",
+				"h3:6432",
 			},
 		},
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
-	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
 	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
-	ins2.EXPECT().Hostname().AnyTimes().Return("h2")
+	ins2.EXPECT().Hostname().AnyTimes().Return("h2:6432")
 	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
-	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
+	ins3.EXPECT().Hostname().AnyTimes().Return("h3:6432")
 	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	h1 := mockshard.NewMockShardHostInstance(ctrl)
@@ -78,9 +78,9 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).Times(1).Return(h1, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).Times(1).Return(h2, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1:6432"}).Times(1).Return(h1, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2:6432"}).Times(1).Return(h2, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 	underlying_pool.EXPECT().ID().Return(uint(17)).AnyTimes()
 
 	for ind, h := range hs {
@@ -132,7 +132,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	assert.NoError(err)
 
 	/* next time expect only one call */
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 
 	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
@@ -153,9 +153,9 @@ func TestDbPoolRaces(t *testing.T) {
 	var mu sync.Mutex
 
 	hosts := []string{
-		"h1",
-		"h2",
-		"h3",
+		"h1:6432",
+		"h2:6432",
+		"h3:6432",
 	}
 
 	shards := []string{
@@ -279,23 +279,23 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
 		key.Name: {
 			RawHosts: []string{
-				"h1",
-				"h2",
-				"h3",
+				"h1:6432",
+				"h2:6432",
+				"h3:6432",
 			},
 		},
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
-	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
 	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
-	ins2.EXPECT().Hostname().AnyTimes().Return("h2")
+	ins2.EXPECT().Hostname().AnyTimes().Return("h2:6432")
 	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
-	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
+	ins3.EXPECT().Hostname().AnyTimes().Return("h3:6432")
 	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	h1 := mockshard.NewMockShardHostInstance(ctrl)
@@ -320,9 +320,9 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).AnyTimes().Return(h1, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).AnyTimes().Return(h2, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1:6432"}).AnyTimes().Return(h1, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2:6432"}).AnyTimes().Return(h2, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -367,7 +367,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	assert.NoError(err)
 
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).MaxTimes(1).Return(h3, nil)
+	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).MaxTimes(1).Return(h3, nil)
 
 	underlying_pool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
 

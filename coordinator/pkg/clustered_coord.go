@@ -2616,13 +2616,30 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 		return err
 	}
 
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
 			Shard: topology.DataShardToProto(shard),
 		})
 		return err
-	})
+	}); err != nil {
+		rbCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if dropErr := qc.db.DropShard(rbCtx, shard.ID); dropErr != nil {
+			spqrlog.Zero.Error().Err(dropErr).Str("shard", shard.ID).Msg("failed to roll back shard in qdb")
+		}
+		if dropErr := qc.traverseRouters(rbCtx, func(cc *grpc.ClientConn) error {
+			c := proto.NewShardServiceClient(cc)
+			_, rollbackErr := c.DropShard(rbCtx, &proto.DropShardRequest{Id: shard.ID})
+			return rollbackErr
+		}); dropErr != nil {
+			spqrlog.Zero.Error().Err(dropErr).Str("shard", shard.ID).Msg("failed to roll back shard on routers")
+		}
+		return err
+	}
+
+	return nil
 }
 
 // TODO : unit tests

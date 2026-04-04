@@ -70,12 +70,8 @@ SHOW hosts;
  sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
 (8 rows)
 
-CREATE SHARD sh5 WITH HOSTS "e:6432";
-    add shard    
------------------
- shard id -> sh5
-(1 row)
-
+CREATE SHARD sh5 WITH HOSTS "127.0.0.1:1";
+ERROR:  shard host "127.0.0.1:1" is not reachable: dial tcp 127.0.0.1:1: connect: connection refused
 SHOW shards;
  shard 
 -------
@@ -83,8 +79,7 @@ SHOW shards;
  sh2
  sh3
  sh4
- sh5
-(5 rows)
+(4 rows)
 
 SHOW hosts;
  shard |           host            |  alive  |   rw    |  time   
@@ -97,8 +92,7 @@ SHOW hosts;
  sh3   | spqr_shard_3_replica:6432 | unknown | unknown | unknown
  sh4   | spqr_shard_4:6432         | unknown | unknown | unknown
  sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
- sh5   | e:6432                    | unknown | unknown | unknown
-(9 rows)
+(8 rows)
 
 DROP SHARD sh5;
  shard_id 
