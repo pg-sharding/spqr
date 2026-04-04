@@ -570,7 +570,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		/* setup client params */
 
 		for k, v := range sm.Parameters {
-			cl.SetParam(k, v)
+			cl.SetParam(k, v, false)
 		}
 
 		cl.startupMsg = sm
@@ -828,13 +828,7 @@ func (cl *PsqlClient) replyErrMsgHint(
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{
-			Message:  clErrMsg,
-			Severity: "ERROR",
-			Code:     code,
-			Hint:     hint,
-			Position: pos,
-		},
+		spqrerror.ErrorMsgFromErr(clErrMsg, code, hint, pos),
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(s),
 		},

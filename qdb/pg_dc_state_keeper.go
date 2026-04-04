@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 // Table declaration
@@ -32,10 +33,11 @@ const (
 type PgDCStateKeeper struct {
 	mu sync.RWMutex
 
-	shards  *config.DatatransferConnections
-	txs     map[string]*pgx.Tx `json:"-"`
+	shards *config.DatatransferConnections
+	// txs     map[string]*pgx.Tx `json:"-"`
 	storage []string
 	pooler  map[string]*pgxpool.Pool
+	locks   map[string]any
 }
 
 func (q *PgDCStateKeeper) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
@@ -83,12 +85,6 @@ func (q *PgDCStateKeeper) getStorageShardConnect() (*config.ShardConnect, error)
 }
 
 func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	if tx, ok := q.txs[txid]; ok {
-		return tx, nil
-	}
-
 	shardCfg, err := q.getStorageShardConnect()
 	if err != nil {
 		return nil, err
@@ -105,29 +101,28 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 	if err != nil {
 		return nil, err
 	}
-	q.txs[txid] = &tx
 	return &tx, nil
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
 func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.txs[txid]; ok {
+	if _, ok := q.locks[txid]; ok {
 		return false, nil
 	}
 
-	_, err := q.getTx(ctx, txid)
-	if err != nil {
-		return false, err
-	}
+	q.locks[txid] = true
 	return true, nil
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
 func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
+	spqrlog.Zero.Debug().Str("gid", txid).Str("state", string(state)).Msg("pg dc state keeper: change tx state")
 	tx, err := q.getTx(ctx, txid)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return err
 	}
@@ -148,17 +143,34 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 	if err != nil {
 		return err
 	}
+	if err = (*tx).Commit(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
 func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string, shards []string) error {
+	spqrlog.Zero.Debug().Str("gid", txid).Strs("shards", shards).Msg("pg dc state keeper: record tx members")
 	tx, err := q.getTx(ctx, txid)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return err
 	}
-	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1 WHERE id = $2", shards, txid)
+	row := (*tx).QueryRow(ctx, "SELECT count(*) FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	count := 0
+	if err = row.Scan(&count); err != nil {
+		return err
+	}
+	if count > 0 {
+		_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1 WHERE id = $2", shards, txid)
+	} else {
+		_, err = (*tx).Exec(ctx, "INSERT INTO spqr_metadata.spqr_tx_status (id, members, status) VALUES ($1, $2, $3)", txid, shards, pgStatePlanned)
+	}
 	if err != nil {
+		return err
+	}
+	if err = (*tx).Commit(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -166,25 +178,23 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 
 // ReleaseTxOwnership implements [DCStateKeeper].
 func (q *PgDCStateKeeper) ReleaseTxOwnership(_ context.Context, txid string) error {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: release tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if tx, ok := q.txs[txid]; ok {
-		if err := (*tx).Commit(context.TODO()); err != nil {
-			return err
-		}
-		delete(q.txs, txid)
-	}
+	delete(q.locks, txid)
 	return nil
 }
 
 // TXCohortShards implements [DCStateKeeper].
 func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]string, error) {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: get tx cohort shards")
 	tx, err := q.getTx(ctx, txid)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return nil, err
 	}
-	row := (*tx).QueryRow(ctx, "SELECT members FROM spqr_metadata.spqr_tx_status id = $1", txid)
+	row := (*tx).QueryRow(ctx, "SELECT members FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
 	var members []string
 	if err := row.Scan(&members); err != nil {
 		return nil, err
@@ -194,7 +204,9 @@ func (q *PgDCStateKeeper) TXCohortShards(ctx context.Context, txid string) ([]st
 
 // TXStatus implements [DCStateKeeper].
 func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTxState, error) {
+	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: get tx status")
 	tx, err := q.getTx(ctx, txid)
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return "", err
 	}
@@ -220,8 +232,8 @@ func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTx
 func (q *PgDCStateKeeper) ListTXNames(_ context.Context) ([]string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	res := make([]string, 0, len(q.txs))
-	for id := range q.txs {
+	res := make([]string, 0, len(q.locks))
+	for id := range q.locks {
 		res = append(res, id)
 	}
 
@@ -235,10 +247,11 @@ func (q *PgDCStateKeeper) GetTxMetaStorage() []string {
 }
 
 func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
+	spqrlog.Zero.Debug().Strs("storage", storage).Msg("pg_dcs_keeper: set tx meta storage")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.storage != nil {
+	if len(q.storage) > 0 {
 		return fmt.Errorf("could not set two-phase tx meta storage twice")
 	}
 	q.storage = storage
@@ -250,7 +263,7 @@ func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {
 		mu:     sync.RWMutex{},
 		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
-		txs:    map[string]*pgx.Tx{},
+		locks:  map[string]any{},
 	}
 }
 

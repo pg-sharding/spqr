@@ -60,14 +60,10 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			/* this way we format next msg correctly */
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
-
+		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("failed to parse query")
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
 			// _ = rst.Reset()
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
-		}
-
-		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
@@ -117,7 +113,11 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, err
 		}
 
-		return pd, rst.CompleteRelay()
+		if err := rst.CompleteRelay(); err != nil {
+			return nil, err
+		}
+
+		return pd, rst.CompleteRelayClient()
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
@@ -402,6 +402,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				} else {
 					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
 				}
+			case session.SPQR_COMMIT_STRATEGY:
+				ReplyVirtualParamState(rst.Client(), "commit strategy", []byte(rst.Client().CommitStrategy()))
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
@@ -506,7 +508,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						return nil, err
 					}
 				} else {
-					if err := rst.QueryExecutor().ExecSet(rst, query, name, val); err != nil {
+					if err := rst.QueryExecutor().ExecSet(rst, query, name, val, q.IsLocal); err != nil {
 						return nil, err
 					}
 				}
@@ -615,10 +617,12 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 			hintVal != distributions.REPLICATED {
 			return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
 		} else {
-			rst.Client().SetParam(name, hintVal)
+			rst.Client().SetParam(name, hintVal, isLocal)
 		}
+	case session.SPQR_COMMIT_STRATEGY:
+		rst.Client().SetCommitStrategy(hintVal)
 	default:
-		rst.Client().SetParam(name, hintVal)
+		rst.Client().SetParam(name, hintVal, isLocal)
 	}
 
 	return rst.QueryExecutor().ReplyCommandComplete("SET")

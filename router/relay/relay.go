@@ -46,6 +46,7 @@ type RelayStateMgr interface {
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	CompleteRelay() error
+	CompleteRelayClient() error
 	Close() error
 	Client() client.RouterClient
 
@@ -411,6 +412,10 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
+func (rst *RelayStateImpl) CompleteRelayClient() error {
+	return rst.Client().Send(rst.QueryExecutor().RFQ())
+}
+
 func (rst *RelayStateImpl) CompleteRelay() error {
 	rst.unnamedPortalExists = false
 
@@ -439,6 +444,9 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ResetWithError(err error) error {
+
+	// XXX: use rst.QueryExecutor().FailStatement
+
 	_ = rst.Client().ReplyErr(err)
 	return rst.Reset()
 }
@@ -1034,7 +1042,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		}
 	}
 
-	return rst.CompleteRelay()
+	if err := rst.CompleteRelay(); err != nil {
+		return err
+	}
+
+	return rst.CompleteRelayClient()
 }
 
 // TODO : unit tests

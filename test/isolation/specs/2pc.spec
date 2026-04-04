@@ -60,6 +60,10 @@ step s2_detach_after_cp    { select __spqr__console_execute('DETACH CONTROL POIN
 step s2_show_2pc_tx              { select __spqr__console_execute('SHOW two_phase_tx(status);'); }
 
 
+session s3
+step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}
+
+
 permutation 
     s1_report s1_ev2 s1_c_str
     s1_begin
@@ -72,3 +76,4 @@ permutation
     s2_show_2pc_tx
     s2_detach_after_cp
     s2_show_2pc_tx
+    s3_clean
