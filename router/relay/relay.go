@@ -67,7 +67,7 @@ type RelayStateMgr interface {
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(ctx context.Context) error
 
-	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
+	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
 
 type PortalDesc struct {
@@ -804,7 +804,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				return nil
 
-			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
+			}, true /* cache parsing for prep statement */)
 
 			if err != nil {
 				return err
@@ -1038,15 +1038,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
 			}
 		default:
-			panic(fmt.Sprintf("unexpected query type %v", msg))
+			return fmt.Errorf("unexpected query type %v", msg)
 		}
 	}
 
-	if err := rst.CompleteRelay(); err != nil {
-		return err
-	}
-
-	return rst.CompleteRelayClient()
+	return nil
 }
 
 // TODO : unit tests

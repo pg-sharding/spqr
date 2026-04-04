@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
 
-func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
 	state, comment, err := rst.Parse(query, doCaching)
 	if err != nil {
@@ -62,12 +61,9 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		}
 		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("failed to parse query")
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			// TODO: figure out if we need this
-			// _ = rst.Reset()
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
+			return nil, err
 		}
-
-		return nil, rst.ResetWithError(err)
+		return nil, err
 	}
 
 	txbefore := rst.QueryExecutor().TxStatus()
@@ -84,7 +80,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			* override `query` */
 		} else {
 			if _, ok := state.(parser.ParseStateTXRollback); !ok {
-				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+				return nil, errAbortedTx
 			}
 		}
 	}
@@ -101,39 +97,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	} else {
 		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("completing client relay")
 	}
-
-	switch err {
-	case nil:
-		if !completeRelay {
-			return pd, nil
-		}
-
-		/* Okay, respond with CommandComplete first. */
-		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-			return nil, err
-		}
-
-		if err := rst.CompleteRelay(); err != nil {
-			return nil, err
-		}
-
-		return pd, rst.CompleteRelayClient()
-	case io.ErrUnexpectedEOF:
-		fallthrough
-	case io.EOF:
-		return nil, rst.ResetWithError(err)
-		// ok
-	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-			Msg("client iteration done with error")
-
-		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
-		}
-
-		return nil, rst.ResetWithError(err)
-	}
+	return pd, err
 }
 
 func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error {
