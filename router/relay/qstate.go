@@ -62,11 +62,8 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		}
 		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("failed to parse query")
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			// TODO: figure out if we need this
-			// _ = rst.Reset()
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
+			return nil, err
 		}
-
 		return nil, err
 	}
 
@@ -84,7 +81,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			* override `query` */
 		} else {
 			if _, ok := state.(parser.ParseStateTXRollback); !ok {
-				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+				return nil, err
 			}
 		}
 	}
@@ -127,10 +124,6 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		spqrlog.Zero.Error().
 			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
 			Msg("client iteration done with error")
-
-		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
-		}
 
 		return nil, err
 	}

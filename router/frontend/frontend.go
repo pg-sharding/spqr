@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/poolmgr"
@@ -173,9 +174,14 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			// ok
 		default:
 			/* try to report error to user  */
-
-			if rerr := rst.ResetWithError(err); rerr != nil {
-				return rerr
+			if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+				if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
+					return rerr
+				}
+			} else {
+				if rerr := rst.ResetWithError(err); rerr != nil {
+					return rerr
+				}
 			}
 		}
 	}
