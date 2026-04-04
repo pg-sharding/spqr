@@ -1038,15 +1038,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
 			}
 		default:
-			panic(fmt.Sprintf("unexpected query type %v", msg))
+			return fmt.Errorf("unexpected query type %v", msg)
 		}
 	}
 
-	if err := rst.CompleteRelay(); err != nil {
-		return err
-	}
+	return rst.CompleteRelay()
 
-	return rst.CompleteRelayClient()
 }
 
 // TODO : unit tests

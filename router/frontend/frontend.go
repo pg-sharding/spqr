@@ -162,8 +162,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 
 		switch err {
 		case nil:
+			if err := rst.CompleteRelayClient(); err != nil {
+				return err
+			}
 			continue
 		case io.ErrUnexpectedEOF:
+			// disconnect
 			fallthrough
 		case io.EOF:
 			return nil
