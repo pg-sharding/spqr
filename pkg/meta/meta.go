@@ -1197,7 +1197,7 @@ func ProcMetadataCommand(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID); err != nil {
+		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID, stmt.NoWait); err != nil {
 			return nil, err
 		}
 

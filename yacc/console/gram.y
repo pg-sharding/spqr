@@ -298,6 +298,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
+%type <bool> no_wait_opt
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
@@ -1531,16 +1532,24 @@ unregister_router_stmt:
 // move tasks
 
 retry_move_task_group:
-	RETRY MOVE TASK GROUP any_id
+	RETRY MOVE TASK GROUP any_id no_wait_opt
 	{
-		$$ = &RetryMoveTaskGroup{ ID: $5 }
+		$$ = &RetryMoveTaskGroup{ ID: $5, NoWait: $6 }
 	}
 	|
-	RETRY TASK GROUP any_id
+	RETRY TASK GROUP any_id no_wait_opt
 	{
-		$$ = &RetryMoveTaskGroup{ ID: $4 }
+		$$ = &RetryMoveTaskGroup{ ID: $4, NoWait: $5 }
 	}
 	
+
+no_wait_opt:
+	NOWAIT {
+		$$ = true
+	} | /* EMPTY */ {
+		$$ = false
+	}
+
 
 stop_move_task_group:
 	STOP MOVE TASK GROUP any_id
