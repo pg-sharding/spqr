@@ -1083,8 +1083,6 @@ func (s *QueryStateExecutorImpl) Client() client.RouterClient {
 }
 
 func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
-
-	s.cacheRFQ.TxStatus = byte(s.TxStatus())
 	/* move this logic to executor */
 	switch s.TxStatus() {
 	case txstatus.TXIDLE:
@@ -1156,6 +1154,7 @@ func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
 }
 
 func (s *QueryStateExecutorImpl) RFQ() *pgproto3.ReadyForQuery {
+	s.cacheRFQ.TxStatus = byte(s.TxStatus())
 	return &s.cacheRFQ
 }
 
