@@ -3,6 +3,7 @@ package spqrerror
 import (
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"google.golang.org/grpc/status"
 )
 
@@ -169,4 +170,18 @@ func CleanGrpcError(err error) error {
 		return fmt.Errorf("%s", st.Message())
 	}
 	return err // non grpc error
+}
+
+func ErrorMsgFromErr(
+	msg string,
+	code string,
+	hint string, pos int32) *pgproto3.ErrorResponse {
+
+	return &pgproto3.ErrorResponse{
+		Message:  msg,
+		Severity: "ERROR",
+		Code:     code,
+		Hint:     hint,
+		Position: pos,
+	}
 }

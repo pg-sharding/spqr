@@ -60,14 +60,10 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			/* this way we format next msg correctly */
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
-
+		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("failed to parse query")
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
 			// _ = rst.Reset()
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
-		}
-
-		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
