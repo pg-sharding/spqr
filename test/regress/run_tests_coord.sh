@@ -1,31 +1,11 @@
 #!/bin/bash
+set -x 
 
 export PGDATABASE=regress
 export PGUSER=regress
 export PGSSLMODE=allow
 
 source ./regress_utils.sh 
-
-run_tests () {
-    DIR=$1  # router
-    HOST=$2 # regress_router
-    PORT=$3 # 6432
-
-    pg_regress \
-        --inputdir /regress/tests/$DIR \
-        --outputdir /regress/tests/$DIR \
-        --user $PGUSER \
-        --dbname $PGDATABASE \
-        --host $HOST \
-        --port $PORT \
-        --create-role $PGUSER \
-        --schedule=/regress/schedule/$DIR \
-        --use-existing \
-        --debug || status=$?
-
-    # show diff if it exists
-    if test -f /regress/tests/$DIR/regression.diffs; then cat /regress/tests/$DIR/regression.diffs; fi
-}
 
 insert_greeting () {
     testDir=$1
@@ -51,13 +31,10 @@ echo "go test!"
 
 run_tests "console" "regress_coordinator" "7002"
 
-save_diffs /regress/tests/console/
-
 insert_greeting "console"
 
 run_tests "console" "regress_router" "7432"
 
-save_diffs /regress/tests/console/
 
 run_tests "router" "regress_router" "6432"
 run_tests "pooler" "regress_pooler" "6432"
@@ -73,11 +50,10 @@ sleep 10
 echo "go test!"
 # Compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
-save_diffs /regress/tests/common/
+
 
 insert_greeting "common"
 run_tests "common" "regress_router" "7432"
-save_diffs /regress/tests/common/
 
 # test if diffs are empty
 cat $ERR_OUTPUT_DIR/regression.diffs > /regress/tests/combined.diffs 2>&-

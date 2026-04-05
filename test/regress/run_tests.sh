@@ -7,26 +7,6 @@ export PGSSLMODE=allow
 
 source ./regress_utils.sh 
 
-run_tests () {
-    DIR=$1  # router
-    HOST=$2 # regress_router
-    PORT=$3 # 6432
-
-    pg_regress \
-        --inputdir /regress/tests/$DIR \
-        --outputdir /regress/tests/$DIR \
-        --user $PGUSER \
-        --dbname $PGDATABASE \
-        --host $HOST \
-        --port $PORT \
-        --create-role $PGUSER \
-        --schedule=/regress/schedule/$DIR \
-        --use-existing \
-        --debug || status=$?
-
-    save_diffs /regress/tests/$DIR
-}
-
 insert_greeting () {
     testDir=$1
     for f in /regress/tests/$testDir/expected/*; do 
