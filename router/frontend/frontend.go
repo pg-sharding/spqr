@@ -40,6 +40,9 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 
 		switch err {
 		case nil:
+			if err := rst.CompleteRelay(); err != nil {
+				return err
+			}
 			if err := rst.CompleteRelayClient(); err != nil {
 				return err
 			}
