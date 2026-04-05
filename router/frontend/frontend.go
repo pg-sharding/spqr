@@ -20,6 +20,46 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
+func teardownPipeline(rst relay.RelayStateMgr, err error) error {
+
+	switch err {
+	case nil:
+
+		if err := rst.CompleteRelay(); err != nil {
+			return err
+		}
+
+		if err := rst.CompleteRelayClient(); err != nil {
+			return err
+		}
+
+		return nil
+	case io.ErrUnexpectedEOF:
+		fallthrough
+	case io.EOF:
+		return err
+		// ok
+	default:
+		spqrlog.Zero.Error().
+			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+			Msg("client iteration done with error")
+
+		/* try to report error to user  */
+		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+			if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
+				return rerr
+			}
+		} else {
+			if rerr := rst.ResetWithError(err); rerr != nil {
+				return rerr
+			}
+		}
+
+		return err
+	}
+
+}
+
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 
@@ -38,35 +78,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 
-		switch err {
-		case nil:
-			if err := rst.CompleteRelay(); err != nil {
-				return err
-			}
-			if err := rst.CompleteRelayClient(); err != nil {
-				return err
-			}
-			return nil
-		case io.ErrUnexpectedEOF:
-			// disconnect
-			fallthrough
-		case io.EOF:
-			return err
-			// ok
-		default:
-			/* try to report error to user  */
-			if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-				if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
-					return rerr
-				}
-			} else {
-				if rerr := rst.ResetWithError(err); rerr != nil {
-					return rerr
-				}
-			}
-
-			return err
-		}
+		return teardownPipeline(rst, err)
 	case *pgproto3.Close:
 		// copy interface
 		cpQ := *q
@@ -86,46 +98,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			return rst.ProcessSimpleQuery(q, true)
 		}, false)
 
-		switch err {
-		case nil:
-			/* Okay, respond with CommandComplete first. */
-			if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-				return err
-			}
-
-			if err := rst.CompleteRelay(); err != nil {
-				return err
-			}
-
-			if err := rst.CompleteRelayClient(); err != nil {
-				return err
-			}
-
-			return nil
-		case io.ErrUnexpectedEOF:
-			fallthrough
-		case io.EOF:
-			return err
-			// ok
-		default:
-			spqrlog.Zero.Error().
-				Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-				Msg("client iteration done with error")
-
-			/* try to report error to user  */
-			if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-				if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
-					return rerr
-				}
-			} else {
-				if rerr := rst.ResetWithError(err); rerr != nil {
-					return rerr
-				}
-			}
-
+		/* Okay, respond with CommandComplete first. */
+		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
 			return err
 		}
-
+		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
 		// copy interface
