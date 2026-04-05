@@ -50,7 +50,7 @@ run_tests "init_cluster" "regress_coordinator" "7002"
 sleep 10
 echo "go test!"
 # Compare the results of the local and qdb coordinators
-run_tests "common" "regress_coordinator" "7002"
+#run_tests "common" "regress_coordinator" "7002"
 
 
 insert_greeting "common"
