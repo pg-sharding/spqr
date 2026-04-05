@@ -49,3 +49,6 @@ RESET ALL;
 SHOW application_name;
 SHOW x;
 ROLLBACK;
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
