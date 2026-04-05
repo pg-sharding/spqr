@@ -96,9 +96,9 @@ SHOW application_name;
 BEGIN;
 RESET application_name;
 SHOW application_name;
- application_name 
-------------------
- pg_regress/set
+   application_name   
+----------------------
+ pg_regress/set_param
 (1 row)
 
 ROLLBACK;
@@ -108,7 +108,7 @@ SHOW x;
  x 
 ---
  1
-(1 row)
+(1BUG row)
 
 SHOW application_name;
  application_name 
@@ -118,9 +118,9 @@ SHOW application_name;
 
 RESET ALL;
 SHOW application_name;
- application_name 
-------------------
- pg_regress/set
+   application_name   
+----------------------
+ pg_regress/set_param
 (1 row)
 
 SHOW x;

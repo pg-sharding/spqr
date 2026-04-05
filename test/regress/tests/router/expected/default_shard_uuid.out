@@ -1,9 +1,9 @@
 \c spqr-console
 
-               SPQR router admin console
-       Here you can configure your routing rules
+		SPQR router admin console
+	Here you can configure your routing rules
 ------------------------------------------------
-       You can find documentation here 
+	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that UUID type works
@@ -111,10 +111,10 @@ DROP TABLE def_sh_xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
-               SPQR router admin console
-       Here you can configure your routing rules
+		SPQR router admin console
+	Here you can configure your routing rules
 ------------------------------------------------
-       You can find documentation here 
+	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
@@ -122,3 +122,4 @@ DROP DISTRIBUTION ALL CASCADE;
 -----------------
  ds1
 (1 row)
+
