@@ -8,9 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/poolmgr"
@@ -32,14 +32,41 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 	case *pgproto3.Sync:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
+		err := rst.ProcessExtendedBuffer(context.Background())
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
-		return nil
+
+		switch err {
+		case nil:
+			if err := rst.CompleteRelay(); err != nil {
+				return err
+			}
+			if err := rst.CompleteRelayClient(); err != nil {
+				return err
+			}
+			return nil
+		case io.ErrUnexpectedEOF:
+			// disconnect
+			fallthrough
+		case io.EOF:
+			return err
+			// ok
+		default:
+			/* try to report error to user  */
+			if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+				if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
+					return rerr
+				}
+			} else {
+				if rerr := rst.ResetWithError(err); rerr != nil {
+					return rerr
+				}
+			}
+
+			return err
+		}
 	case *pgproto3.Close:
 		// copy interface
 		cpQ := *q
@@ -57,9 +84,47 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
 			return rst.ProcessSimpleQuery(q, true)
-		}, false, true)
+		}, false)
 
-		return err
+		switch err {
+		case nil:
+			/* Okay, respond with CommandComplete first. */
+			if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+				return err
+			}
+
+			if err := rst.CompleteRelay(); err != nil {
+				return err
+			}
+
+			if err := rst.CompleteRelayClient(); err != nil {
+				return err
+			}
+
+			return nil
+		case io.ErrUnexpectedEOF:
+			fallthrough
+		case io.EOF:
+			return err
+			// ok
+		default:
+			spqrlog.Zero.Error().
+				Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+				Msg("client iteration done with error")
+
+			/* try to report error to user  */
+			if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+				if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
+					return rerr
+				}
+			} else {
+				if rerr := rst.ResetWithError(err); rerr != nil {
+					return rerr
+				}
+			}
+
+			return err
+		}
 
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
@@ -161,24 +226,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 		err := ProcessMessage(qr, rst, msg)
 
 		switch err {
-		case nil:
-			continue
 		case io.ErrUnexpectedEOF:
+			// disconnect
 			fallthrough
 		case io.EOF:
 			return nil
-			// ok
-		default:
-			switch err.(type) {
-			case *spqrerror.SpqrError:
-				if rerr := rst.ResetWithError(err); rerr != nil {
-					return rerr
-				}
-			default:
-				/* try to report error to user  */
-				_ = rst.ResetWithError(err)
-				return err
-			}
 		}
 	}
 }
