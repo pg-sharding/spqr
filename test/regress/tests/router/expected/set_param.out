@@ -108,7 +108,7 @@ SHOW x;
  x 
 ---
  1
-(1 row)
+(1BUG row)
 
 SHOW application_name;
  application_name 
