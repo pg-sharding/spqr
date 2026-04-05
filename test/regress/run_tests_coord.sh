@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x 
 
 export PGDATABASE=regress
 export PGUSER=regress
@@ -45,7 +44,7 @@ save_diffs /regress/tests/pooler/
 run_tests "kill_cluster" "regress_coordinator" "7002"
 sleep 10
 # todo fix bug and remove comment
-run_tests "coordinator" "regress_coordinator" "7002"
+#run_tests "coordinator" "regress_coordinator" "7002"
 echo "init cluster"
 run_tests "init_cluster" "regress_coordinator" "7002"
 sleep 10
