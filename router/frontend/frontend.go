@@ -112,6 +112,17 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 				Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
 				Msg("client iteration done with error")
 
+			/* try to report error to user  */
+			if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+				if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
+					return rerr
+				}
+			} else {
+				if rerr := rst.ResetWithError(err); rerr != nil {
+					return rerr
+				}
+			}
+
 			return err
 		}
 
