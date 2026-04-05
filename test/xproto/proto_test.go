@@ -29,7 +29,7 @@ func XprotoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGro
 		}
 	}
 	_ = frontend.Flush()
-	for _, msgroup := range tt {
+	for gr, msgroup := range tt {
 		backendFinished := false
 		for ind, msg := range msgroup.Response {
 			if backendFinished {
@@ -63,7 +63,7 @@ func XprotoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGro
 			default:
 				break
 			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", gr, ind))
 		}
 	}
 }
@@ -4744,40 +4744,64 @@ func TestPrepExtendedPipeline(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "ppl1",
+					Query: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Name:  "ppl2",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Parse{
+					Name:  "ppl3",
+					Query: "INSERT INTO t (id) VALUES(1)",
+				},
+				&pgproto3.Bind{PreparedStatement: "ppl1"},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{PreparedStatement: "ppl3"},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{PreparedStatement: "ppl3"},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{PreparedStatement: "ppl2"},
+				&pgproto3.Execute{},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
-	for _, msgroup := range tt {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-	}
-	_ = frontend.Flush()
-	for _, msgroup := range tt {
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
-	}
+	XprotoTestRunner(t, frontend, tt)
 }
 
 func TestPrepExtendedErrorParse(t *testing.T) {
@@ -5143,7 +5167,7 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 		return
 	}
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{String: "begin"},
@@ -5230,37 +5254,9 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("index=%d", ind))
-		}
 	}
+
+	XprotoTestRunner(t, frontend, tt)
 }
 
 func TestDDL(t *testing.T) {
