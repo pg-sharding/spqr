@@ -54,9 +54,11 @@ run_tests "console" "regress_router" "7432"
 save_diffs /regress/tests/console/
 
 run_tests "router" "regress_router" "6432"
+save_diffs /regress/tests/router/
 run_tests "pooler" "regress_pooler" "6432"
+save_diffs /regress/tests/pooler/
 run_tests "coordinator" "regress_coordinator" "7002"
-
+save_diffs /regress/tests/coordinator/
 # these tests are to compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
 

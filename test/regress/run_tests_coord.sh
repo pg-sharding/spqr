@@ -60,13 +60,16 @@ run_tests "console" "regress_router" "7432"
 save_diffs /regress/tests/console/
 
 run_tests "router" "regress_router" "6432"
+save_diffs /regress/tests/router/
 run_tests "pooler" "regress_pooler" "6432"
+save_diffs /regress/tests/pooler/
 
 # the next test uses a "registering router r1" 
 run_tests "kill_cluster" "regress_coordinator" "7002"
 sleep 10
 run_tests "coordinator" "regress_coordinator" "7002"
-
+# todo fix bug and remove comment
+# save_diffs /regress/tests/coordinator/
 echo "init cluster"
 run_tests "init_cluster" "regress_coordinator" "7002"
 sleep 10
