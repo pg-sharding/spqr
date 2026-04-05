@@ -126,3 +126,17 @@ SHOW application_name;
 SHOW x;
 ERROR:  unrecognized configuration parameter "x"
 ROLLBACK;
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
