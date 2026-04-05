@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x 
 
 export PGDATABASE=regress
 export PGUSER=regress
@@ -23,8 +24,7 @@ run_tests () {
         --use-existing \
         --debug || status=$?
 
-    # show diff if it exists
-    if test -f /regress/tests/$DIR/regression.diffs; then cat /regress/tests/$DIR/regression.diffs; fi
+    save_diffs /regress/tests/$DIR
 }
 
 insert_greeting () {
@@ -45,30 +45,23 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 run_tests "console" "regress_coordinator" "7002"
 
-save_diffs /regress/tests/console/
-
 insert_greeting "console"
 
 run_tests "console" "regress_router" "7432"
 
-save_diffs /regress/tests/console/
-
 run_tests "router" "regress_router" "6432"
+
 run_tests "pooler" "regress_pooler" "6432"
+
 run_tests "coordinator" "regress_coordinator" "7002"
 
 # these tests are to compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
 
-save_diffs /regress/tests/common/
-
 insert_greeting "common"
 run_tests "common" "regress_router" "7432"
 
-save_diffs /regress/tests/common/
-
 # test if diffs are empty
-cat $ERR_OUTPUT_DIR/regression.diffs > /regress/tests/combined.diffs 2>&-
 
 if test -s /regress/tests/combined.diffs; then
     exit 1
