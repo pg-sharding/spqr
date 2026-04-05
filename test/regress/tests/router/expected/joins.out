@@ -128,7 +128,8 @@ DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
--- next test
+-- a reference relation is joined to distributed relation. 
+-- there is a prepared statement with query rewriting
 create table users (user_id text, name text, dict_id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

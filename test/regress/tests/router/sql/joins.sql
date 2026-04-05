@@ -42,7 +42,8 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id /* __spqr__engine_v2: fals
 
 DROP TABLE xjoin;
 DROP TABLE yjoin;
--- next test
+-- a reference relation is joined to distributed relation. 
+-- there is a prepared statement with query rewriting
 create table users (user_id text, name text, dict_id int);
 create table dict (dict_id int);
 
