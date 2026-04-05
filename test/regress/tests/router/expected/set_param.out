@@ -96,9 +96,9 @@ SHOW application_name;
 BEGIN;
 RESET application_name;
 SHOW application_name;
- application_name 
-------------------
- pg_regress/set
+   application_name   
+----------------------
+ pg_regress/set_param
 (1 row)
 
 ROLLBACK;
@@ -118,11 +118,25 @@ SHOW application_name;
 
 RESET ALL;
 SHOW application_name;
- application_name 
-------------------
- pg_regress/set
+   application_name   
+----------------------
+ pg_regress/set_param
 (1 row)
 
 SHOW x;
 ERROR:  unrecognized configuration parameter "x"
 ROLLBACK;
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
