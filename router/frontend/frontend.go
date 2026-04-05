@@ -98,10 +98,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			return rst.ProcessSimpleQuery(q, true)
 		}, false)
 
-		/* Okay, respond with CommandComplete first. */
-		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-			return err
+		if err == nil {
+			/* Okay, respond with CommandComplete first. */
+			err = rst.QueryExecutor().DeriveCommandComplete()
 		}
+
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
