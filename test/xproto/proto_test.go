@@ -22,6 +22,17 @@ type MessageGroup struct {
 	Response []pgproto3.BackendMessage
 }
 
+func isPurePGTesting() bool {
+	_, defined := os.LookupEnv("SPQR_XPROTO_TEST_PURE_PG_ONLY")
+	return defined
+}
+
+func thisIsSPQRSpecificTest(t *testing.T) {
+	if isPurePGTesting() {
+		t.Skip("This test is incompatible with vanilla PG")
+	}
+}
+
 func XprotoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGroup) {
 	for _, msgroup := range tt {
 		for _, msg := range msgroup.Request {
@@ -449,6 +460,8 @@ func TestSimpleQuery(t *testing.T) {
 }
 
 func TestSimpleMultiShardTxBlock(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -586,6 +599,8 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 }
 
 func TestSimpleReferenceRelationAutoinc(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1023,6 +1038,8 @@ func TestSimpleAdvancedParsing(t *testing.T) {
 }
 
 func TestHintRoutingXproto(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1231,6 +1248,8 @@ func TestHintRoutingXproto(t *testing.T) {
 }
 
 func TestSimpleAdvancedSETParsing(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1613,6 +1632,8 @@ func TestUnknownDescribeStatementError(t *testing.T) {
 }
 
 func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -2599,6 +2620,8 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 }
 
 func TestPrepStmtMultishardXproto(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -2854,6 +2877,8 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 }
 
 func TestSplitUpdateXproto(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -6132,6 +6157,8 @@ func TestXProtoPureVirtual(t *testing.T) {
 }
 
 func TestVirtualParams(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
