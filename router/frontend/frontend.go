@@ -22,6 +22,8 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
+	rst.Client().ClosePreparedStatement("")
+
 	switch err {
 	case nil:
 
