@@ -140,6 +140,8 @@ write_files:
       set -e
       set -x
 
+      export DEBIAN_FRONTENT=noninteractive
+
       BUCKET="spqr-benchmark-reports"
       PR_NUMBER="${var.pr_number}"
 
