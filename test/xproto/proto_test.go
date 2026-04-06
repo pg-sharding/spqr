@@ -4800,6 +4800,70 @@ func TestPrepExtendedPipeline(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{PreparedStatement: ""},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "INSERT INTO t (id) VALUES(1)",
+				},
+				&pgproto3.Bind{PreparedStatement: ""},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "INSERT INTO t (id) VALUES(1)",
+				},
+				&pgproto3.Bind{PreparedStatement: ""},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{PreparedStatement: ""},
+				&pgproto3.Execute{},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 	XprotoTestRunner(t, frontend, tt)
 }
