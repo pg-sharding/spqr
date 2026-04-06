@@ -94,12 +94,15 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 		vals, err := rm.ResolveValue(qname, col, queryParamsFormatCodes)
 
+		/* TODO: correct support for composite keys here */
+		if len(vals) == 0 {
+			p = plan.Combine(p, &plan.ScatterPlan{})
+		}
+
 		if err != nil {
 			/* Is this ok? */
 			return nil
 		}
-
-		/* TODO: correct support for composite keys here */
 
 		for _, val := range vals {
 
