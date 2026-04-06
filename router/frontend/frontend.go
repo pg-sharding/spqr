@@ -103,6 +103,8 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			err = rst.QueryExecutor().DeriveCommandComplete()
 		}
 
+		rst.Client().ClosePreparedStatement("")
+
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
