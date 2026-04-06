@@ -72,6 +72,7 @@ Feature: Prepared statement feature test
         }
     ]
     """
+
  Scenario: Distributed relation prepared statement with query rewriting
     #
     # Make host "coordinator" take control
