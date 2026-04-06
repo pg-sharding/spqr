@@ -58,9 +58,6 @@ type RelayStateMgr interface {
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
-	HoldRouting()
-	UnholdRouting()
-
 	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
@@ -93,8 +90,6 @@ type RelayStateImpl struct {
 
 	msgBuf []pgproto3.FrontendMessage
 
-	holdRouting bool
-
 	bindQueryPlan       plan.Plan
 	bindQueryPlanMP     map[string]plan.Plan
 	lastBindName        string
@@ -122,16 +117,6 @@ func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 // TxStatus implements poolmgr.ConnectionKeeper.
 func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 	return rst.qse.TxStatus()
-}
-
-// HoldRouting implements RelayStateMgr.
-func (rst *RelayStateImpl) HoldRouting() {
-	rst.holdRouting = true
-}
-
-// UnholdRouting implements RelayStateMgr.
-func (rst *RelayStateImpl) UnholdRouting() {
-	rst.holdRouting = false
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
@@ -299,8 +284,9 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
-	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+func (rst *RelayStateImpl) CreateSlicedPlan(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -631,24 +617,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		rst.bindQueryPlan = nil
 	}()
 
-	holdRoute := true
-
-	anyPrepStmt := ""
-	for _, msg := range rst.xBuf {
-		switch q := msg.(type) {
-		case *pgproto3.Bind:
-			if anyPrepStmt == "" {
-				anyPrepStmt = q.PreparedStatement
-			} else if anyPrepStmt != q.PreparedStatement {
-				holdRoute = false
-			}
-		}
-	}
-
-	if holdRoute {
-		defer rst.UnholdRouting()
-	}
-
 	for _, msg := range rst.xBuf {
 
 		switch currentMsg := msg.(type) {
@@ -743,12 +711,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					rst.bindQueryPlan = rst.routingDecisionPlan
 				} else {
 					rst.bindQueryPlanMP[currentMsg.DestinationPortal] = rst.routingDecisionPlan
-				}
-
-				// hold route if appropriate
-
-				if holdRoute {
-					rst.HoldRouting()
 				}
 
 				if rst.routingDecisionPlan == nil {
@@ -1106,10 +1068,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
 
-	if rst.holdRouting {
-		return nil, nil
-	}
-
 	expandCurrentTx := false
 
 	// txactive == 0 || activeSh == nil
@@ -1151,8 +1109,10 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 		return q, nil
 	case ErrMatchShardError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return nil, err
+		return nil, &spqrerror.SpqrError{
+			Err:       err,
+			ErrorCode: spqrerror.SPQR_NO_DATASHARD,
+		}
 	default:
 		return q, err
 	}
@@ -1170,10 +1130,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		Str("db", rst.Client().DB()).
 		Int("curr routes len", len(rst.QueryExecutor().ActiveShards())).
 		Msg("preparing relay step for client on target route")
-
-	if rst.holdRouting {
-		return nil
-	}
 
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
@@ -1213,10 +1169,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client on any route")
-
-	if rst.holdRouting {
-		return currentPlan, noopCloseRouteFunc, nil
-	}
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
