@@ -22,8 +22,6 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
-	rst.Client().ClosePreparedStatement("")
-
 	switch err {
 	case nil:
 
@@ -104,6 +102,8 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().DeriveCommandComplete()
 		}
+
+		rst.Client().ClosePreparedStatement("")
 
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
