@@ -6948,7 +6948,7 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 		return
 	}
 
-	for gr, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -7049,50 +7049,6 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				retMsgType.File = ""
-				retMsgType.Line = 0
-				retMsgType.SeverityUnlocalized = ""
-				retMsgType.Routine = ""
-				retMsgType.Detail = ""
-				retMsgType.Message = ""
-				retMsgType.Position = 0
-
-				switch me := msg.(type) {
-				case *pgproto3.ErrorResponse:
-					if me.Code == "" {
-						retMsgType.Code = ""
-					}
-				}
-
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter %d", gr, ind))
-		}
 	}
+	XprotoTestRunner(t, frontend, tt)
 }
