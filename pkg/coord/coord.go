@@ -394,7 +394,7 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	panic("unimplemented")
 }
 

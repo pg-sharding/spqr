@@ -1920,11 +1920,22 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
+
+	if nowait {
+		go func() {
+			if err := qc.executeMoveInternal(ctx, taskGroup, true); err != nil {
+				spqrlog.Zero.Err(err).Str("task group id", id).Msg("failed to retry move task group")
+			}
+		}()
+
+		return nil
+	}
+
 	return qc.executeMoveInternal(ctx, taskGroup, true)
 }
 

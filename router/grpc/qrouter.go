@@ -630,7 +630,12 @@ func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *proto
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false)
+}
+
+// TODO: unit tests
+func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
 }
 
 // TODO: unit tests
