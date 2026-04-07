@@ -6587,7 +6587,7 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Message:  "prepared statement \"\" does not exist",
+					Message:  "unnamed prepared statement does not exist",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

@@ -197,6 +197,14 @@ shardLoop:
 	return rd, replyMsg, nil
 }
 
+func pstmtDoesNotExistsErr(name string) error {
+	if len(name) > 0 {
+		return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", name)
+	}
+
+	return spqrerror.New(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "unnamed prepared statement does not exist")
+}
+
 func (rst *RelayStateImpl) Close() error {
 	_ = rst.Reset()
 
@@ -647,7 +655,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			if def == nil {
 				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.PreparedStatement)
+				return pstmtDoesNotExistsErr(currentMsg.PreparedStatement)
 			}
 
 			if def.OverwriteRemoveParamIds != nil {
@@ -886,7 +894,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				if def == nil {
 					/* this prepared statement was not prepared by client */
-					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+					return pstmtDoesNotExistsErr(currentMsg.Name)
 				}
 
 				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
@@ -993,7 +1001,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				if def == nil {
 					/* this prepared statement was not prepared by client */
-					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+					return pstmtDoesNotExistsErr(currentMsg.Name)
 				} else {
 					rst.Client().ClosePreparedStatement(currentMsg.Name)
 					if err := rst.Client().ReplyCloseComplete(); err != nil {
