@@ -263,15 +263,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestSimpleQuery(t *testing.T) {
+func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, net.Conn, error) {
 	conn, err := getC()
 	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
+		return nil, nil, err
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
 
 	frontend := pgproto3.NewFrontend(conn, conn)
 	frontend.Send(&pgproto3.StartupMessage{
@@ -279,13 +275,23 @@ func TestSimpleQuery(t *testing.T) {
 		Parameters:      getConnectionParams(),
 	})
 	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
+		return nil, nil, err
 	}
 
 	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
+		return nil, nil, err
 	}
+	return frontend, conn, nil
+}
+
+func TestSimpleQuery(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -462,28 +468,12 @@ func TestSimpleQuery(t *testing.T) {
 func TestSimpleMultiShardTxBlock(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -601,28 +591,12 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -925,28 +899,13 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 }
 
 func TestSimpleAdvancedParsing(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -1040,28 +999,12 @@ func TestSimpleAdvancedParsing(t *testing.T) {
 func TestHintRoutingXproto(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
