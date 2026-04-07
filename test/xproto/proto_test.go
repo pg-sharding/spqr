@@ -263,11 +263,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestSimpleQuery(t *testing.T) {
+func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, error) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
-		return
+		return nil, err
 	}
 	defer func() {
 		_ = conn.Close()
@@ -284,8 +284,16 @@ func TestSimpleQuery(t *testing.T) {
 
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
-		return
+		return nil, err
 	}
+	return frontend, nil
+}
+
+func TestSimpleQuery(t *testing.T) {
+
+	frontend, err := bootstrapConnection(t)
+
+	assert.NoError(t, err, "startup failed")
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -462,30 +470,11 @@ func TestSimpleQuery(t *testing.T) {
 func TestSimpleMultiShardTxBlock(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
-	defer func() {
-		_ = conn.Close()
-	}()
+	frontend, err := bootstrapConnection(t)
 
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
+	assert.NoError(t, err, "startup failed")
 
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
-
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -565,64 +554,17 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for i, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, "iter %d", i)
-		}
 	}
+
+	XprotoTestRunner(t, frontend, tt)
 }
 
 func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
-	defer func() {
-		_ = conn.Close()
-	}()
+	frontend, err := bootstrapConnection(t)
 
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	assert.NoError(t, err, "startup failed")
 
 	for _, msgroup := range []MessageGroup{
 		{
