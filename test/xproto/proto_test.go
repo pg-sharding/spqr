@@ -263,14 +263,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, error) {
+func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, net.Conn, error) {
 	conn, err := getC()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
 
 	frontend := pgproto3.NewFrontend(conn, conn)
 	frontend.Send(&pgproto3.StartupMessage{
@@ -278,19 +275,23 @@ func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, error) {
 		Parameters:      getConnectionParams(),
 	})
 	if err := frontend.Flush(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := waitRFQ(frontend); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return frontend, nil
+	return frontend, conn, nil
 }
 
 func TestSimpleQuery(t *testing.T) {
 
-	frontend, err := bootstrapConnection(t)
+	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -467,8 +468,12 @@ func TestSimpleQuery(t *testing.T) {
 func TestSimpleMultiShardTxBlock(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	frontend, err := bootstrapConnection(t)
+	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -586,8 +591,12 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	frontend, err := bootstrapConnection(t)
+	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -891,8 +900,12 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 
 func TestSimpleAdvancedParsing(t *testing.T) {
 
-	frontend, err := bootstrapConnection(t)
+	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -986,8 +999,12 @@ func TestSimpleAdvancedParsing(t *testing.T) {
 func TestHintRoutingXproto(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	frontend, err := bootstrapConnection(t)
+	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	for gr, msgroup := range []MessageGroup{
 		{
