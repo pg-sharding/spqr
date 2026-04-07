@@ -1193,28 +1193,12 @@ func TestHintRoutingXproto(t *testing.T) {
 func TestSimpleAdvancedSETParsing(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -1382,28 +1366,13 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 }
 
 func TestUnknownBindStatementError(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -1478,28 +1447,13 @@ func TestUnknownBindStatementError(t *testing.T) {
 }
 
 func TestUnknownDescribeStatementError(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -1577,28 +1531,12 @@ func TestUnknownDescribeStatementError(t *testing.T) {
 func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -2221,28 +2159,13 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 }
 
 func TestPrepStmtSimple(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -2409,28 +2332,13 @@ func TestPrepStmtSimple(t *testing.T) {
 }
 
 func TestPrepStmtSimpleProtoViolation(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -2565,28 +2473,12 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 func TestPrepStmtMultishardXproto(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -2822,28 +2714,12 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 func TestSplitUpdateXproto(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -3029,28 +2905,13 @@ func TestSplitUpdateXproto(t *testing.T) {
 }
 
 func TestPrepStmtDescribeAndBind(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for i, msgroup := range []MessageGroup{
 		{
@@ -3299,28 +3160,14 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 }
 
 func TestPrepStmtDescribePortalAndBind(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -3553,28 +3400,14 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 }
 
 func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -3730,28 +3563,14 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 }
 
 func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -3942,28 +3761,13 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 }
 
 func TestPrepStmtAdvancedParsing(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -4176,28 +3980,13 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 }
 
 func TestPrepStmt(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -4507,28 +4296,13 @@ func TestPrepStmt(t *testing.T) {
 }
 
 func TestPrepExtendedPipeline(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	tt := []MessageGroup{
 		{
@@ -4926,28 +4700,13 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 }
 
 func TestDoubleDescribe(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	tt := []MessageGroup{
 		{
@@ -5010,28 +4769,13 @@ func TestDoubleDescribe(t *testing.T) {
 
 func TestMultiPortal(t *testing.T) {
 	t.Skip("todo")
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	tt := []MessageGroup{
 		{
@@ -5176,28 +4920,13 @@ func TestMultiPortal(t *testing.T) {
 }
 
 func TestPrepStmtBinaryFormat(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	tt := []MessageGroup{
 		{
@@ -5292,28 +5021,13 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 }
 
 func TestDDL(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -5510,28 +5224,13 @@ func TestDDL(t *testing.T) {
 }
 
 func TestMixedProtoTxcommands(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -5956,28 +5655,13 @@ func TestMixedProtoTxcommands(t *testing.T) {
 }
 
 func TestXProtoPureVirtual(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for _, msgroup := range []MessageGroup{
 		{
@@ -6102,28 +5786,12 @@ func TestXProtoPureVirtual(t *testing.T) {
 func TestVirtualParams(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -6250,28 +5918,13 @@ func TestVirtualParams(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -6422,28 +6075,13 @@ func TestClose(t *testing.T) {
 }
 
 func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -6631,28 +6269,13 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 }
 
 func TestExtendedErrorWithFlush(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -6750,28 +6373,13 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 }
 
 func TestParseErrorThenReuseName(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -6868,28 +6476,13 @@ func TestParseErrorThenReuseName(t *testing.T) {
 }
 
 func TestUsePstmtAfterSimpleQuery(t *testing.T) {
-	conn, err := getC()
-	if err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	frontend := pgproto3.NewFrontend(conn, conn)
-	frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters:      getConnectionParams(),
-	})
-	if err := frontend.Flush(); err != nil {
-		assert.NoError(t, err, "startup failed")
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		assert.NoError(t, err, "startup failed")
-		return
-	}
 
 	tt := []MessageGroup{
 		{
