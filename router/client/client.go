@@ -340,6 +340,7 @@ func (cl *PsqlClient) ReplyCloseComplete() error {
 
 func (cl *PsqlClient) Reset() error {
 	serv := cl.serverP.Load()
+	cl.serverP.Store(nil)
 
 	if serv == nil || *serv == nil {
 		return nil

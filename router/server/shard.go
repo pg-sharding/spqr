@@ -35,7 +35,11 @@ func (srv *ShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, de
 
 // DataPending implements Server.
 func (srv *ShardServer) DataPending() bool {
-	return (*srv.shard.Load()).DataPending()
+	sh := *srv.shard.Load()
+	if sh == nil {
+		return false
+	}
+	return sh.DataPending()
 }
 
 func NewShardServer(spool pool.MultiShardTSAPool) *ShardServer {

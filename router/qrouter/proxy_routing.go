@@ -650,18 +650,17 @@ func (qr *ProxyQrouter) planQueryV1(
 			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
-				if rm.SPH.EnhancedMultiShardProcessing() {
+				/* Here we do not check for v2 engine. Reference relation is
+				* already v2 feature, so if client chooses to execute queries with that,
+				* then client is ready for >= v2. */
+				plr := planner.PlannerV2{}
 
-					plr := planner.PlannerV2{}
-
-					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
-					if err != nil {
-						return nil, err
-					}
-					p = plan.Combine(p, tmp)
-					return p, nil
+				tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
+				if err != nil {
+					return nil, err
 				}
-				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+				p = plan.Combine(p, tmp)
+				return p, nil
 			}
 
 			/* Delete from relation - does it have any reverse index attached? */
