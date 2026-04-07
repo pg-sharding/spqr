@@ -206,8 +206,10 @@ func (rst *RelayStateImpl) Close() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 
-	if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
-		return err
+	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+
+	if err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
 	}
 
 	rst.QueryExecutor().ActiveShardsReset()
@@ -217,7 +219,11 @@ func (rst *RelayStateImpl) Reset() error {
 
 	_ = rst.Client().Reset()
 
-	return rst.Client().Unroute()
+	if rerr := rst.Client().Unroute(); rerr != nil {
+		return rerr
+	}
+
+	return err
 }
 
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
