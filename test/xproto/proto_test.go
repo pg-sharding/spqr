@@ -22,6 +22,17 @@ type MessageGroup struct {
 	Response []pgproto3.BackendMessage
 }
 
+func isPurePGTesting() bool {
+	_, defined := os.LookupEnv("SPQR_XPROTO_TEST_PURE_PG_ONLY")
+	return defined
+}
+
+func thisIsSPQRSpecificTest(t *testing.T) {
+	if isPurePGTesting() {
+		t.Skip("This test is incompatible with vanilla PG")
+	}
+}
+
 func XprotoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGroup) {
 	for _, msgroup := range tt {
 		for _, msg := range msgroup.Request {
@@ -449,6 +460,8 @@ func TestSimpleQuery(t *testing.T) {
 }
 
 func TestSimpleMultiShardTxBlock(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -586,6 +599,8 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 }
 
 func TestSimpleReferenceRelationAutoinc(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1023,6 +1038,8 @@ func TestSimpleAdvancedParsing(t *testing.T) {
 }
 
 func TestHintRoutingXproto(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1231,6 +1248,8 @@ func TestHintRoutingXproto(t *testing.T) {
 }
 
 func TestSimpleAdvancedSETParsing(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1613,6 +1632,8 @@ func TestUnknownDescribeStatementError(t *testing.T) {
 }
 
 func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -2599,6 +2620,8 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 }
 
 func TestPrepStmtMultishardXproto(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -2854,6 +2877,8 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 }
 
 func TestSplitUpdateXproto(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -6132,6 +6157,8 @@ func TestXProtoPureVirtual(t *testing.T) {
 }
 
 func TestVirtualParams(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -6895,4 +6922,178 @@ func TestParseErrorThenReuseName(t *testing.T) {
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter %d", gr, ind))
 		}
 	}
+}
+
+func TestUsePstmtAfterSimpleQuery(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "P0",
+					Query: "select 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "P0",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: ";",
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "P0",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "select 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: ";",
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "select 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	XprotoTestRunner(t, frontend, tt)
 }

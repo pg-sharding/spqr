@@ -428,6 +428,12 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 		return err
 	}
 	stmt, err := db.Prepare(query)
+	if err != nil {
+		tctx.commandRetcode = 1
+		tctx.commandOutput = err.Error()
+		tctx.sqlUserQueryError.Store(host, err.Error())
+		return err
+	}
 	if pqHst, ok := tctx.preparedQueries[host]; !ok {
 		hstDat := map[string]*sql.Stmt{query: stmt}
 		tctx.preparedQueries[host] = hstDat
@@ -437,11 +443,6 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	}
 	tctx.sqlQueryResult = nil
 	tctx.commandRetcode = 0
-	if err != nil {
-		tctx.commandRetcode = 1
-		tctx.commandOutput = err.Error()
-		tctx.sqlUserQueryError.Store(host, err.Error())
-	}
 	return nil
 }
 
