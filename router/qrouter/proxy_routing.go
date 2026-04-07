@@ -907,15 +907,12 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
 	case *plan.ScatterPlan:
-		if v.IsDDL {
+		if v.ExecTargets == nil {
 			v.ExecTargets = qr.DataShardsRoutes()
-			return v, nil
 		}
 
-		if v.Forced {
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
-			}
+		/* XXX: assert that DDL is executed on all shards. */
+		if v.IsDDL || v.Forced {
 			return v, nil
 		}
 
@@ -935,9 +932,6 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 						return nil, err
 					}
 				}
-			}
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
 			}
 			return v, nil
 		}
