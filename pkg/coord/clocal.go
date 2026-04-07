@@ -89,7 +89,8 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 		if err != nil {
 			return err
 		}
-		if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
+		err = lc.qdb.ExecNoTransaction(ctx, statements)
+		if err != nil {
 			return err
 		}
 		qualifiedName := rel.QualifiedName()
