@@ -187,7 +187,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -683,7 +683,8 @@ show_statement_type:
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr, StartupFinishedStr, TwoPhaseTXStr:
+			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
+			FileSettingsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -986,6 +987,15 @@ relation_alter_stmt_v2:
 			RelationName: $3,
 			Element: &AlterRelationSchema {
 				SchemaName: $5,
+			},
+		}
+	} |
+	ALTER RELATION qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
+		$$ = &AlterRelationV2{
+			RelationName: $3,
+			Element: &RenameDistributionColumn{
+				OldName: $7,
+				NewName: $9,
 			},
 		}
 	}

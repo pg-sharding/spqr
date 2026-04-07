@@ -6,7 +6,7 @@ A distribution can have a default shard that acts as a catch-all fallback. When 
 
 The default shard is implemented as a special key range with the minimum possible value as its lower bound. This key range has a reserved ID: `{DistributionId}.DEFAULT`.
 
-For example, if the distribution has column types `[varchar, integer]`, the default key range lower bound is `["", -9223372036854775808]`.
+For example, if the distribution has column types `[varchar, integer, uuid]`, the default key range lower bound is `["", -9223372036854775808, "00000000-0000-0000-0000-000000000000"]`.
 
 ```sql
 -- Setup: key ranges kr1: [-20, -10) → sh2, kr2: [-10, 0) → sh3, kr3: [0, ∞) → sh4

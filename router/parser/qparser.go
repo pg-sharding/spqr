@@ -120,8 +120,9 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	routerStmts, pos, err := lyx.Parse(query)
 	if err != nil {
 		return nil, comment, &spqrerror.SpqrError{
-			Err:      err,
-			Position: int32(pos),
+			Err:       err,
+			Position:  int32(pos),
+			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
 		}
 	}
 	if routerStmts == nil || routerStmts[0] == nil {

@@ -1,0 +1,142 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 301
+(1 row)
+
+CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 201
+(1 row)
+
+\c regress
+SET __spqr__reply_notice TO false;
+SET application_name TO 'regress';
+SHOW application_name;
+ application_name 
+------------------
+ regress
+(1 row)
+
+BEGIN;
+SET LOCAL application_name TO 'regress_local';
+SHOW application_name;
+ application_name 
+------------------
+ regress_local
+(1 row)
+
+ROLLBACK;
+SHOW application_name;
+ application_name 
+------------------
+ regress
+(1 row)
+
+BEGIN;
+SET LOCAL application_name TO 'regress_local';
+SHOW application_name;
+ application_name 
+------------------
+ regress_local
+(1 row)
+
+COMMIT;
+SHOW application_name;
+ application_name 
+------------------
+ regress
+(1 row)
+
+BEGIN;
+SET application_name TO 'regress_tx';
+SHOW application_name;
+ application_name 
+------------------
+ regress_tx
+(1 row)
+
+ROLLBACK;
+SHOW application_name;
+ application_name 
+------------------
+ regress
+(1 row)
+
+BEGIN;
+SET application_name TO 'regress_tx';
+SHOW application_name;
+ application_name 
+------------------
+ regress_tx
+(1 row)
+
+COMMIT;
+SHOW application_name;
+ application_name 
+------------------
+ regress_tx
+(1 row)
+
+BEGIN;
+RESET application_name;
+SHOW application_name;
+   application_name   
+----------------------
+ pg_regress/set_param
+(1 row)
+
+ROLLBACK;
+BEGIN;
+SET x TO '1';
+SHOW x;
+ x 
+---
+ 1
+(1 row)
+
+SHOW application_name;
+ application_name 
+------------------
+ regress_tx
+(1 row)
+
+RESET ALL;
+SHOW application_name;
+   application_name   
+----------------------
+ pg_regress/set_param
+(1 row)
+
+SHOW x;
+ERROR:  unrecognized configuration parameter "x"
+ROLLBACK;
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+

@@ -123,7 +123,7 @@ services:
             ETCD_LOG_LEVEL: "debug"
         ports:
             - "2379:2379"
-        entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://spqr_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
+        entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://spqr_qdb:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
     router:
         build:
             dockerfile: ./docker/router/Dockerfile

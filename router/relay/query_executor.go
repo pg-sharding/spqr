@@ -17,8 +17,9 @@ import (
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
 
-	simple bool
-	exec   *pgproto3.Execute
+	simple    bool
+	ParamsNum int
+	exec      *pgproto3.Execute
 }
 
 type ExecutorState struct {
@@ -69,11 +70,12 @@ type QueryStateExecutor interface {
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
+	RFQ() *pgproto3.ReadyForQuery
 
 	ReplyEmptyQuery()
 	FailStatement(err *pgproto3.ErrorResponse)
 
-	ExecSet(rst RelayStateMgr, query, name, value string) error
+	ExecSet(rst RelayStateMgr, query, name, value string, isLocal bool) error
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 

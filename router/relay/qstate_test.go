@@ -67,7 +67,7 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	existsDistr := distribution.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "ds1").Return(existsDistr, nil)
 
-	client.EXPECT().SetParam("__spqr__auto_distribution", "ds1")
+	client.EXPECT().SetParam("__spqr__auto_distribution", "ds1", false)
 
 	rst := RelayStateImpl{
 		msgBuf:              nil,
@@ -103,7 +103,7 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "REPLICATED").Return(nil, fmt.Errorf("not found"))
 
-	client.EXPECT().SetParam("__spqr__auto_distribution", "REPLICATED")
+	client.EXPECT().SetParam("__spqr__auto_distribution", "REPLICATED", false)
 
 	rst := RelayStateImpl{
 		msgBuf:          nil,

@@ -1372,3 +1372,11 @@ func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName *rfqn.Re
 	}
 	return res, nil
 }
+
+func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []string) error {
+	return lc.qdb.SetTxMetaStorage(ctx, storage)
+}
+
+func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
+	return lc.qdb.GetTxMetaStorage(ctx)
+}

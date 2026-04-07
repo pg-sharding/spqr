@@ -78,7 +78,7 @@ type SessionParamsHolder interface {
 	SetParamFormatCodes([]int16)
 
 	Params() map[string]string
-	SetParam(name, value string)
+	SetParam(name, value string, isLocal bool)
 	StartTx()
 	ResetAll()
 	Rollback()

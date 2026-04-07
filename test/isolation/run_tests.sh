@@ -28,6 +28,5 @@ psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGIST
 
 if test -f /regress/regression.diffs;
 then
-	sleep 2322323
     cat /regress/regression.diffs; exit 1;
 fi

@@ -98,6 +98,7 @@ dbpool
 dbtpcc
 dbutils
 dcd
+dcs
 ddl
 debian
 denchick
@@ -303,6 +304,8 @@ lval
 maxuint
 mcol
 mdblocales
+mempg
+mempgqdb
 memqdb
 metadb
 MGhyjwicp
@@ -400,6 +403,7 @@ pgsync
 PGUSER
 pgx
 pgxconn
+pgxpool
 PIDs
 pitr
 pkgclient
@@ -507,6 +511,7 @@ shkey
 shname
 shq
 singleshard
+siteid
 Smartphone
 spaolacci
 spqr
@@ -600,6 +605,7 @@ tstmt
 tupleslot
 tupletableslot
 twopc
+twophasetxmeta
 TXACT
 txactive
 txbefore

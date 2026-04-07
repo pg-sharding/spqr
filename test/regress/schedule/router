@@ -40,8 +40,11 @@ test: spqrguard
 test: negative_routing
 test: default_shard
 test: expression_routing
+test: rename_column_routing
 test: show_backend_connections
 test: split_update
 test: virtual_sliced
 test: unique_index
 test: spqr_execute
+test: default_shard_uuid
+test: set_param

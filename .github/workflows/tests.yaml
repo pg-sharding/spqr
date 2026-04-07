@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ master ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   IMAGE_SHARD: spqr-shard-image
   SHARD_CACHE_KEY: sha256sum-of-docker-shard

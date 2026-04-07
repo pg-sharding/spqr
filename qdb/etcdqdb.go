@@ -81,6 +81,7 @@ const (
 	stopMoveTaskGroupNamespace           = "/stop_move_task_group/"
 	moveTaskByGroupNamespace             = "/group_move_tasks/"
 	uniqueIndexesByRelationNamespace     = "/relation_unique_indexes"
+	twoPhaseTxMetaStoragePath            = "/2pc_meta_storage"
 
 	CoordKeepAliveTtl  = 3
 	coordLockKey       = "coordinator_exists"
@@ -1171,7 +1172,7 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relation *rfqn.Relat
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "replicated relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relation)
 	}
 
 	var refRel *ReferenceRelation
@@ -2986,4 +2987,35 @@ func (q *EtcdQDB) DropRedistributeTaskLock(ctx context.Context, id string) error
 
 	_, err := q.cli.Delete(ctx, redistributeTaskLockNodePath(id))
 	return err
+}
+
+func (q *EtcdQDB) SetTxMetaStorage(ctx context.Context, shards []string) error {
+	spqrlog.Zero.Debug().Strs("shards", shards).Msg("etcdqdb: set two-phase transactions metadata storage")
+
+	shardsBytes, err := json.Marshal(shards)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyMissing(twoPhaseTxMetaStoragePath)).Then(clientv3.OpPut(twoPhaseTxMetaStoragePath, string(shardsBytes))).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("re-setting transaction metadata storage is currently forbidden")
+	}
+	return nil
+}
+
+func (q *EtcdQDB) GetTxMetaStorage(ctx context.Context) (shards []string, err error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: get two-phase transactions metadata storage")
+
+	resp, err := q.cli.Get(ctx, twoPhaseTxMetaStoragePath)
+	if err != nil {
+		return
+	}
+	if resp.Count == 0 {
+		return []string{}, nil
+	}
+	err = json.Unmarshal(resp.Kvs[0].Value, &shards)
+	return
 }

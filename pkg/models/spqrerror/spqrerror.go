@@ -3,6 +3,7 @@ package spqrerror
 import (
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"google.golang.org/grpc/status"
 )
 
@@ -35,6 +36,9 @@ const (
 	PG_ERRCODE_PROTOCOL_VIOLATION         = "08P01"
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
 	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
+
+	PG_ERRCODE_UNDEFINED_TABLE = "42P01"
+	PG_SYNTAX_ERROR            = "42601"
 )
 
 var ExistingErrorCodeMap = map[string]string{
@@ -166,4 +170,18 @@ func CleanGrpcError(err error) error {
 		return fmt.Errorf("%s", st.Message())
 	}
 	return err // non grpc error
+}
+
+func ErrorMsgFromErr(
+	msg string,
+	code string,
+	hint string, pos int32) *pgproto3.ErrorResponse {
+
+	return &pgproto3.ErrorResponse{
+		Message:  msg,
+		Severity: "ERROR",
+		Code:     code,
+		Hint:     hint,
+		Position: pos,
+	}
 }
