@@ -4667,6 +4667,7 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Message:  "column \"lol\" does not exist",
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -4675,6 +4676,7 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Message:  "column \"lol2\" does not exist",
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -6585,6 +6587,7 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Message:  "prepared statement \"\" does not exist",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
