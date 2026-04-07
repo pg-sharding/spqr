@@ -212,8 +212,6 @@ func (rst *RelayStateImpl) Reset() error {
 		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
 	}
 
-	spqrlog.Zero.Debug().Msg("resetting relay server")
-
 	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
 

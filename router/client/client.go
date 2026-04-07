@@ -427,8 +427,6 @@ func (cl *PsqlClient) Server() server.Server {
 func (cl *PsqlClient) Unroute() error {
 	serv := cl.serverP.Load()
 
-	spqrlog.Zero.Debug().Msg("unrouting client from server")
-
 	if serv == nil || *serv == nil {
 		/* TBD: raise error here sometimes? */
 		return nil
