@@ -340,6 +340,7 @@ func (cl *PsqlClient) ReplyCloseComplete() error {
 
 func (cl *PsqlClient) Reset() error {
 	serv := cl.serverP.Load()
+	cl.serverP.Store(nil)
 
 	if serv == nil || *serv == nil {
 		return nil
@@ -425,6 +426,8 @@ func (cl *PsqlClient) Server() server.Server {
 /* This method can be called concurrently with Cancel() */
 func (cl *PsqlClient) Unroute() error {
 	serv := cl.serverP.Load()
+
+	spqrlog.Zero.Debug().Msg("unrouting client from server")
 
 	if serv == nil || *serv == nil {
 		/* TBD: raise error here sometimes? */
