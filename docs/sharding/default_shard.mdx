@@ -6,7 +6,7 @@ A distribution can have a default shard that acts as a catch-all fallback. When 
 
 The default shard is implemented as a special key range with the minimum possible value as its lower bound. This key range has a reserved ID: `{DistributionId}.DEFAULT`.
 
-For example, if the distribution has column types `[varchar, integer]`, the default key range lower bound is `["", -9223372036854775808]`.
+For example, if the distribution has column types `[varchar, integer, uuid]`, the default key range lower bound is `["", -9223372036854775808, "00000000-0000-0000-0000-000000000000"]`.
 
 ## How to Use It
 
@@ -38,6 +38,7 @@ The default shard is implemented as a special key range with ID `{distribution_i
 | `uinteger` | `0` |
 | `varchar` | `""` (empty string) |
 | `varchar hash` | `0` |
+| `uuid` | `"00000000-0000-0000-0000-000000000000"` |
 
 <Warning>`uuid` column type does not support default shard. See [issue #1666](https://github.com/pg-sharding/spqr/issues/1666).</Warning>
 

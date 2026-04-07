@@ -1,0 +1,125 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- check that UUID type works
+CREATE DISTRIBUTION ds1 COLUMN TYPES UUID;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid2 FROM '88888888-8888-8888-8888-888888888888' ROUTE TO sh2 FOR DISTRIBUTION ds1;
+                  add key range                  
+-------------------------------------------------
+ bound -> '88888888-8888-8888-8888-888888888888'
+(1 row)
+
+CREATE KEY RANGE krid1 FROM '00000000-0000-0000-0000-000000000001' ROUTE TO sh1 FOR DISTRIBUTION ds1;
+                  add key range                  
+-------------------------------------------------
+ bound -> '00000000-0000-0000-0000-000000000001'
+(1 row)
+
+ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+  create default shard  
+------------------------
+ distribution id -> ds1
+ shard id        -> sh1
+(2 rows)
+
+CREATE DISTRIBUTED RELATION def_sh_xx DISTRIBUTION KEY id IN ds1;
+         attach table         
+------------------------------
+ relation name   -> def_sh_xx
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE def_sh_xx(id UUID);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO def_sh_xx (id) VALUES ('00000000-0000-0000-0000-000000000000');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO def_sh_xx (id) VALUES ('00000000-0000-0EA0-0FAB-AB031389FF09');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO def_sh_xx (id) VALUES ('fa98123B-0000-0Ea0-0fab-ab031389FF09');
+NOTICE: send query to shard(s) : sh2
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 00000000-0000-0000-0000-000000000000
+ 00000000-0000-0ea0-0fab-ab031389ff09
+(2 rows)
+
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ fa98123b-0000-0ea0-0fab-ab031389ff09
+(1 row)
+
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id 
+----
+(0 rows)
+
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ id 
+----
+(0 rows)
+
+TRUNCATE def_sh_xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY def_sh_xx (id) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 00000000-0000-0000-0000-000000000000
+ 00000000-0000-0ea0-0fab-ab031389ff09
+(2 rows)
+
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ fa98123b-0000-0ea0-0fab-ab031389ff09
+(1 row)
+
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id 
+----
+(0 rows)
+
+SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ id 
+----
+(0 rows)
+
+DROP TABLE def_sh_xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+

@@ -284,7 +284,8 @@ func (qr *ProxyQrouter) planInsertV1(
 			/* XXX: give change for engine v2 to rewrite queries */
 			for _, sh := range shs {
 				if sh.Name != shs[0].Name {
-					/* try to rewrite, but only for simple protocol */
+					/* try to rewrite,
+					* but only for simple protocol or unparametrized xproto */
 					if len(rm.ParamRefs) == 0 {
 						return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
 					}

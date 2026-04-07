@@ -21,6 +21,9 @@ type TwoPCWatchDog struct {
 }
 
 func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
+	if be == nil {
+		return nil, fmt.Errorf("invalid watchdog config: nil backend rule")
+	}
 	wd := &TwoPCWatchDog{
 		be: be,
 	}
@@ -31,7 +34,7 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 
 	wd.p.SetRule(wd.be)
 
-	db, err := qdb.GetMemQDB()
+	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
 	}
@@ -124,11 +127,22 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		* 3) another recovery routine raced with us and won the race.
 		*/
 
-		if d.d.AcquireTxOwnership(gid) {
-			/* Try to fix things  */
-			if err := d.Recover2PhaseCommitTX(gid); err != nil {
-				spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+		if err := func() error {
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			acq, err := d.d.AcquireTxOwnership(ctx, gid)
+			if err != nil {
+				return err
 			}
+			if acq {
+				/* Try to fix things  */
+				if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
+					spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+				}
+			}
+			return nil
+		}(); err != nil {
+			return err
 		}
 	}
 
@@ -164,7 +178,7 @@ func (d *TwoPCWatchDog) executeCommitShards(shs []string, gid string) error {
 	for _, sh := range shs {
 		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
 			Name: sh,
-		}, tsa.TSA(config.TargetSessionAttrsAny))
+		}, tsa.TSA(config.TargetSessionAttrsRW))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
@@ -208,7 +222,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 	for _, sh := range shs {
 		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
 			Name: sh,
-		}, tsa.TSA(config.TargetSessionAttrsAny))
+		}, tsa.TSA(config.TargetSessionAttrsRW))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
@@ -217,6 +231,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 			return err
 		} else if !res {
 			/* tx already committed */
+			spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
 			continue
 		}
 
@@ -229,27 +244,39 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 	return nil
 }
 
-func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
+func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) error {
 	/* Always be tidy */
-	defer d.d.ReleaseTxOwnership(gid)
+	defer func() { _ = d.d.ReleaseTxOwnership(ctx, gid) }()
 
-	status := d.d.TXStatus(gid)
+	status, err := d.d.TXStatus(ctx, gid)
+	if err != nil {
+		return err
+	}
 	switch status {
 	case qdb.TwoPhaseInitState:
 		/* TX owner did not made a decision to commit, rollback  */
-
-		if err := d.executeRollbackShards(d.d.TXCohortShards(gid), gid); err != nil {
+		shards, err := d.d.TXCohortShards(ctx, gid)
+		if err != nil {
+			return err
+		}
+		if err := d.executeRollbackShards(shards, gid); err != nil {
 			return err
 		}
 
-		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2Rejected)
+		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2Rejected)
 	case qdb.TwoPhaseP1:
-		if err := d.executeCommitShards(d.d.TXCohortShards(gid), gid); err != nil {
+		shards, err := d.d.TXCohortShards(ctx, gid)
+		if err != nil {
 			return err
 		}
-		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2)
-	case qdb.TwoPhaseP2Rejected, qdb.TwoPhaseP2:
+		if err := d.executeCommitShards(shards, gid); err != nil {
+			return err
+		}
+		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2)
+	case qdb.TwoPhaseP2:
 		return nil
+	case qdb.TwoPhaseP2Rejected:
+		return fmt.Errorf("unexpected 'rejected' tx status in Recover2PhaseCommitTx, gid \"%s\"", gid)
 	default:
 		return fmt.Errorf("unexpected 2pc state: %s", status)
 	}

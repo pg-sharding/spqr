@@ -1,0 +1,6 @@
+SHOW dcs_storage;
+ storage 
+---------
+ sh1
+(1 row)
+

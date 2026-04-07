@@ -16,6 +16,7 @@ COORD_CONFIG_PATH=${COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg.yaml}
 CUR_HOST=$(cat ${CONFIG_PATH} | grep "host:")
 sed "s/${CUR_HOST}/${ROUTER_HOST=${CUR_HOST}}/g" -i ${CONFIG_PATH}
 rm -f /tmp/.s.PGSQL.*
+rm -f /var/run/postgresql/.s.PGSQL.*
 /spqr/spqr-router run --config ${CONFIG_PATH} --coordinator-config ${COORD_CONFIG_PATH} >> ${ROUTER_LOG} &
 
 while true; do sleep 1; done

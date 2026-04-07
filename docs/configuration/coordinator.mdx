@@ -33,7 +33,7 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `enable_role_system`       | Whether to enable the [role-based access control system](./roles).                           | `true`, `false`                               |
 | `roles_file`               | The file path to the [roles](./roles) configuration.                                         | Any valid file path                           |
 | `etcd_max_send_bytes`      | Maximum request size in bytes that the etcd client (QDB implementation) is allowed to send. | Integer (bytes), use `0` for the etcd default |
-| `etcd_max_txn_ops`         | Max subcommand count for complex commands in meta transactions                                | Any integer value between 0 and 65535 |
+| `etcd_max_txn_ops`         | Max subcommand count for complex commands in meta transactions. 128 is default value         | Any integer value between 0 and 65535 |
 | `data_move_disable_triggers` | Disable triggers during data move operations to speed up copying/deleting data.              | `true`, `false`                               |
 | `data_move_bound_batch_size` | Maximum number of rows fetched per batch when bounded data moves are executed. Default `10000`. | Positive integer                              |
 

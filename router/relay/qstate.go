@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
 
-func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
 	state, comment, err := rst.Parse(query, doCaching)
 	if err != nil {
@@ -60,18 +59,11 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			/* this way we format next msg correctly */
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
-
+		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("failed to parse query")
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			// TODO: figure out if we need this
-			// _ = rst.Reset()
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
+			return nil, err
 		}
-
-		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
-		}
-
-		return nil, rst.ResetWithError(err)
+		return nil, err
 	}
 
 	txbefore := rst.QueryExecutor().TxStatus()
@@ -88,7 +80,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			* override `query` */
 		} else {
 			if _, ok := state.(parser.ParseStateTXRollback); !ok {
-				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+				return nil, errAbortedTx
 			}
 		}
 	}
@@ -105,35 +97,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	} else {
 		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("completing client relay")
 	}
-
-	switch err {
-	case nil:
-		if !completeRelay {
-			return pd, nil
-		}
-
-		/* Okay, respond with CommandComplete first. */
-		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-			return nil, err
-		}
-
-		return pd, rst.CompleteRelay()
-	case io.ErrUnexpectedEOF:
-		fallthrough
-	case io.EOF:
-		return nil, rst.ResetWithError(err)
-		// ok
-	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-			Msg("client iteration done with error")
-
-		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
-		}
-
-		return nil, rst.ResetWithError(err)
-	}
+	return pd, err
 }
 
 func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error {
@@ -402,6 +366,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				} else {
 					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
 				}
+			case session.SPQR_COMMIT_STRATEGY:
+				ReplyVirtualParamState(rst.Client(), "commit strategy", []byte(rst.Client().CommitStrategy()))
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
@@ -506,7 +472,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						return nil, err
 					}
 				} else {
-					if err := rst.QueryExecutor().ExecSet(rst, query, name, val); err != nil {
+					if err := rst.QueryExecutor().ExecSet(rst, query, name, val, q.IsLocal); err != nil {
 						return nil, err
 					}
 				}
@@ -615,10 +581,12 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 			hintVal != distributions.REPLICATED {
 			return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
 		} else {
-			rst.Client().SetParam(name, hintVal)
+			rst.Client().SetParam(name, hintVal, isLocal)
 		}
+	case session.SPQR_COMMIT_STRATEGY:
+		rst.Client().SetCommitStrategy(hintVal)
 	default:
-		rst.Client().SetParam(name, hintVal)
+		rst.Client().SetParam(name, hintVal, isLocal)
 	}
 
 	return rst.QueryExecutor().ReplyCommandComplete("SET")

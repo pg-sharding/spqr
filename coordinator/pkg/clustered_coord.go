@@ -609,6 +609,20 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("failed to add shard")
 				}
 			}
+			shardList, err := qc.db.GetTxMetaStorage(ctx)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
+			} else if len(shardList) == 0 {
+				shardIds := make([]string, 0, len(shards.ShardsData))
+				for id := range shards.ShardsData {
+					shardIds = append(shardIds, id)
+				}
+				firstShardId := slices.Min(shardIds)
+				s := []string{firstShardId}
+				if err := qc.db.SetTxMetaStorage(ctx, s); err != nil {
+					spqrlog.Zero.Error().Err(err).Strs("shard ids", s).Msg("failed to set two phase tx storage shards")
+				}
+			}
 		}
 		if err := qc.setUpSPQRGuard(ctx); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")
@@ -675,9 +689,20 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	relsSet := make(map[string]struct{})
 	for _, ds := range dss {
+		if ds.Id == distributions.REPLICATED {
+			continue
+		}
 		for _, rel := range ds.FQNRelations {
 			relations = append(relations, rel.Relation)
+			relsSet[rel.Relation.String()] = struct{}{}
+		}
+		for _, rel := range ds.Relations {
+			if _, ok := relsSet[rel.Relation.String()]; !ok {
+				relations = append(relations, rel.Relation)
+				relsSet[rel.Relation.String()] = struct{}{}
+			}
 		}
 	}
 
@@ -2324,6 +2349,25 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		return err
 	}
 
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewConstant(time.Second)), func(ctx context.Context) error {
+		cc, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+
+		storage, err := qc.db.GetTxMetaStorage(ctx)
+		if err != nil {
+			return err
+		}
+
+		s := proto.NewTwoPhaseTxMetaServiceClient(cc)
+		// Ignore the error
+		_, _ = s.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
 		cc, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
@@ -2497,7 +2541,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		"DateStyle":       "ISO",
 	}
 	for k, v := range params {
-		cl.SetParam(k, v)
+		cl.SetParam(k, v, false)
 	}
 
 	r.SetParams(cl.Params())

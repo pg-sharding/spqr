@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+import "google/protobuf/empty.proto";
+
+message TwoPhaseTxMetaStorageReply {
+    repeated string storage = 1;
+}
+
+message SetTwoPhaseTxMetaStorageRequest {
+    repeated string storage = 1;
+}
+
+service TwoPhaseTxMetaService {
+  rpc SetTwoPhaseTxMetaStorage(SetTwoPhaseTxMetaStorageRequest) returns (google.protobuf.Empty);
+  rpc GetTwoPhaseTxMetaStorage(google.protobuf.Empty) returns (TwoPhaseTxMetaStorageReply);
+}

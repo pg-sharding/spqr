@@ -165,7 +165,11 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit {
+		if config.RouterConfig().StoreTxDataPostgresql && !config.RouterConfig().UseCoordinatorInit {
+			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
+		}
+
+		if config.RouterConfig().WithCoordinator || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -257,7 +261,7 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
 		maxTxnBatchSize := getMaxTxnBatchSize(config.RouterConfig(), config.CoordinatorConfig())
-
+		// HERE
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)

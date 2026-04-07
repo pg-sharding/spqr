@@ -699,6 +699,21 @@ func (mr *MockEntityMgrMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockEntityMgr)(nil).GetTaskGroupStatus), ctx, id)
 }
 
+// GetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockEntityMgr) GetTwoPhaseTxMetaStorage(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwoPhaseTxMetaStorage", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwoPhaseTxMetaStorage indicates an expected call of GetTwoPhaseTxMetaStorage.
+func (mr *MockEntityMgrMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockEntityMgr)(nil).GetTwoPhaseTxMetaStorage), arg0)
+}
+
 // GetTxnBatchSize mocks base method.
 func (m *MockEntityMgr) GetTxnBatchSize() uint16 {
 	m.ctrl.T.Helper()
@@ -1050,6 +1065,20 @@ func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string) error
 func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id)
+}
+
+// SetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockEntityMgr) SetTwoPhaseTxMetaStorage(arg0 context.Context, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTwoPhaseTxMetaStorage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTwoPhaseTxMetaStorage indicates an expected call of SetTwoPhaseTxMetaStorage.
+func (mr *MockEntityMgrMockRecorder) SetTwoPhaseTxMetaStorage(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockEntityMgr)(nil).SetTwoPhaseTxMetaStorage), arg0, arg1)
 }
 
 // ShareKeyRange mocks base method.

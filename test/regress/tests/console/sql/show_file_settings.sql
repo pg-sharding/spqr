@@ -1,0 +1,1 @@
+SHOW file_settings WHERE applied='false';

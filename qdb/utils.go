@@ -23,7 +23,8 @@ func closeSession(sess *concurrency.Session) {
 }
 
 var (
-	local *MemQDB = nil
+	local   *MemQDB   = nil
+	localPg *MemPgQDB = nil
 )
 
 func GetMemQDB() (*MemQDB, error) {
@@ -47,4 +48,35 @@ func GetMemQDB() (*MemQDB, error) {
 
 	local = db
 	return local, err
+}
+
+func GetMemPgQDB() (*MemPgQDB, error) {
+	if localPg != nil {
+		return localPg, nil
+	}
+
+	if config.RouterConfig().MemqdbBackupPath != "" {
+		db, err := RestoreMemPgQDB(config.RouterConfig().MemqdbBackupPath)
+		if err != nil {
+			return nil, err
+		}
+
+		localPg = db
+		return localPg, err
+	}
+	db, err := NewMemPgQDB(config.RouterConfig().MemqdbBackupPath)
+	if err != nil {
+		return nil, err
+	}
+
+	localPg = db
+	return localPg, err
+}
+
+func GetStateKeeperQDB() (StateKeeperQDB, error) {
+	if config.RouterConfig().StoreTxDataPostgresql {
+		return GetMemPgQDB()
+	} else {
+		return GetMemQDB()
+	}
 }

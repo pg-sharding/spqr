@@ -700,6 +700,21 @@ func (mr *MockCoordinatorMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockCoordinator)(nil).GetTaskGroupStatus), ctx, id)
 }
 
+// GetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockCoordinator) GetTwoPhaseTxMetaStorage(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwoPhaseTxMetaStorage", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwoPhaseTxMetaStorage indicates an expected call of GetTwoPhaseTxMetaStorage.
+func (mr *MockCoordinatorMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockCoordinator)(nil).GetTwoPhaseTxMetaStorage), arg0)
+}
+
 // GetTxnBatchSize mocks base method.
 func (m *MockCoordinator) GetTxnBatchSize() uint16 {
 	m.ctrl.T.Helper()
@@ -1091,6 +1106,20 @@ func (m *MockCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 func (mr *MockCoordinatorMockRecorder) RunCoordinator(ctx, initialRouter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunCoordinator", reflect.TypeOf((*MockCoordinator)(nil).RunCoordinator), ctx, initialRouter)
+}
+
+// SetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockCoordinator) SetTwoPhaseTxMetaStorage(arg0 context.Context, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTwoPhaseTxMetaStorage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTwoPhaseTxMetaStorage indicates an expected call of SetTwoPhaseTxMetaStorage.
+func (mr *MockCoordinatorMockRecorder) SetTwoPhaseTxMetaStorage(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockCoordinator)(nil).SetTwoPhaseTxMetaStorage), arg0, arg1)
 }
 
 // ShareKeyRange mocks base method.
