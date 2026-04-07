@@ -53,7 +53,7 @@ var ExistingErrorCodeMap = map[string]string{
 	SPQR_KEYRANGE_ERROR:       "Keyrange error",
 	SPQR_TRANSFER_ERROR:       "Transfer data error",
 	SPQR_OBJECT_NOT_EXIST:     "No object",
-	SPQR_NOT_IMPLEMENTED:      "This operation is not yet supported",
+	SPQR_NOT_IMPLEMENTED:      "Not implemented",
 	SPQR_ROUTER_ERROR:         "Router error",
 	SPQR_METADATA_CORRUPTION:  "routing metadata corrupted",
 	SPQR_INVALID_REQUEST:      "Invalid Request",
