@@ -792,6 +792,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
+		ShardIds:  []string{"sh1", "sh2"},
 	})
 
 	shardMapping := map[string]*config.Shard{
@@ -809,7 +810,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
-					OverwriteQuery: map[string]string{},
+					OverwriteQuery: map[string]string{
+						"sh1": "INSERT INTO test_ref_rel VALUES(1) returning *;",
+						"sh2": "INSERT INTO test_ref_rel VALUES(1) returning *;",
+					},
 					ExecTargets: []kr.ShardKey{
 						{
 							Name: "sh1",
@@ -824,7 +828,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
+				OverwriteQuery: map[string]string{
+					"sh1": "INSERT INTO test_ref_rel VALUES(1) ;",
+					"sh2": "INSERT INTO test_ref_rel VALUES(1) ;",
+				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -840,7 +847,25 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
+					SubPlan: &plan.ModifyTable{
+						ExecTargets: []kr.ShardKey{
+							{
+								Name: "sh1",
+							},
+							{
+								Name: "sh2",
+							},
+						},
+					},
+
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -856,7 +881,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				SubPlan: &plan.ModifyTable{
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -870,7 +904,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				SubPlan: &plan.ModifyTable{
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
