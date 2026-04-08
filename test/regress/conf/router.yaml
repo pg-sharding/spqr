@@ -90,3 +90,8 @@ schema_cache_backend_rule:
   db: regress
   pool_discard: true
   pool_rollback: true
+
+
+enable_role_system: true
+
+roles_file: /tmp/roles.yaml

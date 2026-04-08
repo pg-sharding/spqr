@@ -19,6 +19,8 @@ RUN install -d /usr/share/postgresql-common/pgdg && \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo postgresql-${POSTGRES_VERSION}
 
+RUN /spqr/test/regress/conf/roles.yaml > /tmp/roles.yaml
+
 ENV PATH=$PATH:"/usr/lib/postgresql/${POSTGRES_VERSION}/lib/pgxs/src/test/regress:/home/build-user/pgbin/lib/postgresql/pgxs/src/test/regress"
 
 COPY ./ /regress
