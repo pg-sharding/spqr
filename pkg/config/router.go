@@ -124,14 +124,14 @@ type Router struct {
 
 	StoreTxDataPostgresql bool `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
 
-	ShowSPQRGreeting bool `json:"show_spqr_greeting" toml:"show_spqr_greeting" yaml:"show_spqr_greeting"`
+	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }
 
 var _ Config = &Router{}
 
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
-	r.ShowSPQRGreeting = true
+	r.DisplayGreeting = true
 }
 
 func (r *Router) PostProcess() error {
