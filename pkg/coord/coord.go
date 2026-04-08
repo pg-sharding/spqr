@@ -1087,7 +1087,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 	tranMngr := meta.NewTranEntityManager(lc)
-	if err := tranMngr.UpdateKeyRange(ctx, krBase); err != nil {
+	if err := tranMngr.UpdateKeyRange(ctx, krBase, ds.ColTypes); err != nil {
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1213,17 +1213,17 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			return fmt.Errorf("unexpected nil isLocked value in Split")
 		}
 		*krOld.IsLocked = false
-		err = tranMngr.CreateKeyRange(ctx, krOld)
+		err = tranMngr.CreateKeyRange(ctx, krOld, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not update source key range in left key range split: %s", err)
 		}
-		err = tranMngr.UpdateKeyRange(ctx, krTemp)
+		err = tranMngr.UpdateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in left key range split: %s", err)
 		}
 	} else {
 		krTemp.ID = req.Krid
-		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		err = tranMngr.CreateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in right key range split: %s", err)
 		}

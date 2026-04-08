@@ -999,7 +999,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 					return err
 				}
 				tranMngr := meta.NewTranEntityManager(qc)
-				if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
+				if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 					return err
 				}
 				if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1044,12 +1044,16 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			move.Status = qdb.MoveKeyRangeDataMoved
 		case qdb.MoveKeyRangeDataMoved:
 			keyRange.ShardID = req.ShardId
+			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+			if err != nil {
+				return err
+			}
 			// TODO: move check to meta layer
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
 			tranMngr := meta.NewTranEntityManager(qc)
-			if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
+			if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 				return err
 			}
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -2334,6 +2338,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 				commands := []*proto.MetaTransactionGossipCommand{
 					{CreateKeyRange: &proto.CreateKeyRangeGossip{
 						KeyRangeInfo: kRange.ToProto(),
+						ColumnTypes:  ds.ColTypes,
 					}},
 				}
 				resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})

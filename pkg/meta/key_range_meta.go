@@ -113,12 +113,12 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 	return nil
 }
 
-func CreateKeyRangeStrict(ctx context.Context, mngr *TranEntityManager, keyRange *kr.KeyRange) error {
+func CreateKeyRangeStrict(ctx context.Context, mngr *TranEntityManager, keyRange *kr.KeyRange, colTypes []string) error {
 	if err := ValidateKeyRangeForCreate(ctx, mngr, keyRange); err != nil {
 		return err
 	}
 
-	err := mngr.CreateKeyRange(ctx, keyRange)
+	err := mngr.CreateKeyRange(ctx, keyRange, colTypes)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed while CreateKeyRangeStrict")
 		return err
@@ -171,7 +171,7 @@ func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrpars
 		spqrlog.Zero.Error().Err(err).Msg("KeyRangeFromSQL failed while createKeyRange")
 		return nil, err
 	}
-	err = CreateKeyRangeStrict(ctx, mngr, keyRange)
+	err = CreateKeyRangeStrict(ctx, mngr, keyRange, ds.ColTypes)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("CreateKeyRangeStrict failed while createKeyRange")
 		return nil, err

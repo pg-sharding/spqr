@@ -180,7 +180,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 		return err
 	}
 	tranMngr := meta.NewTranEntityManager(lc)
-	if err := tranMngr.UpdateKeyRange(ctx, reqKr); err != nil {
+	if err := tranMngr.UpdateKeyRange(ctx, reqKr, ds.ColTypes); err != nil {
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
