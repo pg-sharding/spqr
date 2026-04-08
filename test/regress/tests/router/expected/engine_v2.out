@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -123,8 +121,6 @@ ERROR:  error processing query 'WITH a AS (SELECT 1) INSERT INTO table1 (id) VAL
 DROP TABLE table1 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

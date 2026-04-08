@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 -- low-cardinality for first column is expected
 CREATE DISTRIBUTION ds1 COLUMN TYPES INT, VARCHAR hash;
     add distribution    
@@ -150,8 +148,6 @@ NOTICE: send query to shard(s) : sh4
 DROP TABLE hash_multi_xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

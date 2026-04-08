@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -290,8 +288,6 @@ DROP TABLE xxerr;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  table "xxerr" does not exist
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

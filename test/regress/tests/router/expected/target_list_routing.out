@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -88,8 +86,6 @@ SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execu
 DROP SCHEMA sh2 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

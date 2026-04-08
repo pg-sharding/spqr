@@ -57,8 +57,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE guard_zz;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

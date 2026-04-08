@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION d COLUMN TYPES INT;
    add distribution   
 ----------------------
@@ -124,8 +122,6 @@ COMMIT;
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

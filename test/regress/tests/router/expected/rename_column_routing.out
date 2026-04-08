@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds_rc COLUMN TYPES integer;
      add distribution     
 --------------------------
@@ -45,8 +43,6 @@ LINE 1: SELECT * FROM rc_test WHERE w_id = 1;
                       ^
 -- Fix the metadata: W_ID -> w_id
 \c spqr-console
-
-
 ALTER DISTRIBUTION ds_rc ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
    rename distribution column    
 ---------------------------------
@@ -87,8 +83,6 @@ NOTICE: send query to shard(s) : sh2
 DROP TABLE rc_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

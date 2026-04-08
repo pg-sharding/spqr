@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 -- check that numeric type works
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
@@ -138,8 +136,6 @@ NOTICE: send query to shard(s) : sh2
 DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 -- check that uuid type works
 CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
     add distribution    
@@ -220,8 +216,6 @@ ERROR:  error processing query 'INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFF
 DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -467,8 +465,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test_distr_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 SHOW reference_relations;
     table_name     | schema_name | schema_version |      shards       | column_sequence_mapping 
 -------------------+-------------+----------------+-------------------+-------------------------

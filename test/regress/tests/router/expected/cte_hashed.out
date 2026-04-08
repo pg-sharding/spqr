@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds1 (integer HASH);
     add distribution    
 ------------------------
@@ -448,8 +446,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ref_rel_1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

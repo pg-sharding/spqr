@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -93,8 +91,6 @@ DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 RESET __spqr__engine_v2;
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

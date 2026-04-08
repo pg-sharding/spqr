@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 -- SETUP
 CREATE DISTRIBUTION ds1 (int hash);
     add distribution    
@@ -162,8 +160,6 @@ SET __spqr__engine_v2 TO false;
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

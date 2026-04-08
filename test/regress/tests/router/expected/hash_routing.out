@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 -- SETUP
 CREATE DISTRIBUTION ds1 COLUMN TYPES varchar hash;
     add distribution    
@@ -88,8 +86,6 @@ NOTICE: send query to shard(s) : sh2
 DROP TABLE xxhash;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

@@ -1,6 +1,4 @@
 \c spqr-console
-
-
 create distribution ds1 column types integer;
     add distribution    
 ------------------------
@@ -49,8 +47,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (0 rows)
 
 \c spqr-console
-
-
 SHOW backend_connections GROUP BY user;
   user   | count 
 ---------+-------
@@ -91,8 +87,6 @@ ERROR:  failed to resolve 'unknown' column offset
 drop table test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
