@@ -1,0 +1,151 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION d (integer);
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE KEY RANGE k2 from 10 route to sh2 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 10
+(1 row)
+
+CREATE KEY RANGE k1 from 0 route to sh1 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE RELATION r (i);
+     attach table     
+----------------------
+ relation name   -> r
+ distribution id -> d
+(2 rows)
+
+\c regress
+SET __spqr__maintain_params TO true;
+CREATE SCHEMA sh1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE SCHEMA sh2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE sh1.r(i int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE sh2.r(i int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO sh1.r(i) VALUES (1);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO sh2.r(i) VALUES (11);
+NOTICE: send query to shard(s) : sh2
+SET search_path TO 'sh1';
+SELECT * FROM r WHERE i = 1;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+ 1
+(1 row)
+
+SET search_path TO 'sh2';
+SELECT * FROM r WHERE i = 11;
+NOTICE: send query to shard(s) : sh2
+ i  
+----
+ 11
+(1 row)
+
+SELECT * FROM sh1.r WHERE i = 1;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+ 1
+(1 row)
+
+SELECT * FROM sh2.r WHERE i = 11;
+NOTICE: send query to shard(s) : sh2
+ i  
+----
+ 11
+(1 row)
+
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+alter distribution d alter relation r schema sh1;
+      alter relation      
+--------------------------
+ distribution id -> d
+ relation name   -> sh1.r
+(2 rows)
+
+create relation sh2.r(i) in d;
+       attach table       
+--------------------------
+ relation name   -> sh2.r
+ distribution id -> d
+(2 rows)
+
+\c regress
+SET __spqr__maintain_params TO true;
+SET search_path TO 'sh1';
+SELECT * FROM r WHERE i = 1;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+ 1
+(1 row)
+
+SET search_path TO 'sh2';
+SELECT * FROM r WHERE i = 11;
+NOTICE: send query to shard(s) : sh2
+ i  
+----
+ 11
+(1 row)
+
+SELECT * FROM sh1.r WHERE i = 1;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+ 1
+(1 row)
+
+SELECT * FROM sh2.r WHERE i = 11;
+NOTICE: send query to shard(s) : sh2
+ i  
+----
+ 11
+(1 row)
+
+DROP SCHEMA sh1 CASCADE;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP SCHEMA sh2 CASCADE;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ d
+(1 row)
+
