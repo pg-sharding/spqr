@@ -79,7 +79,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 
 		rv, ok := node.TableRv.(*lyx.RangeVar)
 		if !ok {
-			return nil, fmt.Errorf("wrong type of table range var")
+			return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
 		}
 		relname := rfqn.RelationFQNFromRangeRangeVar(rv)
 		ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
@@ -321,7 +321,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 			return nil
 		}
 	default:
-		return fmt.Errorf("wrong type of table range var")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
 	}
 
 	entries := make(map[string]struct{})
