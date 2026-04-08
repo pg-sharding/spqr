@@ -26,6 +26,11 @@ func randomHex(n int) (string, error) {
 	}
 	return hex.EncodeToString(bytes), nil
 }
+
+var validSslModes = map[string]bool{
+	"disable": true, "allow": true, "prefer": true,
+	"require": true, "verify-ca": true, "verify-full": true,
+}
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -119,7 +124,8 @@ func randomHex(n int) (string, error) {
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
 
-	alter_relation          *AlterRelationV2	
+	alter_relation          *AlterRelationV2
+	alter_shard             *AlterShard
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -198,6 +204,7 @@ func randomHex(n int) (string, error) {
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
 %token <str> STALE CLIENTS
+%token <str> SSLMODE CERT_FILE KEY_FILE ROOT_CERT_FILE
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -275,6 +282,9 @@ func randomHex(n int) (string, error) {
 %type<str> col_types_elem
 %type<bool> opt_cascade
 %type<str> opt_default_shard
+%type<shard> opt_shard_tls
+
+%type<alter_shard> alter_shard_options
 
 %type<statement> alter_sys_target
 
@@ -837,6 +847,76 @@ alter_stmt:
 	{
 		$$ = &Alter{Element: $2}
 	}
+	|
+	ALTER SHARD any_id alter_shard_options
+	{
+		$4.Id = $3
+		$$ = &Alter{Element: $4}
+	}
+
+alter_shard_options:
+	alter_shard_options SSLMODE any_val
+	{
+		if !validSslModes[$3] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
+			return 1
+		}
+		$$ = $1
+		$$.SslMode = $3
+	}
+	|
+	alter_shard_options WITH HOSTS any_id_list
+	{
+		$$ = $1
+		$$.Hosts = $4
+	}
+	|
+	alter_shard_options CERT_FILE any_val
+	{
+		$$ = $1
+		$$.CertFile = $3
+	}
+	|
+	alter_shard_options KEY_FILE any_val
+	{
+		$$ = $1
+		$$.KeyFile = $3
+	}
+	|
+	alter_shard_options ROOT_CERT_FILE any_val
+	{
+		$$ = $1
+		$$.RootCertFile = $3
+	}
+	|
+	SSLMODE any_val
+	{
+		if !validSslModes[$2] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $2))
+			return 1
+		}
+		$$ = &AlterShard{SslMode: $2}
+	}
+	|
+	WITH HOSTS any_id_list
+	{
+		$$ = &AlterShard{Hosts: $3}
+	}
+	|
+	CERT_FILE any_val
+	{
+		$$ = &AlterShard{CertFile: $2}
+	}
+	|
+	KEY_FILE any_val
+	{
+		$$ = &AlterShard{KeyFile: $2}
+	}
+	|
+	ROOT_CERT_FILE any_val
+	{
+		$$ = &AlterShard{RootCertFile: $2}
+	}
 
 distribution_alter_stmt:
 	distribution_select_stmt relation_attach_stmt
@@ -1349,18 +1429,57 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list
+	SHARD any_id WITH HOSTS any_id_list opt_shard_tls
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: $5}
+		sd := $6
+		sd.Id = $2
+		sd.Hosts = $5
+		$$ = sd
 	}
 	|
-	SHARD WITH HOSTS any_id_list
+	SHARD WITH HOSTS any_id_list opt_shard_tls
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
+		sd := $5
+		sd.Id = "shard" + str
+		sd.Hosts = $4
+		$$ = sd
+	}
+
+opt_shard_tls:
+	opt_shard_tls SSLMODE any_val
+	{
+		if !validSslModes[$3] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
+			return 1
+		}
+		$$ = $1
+		$$.SslMode = $3
+	}
+	|
+	opt_shard_tls CERT_FILE any_val
+	{
+		$$ = $1
+		$$.CertFile = $3
+	}
+	|
+	opt_shard_tls KEY_FILE any_val
+	{
+		$$ = $1
+		$$.KeyFile = $3
+	}
+	|
+	opt_shard_tls ROOT_CERT_FILE any_val
+	{
+		$$ = $1
+		$$.RootCertFile = $3
+	}
+	| /* empty */
+	{
+		$$ = &ShardDefinition{}
 	}
 
 any_id_list:
