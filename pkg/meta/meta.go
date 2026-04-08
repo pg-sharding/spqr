@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -656,6 +657,22 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 // - error: An error if the operation fails, otherwise nil.
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
+	case *spqrparser.System:
+		if stmt.Reload {
+			if err := syscall.Kill(syscall.Getpid(), syscall.SIGHUP); err != nil {
+				return nil, err
+			}
+		} else if stmt.Restart {
+			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+				return nil, err
+			}
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter system"),
+		}
+
+		return tts, nil
 	case *spqrparser.AlterDistribution:
 		if stmt.Distribution == nil {
 			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")

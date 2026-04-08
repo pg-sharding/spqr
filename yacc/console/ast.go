@@ -200,6 +200,13 @@ type Kill struct {
 	Target uint
 }
 
+type System struct {
+	Reload  bool
+	Restart bool
+}
+
+func (*System) iAlter() {}
+
 type InvalidateCacheTarget string
 
 const (
@@ -233,18 +240,11 @@ type UnregisterRouter struct {
 	ID string
 }
 
-type AlterStmt interface {
-	iAlter()
-}
-
 type Alter struct {
 	Element Statement
 }
 
-func (*Alter) iStatement() {}
-
 type DistributionAlterStatement interface {
-	AlterStmt
 	iAlterDistribution()
 }
 
@@ -440,6 +440,7 @@ type Statement interface {
 	iStatement()
 }
 
+func (*Alter) iStatement()                       {}
 func (*Show) iStatement()                        {}
 func (*Set) iStatement()                         {}
 func (*KeyRangeSelector) iStatement()            {}
@@ -465,6 +466,7 @@ func (*UniqueIndexDefinition) iStatement()       {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}
+func (*System) iStatement()                      {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
 func (*AlterReferenceTableStorage) iStatement()  {}
