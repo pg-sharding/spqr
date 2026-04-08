@@ -1179,22 +1179,9 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 		return tts, nil
 	case *spqrparser.StopMoveTaskGroup:
-		var tgs map[string]*tasks.MoveTaskGroup
-		if stmt.ID == "*" {
-			var err error
-			tgs, err = mgr.ListMoveTaskGroups(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-		} else {
-			tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
-			if tg != nil {
-				tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
-			}
+		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
+		if err != nil {
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1210,20 +1197,23 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.RetryMoveTaskGroup:
-		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
+		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
 		if err != nil {
-			return nil, err
-		}
-		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID, stmt.NoWait); err != nil {
 			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"),
 		}
-		if taskGroup != nil {
+
+		for id, taskGroup := range tgs {
+			if err := mgr.RetryMoveTaskGroup(ctx, id, stmt.NoWait); err != nil {
+				return nil, err
+			}
+
 			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
 		}
+
 		return tts, nil
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
@@ -2176,4 +2166,25 @@ func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTa
 	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
+}
+
+func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector string) (map[string]*tasks.MoveTaskGroup, error) {
+	var tgs map[string]*tasks.MoveTaskGroup
+	if selector == "*" {
+		var err error
+		tgs, err = mgr.ListMoveTaskGroups(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tg, err := mgr.GetMoveTaskGroup(ctx, selector)
+		if err != nil {
+			return nil, err
+		}
+		if tg != nil {
+			tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
+		}
+	}
+
+	return tgs, nil
 }

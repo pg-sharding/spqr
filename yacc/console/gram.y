@@ -1678,6 +1678,16 @@ retry_move_task_group:
 	{
 		$$ = &RetryMoveTaskGroup{ ID: $4, NoWait: $5 }
 	}
+	|
+	RETRY MOVE TASK GROUP ALL no_wait_opt
+	{
+		$$ = &RetryMoveTaskGroup{ ID: "*", NoWait: $6 }
+	}
+	|
+	RETRY TASK GROUP ALL no_wait_opt
+	{
+		$$ = &RetryMoveTaskGroup{ ID: "*", NoWait: $5 }
+	}
 	
 
 no_wait_opt:
