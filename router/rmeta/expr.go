@@ -138,12 +138,9 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	return p, nil
 }
 
-func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
-	var queryPlan plan.Plan
-	/*
-	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
-	 */
-
+func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, error) {
+	var p plan.Plan
+	/**/
 	for qualName := range rm.Rels {
 		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)
@@ -161,10 +158,26 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 				shs = r.ListStorageRoutes()
 			}
 
-			queryPlan = plan.Combine(queryPlan, &plan.RandomDispatchPlan{
+			p = plan.Combine(p, &plan.RandomDispatchPlan{
 				ExecTargets: shs,
 			})
-			continue
+		}
+	}
+
+	return p, nil
+}
+
+func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
+	var queryPlan plan.Plan
+	/*
+	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
+	 */
+
+	for qualName := range rm.Rels {
+		// TODO: check by whole RFQN
+		ds, err := rm.GetRelationDistribution(ctx, &qualName)
+		if err != nil {
+			return nil, err
 		}
 
 		relation, exists := ds.TryGetRelation(&qualName)
