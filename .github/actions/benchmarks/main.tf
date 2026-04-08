@@ -164,7 +164,9 @@ write_files:
 
       echo "preparing, installing tools"
       git clone https://github.com/JoBeR007/benchbase-spqr.git
-      apt update && sudo apt upgrade -y
+      apt update && sudo apt upgrade -y \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold"
       apt install default-jdk -y
       apt install openjdk-21-jdk -y
 
