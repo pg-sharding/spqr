@@ -119,8 +119,7 @@ func randomHex(n int) (string, error) {
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
 
-	alter_relation          *AlterRelationV2
-	
+	alter_relation          *AlterRelationV2	
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -206,6 +205,8 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
+%token<str> SYSTEM RELOAD RESTART
+
 %token<str> SECONDS WAIT PANIC SLEEP
 
 /* types */
@@ -275,6 +276,7 @@ func randomHex(n int) (string, error) {
 %type<bool> opt_cascade
 %type<str> opt_default_shard
 
+%type<statement> alter_sys_target
 
 %token <str> ASC DESC ORDER
 %type <order_clause> order_clause
@@ -814,8 +816,24 @@ stoptrace_stmt:
 		$$ = &StopTraceStmt{}
 	}
 
+
+alter_sys_target:
+	SYSTEM RELOAD {
+		$$ = &System{
+			Reload: true,
+		}
+	} | SYSTEM RESTART {
+		$$ = &System{
+			Restart: true,
+		}
+	} 
+
 alter_stmt:
 	ALTER distribution_alter_stmt
+	{
+		$$ = &Alter{Element: $2}
+	} | 
+	ALTER alter_sys_target
 	{
 		$$ = &Alter{Element: $2}
 	}
