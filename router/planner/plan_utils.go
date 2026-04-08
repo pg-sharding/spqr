@@ -350,7 +350,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 	return fmt.Errorf("create table stmt ignored: no matching distribution found")
 }
 
-func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
+func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, modify bool, q *lyx.RangeVar) error {
 	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
 	// CTE, skip
@@ -364,8 +364,11 @@ func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, q *
 		return err
 	}
 
-	if _, ok := rm.Rels[*qualName]; !ok {
-		rm.Rels[*qualName] = struct{}{}
+	rm.Rels[*qualName] = struct{}{}
+
+	if modify {
+
+		rm.ModifyRels[*qualName] = struct{}{}
 	}
 	if q.Alias != "" {
 		/* remember table alias */
