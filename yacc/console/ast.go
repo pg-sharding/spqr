@@ -470,7 +470,6 @@ func (*UniqueIndexDefinition) iStatement()       {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
 func (*AlterShard) iStatement()                  {}
-func (*AlterShard) iAlter()                      {}
 func (*Kill) iStatement()                        {}
 func (*System) iStatement()                      {}
 func (*Invalidate) iStatement()                  {}
