@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -132,20 +133,26 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 			msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
 		}
 	}
-
 	msgs = append(msgs, []pgproto3.BackendMessage{
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
 		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
 		&pgproto3.BackendKeyData{ProcessID: rc.GetCancelPid(), SecretKey: rc.GetCancelKey()},
-		&pgproto3.NoticeResponse{
-			Message: greeting,
-		},
+	}...)
+
+	if config.RouterConfig().ShowSPQRGreeting {
+		msgs = append(msgs,
+			&pgproto3.NoticeResponse{
+				Message: greeting,
+			})
+	}
+	msgs = append(msgs,
+
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
 		},
-	}...)
+	)
 
 	for _, msg := range msgs {
 		if err := rc.Send(msg); err != nil {
