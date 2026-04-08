@@ -1204,6 +1204,9 @@ func (qr *ProxyQrouter) plannerV1(
 ) (plan.Plan, error) {
 
 	p, err := rm.GetPrePlan(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	/* Top level plan */
 	tmp, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
