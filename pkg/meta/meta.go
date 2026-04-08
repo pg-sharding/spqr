@@ -659,9 +659,13 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 	switch stmt := astmt.(type) {
 	case *spqrparser.System:
 		if stmt.Reload {
-			syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
+			if err := syscall.Kill(syscall.Getpid(), syscall.SIGHUP); err != nil {
+				return nil, err
+			}
 		} else if stmt.Restart {
-			syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+				return nil, err
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
