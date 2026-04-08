@@ -310,7 +310,7 @@ var validSslModes = map[string]bool{
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
-%type <bool> no_wait_opt
+%type <bool> opt_no_wait
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
@@ -1669,28 +1669,18 @@ unregister_router_stmt:
 // move tasks
 
 retry_move_task_group:
-	RETRY MOVE TASK GROUP any_id no_wait_opt
+	RETRY opt_move TASK GROUP any_id opt_no_wait
 	{
 		$$ = &RetryMoveTaskGroup{ ID: $5, NoWait: $6 }
 	}
 	|
-	RETRY TASK GROUP any_id no_wait_opt
-	{
-		$$ = &RetryMoveTaskGroup{ ID: $4, NoWait: $5 }
-	}
-	|
-	RETRY MOVE TASK GROUP ALL no_wait_opt
+	RETRY opt_move TASK GROUP ALL opt_no_wait
 	{
 		$$ = &RetryMoveTaskGroup{ ID: "*", NoWait: $6 }
 	}
-	|
-	RETRY TASK GROUP ALL no_wait_opt
-	{
-		$$ = &RetryMoveTaskGroup{ ID: "*", NoWait: $5 }
-	}
 	
 
-no_wait_opt:
+opt_no_wait:
 	NOWAIT {
 		$$ = true
 	} | /* EMPTY */ {
@@ -1699,25 +1689,18 @@ no_wait_opt:
 
 
 stop_move_task_group:
-	STOP MOVE TASK GROUP any_id
+	STOP opt_move TASK GROUP any_id
 	{
 		$$ = &StopMoveTaskGroup{ ID: $5 }
 	}
 	|
-	STOP TASK GROUP any_id
-	{
-		$$ = &StopMoveTaskGroup{ ID: $4 }
-	} 
-	|
-	STOP MOVE TASK GROUP ALL
+	STOP opt_move TASK GROUP ALL
 	{
 		$$ = &StopMoveTaskGroup{ ID: "*" }
 	}
-	|
-	STOP TASK GROUP ALL
-	{
-		$$ = &StopMoveTaskGroup{ ID: "*" }
-	} 
+
+opt_move:
+	MOVE {} | /* nothing */ {}
 
 
 /* Control Points */
