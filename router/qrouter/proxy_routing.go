@@ -1206,12 +1206,14 @@ func (qr *ProxyQrouter) plannerV1(
 	p, err := rm.GetPrePlan(ctx)
 
 	/* Top level plan */
-	p, err = qr.RouteWithRules(ctx, rm, rm.Stmt)
+	tmp, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
 	if err != nil {
 		return nil, err
 	}
 
-	tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	p = plan.Combine(p, tmp)
+
+	tmp, err = rm.RouteByTuples(ctx, rm.SPH.GetTsa())
 	if err != nil {
 		return nil, err
 	}

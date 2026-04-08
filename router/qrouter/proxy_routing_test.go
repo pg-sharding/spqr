@@ -1429,6 +1429,15 @@ func TestSingleShard(t *testing.T) {
 					},
 				},
 			},
+			"xxtt1_sch": {
+				Name:       "xxtt1_sch",
+				SchemaName: "sh1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
 			"xx": {
 				Name: "xx",
 				DistributionKey: []qdb.DistributionKeyEntry{
@@ -1525,7 +1534,7 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
+			query: "SELECT * FROM sh1.xxtt1_sch WHERE sh1.xxtt1_sch.i = 21;",
 			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
@@ -2593,8 +2602,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
