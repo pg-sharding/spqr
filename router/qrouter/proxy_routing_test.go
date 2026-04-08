@@ -1507,6 +1507,30 @@ func TestSingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
+			query: "select (select sum(j) from xxtt1 where i = 112);",
+
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
+			query: "select (select sum(j) from sh1.xxtt1_sch where i = 112);",
+
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
 			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
 			exp: &plan.ScatterPlan{
 				OverwriteQuery: map[string]string{},

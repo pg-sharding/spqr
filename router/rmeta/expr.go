@@ -20,8 +20,10 @@ import (
 func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
 
+	qname := relation.Relation
+
 	/*XXX: fix this*/
-	ds, err := rm.GetRelationDistribution(ctx, relation.Relation)
+	ds, err := rm.GetRelationDistribution(ctx, qname)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +52,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 			// calculate routing expression
 
 			valList, err := rm.ComputeRoutingExpr(
-				relation.Relation,
+				qname,
 				&relation.DistributionKey[lvl].Expr,
 				relation.DistributionKey[lvl].HashFunction,
 				queryParamsFormatCodes)
@@ -72,7 +74,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 					spqrlog.Zero.Debug().
 						Interface("current route", currroute).
-						Str("table", relation.QualifiedName().RelationName).
+						Str("table", qname.String()).
 						Msg("calculated route for table/cols")
 
 					p = plan.Combine(p, &plan.ShardDispatchPlan{
@@ -90,7 +92,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 		}
 		col := relation.DistributionKey[lvl].Column
 
-		vals, err := rm.ResolveValue(relation.Relation, col, queryParamsFormatCodes)
+		vals, err := rm.ResolveValue(qname, col, queryParamsFormatCodes)
 
 		if err != nil {
 			/* Is this ok? */
@@ -119,7 +121,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 				spqrlog.Zero.Debug().
 					Interface("current route", currroute).
-					Str("table", relation.Relation.RelationName).
+					Str("table", qname.String()).
 					Msg("calculated route for table/cols")
 
 				p = plan.Combine(p, &plan.ShardDispatchPlan{
@@ -181,13 +183,12 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
 
-	rs, err := rm.ListParamertizedRels(ctx)
+	rs, err := rm.ListParametrizedRels(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, relation := range rs {
-
 		tmp, err := rm.routingTuples(ctx, relation, tsa)
 		if err != nil {
 			return nil, err
@@ -199,7 +200,7 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 	return queryPlan, nil
 }
 
-func (rm *RoutingMetadataContext) ListParamertizedRels(ctx context.Context) ([]*distributions.DistributedRelation, error) {
+func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*distributions.DistributedRelation, error) {
 	var rs []*distributions.DistributedRelation
 	for qualName := range rm.Rels {
 
@@ -216,6 +217,8 @@ func (rm *RoutingMetadataContext) ListParamertizedRels(ctx context.Context) ([]*
 		if !exists {
 			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
 		}
+		/* XXX: do better here */
+		relation.Relation.SchemaName = qualName.SchemaName
 		rs = append(rs, relation)
 	}
 	return rs, nil
