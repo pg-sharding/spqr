@@ -123,12 +123,15 @@ type Router struct {
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 
 	StoreTxDataPostgresql bool `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+
+	ShowSPQRGreeting bool `json:"show_spqr_greenting" toml:"show_spqr_greenting" yaml:"show_spqr_greenting"`
 }
 
 var _ Config = &Router{}
 
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
+	r.ShowSPQRGreeting = true
 }
 
 func (r *Router) PostProcess() error {
