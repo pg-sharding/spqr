@@ -12,8 +12,8 @@ const (
 	RoleAdmin  = "admin"
 )
 
-// GC is a singleton object of GrantChecker.
-var GC GrantChecker = &FakeChecker{}
+// ACL is a singleton object of GrantChecker.
+var ACL GrantChecker = &FakeChecker{}
 
 // Reload reloads the grants checker.
 //
@@ -29,13 +29,13 @@ func Reload(enableRoleSystem bool, tableGroups []config.TableGroup) error {
 		return err
 	}
 
-	GC = grantsChecker
+	ACL = grantsChecker
 	return nil
 }
 
 // GrantChecker is an interface for checking grants.
 type GrantChecker interface {
-	CheckGrants(target string, rule *config.FrontendRule) error
+	ObjectACLCheck(target string, rule *config.FrontendRule) error
 }
 
 // NewGrantsChecker creates a new GrantsChecker.
@@ -85,8 +85,8 @@ func NewGrantsChecker(enableRoleSystem bool, tableGroups []config.TableGroup) (G
 // FakeChecker is a fake implementation.
 type FakeChecker struct{}
 
-// CheckGrants fake implementation.
-func (f *FakeChecker) CheckGrants(target string, rule *config.FrontendRule) error {
+// ObjectACLCheck fake implementation.
+func (f *FakeChecker) ObjectACLCheck(target string, rule *config.FrontendRule) error {
 	// Always allow access in the fake checker
 	return nil
 }
@@ -98,7 +98,7 @@ type RealChecker struct {
 	admins  map[string]bool
 }
 
-// CheckGrants checks if the given role has the necessary grants to access the specified database.
+// ObjectACLCheck checks if the given role has the necessary grants to access the specified database.
 //
 // Parameters:
 //   - target (Role): The role to check.
@@ -106,7 +106,7 @@ type RealChecker struct {
 //
 // Returns:
 //   - error: An error if the role does not have the necessary grants.
-func (c *RealChecker) CheckGrants(target string, rule *config.FrontendRule) error {
+func (c *RealChecker) ObjectACLCheck(target string, rule *config.FrontendRule) error {
 	if rule == nil {
 		return fmt.Errorf("rule is nil")
 	}
