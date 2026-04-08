@@ -141,7 +141,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		&pgproto3.BackendKeyData{ProcessID: rc.GetCancelPid(), SecretKey: rc.GetCancelKey()},
 	}...)
 
-	if config.RouterConfig().ShowSPQRGreeting {
+	if config.RouterConfig().DisplayGreeting {
 		msgs = append(msgs,
 			&pgproto3.NoticeResponse{
 				Message: greeting,

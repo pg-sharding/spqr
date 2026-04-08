@@ -1,11 +1,4 @@
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION d (integer);
    add distribution   
 ----------------------
@@ -78,13 +71,6 @@ NOTICE: send query to shard(s) : sh2
 (1 row)
 
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 alter distribution d alter relation r schema sh1;
       alter relation      
 --------------------------
@@ -136,13 +122,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP SCHEMA sh2 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
