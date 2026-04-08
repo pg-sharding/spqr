@@ -1,10 +1,5 @@
 \c spqr-console
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE test_ref_rel;
    create reference table    
@@ -77,11 +72,6 @@ DROP TABLE test_ref_rel_2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

@@ -1,10 +1,5 @@
 \c spqr-console
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
@@ -473,11 +468,6 @@ DROP TABLE test_distr_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW reference_relations;
     table_name     | schema_name | schema_version |      shards       | column_sequence_mapping 

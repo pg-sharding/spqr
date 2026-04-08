@@ -1,10 +1,5 @@
 \c spqr-console
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
@@ -296,11 +291,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  table "xxerr" does not exist
 \c spqr-console
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
