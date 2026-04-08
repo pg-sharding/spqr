@@ -141,6 +141,7 @@ write_files:
       set -x
 
       export DEBIAN_FRONTENT=noninteractive
+      export UCF_FORCE_CONFFNEW=1
 
       BUCKET="spqr-benchmark-reports"
       PR_NUMBER="${var.pr_number}"
