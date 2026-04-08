@@ -367,9 +367,11 @@ func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, mod
 	rm.Rels[*qualName] = struct{}{}
 
 	if modify {
-
 		rm.ModifyRels[*qualName] = struct{}{}
+	} else {
+		rm.ReadOnlyRels[*qualName] = struct{}{}
 	}
+
 	if q.Alias != "" {
 		/* remember table alias */
 		rm.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
