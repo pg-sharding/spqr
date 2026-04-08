@@ -40,8 +40,6 @@ type Coordinator struct {
 	RouterKeepaliveTimeout time.Duration `json:"router_keepalive_timeout" toml:"router_keepalive_timeout" yaml:"router_keepalive_timeout"`
 
 	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
-
-	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }
 
 var _ Config = &Coordinator{}

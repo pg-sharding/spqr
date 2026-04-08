@@ -7,21 +7,6 @@ export PGSSLMODE=allow
 
 source ./regress_utils.sh 
 
-insert_greeting () {
-    testDir=$1
-    for f in /regress/tests/$testDir/expected/*; do 
-    echo -e "
-\t\tSPQR router admin console
-\tHere you can configure your routing rules
-------------------------------------------------
-\tYou can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-" > tmpfile
-        cat $f >> tmpfile
-        mv tmpfile $f
-    done
-}
-
 echo "wait for services started"
 sleep 10
 echo "init cluster"
@@ -30,8 +15,6 @@ sleep 10
 echo "go test!"
 
 run_tests "console" "regress_coordinator" "7002"
-
-insert_greeting "console"
 
 run_tests "console" "regress_router" "7432"
 
@@ -51,8 +34,6 @@ echo "go test!"
 # Compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
 
-
-insert_greeting "common"
 run_tests "common" "regress_router" "7432"
 
 # test if diffs are empty
