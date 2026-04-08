@@ -87,6 +87,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
+		ModifyRels:    map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
 		TableAliases:  map[string]rfqn.RelationFQN{},
 		CTEAliases:    map[string]string{},
