@@ -140,7 +140,7 @@ write_files:
       set -e
       set -x
 
-      export DEBIAN_FRONTENT=noninteractive
+      export DEBIAN_FRONTEND=noninteractive
       export UCF_FORCE_CONFFNEW=1
 
       BUCKET="spqr-benchmark-reports"
