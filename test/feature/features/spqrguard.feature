@@ -15,12 +15,14 @@ Scenario: spqrguard is set up correctly
     CREATE DISTRIBUTION ds1 (int);
     CREATE RELATION t (id);
     CREATE KEY RANGE kr0 FROM 0 ROUTE TO sh1;
+    CREATE REFERENCE TABLE rt;
     """
     Then command return code should be "0"
 
     When I run SQL on host "router"
     """
-    CREATE TABLE t(id int)
+    CREATE TABLE t(id int);
+    CREATE TABLE rt(id int);
     """
     Then command return code should be "0"
 
@@ -31,13 +33,29 @@ Scenario: spqrguard is set up correctly
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{
-        "row": "(42,t)"
-    }]
+    [
+        {
+            "row": "(42,t)"
+        },
+        {
+            "row": "(69,t)"
+        }
+    ]
     """
     When I run SQL on host "shard1"
     """
     SELECT (SELECT reloid FROM spqr_metadata.spqr_distributed_relations) = 't'::regclass::oid as check;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "check": true
+    }]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT (SELECT reloid FROM spqr_metadata.spqr_reference_relations) = 'rt'::regclass::oid as check;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -62,23 +80,37 @@ Scenario: router can write in shard
     CREATE DISTRIBUTION ds1 (int);
     CREATE RELATION t (id);
     CREATE KEY RANGE kr0 FROM 0 ROUTE TO sh1;
+    CREATE REFERENCE TABLE rt;
     """
     Then command return code should be "0"
 
     When I run SQL on host "router"
     """
-    CREATE TABLE t(id int)
+    CREATE TABLE t(id int);
+    CREATE TABLE rt(id int);
     """
     Then command return code should be "0"
 
     When I run SQL on host "router"
     """
-    INSERT INTO t (id) VALUES (0)
+    INSERT INTO t (id) VALUES (0);
+    INSERT INTO rt (id) VALUES (0);
     """
     Then command return code should be "0"
     When I run SQL on host "router"
     """
     SELECT * FROM t;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "id": 0
+    }]
+    """
+    When I run SQL on host "router"
+    """
+    SELECT * FROM rt;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly

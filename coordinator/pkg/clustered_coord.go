@@ -683,7 +683,8 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("start setting up spqrguard")
 
-	relations := make([]*rfqn.RelationFQN, 0)
+	distributedRelations := make([]*rfqn.RelationFQN, 0)
+	referenceRelations := make([]*rfqn.RelationFQN, 0)
 	dss, err := qc.ListDistributions(ctx)
 	if err != nil {
 		return err
@@ -691,21 +692,31 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	relsSet := make(map[string]struct{})
 	for _, ds := range dss {
 		if ds.Id == distributions.REPLICATED {
+			for _, rel := range ds.FQNRelations {
+				referenceRelations = append(referenceRelations, rel.Relation)
+				relsSet[rel.Relation.String()] = struct{}{}
+			}
+			for _, rel := range ds.Relations {
+				if _, ok := relsSet[rel.Relation.String()]; !ok {
+					referenceRelations = append(referenceRelations, rel.Relation)
+					relsSet[rel.Relation.String()] = struct{}{}
+				}
+			}
 			continue
 		}
 		for _, rel := range ds.FQNRelations {
-			relations = append(relations, rel.Relation)
+			distributedRelations = append(distributedRelations, rel.Relation)
 			relsSet[rel.Relation.String()] = struct{}{}
 		}
 		for _, rel := range ds.Relations {
 			if _, ok := relsSet[rel.Relation.String()]; !ok {
-				relations = append(relations, rel.Relation)
+				distributedRelations = append(distributedRelations, rel.Relation)
 				relsSet[rel.Relation.String()] = struct{}{}
 			}
 		}
 	}
 
-	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(relations))
+	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(distributedRelations, referenceRelations))
 }
 
 // TODO : unit tests
@@ -2756,6 +2767,13 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 		return err
 	}
 
+	rfqns := []*rfqn.RelationFQN{r.RelationName}
+	go func() {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard([]*rfqn.RelationFQN{}, rfqns)); err != nil {
+			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
+		}
+	}()
+
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.CreateReferenceRelations(ctx,
@@ -2920,7 +2938,7 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 		rfqns[i] = rel.Relation
 	}
 	go func() {
-		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns)); err != nil {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns, []*rfqn.RelationFQN{})); err != nil {
 			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
 		}
 	}()

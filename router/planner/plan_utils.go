@@ -77,6 +77,16 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			}, nil
 		}
 
+		rv, ok := node.TableRv.(*lyx.RangeVar)
+		if !ok {
+			return nil, fmt.Errorf("wrong type of table range var")
+		}
+		relname := rfqn.RelationFQNFromRangeRangeVar(rv)
+		ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+		if err != nil {
+			return nil, err
+		}
+
 		tmpPlan := &plan.ScatterPlan{
 			IsDDL:    true,
 			SubSlice: p,
@@ -122,9 +132,13 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		relFQN := rfqn.RelationFQNFromFullName(rvNode.SchemaName, rvNode.RelationName)
 		tmpPlan.OverwriteQuery = make(map[string]string)
 		p.OverwriteQuery = make(map[string]string)
-		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", relFQN.String())
+		relType := "distributed"
+		if ds.Id == distributions.REPLICATED {
+			relType = "reference"
+		}
+		oq := fmt.Sprintf("SELECT spqr_metadata.mark_%s_relation('%s')", relType, relFQN.String())
 		if node.IfNotExists {
-			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relFQN.String())
+			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_%s_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relType, relFQN.String())
 		}
 		shards, err := rm.Mgr.ListShards(ctx)
 		if err != nil {
