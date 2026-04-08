@@ -37,9 +37,10 @@ type RoutingMetadataContext struct {
 	// and
 	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
 	// can be routed with different rules
-	Rels      map[rfqn.RelationFQN]struct{}
-	Exprs     map[rfqn.RelationFQN]map[string][]any
-	ParamRefs map[rfqn.RelationFQN]map[string][]int
+	Rels       map[rfqn.RelationFQN]struct{}
+	ModifyRels map[rfqn.RelationFQN]struct{}
+	Exprs      map[rfqn.RelationFQN]map[string][]any
+	ParamRefs  map[rfqn.RelationFQN]map[string][]int
 
 	// cached CTE names
 	CteNames map[string]struct{}
