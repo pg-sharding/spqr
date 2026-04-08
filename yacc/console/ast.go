@@ -205,8 +205,6 @@ type System struct {
 	Restart bool
 }
 
-func (*System) iAlter() {}
-
 type InvalidateCacheTarget string
 
 const (
@@ -254,7 +252,6 @@ type AlterDistribution struct {
 }
 
 func (*AlterDistribution) iStatement()         {}
-func (*AlterDistribution) iAlter()             {}
 func (*AlterDistribution) iAlterDistribution() {}
 
 type TypedColRef struct {
@@ -280,7 +277,6 @@ type AttachRelation struct {
 }
 
 func (*AttachRelation) iStatement()         {}
-func (*AttachRelation) iAlter()             {}
 func (*AttachRelation) iAlterDistribution() {}
 
 type AlterRelation struct {
@@ -288,7 +284,6 @@ type AlterRelation struct {
 }
 
 func (*AlterRelation) iStatement()         {}
-func (*AlterRelation) iAlter()             {}
 func (*AlterRelation) iAlterDistribution() {}
 
 type AlterRelationV2 struct {
@@ -297,7 +292,6 @@ type AlterRelationV2 struct {
 }
 
 func (*AlterRelationV2) iStatement()         {}
-func (*AlterRelationV2) iAlter()             {}
 func (*AlterRelationV2) iAlterDistribution() {}
 
 type RelationAlterStmt interface {
@@ -332,7 +326,6 @@ type DetachRelation struct {
 }
 
 func (*DetachRelation) iStatement()         {}
-func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
 type AlterDefaultShard struct {
@@ -340,14 +333,12 @@ type AlterDefaultShard struct {
 }
 
 func (*AlterDefaultShard) iStatement()         {}
-func (*AlterDefaultShard) iAlter()             {}
 func (*AlterDefaultShard) iAlterDistribution() {}
 
 type DropDefaultShard struct {
 }
 
 func (*DropDefaultShard) iStatement()         {}
-func (*DropDefaultShard) iAlter()             {}
 func (*DropDefaultShard) iAlterDistribution() {}
 
 type SequenceSelector struct {
