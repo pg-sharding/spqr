@@ -1202,13 +1202,21 @@ func (qr *ProxyQrouter) plannerV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 ) (plan.Plan, error) {
-	/* Top level plan */
-	p, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+
+	p, err := rm.GetPrePlan(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	/* Top level plan */
+	tmp, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	p = plan.Combine(p, tmp)
+
+	tmp, err = rm.RouteByTuples(ctx, rm.SPH.GetTsa())
 	if err != nil {
 		return nil, err
 	}
@@ -1703,6 +1711,15 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	}
 
+	/* Last chance, try to match DRH on some of existing shards */
+	for _, sh := range qr.DataShardsRoutes() {
+		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+			return &plan.ShardDispatchPlan{
+				ExecTarget: sh,
+			}, nil
+		}
+	}
+
 	return p, nil
 }
 
@@ -1732,15 +1749,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 	p, err := qr.PlanQueryExtended(ctx, rm)
 	if err != nil {
 		return nil, err
-	}
-
-	/* Last chance, try to match DRH on some of existing shards */
-	for _, sh := range qr.DataShardsRoutes() {
-		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
-			return &plan.ShardDispatchPlan{
-				ExecTarget: sh,
-			}, nil
-		}
 	}
 
 	/* do init plan logic */
