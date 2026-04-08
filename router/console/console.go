@@ -20,11 +20,8 @@ import (
 )
 
 const greeting = `
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
+═════ SPQR Admin Console ═════
+docs: https://pg-sharding.tech
 `
 
 type Console interface {
