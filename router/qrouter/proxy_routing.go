@@ -1223,6 +1223,10 @@ func (qr *ProxyQrouter) plannerV1(
 
 	p = plan.Combine(p, tmp)
 
+	if p == nil {
+		p = &plan.ScatterPlan{}
+	}
+
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
