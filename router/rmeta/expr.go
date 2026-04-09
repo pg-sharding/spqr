@@ -202,7 +202,7 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 
 func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*distributions.DistributedRelation, error) {
 	var rs []*distributions.DistributedRelation
-	for qualName := range rm.Rels {
+	for qualName := range rm.RoutableRels {
 
 		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)

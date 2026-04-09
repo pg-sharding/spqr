@@ -22,7 +22,7 @@ func analyzeFromClauseList(
 	clause []lyx.FromClauseNode, rm *rmeta.RoutingMetadataContext) error {
 	/* This is only reachable from SELECT path */
 	for _, node := range clause {
-		err := analyzeFromNode(ctx, node, false, rm)
+		err := analyzeFromNode(ctx, node, true, rm)
 		if err != nil {
 			return err
 		}
@@ -78,22 +78,22 @@ func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.Rou
 
 // TODO : unit tests
 // analyzes from clause
-func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, modify bool, rm *rmeta.RoutingMetadataContext) error {
+func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, routable bool, rm *rmeta.RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		if err := ProcessRangeNode(ctx, rm, modify, q); err != nil {
+		if err := ProcessRangeNode(ctx, rm, routable, q); err != nil {
 			return err
 		}
 
 	case *lyx.JoinExpr:
 		/* XXX: assert modify = false? */
-		if err := analyzeFromNode(ctx, q.Rarg, modify, rm); err != nil {
+		if err := analyzeFromNode(ctx, q.Rarg, routable, rm); err != nil {
 			return err
 		}
-		if err := analyzeFromNode(ctx, q.Larg, modify, rm); err != nil {
+		if err := analyzeFromNode(ctx, q.Larg, routable, rm); err != nil {
 			return err
 		}
 
@@ -346,7 +346,7 @@ func AnalyzeQueryV1(
 		Interface("clause", qstmt).
 		Msg("AnalyzeQueryV1: enter")
 
-	analyseHelper := func(tr lyx.FromClauseNode) error {
+	analyseHelper := func(tr lyx.FromClauseNode, routable bool) error {
 		switch q := tr.(type) {
 		case *lyx.RangeVar:
 			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
@@ -357,7 +357,7 @@ func AnalyzeQueryV1(
 			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		if err := analyzeFromNode(ctx, tr, true, rm); err != nil {
+		if err := analyzeFromNode(ctx, tr, routable, rm); err != nil {
 			return err
 		}
 
@@ -443,7 +443,7 @@ func AnalyzeQueryV1(
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := analyseHelper(stmt.TableRef, false); err != nil {
 			return err
 		}
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -495,7 +495,7 @@ func AnalyzeQueryV1(
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := analyseHelper(stmt.TableRef, true); err != nil {
 			return err
 		}
 
@@ -506,7 +506,7 @@ func AnalyzeQueryV1(
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := analyseHelper(stmt.TableRef, true); err != nil {
 			return err
 		}
 
