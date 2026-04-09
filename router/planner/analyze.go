@@ -346,7 +346,7 @@ func AnalyzeQueryV1(
 		Interface("clause", qstmt).
 		Msg("AnalyzeQueryV1: enter")
 
-	analyseHelper := func(tr lyx.FromClauseNode, routable bool) error {
+	analyzeHelper := func(tr lyx.FromClauseNode, routable bool) error {
 		switch q := tr.(type) {
 		case *lyx.RangeVar:
 			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
@@ -439,11 +439,13 @@ func AnalyzeQueryV1(
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Insert:
 
+		rm.HasWriteTargets = true
+
 		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef, false); err != nil {
+		if err := analyzeHelper(stmt.TableRef, false); err != nil {
 			return err
 		}
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -458,6 +460,8 @@ func AnalyzeQueryV1(
 
 		return nil
 	case *lyx.Update:
+
+		rm.HasWriteTargets = true
 
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
@@ -495,18 +499,20 @@ func AnalyzeQueryV1(
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef, true); err != nil {
+		if err := analyzeHelper(stmt.TableRef, true); err != nil {
 			return err
 		}
 
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Delete:
 
+		rm.HasWriteTargets = true
+
 		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef, true); err != nil {
+		if err := analyzeHelper(stmt.TableRef, true); err != nil {
 			return err
 		}
 
