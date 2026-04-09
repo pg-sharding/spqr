@@ -62,6 +62,12 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 				return err
 			}
 
+			/* unbounded relation */
+			if len(valList) == 0 {
+				p = &plan.ScatterPlan{}
+				return nil
+			}
+
 			for _, val := range valList {
 				compositeKey[lvl] = val
 

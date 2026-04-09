@@ -17,14 +17,14 @@ CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
  bound -> 0
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin DISTRIBUTION KEY id;
+CREATE RELATION xjoin (id);
        attach table       
 --------------------------
  relation name   -> xjoin
  distribution id -> ds1
 (2 rows)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
+CREATE RELATION yjoin (w_id);
        attach table       
 --------------------------
  relation name   -> yjoin
@@ -84,6 +84,23 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  15 |   15
  25 |   25
 (4 rows)
+
+-- self join
+SELECT FROM xjoin a JOIN xjoin b ON true;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+--
+(8 rows)
+
+-- routable self join
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 15;
+NOTICE: send query to shard(s) : sh2
+--
+(2 rows)
+
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 11;
+NOTICE: send query to shard(s) : sh2
+--
+(0 rows)
 
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
