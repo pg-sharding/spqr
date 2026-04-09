@@ -125,6 +125,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 		config.RouterConfig().ManageShardsByCoordinator,
 		rr,
 	)
+
 	var seqMngr sequences.SequenceMgr = lc
 	idRangeSize := config.RouterConfig().IdentityRangeSize
 	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
