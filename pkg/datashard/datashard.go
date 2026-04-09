@@ -418,7 +418,7 @@ func NewShardHostInstance(
 // Auth handles the authentication process for a shard connection.
 //
 // Parameters:
-//   - sp (*pgproto3.StartupParams): The startup params for the connection. Currently, only SearchPath field is read.
+//   - sp (*pgproto3.StartupParams): The startup params for the connection. Currently, only search_path is supported.
 //
 // Returns:
 //   - error: An error if authentication fails.
