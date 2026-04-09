@@ -1216,7 +1216,7 @@ func (qr *ProxyQrouter) plannerV1(
 
 	p = plan.Combine(p, tmp)
 
-	tmp, err = rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	tmp, err = rm.RouteByTuples(ctx, rm.SPH.GetTsa(), qr.DataShardsRoutes())
 	if err != nil {
 		return nil, err
 	}

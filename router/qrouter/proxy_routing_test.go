@@ -46,7 +46,7 @@ func planHelper(ctx context.Context, qr *qrouter.ProxyQrouter, rm *rmeta.Routing
 		return nil, err
 	}
 
-	tmp, err := rm.RouteByTuples(ctx, sph.GetTsa())
+	tmp, err := rm.RouteByTuples(ctx, sph.GetTsa(), qr.DataShardsRoutes())
 	if err != nil {
 		return nil, err
 	}
