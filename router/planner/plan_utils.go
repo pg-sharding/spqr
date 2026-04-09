@@ -77,14 +77,36 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			}, nil
 		}
 
-		rv, ok := node.TableRv.(*lyx.RangeVar)
+		isReferenceRel := false
+		dsRel := node.TableRv
+		if node.PartitionOf != nil {
+			dsRel = node.PartitionOf
+		}
+		rv, ok := dsRel.(*lyx.RangeVar)
 		if !ok {
 			return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
 		}
 		relname := rfqn.RelationFQNFromRangeRangeVar(rv)
-		ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+		iis, err := rm.Mgr.ListUniqueIndexes(ctx)
 		if err != nil {
 			return nil, err
+		}
+		found := false
+		for _, is := range iis {
+			if is.ID == relname.String() {
+				/* this is an index table */
+				found = true
+				break
+			}
+		}
+		if !found {
+			ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+			if err != nil {
+				return nil, err
+			}
+			if ds.Id == distributions.REPLICATED {
+				isReferenceRel = true
+			}
 		}
 
 		tmpPlan := &plan.ScatterPlan{
@@ -133,7 +155,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		tmpPlan.OverwriteQuery = make(map[string]string)
 		p.OverwriteQuery = make(map[string]string)
 		relType := "distributed"
-		if ds.Id == distributions.REPLICATED {
+		if isReferenceRel {
 			relType = "reference"
 		}
 		oq := fmt.Sprintf("SELECT spqr_metadata.mark_%s_relation('%s')", relType, relFQN.String())
