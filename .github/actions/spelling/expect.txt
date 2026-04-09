@@ -249,6 +249,7 @@ kcache
 kdb
 kdc
 kek
+keyout
 keyrange
 keyrangemgr
 keytab
@@ -502,6 +503,7 @@ serviceprincipal
 sethvargo
 sevlyar
 shardconn
+shardmock
 Shardinfo
 shardn
 shardname

@@ -54,7 +54,7 @@ func TestSplitKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
-		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -92,7 +92,7 @@ func TestSplitKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
-		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
