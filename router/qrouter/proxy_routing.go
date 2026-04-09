@@ -1223,8 +1223,11 @@ func (qr *ProxyQrouter) plannerV1(
 
 	p = plan.Combine(p, tmp)
 
+	// set up this variable if not yet
 	if p == nil {
-		p = &plan.ScatterPlan{}
+		p = &plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}
 	}
 
 	/* Okay, we got some plan. If case of multishard processing,
