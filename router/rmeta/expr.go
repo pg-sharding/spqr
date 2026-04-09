@@ -198,7 +198,8 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 	}
 
 	/* XXX: fix joins for distributed relations */
-	if queryPlan == nil && len(rs) != 0 {
+	/* XXX: Exclude rw queries */
+	if queryPlan == nil && len(rs) != 0 && !rm.HasWriteTargets {
 		queryPlan = &plan.ScatterPlan{
 			ExecTargets: shs,
 		}

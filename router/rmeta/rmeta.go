@@ -63,6 +63,8 @@ type RoutingMetadataContext struct {
 
 	/* Is query proven to be read-only? */
 	ro bool
+	/* NB: Not the same as !ro */
+	HasWriteTargets bool
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
