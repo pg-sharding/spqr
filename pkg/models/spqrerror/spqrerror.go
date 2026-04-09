@@ -51,7 +51,7 @@ var ExistingErrorCodeMap = map[string]string{
 	SPQR_ROUTING_ERROR:        "Routing error",
 	SPQR_CONNECTION_ERROR:     "Connection error",
 	SPQR_KEYRANGE_ERROR:       "Keyrange error",
-	SPQR_TRANSFER_ERROR:       "Transfer error",
+	SPQR_TRANSFER_ERROR:       "Transfer data error",
 	SPQR_OBJECT_NOT_EXIST:     "No object",
 	SPQR_NOT_IMPLEMENTED:      "Not implemented",
 	SPQR_ROUTER_ERROR:         "Router error",

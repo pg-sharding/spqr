@@ -1,11 +1,4 @@
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION d COLUMN TYPES INT;
    add distribution   
 ----------------------
@@ -129,13 +122,6 @@ COMMIT;
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

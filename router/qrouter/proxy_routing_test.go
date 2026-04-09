@@ -792,6 +792,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
+		ShardIds:  []string{"sh1", "sh2"},
 	})
 
 	shardMapping := map[string]*config.Shard{
@@ -809,7 +810,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
-					OverwriteQuery: map[string]string{},
+					OverwriteQuery: map[string]string{
+						"sh1": "INSERT INTO test_ref_rel VALUES(1) returning *;",
+						"sh2": "INSERT INTO test_ref_rel VALUES(1) returning *;",
+					},
 					ExecTargets: []kr.ShardKey{
 						{
 							Name: "sh1",
@@ -824,7 +828,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
+				OverwriteQuery: map[string]string{
+					"sh1": "INSERT INTO test_ref_rel VALUES(1) ;",
+					"sh2": "INSERT INTO test_ref_rel VALUES(1) ;",
+				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -840,7 +847,25 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
+					SubPlan: &plan.ModifyTable{
+						ExecTargets: []kr.ShardKey{
+							{
+								Name: "sh1",
+							},
+							{
+								Name: "sh2",
+							},
+						},
+					},
+
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -856,7 +881,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				SubPlan: &plan.ModifyTable{
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -870,7 +904,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				SubPlan: &plan.ModifyTable{
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -1386,6 +1429,15 @@ func TestSingleShard(t *testing.T) {
 					},
 				},
 			},
+			"xxtt1_sch": {
+				Name:       "xxtt1_sch",
+				SchemaName: "sh1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
 			"xx": {
 				Name: "xx",
 				DistributionKey: []qdb.DistributionKeyEntry{
@@ -1455,6 +1507,30 @@ func TestSingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
+			query: "select (select sum(j) from xxtt1 where i = 112);",
+
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
+			query: "select (select sum(j) from sh1.xxtt1_sch where i = 112);",
+
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
 			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
 			exp: &plan.ScatterPlan{
 				OverwriteQuery: map[string]string{},
@@ -1482,7 +1558,7 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
+			query: "SELECT * FROM sh1.xxtt1_sch WHERE sh1.xxtt1_sch.i = 21;",
 			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
@@ -2550,8 +2626,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",

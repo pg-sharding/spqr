@@ -84,9 +84,17 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 ## Statistics Settings
 
+Collects query execution time statistics at specified percentile levels. The router tracks two independent timing metrics:
+
+- Router Time (time spent in SPQR router)
+- Shard Time (time waiting for backend database)
+
+When empty, statistics collection is disabled.
+
 | Setting          | Description                                           | Possible Values       |
 |------------------|-------------------------------------------------------|-----------------------|
-| `time_quantiles` | The list of time quantiles to show query time statistics. When empty, no statistics is collected | Array of floats. For example, `[0.8]` |
+| `time_quantiles` | Array of time quantiles (percentiles) for query execution statistics. | Array of floats, e.g., `[0.75, 0.90, 0.999]` |
+| `time_quantiles_str` | Same as `time_quantiles` but with string values. Preferred option. | Array of strings, e.g., `["0.75", "0.90", "0.999"]` |
 
 ## Feature Flags
 
@@ -130,6 +138,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | Setting          | Description                                           | Possible Values    | Overridable by Hint |
 |------------------|-------------------------------------------------------|--------------------|---------------------|
 | `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | Yes |
+| `display_greeting` | Whether to display greeting message on client connection. Default: `true` | `true`, `false`    | No |
 | `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Default: `"{shard}@{host}"`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | No |
 | `pid_filename`   | The file name to store the process ID.                | Any valid filepath | No |
 | `log_filename`   | The file name for logging output.                     | Any valid filepath | No |

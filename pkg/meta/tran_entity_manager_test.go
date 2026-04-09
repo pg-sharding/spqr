@@ -193,13 +193,13 @@ func TestTranGetKeyRange(t *testing.T) {
 		is.EqualError(err, "key range kr1 already present in qdb")
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2)
+		err = tranMngr.CreateKeyRange(ctx, kr2, []string{qdb.ColumnTypeInteger})
 		//NO COMMIT QDB!!!
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2Ds2)
+		err = tranMngr.CreateKeyRange(ctx, kr2Ds2, []string{qdb.ColumnTypeInteger})
 		//NO COMMIT QDB!!!
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2Double)
+		err = tranMngr.CreateKeyRange(ctx, kr2Double, []string{qdb.ColumnTypeInteger})
 		//NO COMMIT QDB!!!
 		is.EqualError(err, "key range kr2 already present in qdb")
 
@@ -251,7 +251,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		}
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2)
+		err = tranMngr.CreateKeyRange(ctx, kr2, []string{qdb.ColumnTypeInteger})
 		is.NoError(err)
 		//NO COMMIT QDB!!!
 

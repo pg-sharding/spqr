@@ -1104,9 +1104,12 @@ func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.RetryMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.RetryMoveTaskGroupV2(ctx, &proto.RetryMoveTaskGroupRequest{
+		Selector: &proto.RedistributeTaskSelector{Id: id},
+		NoWait:   nowait,
+	})
 	return spqrerror.CleanGrpcError(err)
 }
 

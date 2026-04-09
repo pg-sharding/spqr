@@ -197,6 +197,14 @@ shardLoop:
 	return rd, replyMsg, nil
 }
 
+func pstmtDoesNotExistsErr(name string) error {
+	if len(name) > 0 {
+		return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", name)
+	}
+
+	return spqrerror.New(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "unnamed prepared statement does not exist")
+}
+
 func (rst *RelayStateImpl) Close() error {
 	_ = rst.Reset()
 
@@ -206,8 +214,10 @@ func (rst *RelayStateImpl) Close() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 
-	if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
-		return err
+	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+
+	if err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
 	}
 
 	rst.QueryExecutor().ActiveShardsReset()
@@ -217,7 +227,11 @@ func (rst *RelayStateImpl) Reset() error {
 
 	_ = rst.Client().Reset()
 
-	return rst.Client().Unroute()
+	if rerr := rst.Client().Unroute(); rerr != nil {
+		return rerr
+	}
+
+	return err
 }
 
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
@@ -641,7 +655,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			if def == nil {
 				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.PreparedStatement)
+				return pstmtDoesNotExistsErr(currentMsg.PreparedStatement)
 			}
 
 			if def.OverwriteRemoveParamIds != nil {
@@ -880,7 +894,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				if def == nil {
 					/* this prepared statement was not prepared by client */
-					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+					return pstmtDoesNotExistsErr(currentMsg.Name)
 				}
 
 				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
@@ -987,7 +1001,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				if def == nil {
 					/* this prepared statement was not prepared by client */
-					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+					return pstmtDoesNotExistsErr(currentMsg.Name)
 				} else {
 					rst.Client().ClosePreparedStatement(currentMsg.Name)
 					if err := rst.Client().ReplyCloseComplete(); err != nil {

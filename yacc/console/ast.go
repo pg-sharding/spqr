@@ -105,8 +105,21 @@ type KeyRangeDefinition struct {
 }
 
 type ShardDefinition struct {
-	Id    string
-	Hosts []string
+	Id           string
+	Hosts        []string
+	SslMode      string
+	CertFile     string
+	KeyFile      string
+	RootCertFile string
+}
+
+type AlterShard struct {
+	Id           string
+	SslMode      string
+	Hosts        []string
+	CertFile     string
+	KeyFile      string
+	RootCertFile string
 }
 
 func (*KeyRangeDefinition) iCreate()          {}
@@ -200,6 +213,11 @@ type Kill struct {
 	Target uint
 }
 
+type System struct {
+	Reload  bool
+	Restart bool
+}
+
 type InvalidateCacheTarget string
 
 const (
@@ -233,18 +251,11 @@ type UnregisterRouter struct {
 	ID string
 }
 
-type AlterStmt interface {
-	iAlter()
-}
-
 type Alter struct {
 	Element Statement
 }
 
-func (*Alter) iStatement() {}
-
 type DistributionAlterStatement interface {
-	AlterStmt
 	iAlterDistribution()
 }
 
@@ -254,7 +265,6 @@ type AlterDistribution struct {
 }
 
 func (*AlterDistribution) iStatement()         {}
-func (*AlterDistribution) iAlter()             {}
 func (*AlterDistribution) iAlterDistribution() {}
 
 type TypedColRef struct {
@@ -280,7 +290,6 @@ type AttachRelation struct {
 }
 
 func (*AttachRelation) iStatement()         {}
-func (*AttachRelation) iAlter()             {}
 func (*AttachRelation) iAlterDistribution() {}
 
 type AlterRelation struct {
@@ -288,7 +297,6 @@ type AlterRelation struct {
 }
 
 func (*AlterRelation) iStatement()         {}
-func (*AlterRelation) iAlter()             {}
 func (*AlterRelation) iAlterDistribution() {}
 
 type AlterRelationV2 struct {
@@ -297,7 +305,6 @@ type AlterRelationV2 struct {
 }
 
 func (*AlterRelationV2) iStatement()         {}
-func (*AlterRelationV2) iAlter()             {}
 func (*AlterRelationV2) iAlterDistribution() {}
 
 type RelationAlterStmt interface {
@@ -332,7 +339,6 @@ type DetachRelation struct {
 }
 
 func (*DetachRelation) iStatement()         {}
-func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
 type AlterDefaultShard struct {
@@ -340,14 +346,12 @@ type AlterDefaultShard struct {
 }
 
 func (*AlterDefaultShard) iStatement()         {}
-func (*AlterDefaultShard) iAlter()             {}
 func (*AlterDefaultShard) iAlterDistribution() {}
 
 type DropDefaultShard struct {
 }
 
 func (*DropDefaultShard) iStatement()         {}
-func (*DropDefaultShard) iAlter()             {}
 func (*DropDefaultShard) iAlterDistribution() {}
 
 type SequenceSelector struct {
@@ -357,7 +361,8 @@ type SequenceSelector struct {
 func (*SequenceSelector) iDrop() {}
 
 type RetryMoveTaskGroup struct {
-	ID string
+	ID     string
+	NoWait bool
 }
 
 func (*RetryMoveTaskGroup) iStatement() {}
@@ -439,6 +444,7 @@ type Statement interface {
 	iStatement()
 }
 
+func (*Alter) iStatement()                       {}
 func (*Show) iStatement()                        {}
 func (*Set) iStatement()                         {}
 func (*KeyRangeSelector) iStatement()            {}
@@ -463,7 +469,9 @@ func (*ReferenceRelationDefinition) iStatement() {}
 func (*UniqueIndexDefinition) iStatement()       {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
+func (*AlterShard) iStatement()                  {}
 func (*Kill) iStatement()                        {}
+func (*System) iStatement()                      {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
 func (*AlterReferenceTableStorage) iStatement()  {}

@@ -97,7 +97,7 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 				return err
 			}
 			tranMngr := meta.NewTranEntityManager(mngr)
-			if err := tranMngr.CreateKeyRange(ctx, kRange); err != nil {
+			if err := tranMngr.CreateKeyRange(ctx, kRange, d.ColTypes); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 				return err
 			}

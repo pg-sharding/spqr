@@ -650,18 +650,17 @@ func (qr *ProxyQrouter) planQueryV1(
 			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
-				if rm.SPH.EnhancedMultiShardProcessing() {
+				/* Here we do not check for v2 engine. Reference relation is
+				* already v2 feature, so if client chooses to execute queries with that,
+				* then client is ready for >= v2. */
+				plr := planner.PlannerV2{}
 
-					plr := planner.PlannerV2{}
-
-					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
-					if err != nil {
-						return nil, err
-					}
-					p = plan.Combine(p, tmp)
-					return p, nil
+				tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
+				if err != nil {
+					return nil, err
 				}
-				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+				p = plan.Combine(p, tmp)
+				return p, nil
 			}
 
 			/* Delete from relation - does it have any reverse index attached? */
@@ -908,15 +907,12 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
 	case *plan.ScatterPlan:
-		if v.IsDDL {
+		if v.ExecTargets == nil {
 			v.ExecTargets = qr.DataShardsRoutes()
-			return v, nil
 		}
 
-		if v.Forced {
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
-			}
+		/* XXX: assert that DDL is executed on all shards. */
+		if v.IsDDL || v.Forced {
 			return v, nil
 		}
 
@@ -936,9 +932,6 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 						return nil, err
 					}
 				}
-			}
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
 			}
 			return v, nil
 		}
@@ -1209,13 +1202,21 @@ func (qr *ProxyQrouter) plannerV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 ) (plan.Plan, error) {
-	/* Top level plan */
-	p, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+
+	p, err := rm.GetPrePlan(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	/* Top level plan */
+	tmp, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	p = plan.Combine(p, tmp)
+
+	tmp, err = rm.RouteByTuples(ctx, rm.SPH.GetTsa())
 	if err != nil {
 		return nil, err
 	}
@@ -1710,6 +1711,15 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	}
 
+	/* Last chance, try to match DRH on some of existing shards */
+	for _, sh := range qr.DataShardsRoutes() {
+		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+			return &plan.ShardDispatchPlan{
+				ExecTarget: sh,
+			}, nil
+		}
+	}
+
 	return p, nil
 }
 
@@ -1739,15 +1749,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 	p, err := qr.PlanQueryExtended(ctx, rm)
 	if err != nil {
 		return nil, err
-	}
-
-	/* Last chance, try to match DRH on some of existing shards */
-	for _, sh := range qr.DataShardsRoutes() {
-		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
-			return &plan.ShardDispatchPlan{
-				ExecTarget: sh,
-			}, nil
-		}
 	}
 
 	/* do init plan logic */

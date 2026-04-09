@@ -1,11 +1,4 @@
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 -- check that numeric type works
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
@@ -143,13 +136,6 @@ NOTICE: send query to shard(s) : sh2
 DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 -- check that uuid type works
 CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
     add distribution    
@@ -230,13 +216,6 @@ ERROR:  error processing query 'INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFF
 DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

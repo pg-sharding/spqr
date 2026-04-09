@@ -15,6 +15,8 @@ import (
 var boolTrue bool = true
 var boolFalse bool = false
 
+var ds1ColTypes = []string{qdb.ColumnTypeInteger}
+
 var kr1 = &kr.KeyRange{
 	ID:           "kr1",
 	ShardID:      "sh1",
@@ -100,7 +102,7 @@ func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
 
 	assert.NoError(t, meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr := meta.NewTranEntityManager(mngr)
-	err = tranMngr.CreateKeyRange(ctx, kr2)
+	err = tranMngr.CreateKeyRange(ctx, kr2, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
@@ -115,7 +117,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
-	err = tranMngr.CreateKeyRange(ctx, kr1)
+	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
@@ -130,7 +132,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
-	err = tranMngr.CreateKeyRange(ctx, kr1)
+	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
@@ -147,7 +149,7 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
-	err = tranMngr.CreateKeyRange(ctx, kr1)
+	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
@@ -164,7 +166,7 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr := meta.NewTranEntityManager(mngr)
-	err = tranMngr.CreateKeyRange(ctx, kr2)
+	err = tranMngr.CreateKeyRange(ctx, kr2, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
@@ -180,13 +182,13 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr2 := meta.NewTranEntityManager(mngr)
-	err = tranMngr2.CreateKeyRange(ctx, kr2)
+	err = tranMngr2.CreateKeyRange(ctx, kr2, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr2.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr1 := meta.NewTranEntityManager(mngr)
-	err = tranMngr1.CreateKeyRange(ctx, kr1)
+	err = tranMngr1.CreateKeyRange(ctx, kr1, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr1.ExecNoTran(ctx)
 	is.NoError(err)
@@ -205,13 +207,13 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr2 := meta.NewTranEntityManager(mngr)
-	err = tranMngr2.CreateKeyRange(ctx, kr2)
+	err = tranMngr2.CreateKeyRange(ctx, kr2, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr2.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr1 := meta.NewTranEntityManager(mngr)
-	err = tranMngr1.CreateKeyRange(ctx, kr1)
+	err = tranMngr1.CreateKeyRange(ctx, kr1, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr1.ExecNoTran(ctx)
 	is.NoError(err)

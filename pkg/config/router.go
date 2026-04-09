@@ -124,12 +124,15 @@ type Router struct {
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 
 	StoreTxDataPostgresql bool `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+
+	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }
 
 var _ Config = &Router{}
 
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
+	r.DisplayGreeting = true
 }
 
 func (r *Router) PostProcess() error {

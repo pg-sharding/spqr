@@ -1001,7 +1001,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 					return err
 				}
 				tranMngr := meta.NewTranEntityManager(qc)
-				if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
+				if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 					return err
 				}
 				if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1046,12 +1046,16 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			move.Status = qdb.MoveKeyRangeDataMoved
 		case qdb.MoveKeyRangeDataMoved:
 			keyRange.ShardID = req.ShardId
+			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+			if err != nil {
+				return err
+			}
 			// TODO: move check to meta layer
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
 			tranMngr := meta.NewTranEntityManager(qc)
-			if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
+			if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 				return err
 			}
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1922,11 +1926,22 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
+
+	if nowait {
+		go func() {
+			if err := qc.executeMoveInternal(ctx, taskGroup, true); err != nil {
+				spqrlog.Zero.Err(err).Str("task group id", id).Msg("failed to retry move task group")
+			}
+		}()
+
+		return nil
+	}
+
 	return qc.executeMoveInternal(ctx, taskGroup, true)
 }
 
@@ -2325,6 +2340,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 				commands := []*proto.MetaTransactionGossipCommand{
 					{CreateKeyRange: &proto.CreateKeyRangeGossip{
 						KeyRangeInfo: kRange.ToProto(),
+						ColumnTypes:  ds.ColTypes,
 					}},
 				}
 				resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})

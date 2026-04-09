@@ -1082,12 +1082,12 @@ Feature: Move test
     # TODO: rewrite values
     """
     CREATE TABLE xMoveStr(a_id text, b_id int8);
-    INSERT INTO xMoveStr (a_id, b_id) VALUES ('a', 1); -- krid5
-    INSERT INTO xMoveStr (a_id, b_id) VALUES ('b', 2); -- krid4
-    INSERT INTO xMoveStr (a_id, b_id) VALUES ('c', 3); -- krid3
-    INSERT INTO xMoveStr (a_id, b_id) VALUES ('d', 4); -- krid4
-    INSERT INTO xMoveStr (a_id, b_id) VALUES ('f', 6); -- krid3
-    INSERT INTO xMoveStr (a_id, b_id) VALUES ('g', 111); -- krid5
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('a', 1);
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('b', 2);
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('c', 3);
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('d', 4);
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('f', 6);
+    INSERT INTO xMoveStr (a_id, b_id) VALUES ('g', 111);
     """
     Then command return code should be "0"
     When I run SQL on host "router"
