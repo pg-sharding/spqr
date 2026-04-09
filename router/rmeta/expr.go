@@ -177,7 +177,7 @@ func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, er
 	return p, nil
 }
 
-func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
+func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA, shs []kr.ShardKey) (plan.Plan, error) {
 	var queryPlan plan.Plan
 	/*
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
@@ -195,6 +195,14 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 		}
 
 		queryPlan = plan.Combine(queryPlan, tmp)
+	}
+
+	/* XXX: fix joins for distributed relations */
+	/* XXX: Exclude rw queries */
+	if queryPlan == nil && len(rs) != 0 && !rm.HasWriteTargets {
+		queryPlan = &plan.ScatterPlan{
+			ExecTargets: shs,
+		}
 	}
 
 	return queryPlan, nil

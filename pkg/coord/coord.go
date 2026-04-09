@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -88,6 +87,11 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
+}
+
+// UpdateShard implements meta.EntityMgr.
+func (lc *Coordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	return lc.qdb.UpdateShard(ctx, topology.DataShardToDB(shard))
 }
 
 // AddWorldShard implements meta.EntityMgr.
@@ -598,12 +602,7 @@ func (lc *Coordinator) ListShards(ctx context.Context) ([]*topology.DataShard, e
 	var retShards []*topology.DataShard
 
 	for _, sh := range resp {
-		retShards = append(retShards, &topology.DataShard{
-			ID: sh.ID,
-			Cfg: &config.Shard{
-				RawHosts: sh.RawHosts,
-			},
-		})
+		retShards = append(retShards, topology.DataShardFromDB(sh))
 	}
 	return retShards, nil
 }
