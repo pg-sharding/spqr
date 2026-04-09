@@ -19,9 +19,10 @@ import (
 // TODO : unit tests
 func analyzeFromClauseList(
 	ctx context.Context,
-	clause []lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) error {
+	clause []lyx.FromClauseNode, rm *rmeta.RoutingMetadataContext) error {
+	/* This is only reachable from SELECT path */
 	for _, node := range clause {
-		err := analyzeFromNode(ctx, node, meta)
+		err := analyzeFromNode(ctx, node, true, rm)
 		if err != nil {
 			return err
 		}
@@ -77,21 +78,22 @@ func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.Rou
 
 // TODO : unit tests
 // analyzes from clause
-func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, rm *rmeta.RoutingMetadataContext) error {
+func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, routable bool, rm *rmeta.RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		if err := ProcessRangeNode(ctx, rm, q); err != nil {
+		if err := ProcessRangeNode(ctx, rm, routable, q); err != nil {
 			return err
 		}
 
 	case *lyx.JoinExpr:
-		if err := analyzeFromNode(ctx, q.Rarg, rm); err != nil {
+		/* XXX: assert modify = false? */
+		if err := analyzeFromNode(ctx, q.Rarg, routable, rm); err != nil {
 			return err
 		}
-		if err := analyzeFromNode(ctx, q.Larg, rm); err != nil {
+		if err := analyzeFromNode(ctx, q.Larg, routable, rm); err != nil {
 			return err
 		}
 
@@ -344,7 +346,7 @@ func AnalyzeQueryV1(
 		Interface("clause", qstmt).
 		Msg("AnalyzeQueryV1: enter")
 
-	analyseHelper := func(tr lyx.FromClauseNode) error {
+	analyzeHelper := func(tr lyx.FromClauseNode, routable bool) error {
 		switch q := tr.(type) {
 		case *lyx.RangeVar:
 			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
@@ -355,7 +357,7 @@ func AnalyzeQueryV1(
 			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		if err := analyzeFromNode(ctx, tr, rm); err != nil {
+		if err := analyzeFromNode(ctx, tr, routable, rm); err != nil {
 			return err
 		}
 
@@ -437,11 +439,13 @@ func AnalyzeQueryV1(
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Insert:
 
+		rm.HasWriteTargets = true
+
 		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := analyzeHelper(stmt.TableRef, false); err != nil {
 			return err
 		}
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -456,6 +460,8 @@ func AnalyzeQueryV1(
 
 		return nil
 	case *lyx.Update:
+
+		rm.HasWriteTargets = true
 
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
@@ -489,22 +495,24 @@ func AnalyzeQueryV1(
 			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		if err := analyzeFromNode(ctx, stmt.TableRef, rm); err != nil {
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 
-		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+		if err := analyzeHelper(stmt.TableRef, true); err != nil {
 			return err
 		}
 
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Delete:
 
+		rm.HasWriteTargets = true
+
 		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := analyzeHelper(stmt.TableRef, true); err != nil {
 			return err
 		}
 

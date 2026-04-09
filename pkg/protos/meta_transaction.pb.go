@@ -69,6 +69,7 @@ func (x *CreateDistributionGossip) GetDistributions() []*Distribution {
 type CreateKeyRangeGossip struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyRangeInfo  *KeyRangeInfo          `protobuf:"bytes,1,opt,name=key_range_info,json=keyRangeInfo,proto3" json:"key_range_info,omitempty"`
+	ColumnTypes   []string               `protobuf:"bytes,2,rep,name=column_types,json=columnTypes,proto3" json:"column_types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,6 +107,13 @@ func (*CreateKeyRangeGossip) Descriptor() ([]byte, []int) {
 func (x *CreateKeyRangeGossip) GetKeyRangeInfo() *KeyRangeInfo {
 	if x != nil {
 		return x.KeyRangeInfo
+	}
+	return nil
+}
+
+func (x *CreateKeyRangeGossip) GetColumnTypes() []string {
+	if x != nil {
+		return x.ColumnTypes
 	}
 	return nil
 }
@@ -157,6 +165,7 @@ func (x *DropKeyRangeGossip) GetId() []string {
 type UpdateKeyRangeGossip struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyRangeInfo  *KeyRangeInfo          `protobuf:"bytes,1,opt,name=key_range_info,json=keyRangeInfo,proto3" json:"key_range_info,omitempty"`
+	ColumnTypes   []string               `protobuf:"bytes,2,rep,name=column_types,json=columnTypes,proto3" json:"column_types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -194,6 +203,13 @@ func (*UpdateKeyRangeGossip) Descriptor() ([]byte, []int) {
 func (x *UpdateKeyRangeGossip) GetKeyRangeInfo() *KeyRangeInfo {
 	if x != nil {
 		return x.KeyRangeInfo
+	}
+	return nil
+}
+
+func (x *UpdateKeyRangeGossip) GetColumnTypes() []string {
+	if x != nil {
+		return x.ColumnTypes
 	}
 	return nil
 }
@@ -525,13 +541,15 @@ const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\n" +
 	"\x1dprotos/meta_transaction.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\"protos/distribution_entities.proto\x1a\x16protos/key_range.proto\"T\n" +
 	"\x18CreateDistributionGossip\x128\n" +
-	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"P\n" +
+	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"s\n" +
 	"\x14CreateKeyRangeGossip\x128\n" +
-	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\"$\n" +
+	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\x12!\n" +
+	"\fcolumn_types\x18\x02 \x03(\tR\vcolumnTypes\"$\n" +
 	"\x12DropKeyRangeGossip\x12\x0e\n" +
-	"\x02id\x18\x01 \x03(\tR\x02id\"P\n" +
+	"\x02id\x18\x01 \x03(\tR\x02id\"s\n" +
 	"\x14UpdateKeyRangeGossip\x128\n" +
-	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\"V\n" +
+	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\x12!\n" +
+	"\fcolumn_types\x18\x02 \x03(\tR\vcolumnTypes\"V\n" +
 	"\x14CreateSequenceGossip\x12\x19\n" +
 	"\bseq_name\x18\x01 \x01(\tR\aseqName\x12#\n" +
 	"\rinitial_value\x18\x02 \x01(\x03R\finitialValue\"\xf8\x02\n" +

@@ -767,11 +767,23 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if _, ok := q.Shards[id]; ok {
-		return &Shard{ID: id}, nil
+	if shard, ok := q.Shards[id]; ok {
+		return shard, nil
 	}
 
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
+}
+
+func (q *MemQDB) UpdateShard(_ context.Context, shard *Shard) error {
+	spqrlog.Zero.Debug().Interface("shard", shard).Msg("memqdb: update shard")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.Shards[shard.ID]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+	}
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
 }
 
 // TODO : unit tests

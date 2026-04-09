@@ -1040,17 +1040,17 @@ func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *gom
 }
 
 // RetryMoveTaskGroup mocks base method.
-func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id)
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
-func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id, nowait)
 }
 
 // SetTwoPhaseTxMetaStorage mocks base method.
@@ -1234,6 +1234,20 @@ func (m *MockEntityMgr) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) (
 func (mr *MockEntityMgrMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).UpdateKeyRange), ctx, arg1)
+}
+
+// UpdateShard mocks base method.
+func (m *MockEntityMgr) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockEntityMgrMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockEntityMgr)(nil).UpdateShard), ctx, shard)
 }
 
 // WriteBalancerTask mocks base method.

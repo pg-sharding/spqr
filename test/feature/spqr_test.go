@@ -25,8 +25,8 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/cucumber/godog"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
+	pgxv4 "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -282,8 +282,8 @@ func (tctx *testContext) connectRouterConsoleWithCredentials(username string, pa
 
 func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sql.DB) bool) (*sql.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
-	connCfg, _ := pgx.ParseConfig(dsn)
-	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	connCfg, _ := pgxv4.ParseConfig(dsn)
+	connCfg.PreferSimpleProtocol = true
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connCfg.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
@@ -428,6 +428,12 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 		return err
 	}
 	stmt, err := db.Prepare(query)
+	if err != nil {
+		tctx.commandRetcode = 1
+		tctx.commandOutput = err.Error()
+		tctx.sqlUserQueryError.Store(host, err.Error())
+		return err
+	}
 	if pqHst, ok := tctx.preparedQueries[host]; !ok {
 		hstDat := map[string]*sql.Stmt{query: stmt}
 		tctx.preparedQueries[host] = hstDat
@@ -437,11 +443,6 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	}
 	tctx.sqlQueryResult = nil
 	tctx.commandRetcode = 0
-	if err != nil {
-		tctx.commandRetcode = 1
-		tctx.commandOutput = err.Error()
-		tctx.sqlUserQueryError.Store(host, err.Error())
-	}
 	return nil
 }
 

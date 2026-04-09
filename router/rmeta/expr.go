@@ -18,7 +18,15 @@ import (
 )
 
 func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
-	ds *distributions.Distribution, qualName *rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
+	relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
+
+	qname := relation.Relation
+
+	/*XXX: fix this*/
+	ds, err := rm.GetRelationDistribution(ctx, qname)
+	if err != nil {
+		return nil, err
+	}
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
@@ -44,7 +52,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 			// calculate routing expression
 
 			valList, err := rm.ComputeRoutingExpr(
-				qualName,
+				qname,
 				&relation.DistributionKey[lvl].Expr,
 				relation.DistributionKey[lvl].HashFunction,
 				queryParamsFormatCodes)
@@ -66,7 +74,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 					spqrlog.Zero.Debug().
 						Interface("current route", currroute).
-						Str("table", qualName.RelationName).
+						Str("table", qname.String()).
 						Msg("calculated route for table/cols")
 
 					p = plan.Combine(p, &plan.ShardDispatchPlan{
@@ -84,7 +92,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 		}
 		col := relation.DistributionKey[lvl].Column
 
-		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
+		vals, err := rm.ResolveValue(qname, col, queryParamsFormatCodes)
 
 		if err != nil {
 			/* Is this ok? */
@@ -113,7 +121,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 				spqrlog.Zero.Debug().
 					Interface("current route", currroute).
-					Str("table", qualName.RelationName).
+					Str("table", qname.String()).
 					Msg("calculated route for table/cols")
 
 				p = plan.Combine(p, &plan.ShardDispatchPlan{
@@ -138,18 +146,17 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	return p, nil
 }
 
-func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
-	var queryPlan plan.Plan
-	/*
-	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
-	 */
-
+func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, error) {
+	var p plan.Plan
+	/**/
 	for qualName := range rm.Rels {
 		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)
 		if err != nil {
 			return nil, err
-		} else if ds.Id == distributions.REPLICATED {
+		}
+
+		if ds.Id == distributions.REPLICATED {
 			var shs []kr.ShardKey
 			if IsRelationCatalog(&qualName) {
 				shs = nil
@@ -161,18 +168,28 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 				shs = r.ListStorageRoutes()
 			}
 
-			queryPlan = plan.Combine(queryPlan, &plan.RandomDispatchPlan{
+			p = plan.Combine(p, &plan.RandomDispatchPlan{
 				ExecTargets: shs,
 			})
-			continue
 		}
+	}
 
-		relation, exists := ds.TryGetRelation(&qualName)
-		if !exists {
-			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
-		}
+	return p, nil
+}
 
-		tmp, err := rm.routingTuples(ctx, ds, &qualName, relation, tsa)
+func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA, shs []kr.ShardKey) (plan.Plan, error) {
+	var queryPlan plan.Plan
+	/*
+	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
+	 */
+
+	rs, err := rm.ListParametrizedRels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, relation := range rs {
+		tmp, err := rm.routingTuples(ctx, relation, tsa)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +197,39 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 		queryPlan = plan.Combine(queryPlan, tmp)
 	}
 
+	/* XXX: fix joins for distributed relations */
+	/* XXX: Exclude rw queries */
+	if queryPlan == nil && len(rs) != 0 && !rm.HasWriteTargets {
+		queryPlan = &plan.ScatterPlan{
+			ExecTargets: shs,
+		}
+	}
+
 	return queryPlan, nil
+}
+
+func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*distributions.DistributedRelation, error) {
+	var rs []*distributions.DistributedRelation
+	for qualName := range rm.RoutableRels {
+
+		// TODO: check by whole RFQN
+		ds, err := rm.GetRelationDistribution(ctx, &qualName)
+		if err != nil {
+			return nil, err
+		}
+		if ds.Id == distributions.REPLICATED {
+			continue
+		}
+
+		relation, exists := ds.TryGetRelation(&qualName)
+		if !exists {
+			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
+		}
+		/* XXX: do better here */
+		relation.Relation.SchemaName = qualName.SchemaName
+		rs = append(rs, relation)
+	}
+	return rs, nil
 }
 
 func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node) error {

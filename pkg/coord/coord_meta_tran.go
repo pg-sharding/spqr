@@ -39,11 +39,7 @@ func createKeyRangePrepare(ctx context.Context,
 	mngr meta.EntityMgr,
 	gossip *proto.CreateKeyRangeGossip) ([]qdb.QdbStatement, error) {
 	result := make([]qdb.QdbStatement, 0)
-	ds, err := mngr.GetDistribution(ctx, gossip.KeyRangeInfo.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, ds.ColTypes)
+	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, gossip.ColumnTypes)
 	if err != nil {
 		return nil, err
 	}
@@ -62,11 +58,7 @@ func updateKeyRangePrepare(ctx context.Context,
 	mngr meta.EntityMgr,
 	gossip *proto.UpdateKeyRangeGossip) ([]qdb.QdbStatement, error) {
 	result := make([]qdb.QdbStatement, 0)
-	ds, err := mngr.GetDistribution(ctx, gossip.KeyRangeInfo.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, ds.ColTypes)
+	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, gossip.ColumnTypes)
 	if err != nil {
 		return nil, err
 	}

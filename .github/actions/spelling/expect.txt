@@ -74,7 +74,6 @@ consequat
 consequatur
 coorctl
 coordctl
-copymap
 coreutils
 corporis
 cptr
@@ -250,6 +249,7 @@ kcache
 kdb
 kdc
 kek
+keyout
 keyrange
 keyrangemgr
 keytab
@@ -404,6 +404,7 @@ PGUSER
 pgx
 pgxconn
 pgxpool
+pgxv
 PIDs
 pitr
 pkgclient
@@ -502,6 +503,7 @@ serviceprincipal
 sethvargo
 sevlyar
 shardconn
+shardmock
 Shardinfo
 shardn
 shardname

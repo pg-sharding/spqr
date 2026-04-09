@@ -1118,6 +1118,36 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
+func (q *EtcdQDB) UpdateShard(ctx context.Context, shard *Shard) error {
+	spqrlog.Zero.Debug().
+		Str("id", shard.ID).
+		Msg("etcdqdb: update shard")
+	t := time.Now()
+
+	bytes, err := json.Marshal(shard)
+	if err != nil {
+		return err
+	}
+	nodePath := shardNodePath(shard.ID)
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3.Compare(clientv3.Version(nodePath), ">", 0),
+		).
+		Then(
+			clientv3.OpPut(nodePath, string(bytes)),
+		).
+		Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+	}
+
+	statistics.RecordQDBOperation("UpdateShard", time.Since(t))
+	return nil
+}
+
 // TODO : unit tests
 func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
@@ -2525,6 +2555,9 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	if err != nil {
 		return err
 	}
+	if resp.Count == 0 {
+		return fmt.Errorf("failed to update key range move status: key range move \"%s\" not found", moveId)
+	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
 		return err
@@ -2557,6 +2590,9 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
+	}
+	if resp.Count == 0 {
+		return fmt.Errorf("failed to delete key range move: key range move \"%s\" not found", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {

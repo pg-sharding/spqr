@@ -132,7 +132,14 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	if err := l.mgr.AddDataShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &emptypb.Empty{}, nil
+}
+
+func (l *LocalQrouterServer) UpdateShard(ctx context.Context, request *protos.UpdateShardRequest) (*emptypb.Empty, error) {
+	if err := l.mgr.UpdateShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (l *LocalQrouterServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
@@ -630,7 +637,12 @@ func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *proto
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false)
+}
+
+// TODO: unit tests
+func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
 }
 
 // TODO: unit tests

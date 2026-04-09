@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -684,6 +683,13 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 	return spqrerror.CleanGrpcError(err)
 }
 
+// UpdateShard updates an existing data shard in the system.
+func (a *Adapter) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	client := proto.NewShardServiceClient(a.conn)
+	_, err := client.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(shard)})
+	return spqrerror.CleanGrpcError(err)
+}
+
 // DropShard drops a data shard from the system.
 //
 // Parameters:
@@ -729,13 +735,9 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error)
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	shards := resp.Shards
 	var ds []*topology.DataShard
-	for _, shard := range shards {
-		ds = append(ds, &topology.DataShard{
-			ID:  shard.Id,
-			Cfg: &config.Shard{RawHosts: shard.Hosts},
-		})
+	for _, shard := range resp.Shards {
+		ds = append(ds, topology.DataShardFromProto(shard))
 	}
 	return ds, err
 }
@@ -757,10 +759,7 @@ func (a *Adapter) GetShard(ctx context.Context, shardID string) (*topology.DataS
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	return &topology.DataShard{
-		ID:  resp.Shard.Id,
-		Cfg: &config.Shard{RawHosts: resp.Shard.Hosts},
-	}, nil
+	return topology.DataShardFromProto(resp.Shard), nil
 }
 
 // TODO : unit tests
@@ -1102,9 +1101,12 @@ func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.RetryMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.RetryMoveTaskGroupV2(ctx, &proto.RetryMoveTaskGroupRequest{
+		Selector: &proto.RedistributeTaskSelector{Id: id},
+		NoWait:   nowait,
+	})
 	return spqrerror.CleanGrpcError(err)
 }
 
