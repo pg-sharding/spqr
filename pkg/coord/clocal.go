@@ -28,7 +28,8 @@ type LocalInstanceMetadataMgr struct {
 	cache *cache.SchemaCache
 
 	updateShardsMapping bool
-	shardMapping        sync.Map
+	shardMappingMu      sync.Mutex
+	shardMapping        map[string]*config.Shard
 
 	poolShardHosts shard.ShardHostIterator
 }
@@ -217,7 +218,11 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Msg("adding datashard node in local coordinator")
 
 	if lc.updateShardsMapping {
-		lc.shardMapping.Store(ds.ID, ds.Cfg)
+		func() {
+			lc.shardMappingMu.Lock()
+			defer lc.shardMappingMu.Unlock()
+			lc.shardMapping[ds.ID] = ds.Cfg
+		}()
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
@@ -231,7 +236,11 @@ func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topolog
 		return err
 	}
 	if lc.updateShardsMapping {
-		lc.shardMapping.Store(ds.ID, ds.Cfg)
+		func() {
+			lc.shardMappingMu.Lock()
+			defer lc.shardMappingMu.Unlock()
+			lc.shardMapping[ds.ID] = ds.Cfg
+		}()
 	}
 	return lc.invalidatePoolsForShard(ds.ID)
 }
@@ -257,7 +266,11 @@ func (lc *LocalInstanceMetadataMgr) invalidatePoolsForShard(shardID string) erro
 
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
 	if lc.updateShardsMapping {
-		lc.shardMapping.Delete(shardId)
+		func() {
+			lc.shardMappingMu.Lock()
+			defer lc.shardMappingMu.Unlock()
+			delete(lc.shardMapping, shardId)
+		}()
 	}
 	return lc.qdb.DropShard(ctx, shardId)
 }
@@ -491,13 +504,10 @@ func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.
 	lc := &LocalInstanceMetadataMgr{
 		Coordinator:         NewCoordinator(db, d),
 		cache:               cache,
-		shardMapping:        sync.Map{},
+		shardMappingMu:      sync.Mutex{},
+		shardMapping:        shardMapping,
 		updateShardsMapping: updateShardsMapping,
 		poolShardHosts:      poolShardHosts,
-	}
-
-	for k, v := range shardMapping {
-		lc.shardMapping.Store(k, v)
 	}
 
 	return lc
