@@ -267,7 +267,7 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr l
 
 	resolvedRelation = rm.TryResolveByDistributionColumn(colname)
 
-	if resolvedRelation != nil {
+	if resolvedRelation == nil {
 		resolvedRelation, err = rm.ResolveRelationByAlias(alias)
 
 		if err != nil {
