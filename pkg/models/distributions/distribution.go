@@ -650,7 +650,7 @@ func (rel *DistributedRelation) GetDistributionKeyColumnType(
 func (rel *DistributedRelation) GetDistributionKeyColumnNames() []string {
 	var res []string
 	for _, col := range rel.DistributionKey {
-		if col.Column == "" {
+		if col.Column != "" {
 			res = append(res, col.Column)
 		} else {
 			for _, ee := range col.Expr.ColRefs {
