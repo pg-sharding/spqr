@@ -190,6 +190,7 @@ gomod
 goooal
 gorm
 goyacc
+GUC
 Greenplum
 gss
 gssapi
