@@ -2005,33 +2005,22 @@ func TestJoins(t *testing.T) {
 		},
 
 		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
-			exp: &plan.ScatterPlan{
-				ExecTargets: []kr.ShardKey{
-					{
-						Name: "sh1",
-					},
-					{
-						Name: "sh2",
-					},
+			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where x.i = 15 ORDER BY id;",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
 				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
 
-		// sharding columns, but unparsed
+		/* column reference ambiguity */
 		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp: &plan.ScatterPlan{ExecTargets: []kr.ShardKey{
-				{
-					Name: "sh1",
-				},
-				{
-					Name: "sh2",
-				},
-			},
-			},
-			err: nil,
+			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where i = 15 ORDER BY id;",
+			exp:   nil,
+
+			err: rerrors.ErrComplexQuery,
 		},
 
 		// non-sharding columns
@@ -2061,12 +2050,22 @@ func TestJoins(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
-		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
-
 		if tt.err != nil {
-			assert.Equal(tt.err, err, "query %s", tt.query)
+
+			if err := planner.AnalyzeQueryV1(context.TODO(), rm, stmt); err != nil {
+
+				assert.Equal(tt.err, err, "query %s", tt.query)
+			} else {
+				_, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+
+				assert.Equal(tt.err, err, "query %s", tt.query)
+			}
 		} else {
+
+			assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt), tt.query)
+
+			tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+
 			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
