@@ -6,9 +6,13 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	shardmock "github.com/pg-sharding/spqr/pkg/mock/shard"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/qdb"
 	mock "github.com/pg-sharding/spqr/qdb/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -19,7 +23,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockXQDB(ctrl)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	krs := []*qdb.KeyRange{
 		{
@@ -80,4 +84,51 @@ func TestListKeyRangesCaches(t *testing.T) {
 	_, err := lc.ListAllKeyRanges(context.Background())
 
 	assert.NoError(err)
+}
+
+func TestLocalInstanceMetadataMgr_UpdateShard_invalidatesMatchingPoolHosts(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+
+	db, err := qdb.NewMemQDB("")
+	require.NoError(t, err)
+	require.NoError(t, db.AddShard(ctx, &qdb.Shard{ID: "sh1", RawHosts: []string{"h1:5432"}}))
+
+	iter := shardmock.NewMockShardHostIterator(ctrl)
+	shCtl := shardmock.NewMockShardHostCtl(ctrl)
+	iter.EXPECT().ForEach(gomock.Any()).DoAndReturn(func(cb func(sh shard.ShardHostCtl) error) error {
+		return cb(shCtl)
+	})
+	shCtl.EXPECT().ShardKeyName().Return("sh1")
+	shCtl.EXPECT().MarkStale()
+
+	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter)
+	err = mgr.UpdateShard(ctx, topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"h2:5432"},
+		Type:     config.DataShard,
+	}))
+	require.NoError(t, err)
+}
+
+func TestLocalInstanceMetadataMgr_UpdateShard_skipsStaleForNonMatchingShardKey(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+
+	db, err := qdb.NewMemQDB("")
+	require.NoError(t, err)
+	require.NoError(t, db.AddShard(ctx, &qdb.Shard{ID: "sh1", RawHosts: []string{"h1:5432"}}))
+
+	iter := shardmock.NewMockShardHostIterator(ctrl)
+	shCtl := shardmock.NewMockShardHostCtl(ctrl)
+	iter.EXPECT().ForEach(gomock.Any()).DoAndReturn(func(cb func(sh shard.ShardHostCtl) error) error {
+		return cb(shCtl)
+	})
+	shCtl.EXPECT().ShardKeyName().Return("other")
+
+	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter)
+	err = mgr.UpdateShard(ctx, topology.NewDataShard("sh1", &config.Shard{
+		RawHosts: []string{"h2:5432"},
+		Type:     config.DataShard,
+	}))
+	require.NoError(t, err)
 }

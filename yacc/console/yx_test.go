@@ -1901,6 +1901,16 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			exp:   &spqrparser.RetryMoveTaskGroup{ID: "tg_id", NoWait: true},
 			err:   nil,
 		},
+		{
+			query: "RETRY TASK GROUP ALL NOWAIT",
+			exp:   &spqrparser.RetryMoveTaskGroup{ID: "*", NoWait: true},
+			err:   nil,
+		},
+		{
+			query: `RETRY TASK GROUP "*" NOWAIT`,
+			exp:   &spqrparser.RetryMoveTaskGroup{ID: "*", NoWait: true},
+			err:   nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 

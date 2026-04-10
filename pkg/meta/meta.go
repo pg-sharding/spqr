@@ -585,10 +585,20 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return tts, nil
 	case *spqrparser.ShardDefinition:
-		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
+		shardCfg := &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
-		})
+		}
+		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
+		if needsTLS {
+			shardCfg.TLS = &config.TLSConfig{
+				SslMode:      stmt.SslMode,
+				CertFile:     stmt.CertFile,
+				KeyFile:      stmt.KeyFile,
+				RootCertFile: stmt.RootCertFile,
+			}
+		}
+		dataShard := topology.NewDataShard(stmt.Id, shardCfg)
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
 			return nil, err
 		}
@@ -678,6 +688,40 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
+	case *spqrparser.AlterShard:
+		existing, err := mngr.GetShard(ctx, stmt.Id)
+		if err != nil {
+			return nil, err
+		}
+		if len(stmt.Hosts) > 0 {
+			existing.Cfg.RawHosts = stmt.Hosts
+		}
+		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
+		if needsTLS && existing.Cfg.TLS == nil {
+			existing.Cfg.TLS = &config.TLSConfig{}
+		}
+		if stmt.SslMode != "" {
+			existing.Cfg.TLS.SslMode = stmt.SslMode
+		}
+		if stmt.CertFile != "" {
+			existing.Cfg.TLS.CertFile = stmt.CertFile
+		}
+		if stmt.KeyFile != "" {
+			existing.Cfg.TLS.KeyFile = stmt.KeyFile
+		}
+		if stmt.RootCertFile != "" {
+			existing.Cfg.TLS.RootCertFile = stmt.RootCertFile
+		}
+		if err := mngr.UpdateShard(ctx, existing); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard"),
+			Raw: [][][]byte{
+				{fmt.Appendf(nil, "shard id -> %s", stmt.Id)},
+			},
+		}
+		return tts, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1179,22 +1223,9 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 		return tts, nil
 	case *spqrparser.StopMoveTaskGroup:
-		var tgs map[string]*tasks.MoveTaskGroup
-		if stmt.ID == "*" {
-			var err error
-			tgs, err = mgr.ListMoveTaskGroups(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-		} else {
-			tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
-			if tg != nil {
-				tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
-			}
+		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
+		if err != nil {
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1210,20 +1241,23 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.RetryMoveTaskGroup:
-		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
+		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
 		if err != nil {
-			return nil, err
-		}
-		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID, stmt.NoWait); err != nil {
 			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"),
 		}
-		if taskGroup != nil {
+
+		for id, taskGroup := range tgs {
+			if err := mgr.RetryMoveTaskGroup(ctx, id, stmt.NoWait); err != nil {
+				return nil, err
+			}
+
 			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
 		}
+
 		return tts, nil
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
@@ -2176,4 +2210,25 @@ func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTa
 	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
+}
+
+func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector string) (map[string]*tasks.MoveTaskGroup, error) {
+	var tgs map[string]*tasks.MoveTaskGroup
+	if selector == "*" {
+		var err error
+		tgs, err = mgr.ListMoveTaskGroups(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tg, err := mgr.GetMoveTaskGroup(ctx, selector)
+		if err != nil {
+			return nil, err
+		}
+		if tg != nil {
+			tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
+		}
+	}
+
+	return tgs, nil
 }

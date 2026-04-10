@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -27,8 +28,9 @@ type LocalInstanceMetadataMgr struct {
 	cache *cache.SchemaCache
 
 	updateShardsMapping bool
-	shardMapping        map[string]*config.Shard
-	shardMappingMutex   sync.Mutex
+	shardMapping        sync.Map
+
+	poolShardHosts shard.ShardHostIterator
 }
 
 const DefaultRouterId = "r1"
@@ -215,18 +217,47 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Msg("adding datashard node in local coordinator")
 
 	if lc.updateShardsMapping {
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds.Cfg
-		lc.shardMappingMutex.Unlock()
+		lc.shardMapping.Store(ds.ID, ds.Cfg)
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
+func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topology.DataShard) error {
+	spqrlog.Zero.Info().
+		Str("node", ds.ID).
+		Msg("updating datashard node in local coordinator")
+
+	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+		return err
+	}
+	if lc.updateShardsMapping {
+		lc.shardMapping.Store(ds.ID, ds.Cfg)
+	}
+	return lc.invalidatePoolsForShard(ds.ID)
+}
+
+func (lc *LocalInstanceMetadataMgr) invalidatePoolsForShard(shardID string) error {
+	if lc.poolShardHosts == nil {
+		return nil
+	}
+
+	err := lc.poolShardHosts.ForEach(func(sh shard.ShardHostCtl) error {
+		if sh.ShardKeyName() == shardID {
+			sh.MarkStale()
+		}
+		return nil
+	})
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).
+			Str("shard", shardID).
+			Msg("pool invalidation: error iterating connections")
+	}
+	return err
+}
+
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
 	if lc.updateShardsMapping {
-		lc.shardMappingMutex.Lock()
-		delete(lc.shardMapping, shardId)
-		lc.shardMappingMutex.Unlock()
+		lc.shardMapping.Delete(shardId)
 	}
 	return lc.qdb.DropShard(ctx, shardId)
 }
@@ -448,16 +479,26 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 // NewLocalInstanceMetadataMgr creates a new LocalCoordinator instance.
 //
 // Parameters:
-// - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//   - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//   - poolShardHosts: optional iterator (e.g. router rule-router pools) used
+//     after shard updates to mark stale connections for the affected shard.
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard, updateShardsMapping bool) meta.EntityMgr {
-	return &LocalInstanceMetadataMgr{
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
+	shardMapping map[string]*config.Shard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
+
+	lc := &LocalInstanceMetadataMgr{
 		Coordinator:         NewCoordinator(db, d),
 		cache:               cache,
-		shardMapping:        shardMapping,
-		shardMappingMutex:   sync.Mutex{},
+		shardMapping:        sync.Map{},
 		updateShardsMapping: updateShardsMapping,
+		poolShardHosts:      poolShardHosts,
 	}
+
+	for k, v := range shardMapping {
+		lc.shardMapping.Store(k, v)
+	}
+
+	return lc
 }
