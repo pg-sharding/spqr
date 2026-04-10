@@ -156,7 +156,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	case *lyx.AExprOp:
 
 		if config.RouterConfig().Qr.StrictOperators {
-			if texpr.Op != "=" {
+			if texpr.Op != "=" && texpr.Op != "and" && texpr.Op != "or" {
 				return nil
 			}
 		}

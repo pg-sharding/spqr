@@ -232,18 +232,18 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	return rs, nil
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, expr lyx.Node) error {
+
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
+
 	if off == -1 {
 		// column not from distr key
 		return nil
 	}
 
-	for _, expr := range exprs {
-		/* simple key-value pair */
-		if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-			return err
-		}
+	/* simple key-value pair */
+	if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
+		return err
 	}
 
 	return nil
@@ -269,7 +269,7 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr l
 		return nil
 	}
 
-	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr})
+	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
 }
 
 func (rm *RoutingMetadataContext) ComputeRoutingExpr(
