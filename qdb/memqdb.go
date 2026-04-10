@@ -1125,7 +1125,7 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 		// DEPRECATE this
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	} else {
-		return ds, nil
+		return ds.Copy(), nil
 	}
 }
 
@@ -1145,7 +1145,7 @@ func (q *MemQDB) relationDistributionInternal(relation *rfqn.RelationFQN) (*Dist
 	} else {
 		// if there is no distr by key ds
 		// then we have corruption
-		return q.Distributions[ds], nil
+		return q.Distributions[ds].Copy(), nil
 	}
 }
 
