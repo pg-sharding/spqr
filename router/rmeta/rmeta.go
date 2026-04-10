@@ -216,7 +216,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 	rm.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
 	for _, e := range r.GetDistributionKeyColumnNames() {
-		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], r)
+		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
 	}
 	return ds, nil
 }
