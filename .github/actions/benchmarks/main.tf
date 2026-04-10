@@ -140,6 +140,9 @@ write_files:
       set -e
       set -x
 
+      export DEBIAN_FRONTEND=noninteractive
+      export UCF_FORCE_CONFFNEW=1
+
       BUCKET="spqr-benchmark-reports"
       PR_NUMBER="${var.pr_number}"
 
@@ -162,7 +165,9 @@ write_files:
 
       echo "preparing, installing tools"
       git clone https://github.com/JoBeR007/benchbase-spqr.git
-      apt update && sudo apt upgrade -y
+      apt update && apt upgrade -y \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold"
       apt install default-jdk -y
       apt install openjdk-21-jdk -y
 
