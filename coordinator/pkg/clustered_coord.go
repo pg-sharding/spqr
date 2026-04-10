@@ -2057,6 +2057,9 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 }
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
+	if !req.Apply {
+		return nil
+	}
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
 	if err != nil {
 		return err

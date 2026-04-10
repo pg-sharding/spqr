@@ -1565,7 +1565,6 @@ redistribute_stmt:
 			DestShardID: $4,
 			BatchSize: $5,
 			Id: $6,
-			Check: true,
 			Apply: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
@@ -1574,7 +1573,8 @@ redistribute_stmt:
 			DestShardID: $4,
 			BatchSize: $5,
 			Id: $6,
-			Check: true, /* or false, doesnt matter */
+			Check: false, /* or true, doesnt matter */
+			Apply: true,
 			NoWait: true,
 		}
 	}
