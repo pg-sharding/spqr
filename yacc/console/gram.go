@@ -2922,20 +2922,20 @@ yydefault:
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
 				Id:          yyDollar[6].str,
-				Check:       true,
 				Apply:       true,
 			}
 		}
 	case 260:
 		yyDollar = yyS[yypt-7 : yypt+1]
-//line gram.y:1571
+//line gram.y:1570
 		{
 			yyVAL.redistribute = &RedistributeKeyRange{
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
 				Id:          yyDollar[6].str,
-				Check:       true, /* or false, doesnt matter */
+				Check:       false, /* or true, doesnt matter */
+				Apply:       true,
 				NoWait:      true,
 			}
 		}
