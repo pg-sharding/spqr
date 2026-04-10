@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
@@ -1230,7 +1231,12 @@ func (qr *ProxyQrouter) plannerV1(
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
-	if config.RouterConfig().Qr.AllowPostProcessing {
+	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
+	if err != nil {
+		return nil, err
+	}
+
+	if guc.Get(rm.SPH) {
 		p, err = qr.addSortToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err
@@ -1520,7 +1526,12 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		if !rm.SPH.AllowSplitUpdate() {
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_SPLIT_UPDATE)
+		if err != nil {
+			return nil, err
+		}
+
+		if !guc.Get(rm.SPH) {
 			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
 		}
 
