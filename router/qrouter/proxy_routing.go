@@ -126,10 +126,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					return nil, err
 				}
 
-				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
-				if err != nil {
-					return nil, err
-				}
+				cols := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
 
 				for i, colRef := range subS.TargetList {
 					switch cc := colRef.(type) {
@@ -1430,10 +1427,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				/* We are updating non-distributed relation */
 				return nil, nil
 			}
-			distribCols, err = r.GetDistributionKeyColumnNames()
-			if err != nil {
-				return nil, err
-			}
+			distribCols = r.GetDistributionKeyColumnNames()
 
 			if len(distribCols) != 1 {
 				/* TODO: multi-column support here */
@@ -1468,8 +1462,6 @@ func (qr *ProxyQrouter) planSplitUpdate(
 						return nil, err
 					}
 
-					spqrlog.Zero.Debug().Msgf("rm params %+v", rm.Exprs)
-
 					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
 					krs, err := rm.Mgr.ListKeyRanges(ctx, d.Id)
@@ -1479,7 +1471,6 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 					hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
 					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 						return nil, err
 					}
 
@@ -1509,8 +1500,8 @@ func (qr *ProxyQrouter) planSplitUpdate(
 						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
 						return nil, err
 					}
-					et = currroute
 
+					et = currroute
 				}
 			default:
 				return nil, rerrors.ErrComplexQuery

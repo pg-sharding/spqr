@@ -71,6 +71,8 @@ type RoutingMetadataContext struct {
 	Is_SPQR_CTID  bool
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+
+	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
@@ -88,22 +90,23 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	csm connmgr.ConnectionMgr,
 	mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:          map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:  map[rfqn.RelationFQN]struct{}{},
-		CteNames:      map[string]struct{}{},
-		TableAliases:  map[string]rfqn.RelationFQN{},
-		CTEAliases:    map[string]string{},
-		Exprs:         map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:     map[rfqn.RelationFQN]map[string][]int{},
-		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-		AuxValues:     map[AuxValuesKey][]lyx.Node{},
-		SPH:           sph,
-		CSM:           csm,
-		Mgr:           mgr,
-		Query:         query,
-		Stmt:          stmt,
-		ro:            false,
-		ClientRule:    ClientRule,
+		Rels:                       map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
+		CteNames:                   map[string]struct{}{},
+		TableAliases:               map[string]rfqn.RelationFQN{},
+		CTEAliases:                 map[string]string{},
+		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:                  map[rfqn.RelationFQN]map[string][]int{},
+		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
+		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
+		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
+		SPH:                        sph,
+		CSM:                        csm,
+		Mgr:                        mgr,
+		Query:                      query,
+		Stmt:                       stmt,
+		ro:                         false,
+		ClientRule:                 ClientRule,
 	}
 }
 
@@ -211,6 +214,10 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 	}
 
 	rm.Distributions[*resolvedRelation] = ds
+	r := ds.GetRelation(resolvedRelation)
+	for _, e := range r.GetDistributionKeyColumnNames() {
+		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], r)
+	}
 	return ds, nil
 }
 
@@ -242,6 +249,13 @@ func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *
 		routingMeta.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
 	}
 	routingMeta.ParamRefs[*resolvedRelation][colname] = append(routingMeta.ParamRefs[*resolvedRelation][colname], ind)
+	return nil
+}
+
+func (rm *RoutingMetadataContext) TryResolveByDistributionColumn(colname string) *rfqn.RelationFQN {
+	if l, ok := rm.RelationsByDistributionCol[colname]; ok && len(l) == 1 {
+		return l[0]
+	}
 	return nil
 }
 
