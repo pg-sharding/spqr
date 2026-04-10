@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -15,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -47,6 +49,23 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 			},
 		},
 	)
+}
+
+func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) {
+	/* TODO: handle errors */
+	_ = cl.Send(
+		&pgproto3.RowDescription{
+			Fields: tts.Desc,
+		},
+	)
+
+	for _, r := range tts.Raw {
+		_ = cl.Send(
+			&pgproto3.DataRow{
+				Values: r,
+			},
+		)
+	}
 }
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
@@ -292,59 +311,108 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+					session.SPQR_DISTRIBUTION)
+
 			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTED_RELATION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+					session.SPQR_DISTRIBUTED_RELATION)
 
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
+
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("default route behaviour"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(rst.Client().DefaultRouteBehaviour())
+
+				/* XXX: move this call out of this function */
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 			case session.SPQR_REPLY_NOTICE:
 
-				if rst.Client().ShowNoticeMsg() {
-					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("true"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("false"))
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("show notice messages"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
 				}
+
+				if rst.Client().ShowNoticeMsg() {
+					tts.WriteDataRow("true")
+				} else {
+					tts.WriteDataRow("false")
+				}
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
 			case session.SPQR_MAINTAIN_PARAMS:
 
-				if rst.Client().MaintainParams() {
-					ReplyVirtualParamState(rst.Client(), "maintain params", []byte("true"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "maintain params", []byte("false"))
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("maintain params"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
 				}
 
-			case session.SPQR_SHARDING_KEY:
-				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
-			case session.SPQR_SCATTER_QUERY:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_SCATTER_QUERY),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+				if rst.Client().MaintainParams() {
+					tts.WriteDataRow("true")
+				} else {
+					tts.WriteDataRow("false")
+				}
 
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+			case session.SPQR_SHARDING_KEY:
+
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("sharding key"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(rst.Client().ShardingKey())
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
+			case session.SPQR_SCATTER_QUERY:
+				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+					session.SPQR_SCATTER_QUERY)
 			case session.SPQR_EXECUTE_ON:
-				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
+
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("execute on"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(rst.Client().ExecuteOn())
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
 			case session.SPQR_ENGINE_V2:
 				if rst.Client().EnhancedMultiShardProcessing() {
 					ReplyVirtualParamState(rst.Client(), "engine v2", []byte("on"))
@@ -356,18 +424,59 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
+
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("target session attrs"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(string(rst.Client().GetTsa()))
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
 			case session.SPQR_PREFERRED_ENGINE:
 				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
 			case session.SPQR_ALLOW_SPLIT_UPDATE:
 
-				if rst.Client().AllowSplitUpdate() {
-					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("on"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("allow split update"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
 				}
+
+				if rst.Client().AllowSplitUpdate() {
+					tts.WriteDataRow("true")
+				} else {
+					tts.WriteDataRow("false")
+				}
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
 			case session.SPQR_COMMIT_STRATEGY:
-				ReplyVirtualParamState(rst.Client(), "commit strategy", []byte(rst.Client().CommitStrategy()))
+
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("commit strategy"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(string(rst.Client().CommitStrategy()))
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
