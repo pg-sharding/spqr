@@ -194,8 +194,6 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 			return nil, err
 		}
 
-		spqrlog.Zero.Debug().Str("qname", relation.QualifiedName().String()).Msgf("!!J!IUHU!HU!HU %v %T", tmp, tmp)
-
 		queryPlan = plan.Combine(queryPlan, tmp)
 	}
 
