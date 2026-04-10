@@ -1,0 +1,68 @@
+\c spqr-console
+CREATE DISTRIBUTION d (integer);
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE KEY RANGE k1 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 11
+(1 row)
+
+CREATE KEY RANGE k0 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE RELATION r(i);
+     attach table     
+----------------------
+ relation name   -> r
+ distribution id -> d
+(2 rows)
+
+\c regress
+SET __spqr__reply_notice TO false;
+CREATE TABLE r(i int, j int, c int);
+\d+ r
+\dt+ r
+                                  List of relations
+ Schema | Name | Type  | Owner  | Persistence | Access method |  Size   | Description 
+--------+------+-------+--------+-------------+---------------+---------+-------------
+ public | r    | table | reshke | permanent   | heap          | 0 bytes | 
+(1 row)
+
+\dp+ r
+                            Access privileges
+ Schema | Name | Type  | Access privileges | Column privileges | Policies 
+--------+------+-------+-------------------+-------------------+----------
+ public | r    | table |                   |                   | 
+(1 row)
+
+CREATE INDEX ON r USING btree(i);
+\d+ r
+\dt+ r
+                                  List of relations
+ Schema | Name | Type  | Owner  | Persistence | Access method |  Size   | Description 
+--------+------+-------+--------+-------------+---------------+---------+-------------
+ public | r    | table | reshke | permanent   | heap          | 0 bytes | 
+(1 row)
+
+\dp+ r
+                            Access privileges
+ Schema | Name | Type  | Access privileges | Column privileges | Policies 
+--------+------+-------+-------------------+-------------------+----------
+ public | r    | table |                   |                   | 
+(1 row)
+
+DROP TABLE r;
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ d
+(1 row)
+
