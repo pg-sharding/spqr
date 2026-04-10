@@ -221,6 +221,7 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 
 // TODO : unit tests
 func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
+	spqrlog.Zero.Debug().Str("qname", resolvedRelation.String()).Str("col", colname).Msgf("!J!JHU!J!UH!U RECORD %+v", expr)
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
 		rm.Exprs[*resolvedRelation] = map[string][]any{}

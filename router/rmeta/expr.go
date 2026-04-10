@@ -266,7 +266,7 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr l
 
 	if err != nil {
 		// failed to resolve relation, skip column
-		return nil
+		return err
 	}
 
 	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
