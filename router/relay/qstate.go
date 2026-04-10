@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -47,6 +48,23 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 			},
 		},
 	)
+}
+
+func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) {
+	/* TODO: handle errors */
+	_ = cl.Send(
+		&pgproto3.RowDescription{
+			Fields: tts.Desc,
+		},
+	)
+
+	for _, r := range tts.Raw {
+		_ = cl.Send(
+			&pgproto3.DataRow{
+				Values: r,
+			},
+		)
+	}
 }
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
@@ -292,35 +310,51 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+					session.SPQR_DISTRIBUTION)
+
 			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTED_RELATION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+					session.SPQR_DISTRIBUTED_RELATION)
 
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
+
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("default route behaviour"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(rst.Client().DefaultRouteBehaviour())
+
+				/* XXX: move this call out of this function */
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 			case session.SPQR_REPLY_NOTICE:
 
-				if rst.Client().ShowNoticeMsg() {
-					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("true"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("false"))
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("show notice messages"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
 				}
+
+				if rst.Client().ShowNoticeMsg() {
+					tts.WriteDataRow("true")
+				} else {
+					tts.WriteDataRow("false")
+				}
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
 			case session.SPQR_MAINTAIN_PARAMS:
 
@@ -333,16 +367,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_SHARDING_KEY:
 				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
 			case session.SPQR_SCATTER_QUERY:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_SCATTER_QUERY),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
-
+				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+					session.SPQR_SCATTER_QUERY)
 			case session.SPQR_EXECUTE_ON:
 				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
 			case session.SPQR_ENGINE_V2:
