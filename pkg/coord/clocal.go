@@ -255,7 +255,7 @@ func (lc *LocalInstanceMetadataMgr) invalidatePoolsForShard(shardID string) erro
 		spqrlog.Zero.Error().Err(err).
 			Str("shard", shardID).
 			Msg("pool invalidation: error iterating connections")
-		return nil
+		return err
 	}
 	return nil
 }
