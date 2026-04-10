@@ -2,6 +2,7 @@ package qdb
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"time"
 
@@ -304,4 +305,18 @@ func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation,
 
 	r, ok = d.FQNRelations[fqn.String()]
 	return r, ok
+}
+
+func (d *Distribution) Copy() *Distribution {
+	retDs := &Distribution{
+		ID:            d.ID,
+		ColTypes:      d.ColTypes,
+		Relations:     map[string]*DistributedRelation{},
+		FQNRelations:  map[string]*DistributedRelation{},
+		UniqueIndexes: map[string]*UniqueIndex{},
+	}
+	maps.Copy(retDs.Relations, d.Relations)
+	maps.Copy(retDs.FQNRelations, d.FQNRelations)
+	maps.Copy(retDs.UniqueIndexes, d.UniqueIndexes)
+	return retDs
 }
