@@ -1464,7 +1464,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			case *lyx.ResTarget:
 				if rt.Name == distribCols[0] {
 
-					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, []lyx.Node{rt.Value}); err != nil {
+					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
 						return nil, err
 					}
 
