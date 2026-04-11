@@ -109,7 +109,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initialization")
 
 	// console defaults
-	rootCmd.PersistentFlags().BoolVarP(&displayGreeting, "display_greeting", "", true, "enables SPQR console greerting")
+	rootCmd.PersistentFlags().BoolVarP(&displayGreeting, "display_greeting", "", true, "enables SPQR console greeting")
 
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
