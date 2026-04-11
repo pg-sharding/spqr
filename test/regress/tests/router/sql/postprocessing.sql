@@ -8,26 +8,25 @@ CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
-CREATE DISTRIBUTED RELATION r (i HASH MURMUR) FOR DISTRIBUTION ds1;
+CREATE DISTRIBUTED RELATION r_pp (i HASH MURMUR) FOR DISTRIBUTION ds1;
 
 \c regress
 
-CREATE TABLE r(i TEXT, id INT);
+CREATE TABLE r_pp(i TEXT, id INT);
 
-insert into r(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
-
+insert into r_pp(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
 
 SET __spqr__allow_postprocessing TO false;
 
-SELECT i FROM r ORDER BY i;
-SELECT * FROM r limit 2;
+SELECT i FROM r_pp ORDER BY i;
+SELECT * FROM r_pp limit 2;
 
 SET __spqr__allow_postprocessing TO true;
 
-SELECT i FROM r ORDER BY i;
-SELECT * FROM r limit 2;
+SELECT i FROM r_pp ORDER BY i;
+SELECT * FROM r_pp limit 2;
 
-DROP TABLE r;
+DROP TABLE r_pp;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
