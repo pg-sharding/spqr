@@ -64,7 +64,7 @@ type QueryStateExecutor interface {
 	/* Copy execution */
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
-	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
+	ProcCopyComplete(query pgproto3.FrontendMessage, s bool) (txstatus.TXStatus, error)
 
 	ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error
 
