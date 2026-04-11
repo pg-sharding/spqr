@@ -42,6 +42,8 @@ var (
 
 	enhancedMultishardProcessing bool
 
+	displayGreeting bool
+
 	showNoticeMessages bool
 	pgprotoDebug       bool
 	profileFile        string
@@ -105,6 +107,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&enhancedMultishardProcessing, "enhanced_multishard_processing", "e", false, "enables SPQR query processing engine V2")
 
 	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initialization")
+
+	// console defaults
+	rootCmd.PersistentFlags().BoolVarP(&displayGreeting, "display_greeting", "", true, "enables SPQR console greerting")
 
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
