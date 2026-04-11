@@ -142,9 +142,16 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	return &emptypb.Empty{}, nil
 }
 
-func (l *LocalQrouterServer) UpdateShard(ctx context.Context, request *protos.UpdateShardRequest) (*emptypb.Empty, error) {
-	if err := l.mgr.UpdateShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
-		return nil, err
+func (l *LocalQrouterServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
+	if request.GetHosts() != nil {
+		if err := l.mgr.AlterShardHosts(ctx, request.GetId(), request.GetHosts()); err != nil {
+			return nil, err
+		}
+	}
+	if request.GetOptions() != nil {
+		if err := l.mgr.SetShardOptions(ctx, request.GetId(), request.GetOptions()); err != nil {
+			return nil, err
+		}
 	}
 	return &emptypb.Empty{}, nil
 }

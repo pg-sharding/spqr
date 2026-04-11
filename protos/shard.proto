@@ -6,28 +6,22 @@ option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
 
-message TLSConfig {
-  string sslmode = 1;
-  string cert_file = 2;
-  string key_file = 3;
-  string root_cert_file = 4;
-}
-
 message Shard {
   string id = 1;
   repeated string hosts = 2;
-  TLSConfig tls = 3;
+  map<string, string> options = 3;
 }
 
 message ShardInfo {
   string id = 1;
   repeated string hosts = 2;
+  map<string, string> options = 3;
 }
 
 service ShardService {
   rpc ListShards (google.protobuf.Empty) returns (ListShardsReply) {}
   rpc AddDataShard (AddShardRequest) returns (google.protobuf.Empty) {}
-  rpc UpdateShard (UpdateShardRequest) returns (google.protobuf.Empty) {}
+  rpc AlterShard (AlterShardRequest) returns (google.protobuf.Empty) {}
   rpc DropShard (DropShardRequest) returns (google.protobuf.Empty) {}
   rpc AddWorldShard (AddWorldShardRequest) returns (google.protobuf.Empty) {}
   rpc GetShard (ShardRequest) returns (ShardReply) {}
@@ -49,8 +43,10 @@ message AddShardRequest {
   Shard shard = 1;
 }
 
-message UpdateShardRequest {
-  Shard shard = 1;
+message AlterShardRequest {
+  string id = 1;
+  repeated string hosts = 2;
+  map<string, string> options = 3;
 }
 
 message AddWorldShardRequest {

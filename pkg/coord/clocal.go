@@ -236,20 +236,37 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
-func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topology.DataShard) error {
-	spqrlog.Zero.Info().
-		Str("node", ds.ID).
-		Msg("updating datashard node in local coordinator")
-
-	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+func (lc *LocalInstanceMetadataMgr) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	if err := lc.Coordinator.AlterShardHosts(ctx, shardID, hosts); err != nil {
 		return err
 	}
+
 	if lc.updateShardsMapping {
 		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMapping[shardID].RawHosts = hosts
 		lc.shardMappingMutex.Unlock()
 	}
-	return lc.invalidatePoolsForShard(ds.ID)
+
+	return lc.invalidatePoolsForShard(shardID)
+}
+
+func (lc *LocalInstanceMetadataMgr) AlterShardOptions(ctx context.Context, shardID string, options map[string]topology.GenericOption) error {
+	if err := lc.Coordinator.AlterShardOptions(ctx, shardID, options); err != nil {
+		return err
+	}
+
+	if lc.updateShardsMapping {
+		shard, err := lc.GetShard(ctx, shardID)
+		if err != nil {
+			return err
+		}
+
+		lc.shardMappingMutex.Lock()
+		lc.shardMapping[shardID].Options = shard.Cfg.Options
+		lc.shardMappingMutex.Unlock()
+	}
+
+	return lc.invalidatePoolsForShard(shardID)
 }
 
 func (lc *LocalInstanceMetadataMgr) invalidatePoolsForShard(shardID string) error {

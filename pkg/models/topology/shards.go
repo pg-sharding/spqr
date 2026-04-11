@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type DataShard struct {
@@ -20,7 +21,9 @@ type ShardsMgr interface {
 	AddWorldShard(ctx context.Context, shard *DataShard) error
 	ListShards(ctx context.Context) ([]*DataShard, error)
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)
-	UpdateShard(ctx context.Context, shard *DataShard) error
+	AlterShardHosts(ctx context.Context, shardID string, hosts []string) error
+	AlterShardOptions(ctx context.Context, shardID string, options map[string]GenericOption) error
+	SetShardOptions(ctx context.Context, shardID string, options map[string]string) error
 	DropShard(ctx context.Context, id string) error
 }
 
@@ -39,54 +42,6 @@ func NewDataShard(name string, cfg *config.Shard) *DataShard {
 	}
 }
 
-func tlsConfigToProto(cfg *config.TLSConfig) *proto.TLSConfig {
-	if cfg == nil {
-		return nil
-	}
-	return &proto.TLSConfig{
-		Sslmode:      cfg.SslMode,
-		CertFile:     cfg.CertFile,
-		KeyFile:      cfg.KeyFile,
-		RootCertFile: cfg.RootCertFile,
-	}
-}
-
-func tlsConfigFromProto(cfg *proto.TLSConfig) *config.TLSConfig {
-	if cfg == nil {
-		return nil
-	}
-	return &config.TLSConfig{
-		SslMode:      cfg.Sslmode,
-		CertFile:     cfg.CertFile,
-		KeyFile:      cfg.KeyFile,
-		RootCertFile: cfg.RootCertFile,
-	}
-}
-
-func TLSConfigToDB(cfg *config.TLSConfig) *qdb.TLSConfig {
-	if cfg == nil {
-		return nil
-	}
-	return &qdb.TLSConfig{
-		SslMode:      cfg.SslMode,
-		CertFile:     cfg.CertFile,
-		KeyFile:      cfg.KeyFile,
-		RootCertFile: cfg.RootCertFile,
-	}
-}
-
-func tlsConfigFromDB(cfg *qdb.TLSConfig) *config.TLSConfig {
-	if cfg == nil {
-		return nil
-	}
-	return &config.TLSConfig{
-		SslMode:      cfg.SslMode,
-		CertFile:     cfg.CertFile,
-		KeyFile:      cfg.KeyFile,
-		RootCertFile: cfg.RootCertFile,
-	}
-}
-
 // DataShardToProto converts a DataShard object to a proto.Shard object.
 // It takes a pointer to a DataShard as input and returns a pointer to a proto.Shard.
 //
@@ -97,9 +52,9 @@ func tlsConfigFromDB(cfg *qdb.TLSConfig) *config.TLSConfig {
 //   - *proto.Shard: The converted proto.Shard object.
 func DataShardToProto(shard *DataShard) *proto.Shard {
 	return &proto.Shard{
-		Hosts: shard.Cfg.Hosts(),
-		Id:    shard.ID,
-		Tls:   tlsConfigToProto(shard.Cfg.TLS),
+		Hosts:   shard.Cfg.Hosts(),
+		Id:      shard.ID,
+		Options: shard.Cfg.Options,
 	}
 }
 
@@ -114,9 +69,10 @@ func DataShardToProto(shard *DataShard) *proto.Shard {
 //   - *DataShard: The created DataShard instance.
 func DataShardFromProto(shard *proto.Shard) *DataShard {
 	return NewDataShard(shard.Id, &config.Shard{
+		TLS:      TLSConfigFromOptions(shard.Options),
 		RawHosts: shard.Hosts,
 		Type:     config.DataShard,
-		TLS:      tlsConfigFromProto(shard.Tls),
+		Options:  shard.Options,
 	})
 }
 
@@ -132,8 +88,9 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 func DataShardFromDB(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
 		RawHosts: shard.RawHosts,
+		TLS:      TLSConfigFromOptions(shard.Options),
 		Type:     config.DataShard,
-		TLS:      tlsConfigFromDB(shard.TLS),
+		Options:  shard.Options,
 	})
 }
 
@@ -141,17 +98,10 @@ func DataShardToDB(shard *DataShard) *qdb.Shard {
 	return &qdb.Shard{
 		ID:       shard.ID,
 		RawHosts: shard.Cfg.RawHosts,
-		TLS:      TLSConfigToDB(shard.Cfg.TLS),
+		Options:  shard.Cfg.Options,
 	}
 }
 
-// ShardConfigEqual reports whether two DataShards have identical configuration
-// (hosts and TLS). This is used by SyncRouterMetadata to detect shards
-// that exist on both the coordinator and the router but have drifted.
-//
-// Note: we compare Hosts() (parsed addresses) instead of RawHosts so that
-// availability-zone suffixes in the raw format don't cause spurious drift.
-// This prevents using reflect.DeepEqual on the full DataShard struct.
 func ShardConfigEqual(a, b *DataShard) bool {
 	if a == nil && b == nil {
 		return true
@@ -169,5 +119,59 @@ func ShardConfigEqual(a, b *DataShard) bool {
 		return false
 	}
 	return slices.Equal(a.Cfg.Hosts(), b.Cfg.Hosts()) &&
-		reflect.DeepEqual(a.Cfg.TLS, b.Cfg.TLS)
+		reflect.DeepEqual(a.Cfg.Options, b.Cfg.Options)
+}
+
+type GenericOptionAction int
+
+const (
+	GenericOptionActionUnspecified = iota
+	GenericOptionActionAdd
+	GenericOptionActionSet
+	GenericOptionActionDrop
+)
+
+type GenericOption struct {
+	Name   string
+	Arg    string
+	Action GenericOptionAction
+}
+
+func OptionsFromSQL(options []spqrparser.GenericOption) map[string]GenericOption {
+	m := make(map[string]GenericOption)
+
+	for _, opt := range options {
+		m[opt.Name] = GenericOption{
+			Name:   opt.Name,
+			Arg:    opt.Arg,
+			Action: GenericOptionAction(opt.Action),
+		}
+	}
+
+	return m
+}
+
+func TLSConfigFromOptions(options map[string]string) *config.TLSConfig {
+	tls := &config.TLSConfig{}
+	hasTlsOption := false
+	if v, ok := options["sslmode"]; ok {
+		tls.SslMode = v
+		hasTlsOption = true
+	}
+	if v, ok := options["key_file"]; ok {
+		tls.KeyFile = v
+		hasTlsOption = true
+	}
+	if v, ok := options["root_cert_file"]; ok {
+		tls.RootCertFile = v
+		hasTlsOption = true
+	}
+	if v, ok := options["cert_file"]; ok {
+		tls.CertFile = v
+		hasTlsOption = true
+	}
+	if !hasTlsOption {
+		return nil
+	}
+	return tls
 }

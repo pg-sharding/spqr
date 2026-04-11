@@ -27,10 +27,6 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-var validSslModes = map[string]bool{
-	"disable": true, "allow": true, "prefer": true,
-	"require": true, "verify-ca": true, "verify-full": true,
-}
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -126,6 +122,8 @@ var validSslModes = map[string]bool{
 
 	alter_relation          *AlterRelationV2
 	alter_shard             *AlterShard
+	option				   	GenericOption
+	options				   	[]GenericOption
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -204,7 +202,7 @@ var validSslModes = map[string]bool{
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
 %token <str> STALE CLIENTS
-%token <str> SSLMODE CERT_FILE KEY_FILE ROOT_CERT_FILE
+%token <str> OPTIONS
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -262,6 +260,7 @@ var validSslModes = map[string]bool{
 
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
+%type<alter_shard> shard_alter_stmt
 
 %type<icp> icp_stmt
 
@@ -282,9 +281,8 @@ var validSslModes = map[string]bool{
 %type<str> col_types_elem
 %type<bool> opt_cascade
 %type<str> opt_default_shard
-%type<shard> opt_shard_tls
-
-%type<alter_shard> alter_shard_options
+%type<options> options opt_options alter_generic_options generic_option_list alter_generic_option_list
+%type<option> generic_option_elem alter_generic_option_elem
 
 %type<statement> alter_sys_target
 
@@ -848,74 +846,90 @@ alter_stmt:
 		$$ = &Alter{Element: $2}
 	}
 	|
-	ALTER SHARD any_id alter_shard_options
+	ALTER shard_alter_stmt
 	{
-		$4.Id = $3
-		$$ = &Alter{Element: $4}
+		$$ = &Alter{Element: $2}
 	}
 
-alter_shard_options:
-	alter_shard_options SSLMODE any_val
+shard_alter_stmt:
+	SHARD any_id HOSTS any_id_list
 	{
-		if !validSslModes[$3] {
-			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
-			return 1
+		$$ = &AlterShard{
+			Shard: &ShardSelector{ID: $2},
+			Element: &AlterShardHosts{
+				Hosts: $4,
+			},
 		}
-		$$ = $1
-		$$.SslMode = $3
 	}
 	|
-	alter_shard_options WITH HOSTS any_id_list
+	SHARD any_id alter_generic_options
 	{
-		$$ = $1
-		$$.Hosts = $4
-	}
-	|
-	alter_shard_options CERT_FILE any_val
-	{
-		$$ = $1
-		$$.CertFile = $3
-	}
-	|
-	alter_shard_options KEY_FILE any_val
-	{
-		$$ = $1
-		$$.KeyFile = $3
-	}
-	|
-	alter_shard_options ROOT_CERT_FILE any_val
-	{
-		$$ = $1
-		$$.RootCertFile = $3
-	}
-	|
-	SSLMODE any_val
-	{
-		if !validSslModes[$2] {
-			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $2))
-			return 1
+		$$ = &AlterShard{
+			Shard: &ShardSelector{ID: $2},
+			Element: &AlterShardOptions{
+				Options: $3,
+			},
 		}
-		$$ = &AlterShard{SslMode: $2}
 	}
-	|
-	WITH HOSTS any_id_list
+
+options:
+	OPTIONS TOPENBR generic_option_list TCLOSEBR { $$ = $3; }
+
+opt_options:
+	options
 	{
-		$$ = &AlterShard{Hosts: $3}
+		$$ = $1
 	}
-	|
-	CERT_FILE any_val
+	| /* EMPTY */ { $$ = nil; }
+
+generic_option_list:
+	generic_option_elem
+		{
+			$$ = []GenericOption{$1};
+		}
+	| generic_option_list TCOMMA generic_option_elem
+		{
+			$$ = append($1, $3);
+		}
+
+generic_option_elem:
+	IDENT any_val
+		{
+			$$ = GenericOption{Name: $1, Arg: string($2)};
+		}
+
+alter_generic_options:
+	OPTIONS	TOPENBR alter_generic_option_list TCLOSEBR		{ $$ = $3; }
+
+alter_generic_option_list:
+	alter_generic_option_elem
 	{
-		$$ = &AlterShard{CertFile: $2}
+		$$ = []GenericOption{$1};
 	}
-	|
-	KEY_FILE any_val
+	| alter_generic_option_list TCOMMA alter_generic_option_elem
 	{
-		$$ = &AlterShard{KeyFile: $2}
+		$$ = append($1, $3);
 	}
-	|
-	ROOT_CERT_FILE any_val
+
+alter_generic_option_elem:
+	generic_option_elem
 	{
-		$$ = &AlterShard{RootCertFile: $2}
+		$$ = $1;
+	}
+	| SET generic_option_elem
+	{
+		$$ = $2;
+		$$.Action = OptionActionSet;
+	}
+	| ADD generic_option_elem
+	{
+		$$ = $2;
+		$$.Action = OptionActionAdd;
+	}
+	| DROP IDENT
+	{
+		$$ = GenericOption{Name: $2}
+		$$.Action = OptionActionDrop;
 	}
 
 distribution_alter_stmt:
@@ -1429,57 +1443,18 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list opt_shard_tls
+	SHARD any_id WITH HOSTS any_id_list opt_options
 	{
-		sd := $6
-		sd.Id = $2
-		sd.Hosts = $5
-		$$ = sd
+		$$ = &ShardDefinition{Id: $2, Hosts: $5, Options: $6}
 	}
 	|
-	SHARD WITH HOSTS any_id_list opt_shard_tls
+	SHARD WITH HOSTS any_id_list opt_options
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		sd := $5
-		sd.Id = "shard" + str
-		sd.Hosts = $4
-		$$ = sd
-	}
-
-opt_shard_tls:
-	opt_shard_tls SSLMODE any_val
-	{
-		if !validSslModes[$3] {
-			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
-			return 1
-		}
-		$$ = $1
-		$$.SslMode = $3
-	}
-	|
-	opt_shard_tls CERT_FILE any_val
-	{
-		$$ = $1
-		$$.CertFile = $3
-	}
-	|
-	opt_shard_tls KEY_FILE any_val
-	{
-		$$ = $1
-		$$.KeyFile = $3
-	}
-	|
-	opt_shard_tls ROOT_CERT_FILE any_val
-	{
-		$$ = $1
-		$$.RootCertFile = $3
-	}
-	| /* empty */
-	{
-		$$ = &ShardDefinition{}
+		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4, Options: $5}
 	}
 
 any_id_list:

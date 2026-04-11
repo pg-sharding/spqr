@@ -606,15 +606,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		shardCfg := &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
-		}
-		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
-		if needsTLS {
-			shardCfg.TLS = &config.TLSConfig{
-				SslMode:      stmt.SslMode,
-				CertFile:     stmt.CertFile,
-				KeyFile:      stmt.KeyFile,
-				RootCertFile: stmt.RootCertFile,
-			}
+			Options:  optionsToMap(stmt.Options),
 		}
 
 		dataShard := topology.NewDataShard(stmt.Id, shardCfg)
@@ -711,39 +703,10 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
 	case *spqrparser.AlterShard:
-		existing, err := mngr.GetShard(ctx, stmt.Id)
-		if err != nil {
-			return nil, err
+		if stmt.Shard == nil {
+			return nil, fmt.Errorf("failed to process 'ALTER SHARD' statement: shard ID is nil")
 		}
-		if len(stmt.Hosts) > 0 {
-			existing.Cfg.RawHosts = stmt.Hosts
-		}
-		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
-		if needsTLS && existing.Cfg.TLS == nil {
-			existing.Cfg.TLS = &config.TLSConfig{}
-		}
-		if stmt.SslMode != "" {
-			existing.Cfg.TLS.SslMode = stmt.SslMode
-		}
-		if stmt.CertFile != "" {
-			existing.Cfg.TLS.CertFile = stmt.CertFile
-		}
-		if stmt.KeyFile != "" {
-			existing.Cfg.TLS.KeyFile = stmt.KeyFile
-		}
-		if stmt.RootCertFile != "" {
-			existing.Cfg.TLS.RootCertFile = stmt.RootCertFile
-		}
-		if err := mngr.UpdateShard(ctx, existing); err != nil {
-			return nil, err
-		}
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("alter shard"),
-			Raw: [][][]byte{
-				{fmt.Appendf(nil, "shard id -> %s", stmt.Id)},
-			},
-		}
-		return tts, nil
+		return processAlterShard(ctx, stmt.Element, mngr, stmt.Shard.ID)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -2232,6 +2195,70 @@ func ProcessHelp(_ context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTabl
 	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
+}
+
+func processAlterShard(ctx context.Context,
+	astmt spqrparser.Statement,
+	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterShardHosts:
+		if err := mngr.AlterShardHosts(ctx, shardId, stmt.Hosts); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard hosts"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", shardId),
+				},
+
+				{
+					fmt.Appendf(nil, "hosts    -> %s", strings.Join(stmt.Hosts, ",")),
+				},
+			},
+		}
+
+		return tts, nil
+	case *spqrparser.AlterShardOptions:
+		optionsMap := topology.OptionsFromSQL(stmt.Options)
+		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard options"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", shardId),
+				},
+
+				{
+					fmt.Appendf(nil, "options  -> %s", optionsToTuple(optionsMap)),
+				},
+			},
+		}
+
+		return tts, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+}
+
+func optionsToMap(opts []spqrparser.GenericOption) map[string]string {
+	m := make(map[string]string)
+	for _, opt := range opts {
+		m[opt.Name] = opt.Arg
+	}
+	return m
+}
+
+func optionsToTuple(opts map[string]topology.GenericOption) []byte {
+	t := []string{}
+	for k, v := range opts {
+		t = append(t, fmt.Sprintf("%s=%v", k, v))
+	}
+	return []byte(fmt.Sprintf("{%s}", strings.Join(t, ",")))
 }
 
 func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector string) (map[string]*tasks.MoveTaskGroup, error) {

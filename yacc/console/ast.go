@@ -105,22 +105,42 @@ type KeyRangeDefinition struct {
 }
 
 type ShardDefinition struct {
-	Id           string
-	Hosts        []string
-	SslMode      string
-	CertFile     string
-	KeyFile      string
-	RootCertFile string
+	Id      string
+	Hosts   []string
+	Options []GenericOption
 }
 
-type AlterShard struct {
-	Id           string
-	SslMode      string
-	Hosts        []string
-	CertFile     string
-	KeyFile      string
-	RootCertFile string
+type GenericOption struct {
+	Action OptionAction
+	Name   string
+	Arg    string
 }
+
+type OptionAction int
+
+const (
+	OptionActionUnspecified = iota
+	OptionActionSet
+	OptionActionAdd
+	OptionActionDrop
+)
+
+type AlterShard struct {
+	Shard   *ShardSelector
+	Element Statement
+}
+
+type AlterShardHosts struct {
+	Hosts []string
+}
+
+func (*AlterShardHosts) iStatement() {}
+
+type AlterShardOptions struct {
+	Options []GenericOption
+}
+
+func (*AlterShardOptions) iStatement() {}
 
 func (*KeyRangeDefinition) iCreate()          {}
 func (*ShardDefinition) iCreate()             {}
