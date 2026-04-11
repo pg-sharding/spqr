@@ -39,6 +39,7 @@ CREATE DISTRIBUTED RELATION r_pp (i HASH MURMUR) FOR DISTRIBUTION ds1;
 \c regress
 CREATE TABLE r_pp(i TEXT, id INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 insert into r_pp(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__allow_postprocessing TO false;
