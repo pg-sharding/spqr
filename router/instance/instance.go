@@ -117,7 +117,7 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(topology.ShardMapping, frTLS, config.RouterConfig(), notifier)
+	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
 	lc := coord.NewLocalInstanceMetadataMgr(
 		db,
 		db,

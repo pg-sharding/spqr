@@ -1696,7 +1696,7 @@ func TestShard(t *testing.T) {
 				Element: &spqrparser.ShardDefinition{
 					Id: "sh1",
 					Options: []spqrparser.GenericOption{
-						{Name: "HOST", Arg: "localhost:6432"},
+						{Name: "host", Arg: "localhost:6432"},
 					},
 				},
 			},
@@ -1708,8 +1708,8 @@ func TestShard(t *testing.T) {
 				Element: &spqrparser.ShardDefinition{
 					Id: "sh1",
 					Options: []spqrparser.GenericOption{
-						{Name: "HOST", Arg: "localhost:6432"},
-						{Name: "HOST", Arg: "other_hosts:6432"},
+						{Name: "host", Arg: "localhost:6432"},
+						{Name: "host", Arg: "other_hosts:6432"},
 					},
 				},
 			},
@@ -1730,11 +1730,11 @@ func TestShard(t *testing.T) {
 				Element: &spqrparser.ShardDefinition{
 					Id: "sh1",
 					Options: []spqrparser.GenericOption{
-						{Name: "HOST", Arg: "host1:6432"},
-						{Name: "SSLMODE", Arg: "verify-full"},
-						{Name: "CERT_FILE", Arg: "/cert.pem"},
-						{Name: "KEY_FILE", Arg: "/key.pem"},
-						{Name: "ROOT_CERT_FILE", Arg: "/ca.pem"},
+						{Name: "host", Arg: "host1:6432"},
+						{Name: "sslmode", Arg: "verify-full"},
+						{Name: "cert_file", Arg: "/cert.pem"},
+						{Name: "key_file", Arg: "/key.pem"},
+						{Name: "root_cert_file", Arg: "/ca.pem"},
 					},
 				},
 			},
@@ -1747,12 +1747,12 @@ func TestShard(t *testing.T) {
 					Shard: &spqrparser.ShardSelector{ID: "sh2"},
 					Element: &spqrparser.AlterShardOptions{
 						Options: []spqrparser.GenericOption{
-							{Name: "HOST", Arg: "host:6432", Action: spqrparser.OptionActionAdd},
-							{Name: "HOST", Arg: "localhost:6432", Action: spqrparser.OptionActionDrop},
-							{Name: "SSLMODE", Arg: "verify-full", Action: spqrparser.OptionActionAdd},
-							{Name: "KEY_FILE", Arg: "/key.pem", Action: spqrparser.OptionActionSet},
-							{Name: "ROOT_CERT_FILE", Action: spqrparser.OptionActionDrop},
-							{Name: "CERT_FILE", Arg: "/cert.pem", Action: spqrparser.OptionActionUnspecified},
+							{Name: "host", Arg: "host:6432", Action: spqrparser.OptionActionAdd},
+							{Name: "host", Arg: "localhost:6432", Action: spqrparser.OptionActionDrop},
+							{Name: "sslmode", Arg: "verify-full", Action: spqrparser.OptionActionAdd},
+							{Name: "key_file", Arg: "/key.pem", Action: spqrparser.OptionActionSet},
+							{Name: "root_cert_file", Action: spqrparser.OptionActionDrop},
+							{Name: "cert_file", Arg: "/cert.pem", Action: spqrparser.OptionActionUnspecified},
 						},
 					},
 				},

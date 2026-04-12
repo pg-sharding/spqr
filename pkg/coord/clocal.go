@@ -236,6 +236,25 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
+func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	if err := lc.Coordinator.SetShardOptions(ctx, shardID, options); err != nil {
+		return err
+	}
+
+	if lc.updateShardsMapping {
+		shard, err := lc.GetShard(ctx, shardID)
+		if err != nil {
+			return err
+		}
+
+		lc.shardMappingMutex.Lock()
+		lc.shardMapping[shardID].SetOptions(shard.Options())
+		lc.shardMappingMutex.Unlock()
+	}
+
+	return lc.invalidatePoolsForShard(shardID)
+}
+
 func (lc *LocalInstanceMetadataMgr) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
 	if err := lc.Coordinator.AlterShardOptions(ctx, shardID, options); err != nil {
 		return err

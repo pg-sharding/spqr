@@ -92,6 +92,7 @@ datarow
 datashard
 datatransfer
 datname
+dboptions
 dbpool
 dbtpcc
 dbutils

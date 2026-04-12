@@ -775,7 +775,7 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 }
 
 func (q *MemQDB) AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error {
-	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard hosts")
+	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard options")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

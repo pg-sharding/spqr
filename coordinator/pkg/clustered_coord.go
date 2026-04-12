@@ -2259,7 +2259,8 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 
 		for _, sh := range needToUpdate {
 			_, err = shCl.AlterShard(ctx, &proto.AlterShardRequest{
-				Id: sh.ID,
+				Id:      sh.ID,
+				Options: topology.GenericOptionsToProto(sh.Options()),
 			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
@@ -2716,7 +2717,7 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId s
 		return err
 	}
 
-	shard, err := qc.Coordinator.GetShard(ctx, shardId)
+	shard, err := qc.GetShard(ctx, shardId)
 	if err != nil {
 		return err
 	}

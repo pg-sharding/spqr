@@ -2221,14 +2221,6 @@ func processAlterShard(ctx context.Context,
 	}
 }
 
-func optionsToMap(opts []spqrparser.GenericOption) map[string]string {
-	m := make(map[string]string)
-	for _, opt := range opts {
-		m[opt.Name] = opt.Arg
-	}
-	return m
-}
-
 func optionsToTuple(opts []topology.GenericOption) []byte {
 	t := []string{}
 	for _, v := range opts {

@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -195,10 +194,7 @@ const (
 )
 
 type Shard struct {
-	RawHosts        []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
-	parsedHosts     []Host
-	parsedAddresses []string
-	once            sync.Once
+	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`

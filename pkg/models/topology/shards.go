@@ -333,16 +333,6 @@ func TLSConfigToOptions(tls *config.TLSConfig) []GenericOption {
 	return options
 }
 
-func hostsFromOptions(options []GenericOption) []string {
-	hosts := make([]string, 0)
-	for _, opt := range options {
-		if opt.Name == "host" {
-			hosts = append(hosts, opt.Arg)
-		}
-	}
-	return hosts
-}
-
 func hostsToOptions(hosts []string) []GenericOption {
 	options := make([]GenericOption, 0, len(hosts))
 	for _, host := range hosts {

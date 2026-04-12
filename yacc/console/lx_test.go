@@ -302,7 +302,7 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: `ALTER SHARD sh1 OPTIONS (HOST "anotherhost:6432")`,
+			query: `ALTER SHARD sh1 OPTIONS (HOST "other_host:6432")`,
 			exp: []int{
 				spqrparser.ALTER,
 				spqrparser.SHARD,
