@@ -26,6 +26,7 @@ test: part_table
 test: target_list_routing
 test: reference_table
 test: insert_processing
+test: insert_processing_hash
 test: sequence
 test: cte
 test: cte_hashed
