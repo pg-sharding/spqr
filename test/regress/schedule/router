@@ -51,3 +51,4 @@ test: default_shard_uuid
 test: set_param
 test: schema_qual
 test: postprocessing
+test: virtual_func

@@ -71,7 +71,6 @@ WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
 
 TRUNCATE table1;
 
-
 -- disable v1 logic, now CTE fails
 SET __spqr__preferred_engine to 'v2';
 
