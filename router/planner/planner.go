@@ -652,7 +652,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		if len(args) != 1 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of agrumnets for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
 		}
 
 		k, err := parseStringFuncArg(fname, args[0])
@@ -696,7 +696,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		/* First arg is SPQR distribution name, second arg is
 		* routing key itself */
 		if len(args) != 2 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of agrumnets for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
 		}
 
 		id, err := parseStringFuncArg(fname, args[0])
