@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -1733,9 +1734,9 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(config.RouterConfig().ShardMapping) == 1 {
+		if len(topology.ShardMapping) == 1 {
 			firstShard := ""
-			for s := range config.RouterConfig().ShardMapping {
+			for s := range topology.ShardMapping {
 				firstShard = s
 			}
 

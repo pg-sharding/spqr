@@ -4,13 +4,12 @@ REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
  router -> r1-[regress_router]:7000
 (1 row)
 
-ALTER SHARD sh1 SSLMODE 'invalid';
-ERROR:  failed to parse query "ALTER SHARD sh1 SSLMODE 'invalid';": invalid sslmode "invalid"; valid values are: disable, allow, prefer, require, verify-ca, verify-full
-ALTER SHARD sh1 SSLMODE 'require';
-   alter shard   
------------------
+ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
+          alter shard          
+-------------------------------
  shard id -> sh1
-(1 row)
+ options  -> {sslmode=require}
+(2 rows)
 
 UNREGISTER ROUTER ALL;
  unregister router 

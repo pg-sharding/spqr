@@ -1691,23 +1691,25 @@ func TestShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432";`,
+			query: `CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432');`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
-					Id:    "sh1",
-					Hosts: []string{"localhost:6432"},
+					Id: "sh1",
+					Options: []spqrparser.GenericOption{
+						{Name: "HOST", Arg: "localhost:6432"},
+					},
 				},
 			},
 			err: nil,
 		},
 		{
-			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432", "other_hosts:6432";`,
+			query: `CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432', HOST 'other_hosts:6432');`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
 					Id: "sh1",
-					Hosts: []string{
-						"localhost:6432",
-						"other_hosts:6432",
+					Options: []spqrparser.GenericOption{
+						{Name: "HOST", Arg: "localhost:6432"},
+						{Name: "HOST", Arg: "other_hosts:6432"},
 					},
 				},
 			},
@@ -1723,12 +1725,12 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: `CREATE SHARD sh1 WITH HOSTS "host1:6432" OPTIONS (SSLMODE 'verify-full', CERT_FILE '/cert.pem', KEY_FILE '/key.pem', ROOT_CERT_FILE '/ca.pem');`,
+			query: `CREATE SHARD sh1 OPTIONS (HOST "host1:6432", SSLMODE 'verify-full', CERT_FILE '/cert.pem', KEY_FILE '/key.pem', ROOT_CERT_FILE '/ca.pem');`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
-					Id:    "sh1",
-					Hosts: []string{"host1:6432"},
+					Id: "sh1",
 					Options: []spqrparser.GenericOption{
+						{Name: "HOST", Arg: "host1:6432"},
 						{Name: "SSLMODE", Arg: "verify-full"},
 						{Name: "CERT_FILE", Arg: "/cert.pem"},
 						{Name: "KEY_FILE", Arg: "/key.pem"},
@@ -1739,29 +1741,19 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER SHARD sh2 OPTIONS (ADD SSLMODE 'verify-full', SET KEY_FILE '/key.pem', DROP ROOT_CERT_FILE, CERT_FILE '/cert.pem');",
+			query: "ALTER SHARD sh2 OPTIONS (ADD HOST 'host:6432', DROP HOST 'localhost:6432', ADD SSLMODE 'verify-full', SET KEY_FILE '/key.pem', DROP ROOT_CERT_FILE, CERT_FILE '/cert.pem');",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
 					Shard: &spqrparser.ShardSelector{ID: "sh2"},
 					Element: &spqrparser.AlterShardOptions{
 						Options: []spqrparser.GenericOption{
+							{Name: "HOST", Arg: "host:6432", Action: spqrparser.OptionActionAdd},
+							{Name: "HOST", Arg: "localhost:6432", Action: spqrparser.OptionActionDrop},
 							{Name: "SSLMODE", Arg: "verify-full", Action: spqrparser.OptionActionAdd},
 							{Name: "KEY_FILE", Arg: "/key.pem", Action: spqrparser.OptionActionSet},
 							{Name: "ROOT_CERT_FILE", Action: spqrparser.OptionActionDrop},
 							{Name: "CERT_FILE", Arg: "/cert.pem", Action: spqrparser.OptionActionUnspecified},
 						},
-					},
-				},
-			},
-			err: nil,
-		},
-		{
-			query: "ALTER SHARD sh1 HOSTS 'host1:5432', 'host2:5432';",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterShard{
-					Shard: &spqrparser.ShardSelector{ID: "sh1"},
-					Element: &spqrparser.AlterShardHosts{
-						Hosts: []string{"host1:5432", "host2:5432"},
 					},
 				},
 			},

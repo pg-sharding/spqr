@@ -773,22 +773,8 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 }
-func (q *MemQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard hosts")
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
-	shard, ok := q.Shards[shardID]
-	if !ok {
-		return fmt.Errorf("shard with id %s not found", shard.ID)
-	}
-
-	shard.RawHosts = hosts
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
-}
-
-func (q *MemQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+func (q *MemQDB) AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error {
 	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard hosts")
 	q.mu.Lock()
 	defer q.mu.Unlock()

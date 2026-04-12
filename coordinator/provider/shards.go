@@ -39,13 +39,8 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 }
 
 func (s *ShardServer) UpdateShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
-	if request.GetHosts() != nil {
-		if err := s.impl.AlterShardHosts(ctx, request.GetId(), request.GetHosts()); err != nil {
-			return nil, err
-		}
-	}
 	if request.GetOptions() != nil {
-		if err := s.impl.SetShardOptions(ctx, request.GetId(), request.GetOptions()); err != nil {
+		if err := s.impl.SetShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions())); err != nil {
 			return nil, err
 		}
 	}

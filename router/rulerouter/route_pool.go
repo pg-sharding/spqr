@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -28,12 +29,12 @@ type RoutePool interface {
 type RoutePoolImpl struct {
 	/*  route.Key -> *route.Route */
 	pool         sync.Map
-	shardMapping map[string]*config.Shard
+	shardMapping map[string]*topology.DataShard
 }
 
 var _ RoutePool = &RoutePoolImpl{}
 
-func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
+func NewRouterPoolImpl(shardMapping map[string]*topology.DataShard) *RoutePoolImpl {
 	return &RoutePoolImpl{
 		shardMapping: shardMapping,
 		pool:         sync.Map{},

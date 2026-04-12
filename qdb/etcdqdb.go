@@ -1118,22 +1118,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
-func (q *EtcdQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	spqrlog.Zero.Debug().
-		Str("id", shardID).
-		Msg("etcdqdb: alter shard hosts")
-
-	shard, err := q.GetShard(ctx, shardID)
-	if err != nil {
-		return err
-	}
-
-	shard.RawHosts = hosts
-
-	return q.alterShard(ctx, shard)
-}
-
-func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error {
 	spqrlog.Zero.Debug().
 		Str("id", shardID).
 		Msg("etcdqdb: alter shard options")

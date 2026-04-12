@@ -17,7 +17,7 @@ func TestValidateDataShardHostsAcceptsReachableHost(t *testing.T) {
 		_ = listener.Close()
 	}()
 
-	err = ValidateDataShardHosts(context.Background(), NewDataShard("sh-ok", &config.Shard{
+	err = ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-ok", &config.Shard{
 		RawHosts: []string{listener.Addr().String()},
 		Type:     config.DataShard,
 	}))
@@ -43,7 +43,7 @@ func TestValidateDataShardHostsRejectsUnreachableHost(t *testing.T) {
 		return ""
 	}()
 
-	err := ValidateDataShardHosts(context.Background(), NewDataShard("sh-bad", &config.Shard{
+	err := ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-bad", &config.Shard{
 		RawHosts: []string{addr},
 		Type:     config.DataShard,
 	}))
@@ -51,7 +51,7 @@ func TestValidateDataShardHostsRejectsUnreachableHost(t *testing.T) {
 }
 
 func TestValidateDataShardHostsRejectsEmptyHosts(t *testing.T) {
-	err := ValidateDataShardHosts(context.Background(), NewDataShard("sh-empty", &config.Shard{
+	err := ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-empty", &config.Shard{
 		RawHosts: []string{},
 		Type:     config.DataShard,
 	}))
@@ -59,7 +59,7 @@ func TestValidateDataShardHostsRejectsEmptyHosts(t *testing.T) {
 }
 
 func TestValidateDataShardHostsRejectsUnsupportedHostFormat(t *testing.T) {
-	err := ValidateDataShardHosts(context.Background(), NewDataShard("sh-format", &config.Shard{
+	err := ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-format", &config.Shard{
 		RawHosts: []string{"host:1:az:extra"},
 		Type:     config.DataShard,
 	}))

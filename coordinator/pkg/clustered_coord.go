@@ -595,18 +595,15 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 
 		if shards != nil {
-			for id, cfg := range shards.ShardsData {
+			topologyMap := topology.DataShardMapFromShardConnectConfig(shards.ShardsData)
+			for id, shard := range topologyMap {
 				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
 					spqrlog.Zero.Debug().
 						Str("shard", id).
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.AddDataShard(context.TODO(), topology.NewDataShard(id, &config.Shard{
-					RawHosts: cfg.Hosts,
-					Type:     config.DataShard,
-					TLS:      cfg.TLS,
-				})); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -2714,28 +2711,7 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 	return nil
 }
 
-func (qc *ClusteredCoordinator) AlterShardHosts(ctx context.Context, shardId string, hosts []string) error {
-	if err := qc.Coordinator.AlterShardHosts(ctx, shardId, hosts); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		c := proto.NewShardServiceClient(cc)
-		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
-			Id:    shardId,
-			Hosts: hosts,
-		})
-		if err != nil {
-			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
-				return fmt.Errorf("router does not support AlterShardHosts RPC; please upgrade all routers to a version that supports it")
-			}
-			return err
-		}
-		return nil
-	})
-}
-
-func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId string, options map[string]topology.GenericOption) error {
+func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId string, options []topology.GenericOption) error {
 	if err := qc.Coordinator.AlterShardOptions(ctx, shardId, options); err != nil {
 		return err
 	}
@@ -2749,11 +2725,11 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId s
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
 			Id:      shardId,
-			Options: shard.Cfg.Options,
+			Options: topology.GenericOptionsToProto(shard.Options()),
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
-				return fmt.Errorf("router does not support AlterShardHosts RPC; please upgrade all routers to a version that supports it")
+				return fmt.Errorf("router does not support AlterShardOptions RPC; please upgrade all routers to a version that supports it")
 			}
 			return err
 		}

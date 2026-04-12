@@ -5,15 +5,16 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 func TestDBPool_BackgroundHealthCheck(_ *testing.T) {
 	// Create shard mapping
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas", "host2:5432:klg"},
-		},
+		}),
 	}
 
 	// Create DBPool with background health checking enabled (short interval for test)
@@ -43,10 +44,10 @@ func TestDBPool_BackgroundHealthCheck(_ *testing.T) {
 
 func TestDBPool_BackgroundHealthCheckDisabled(_ *testing.T) {
 	// Create shard mapping
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas"},
-		},
+		}),
 	}
 
 	// Create DBPool with background health checking disabled

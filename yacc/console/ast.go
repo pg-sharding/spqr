@@ -106,7 +106,6 @@ type KeyRangeDefinition struct {
 
 type ShardDefinition struct {
 	Id      string
-	Hosts   []string
 	Options []GenericOption
 }
 
@@ -129,12 +128,6 @@ type AlterShard struct {
 	Shard   *ShardSelector
 	Element Statement
 }
-
-type AlterShardHosts struct {
-	Hosts []string
-}
-
-func (*AlterShardHosts) iStatement() {}
 
 type AlterShardOptions struct {
 	Options []GenericOption

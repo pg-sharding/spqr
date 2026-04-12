@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	shardmock "github.com/pg-sharding/spqr/pkg/mock/shard"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/qdb"
 	mock "github.com/pg-sharding/spqr/qdb/mock"
@@ -22,7 +22,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockXQDB(ctrl)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil)
 
 	krs := []*qdb.KeyRange{
 		{
@@ -102,7 +102,9 @@ func TestLocalInstanceMetadataMgr_UpdateShard_invalidatesMatchingPoolHosts(t *te
 	shCtl.EXPECT().MarkStale()
 
 	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter)
-	err = mgr.AlterShardHosts(ctx, "sh1", []string{"h2:5432"})
+	err = mgr.AlterShardOptions(ctx, "sh1", []topology.GenericOption{
+		{Name: "HOST", Arg: "host1:6432", Action: topology.GenericOptionActionAdd},
+	})
 	require.NoError(t, err)
 }
 
@@ -122,6 +124,8 @@ func TestLocalInstanceMetadataMgr_UpdateShard_skipsStaleForNonMatchingShardKey(t
 	shCtl.EXPECT().ShardKeyName().Return("other")
 
 	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter)
-	err = mgr.AlterShardHosts(ctx, "sh1", []string{"h2:5432"})
+	err = mgr.AlterShardOptions(ctx, "sh1", []topology.GenericOption{
+		{Name: "HOST", Arg: "host1:6432", Action: topology.GenericOptionActionAdd},
+	})
 	require.NoError(t, err)
 }

@@ -6,19 +6,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type SchemaCache struct {
 	tableColumnsCache sync.Map
-	shardMapping      map[string]*config.Shard
+	shardMapping      map[string]*topology.DataShard
 	be                *config.BackendRule
 
 	pool *pool.MultiDBPool
 }
 
-func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRule) *SchemaCache {
+func NewSchemaCache(shardMapping map[string]*topology.DataShard, be *config.BackendRule) *SchemaCache {
 	poolSize := config.ValueOrDefaultInt(config.RouterConfig().MultiDBPoolSize, 5)
 	p := pool.NewMultiDBPool(shardMapping, be, poolSize)
 

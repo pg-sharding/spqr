@@ -25,8 +25,7 @@ const (
 type Shard struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Hosts         []string               `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
-	Options       map[string]string      `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Options       []*GenericOption       `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -68,32 +67,76 @@ func (x *Shard) GetId() string {
 	return ""
 }
 
-func (x *Shard) GetHosts() []string {
-	if x != nil {
-		return x.Hosts
-	}
-	return nil
-}
-
-func (x *Shard) GetOptions() map[string]string {
+func (x *Shard) GetOptions() []*GenericOption {
 	if x != nil {
 		return x.Options
 	}
 	return nil
 }
 
+type GenericOption struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenericOption) Reset() {
+	*x = GenericOption{}
+	mi := &file_protos_shard_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenericOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenericOption) ProtoMessage() {}
+
+func (x *GenericOption) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_shard_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenericOption.ProtoReflect.Descriptor instead.
+func (*GenericOption) Descriptor() ([]byte, []int) {
+	return file_protos_shard_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GenericOption) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GenericOption) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 type ShardInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Hosts         []string               `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
-	Options       map[string]string      `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Options       []*GenericOption       `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ShardInfo) Reset() {
 	*x = ShardInfo{}
-	mi := &file_protos_shard_proto_msgTypes[1]
+	mi := &file_protos_shard_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -105,7 +148,7 @@ func (x *ShardInfo) String() string {
 func (*ShardInfo) ProtoMessage() {}
 
 func (x *ShardInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[1]
+	mi := &file_protos_shard_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -118,7 +161,7 @@ func (x *ShardInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShardInfo.ProtoReflect.Descriptor instead.
 func (*ShardInfo) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{1}
+	return file_protos_shard_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ShardInfo) GetId() string {
@@ -128,14 +171,7 @@ func (x *ShardInfo) GetId() string {
 	return ""
 }
 
-func (x *ShardInfo) GetHosts() []string {
-	if x != nil {
-		return x.Hosts
-	}
-	return nil
-}
-
-func (x *ShardInfo) GetOptions() map[string]string {
+func (x *ShardInfo) GetOptions() []*GenericOption {
 	if x != nil {
 		return x.Options
 	}
@@ -151,7 +187,7 @@ type ShardReply struct {
 
 func (x *ShardReply) Reset() {
 	*x = ShardReply{}
-	mi := &file_protos_shard_proto_msgTypes[2]
+	mi := &file_protos_shard_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -163,7 +199,7 @@ func (x *ShardReply) String() string {
 func (*ShardReply) ProtoMessage() {}
 
 func (x *ShardReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[2]
+	mi := &file_protos_shard_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -176,7 +212,7 @@ func (x *ShardReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShardReply.ProtoReflect.Descriptor instead.
 func (*ShardReply) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{2}
+	return file_protos_shard_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ShardReply) GetShard() *Shard {
@@ -195,7 +231,7 @@ type ShardRequest struct {
 
 func (x *ShardRequest) Reset() {
 	*x = ShardRequest{}
-	mi := &file_protos_shard_proto_msgTypes[3]
+	mi := &file_protos_shard_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -207,7 +243,7 @@ func (x *ShardRequest) String() string {
 func (*ShardRequest) ProtoMessage() {}
 
 func (x *ShardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[3]
+	mi := &file_protos_shard_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -220,7 +256,7 @@ func (x *ShardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShardRequest.ProtoReflect.Descriptor instead.
 func (*ShardRequest) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{3}
+	return file_protos_shard_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ShardRequest) GetId() string {
@@ -239,7 +275,7 @@ type ListShardsReply struct {
 
 func (x *ListShardsReply) Reset() {
 	*x = ListShardsReply{}
-	mi := &file_protos_shard_proto_msgTypes[4]
+	mi := &file_protos_shard_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -251,7 +287,7 @@ func (x *ListShardsReply) String() string {
 func (*ListShardsReply) ProtoMessage() {}
 
 func (x *ListShardsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[4]
+	mi := &file_protos_shard_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -264,7 +300,7 @@ func (x *ListShardsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListShardsReply.ProtoReflect.Descriptor instead.
 func (*ListShardsReply) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{4}
+	return file_protos_shard_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListShardsReply) GetShards() []*Shard {
@@ -283,7 +319,7 @@ type AddShardRequest struct {
 
 func (x *AddShardRequest) Reset() {
 	*x = AddShardRequest{}
-	mi := &file_protos_shard_proto_msgTypes[5]
+	mi := &file_protos_shard_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +331,7 @@ func (x *AddShardRequest) String() string {
 func (*AddShardRequest) ProtoMessage() {}
 
 func (x *AddShardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[5]
+	mi := &file_protos_shard_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,7 +344,7 @@ func (x *AddShardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddShardRequest.ProtoReflect.Descriptor instead.
 func (*AddShardRequest) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{5}
+	return file_protos_shard_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AddShardRequest) GetShard() *Shard {
@@ -321,15 +357,14 @@ func (x *AddShardRequest) GetShard() *Shard {
 type AlterShardRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Hosts         []string               `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
-	Options       map[string]string      `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Options       []*GenericOption       `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AlterShardRequest) Reset() {
 	*x = AlterShardRequest{}
-	mi := &file_protos_shard_proto_msgTypes[6]
+	mi := &file_protos_shard_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -341,7 +376,7 @@ func (x *AlterShardRequest) String() string {
 func (*AlterShardRequest) ProtoMessage() {}
 
 func (x *AlterShardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[6]
+	mi := &file_protos_shard_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -354,7 +389,7 @@ func (x *AlterShardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterShardRequest.ProtoReflect.Descriptor instead.
 func (*AlterShardRequest) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{6}
+	return file_protos_shard_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AlterShardRequest) GetId() string {
@@ -364,14 +399,7 @@ func (x *AlterShardRequest) GetId() string {
 	return ""
 }
 
-func (x *AlterShardRequest) GetHosts() []string {
-	if x != nil {
-		return x.Hosts
-	}
-	return nil
-}
-
-func (x *AlterShardRequest) GetOptions() map[string]string {
+func (x *AlterShardRequest) GetOptions() []*GenericOption {
 	if x != nil {
 		return x.Options
 	}
@@ -387,7 +415,7 @@ type AddWorldShardRequest struct {
 
 func (x *AddWorldShardRequest) Reset() {
 	*x = AddWorldShardRequest{}
-	mi := &file_protos_shard_proto_msgTypes[7]
+	mi := &file_protos_shard_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +427,7 @@ func (x *AddWorldShardRequest) String() string {
 func (*AddWorldShardRequest) ProtoMessage() {}
 
 func (x *AddWorldShardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[7]
+	mi := &file_protos_shard_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,7 +440,7 @@ func (x *AddWorldShardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddWorldShardRequest.ProtoReflect.Descriptor instead.
 func (*AddWorldShardRequest) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{7}
+	return file_protos_shard_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AddWorldShardRequest) GetShard() *Shard {
@@ -431,7 +459,7 @@ type DropShardRequest struct {
 
 func (x *DropShardRequest) Reset() {
 	*x = DropShardRequest{}
-	mi := &file_protos_shard_proto_msgTypes[8]
+	mi := &file_protos_shard_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -443,7 +471,7 @@ func (x *DropShardRequest) String() string {
 func (*DropShardRequest) ProtoMessage() {}
 
 func (x *DropShardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[8]
+	mi := &file_protos_shard_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +484,7 @@ func (x *DropShardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DropShardRequest.ProtoReflect.Descriptor instead.
 func (*DropShardRequest) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{8}
+	return file_protos_shard_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DropShardRequest) GetId() string {
@@ -470,21 +498,16 @@ var File_protos_shard_proto protoreflect.FileDescriptor
 
 const file_protos_shard_proto_rawDesc = "" +
 	"\n" +
-	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"\x9d\x01\n" +
+	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"F\n" +
 	"\x05Shard\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05hosts\x18\x02 \x03(\tR\x05hosts\x122\n" +
-	"\aoptions\x18\x03 \x03(\v2\x18.spqr.Shard.OptionsEntryR\aoptions\x1a:\n" +
-	"\fOptionsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa5\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"9\n" +
+	"\rGenericOption\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"J\n" +
 	"\tShardInfo\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05hosts\x18\x02 \x03(\tR\x05hosts\x126\n" +
-	"\aoptions\x18\x03 \x03(\v2\x1c.spqr.ShardInfo.OptionsEntryR\aoptions\x1a:\n" +
-	"\fOptionsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"/\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"/\n" +
 	"\n" +
 	"ShardReply\x12!\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\x1e\n" +
@@ -493,14 +516,10 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\x0fListShardsReply\x12#\n" +
 	"\x06shards\x18\x01 \x03(\v2\v.spqr.ShardR\x06shards\"4\n" +
 	"\x0fAddShardRequest\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\xb5\x01\n" +
+	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"R\n" +
 	"\x11AlterShardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05hosts\x18\x02 \x03(\tR\x05hosts\x12>\n" +
-	"\aoptions\x18\x03 \x03(\v2$.spqr.AlterShardRequest.OptionsEntryR\aoptions\x1a:\n" +
-	"\fOptionsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"9\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"9\n" +
 	"\x14AddWorldShardRequest\x12!\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\"\n" +
 	"\x10DropShardRequest\x12\x0e\n" +
@@ -528,42 +547,40 @@ func file_protos_shard_proto_rawDescGZIP() []byte {
 	return file_protos_shard_proto_rawDescData
 }
 
-var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_protos_shard_proto_goTypes = []any{
 	(*Shard)(nil),                // 0: spqr.Shard
-	(*ShardInfo)(nil),            // 1: spqr.ShardInfo
-	(*ShardReply)(nil),           // 2: spqr.ShardReply
-	(*ShardRequest)(nil),         // 3: spqr.ShardRequest
-	(*ListShardsReply)(nil),      // 4: spqr.ListShardsReply
-	(*AddShardRequest)(nil),      // 5: spqr.AddShardRequest
-	(*AlterShardRequest)(nil),    // 6: spqr.AlterShardRequest
-	(*AddWorldShardRequest)(nil), // 7: spqr.AddWorldShardRequest
-	(*DropShardRequest)(nil),     // 8: spqr.DropShardRequest
-	nil,                          // 9: spqr.Shard.OptionsEntry
-	nil,                          // 10: spqr.ShardInfo.OptionsEntry
-	nil,                          // 11: spqr.AlterShardRequest.OptionsEntry
-	(*emptypb.Empty)(nil),        // 12: google.protobuf.Empty
+	(*GenericOption)(nil),        // 1: spqr.GenericOption
+	(*ShardInfo)(nil),            // 2: spqr.ShardInfo
+	(*ShardReply)(nil),           // 3: spqr.ShardReply
+	(*ShardRequest)(nil),         // 4: spqr.ShardRequest
+	(*ListShardsReply)(nil),      // 5: spqr.ListShardsReply
+	(*AddShardRequest)(nil),      // 6: spqr.AddShardRequest
+	(*AlterShardRequest)(nil),    // 7: spqr.AlterShardRequest
+	(*AddWorldShardRequest)(nil), // 8: spqr.AddWorldShardRequest
+	(*DropShardRequest)(nil),     // 9: spqr.DropShardRequest
+	(*emptypb.Empty)(nil),        // 10: google.protobuf.Empty
 }
 var file_protos_shard_proto_depIdxs = []int32{
-	9,  // 0: spqr.Shard.options:type_name -> spqr.Shard.OptionsEntry
-	10, // 1: spqr.ShardInfo.options:type_name -> spqr.ShardInfo.OptionsEntry
+	1,  // 0: spqr.Shard.options:type_name -> spqr.GenericOption
+	1,  // 1: spqr.ShardInfo.options:type_name -> spqr.GenericOption
 	0,  // 2: spqr.ShardReply.shard:type_name -> spqr.Shard
 	0,  // 3: spqr.ListShardsReply.shards:type_name -> spqr.Shard
 	0,  // 4: spqr.AddShardRequest.shard:type_name -> spqr.Shard
-	11, // 5: spqr.AlterShardRequest.options:type_name -> spqr.AlterShardRequest.OptionsEntry
+	1,  // 5: spqr.AlterShardRequest.options:type_name -> spqr.GenericOption
 	0,  // 6: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
-	12, // 7: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
-	5,  // 8: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
-	6,  // 9: spqr.ShardService.AlterShard:input_type -> spqr.AlterShardRequest
-	8,  // 10: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
-	7,  // 11: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
-	3,  // 12: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
-	4,  // 13: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
-	12, // 14: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
-	12, // 15: spqr.ShardService.AlterShard:output_type -> google.protobuf.Empty
-	12, // 16: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
-	12, // 17: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
-	2,  // 18: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
+	10, // 7: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
+	6,  // 8: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
+	7,  // 9: spqr.ShardService.AlterShard:input_type -> spqr.AlterShardRequest
+	9,  // 10: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
+	8,  // 11: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
+	4,  // 12: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
+	5,  // 13: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
+	10, // 14: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
+	10, // 15: spqr.ShardService.AlterShard:output_type -> google.protobuf.Empty
+	10, // 16: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
+	10, // 17: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
+	3,  // 18: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
 	13, // [13:19] is the sub-list for method output_type
 	7,  // [7:13] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
@@ -582,7 +599,7 @@ func file_protos_shard_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_shard_proto_rawDesc), len(file_protos_shard_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

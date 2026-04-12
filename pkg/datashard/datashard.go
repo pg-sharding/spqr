@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -21,7 +22,7 @@ import (
 
 type Conn struct {
 	beRule             *config.BackendRule
-	cfg                *config.Shard
+	cfg                *topology.DataShard
 	name               string
 	dedicated          conn.DBInstance
 	ps                 shard.ParameterSet
@@ -265,7 +266,7 @@ func (sh *Conn) Name() string {
 //
 // Returns:
 // - *config.Shard: The shard configuration.
-func (sh *Conn) Cfg() *config.Shard {
+func (sh *Conn) Cfg() *topology.DataShard {
 	return sh.cfg
 }
 
@@ -385,7 +386,7 @@ func (sh *Conn) Params() shard.ParameterSet {
 func NewShardHostInstance(
 	key kr.ShardKey,
 	pgi conn.DBInstance,
-	cfg *config.Shard,
+	cfg *topology.DataShard,
 	beRule *config.BackendRule,
 	sp *startup.StartupParams) (shard.ShardHostInstance, error) {
 

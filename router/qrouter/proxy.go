@@ -146,7 +146,7 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 
 var _ planner.QueryPlanner = &ProxyQrouter{}
 
-func NewProxyRouter(shardMapping map[string]*config.Shard,
+func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
@@ -181,16 +181,14 @@ func NewProxyRouter(shardMapping map[string]*config.Shard,
 		}
 	}
 
-	for name, shardCfg := range shardMapping {
-		switch shardCfg.Type {
+	for _, datashard := range shardMapping {
+		switch datashard.Type {
 		case config.WorldShard:
 		case config.DataShard:
 			fallthrough // default is datashard
 		default:
-			if err := mgr.AddDataShard(ctx, &topology.DataShard{
-				ID:  name,
-				Cfg: shardCfg,
-			}); err != nil {
+			spqrlog.Zero.Debug().Interface("", datashard.Hosts()).Msg("here222")
+			if err := mgr.AddDataShard(ctx, datashard); err != nil {
 				return nil, err
 			}
 		}

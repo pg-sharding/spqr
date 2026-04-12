@@ -87,43 +87,44 @@ func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataSha
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
-func (lc *Coordinator) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	return lc.qdb.AlterShardHosts(ctx, shardID, hosts)
-}
-
-func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options map[string]topology.GenericOption) error {
-	shard, err := lc.qdb.GetShard(ctx, shardID)
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	shard, err := lc.GetShard(ctx, shardID)
 	if err != nil {
 		return err
 	}
 
+	newOptions := shard.Options()
 	for _, opt := range options {
+		optionInd := slices.IndexFunc(shard.Options(), func(el topology.GenericOption) bool { return el.Name == opt.Name })
+
 		switch opt.Action {
 		case topology.GenericOptionActionUnspecified:
 			fallthrough
 		case topology.GenericOptionActionAdd:
-			if _, ok := shard.Options[opt.Name]; ok {
+			if optionInd != -1 {
 				return fmt.Errorf("option \"%s\" was specified more than once", opt.Name)
 			}
-			shard.Options[opt.Name] = opt.Arg
+			newOptions = append(newOptions, topology.GenericOption{Name: opt.Name, Arg: opt.Arg})
 		case topology.GenericOptionActionSet:
-			if _, ok := shard.Options[opt.Name]; !ok {
+			if optionInd == -1 {
 				return fmt.Errorf("option \"%s\" not found", opt.Name)
 			}
-			shard.Options[opt.Name] = opt.Arg
+			newOptions[optionInd].Arg = opt.Arg
 		case topology.GenericOptionActionDrop:
-			if _, ok := shard.Options[opt.Name]; !ok {
+			if optionInd == -1 {
 				return fmt.Errorf("option \"%s\" not found", opt.Name)
 			}
-			delete(shard.Options, opt.Name)
+			newOptions = slices.Delete(newOptions, optionInd, optionInd)
 		}
 	}
 
-	return lc.qdb.AlterShardOptions(ctx, shardID, shard.Options)
+	shard.SetOptions(newOptions)
+
+	return lc.qdb.AlterShardOptions(ctx, shardID, topology.GenericOptionsToDB(newOptions))
 }
 
-func (lc *Coordinator) SetShardOptions(ctx context.Context, shardID string, options map[string]string) error {
-	return lc.qdb.AlterShardOptions(ctx, shardID, options)
+func (lc *Coordinator) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	return lc.qdb.AlterShardOptions(ctx, shardID, topology.GenericOptionsToDB(options))
 }
 
 // AddWorldShard implements meta.EntityMgr.

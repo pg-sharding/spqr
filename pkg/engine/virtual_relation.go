@@ -272,7 +272,7 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
 
 	for _, shard := range shards {
-		for _, h := range shard.Cfg.Hosts() {
+		for _, h := range shard.Hosts() {
 			hc, ok := ihc[h]
 			if !ok {
 

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -30,7 +31,7 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 
 	/* XXX: pass mapping as param here? */
 	wd.p =
-		pool.NewDBPoolWithDisabledFeatures(config.RouterConfig().ShardMapping)
+		pool.NewDBPoolWithDisabledFeatures(topology.ShardMapping)
 
 	wd.p.SetRule(wd.be)
 

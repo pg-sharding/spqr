@@ -1,10 +1,7 @@
 package config
 
 import (
-	"fmt"
-	"log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -205,48 +202,11 @@ type Shard struct {
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-
-	Options map[string]string
 }
 
 type Host struct {
 	Address string // format host:port
 	AZ      string // Availability zone
-}
-
-// parseHosts parses the raw hosts into a slice of Hosts.
-// The format of the RawHost is host:port:availability_zone.
-// If the availability_zone is not provided, it is empty.
-// If the port is not provided, it does not matter
-func (s *Shard) parseHosts() {
-	for _, rawHost := range s.RawHosts {
-		host := Host{}
-		parts := strings.Split(rawHost, ":")
-		if len(parts) > 3 {
-			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
-			continue
-		} else if len(parts) == 3 {
-			host.AZ = parts[2]
-			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
-		} else {
-			host.Address = rawHost
-		}
-
-		s.parsedHosts = append(s.parsedHosts, host)
-		s.parsedAddresses = append(s.parsedAddresses, host.Address)
-	}
-}
-
-func (s *Shard) Hosts() []string {
-	s.once.Do(s.parseHosts)
-
-	return s.parsedAddresses
-}
-
-func (s *Shard) HostsAZ() []Host {
-	s.once.Do(s.parseHosts)
-
-	return s.parsedHosts
 }
 
 func ValueOrDefaultInt(value int, def int) int {

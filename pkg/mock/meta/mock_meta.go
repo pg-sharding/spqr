@@ -190,22 +190,8 @@ func (mr *MockEntityMgrMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockEntityMgr)(nil).AlterSequenceDetachRelation), ctx, rel)
 }
 
-// AlterShardHosts mocks base method.
-func (m *MockEntityMgr) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AlterShardHosts indicates an expected call of AlterShardHosts.
-func (mr *MockEntityMgrMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockEntityMgr)(nil).AlterShardHosts), ctx, shardID, hosts)
-}
-
 // AlterShardOptions mocks base method.
-func (m *MockEntityMgr) AlterShardOptions(ctx context.Context, shardID string, options map[string]topology.GenericOption) error {
+func (m *MockEntityMgr) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
 	ret0, _ := ret[0].(error)
@@ -1082,7 +1068,7 @@ func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *go
 }
 
 // SetShardOptions mocks base method.
-func (m *MockEntityMgr) SetShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+func (m *MockEntityMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetShardOptions", ctx, shardID, options)
 	ret0, _ := ret[0].(error)

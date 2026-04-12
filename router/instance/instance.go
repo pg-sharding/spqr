@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -79,7 +80,7 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 		return nil, err
 	}
 
-	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
+	cache := cache.NewSchemaCache(topology.ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -116,12 +117,12 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	rr := rulerouter.NewRouter(topology.ShardMapping, frTLS, config.RouterConfig(), notifier)
 	lc := coord.NewLocalInstanceMetadataMgr(
 		db,
 		db,
 		cache,
-		config.RouterConfig().ShardMapping,
+		topology.ShardMapping,
 		config.RouterConfig().ManageShardsByCoordinator,
 		rr,
 	)
@@ -138,7 +139,7 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 	}
 
 	qr, err := qrouter.NewQrouter(qtype,
-		config.RouterConfig().ShardMapping,
+		topology.ShardMapping,
 		lc,
 		rr,
 		&config.RouterConfig().Qr,

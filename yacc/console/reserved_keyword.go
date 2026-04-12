@@ -30,7 +30,6 @@ var reservedWords = map[string]int{
 	"router":       ROUTER,
 	"move":         MOVE,
 	"address":      ADDRESS,
-	"host":         HOST,
 	"route":        ROUTE,
 	"distribution": DISTRIBUTION,
 	"distributed":  DISTRIBUTED,

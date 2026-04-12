@@ -181,7 +181,7 @@ func randomHex(n int) (string, error) {
 %type<colref> ColRef
 %type<colreflist> ColRef_list
 
-%type<str> any_val any_id shard_id
+%type<str> any_val any_id shard_id opt_any_id
 
 %type<uinteger> any_uint
 // CMDS
@@ -192,7 +192,7 @@ func randomHex(n int) (string, error) {
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
-%token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
+%token <str> SHARDS ROUTERS SHARD RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE NOWAIT
@@ -485,6 +485,12 @@ any_id: IDENT
 	{
 		$$ = string($1)
 	}
+
+opt_any_id:
+	any_id
+	{
+		$$ = $1
+	} | /* EMPTY */ { $$ = ""; }
 
 
 shard_id: IDENT
@@ -852,16 +858,6 @@ alter_stmt:
 	}
 
 shard_alter_stmt:
-	SHARD any_id HOSTS any_id_list
-	{
-		$$ = &AlterShard{
-			Shard: &ShardSelector{ID: $2},
-			Element: &AlterShardHosts{
-				Hosts: $4,
-			},
-		}
-	}
-	|
 	SHARD any_id alter_generic_options
 	{
 		$$ = &AlterShard{
@@ -895,7 +891,7 @@ generic_option_list:
 generic_option_elem:
 	IDENT any_val
 		{
-			$$ = GenericOption{Name: $1, Arg: string($2)};
+			$$ = GenericOption{Name: strings.ToLower($1), Arg: string($2)};
 		}
 
 alter_generic_options:
@@ -926,9 +922,9 @@ alter_generic_option_elem:
 		$$ = $2;
 		$$.Action = OptionActionAdd;
 	}
-	| DROP IDENT
+	| DROP IDENT opt_any_id
 	{
-		$$ = GenericOption{Name: $2}
+		$$ = GenericOption{Name: strings.ToLower($2), Arg: $3}
 		$$.Action = OptionActionDrop;
 	}
 
@@ -1443,18 +1439,18 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list opt_options
+	SHARD any_id opt_options
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: $5, Options: $6}
+		$$ = &ShardDefinition{Id: $2, Options: $3}
 	}
 	|
-	SHARD WITH HOSTS any_id_list opt_options
+	SHARD opt_options
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4, Options: $5}
+		$$ = &ShardDefinition{Id: "shard" + str, Options: $2}
 	}
 
 any_id_list:
