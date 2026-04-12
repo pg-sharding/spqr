@@ -307,6 +307,63 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	return kr.ShardKey{}, fmt.Errorf("failed to match key with ranges")
 }
 
+func (rm *RoutingMetadataContext) ResolveKeyShard(
+	ctx context.Context,
+	distrib *distributions.Distribution, val string) (kr.ShardKey, error) {
+
+	krs, err := rm.Mgr.ListKeyRanges(ctx, distrib.Id)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+
+	// TODO: fix this
+	compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
+
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+
+	dRel := rm.SPH.DistributedRelation()
+
+	hf := hashfunction.HashFunctionIdent
+
+	if dRel != "" {
+		relName, err := rfqn.ParseFQN(dRel)
+		if err != nil {
+			return kr.ShardKey{}, err
+		}
+		r, ok := distrib.TryGetRelation(relName)
+		if ok {
+			hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
+			if err != nil {
+				return kr.ShardKey{}, err
+			}
+		}
+	} else {
+		first := true
+		for _, dr := range distrib.ListRelations() {
+			hfLocal, err := hashfunction.HashFunctionByName(dr.DistributionKey[0].HashFunction)
+			if err != nil {
+				return kr.ShardKey{}, err
+			}
+			if first {
+				hf = hfLocal
+			} else {
+				if hf != hfLocal {
+					return kr.ShardKey{}, fmt.Errorf("failed to resolve hint hash function")
+				}
+			}
+		}
+	}
+
+	compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+
+	return rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+}
+
 func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
 	if rm.SPH.ScatterQuery() {
 		return &plan.ScatterPlan{
@@ -321,11 +378,6 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "sharding key in comment without distribution")
 		}
 
-		krs, err := rm.Mgr.ListKeyRanges(ctx, dsId)
-		if err != nil {
-			return nil, err
-		}
-
 		distrib, err := rm.Mgr.GetDistribution(ctx, dsId)
 		if err != nil {
 			return nil, err
@@ -335,57 +387,12 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
 		}
 
-		// TODO: fix this
-		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
-
-		if err != nil {
-			return nil, err
-		}
-
-		dRel := rm.SPH.DistributedRelation()
-
-		hf := hashfunction.HashFunctionIdent
-
-		if dRel != "" {
-			relName, err := rfqn.ParseFQN(dRel)
-			if err != nil {
-				return nil, err
-			}
-			r, ok := distrib.TryGetRelation(relName)
-			if ok {
-				hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
-				if err != nil {
-					return nil, err
-				}
-			}
-		} else {
-			first := true
-			for _, dr := range distrib.ListRelations() {
-				hfLocal, err := hashfunction.HashFunctionByName(dr.DistributionKey[0].HashFunction)
-				if err != nil {
-					return nil, err
-				}
-				if first {
-					hf = hfLocal
-				} else {
-					if hf != hfLocal {
-						return nil, fmt.Errorf("failed to resolve hint hash function")
-					}
-				}
-			}
-		}
-
-		compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
-		if err != nil {
-			return nil, err
-		}
-
-		ds, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+		et, err := rm.ResolveKeyShard(ctx, distrib, val)
 		if err != nil {
 			return nil, err
 		}
 		return &plan.ShardDispatchPlan{
-			ExecTarget: ds,
+			ExecTarget: et,
 		}, nil
 	}
 

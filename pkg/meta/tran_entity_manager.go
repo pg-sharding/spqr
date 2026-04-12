@@ -262,7 +262,6 @@ func (t *TranEntityManager) ListDistributions(ctx context.Context) ([]*distribut
 	}
 }
 
-// TODO: ADD more tests when altering key range will be realized
 // ListKeyRanges implements [EntityMgr].
 func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	list, err := t.EntityMgr.ListKeyRanges(ctx, distribution)
