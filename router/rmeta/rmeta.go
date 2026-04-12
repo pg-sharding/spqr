@@ -388,7 +388,9 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 		}
 
 		et, err := rm.ResolveKeyShard(ctx, distrib, val)
-
+		if err != nil {
+			return nil, err
+		}
 		return &plan.ShardDispatchPlan{
 			ExecTarget: et,
 		}, nil
