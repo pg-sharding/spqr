@@ -990,7 +990,7 @@ func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog
 	if err != nil {
 		return nil
 	}
-	return fmt.Errorf("should not match")
+	return fmt.Errorf("result should not match, result: %s", string(res))
 }
 
 func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.DocString) error {
