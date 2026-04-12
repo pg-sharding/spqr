@@ -103,7 +103,7 @@ func TestCheckGrants(t *testing.T) {
 				t.Errorf("NewGrantsChecker() returned nil")
 				return
 			}
-			err = checker.CheckGrants(tt.target, tt.rule)
+			err = checker.ObjectACLCheck(tt.target, tt.rule)
 			if (err != nil) != tt.wantCheckGrantsErr {
 				t.Errorf("CheckGrants() error = %v, wantErr %v", err, tt.wantCheckGrantsErr)
 			}

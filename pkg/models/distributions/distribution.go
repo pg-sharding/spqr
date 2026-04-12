@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -32,6 +33,8 @@ type DistributedRelation struct {
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
 	UniqueIndexesByColumn map[string]*UniqueIndex
+
+	DistribACL []acl.AclItem
 }
 
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {

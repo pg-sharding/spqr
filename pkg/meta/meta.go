@@ -532,7 +532,6 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
 		return createReferenceRelation(ctx, mngr, stmt)
-
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {
 			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
@@ -741,6 +740,9 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 func processAlterDistribution(ctx context.Context,
 	astmt spqrparser.Statement,
 	mngr EntityMgr, dsId string) (*tupleslot.TupleTableSlot, error) {
+
+	/* XXX: ACLCHECK on distrib acl*/
+
 	switch stmt := astmt.(type) {
 	case *spqrparser.AttachRelation:
 
@@ -986,14 +988,14 @@ func ProcMetadataCommand(ctx context.Context,
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
-		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
+		if err := catalog.ACL.ObjectACLCheck(catalog.RoleReader, rule); err != nil {
 			return nil, err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro)
 	}
 
 	if _, ok := tstmt.(*spqrparser.Help); ok {
-		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
+		if err := catalog.ACL.ObjectACLCheck(catalog.RoleReader, rule); err != nil {
 			return nil, err
 		}
 		return ProcessHelp(ctx, tstmt.(*spqrparser.Help))
@@ -1003,7 +1005,7 @@ func ProcMetadataCommand(ctx context.Context,
 		return nil, fmt.Errorf("console is in read only mode")
 	}
 
-	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rule); err != nil {
+	if err := catalog.ACL.ObjectACLCheck(catalog.RoleAdmin, rule); err != nil {
 		return nil, err
 	}
 

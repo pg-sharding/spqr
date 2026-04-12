@@ -82,7 +82,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
-		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+		if err := gc.ObjectACLCheck(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		switch tstmt.Cmd {
@@ -96,7 +96,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 			defer cf()
 		}
 	default:
-		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+		if err := gc.ObjectACLCheck(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
@@ -182,7 +182,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, rc, catalog.GC); err != nil {
+			if err := l.ProcessQuery(ctx, v.String, rc, catalog.ACL); err != nil {
 				_ = rc.ReplyErr(err)
 				// continue to consume input
 			}
