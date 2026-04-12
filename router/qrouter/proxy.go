@@ -187,7 +187,6 @@ func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 		case config.DataShard:
 			fallthrough // default is datashard
 		default:
-			spqrlog.Zero.Debug().Interface("", datashard.Hosts()).Msg("here222")
 			if err := mgr.AddDataShard(ctx, datashard); err != nil {
 				return nil, err
 			}

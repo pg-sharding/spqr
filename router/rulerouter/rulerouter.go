@@ -186,9 +186,9 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	return nil
 }
 
-func NewRouter(shardMapping map[string]*topology.DataShard, tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
+func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	return &RuleRouterImpl{
-		RoutePool: NewRouterPoolImpl(shardMapping),
+		RoutePool: NewRouterPoolImpl(topology.ShardMapping),
 		rcfg:      rcfg,
 		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,

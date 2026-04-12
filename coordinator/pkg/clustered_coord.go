@@ -3212,7 +3212,7 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId strin
 	})
 }
 
-func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, needToUpdate []*topology.DataShard) {
+func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, updated []*topology.DataShard) {
 	routerShardsMap := map[string]*topology.DataShard{}
 	coordShardsMap := map[string]*topology.DataShard{}
 
@@ -3227,7 +3227,7 @@ func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, c
 		if rSh, exist := routerShardsMap[id]; !exist {
 			added = append(added, sh)
 		} else if !topology.ShardConfigEqual(rSh, sh) {
-			needToUpdate = append(needToUpdate, sh)
+			updated = append(updated, sh)
 		}
 	}
 	for id, sh := range routerShardsMap {
