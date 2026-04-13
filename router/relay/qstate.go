@@ -619,6 +619,14 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 		} else {
 
 			switch name {
+			case session.SPQR_SCATTER_QUERY:
+				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
+				rst.Client().SetScatterQuery(hintVal != "")
+			case session.SPQR_EXECUTE_ON:
+				if _, ok := config.RouterConfig().ShardMapping[hintVal]; !ok {
+					return fmt.Errorf("no such shard: %v", hintVal)
+				}
+				rst.Client().SetExecuteOn(session.VirtualParamLevelStatement, hintVal)
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION_KEY:
@@ -644,8 +652,6 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 				} else {
 					rst.Client().SetMaintainParams(lvl, false)
 				}
-			case session.SPQR_EXECUTE_ON:
-				rst.Client().SetExecuteOn(lvl, hintVal)
 			case session.SPQR_TARGET_SESSION_ATTRS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
