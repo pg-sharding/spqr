@@ -626,7 +626,7 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 				if _, ok := config.RouterConfig().ShardMapping[hintVal]; !ok {
 					return fmt.Errorf("no such shard: %v", hintVal)
 				}
-				rst.Client().SetExecuteOn(session.VirtualParamLevelStatement, hintVal)
+				rst.Client().SetExecuteOn(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION_KEY:
