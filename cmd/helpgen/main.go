@@ -93,6 +93,28 @@ EXAMPLES
 {{- end}}
 {{- end}}
 {{- end}}
+{{- if .Subcommands}}
+
+SUBCOMMANDS
+{{- range .Subcommands}}
+
+    {{.Name}}
+{{indent .Description 8}}
+{{- if .Syntax}}
+
+        Syntax:
+{{indent .Syntax 12}}
+{{- end}}
+{{- if .Examples}}
+
+        Examples:
+{{- range .Examples}}
+            {{.Description}}:
+{{indent .Code 16}}
+{{- end}}
+{{- end}}
+{{- end}}
+{{- end}}
 {{- if .Tips}}
 
 TIPS
