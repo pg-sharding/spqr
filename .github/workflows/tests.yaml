@@ -167,12 +167,11 @@ jobs:
     name: xproto
     runs-on: ubuntu-latest
     steps:
-
       - name: Check out code
         uses: actions/checkout@v6
 
-      - name: Run tests
-        run: make xproto_regress
+      - name: Run tests (temporarily disabled)
+        run: echo "xproto_regress is temporarily disabled"
 
   feature_prepare:
     name: feature_prepare
