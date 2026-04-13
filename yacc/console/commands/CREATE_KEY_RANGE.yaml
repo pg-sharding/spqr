@@ -1,4 +1,5 @@
 name: CREATE KEY RANGE
+snippet: key_range_commands
 description: |
   This command is used to create a new key range. Since the key space is an ordered set, 
   it is enough to specify only one end of the range.

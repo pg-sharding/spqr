@@ -1,4 +1,5 @@
 name: SPLIT KEY RANGE
+snippet: key_range_commands
 description: |
   Splits an existing key range into two key ranges at the specified boundary value.
   The new key range takes the upper portion of the original range (from the split

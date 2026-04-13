@@ -126,7 +126,8 @@ Splits an existing key range into two key ranges at the specified boundary value
 The new key range takes the upper portion of the original range (from the split
 point to the original upper bound), while the source range keeps the lower portion.
 
-Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE afterwards to relocate one of them if needed.
+Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE
+afterwards to relocate one of them if needed.
 
 
 ```sql
@@ -172,12 +173,5 @@ After unlocking, queries routed to this key range will resume normal processing.
 
 ```sql
 UNLOCK KEY RANGE <keyRangeID>
-```
-
-**Examples:**
-
-```sql
--- Unlock a key range after a split operation
-UNLOCK KEY RANGE krid1;
 ```
 

@@ -3,7 +3,6 @@ aboba
 abortable
 abracadabras
 abracadabrav
-ACCC
 accusantium
 addgroup
 addprinc
@@ -25,7 +24,6 @@ astmt
 authed
 Autoattach
 basebackup
-bbc
 bcad
 bcc
 BConst
@@ -46,7 +44,6 @@ ccb
 ccfg
 ccmsg
 Cfgs
-cgit
 cillum
 Cimpl
 CIn
@@ -79,7 +76,6 @@ coordctl
 coreutils
 corporis
 cptr
-createsequence
 Cta
 CTEs
 ctid
@@ -126,12 +122,9 @@ dssd
 dstmt
 Duis
 dumbo
-dvkashapov
 ebff
 eda
 edabaf
-eec
-eefc
 efef
 eiusmod
 elephantsql
@@ -176,7 +169,6 @@ fugiat
 gcflags
 getconn
 gettime
-gitlab
 godog
 gofmt
 gofmtcheck
@@ -185,7 +177,6 @@ gogen
 goimports
 gokrb
 golangci
-golangconf
 gomaxprocs
 gomock
 gomod
@@ -203,8 +194,7 @@ hashicorp
 hba
 healthcheck
 helpgen
-highload
-HIy
+Highload
 hostnossl
 hostssl
 hotspots
@@ -235,7 +225,6 @@ IRun
 irure
 isgomock
 isready
-issuecomment
 iste
 iure
 iuwehiuhweui
@@ -259,7 +248,6 @@ keyrangemgr
 keytab
 keytabdata
 keytabfile
-KFS
 killall
 kinit
 Kirill
@@ -312,7 +300,6 @@ mempg
 mempgqdb
 memqdb
 metadb
-MGhyjwicp
 mintlify
 mmgr
 mngr
@@ -338,7 +325,6 @@ multidbpool
 multidim
 multierr
 multishard
-munakoiso
 murmurhash
 mydb
 mylogs
@@ -358,7 +344,6 @@ NOSHARD
 nostrud
 Noticef
 notok
-npmjs
 nroute
 nsecs
 nspname
@@ -421,7 +406,6 @@ Postgre
 postgresql
 ppp
 pppp
-PPu
 prepstatement
 procps
 proident
@@ -568,7 +552,6 @@ subselects
 suscipit
 SVFOP
 SVGID
-sysbench
 syscache
 targ
 taskgroup
@@ -649,13 +632,11 @@ Volkov
 voluptate
 voluptatem
 Warningf
-WMma
 workloadlog
 workloadreplay
 worldmock
 wrongpassword
 xact
-Xcpbs
 XDC
 xerrors
 xjoin
@@ -664,7 +645,6 @@ xmovestr
 xproto
 XQDB
 xtab
-XTw
 xxerr
 xxm
 xxmixed
@@ -674,10 +654,7 @@ xxtest
 xxtt
 yaccgen
 yandex
-yandexcloud
 yjoin
 YMid
-youtube
 yylex
 zerolog
-ZWQy
