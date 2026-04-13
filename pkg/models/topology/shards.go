@@ -192,6 +192,7 @@ func DataShardFromDB(shard *qdb.Shard) *DataShard {
 			Arg:  opt.Value,
 		})
 	}
+	options = append(options, hostsToOptions(shard.RawHosts)...)
 	return NewDataShard(shard.ID, config.DataShard, options)
 }
 
