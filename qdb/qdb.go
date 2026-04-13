@@ -38,7 +38,7 @@ type TopologyKeeper interface {
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 	DropShard(ctx context.Context, shardID string) error
-	AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error
+	AlterShard(ctx context.Context, newShard *Shard) error
 }
 
 // Keep track of the status of the two-phase data move transaction.

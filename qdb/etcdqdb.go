@@ -1118,17 +1118,17 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
-func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error {
+func (q *EtcdQDB) AlterShard(ctx context.Context, newShard *Shard) error {
 	spqrlog.Zero.Debug().
-		Str("id", shardID).
+		Str("id", newShard.ID).
 		Msg("etcdqdb: alter shard options")
 
-	shard, err := q.GetShard(ctx, shardID)
+	shard, err := q.GetShard(ctx, newShard.ID)
 	if err != nil {
 		return err
 	}
 
-	shard.Options = options
+	shard = newShard
 
 	return q.alterShard(ctx, shard)
 }

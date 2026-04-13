@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -114,17 +115,23 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, op
 			if optionInd == -1 {
 				return fmt.Errorf("option \"%s\" not found", opt.Name)
 			}
-			newOptions = slices.Delete(newOptions, optionInd, optionInd)
+
+			for i := len(newOptions) - 1; i >= 0; i-- {
+				if opt.Name == newOptions[i].Name && (opt.Arg == "" || opt.Arg == newOptions[i].Arg) {
+					newOptions = slices.Delete(newOptions, i, i+1)
+				}
+			}
 		}
 	}
 
 	shard.SetOptions(newOptions)
 
-	return lc.qdb.AlterShardOptions(ctx, shardID, topology.GenericOptionsToDB(newOptions))
+	return lc.qdb.AlterShard(ctx, topology.DataShardToDB(shard))
 }
 
 func (lc *Coordinator) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
-	return lc.qdb.AlterShardOptions(ctx, shardID, topology.GenericOptionsToDB(options))
+	dbshard := topology.DataShardToDB(topology.NewDataShard(shardID, config.DataShard, options))
+	return lc.qdb.AlterShard(ctx, dbshard)
 }
 
 // AddWorldShard implements meta.EntityMgr.

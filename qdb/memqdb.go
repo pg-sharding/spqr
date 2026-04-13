@@ -774,19 +774,19 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 }
 
-func (q *MemQDB) AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error {
-	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard options")
+func (q *MemQDB) AlterShard(ctx context.Context, newShard *Shard) error {
+	spqrlog.Zero.Debug().Str("shard", newShard.ID).Msg("memqdb: alter shard options")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	shard, ok := q.Shards[shardID]
+	shard, ok := q.Shards[newShard.ID]
 	if !ok {
 		return fmt.Errorf("shard with id %s not found", shard.ID)
 	}
 
-	shard.Options = options
+	shard = newShard
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, newShard))
 }
 
 // TODO : unit tests

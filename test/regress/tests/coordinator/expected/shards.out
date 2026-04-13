@@ -4,11 +4,30 @@ REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
  router -> r1-[regress_router]:7000
 (1 row)
 
+DROP SHARD sh1;
+ shard_id 
+----------
+ sh1
+(1 row)
+
+CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432', HOST 'another_host:6432');
+    add shard    
+-----------------
+ shard id -> sh1
+(1 row)
+
 ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
           alter shard          
 -------------------------------
  shard id -> sh1
  options  -> {sslmode=require}
+(2 rows)
+
+ALTER SHARD sh1 OPTIONS (DROP HOST 'another_host:6432');
+             alter shard              
+--------------------------------------
+ shard id -> sh1
+ options  -> {host=another_host:6432}
 (2 rows)
 
 UNREGISTER ROUTER ALL;

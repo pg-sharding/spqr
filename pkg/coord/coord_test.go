@@ -144,3 +144,37 @@ func TestSplitKeyRange(t *testing.T) {
 		is.Equal(expected, []kr.KeyRange{*actual[0], *actual[1]})
 	})
 }
+
+func TestAlterOptions(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.Background()
+	memqdb, err := prepareDB(ctx)
+	is.NoError(err)
+	mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+
+	err = mngr.SetShardOptions(ctx, "sh1", []topology.GenericOption{
+		{Name: "host", Arg: "localhost:6432"},
+		{Name: "password", Arg: "password"},
+		{Name: "user", Arg: "user1"},
+		{Name: "host", Arg: "another_host:6432"},
+		{Name: "password", Arg: "changed_password"},
+	})
+	is.NoError(err)
+	err = mngr.AlterShardOptions(ctx, "sh1", []topology.GenericOption{
+		{Name: "host", Arg: "another_host:6432", Action: topology.GenericOptionActionDrop},
+		{Name: "user", Arg: "regress", Action: topology.GenericOptionActionSet},
+		{Name: "dbname", Arg: "regress", Action: topology.GenericOptionActionAdd},
+		{Name: "sslmode", Arg: "require"},
+		{Name: "password", Action: topology.GenericOptionActionDrop},
+	})
+	is.NoError(err)
+
+	shard, err := mngr.GetShard(ctx, "sh1")
+	is.NoError(err)
+	is.Equal([]topology.GenericOption{
+		{Name: "host", Arg: "localhost:6432"},
+		{Name: "user", Arg: "regress"},
+		{Name: "dbname", Arg: "regress"},
+		{Name: "sslmode", Arg: "require"},
+	}, shard.Options())
+}
