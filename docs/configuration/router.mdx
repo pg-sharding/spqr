@@ -59,18 +59,18 @@ Backend Rule is a global setting that determines how the router connects to ever
 
 Refer to the `BackendRule` struct in the [pkg/config/rules.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/rules.go)  and [pkg/config/auth_backend.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/auth_backend.go) file for the most up-to-date configuration options.
 
-| Setting                | Description                                                            | Possible Values                                | Default |
-|------------------------|------------------------------------------------------------------------|------------------------------------------------|---------|
-| `db`                   | The database name to connect to.                                       | Any valid database name                        | (none) |
-| `usr`                  | The username for database authentication.                              | Any valid username                             | (none) |
-| `auth_rules`           | A map of authentication rules for backend connections.                 | Map of string keys to `AuthBackendCfg` objects | (none) |
-| `auth_rule`            | The default auth rule. An object with `usr` and `password` fields      | An `AuthBackendCfg` object                     | (none) |
-| `pool_default`         | Indicates if the connection should use the default pool settings.      | `true`, `false`                                | `false` |
-| `connection_limit`     | The maximum number of connections allowed to the backend (host shard). | Any integer value                              | `0` |
-| `connection_retries`   | The number of retries for a failed connection attempt.                 | Any integer value                              | `0` |
-| `connection_timeout`   | The timeout duration for establishing connections to the backend.      | Any valid duration (e.g., `30s`, `1m`)         | `0` |
-| `keep_alive`           | The duration for keeping connections alive.                            | Any valid duration (e.g., `30s`, `1m`)         | `0` |
-| `tcp_user_timeout`     | The TCP user timeout for backend connections.                          | Any valid duration (e.g., `30s`, `1m`)         | `0` |
+| Setting                | Description                                                                                   | Possible Values                                | Default |
+|------------------------|-----------------------------------------------------------------------------------------------|------------------------------------------------|---------|
+| `db`                   | The database name to connect to.                                                              | Any valid database name                        | (none)  |
+| `usr`                  | The username for database authentication.                                                     | Any valid username                             | (none)  |
+| `auth_rules`           | A map of authentication rules for backend connections.                                        | Map of string keys to `AuthBackendCfg` objects | (none)  |
+| `auth_rule`            | The default auth rule. An object with `usr` and `password` fields                             | An `AuthBackendCfg` object                     | (none)  |
+| `pool_default`         | Indicates if the connection should use the default pool settings.                             | `true`, `false`                                | `false` |
+| `connection_limit`     | The maximum number of connections allowed to the backend (host shard). `0` means use default. | Any integer value                              | `50`    |
+| `connection_retries`   | The number of retries for a failed connection attempt. `0` means use default.                 | Any integer value                              | `10`    |
+| `connection_timeout`   | The timeout duration for establishing connections to the backend. `0` means use default.      | Any valid duration (e.g., `30s`, `1m`)         | `1s`    |
+| `keep_alive`           | The duration for keeping connections alive. `0` means use default.                            | Any valid duration (e.g., `30s`, `1m`)         | `1s`    |
+| `tcp_user_timeout`     | The TCP user timeout for backend connections. `0` means use default.                          | Any valid duration (e.g., `30s`, `1m`)         | `9.5s`  |
 
 ## Shards
 
@@ -149,9 +149,9 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 
 | Setting                     | Description                                                               | Possible Values                        | Default |
 |-----------------------------|---------------------------------------------------------------------------|----------------------------------------|---------|
-| `dbpool_cache_ttl`          | Time-to-live for database pool cache entries                              | Any valid duration (e.g., `30s`, `1m`) | (none) |
-| `dbpool_check_interval`     | Interval for checking database pool health and cleanup                    | Any valid duration (e.g., `30s`, `1m`) | (none) |
-| `dbpool_dead_check_interval`| Background health check interval for dead hosts (enables faster recovery) | Any valid duration (e.g., `15s`, `30s`) or `0` to disable | (none) |
+| `dbpool_cache_ttl`          | Time-to-live for database pool cache entries                              | Any valid duration (e.g., `30s`, `1m`) | `5m`    |
+| `dbpool_check_interval`     | Interval for checking database pool health and cleanup                    | Any valid duration (e.g., `30s`, `1m`) | `30s`   |
+| `dbpool_dead_check_interval`| Background health check interval for dead hosts (enables faster recovery) | Any valid duration (e.g., `15s`, `30s`) or a negative duration to disable | `15s` |
 
 ## QDB Settings
 
