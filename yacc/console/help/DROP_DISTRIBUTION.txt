@@ -1,15 +1,13 @@
 NAME
-    DROP DISTRIBUTION - Removes a distribution from cluster metadata, or all distributions at once.
+    DROP DISTRIBUTION - Removes a distribution from cluster metadata.
 
 SYNTAX
     DROP DISTRIBUTION <distributionID> [CASCADE]
-    DROP DISTRIBUTION ALL [CASCADE]
 
 DESCRIPTION
-    Removes a distribution from cluster metadata, or all distributions at once.
+    Removes a distribution from cluster metadata.
 
     Use CASCADE to remove dependent metadata objects (key ranges, attached relations) when required.
-    Use DROP DISTRIBUTION ALL to remove all distributions.
 
 WARNINGS
     - Dropping a distribution removes routing metadata and may impact attached relations.
@@ -17,19 +15,15 @@ WARNINGS
 PARAMETERS
     <distributionID> - Identifier of the distribution to drop
     <CASCADE> - Also remove dependent metadata objects
-    <ALL> - Special keyword to drop all distributions
 
 EXAMPLES
     Drop one distribution:
         DROP DISTRIBUTION ds1;
     Drop distribution with dependent metadata:
         DROP DISTRIBUTION ds1 CASCADE;
-    Drop all distributions with cascade:
-        DROP DISTRIBUTION ALL CASCADE;
 
 TIPS
     - Check current distributions and dependencies with SHOW before dropping
-    - Prefer dropping a single distribution instead of ALL in production
 
 RELATED COMMANDS
     CREATE DISTRIBUTION
