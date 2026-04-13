@@ -123,94 +123,8 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 	mp, err := parser.ParseComment(comment)
 
 	if err == nil {
-		for key, val := range mp {
-			if session.ParamIsBoolean(key) {
-				guc, err := rst.Client().FindBoolGUC(key)
-				if err != nil {
-					return err
-				}
-
-				var v bool
-
-				switch val {
-				case "true", "ok", "on":
-					v = true
-				case "false", "no", "off":
-					v = false
-				default:
-					return fmt.Errorf("malformed value for GUC: %v", val)
-				}
-				guc.Set(rst.Client(), session.VirtualParamLevelStatement, v)
-
-			} else {
-				switch key {
-				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-					fallthrough
-				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-					fallthrough
-				case session.SPQR_TARGET_SESSION_ATTRS:
-					// TBD: validate value
-					spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-					rst.Client().SetTsa(session.VirtualParamLevelStatement, val)
-				case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-					spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
-					rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelStatement, val)
-				case session.SPQR_SHARDING_KEY:
-					spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
-					rst.Client().SetShardingKey(session.VirtualParamLevelStatement, val)
-				case session.SPQR_DISTRIBUTION:
-					spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
-					rst.Client().SetDistribution(session.VirtualParamLevelStatement, val)
-				case session.SPQR_DISTRIBUTED_RELATION:
-					spqrlog.Zero.Debug().Str("distributed relation", val).Msg("parse distributed relation from comment")
-					rst.Client().SetDistributedRelation(session.VirtualParamLevelStatement, val)
-				case session.SPQR_SCATTER_QUERY:
-					/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
-					spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
-					rst.Client().SetScatterQuery(val != "")
-				case session.SPQR_EXECUTE_ON:
-
-					if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
-						return fmt.Errorf("no such shard: %v", val)
-					}
-					rst.Client().SetExecuteOn(session.VirtualParamLevelStatement, val)
-				case session.SPQR_ENGINE_V2:
-					switch val {
-					case "true", "ok", "on":
-						rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, true)
-					case "false", "no", "off":
-						rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, false)
-					}
-				case session.SPQR_PREFERRED_ENGINE:
-					spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
-					rst.Client().SetPreferredEngine(session.VirtualParamLevelStatement, val)
-
-				case session.SPQR_AUTO_DISTRIBUTION:
-					/* Should we create distributed or reference relation? */
-
-					if val == distributions.REPLICATED {
-						/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
-						rst.Client().SetAutoDistribution(val)
-					} else {
-						if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
-							_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
-							if err != nil {
-								return err
-							}
-
-							/* This is an ddl query, which creates relation along with attaching to distribution */
-							rst.Client().SetAutoDistribution(val)
-							rst.Client().SetDistributionKey(valDistrib)
-
-							/* this is too early to do anything with distribution hint, as we do not yet parsed
-							* DDL of about-to-be-created relation
-							 */
-						} else {
-							return fmt.Errorf("spqr distribution specified, but distribution key omitted")
-						}
-					}
-				}
-			}
+		if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
+			return err
 		}
 	}
 
@@ -612,7 +526,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 				if strings.HasPrefix(name, "__spqr__") {
 					ctx := context.TODO()
-					if err := rst.processSpqrHint(ctx, name, val, q.IsLocal); err != nil {
+					if err := rst.processSpqrHint(ctx, map[string]string{
+						name: val,
+					}, q.IsLocal, false); err != nil {
 						return nil, err
 					}
 				} else {
@@ -664,88 +580,120 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 	}
 }
 
-func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
-	hintVal string, isLocal bool) error {
-	name := virtualParamTransformName(hintName)
-	value := strings.ToLower(hintVal)
+func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
+
+	mp map[string]string, isLocal bool, isStmt bool) error {
 
 	lvl := session.VirtualParamLevelTxBlock
+
+	if isStmt {
+		lvl = session.VirtualParamLevelStatement
+	}
 
 	if isLocal {
 		lvl = session.VirtualParamLevelLocal
 	}
 
-	if session.ParamIsBoolean(name) {
+	for hintName, hintVal := range mp {
+		name := virtualParamTransformName(hintName)
+		value := strings.ToLower(hintVal)
 
-		var v bool
+		if session.ParamIsBoolean(name) {
 
-		switch value {
-		case "true", "ok", "on":
-			v = true
-		case "false", "no", "off":
-			v = false
-		default:
-			return fmt.Errorf("malformed value for GUC: %v", value)
-		}
-		guc, err := rst.Client().FindBoolGUC(name)
-		if err != nil {
-			return err
-		}
+			var v bool
 
-		guc.Set(rst.Client(), lvl, v)
-	} else {
-
-		switch name {
-		case session.SPQR_DISTRIBUTION:
-			rst.Client().SetDistribution(lvl, hintVal)
-		case session.SPQR_DISTRIBUTED_RELATION:
-			rst.Client().SetDistributedRelation(lvl, hintVal)
-		case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-			rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
-		case session.SPQR_SHARDING_KEY:
-			rst.Client().SetShardingKey(lvl, hintVal)
-		case session.SPQR_PREFERRED_ENGINE:
-			rst.Client().SetPreferredEngine(lvl, hintVal)
-
-		case session.SPQR_REPLY_NOTICE:
-			if value == "on" || value == "true" {
-				rst.Client().SetShowNoticeMsg(lvl, true)
-			} else {
-				rst.Client().SetShowNoticeMsg(lvl, false)
-			}
-		case session.SPQR_MAINTAIN_PARAMS:
-			if value == "on" || value == "true" {
-				rst.Client().SetMaintainParams(lvl, true)
-			} else {
-				rst.Client().SetMaintainParams(lvl, false)
-			}
-		case session.SPQR_EXECUTE_ON:
-			rst.Client().SetExecuteOn(lvl, hintVal)
-		case session.SPQR_TARGET_SESSION_ATTRS:
-			fallthrough
-		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-			fallthrough
-		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-			rst.Client().SetTsa(lvl, hintVal)
-		case session.SPQR_ENGINE_V2:
-			/* Ignore statement level here */
 			switch value {
-			case "true", "on", "ok":
-				rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
-			case "false", "off", "no":
-				rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
+			case "true", "ok", "on":
+				v = true
+			case "false", "no", "off":
+				v = false
+			default:
+				return fmt.Errorf("malformed value for GUC: %v", value)
 			}
-		case session.SPQR_AUTO_DISTRIBUTION:
-			if _, err := rst.Qr.Mgr().GetDistribution(ctx, hintVal); err != nil &&
-				hintVal != distributions.REPLICATED {
-				return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
-			} else {
+			guc, err := rst.Client().FindBoolGUC(name)
+			if err != nil {
+				return err
+			}
+
+			guc.Set(rst.Client(), lvl, v)
+		} else {
+
+			switch name {
+			case session.SPQR_DISTRIBUTION:
+				rst.Client().SetDistribution(lvl, hintVal)
+			case session.SPQR_DISTRIBUTED_RELATION:
+				rst.Client().SetDistributedRelation(lvl, hintVal)
+			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+				rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
+			case session.SPQR_SHARDING_KEY:
+				rst.Client().SetShardingKey(lvl, hintVal)
+			case session.SPQR_PREFERRED_ENGINE:
+				rst.Client().SetPreferredEngine(lvl, hintVal)
+
+			case session.SPQR_REPLY_NOTICE:
+				if value == "on" || value == "true" {
+					rst.Client().SetShowNoticeMsg(lvl, true)
+				} else {
+					rst.Client().SetShowNoticeMsg(lvl, false)
+				}
+			case session.SPQR_MAINTAIN_PARAMS:
+				if value == "on" || value == "true" {
+					rst.Client().SetMaintainParams(lvl, true)
+				} else {
+					rst.Client().SetMaintainParams(lvl, false)
+				}
+			case session.SPQR_EXECUTE_ON:
+				rst.Client().SetExecuteOn(lvl, hintVal)
+			case session.SPQR_TARGET_SESSION_ATTRS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+				rst.Client().SetTsa(lvl, hintVal)
+			case session.SPQR_ENGINE_V2:
+				/* Ignore statement level here */
+				switch value {
+				case "true", "on", "ok":
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+				case "false", "off", "no":
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
+				}
+			case session.SPQR_AUTO_DISTRIBUTION:
+
+				/* Should we create distributed or reference relation? */
+
+				if hintVal == distributions.REPLICATED {
+					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
+					rst.Client().SetAutoDistribution(hintVal)
+				} else {
+					valDistribKey, ok := mp[session.SPQR_DISTRIBUTION_KEY]
+					if !ok {
+						valDistribKey = rst.Client().DistributionKey()
+						if valDistribKey == "" {
+							return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+						}
+					}
+
+					_, err := rst.QueryRouter().Mgr().GetDistribution(context.TODO(), value)
+					if err != nil {
+						return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
+					}
+
+					/* This is an ddl query, which creates relation along with attaching to distribution */
+					rst.Client().SetAutoDistribution(value)
+					rst.Client().SetDistributionKey(valDistribKey)
+
+					/*
+					* this is too early to do anything with distribution hint, as we do not yet parsed
+					* DDL of about-to-be-created relation
+					 */
+				}
+
+			case session.SPQR_COMMIT_STRATEGY:
+				rst.Client().SetCommitStrategy(hintVal)
+			default:
 				rst.Client().SetParam(name, hintVal, isLocal)
 			}
-		case session.SPQR_COMMIT_STRATEGY:
-			rst.Client().SetCommitStrategy(hintVal)
-		default:
-			rst.Client().SetParam(name, hintVal, isLocal)
 		}
 	}
 
