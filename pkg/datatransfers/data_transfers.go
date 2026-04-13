@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	spqrguardDistributedRelationsLock = 42
-	spqrguardReferenceRelationLock    = 69
+	spqrguardDistributedRelationsLock  = 42
+	spqrguardReferenceRelationLock     = 69
+	spqrguardReferenceRelationLockLvl2 = 70
 )
 
 const spqrTransferApplicationName = "spqr-transfer"
@@ -497,7 +498,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
 		return err
 	}
-	row := tx.QueryRow(ctx, "SELECT enabled as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLock)
+	row := tx.QueryRow(ctx, "SELECT enabled as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLockLvl2)
 	val := false
 	if err = row.Scan(&val); err != nil && err != pgx.ErrNoRows {
 		return err
@@ -509,7 +510,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1)", relation.String()); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true)", spqrguardReferenceRelationLock); err != nil {
+	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true)", spqrguardReferenceRelationLockLvl2); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -543,7 +544,7 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_reference_relations WHERE reloid = ($1)::regclass::oid;", relation.String()); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_global_settings WHERE name=$1", spqrguardReferenceRelationLock); err != nil {
+	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_global_settings WHERE name=$1", spqrguardReferenceRelationLockLvl2); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
