@@ -660,6 +660,12 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 				}
 			case session.SPQR_AUTO_DISTRIBUTION:
 
+				if hintVal == distributions.REPLICATED {
+					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
+					rst.Client().SetAutoDistribution(hintVal)
+					return nil
+				}
+
 				_, err := rst.QueryRouter().Mgr().GetDistribution(context.TODO(), hintVal)
 				if err != nil {
 					return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
@@ -667,27 +673,22 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 
 				/* Should we create distributed or reference relation? */
 
-				if hintVal == distributions.REPLICATED {
-					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
-					rst.Client().SetAutoDistribution(hintVal)
-				} else {
-					valDistribKey, ok := mp[session.SPQR_DISTRIBUTION_KEY]
-					if !ok {
-						valDistribKey = rst.Client().DistributionKey()
-						if valDistribKey == "" {
-							return fmt.Errorf("spqr distribution specified, but distribution key omitted")
-						}
+				valDistribKey, ok := mp[session.SPQR_DISTRIBUTION_KEY]
+				if !ok {
+					valDistribKey = rst.Client().DistributionKey()
+					if valDistribKey == "" {
+						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
 					}
-
-					/* This is an ddl query, which creates relation along with attaching to distribution */
-					rst.Client().SetAutoDistribution(hintVal)
-					rst.Client().SetDistributionKey(valDistribKey)
-
-					/*
-					* this is too early to do anything with distribution hint, as we do not yet parsed
-					* DDL of about-to-be-created relation
-					 */
 				}
+
+				/* This is an ddl query, which creates relation along with attaching to distribution */
+				rst.Client().SetAutoDistribution(hintVal)
+				rst.Client().SetDistributionKey(valDistribKey)
+
+				/*
+				* this is too early to do anything with distribution hint, as we do not yet parsed
+				* DDL of about-to-be-created relation
+				 */
 
 			case session.SPQR_COMMIT_STRATEGY:
 				rst.Client().SetCommitStrategy(hintVal)

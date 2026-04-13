@@ -108,9 +108,6 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
-	d := distributions.NewDistribution(distributions.REPLICATED, []string{})
-	mmgr.EXPECT().GetDistribution(gomock.Any(), distributions.REPLICATED).Return(d, nil)
-
 	client.EXPECT().SetAutoDistribution(distributions.REPLICATED)
 
 	rst := RelayStateImpl{
