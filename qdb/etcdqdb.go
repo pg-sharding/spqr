@@ -1123,14 +1123,7 @@ func (q *EtcdQDB) AlterShard(ctx context.Context, newShard *Shard) error {
 		Str("id", newShard.ID).
 		Msg("etcdqdb: alter shard options")
 
-	shard, err := q.GetShard(ctx, newShard.ID)
-	if err != nil {
-		return err
-	}
-
-	shard = newShard
-
-	return q.alterShard(ctx, shard)
+	return q.alterShard(ctx, newShard)
 }
 
 func (q *EtcdQDB) alterShard(ctx context.Context, shard *Shard) error {
