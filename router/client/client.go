@@ -276,6 +276,16 @@ func (cl *PsqlClient) ClosePreparedStatement(name string) {
 	delete(cl.prepStmtsHash, name)
 }
 
+func (cl *PsqlClient) ListPreparedStatements() []string {
+	var ret []string
+
+	for k := range cl.prepStmts {
+		ret = append(ret, k)
+	}
+
+	return ret
+}
+
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	if v, ok := cl.prepStmts[name]; ok {
 		return v.Query

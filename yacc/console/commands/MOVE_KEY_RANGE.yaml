@@ -1,4 +1,5 @@
 name: MOVE KEY RANGE
+snippet: key_range_commands
 
 warnings:
   - MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.

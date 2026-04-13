@@ -44,6 +44,8 @@ type LocalInstanceConsole struct {
 	qlogger   qlog.Qlog
 	writer    workloadlog.WorkloadLog
 
+	displayGreeting bool
+
 	stchan chan struct{}
 }
 
@@ -53,13 +55,18 @@ func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
 	return l.entityMgr
 }
 
-func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
+func NewLocalInstanceConsole(
+	mgr meta.EntityMgr,
+	rrouter rulerouter.RuleRouter,
+	stchan chan struct{},
+	writer workloadlog.WorkloadLog) (Console, error) { // add writer class
 	return &LocalInstanceConsole{
-		entityMgr: mgr,
-		rrouter:   rrouter,
-		qlogger:   qlogprovider.NewLocalQlog(),
-		stchan:    stchan,
-		writer:    writer,
+		entityMgr:       mgr,
+		rrouter:         rrouter,
+		qlogger:         qlogprovider.NewLocalQlog(),
+		stchan:          stchan,
+		writer:          writer,
+		displayGreeting: config.RouterConfig().DisplayGreeting,
 	}, nil
 }
 
@@ -144,7 +151,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		&pgproto3.BackendKeyData{ProcessID: rc.GetCancelPid(), SecretKey: rc.GetCancelKey()},
 	}...)
 
-	if config.RouterConfig().DisplayGreeting {
+	if l.displayGreeting {
 		msgs = append(msgs,
 			&pgproto3.NoticeResponse{
 				Message: greeting,

@@ -1,0 +1,54 @@
+name: SHOW
+snippet: show
+description: |
+  Displays cluster metadata, topology, configuration, and runtime status.
+
+  Valid targets: `databases`, `routers`, `shards`, `distributions`, `key_ranges`,
+  `key_ranges_extended`, `relations`, `reference_relations`, `pools`, `clients`,
+  `backend_connections`, `hosts`, `version`, `status`, `instance`, `sequences`,
+  `users`, `task_group`, `task_groups`, `task_group_ext`, `task_groups_ext`,
+  `move_task`, `move_tasks`, `redistribute_tasks`, `prepared_statements`,
+  `time_quantiles`, `unique_indexes`, `coordinator_address`, `is_read_only`,
+  `move_stats`, `errors`, `startup_finished`, `two_phase_tx`, `dcs_storage`,
+  `file_settings`, `tsa_cache`.
+
+syntax: |
+  SHOW <target> [(<columns>)]
+    [WHERE <condition>]
+    [GROUP BY <column>]
+    [ORDER BY <column> [ASC|DESC]]
+
+parameters:
+  - name: target
+    description: The metadata category to display (e.g., databases, shards, key_ranges, distributions)
+  - name: columns
+    description: Optional column projection to display only specific fields (e.g., "(id, status)")
+  - name: WHERE condition
+    description: Optional filter to restrict rows by column values (e.g., WHERE id = 'shard1')
+  - name: GROUP BY column
+    description: Optional grouping by a column
+  - name: ORDER BY column
+    description: Optional sorting by a column, with optional ASC or DESC direction
+
+examples:
+  - description: Show all shards
+    code: SHOW shards;
+  - description: Show key ranges with specific columns
+    code: SHOW key_ranges (key_range_id, shard_id);
+  - description: Show backend connections filtered by hostname
+    code: SHOW backend_connections WHERE hostname = 'localhost';
+  - description: Show clients ordered by user
+    code: SHOW clients ORDER BY user DESC;
+  - description: Show backend connections grouped by shard
+    code: SHOW backend_connections GROUP BY shard_key_name;
+
+tips:
+  - Use column projection to reduce output to only the fields you need
+  - Combine WHERE and ORDER BY for targeted diagnostics
+  - Use key_ranges_extended for additional detail including shard names
+  - Use task_group_ext / task_groups_ext for extended task group information
+
+related_commands:
+  - CREATE KEY RANGE
+  - CREATE DISTRIBUTION
+  - REDISTRIBUTE KEY RANGE

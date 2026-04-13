@@ -71,6 +71,8 @@ type RoutingMetadataContext struct {
 	Is_SPQR_CTID  bool
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+
+	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
@@ -88,22 +90,23 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	csm connmgr.ConnectionMgr,
 	mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:          map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:  map[rfqn.RelationFQN]struct{}{},
-		CteNames:      map[string]struct{}{},
-		TableAliases:  map[string]rfqn.RelationFQN{},
-		CTEAliases:    map[string]string{},
-		Exprs:         map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:     map[rfqn.RelationFQN]map[string][]int{},
-		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-		AuxValues:     map[AuxValuesKey][]lyx.Node{},
-		SPH:           sph,
-		CSM:           csm,
-		Mgr:           mgr,
-		Query:         query,
-		Stmt:          stmt,
-		ro:            false,
-		ClientRule:    ClientRule,
+		Rels:                       map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
+		CteNames:                   map[string]struct{}{},
+		TableAliases:               map[string]rfqn.RelationFQN{},
+		CTEAliases:                 map[string]string{},
+		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:                  map[rfqn.RelationFQN]map[string][]int{},
+		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
+		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
+		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
+		SPH:                        sph,
+		CSM:                        csm,
+		Mgr:                        mgr,
+		Query:                      query,
+		Stmt:                       stmt,
+		ro:                         false,
+		ClientRule:                 ClientRule,
 	}
 }
 
@@ -211,6 +214,10 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 	}
 
 	rm.Distributions[*resolvedRelation] = ds
+	r := ds.GetRelation(resolvedRelation)
+	for _, e := range r.GetDistributionKeyColumnNames() {
+		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
+	}
 	return ds, nil
 }
 
@@ -221,6 +228,7 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 
 // TODO : unit tests
 func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
+	spqrlog.Zero.Debug().Str("qname", resolvedRelation.String()).Str("col", colname).Msgf("!J!JHU!J!UH!U RECORD %+v", expr)
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
 		rm.Exprs[*resolvedRelation] = map[string][]any{}
@@ -241,6 +249,13 @@ func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *
 		routingMeta.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
 	}
 	routingMeta.ParamRefs[*resolvedRelation][colname] = append(routingMeta.ParamRefs[*resolvedRelation][colname], ind)
+	return nil
+}
+
+func (rm *RoutingMetadataContext) TryResolveByDistributionColumn(colname string) *rfqn.RelationFQN {
+	if l, ok := rm.RelationsByDistributionCol[colname]; ok && len(l) == 1 {
+		return l[0]
+	}
 	return nil
 }
 
@@ -292,6 +307,63 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	return kr.ShardKey{}, fmt.Errorf("failed to match key with ranges")
 }
 
+func (rm *RoutingMetadataContext) ResolveKeyShard(
+	ctx context.Context,
+	distrib *distributions.Distribution, val string) (kr.ShardKey, error) {
+
+	krs, err := rm.Mgr.ListKeyRanges(ctx, distrib.Id)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+
+	// TODO: fix this
+	compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
+
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+
+	dRel := rm.SPH.DistributedRelation()
+
+	hf := hashfunction.HashFunctionIdent
+
+	if dRel != "" {
+		relName, err := rfqn.ParseFQN(dRel)
+		if err != nil {
+			return kr.ShardKey{}, err
+		}
+		r, ok := distrib.TryGetRelation(relName)
+		if ok {
+			hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
+			if err != nil {
+				return kr.ShardKey{}, err
+			}
+		}
+	} else {
+		first := true
+		for _, dr := range distrib.ListRelations() {
+			hfLocal, err := hashfunction.HashFunctionByName(dr.DistributionKey[0].HashFunction)
+			if err != nil {
+				return kr.ShardKey{}, err
+			}
+			if first {
+				hf = hfLocal
+			} else {
+				if hf != hfLocal {
+					return kr.ShardKey{}, fmt.Errorf("failed to resolve hint hash function")
+				}
+			}
+		}
+	}
+
+	compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+
+	return rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+}
+
 func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
 	if rm.SPH.ScatterQuery() {
 		return &plan.ScatterPlan{
@@ -306,11 +378,6 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "sharding key in comment without distribution")
 		}
 
-		krs, err := rm.Mgr.ListKeyRanges(ctx, dsId)
-		if err != nil {
-			return nil, err
-		}
-
 		distrib, err := rm.Mgr.GetDistribution(ctx, dsId)
 		if err != nil {
 			return nil, err
@@ -320,57 +387,12 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
 		}
 
-		// TODO: fix this
-		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
-
-		if err != nil {
-			return nil, err
-		}
-
-		dRel := rm.SPH.DistributedRelation()
-
-		hf := hashfunction.HashFunctionIdent
-
-		if dRel != "" {
-			relName, err := rfqn.ParseFQN(dRel)
-			if err != nil {
-				return nil, err
-			}
-			r, ok := distrib.TryGetRelation(relName)
-			if ok {
-				hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
-				if err != nil {
-					return nil, err
-				}
-			}
-		} else {
-			first := true
-			for _, dr := range distrib.ListRelations() {
-				hfLocal, err := hashfunction.HashFunctionByName(dr.DistributionKey[0].HashFunction)
-				if err != nil {
-					return nil, err
-				}
-				if first {
-					hf = hfLocal
-				} else {
-					if hf != hfLocal {
-						return nil, fmt.Errorf("failed to resolve hint hash function")
-					}
-				}
-			}
-		}
-
-		compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
-		if err != nil {
-			return nil, err
-		}
-
-		ds, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+		et, err := rm.ResolveKeyShard(ctx, distrib, val)
 		if err != nil {
 			return nil, err
 		}
 		return &plan.ShardDispatchPlan{
-			ExecTarget: ds,
+			ExecTarget: et,
 		}, nil
 	}
 

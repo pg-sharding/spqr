@@ -1,0 +1,392 @@
+\c spqr-console
+CREATE DISTRIBUTION d1 COLUMN TYPES integer;
+   add distribution    
+-----------------------
+ distribution id -> d1
+(1 row)
+
+CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION d1;
+ add key range 
+---------------
+ bound -> 300
+(1 row)
+
+CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION d1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION d1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION d1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+-- check that numeric type works
+CREATE DISTRIBUTION d2 (integer HASH);
+   add distribution    
+-----------------------
+ distribution id -> d2
+(1 row)
+
+CREATE KEY RANGE FROM 3221225472 ROUTE TO sh4 FOR DISTRIBUTION d2;
+    add key range    
+---------------------
+ bound -> 3221225472
+(1 row)
+
+CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3 FOR DISTRIBUTION d2;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2 FOR DISTRIBUTION d2;
+    add key range    
+---------------------
+ bound -> 1073741824
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION d2;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+-- XXX: hacky hack, fix that
+CREATE DISTRIBUTED RELATION xx_insert_rel_hash(a HASH MURMUR) IN d2;
+             attach table              
+---------------------------------------
+ relation name   -> xx_insert_rel_hash
+ distribution id -> d2
+(2 rows)
+
+-- check that varchar type works
+CREATE DISTRIBUTION d3 (varchar HASH);
+   add distribution    
+-----------------------
+ distribution id -> d3
+(1 row)
+
+CREATE KEY RANGE FROM 3221225472 ROUTE TO sh4 FOR DISTRIBUTION d3;
+    add key range    
+---------------------
+ bound -> 3221225472
+(1 row)
+
+CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3 FOR DISTRIBUTION d3;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2 FOR DISTRIBUTION d3;
+    add key range    
+---------------------
+ bound -> 1073741824
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION d3;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+-- XXX: hacky hack, fix that
+CREATE DISTRIBUTED RELATION xx_insert_rel_hash_text (a HASH MURMUR) IN d3;
+                attach table                
+--------------------------------------------
+ relation name   -> xx_insert_rel_hash_text
+ distribution id -> d3
+(2 rows)
+
+\c regress
+-- non-hashed
+select __spqr__route_key('d1', '1');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d1', '2');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d1', '3');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d1', '50');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d1', '99');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d1', '100');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d1', '101');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d1', '111');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d1', '121');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d1', '199');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d1', '200');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d1', '201');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d1', '299');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d1', '300');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d1', '301');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+-- hashed
+select __spqr__route_key('d2', '1');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d2', '2');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d2', '3');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d2', '50');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d2', '99');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d2', '100');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d2', '101');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d2', '111');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d2', '121');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d2', '199');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d2', '200');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d2', '201');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d2', '299');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d2', '300');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d2', '301');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+-- hashed text
+select __spqr__route_key('d3', 'a');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d3', 'b');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d3', 'c');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d3', 'd');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d3', 'e');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d3', 'f');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d3', 'g');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d3', 'h');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d3', 'i');
+ __spqr__route_key 
+-------------------
+ sh3
+(1 row)
+
+select __spqr__route_key('d3', 'j');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d3', 'k');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d3', 'l');
+ __spqr__route_key 
+-------------------
+ sh1
+(1 row)
+
+select __spqr__route_key('d3', 'm');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+select __spqr__route_key('d3', 'n');
+ __spqr__route_key 
+-------------------
+ sh4
+(1 row)
+
+select __spqr__route_key('d3', 'o');
+ __spqr__route_key 
+-------------------
+ sh2
+(1 row)
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ d1
+ d2
+ d3
+(3 rows)
+

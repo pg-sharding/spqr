@@ -517,3 +517,41 @@ Scenario: REDISTRIBUTE KEY RANGE fails if no replicated relation on destination 
     """
     replicated relation "ref" exists on source shard, but not on destination shard
     """
+  
+  Scenario: REDISTRIBUTE KEY RANGE CHECK does not actually move the data
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "key_range_id": "kr1",
+      "lower_bound": "0",
+      "shard_id": "sh1",
+      "distribution_id": "ds1",
+      "locked": "false"
+    }]
+    """
+

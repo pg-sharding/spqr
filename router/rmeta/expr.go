@@ -232,18 +232,18 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	return rs, nil
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, expr lyx.Node) error {
+
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
+
 	if off == -1 {
 		// column not from distr key
 		return nil
 	}
 
-	for _, expr := range exprs {
-		/* simple key-value pair */
-		if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-			return err
-		}
+	/* simple key-value pair */
+	if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
+		return err
 	}
 
 	return nil
@@ -262,14 +262,21 @@ func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 }
 
 func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
-	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
+	var resolvedRelation *rfqn.RelationFQN
+	var err error
 
-	if err != nil {
-		// failed to resolve relation, skip column
-		return nil
+	resolvedRelation = rm.TryResolveByDistributionColumn(colname)
+
+	if resolvedRelation == nil {
+		resolvedRelation, err = rm.ResolveRelationByAlias(alias)
+
+		if err != nil {
+			// failed to resolve relation, skip column
+			return err
+		}
 	}
 
-	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr})
+	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
 }
 
 func (rm *RoutingMetadataContext) ComputeRoutingExpr(

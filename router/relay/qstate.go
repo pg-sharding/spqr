@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -15,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -47,6 +49,23 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 			},
 		},
 	)
+}
+
+func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) {
+	/* TODO: handle errors */
+	_ = cl.Send(
+		&pgproto3.RowDescription{
+			Fields: tts.Desc,
+		},
+	)
+
+	for _, r := range tts.Raw {
+		_ = cl.Send(
+			&pgproto3.DataRow{
+				Values: r,
+			},
+		)
+	}
 }
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
@@ -104,83 +123,8 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 	mp, err := parser.ParseComment(comment)
 
 	if err == nil {
-		for key, val := range mp {
-			switch key {
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS:
-				// TBD: validate value
-				spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-				rst.Client().SetTsa(session.VirtualParamLevelStatement, val)
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
-				rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelStatement, val)
-			case session.SPQR_SHARDING_KEY:
-				spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
-				rst.Client().SetShardingKey(session.VirtualParamLevelStatement, val)
-			case session.SPQR_DISTRIBUTION:
-				spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
-				rst.Client().SetDistribution(session.VirtualParamLevelStatement, val)
-			case session.SPQR_DISTRIBUTED_RELATION:
-				spqrlog.Zero.Debug().Str("distributed relation", val).Msg("parse distributed relation from comment")
-				rst.Client().SetDistributedRelation(session.VirtualParamLevelStatement, val)
-			case session.SPQR_SCATTER_QUERY:
-				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
-				spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
-				rst.Client().SetScatterQuery(val != "")
-			case session.SPQR_EXECUTE_ON:
-
-				if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
-					return fmt.Errorf("no such shard: %v", val)
-				}
-				rst.Client().SetExecuteOn(session.VirtualParamLevelStatement, val)
-			case session.SPQR_ENGINE_V2:
-				switch val {
-				case "true", "ok", "on":
-					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, true)
-				case "false", "no", "off":
-					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, false)
-				}
-			case session.SPQR_PREFERRED_ENGINE:
-				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
-				rst.Client().SetPreferredEngine(session.VirtualParamLevelStatement, val)
-			case session.SPQR_ALLOW_SPLIT_UPDATE:
-				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
-
-				switch val {
-				case "true", "ok", "on":
-					rst.Client().SetAllowSplitUpdate(session.VirtualParamLevelStatement, true)
-				case "false", "no", "off":
-					rst.Client().SetAllowSplitUpdate(session.VirtualParamLevelStatement, false)
-				}
-
-			case session.SPQR_AUTO_DISTRIBUTION:
-				/* Should we create distributed or reference relation? */
-
-				if val == distributions.REPLICATED {
-					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
-					rst.Client().SetAutoDistribution(val)
-				} else {
-					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
-						_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
-						if err != nil {
-							return err
-						}
-
-						/* This is an ddl query, which creates relation along with attaching to distribution */
-						rst.Client().SetAutoDistribution(val)
-						rst.Client().SetDistributionKey(valDistrib)
-
-						/* this is too early to do anything with distribution hint, as we do not yet parsed
-						* DDL of about-to-be-created relation
-						 */
-					} else {
-						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
-					}
-				}
-			}
+		if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
+			return err
 		}
 	}
 
@@ -250,6 +194,33 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		err := rst.QueryExecutor().ExecRollback(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
+
+	case parser.Discard:
+		/* Close all prepared */
+
+		for _, name := range rst.QueryExecutor().Client().ListPreparedStatements() {
+			rst.QueryExecutor().Client().ClosePreparedStatement(name)
+		}
+
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+
+		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD ALL")
+	case parser.Deallocate:
+		var cmdTag string
+		if st.Name == "" {
+			/* Close all */
+
+			for _, name := range rst.QueryExecutor().Client().ListPreparedStatements() {
+				rst.QueryExecutor().Client().ClosePreparedStatement(name)
+			}
+			cmdTag = "DEALLOCATE ALL"
+		} else {
+			rst.QueryExecutor().Client().ClosePreparedStatement(st.Name)
+			cmdTag = "DEALLOCATE"
+		}
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+
+		return noDataPd, rst.QueryExecutor().ReplyCommandComplete(cmdTag)
 	case parser.ParseStateEmptyQuery:
 		rst.QueryExecutor().ReplyEmptyQuery()
 		// do not complete relay  here
@@ -290,97 +261,211 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				},
 			}
 
-			switch param {
-			case session.SPQR_DISTRIBUTION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
-			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTED_RELATION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+			if session.ParamIsBoolean(param) {
 
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
-			case session.SPQR_REPLY_NOTICE:
-
-				if rst.Client().ShowNoticeMsg() {
-					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("true"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("false"))
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("allow split update"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
 				}
 
-			case session.SPQR_MAINTAIN_PARAMS:
-
-				if rst.Client().MaintainParams() {
-					ReplyVirtualParamState(rst.Client(), "maintain params", []byte("true"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "maintain params", []byte("false"))
+				guc, err := rst.Client().FindBoolGUC(param)
+				if err != nil {
+					return nil, err
 				}
 
-			case session.SPQR_SHARDING_KEY:
-				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
-			case session.SPQR_SCATTER_QUERY:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_SCATTER_QUERY),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
-
-			case session.SPQR_EXECUTE_ON:
-				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
-			case session.SPQR_ENGINE_V2:
-				if rst.Client().EnhancedMultiShardProcessing() {
-					ReplyVirtualParamState(rst.Client(), "engine v2", []byte("on"))
+				if guc.Get(rst.Client()) {
+					tts.WriteDataRow("true")
 				} else {
-					ReplyVirtualParamState(rst.Client(), "engine v2", []byte("off"))
+					tts.WriteDataRow("false")
 				}
-			case session.SPQR_TARGET_SESSION_ATTRS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
-			case session.SPQR_PREFERRED_ENGINE:
-				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
-			case session.SPQR_ALLOW_SPLIT_UPDATE:
 
-				if rst.Client().AllowSplitUpdate() {
-					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("on"))
-				} else {
-					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
-				}
-			case session.SPQR_COMMIT_STRATEGY:
-				ReplyVirtualParamState(rst.Client(), "commit strategy", []byte(rst.Client().CommitStrategy()))
-			default:
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-				if strings.HasPrefix(param, "__spqr__") {
-					ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
-				} else {
-					/* If router does dot have any info about param, fire query to random shard. */
-					if _, ok := rst.Client().Params()[param]; !ok {
-						err := rst.queryProc(comment, binderQ)
-						spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-						return pd, err
+			} else {
+				switch param {
+				case session.SPQR_DISTRIBUTION:
+					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+					return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+						session.SPQR_DISTRIBUTION)
+
+				case session.SPQR_DISTRIBUTED_RELATION:
+					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+					return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+						session.SPQR_DISTRIBUTED_RELATION)
+
+				case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("default route behaviour"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+					tts.WriteDataRow(rst.Client().DefaultRouteBehaviour())
+
+					/* XXX: move this call out of this function */
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+				case session.SPQR_SHARDING_KEY:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("sharding key"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+					tts.WriteDataRow(rst.Client().ShardingKey())
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+				case session.SPQR_SCATTER_QUERY:
+					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+					return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+						session.SPQR_SCATTER_QUERY)
+				case session.SPQR_EXECUTE_ON:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("execute on"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+					tts.WriteDataRow(rst.Client().ExecuteOn())
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+				case session.SPQR_REPLY_NOTICE:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("show notice messages"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
 					}
 
-					ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+					if rst.Client().ShowNoticeMsg() {
+						tts.WriteDataRow("true")
+					} else {
+						tts.WriteDataRow("false")
+					}
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+				case session.SPQR_MAINTAIN_PARAMS:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("maintain params"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+
+					if rst.Client().MaintainParams() {
+						tts.WriteDataRow("true")
+					} else {
+						tts.WriteDataRow("false")
+					}
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+				case session.SPQR_ENGINE_V2:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("engine v2"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+
+					if rst.Client().EnhancedMultiShardProcessing() {
+						tts.WriteDataRow("on")
+					} else {
+						tts.WriteDataRow("off")
+					}
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+				case session.SPQR_TARGET_SESSION_ATTRS:
+					fallthrough
+				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+					fallthrough
+				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("target session attrs"),
+								DataTypeOID:  catalog.TEXTOID,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+					tts.WriteDataRow(string(rst.Client().GetTsa()))
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+				case session.SPQR_PREFERRED_ENGINE:
+					ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
+
+				case session.SPQR_COMMIT_STRATEGY:
+
+					tts := tupleslot.TupleTableSlot{
+						Desc: []pgproto3.FieldDescription{
+							{
+								Name:         []byte("commit strategy"),
+								DataTypeOID:  25,
+								DataTypeSize: -1,
+								TypeModifier: -1,
+							},
+						},
+					}
+					tts.WriteDataRow(string(rst.Client().CommitStrategy()))
+
+					ReplyVirtualParamStateTTS(rst.Client(), &tts)
+				default:
+
+					if strings.HasPrefix(param, "__spqr__") {
+						ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+					} else {
+						/* If router does dot have any info about param, fire query to random shard. */
+						if _, ok := rst.Client().Params()[param]; !ok {
+							err := rst.queryProc(comment, binderQ)
+							spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+							return pd, err
+						}
+
+						ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+					}
 				}
 			}
 
@@ -468,7 +553,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 				if strings.HasPrefix(name, "__spqr__") {
 					ctx := context.TODO()
-					if err := rst.processSpqrHint(ctx, name, val, q.IsLocal); err != nil {
+					if err := rst.processSpqrHint(ctx, map[string]string{
+						name: val,
+					}, q.IsLocal, false); err != nil {
 						return nil, err
 					}
 				} else {
@@ -520,73 +607,128 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 	}
 }
 
-func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
-	hintVal string, isLocal bool) error {
-	name := virtualParamTransformName(hintName)
-	value := strings.ToLower(hintVal)
+func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
+
+	mp map[string]string, isLocal bool, isStmt bool) error {
 
 	lvl := session.VirtualParamLevelTxBlock
+
+	if isStmt {
+		lvl = session.VirtualParamLevelStatement
+	}
 
 	if isLocal {
 		lvl = session.VirtualParamLevelLocal
 	}
 
-	switch name {
-	case session.SPQR_DISTRIBUTION:
-		rst.Client().SetDistribution(lvl, hintVal)
-	case session.SPQR_DISTRIBUTED_RELATION:
-		rst.Client().SetDistributedRelation(lvl, hintVal)
-	case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-		rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
-	case session.SPQR_SHARDING_KEY:
-		rst.Client().SetShardingKey(lvl, hintVal)
-	case session.SPQR_PREFERRED_ENGINE:
-		rst.Client().SetPreferredEngine(lvl, hintVal)
-	case session.SPQR_ALLOW_SPLIT_UPDATE:
-		if value == "on" || value == "true" {
-			rst.Client().SetAllowSplitUpdate(lvl, true)
+	for hintName, hintVal := range mp {
+		name := virtualParamTransformName(hintName)
+		value := strings.ToLower(hintVal)
+
+		if session.ParamIsBoolean(name) {
+
+			var v bool
+
+			switch value {
+			case "true", "ok", "on":
+				v = true
+			case "false", "no", "off":
+				v = false
+			default:
+				return fmt.Errorf("malformed value for GUC: %v", value)
+			}
+			guc, err := rst.Client().FindBoolGUC(name)
+			if err != nil {
+				return err
+			}
+
+			guc.Set(rst.Client(), lvl, v)
 		} else {
-			rst.Client().SetAllowSplitUpdate(lvl, false)
+
+			switch name {
+			case session.SPQR_SCATTER_QUERY:
+				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
+				rst.Client().SetScatterQuery(hintVal != "")
+			case session.SPQR_EXECUTE_ON:
+				if _, ok := config.RouterConfig().ShardMapping[hintVal]; !ok {
+					return fmt.Errorf("no such shard: %v", hintVal)
+				}
+				rst.Client().SetExecuteOn(lvl, hintVal)
+			case session.SPQR_DISTRIBUTION:
+				rst.Client().SetDistribution(lvl, hintVal)
+			case session.SPQR_DISTRIBUTION_KEY:
+				rst.Client().SetDistributionKey(hintVal)
+			case session.SPQR_DISTRIBUTED_RELATION:
+				rst.Client().SetDistributedRelation(lvl, hintVal)
+			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+				rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
+			case session.SPQR_SHARDING_KEY:
+				rst.Client().SetShardingKey(lvl, hintVal)
+			case session.SPQR_PREFERRED_ENGINE:
+				rst.Client().SetPreferredEngine(lvl, hintVal)
+
+			case session.SPQR_REPLY_NOTICE:
+				if value == "on" || value == "true" {
+					rst.Client().SetShowNoticeMsg(lvl, true)
+				} else {
+					rst.Client().SetShowNoticeMsg(lvl, false)
+				}
+			case session.SPQR_MAINTAIN_PARAMS:
+				if value == "on" || value == "true" {
+					rst.Client().SetMaintainParams(lvl, true)
+				} else {
+					rst.Client().SetMaintainParams(lvl, false)
+				}
+			case session.SPQR_TARGET_SESSION_ATTRS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+				rst.Client().SetTsa(lvl, hintVal)
+			case session.SPQR_ENGINE_V2:
+				/* Ignore statement level here */
+				switch value {
+				case "true", "on", "ok":
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+				case "false", "off", "no":
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
+				}
+			case session.SPQR_AUTO_DISTRIBUTION:
+
+				if hintVal == distributions.REPLICATED {
+					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
+					rst.Client().SetAutoDistribution(hintVal)
+					return nil
+				}
+
+				_, err := rst.QueryRouter().Mgr().GetDistribution(context.TODO(), hintVal)
+				if err != nil {
+					return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
+				}
+
+				/* Should we create distributed or reference relation? */
+
+				_, ok := mp[session.SPQR_DISTRIBUTION_KEY]
+				if !ok {
+					if rst.Client().DistributionKey() == "" {
+						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+					}
+				}
+
+				/* This is an ddl query, which creates relation along with attaching to distribution */
+				rst.Client().SetAutoDistribution(hintVal)
+
+				/*
+				* this is too early to do anything with distribution hint, as we do not yet parsed
+				* DDL of about-to-be-created relation
+				 */
+
+			case session.SPQR_COMMIT_STRATEGY:
+				rst.Client().SetCommitStrategy(hintVal)
+			default:
+				rst.Client().SetParam(name, hintVal, isLocal)
+			}
 		}
-	case session.SPQR_REPLY_NOTICE:
-		if value == "on" || value == "true" {
-			rst.Client().SetShowNoticeMsg(lvl, true)
-		} else {
-			rst.Client().SetShowNoticeMsg(lvl, false)
-		}
-	case session.SPQR_MAINTAIN_PARAMS:
-		if value == "on" || value == "true" {
-			rst.Client().SetMaintainParams(lvl, true)
-		} else {
-			rst.Client().SetMaintainParams(lvl, false)
-		}
-	case session.SPQR_EXECUTE_ON:
-		rst.Client().SetExecuteOn(lvl, hintVal)
-	case session.SPQR_TARGET_SESSION_ATTRS:
-		fallthrough
-	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-		fallthrough
-	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-		rst.Client().SetTsa(lvl, hintVal)
-	case session.SPQR_ENGINE_V2:
-		/* Ignore statement level here */
-		switch value {
-		case "true", "on", "ok":
-			rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
-		case "false", "off", "no":
-			rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
-		}
-	case session.SPQR_AUTO_DISTRIBUTION:
-		if _, err := rst.Qr.Mgr().GetDistribution(ctx, hintVal); err != nil &&
-			hintVal != distributions.REPLICATED {
-			return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
-		} else {
-			rst.Client().SetParam(name, hintVal, isLocal)
-		}
-	case session.SPQR_COMMIT_STRATEGY:
-		rst.Client().SetCommitStrategy(hintVal)
-	default:
-		rst.Client().SetParam(name, hintVal, isLocal)
 	}
 
 	return rst.QueryExecutor().ReplyCommandComplete("SET")
