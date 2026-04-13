@@ -88,7 +88,6 @@ func NewRoute(beRule *config.BackendRule,
 	return route
 }
 
-// TODO : unit tests
 func (r *Route) SetParams(ps shard.ParameterSet) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
