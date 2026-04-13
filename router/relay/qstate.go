@@ -660,6 +660,11 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 				}
 			case session.SPQR_AUTO_DISTRIBUTION:
 
+				_, err := rst.QueryRouter().Mgr().GetDistribution(context.TODO(), hintVal)
+				if err != nil {
+					return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
+				}
+
 				/* Should we create distributed or reference relation? */
 
 				if hintVal == distributions.REPLICATED {
@@ -674,13 +679,8 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 						}
 					}
 
-					_, err := rst.QueryRouter().Mgr().GetDistribution(context.TODO(), value)
-					if err != nil {
-						return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
-					}
-
 					/* This is an ddl query, which creates relation along with attaching to distribution */
-					rst.Client().SetAutoDistribution(value)
+					rst.Client().SetAutoDistribution(hintVal)
 					rst.Client().SetDistributionKey(valDistribKey)
 
 					/*
