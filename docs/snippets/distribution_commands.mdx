@@ -2,10 +2,37 @@
 
 ### ALTER DISTRIBUTION
 
-Modifies distribution metadata: relation attachments, distribution key metadata,
-schema metadata, and default shard settings.
+Modifies distribution metadata.
 
-This command operates on SPQR metadata and does not execute table DDL on shards.
+Covers relation attachments, distribution key metadata, schema metadata,
+and default shard settings. This command operates on SPQR metadata and does
+not execute table DDL on shards.
+
+ATTACH RELATION attaches one or more relations to the distribution with a
+specified distribution key. For composite sharding keys, specify multiple
+column names separated by commas in the DISTRIBUTION KEY clause.
+
+DETACH RELATION detaches a relation from the distribution.
+
+ALTER RELATION DISTRIBUTION KEY replaces the entire distribution key of an
+already attached relation. This overwrites all column names and hash functions
+in one shot — it does not patch individual columns. Use this when you need to
+change the key structure entirely, or to fix expression-based routing entries
+(which RENAME DISTRIBUTION COLUMN does not support). The new key must have the
+same number of entries as the distribution's column types.
+
+ALTER RELATION SCHEMA changes the schema associated with an attached relation
+in the distribution metadata.
+
+RENAME DISTRIBUTION COLUMN is a metadata-only fix that renames a column in the
+distribution key of an attached relation. It does not execute ALTER TABLE RENAME
+COLUMN on PostgreSQL — it only updates the column name stored in SPQR metadata.
+The primary use case is fixing a case mismatch between the column name in SPQR
+metadata and the actual PostgreSQL column. For composite keys, call this command
+once per column that needs renaming.
+
+ADD DEFAULT SHARD sets a default shard for the distribution, routing records that
+do not match any key range. DROP DEFAULT SHARD removes the default shard setting.
 
 
 <Warning>ALTER RELATION operations are metadata changes and may affect routing immediately.</Warning>
@@ -13,30 +40,47 @@ This command operates on SPQR metadata and does not execute table DDL on shards.
 <Warning>Use maintenance windows for key/schema metadata changes in write-heavy workloads.</Warning>
 
 
+<Note>RENAME DISTRIBUTION COLUMN does not execute ALTER TABLE on PostgreSQL — it only updates SPQR metadata.</Note>
+
+<Note>For expression-based routing entries, use ALTER RELATION DISTRIBUTION KEY to replace the full key instead of RENAME DISTRIBUTION COLUMN.</Note>
+
+
 ```sql
-ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> DISTRIBUTION KEY <keys>
+ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName>
+  DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>
-ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName> DISTRIBUTION KEY <keys>
-ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName> SCHEMA <schemaName>
+ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+  DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
+ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+  SCHEMA <schemaName>
 ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
   RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>
 ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>
 ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD
+
+where keys is a comma-separated list of column names (e.g., "col1, col2")
+where hashFunction is one of: IDENTITY, MURMUR, CITY
 ```
 
 **Examples:**
 
 ```sql
--- Attach relation with distribution key
+-- Attach relation with single distribution key
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
+-- Attach relation with composite key and hash function
+ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
 -- Detach relation
 ALTER DISTRIBUTION ds1 DETACH RELATION orders;
 -- Replace relation distribution key
 ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
--- Rename key column metadata
-ALTER DISTRIBUTION ds1 ALTER RELATION orders RENAME DISTRIBUTION COLUMN old_id TO new_id;
+-- Change relation schema
+ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
+-- Fix column name casing in metadata (w_id vs W_ID)
+ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
 -- Set default shard
 ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+-- Remove default shard
+ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;
 ```
 
 ### CREATE DISTRIBUTION
@@ -46,6 +90,9 @@ Creates a sharding distribution with a distribution identifier and key column ty
 A distribution defines the sharding key type layout used by attached relations and key ranges.
 Optionally, specify a default shard to route records that do not match any key range.
 
+For composite sharding keys (multiple columns), specify multiple types separated by commas.
+You can append "hash" after a column type to apply hash-based distribution to that column.
+
 
 ```sql
 CREATE DISTRIBUTION <distributionID>
@@ -54,6 +101,8 @@ CREATE DISTRIBUTION <distributionID>
 
 where types is a comma-separated list of column types for the distribution key,
 and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+
+where <shardID> is a default shard identifier. The <shardID> must exist.
 ```
 
 **Examples:**
@@ -63,17 +112,19 @@ and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be fol
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 -- Single varchar key distribution with hash
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
--- Composite key distribution
-CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar;
+-- Composite key distribution with two columns
+CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
+-- Composite key with mixed types and hash on second column
+CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;
 -- Parenthesized type syntax with default shard
-CREATE DISTRIBUTION ds4 (integer, varchar hash) DEFAULT SHARD sh1;
+CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;
 ```
 
 ### DROP DISTRIBUTION
 
-Removes a distribution from cluster metadata.
+Removes a distribution from cluster metadata, or all distributions at once.
 
-Use CASCADE to remove dependent metadata objects when required.
+Use CASCADE to remove dependent metadata objects (key ranges, attached relations) when required.
 Use DROP DISTRIBUTION ALL to remove all distributions.
 
 

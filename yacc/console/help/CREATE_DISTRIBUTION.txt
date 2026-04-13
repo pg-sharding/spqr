@@ -9,11 +9,16 @@ SYNTAX
     where types is a comma-separated list of column types for the distribution key,
     and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
 
+    where <shardID> is a default shard identifier. The <shardID> must exist.
+
 DESCRIPTION
     Creates a sharding distribution with a distribution identifier and key column types.
 
     A distribution defines the sharding key type layout used by attached relations and key ranges.
     Optionally, specify a default shard to route records that do not match any key range.
+
+    For composite sharding keys (multiple columns), specify multiple types separated by commas.
+    You can append "hash" after a column type to apply hash-based distribution to that column.
 
 PARAMETERS
     <distributionID> - Unique identifier of the distribution
@@ -25,10 +30,12 @@ EXAMPLES
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     Single varchar key distribution with hash:
         CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
-    Composite key distribution:
-        CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar;
+    Composite key distribution with two columns:
+        CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
+    Composite key with mixed types and hash on second column:
+        CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;
     Parenthesized type syntax with default shard:
-        CREATE DISTRIBUTION ds4 (integer, varchar hash) DEFAULT SHARD sh1;
+        CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;
 
 TIPS
     - Keep column type order aligned with relation distribution keys

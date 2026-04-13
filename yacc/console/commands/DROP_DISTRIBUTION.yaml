@@ -1,9 +1,9 @@
 name: DROP DISTRIBUTION
 snippet: distribution_commands
 description: |
-  Removes a distribution from cluster metadata.
+  Removes a distribution from cluster metadata, or all distributions at once.
 
-  Use CASCADE to remove dependent metadata objects when required.
+  Use CASCADE to remove dependent metadata objects (key ranges, attached relations) when required.
   Use DROP DISTRIBUTION ALL to remove all distributions.
 
 syntax: |
