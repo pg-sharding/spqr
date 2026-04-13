@@ -46,7 +46,9 @@ ccb
 ccfg
 ccmsg
 Cfgs
+cgit
 cillum
+Cimpl
 CIn
 Citus
 cityhash
@@ -190,13 +192,12 @@ gomod
 goooal
 gorm
 goyacc
-GUC
-GUCs
-Cimpl
 Greenplum
 gss
 gssapi
 GSSREQ
+GUC
+GUCs
 hashfunction
 hashicorp
 hba
@@ -506,8 +507,8 @@ serviceprincipal
 sethvargo
 sevlyar
 shardconn
-shardmock
 Shardinfo
+shardmock
 shardn
 shardname
 shardpool
