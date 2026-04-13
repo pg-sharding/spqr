@@ -1,0 +1,54 @@
+NAME
+    ALTER DISTRIBUTION - Modifies distribution metadata: relation attachments, distribution key metadata,
+
+SYNTAX
+    ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> DISTRIBUTION KEY <keys>
+    ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>
+    ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName> DISTRIBUTION KEY <keys>
+    ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName> SCHEMA <schemaName>
+    ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+      RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>
+    ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>
+    ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD
+
+DESCRIPTION
+    Modifies distribution metadata: relation attachments, distribution key metadata,
+    schema metadata, and default shard settings.
+
+    This command operates on SPQR metadata and does not execute table DDL on shards.
+
+WARNINGS
+    - ALTER RELATION operations are metadata changes and may affect routing immediately.
+    - Use maintenance windows for key/schema metadata changes in write-heavy workloads.
+
+PARAMETERS
+    <distributionID> - Identifier of the distribution to modify
+    <relationName> - Relation to attach, detach, or alter
+    <keys> - Distribution key definition (column list and optional hash functions)
+    <schemaName> - Schema metadata value for an attached relation
+    <oldColumnName> - Existing distribution key column name in metadata
+    <newColumnName> - New distribution key column name in metadata
+    <shardID> - Shard identifier to set as default shard
+
+EXAMPLES
+    Attach relation with distribution key:
+        ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
+    Detach relation:
+        ALTER DISTRIBUTION ds1 DETACH RELATION orders;
+    Replace relation distribution key:
+        ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+    Rename key column metadata:
+        ALTER DISTRIBUTION ds1 ALTER RELATION orders RENAME DISTRIBUTION COLUMN old_id TO new_id;
+    Set default shard:
+        ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+
+TIPS
+    - Use CREATE DISTRIBUTION first, then attach relations and create key ranges
+    - Verify metadata after changes with SHOW relations and SHOW distributions
+    - Prefer replacing full distribution keys when relation uses expression-based routing
+
+RELATED COMMANDS
+    CREATE DISTRIBUTION
+    DROP DISTRIBUTION
+    CREATE KEY RANGE
+    SHOW

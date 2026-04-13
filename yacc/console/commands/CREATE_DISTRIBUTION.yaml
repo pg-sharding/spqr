@@ -1,0 +1,44 @@
+name: CREATE DISTRIBUTION
+snippet: distribution_commands
+description: |
+  Creates a sharding distribution with a distribution identifier and key column types.
+
+  A distribution defines the sharding key type layout used by attached relations and key ranges.
+  Optionally, specify a default shard to route records that do not match any key range.
+
+syntax: |
+  CREATE DISTRIBUTION <distributionID>
+    [COLUMN TYPES <types> | (<types>)]
+    [DEFAULT SHARD <shardID>]
+
+  where types is a comma-separated list of column types for the distribution key,
+  and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+
+parameters:
+  - name: distributionID
+    description: Unique identifier of the distribution
+  - name: types
+    description: Distribution key column types in order (single or composite key)
+  - name: shardID
+    description: Optional default shard identifier for unmatched routing cases
+
+examples:
+  - description: Single integer key distribution
+    code: CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  - description: Single varchar key distribution with hash
+    code: CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
+  - description: Composite key distribution
+    code: CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar;
+  - description: Parenthesized type syntax with default shard
+    code: CREATE DISTRIBUTION ds4 (integer, varchar hash) DEFAULT SHARD sh1;
+
+tips:
+  - Keep column type order aligned with relation distribution keys
+  - Use hashed types for high-cardinality string/integer keys when needed
+  - Configure DEFAULT SHARD only when fallback routing is explicitly required
+
+related_commands:
+  - ALTER DISTRIBUTION
+  - DROP DISTRIBUTION
+  - CREATE KEY RANGE
+  - SHOW

@@ -374,3 +374,151 @@ HELP SHOW;
      REDISTRIBUTE KEY RANGE
 (1 row)
 
+HELP CREATE DISTRIBUTION;
+                                                      help                                                      
+----------------------------------------------------------------------------------------------------------------
+ NAME                                                                                                          +
+     CREATE DISTRIBUTION - Creates a sharding distribution with a distribution identifier and key column types.+
+                                                                                                               +
+ SYNTAX                                                                                                        +
+     CREATE DISTRIBUTION <distributionID>                                                                      +
+       [COLUMN TYPES <types> | (<types>)]                                                                      +
+       [DEFAULT SHARD <shardID>]                                                                               +
+                                                                                                               +
+     where types is a comma-separated list of column types for the distribution key,                           +
+     and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)            +
+                                                                                                               +
+ DESCRIPTION                                                                                                   +
+     Creates a sharding distribution with a distribution identifier and key column types.                      +
+                                                                                                               +
+     A distribution defines the sharding key type layout used by attached relations and key ranges.            +
+     Optionally, specify a default shard to route records that do not match any key range.                     +
+                                                                                                               +
+ PARAMETERS                                                                                                    +
+     <distributionID> - Unique identifier of the distribution                                                  +
+     <types> - Distribution key column types in order (single or composite key)                                +
+     <shardID> - Optional default shard identifier for unmatched routing cases                                 +
+                                                                                                               +
+ EXAMPLES                                                                                                      +
+     Single integer key distribution:                                                                          +
+         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;                                                         +
+     Single varchar key distribution with hash:                                                                +
+         CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;                                                    +
+     Composite key distribution:                                                                               +
+         CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar;                                                +
+     Parenthesized type syntax with default shard:                                                             +
+         CREATE DISTRIBUTION ds4 (integer, varchar hash) DEFAULT SHARD sh1;                                    +
+                                                                                                               +
+ TIPS                                                                                                          +
+     - Keep column type order aligned with relation distribution keys                                          +
+     - Use hashed types for high-cardinality string/integer keys when needed                                   +
+     - Configure DEFAULT SHARD only when fallback routing is explicitly required                               +
+                                                                                                               +
+ RELATED COMMANDS                                                                                              +
+     ALTER DISTRIBUTION                                                                                        +
+     DROP DISTRIBUTION                                                                                         +
+     CREATE KEY RANGE                                                                                          +
+     SHOW
+(1 row)
+
+HELP DROP DISTRIBUTION;
+                                           help                                            
+-------------------------------------------------------------------------------------------
+ NAME                                                                                     +
+     DROP DISTRIBUTION - Removes a distribution from cluster metadata.                    +
+                                                                                          +
+ SYNTAX                                                                                   +
+     DROP DISTRIBUTION <distributionID> [CASCADE]                                         +
+     DROP DISTRIBUTION ALL [CASCADE]                                                      +
+                                                                                          +
+ DESCRIPTION                                                                              +
+     Removes a distribution from cluster metadata.                                        +
+                                                                                          +
+     Use CASCADE to remove dependent metadata objects when required.                      +
+     Use DROP DISTRIBUTION ALL to remove all distributions.                               +
+                                                                                          +
+ WARNINGS                                                                                 +
+     - Dropping a distribution removes routing metadata and may impact attached relations.+
+                                                                                          +
+ PARAMETERS                                                                               +
+     <distributionID> - Identifier of the distribution to drop                            +
+     <CASCADE> - Also remove dependent metadata objects                                   +
+     <ALL> - Special keyword to drop all distributions                                    +
+                                                                                          +
+ EXAMPLES                                                                                 +
+     Drop one distribution:                                                               +
+         DROP DISTRIBUTION ds1;                                                           +
+     Drop distribution with dependent metadata:                                           +
+         DROP DISTRIBUTION ds1 CASCADE;                                                   +
+     Drop all distributions with cascade:                                                 +
+         DROP DISTRIBUTION ALL CASCADE;                                                   +
+                                                                                          +
+ TIPS                                                                                     +
+     - Check current distributions and dependencies with SHOW before dropping             +
+     - Prefer dropping a single distribution instead of ALL in production                 +
+                                                                                          +
+ RELATED COMMANDS                                                                         +
+     CREATE DISTRIBUTION                                                                  +
+     ALTER DISTRIBUTION                                                                   +
+     SHOW
+(1 row)
+
+HELP ALTER DISTRIBUTION;
+                                                   help                                                    
+-----------------------------------------------------------------------------------------------------------
+ NAME                                                                                                     +
+     ALTER DISTRIBUTION - Modifies distribution metadata: relation attachments, distribution key metadata,+
+                                                                                                          +
+ SYNTAX                                                                                                   +
+     ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> DISTRIBUTION KEY <keys>           +
+     ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>                                   +
+     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName> DISTRIBUTION KEY <keys>            +
+     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName> SCHEMA <schemaName>                +
+     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>                                    +
+       RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>                                      +
+     ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>                                      +
+     ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD                                               +
+                                                                                                          +
+ DESCRIPTION                                                                                              +
+     Modifies distribution metadata: relation attachments, distribution key metadata,                     +
+     schema metadata, and default shard settings.                                                         +
+                                                                                                          +
+     This command operates on SPQR metadata and does not execute table DDL on shards.                     +
+                                                                                                          +
+ WARNINGS                                                                                                 +
+     - ALTER RELATION operations are metadata changes and may affect routing immediately.                 +
+     - Use maintenance windows for key/schema metadata changes in write-heavy workloads.                  +
+                                                                                                          +
+ PARAMETERS                                                                                               +
+     <distributionID> - Identifier of the distribution to modify                                          +
+     <relationName> - Relation to attach, detach, or alter                                                +
+     <keys> - Distribution key definition (column list and optional hash functions)                       +
+     <schemaName> - Schema metadata value for an attached relation                                        +
+     <oldColumnName> - Existing distribution key column name in metadata                                  +
+     <newColumnName> - New distribution key column name in metadata                                       +
+     <shardID> - Shard identifier to set as default shard                                                 +
+                                                                                                          +
+ EXAMPLES                                                                                                 +
+     Attach relation with distribution key:                                                               +
+         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;                         +
+     Detach relation:                                                                                     +
+         ALTER DISTRIBUTION ds1 DETACH RELATION orders;                                                   +
+     Replace relation distribution key:                                                                   +
+         ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;                       +
+     Rename key column metadata:                                                                          +
+         ALTER DISTRIBUTION ds1 ALTER RELATION orders RENAME DISTRIBUTION COLUMN old_id TO new_id;        +
+     Set default shard:                                                                                   +
+         ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;                                                    +
+                                                                                                          +
+ TIPS                                                                                                     +
+     - Use CREATE DISTRIBUTION first, then attach relations and create key ranges                         +
+     - Verify metadata after changes with SHOW relations and SHOW distributions                           +
+     - Prefer replacing full distribution keys when relation uses expression-based routing                +
+                                                                                                          +
+ RELATED COMMANDS                                                                                         +
+     CREATE DISTRIBUTION                                                                                  +
+     DROP DISTRIBUTION                                                                                    +
+     CREATE KEY RANGE                                                                                     +
+     SHOW
+(1 row)
+
