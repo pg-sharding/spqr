@@ -97,22 +97,7 @@ EXAMPLES
 
 SUBCOMMANDS
 {{- range .Subcommands}}
-
     {{.Name}}
-{{indent .Description 8}}
-{{- if .Syntax}}
-
-        Syntax:
-{{indent .Syntax 12}}
-{{- end}}
-{{- if .Examples}}
-
-        Examples:
-{{- range .Examples}}
-            {{.Description}}:
-{{indent .Code 16}}
-{{- end}}
-{{- end}}
 {{- end}}
 {{- end}}
 {{- if .Tips}}
@@ -127,6 +112,42 @@ TIPS
 RELATED COMMANDS
 {{- range .RelatedCommands}}
     {{.}}
+{{- end}}
+{{- end}}
+`
+
+const subcommandHelpTemplate = `NAME
+    {{.Name}} - {{firstLine .Description}}
+
+SYNTAX
+{{indent .Syntax 4}}
+
+DESCRIPTION
+{{indent .Description 4}}
+{{- if .Warnings}}
+
+WARNINGS
+{{- range .Warnings}}
+    - {{.}}
+{{- end}}
+{{- end}}
+{{- if .Examples}}
+
+EXAMPLES
+{{- range .Examples}}
+    {{.Description}}:
+{{indent .Code 8}}
+{{- if .Output}}
+    Output:
+{{indent .Output 8}}
+{{- end}}
+{{- end}}
+{{- end}}
+{{- if .Notes}}
+
+NOTES
+{{- range .Notes}}
+    - {{.}}
 {{- end}}
 {{- end}}
 `
@@ -332,6 +353,11 @@ func generateHelpFiles(commands []*Command, dir string) error {
 		return fmt.Errorf("parsing help template: %w", err)
 	}
 
+	subTmpl, err := template.New("subHelp").Funcs(funcMap).Parse(subcommandHelpTemplate)
+	if err != nil {
+		return fmt.Errorf("parsing subcommand help template: %w", err)
+	}
+
 	for _, cmd := range commands {
 		filename := strings.ReplaceAll(cmd.Name, " ", "_") + ".txt"
 		path := filepath.Join(dir, filename)
@@ -346,6 +372,23 @@ func generateHelpFiles(commands []*Command, dir string) error {
 		}
 
 		fmt.Printf("  Generated help/%s\n", filename)
+
+		// Generate individual .txt files for each subcommand
+		for _, sub := range cmd.Subcommands {
+			subFilename := strings.ReplaceAll(sub.Name, " ", "_") + ".txt"
+			subPath := filepath.Join(dir, subFilename)
+
+			var subBuf bytes.Buffer
+			if err := subTmpl.Execute(&subBuf, sub); err != nil {
+				return fmt.Errorf("executing subcommand template for %s: %w", sub.Name, err)
+			}
+
+			if err := os.WriteFile(subPath, subBuf.Bytes(), 0644); err != nil {
+				return fmt.Errorf("writing %s: %w", subPath, err)
+			}
+
+			fmt.Printf("  Generated help/%s\n", subFilename)
+		}
 	}
 
 	return nil
