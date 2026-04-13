@@ -204,20 +204,23 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
-		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD")
+		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD ALL")
 	case parser.Deallocate:
+		var cmdTag string
 		if st.Name == "" {
 			/* Close all */
 
 			for _, name := range rst.QueryExecutor().Client().ListPreparedStatements() {
 				rst.QueryExecutor().Client().ClosePreparedStatement(name)
 			}
+			cmdTag = "DEALLOCATE ALL"
 		} else {
 			rst.QueryExecutor().Client().ClosePreparedStatement(st.Name)
+			cmdTag = "DEALLOCATE"
 		}
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
-		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DEALLOCATE")
+		return noDataPd, rst.QueryExecutor().ReplyCommandComplete(cmdTag)
 	case parser.ParseStateEmptyQuery:
 		rst.QueryExecutor().ReplyEmptyQuery()
 		// do not complete relay  here
