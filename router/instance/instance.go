@@ -74,19 +74,12 @@ func (r *InstanceImpl) Initialize() bool {
 var _ RouterInstance = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
-
-	db, err := qdb.GetMemQDB()
+	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
 	}
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
-
-	d, err := qdb.NewDataPlaneTwoPhaseStateKeeper("mem")
-	if err != nil {
-		return nil, err
-	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache, config.RouterConfig().ShardMapping, config.RouterConfig().ManageShardsByCoordinator)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -104,10 +97,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	spqrlog.Zero.Debug().
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
-
-	var seqMngr sequences.SequenceMgr = lc
-	idRangeSize := config.RouterConfig().IdentityRangeSize
-	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	// frontend
 	frTLS, err := config.RouterConfig().FrontendTLS.Init(config.RouterConfig().Host)
@@ -128,6 +117,18 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 
 	// request router
 	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	lc := coord.NewLocalInstanceMetadataMgr(
+		db,
+		db,
+		cache,
+		config.RouterConfig().ShardMapping,
+		config.RouterConfig().ManageShardsByCoordinator,
+		rr,
+	)
+
+	var seqMngr sequences.SequenceMgr = lc
+	idRangeSize := config.RouterConfig().IdentityRangeSize
+	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)

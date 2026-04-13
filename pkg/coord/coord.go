@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -86,6 +85,11 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
+}
+
+// UpdateShard implements meta.EntityMgr.
+func (lc *Coordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	return lc.qdb.UpdateShard(ctx, topology.DataShardToDB(shard))
 }
 
 // AddWorldShard implements meta.EntityMgr.
@@ -394,7 +398,7 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	panic("unimplemented")
 }
 
@@ -596,12 +600,7 @@ func (lc *Coordinator) ListShards(ctx context.Context) ([]*topology.DataShard, e
 	var retShards []*topology.DataShard
 
 	for _, sh := range resp {
-		retShards = append(retShards, &topology.DataShard{
-			ID: sh.ID,
-			Cfg: &config.Shard{
-				RawHosts: sh.RawHosts,
-			},
-		})
+		retShards = append(retShards, topology.DataShardFromDB(sh))
 	}
 	return retShards, nil
 }
@@ -1087,7 +1086,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 	tranMngr := meta.NewTranEntityManager(lc)
-	if err := tranMngr.UpdateKeyRange(ctx, krBase); err != nil {
+	if err := tranMngr.UpdateKeyRange(ctx, krBase, ds.ColTypes); err != nil {
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1213,17 +1212,17 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			return fmt.Errorf("unexpected nil isLocked value in Split")
 		}
 		*krOld.IsLocked = false
-		err = tranMngr.CreateKeyRange(ctx, krOld)
+		err = tranMngr.CreateKeyRange(ctx, krOld, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not update source key range in left key range split: %s", err)
 		}
-		err = tranMngr.UpdateKeyRange(ctx, krTemp)
+		err = tranMngr.UpdateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in left key range split: %s", err)
 		}
 	} else {
 		krTemp.ID = req.Krid
-		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		err = tranMngr.CreateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in right key range split: %s", err)
 		}
@@ -1356,4 +1355,12 @@ func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName *rfqn.Re
 		res[id] = distributions.UniqueIndexFromDB(idx)
 	}
 	return res, nil
+}
+
+func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []string) error {
+	return lc.qdb.SetTxMetaStorage(ctx, storage)
+}
+
+func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
+	return lc.qdb.GetTxMetaStorage(ctx)
 }

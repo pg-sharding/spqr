@@ -700,6 +700,21 @@ func (mr *MockCoordinatorMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockCoordinator)(nil).GetTaskGroupStatus), ctx, id)
 }
 
+// GetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockCoordinator) GetTwoPhaseTxMetaStorage(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwoPhaseTxMetaStorage", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwoPhaseTxMetaStorage indicates an expected call of GetTwoPhaseTxMetaStorage.
+func (mr *MockCoordinatorMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockCoordinator)(nil).GetTwoPhaseTxMetaStorage), arg0)
+}
+
 // IsReadOnly mocks base method.
 func (m *MockCoordinator) IsReadOnly() bool {
 	m.ctrl.T.Helper()
@@ -1054,17 +1069,17 @@ func (mr *MockCoordinatorMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *g
 }
 
 // RetryMoveTaskGroup mocks base method.
-func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id)
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
-func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait)
 }
 
 // RunCoordinator mocks base method.
@@ -1077,6 +1092,20 @@ func (m *MockCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 func (mr *MockCoordinatorMockRecorder) RunCoordinator(ctx, initialRouter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunCoordinator", reflect.TypeOf((*MockCoordinator)(nil).RunCoordinator), ctx, initialRouter)
+}
+
+// SetTwoPhaseTxMetaStorage mocks base method.
+func (m *MockCoordinator) SetTwoPhaseTxMetaStorage(arg0 context.Context, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTwoPhaseTxMetaStorage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTwoPhaseTxMetaStorage indicates an expected call of SetTwoPhaseTxMetaStorage.
+func (mr *MockCoordinatorMockRecorder) SetTwoPhaseTxMetaStorage(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockCoordinator)(nil).SetTwoPhaseTxMetaStorage), arg0, arg1)
 }
 
 // ShareKeyRange mocks base method.
@@ -1246,6 +1275,20 @@ func (m *MockCoordinator) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange)
 func (mr *MockCoordinatorMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).UpdateKeyRange), ctx, arg1)
+}
+
+// UpdateShard mocks base method.
+func (m *MockCoordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockCoordinatorMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockCoordinator)(nil).UpdateShard), ctx, shard)
 }
 
 // WriteBalancerTask mocks base method.

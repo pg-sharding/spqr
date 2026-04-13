@@ -14,6 +14,7 @@ message CreateDistributionGossip {
 
 message CreateKeyRangeGossip {
   KeyRangeInfo key_range_info = 1;
+  repeated string column_types = 2;
 }
 
 message DropKeyRangeGossip {
@@ -22,6 +23,7 @@ message DropKeyRangeGossip {
 
 message UpdateKeyRangeGossip {
   KeyRangeInfo key_range_info = 1;
+  repeated string column_types = 2;
 }
 
 message CreateSequenceGossip {

@@ -1,11 +1,4 @@
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -187,13 +180,6 @@ select pg_is_in_recovery(), not pg_is_in_recovery(), __spqr__is_ready(), 1, 'a';
 -- XXX: support ignore patterns to test this
 -- SELECT now(), 1;
 \c spqr-console
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

@@ -1,4 +1,5 @@
 name: REDISTRIBUTE KEY RANGE
+snippet: key_range_commands
 description: |
   Moves a key range to a different shard, including the actual data migration.
 

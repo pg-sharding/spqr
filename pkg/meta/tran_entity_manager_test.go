@@ -57,7 +57,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		statements, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -97,7 +97,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		statements, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -143,7 +143,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
@@ -193,13 +193,13 @@ func TestTranGetKeyRange(t *testing.T) {
 		is.EqualError(err, "key range kr1 already present in qdb")
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2)
+		err = tranMngr.CreateKeyRange(ctx, kr2, []string{qdb.ColumnTypeInteger})
 		//NO COMMIT QDB!!!
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2Ds2)
+		err = tranMngr.CreateKeyRange(ctx, kr2Ds2, []string{qdb.ColumnTypeInteger})
 		//NO COMMIT QDB!!!
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2Double)
+		err = tranMngr.CreateKeyRange(ctx, kr2Double, []string{qdb.ColumnTypeInteger})
 		//NO COMMIT QDB!!!
 		is.EqualError(err, "key range kr2 already present in qdb")
 
@@ -225,7 +225,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
@@ -251,7 +251,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		}
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2)
+		err = tranMngr.CreateKeyRange(ctx, kr2, []string{qdb.ColumnTypeInteger})
 		is.NoError(err)
 		//NO COMMIT QDB!!!
 
@@ -459,7 +459,7 @@ func TestTranState(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -475,7 +475,7 @@ func TestTranState(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		tranMngr := meta.NewTranEntityManager(mngr)
 		err = tranMngr.BeginTran(ctx)
 		is.NoError(err)
@@ -495,7 +495,7 @@ func TestTranListSequences(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 		err = memqdb.CreateSequence(ctx, "test1", 1)
 		is.NoError(err)
 

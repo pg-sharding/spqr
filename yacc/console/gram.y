@@ -26,6 +26,11 @@ func randomHex(n int) (string, error) {
 	}
 	return hex.EncodeToString(bytes), nil
 }
+
+var validSslModes = map[string]bool{
+	"disable": true, "allow": true, "prefer": true,
+	"require": true, "verify-ca": true, "verify-full": true,
+}
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -120,7 +125,7 @@ func randomHex(n int) (string, error) {
 	routingExpr				[]TypedColRef
 
 	alter_relation          *AlterRelationV2
-	
+	alter_shard             *AlterShard
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -187,7 +192,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -199,12 +204,15 @@ func randomHex(n int) (string, error) {
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
 %token <str> STALE CLIENTS
+%token <str> SSLMODE CERT_FILE KEY_FILE ROOT_CERT_FILE
 
 %token <str> IDENTITY MURMUR CITY 
 
 %token<str> START STOP TRACE MESSAGES
 
 %token<str> TASK GROUP
+
+%token<str> SYSTEM RELOAD RESTART
 
 %token<str> SECONDS WAIT PANIC SLEEP
 
@@ -274,7 +282,11 @@ func randomHex(n int) (string, error) {
 %type<str> col_types_elem
 %type<bool> opt_cascade
 %type<str> opt_default_shard
+%type<shard> opt_shard_tls
 
+%type<alter_shard> alter_shard_options
+
+%type<statement> alter_sys_target
 
 %token <str> ASC DESC ORDER
 %type <order_clause> order_clause
@@ -298,6 +310,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
+%type <bool> opt_no_wait
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
@@ -683,7 +696,8 @@ show_statement_type:
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr, StartupFinishedStr, TwoPhaseTXStr:
+			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
+			FileSettingsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -812,10 +826,96 @@ stoptrace_stmt:
 		$$ = &StopTraceStmt{}
 	}
 
+
+alter_sys_target:
+	SYSTEM RELOAD {
+		$$ = &System{
+			Reload: true,
+		}
+	} | SYSTEM RESTART {
+		$$ = &System{
+			Restart: true,
+		}
+	} 
+
 alter_stmt:
 	ALTER distribution_alter_stmt
 	{
 		$$ = &Alter{Element: $2}
+	} | 
+	ALTER alter_sys_target
+	{
+		$$ = &Alter{Element: $2}
+	}
+	|
+	ALTER SHARD any_id alter_shard_options
+	{
+		$4.Id = $3
+		$$ = &Alter{Element: $4}
+	}
+
+alter_shard_options:
+	alter_shard_options SSLMODE any_val
+	{
+		if !validSslModes[$3] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
+			return 1
+		}
+		$$ = $1
+		$$.SslMode = $3
+	}
+	|
+	alter_shard_options WITH HOSTS any_id_list
+	{
+		$$ = $1
+		$$.Hosts = $4
+	}
+	|
+	alter_shard_options CERT_FILE any_val
+	{
+		$$ = $1
+		$$.CertFile = $3
+	}
+	|
+	alter_shard_options KEY_FILE any_val
+	{
+		$$ = $1
+		$$.KeyFile = $3
+	}
+	|
+	alter_shard_options ROOT_CERT_FILE any_val
+	{
+		$$ = $1
+		$$.RootCertFile = $3
+	}
+	|
+	SSLMODE any_val
+	{
+		if !validSslModes[$2] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $2))
+			return 1
+		}
+		$$ = &AlterShard{SslMode: $2}
+	}
+	|
+	WITH HOSTS any_id_list
+	{
+		$$ = &AlterShard{Hosts: $3}
+	}
+	|
+	CERT_FILE any_val
+	{
+		$$ = &AlterShard{CertFile: $2}
+	}
+	|
+	KEY_FILE any_val
+	{
+		$$ = &AlterShard{KeyFile: $2}
+	}
+	|
+	ROOT_CERT_FILE any_val
+	{
+		$$ = &AlterShard{RootCertFile: $2}
 	}
 
 distribution_alter_stmt:
@@ -986,6 +1086,15 @@ relation_alter_stmt_v2:
 			RelationName: $3,
 			Element: &AlterRelationSchema {
 				SchemaName: $5,
+			},
+		}
+	} |
+	ALTER RELATION qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
+		$$ = &AlterRelationV2{
+			RelationName: $3,
+			Element: &RenameDistributionColumn{
+				OldName: $7,
+				NewName: $9,
 			},
 		}
 	}
@@ -1320,18 +1429,57 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list
+	SHARD any_id WITH HOSTS any_id_list opt_shard_tls
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: $5}
+		sd := $6
+		sd.Id = $2
+		sd.Hosts = $5
+		$$ = sd
 	}
 	|
-	SHARD WITH HOSTS any_id_list
+	SHARD WITH HOSTS any_id_list opt_shard_tls
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
+		sd := $5
+		sd.Id = "shard" + str
+		sd.Hosts = $4
+		$$ = sd
+	}
+
+opt_shard_tls:
+	opt_shard_tls SSLMODE any_val
+	{
+		if !validSslModes[$3] {
+			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
+			return 1
+		}
+		$$ = $1
+		$$.SslMode = $3
+	}
+	|
+	opt_shard_tls CERT_FILE any_val
+	{
+		$$ = $1
+		$$.CertFile = $3
+	}
+	|
+	opt_shard_tls KEY_FILE any_val
+	{
+		$$ = $1
+		$$.KeyFile = $3
+	}
+	|
+	opt_shard_tls ROOT_CERT_FILE any_val
+	{
+		$$ = $1
+		$$.RootCertFile = $3
+	}
+	| /* empty */
+	{
+		$$ = &ShardDefinition{}
 	}
 
 any_id_list:
@@ -1417,7 +1565,6 @@ redistribute_stmt:
 			DestShardID: $4,
 			BatchSize: $5,
 			Id: $6,
-			Check: true,
 			Apply: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
@@ -1426,7 +1573,8 @@ redistribute_stmt:
 			DestShardID: $4,
 			BatchSize: $5,
 			Id: $6,
-			Check: true, /* or false, doesnt matter */
+			Check: false, /* or true, doesnt matter */
+			Apply: true,
 			NoWait: true,
 		}
 	}
@@ -1521,37 +1669,38 @@ unregister_router_stmt:
 // move tasks
 
 retry_move_task_group:
-	RETRY MOVE TASK GROUP any_id
+	RETRY opt_move TASK GROUP any_id opt_no_wait
 	{
-		$$ = &RetryMoveTaskGroup{ ID: $5 }
+		$$ = &RetryMoveTaskGroup{ ID: $5, NoWait: $6 }
 	}
 	|
-	RETRY TASK GROUP any_id
+	RETRY opt_move TASK GROUP ALL opt_no_wait
 	{
-		$$ = &RetryMoveTaskGroup{ ID: $4 }
+		$$ = &RetryMoveTaskGroup{ ID: "*", NoWait: $6 }
 	}
 	
 
+opt_no_wait:
+	NOWAIT {
+		$$ = true
+	} | /* EMPTY */ {
+		$$ = false
+	}
+
+
 stop_move_task_group:
-	STOP MOVE TASK GROUP any_id
+	STOP opt_move TASK GROUP any_id
 	{
 		$$ = &StopMoveTaskGroup{ ID: $5 }
 	}
 	|
-	STOP TASK GROUP any_id
-	{
-		$$ = &StopMoveTaskGroup{ ID: $4 }
-	} 
-	|
-	STOP MOVE TASK GROUP ALL
+	STOP opt_move TASK GROUP ALL
 	{
 		$$ = &StopMoveTaskGroup{ ID: "*" }
 	}
-	|
-	STOP TASK GROUP ALL
-	{
-		$$ = &StopMoveTaskGroup{ ID: "*" }
-	} 
+
+opt_move:
+	MOVE {} | /* nothing */ {}
 
 
 /* Control Points */

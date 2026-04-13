@@ -93,6 +93,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
+	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
@@ -227,6 +228,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
+	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().BindParams().AnyTimes()
 

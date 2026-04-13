@@ -1,0 +1,5 @@
+SHOW file_settings WHERE applied='false';
+ name | setting | applied 
+------+---------+---------
+(0 rows)
+

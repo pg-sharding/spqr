@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
@@ -126,10 +127,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					return nil, err
 				}
 
-				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
-				if err != nil {
-					return nil, err
-				}
+				cols := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
 
 				for i, colRef := range subS.TargetList {
 					switch cc := colRef.(type) {
@@ -284,7 +282,8 @@ func (qr *ProxyQrouter) planInsertV1(
 			/* XXX: give change for engine v2 to rewrite queries */
 			for _, sh := range shs {
 				if sh.Name != shs[0].Name {
-					/* try to rewrite, but only for simple protocol */
+					/* try to rewrite,
+					* but only for simple protocol or unparametrized xproto */
 					if len(rm.ParamRefs) == 0 {
 						return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
 					}
@@ -649,18 +648,17 @@ func (qr *ProxyQrouter) planQueryV1(
 			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
-				if rm.SPH.EnhancedMultiShardProcessing() {
+				/* Here we do not check for v2 engine. Reference relation is
+				* already v2 feature, so if client chooses to execute queries with that,
+				* then client is ready for >= v2. */
+				plr := planner.PlannerV2{}
 
-					plr := planner.PlannerV2{}
-
-					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
-					if err != nil {
-						return nil, err
-					}
-					p = plan.Combine(p, tmp)
-					return p, nil
+				tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
+				if err != nil {
+					return nil, err
 				}
-				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+				p = plan.Combine(p, tmp)
+				return p, nil
 			}
 
 			/* Delete from relation - does it have any reverse index attached? */
@@ -907,15 +905,12 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
 	case *plan.ScatterPlan:
-		if v.IsDDL {
+		if v.ExecTargets == nil {
 			v.ExecTargets = qr.DataShardsRoutes()
-			return v, nil
 		}
 
-		if v.Forced {
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
-			}
+		/* XXX: assert that DDL is executed on all shards. */
+		if v.IsDDL || v.Forced {
 			return v, nil
 		}
 
@@ -935,9 +930,6 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 						return nil, err
 					}
 				}
-			}
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
 			}
 			return v, nil
 		}
@@ -1208,13 +1200,21 @@ func (qr *ProxyQrouter) plannerV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 ) (plan.Plan, error) {
-	/* Top level plan */
-	p, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+
+	p, err := rm.GetPrePlan(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	/* Top level plan */
+	tmp, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	p = plan.Combine(p, tmp)
+
+	tmp, err = rm.RouteByTuples(ctx, rm.SPH.GetTsa(), qr.DataShardsRoutes())
 	if err != nil {
 		return nil, err
 	}
@@ -1231,7 +1231,12 @@ func (qr *ProxyQrouter) plannerV1(
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
-	if config.RouterConfig().Qr.AllowPostProcessing {
+	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
+	if err != nil {
+		return nil, err
+	}
+
+	if guc.Get(rm.SPH) {
 		p, err = qr.addSortToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err
@@ -1428,10 +1433,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				/* We are updating non-distributed relation */
 				return nil, nil
 			}
-			distribCols, err = r.GetDistributionKeyColumnNames()
-			if err != nil {
-				return nil, err
-			}
+			distribCols = r.GetDistributionKeyColumnNames()
 
 			if len(distribCols) != 1 {
 				/* TODO: multi-column support here */
@@ -1462,11 +1464,9 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			case *lyx.ResTarget:
 				if rt.Name == distribCols[0] {
 
-					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, []lyx.Node{rt.Value}); err != nil {
+					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
 						return nil, err
 					}
-
-					spqrlog.Zero.Debug().Msgf("rm params %+v", rm.Exprs)
 
 					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
@@ -1477,7 +1477,6 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 					hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
 					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 						return nil, err
 					}
 
@@ -1507,8 +1506,8 @@ func (qr *ProxyQrouter) planSplitUpdate(
 						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
 						return nil, err
 					}
-					et = currroute
 
+					et = currroute
 				}
 			default:
 				return nil, rerrors.ErrComplexQuery
@@ -1527,7 +1526,12 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		if !rm.SPH.AllowSplitUpdate() {
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_SPLIT_UPDATE)
+		if err != nil {
+			return nil, err
+		}
+
+		if !guc.Get(rm.SPH) {
 			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
 		}
 
@@ -1709,6 +1713,15 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	}
 
+	/* Last chance, try to match DRH on some of existing shards */
+	for _, sh := range qr.DataShardsRoutes() {
+		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+			return &plan.ShardDispatchPlan{
+				ExecTarget: sh,
+			}, nil
+		}
+	}
+
 	return p, nil
 }
 
@@ -1738,15 +1751,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 	p, err := qr.PlanQueryExtended(ctx, rm)
 	if err != nil {
 		return nil, err
-	}
-
-	/* Last chance, try to match DRH on some of existing shards */
-	for _, sh := range qr.DataShardsRoutes() {
-		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
-			return &plan.ShardDispatchPlan{
-				ExecTarget: sh,
-			}, nil
-		}
 	}
 
 	/* do init plan logic */

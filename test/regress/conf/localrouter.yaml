@@ -6,6 +6,7 @@ admin_console_port: '7433'
 grpc_api_port: '7001'
 
 
+display_greeting: false
 world_shard_fallback: true
 router_mode: LOCAL
 time_quantiles:

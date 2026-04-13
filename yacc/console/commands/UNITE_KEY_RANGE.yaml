@@ -1,4 +1,5 @@
 name: UNITE KEY RANGE
+snippet: key_range_commands
 description: |
   Merges two adjacent key ranges into a single key range. The left key range absorbs
   the right key range, extending its upper bound to cover both ranges.

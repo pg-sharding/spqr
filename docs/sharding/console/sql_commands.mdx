@@ -4,6 +4,7 @@ description: 'Create distributions, key ranges and tables and see cluster info'
 ---
 
 import KeyRangeCommands from '/snippets/key_range_commands.mdx';
+import ShowCommand from '/snippets/show.mdx';
 
 ### CREATE DISTRIBUTION
 
@@ -153,6 +154,91 @@ This command is used to alter an existing distribution. You can detach a relatio
 ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 ```
 
+### ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY
+
+Replaces the entire distribution key of an already attached relation. This overwrites all column names and hash functions in one shot — it does not patch individual columns. Use this when you need to change the key structure entirely, or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not support).
+
+The new key must have the same number of entries as the distribution's column types. Duplicate column names in the new key are rejected.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
+  DISTRIBUTION KEY <keys> [HASH FUNCTION <hash_function_name>]
+
+where keys is a comma-separated list of column names or expression entries
+where hash_function_name is one of: IDENTITY, MURMUR, CITY
+```
+
+**Examples:**
+
+```sql
+-- Replace the distribution key with a new column name
+ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+
+-- Replace with a composite key
+ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
+
+-- Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
+ALTER DISTRIBUTION ds1 ALTER RELATION tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
+```
+
+<Warning>
+This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
+</Warning>
+
+### ALTER DISTRIBUTION ALTER RELATION SCHEMA
+
+Changes the schema associated with an attached relation in the distribution metadata.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
+  SCHEMA <schema_name>
+```
+
+**Example:**
+
+```sql
+ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
+```
+
+### ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN
+
+A metadata-only fix that renames a column in the distribution key of an attached relation. This does **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only updates the column name stored in SPQR's distribution metadata.
+
+The primary use case is fixing a case mismatch between the column name in SPQR metadata and the actual PostgreSQL column. Because PostgreSQL normalizes unquoted identifiers to lowercase, attaching a relation with `W_ID` when the table column is `w_id` breaks routing: INSERTs fail and SELECTs scatter to all shards.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> ALTER RELATION <relation_name>
+  RENAME DISTRIBUTION COLUMN <old_column_name> TO <new_column_name>
+```
+
+For composite (multi-column) distribution keys, call this command once per column that needs renaming.
+
+**Example — fixing a casing typo that breaks routing:**
+
+```sql
+-- Relation was attached with wrong casing
+ALTER DISTRIBUTION ds1 ATTACH RELATION rc_test DISTRIBUTION KEY W_ID;
+
+-- INSERTs fail ("too complex query to route") and SELECTs scatter to all shards
+-- because the router can't match table column "w_id" to metadata "W_ID"
+
+-- Fix the metadata
+ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+
+-- Routing now targets the correct shard
+```
+
+**Fails when:**
+
+- The old column name is not present in the current distribution key.
+- The column is referenced by a unique index.
+- The relation uses expression-based routing (use `ALTER RELATION DISTRIBUTION KEY` to replace the full key instead).
+- The rename would create duplicate column names in the key.
+
+<Warning>
+This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
+</Warning>
+
 ### ALTER DISTRIBUTION DROP DEFAULT SHARD
 This command is used to add default shard to an existing distribution.
 
@@ -223,42 +309,7 @@ SYNC REFERENCE TABLE tax_rates ON sh3;
 
 <KeyRangeCommands />
 
-### SHOW
-
-This command is used to retrieve information about a specific entity of SPQR cluster and simple filtering.
-
-```sql
-SHOW entity [WHERE where_clause]
-
-where entity is one of backend_connections, clients, coordinator_address, databases, distributions, hosts, instance, is_read_only, key_ranges, key_ranges_extended, move_stats, move_tasks, pools, prepared_statements, redistribute_tasks, reference_relations, relations, routers, sequences, sharding_rules, shards, status, task_groups, time_quantiles, tsa_cache, users, version:
-```
-
-The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.
-
-```sql
-spqr-console=> SHOW backend_connections WHERE hostname='hostname:6432'
-
- backend_connection_id | router  | shard_key_name |   hostname    |     user     | dbname | sync | tx_served | tx_status
------------------------+---------+----------------+---------------+--------------+--------+------+-----------+-----------
- 824694216064          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 10102     | IDLE
- 824646300800          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7508      | IDLE
- 824682931072          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 16623     | IDLE
- 824688144384          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 10112     | IDLE
- 824686833408          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 21080     | IDLE
- 824686834560          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 21069     | IDLE
- 824653676928          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 34227     | IDLE
- 824686833664          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 21060     | IDLE
- 824646300928          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 8003      | IDLE
- 824682937984          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7622      | IDLE
-```
-
-Exists feature - order by col asc/desc for clients.
-
-```sql
-SHOW clients ORDER BY <column> (ASC/DESC)
-```
-
-The ORDER BY column feature works with clients, not works with other entities.
+<ShowCommand />
 
 ### KILL CLIENT
 

@@ -2,6 +2,7 @@ package qdb
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"time"
 
@@ -86,15 +87,24 @@ func (r Router) Addr() string {
 	return r.Address
 }
 
-type Shard struct {
-	ID       string   `json:"id"`
-	RawHosts []string `json:"hosts"` // format host:port:availability_zone
+type TLSConfig struct {
+	SslMode      string `json:"sslmode,omitempty"`
+	CertFile     string `json:"cert_file,omitempty"`
+	KeyFile      string `json:"key_file,omitempty"`
+	RootCertFile string `json:"root_cert_file,omitempty"`
 }
 
-func NewShard(ID string, hosts []string) *Shard {
+type Shard struct {
+	ID       string     `json:"id"`
+	RawHosts []string   `json:"hosts"` // format host:port:availability_zone
+	TLS      *TLSConfig `json:"tls,omitempty"`
+}
+
+func NewShard(ID string, hosts []string, tls *TLSConfig) *Shard {
 	return &Shard{
 		ID:       ID,
 		RawHosts: hosts,
+		TLS:      tls,
 	}
 }
 
@@ -281,7 +291,7 @@ type TwoPCInfo struct {
 	Gid       string   `json:"gid"`
 	SHardsIds []string `json:"shard_ids"`
 
-	State string `json:"state"`
+	State TwoPhaseTxState `json:"state"`
 
 	/* ephemeral part of state */
 	Locked bool `json:"-"`
@@ -295,4 +305,18 @@ func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation,
 
 	r, ok = d.FQNRelations[fqn.String()]
 	return r, ok
+}
+
+func (d *Distribution) Copy() *Distribution {
+	retDs := &Distribution{
+		ID:            d.ID,
+		ColTypes:      d.ColTypes,
+		Relations:     map[string]*DistributedRelation{},
+		FQNRelations:  map[string]*DistributedRelation{},
+		UniqueIndexes: map[string]*UniqueIndex{},
+	}
+	maps.Copy(retDs.Relations, d.Relations)
+	maps.Copy(retDs.FQNRelations, d.FQNRelations)
+	maps.Copy(retDs.UniqueIndexes, d.UniqueIndexes)
+	return retDs
 }

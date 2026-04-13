@@ -63,7 +63,7 @@ type RouterClient interface {
 	ReplyCloseComplete() error
 
 	GetCancelPid() uint32
-	GetCancelKey() uint32
+	GetCancelKey() []byte
 }
 
 type PsqlClient struct {
@@ -72,7 +72,7 @@ type PsqlClient struct {
 	csm *pgproto3.CancelRequest
 
 	cancel_pid uint32
-	cancel_key uint32
+	cancel_key []byte
 
 	ReplyClientId bool
 
@@ -228,7 +228,7 @@ func (cl *PsqlClient) GetCancelPid() uint32 {
 	return cl.cancel_pid
 }
 
-func (cl *PsqlClient) GetCancelKey() uint32 {
+func (cl *PsqlClient) GetCancelKey() []byte {
 	return cl.cancel_key
 }
 
@@ -274,6 +274,16 @@ func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementD
 func (cl *PsqlClient) ClosePreparedStatement(name string) {
 	delete(cl.prepStmts, name)
 	delete(cl.prepStmtsHash, name)
+}
+
+func (cl *PsqlClient) ListPreparedStatements() []string {
+	var ret []string
+
+	for k := range cl.prepStmts {
+		ret = append(ret, k)
+	}
+
+	return ret
 }
 
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
@@ -340,6 +350,7 @@ func (cl *PsqlClient) ReplyCloseComplete() error {
 
 func (cl *PsqlClient) Reset() error {
 	serv := cl.serverP.Load()
+	cl.serverP.Store(nil)
 
 	if serv == nil || *serv == nil {
 		return nil
@@ -570,18 +581,21 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		/* setup client params */
 
 		for k, v := range sm.Parameters {
-			cl.SetParam(k, v)
+			cl.SetParam(k, v, false)
 		}
 
 		cl.startupMsg = sm
 		cl.be = backend
 
-		cl.cancel_key = rand.Uint32()
+		key := rand.Uint32()
+		buf := make([]byte, 4)
+		binary.BigEndian.PutUint32(buf, key)
+		cl.cancel_key = buf
 		cl.cancel_pid = uint32(rand.Int31())
 
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
-			Uint32("cancel_key", cl.cancel_key).
+			Bytes("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
 		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
@@ -828,13 +842,7 @@ func (cl *PsqlClient) replyErrMsgHint(
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{
-			Message:  clErrMsg,
-			Severity: "ERROR",
-			Code:     code,
-			Hint:     hint,
-			Position: pos,
-		},
+		spqrerror.ErrorMsgFromErr(clErrMsg, code, hint, pos),
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(s),
 		},

@@ -19,6 +19,7 @@ import (
 	config "github.com/pg-sharding/spqr/pkg/config"
 	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
+	session "github.com/pg-sharding/spqr/pkg/session"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
@@ -64,20 +65,6 @@ func (m *MockRouterClient) Add(statType statistics.StatisticsType, value float64
 func (mr *MockRouterClientMockRecorder) Add(statType, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRouterClient)(nil).Add), statType, value)
-}
-
-// AllowSplitUpdate mocks base method.
-func (m *MockRouterClient) AllowSplitUpdate() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AllowSplitUpdate")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// AllowSplitUpdate indicates an expected call of AllowSplitUpdate.
-func (mr *MockRouterClientMockRecorder) AllowSplitUpdate() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowSplitUpdate", reflect.TypeOf((*MockRouterClient)(nil).AllowSplitUpdate))
 }
 
 // AssignRoute mocks base method.
@@ -438,11 +425,26 @@ func (mr *MockRouterClientMockRecorder) ExecuteOn() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).ExecuteOn))
 }
 
+// FindBoolGUC mocks base method.
+func (m *MockRouterClient) FindBoolGUC(arg0 string) (session.BoolGUC, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindBoolGUC", arg0)
+	ret0, _ := ret[0].(session.BoolGUC)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindBoolGUC indicates an expected call of FindBoolGUC.
+func (mr *MockRouterClientMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockRouterClient)(nil).FindBoolGUC), arg0)
+}
+
 // GetCancelKey mocks base method.
-func (m *MockRouterClient) GetCancelKey() uint32 {
+func (m *MockRouterClient) GetCancelKey() []byte {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCancelKey")
-	ret0, _ := ret[0].(uint32)
+	ret0, _ := ret[0].([]byte)
 	return ret0
 }
 
@@ -534,6 +536,20 @@ func (m *MockRouterClient) Init(cfg *tls.Config) error {
 func (mr *MockRouterClientMockRecorder) Init(cfg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockRouterClient)(nil).Init), cfg)
+}
+
+// ListPreparedStatements mocks base method.
+func (m *MockRouterClient) ListPreparedStatements() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPreparedStatements")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// ListPreparedStatements indicates an expected call of ListPreparedStatements.
+func (mr *MockRouterClientMockRecorder) ListPreparedStatements() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockRouterClient)(nil).ListPreparedStatements))
 }
 
 // MaintainParams mocks base method.
@@ -675,6 +691,18 @@ func (m *MockRouterClient) RecordStartTime(statType statistics.StatisticsType, t
 func (mr *MockRouterClientMockRecorder) RecordStartTime(statType, t any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordStartTime", reflect.TypeOf((*MockRouterClient)(nil).RecordStartTime), statType, t)
+}
+
+// RecordVirtualParam mocks base method.
+func (m *MockRouterClient) RecordVirtualParam(level, name, val string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RecordVirtualParam", level, name, val)
+}
+
+// RecordVirtualParam indicates an expected call of RecordVirtualParam.
+func (mr *MockRouterClientMockRecorder) RecordVirtualParam(level, name, val any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordVirtualParam", reflect.TypeOf((*MockRouterClient)(nil).RecordVirtualParam), level, name, val)
 }
 
 // Reply mocks base method.
@@ -933,6 +961,20 @@ func (mr *MockRouterClientMockRecorder) ResetTsa() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetTsa", reflect.TypeOf((*MockRouterClient)(nil).ResetTsa))
 }
 
+// ResolveVirtualBoolParam mocks base method.
+func (m *MockRouterClient) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveVirtualBoolParam", name, defaultVal)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ResolveVirtualBoolParam indicates an expected call of ResolveVirtualBoolParam.
+func (mr *MockRouterClientMockRecorder) ResolveVirtualBoolParam(name, defaultVal any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualBoolParam", reflect.TypeOf((*MockRouterClient)(nil).ResolveVirtualBoolParam), name, defaultVal)
+}
+
 // Rollback mocks base method.
 func (m *MockRouterClient) Rollback() {
 	m.ctrl.T.Helper()
@@ -1037,18 +1079,6 @@ func (m *MockRouterClient) Server() server.Server {
 func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Server", reflect.TypeOf((*MockRouterClient)(nil).Server))
-}
-
-// SetAllowSplitUpdate mocks base method.
-func (m *MockRouterClient) SetAllowSplitUpdate(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetAllowSplitUpdate", level, val)
-}
-
-// SetAllowSplitUpdate indicates an expected call of SetAllowSplitUpdate.
-func (mr *MockRouterClientMockRecorder) SetAllowSplitUpdate(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAllowSplitUpdate", reflect.TypeOf((*MockRouterClient)(nil).SetAllowSplitUpdate), level, val)
 }
 
 // SetAuthType mocks base method.
@@ -1198,15 +1228,15 @@ func (mr *MockRouterClientMockRecorder) SetMaintainParams(level, val any) *gomoc
 }
 
 // SetParam mocks base method.
-func (m *MockRouterClient) SetParam(arg0, arg1 string) {
+func (m *MockRouterClient) SetParam(arg0, arg1 string, arg2 bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetParam", arg0, arg1)
+	m.ctrl.Call(m, "SetParam", arg0, arg1, arg2)
 }
 
 // SetParam indicates an expected call of SetParam.
-func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1 any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1, arg2)
 }
 
 // SetParamFormatCodes mocks base method.

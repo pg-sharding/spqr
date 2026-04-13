@@ -43,6 +43,8 @@ type QueryStateExecutorImpl struct {
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
 
+	cacheRFQ pgproto3.ReadyForQuery
+
 	poolMgr poolmgr.PoolMgr
 
 	mgr meta.EntityMgr
@@ -346,13 +348,13 @@ func (s *QueryStateExecutorImpl) ReplyCommandComplete(commandTag string) error {
 	return nil
 }
 
-func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string) error {
+func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string, isLocal bool) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
 		return s.ReplyCommandComplete("SET")
 	}
 	if !s.poolMgr.ConnectionActive(s) {
-		s.Client().SetParam(name, value)
+		s.Client().SetParam(name, value, isLocal)
 		return s.ReplyCommandComplete("SET")
 	}
 
@@ -360,7 +362,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
 		return err
 	}
-	s.Client().SetParam(name, value)
+	s.Client().SetParam(name, value, isLocal)
 
 	return nil
 }
@@ -639,7 +641,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error) {
+func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage, simple bool) (txstatus.TXStatus, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Type("query-type", query).
@@ -656,6 +658,12 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		if err := sh.Send(query); err != nil {
 			return txstatus.TXERR, err
 		}
+		/* https://git.postgresql.org/cgit/postgresql.git/tree/src/interfaces/libpq/fe-exec.c?h=REL_18_3#n2797 */
+		if !simple {
+			if err := sh.Send(pgsync); err != nil {
+				return txstatus.TXERR, err
+			}
+		}
 	}
 
 	var ccmsg *pgproto3.CommandComplete = nil
@@ -664,6 +672,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	txt := txstatus.TXIDLE
 
 	for _, sh := range server.Datashards() {
+
 	wl:
 		for {
 			msg, err := sh.Receive()
@@ -704,7 +713,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyFromExecutor() error {
+func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
@@ -737,14 +746,15 @@ func (s *QueryStateExecutorImpl) copyFromExecutor() error {
 				return err
 			}
 		case *pgproto3.CopyDone, *pgproto3.CopyFail:
-			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
+			txt, err := s.ProcCopyComplete(cpMsg, simple)
+			if err != nil {
 				return err
-			} else {
-				if txt != s.cl.Server().TxStatus() {
-					return rerrors.ErrExecutorSyncLost
-				}
-				s.SetTxStatus(txt)
 			}
+
+			if txt != s.cl.Server().TxStatus() {
+				return rerrors.ErrExecutorSyncLost
+			}
+			s.SetTxStatus(txt)
 
 			return nil
 		default:
@@ -955,7 +965,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return err
 			}
 
-			return s.copyFromExecutor()
+			return s.copyFromExecutor(qd.simple)
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
@@ -994,7 +1004,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return err
 			}
 
-			return s.copyFromExecutor()
+			return s.copyFromExecutor(qd.simple)
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
@@ -1081,15 +1091,9 @@ func (s *QueryStateExecutorImpl) Client() client.RouterClient {
 }
 
 func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
-
 	/* move this logic to executor */
 	switch s.TxStatus() {
 	case txstatus.TXIDLE:
-		if err := s.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(s.TxStatus()),
-		}); err != nil {
-			return err
-		}
 
 		if err := s.poolMgr.TXEndCB(mgr); err != nil {
 			return err
@@ -1102,9 +1106,7 @@ func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 		fallthrough
 	case txstatus.TXACT:
 		/* preserve same route. Do not unroute */
-		return s.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(s.TxStatus()),
-		})
+		return nil
 	default:
 		return fmt.Errorf("unknown tx status %v", s.TxStatus())
 	}
@@ -1157,6 +1159,11 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 
 func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
 	s.es.replyEmptyQuery = true
+}
+
+func (s *QueryStateExecutorImpl) RFQ() *pgproto3.ReadyForQuery {
+	s.cacheRFQ.TxStatus = byte(s.TxStatus())
+	return &s.cacheRFQ
 }
 
 func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {

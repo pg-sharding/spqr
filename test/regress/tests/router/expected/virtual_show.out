@@ -51,8 +51,8 @@ SHOW __spqr__engine_v2;
 (1 row)
 
 SHOW __spqr__commit_strategy;
- __spqr__commit_strategy 
--------------------------
+ commit strategy 
+-----------------
  best-effort
 (1 row)
 

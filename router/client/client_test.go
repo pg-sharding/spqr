@@ -27,17 +27,20 @@ func TestCancel(t *testing.T) {
 			return 4, nil
 		}).Times(1)
 
+	key := 12
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, uint32(key))
 	rconn.EXPECT().Read(gomock.Any()).DoAndReturn(
 		func(b []byte) (int, error) {
 
 			canreq := pgproto3.CancelRequest{
 				ProcessID: 7,
-				SecretKey: 12,
+				SecretKey: buf,
 			}
 			binary.BigEndian.PutUint32(b, conn.CANCELREQ)
 
 			binary.BigEndian.PutUint32(b[4:], canreq.ProcessID)
-			binary.BigEndian.PutUint32(b[8:], canreq.SecretKey)
+			copy(b[8:], canreq.SecretKey)
 			return 12, nil
 		}).Times(1)
 
@@ -45,7 +48,7 @@ func TestCancel(t *testing.T) {
 
 	err := client.Init(nil)
 	assert.Equal(uint32(7), client.CancelMsg().ProcessID)
-	assert.Equal(uint32(12), client.CancelMsg().SecretKey)
+	assert.Equal(buf, client.CancelMsg().SecretKey)
 	assert.NoError(err)
 }
 

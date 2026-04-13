@@ -46,6 +46,7 @@ type RelayStateMgr interface {
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	CompleteRelay() error
+	CompleteRelayClient() error
 	Close() error
 	Client() client.RouterClient
 
@@ -57,16 +58,13 @@ type RelayStateMgr interface {
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
-	HoldRouting()
-	UnholdRouting()
-
 	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(ctx context.Context) error
 
-	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
+	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
 
 type PortalDesc struct {
@@ -91,8 +89,6 @@ type RelayStateImpl struct {
 	poolMgr poolmgr.PoolMgr
 
 	msgBuf []pgproto3.FrontendMessage
-
-	holdRouting bool
 
 	bindQueryPlan       plan.Plan
 	bindQueryPlanMP     map[string]plan.Plan
@@ -121,16 +117,6 @@ func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 // TxStatus implements poolmgr.ConnectionKeeper.
 func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 	return rst.qse.TxStatus()
-}
-
-// HoldRouting implements RelayStateMgr.
-func (rst *RelayStateImpl) HoldRouting() {
-	rst.holdRouting = true
-}
-
-// UnholdRouting implements RelayStateMgr.
-func (rst *RelayStateImpl) UnholdRouting() {
-	rst.holdRouting = false
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
@@ -180,6 +166,10 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
+	if serv == nil {
+		return nil, nil, server.ErrMultiShardSyncBroken
+	}
+
 	shards := serv.Datashards()
 	if len(shards) == 0 {
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
@@ -207,6 +197,14 @@ shardLoop:
 	return rd, replyMsg, nil
 }
 
+func pstmtDoesNotExistsErr(name string) error {
+	if len(name) > 0 {
+		return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", name)
+	}
+
+	return spqrerror.New(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "unnamed prepared statement does not exist")
+}
+
 func (rst *RelayStateImpl) Close() error {
 	_ = rst.Reset()
 
@@ -216,8 +214,10 @@ func (rst *RelayStateImpl) Close() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 
-	if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
-		return err
+	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+
+	if err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
 	}
 
 	rst.QueryExecutor().ActiveShardsReset()
@@ -227,7 +227,11 @@ func (rst *RelayStateImpl) Reset() error {
 
 	_ = rst.Client().Reset()
 
-	return rst.Client().Unroute()
+	if rerr := rst.Client().Unroute(); rerr != nil {
+		return rerr
+	}
+
+	return err
 }
 
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
@@ -294,8 +298,9 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
-	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+func (rst *RelayStateImpl) CreateSlicedPlan(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -407,6 +412,10 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
+func (rst *RelayStateImpl) CompleteRelayClient() error {
+	return rst.Client().Send(rst.QueryExecutor().RFQ())
+}
+
 func (rst *RelayStateImpl) CompleteRelay() error {
 	rst.unnamedPortalExists = false
 
@@ -435,6 +444,9 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ResetWithError(err error) error {
+
+	// XXX: use rst.QueryExecutor().FailStatement
+
 	_ = rst.Client().ReplyErr(err)
 	return rst.Reset()
 }
@@ -532,6 +544,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 						return err
 					}
 				}
+				/* else distributed relation. */
 			}
 		}
 	case *lyx.Select:
@@ -618,24 +631,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		rst.bindQueryPlan = nil
 	}()
 
-	holdRoute := true
-
-	anyPrepStmt := ""
-	for _, msg := range rst.xBuf {
-		switch q := msg.(type) {
-		case *pgproto3.Bind:
-			if anyPrepStmt == "" {
-				anyPrepStmt = q.PreparedStatement
-			} else if anyPrepStmt != q.PreparedStatement {
-				holdRoute = false
-			}
-		}
-	}
-
-	if holdRoute {
-		defer rst.UnholdRouting()
-	}
-
 	for _, msg := range rst.xBuf {
 
 		switch currentMsg := msg.(type) {
@@ -660,7 +655,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			if def == nil {
 				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.PreparedStatement)
+				return pstmtDoesNotExistsErr(currentMsg.PreparedStatement)
 			}
 
 			if def.OverwriteRemoveParamIds != nil {
@@ -732,12 +727,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					rst.bindQueryPlanMP[currentMsg.DestinationPortal] = rst.routingDecisionPlan
 				}
 
-				// hold route if appropriate
-
-				if holdRoute {
-					rst.HoldRouting()
-				}
-
 				if rst.routingDecisionPlan == nil {
 					return fmt.Errorf("extended xproto state out of sync")
 				}
@@ -746,6 +735,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					p := rst.bindQueryPlan
 					if currentMsg.DestinationPortal != "" {
 						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
+					}
+					forceSimple := false
+
+					switch q := p.(type) {
+					case *plan.ScatterPlan:
+						forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
+					default:
 					}
 					switch p.(type) {
 					case *plan.VirtualPlan:
@@ -770,7 +766,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						}
 					}
 
-					return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
+					return BindAndReadSliceResult(rst, forceSimple, bnd, currentMsg.DestinationPortal)
 				}
 
 				/* only populate map for non-empty portal */
@@ -784,7 +780,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				return nil
 
-			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
+			}, true /* cache parsing for prep statement */)
 
 			if err != nil {
 				return err
@@ -827,6 +823,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 					p := rst.bindQueryPlan
 					if currentMsg.Name != "" {
+						if _, ok := rst.executeMp[currentMsg.Name]; !ok {
+							return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, fmt.Sprintf("portal \"%s\" does not exists", currentMsg.Name))
+						}
 						p = rst.bindQueryPlanMP[currentMsg.Name]
 					}
 
@@ -895,7 +894,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				if def == nil {
 					/* this prepared statement was not prepared by client */
-					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+					return pstmtDoesNotExistsErr(currentMsg.Name)
 				}
 
 				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
@@ -1002,7 +1001,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				if def == nil {
 					/* this prepared statement was not prepared by client */
-					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+					return pstmtDoesNotExistsErr(currentMsg.Name)
 				} else {
 					rst.Client().ClosePreparedStatement(currentMsg.Name)
 					if err := rst.Client().ReplyCloseComplete(); err != nil {
@@ -1015,11 +1014,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
 			}
 		default:
-			panic(fmt.Sprintf("unexpected query type %v", msg))
+			return fmt.Errorf("unexpected query type %v", msg)
 		}
 	}
 
-	return rst.CompleteRelay()
+	return nil
 }
 
 // TODO : unit tests
@@ -1083,10 +1082,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
 
-	if rst.holdRouting {
-		return nil, nil
-	}
-
 	expandCurrentTx := false
 
 	// txactive == 0 || activeSh == nil
@@ -1128,8 +1123,10 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 		return q, nil
 	case ErrMatchShardError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return nil, err
+		return nil, &spqrerror.SpqrError{
+			Err:       err,
+			ErrorCode: spqrerror.SPQR_NO_DATASHARD,
+		}
 	default:
 		return q, err
 	}
@@ -1147,10 +1144,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		Str("db", rst.Client().DB()).
 		Int("curr routes len", len(rst.QueryExecutor().ActiveShards())).
 		Msg("preparing relay step for client on target route")
-
-	if rst.holdRouting {
-		return nil
-	}
 
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
@@ -1190,10 +1183,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client on any route")
-
-	if rst.holdRouting {
-		return currentPlan, noopCloseRouteFunc, nil
-	}
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {

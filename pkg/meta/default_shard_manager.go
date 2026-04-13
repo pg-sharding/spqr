@@ -42,6 +42,8 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 			lowerBound[i] = int64(math.MinInt64)
 		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
 			lowerBound[i] = uint64(0)
+		case qdb.ColumnTypeUUID:
+			lowerBound[i] = "00000000-0000-0000-0000-000000000000"
 		default:
 			return nil, fmt.Errorf("unsupported type '%v' for default key range", colType)
 		}
@@ -82,7 +84,7 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 		return err
 	}
 	tranMngr := NewTranEntityManager(manager.mngr)
-	if err := CreateKeyRangeStrict(ctx, tranMngr, keyRange); err != nil {
+	if err := CreateKeyRangeStrict(ctx, tranMngr, keyRange, manager.distribution.ColTypes); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error (2) when adding default key range for: " +
 			manager.distribution.Id)
 		return err

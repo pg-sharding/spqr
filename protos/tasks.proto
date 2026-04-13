@@ -127,6 +127,7 @@ service MoveTasksService {
   }
   rpc DropMoveTaskGroupV2(DropMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
   rpc RetryMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+  rpc RetryMoveTaskGroupV2(RetryMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
   rpc StopMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc GetMoveTaskGroupBoundsCache(MoveTaskGroupSelector) returns(MoveTaskGroupBoundsCache) {}
 
@@ -192,6 +193,11 @@ message ListRedistributeTasksReply {
 message DropRedistributeTaskRequest {
   string id = 1;
   bool cascade = 2;
+}
+
+message RetryMoveTaskGroupRequest {
+  RedistributeTaskSelector selector = 1;
+  bool noWait = 2;
 }
 
 service RedistributeTaskService {

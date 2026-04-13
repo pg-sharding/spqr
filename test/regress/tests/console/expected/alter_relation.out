@@ -36,6 +36,57 @@ SHOW relations;
  a             | ds1             | ("another", identity) | public
 (1 row)
 
+ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION COLUMN another TO renamed_col;
+        rename distribution column         
+-------------------------------------------
+ distribution id -> ds1
+ relation name   -> a
+ renamed column  -> another to renamed_col
+(3 rows)
+
+SHOW relations;
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | public
+(1 row)
+
+ALTER DISTRIBUTION ds1 ALTER RELATION a RENAME DISTRIBUTION COLUMN nonexistent TO fail_col;
+ERROR:  column "nonexistent" not found in distribution key
+SHOW relations;
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | public
+(1 row)
+
+CREATE DISTRIBUTION ds_expr COLUMN TYPES int hash;
+      add distribution      
+----------------------------
+ distribution id -> ds_expr
+(1 row)
+
+ALTER DISTRIBUTION ds_expr ATTACH RELATION expr_rel DISTRIBUTION KEY MURMUR [id1 INT HASH, id2 VARCHAR HASH];
+        attach table         
+-----------------------------
+ relation name   -> expr_rel
+ distribution id -> ds_expr
+(2 rows)
+
+SHOW relations;
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | public
+ expr_rel      | ds_expr         | ("", murmur)              | public
+(2 rows)
+
+ALTER DISTRIBUTION ds_expr ALTER RELATION expr_rel RENAME DISTRIBUTION COLUMN id1 TO new_id;
+ERROR:  relation uses expression-based routing; column rename is not supported
+SHOW relations;
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | public
+ expr_rel      | ds_expr         | ("", murmur)              | public
+(2 rows)
+
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
 ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error
 ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
@@ -46,10 +97,11 @@ ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |   distribution_key    | schema_name 
----------------+-----------------+-----------------------+-------------
- a             | ds1             | ("another", identity) | schema_name
-(1 row)
+ relation_name | distribution_id |     distribution_key      | schema_name 
+---------------+-----------------+---------------------------+-------------
+ a             | ds1             | ("renamed_col", identity) | schema_name
+ expr_rel      | ds_expr         | ("", murmur)              | public
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh_no_exist;
 ERROR:  shard 'sh_no_exist' does not exist
@@ -65,7 +117,8 @@ SHOW distributions;
 -----------------+--------------+---------------
  ds1             | integer      | sh1
  ds2             | integer      | not exists
-(2 rows)
+ ds_expr         | uinteger     | not exists
+(3 rows)
 
 CREATE DISTRIBUTED RELATION schema_name2.aa DISTRIBUTION KEY another2 IN ds2;
             attach table            
@@ -75,16 +128,18 @@ CREATE DISTRIBUTED RELATION schema_name2.aa DISTRIBUTION KEY another2 IN ds2;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |    distribution_key    | schema_name  
----------------+-----------------+------------------------+--------------
- a             | ds1             | ("another", identity)  | schema_name
- aa            | ds2             | ("another2", identity) | schema_name2
-(2 rows)
+ relation_name | distribution_id |     distribution_key      | schema_name  
+---------------+-----------------+---------------------------+--------------
+ a             | ds1             | ("renamed_col", identity) | schema_name
+ aa            | ds2             | ("another2", identity)    | schema_name2
+ expr_rel      | ds_expr         | ("", murmur)              | public
+(3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
  ds1
  ds2
-(2 rows)
+ ds_expr
+(3 rows)
 

@@ -81,6 +81,7 @@ const (
 	stopMoveTaskGroupNamespace           = "/stop_move_task_group/"
 	moveTaskByGroupNamespace             = "/group_move_tasks/"
 	uniqueIndexesByRelationNamespace     = "/relation_unique_indexes"
+	twoPhaseTxMetaStoragePath            = "/2pc_meta_storage"
 
 	CoordKeepAliveTtl  = 3
 	coordLockKey       = "coordinator_exists"
@@ -1115,6 +1116,36 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	}
 	statistics.RecordQDBOperation("GetShard", time.Since(t))
 	return shardInfo, nil
+}
+
+func (q *EtcdQDB) UpdateShard(ctx context.Context, shard *Shard) error {
+	spqrlog.Zero.Debug().
+		Str("id", shard.ID).
+		Msg("etcdqdb: update shard")
+	t := time.Now()
+
+	bytes, err := json.Marshal(shard)
+	if err != nil {
+		return err
+	}
+	nodePath := shardNodePath(shard.ID)
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3.Compare(clientv3.Version(nodePath), ">", 0),
+		).
+		Then(
+			clientv3.OpPut(nodePath, string(bytes)),
+		).
+		Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+	}
+
+	statistics.RecordQDBOperation("UpdateShard", time.Since(t))
+	return nil
 }
 
 // TODO : unit tests
@@ -2524,6 +2555,9 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	if err != nil {
 		return err
 	}
+	if resp.Count == 0 {
+		return fmt.Errorf("failed to update key range move status: key range move \"%s\" not found", moveId)
+	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
 		return err
@@ -2556,6 +2590,9 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
+	}
+	if resp.Count == 0 {
+		return fmt.Errorf("failed to delete key range move: key range move \"%s\" not found", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
@@ -2975,4 +3012,35 @@ func (q *EtcdQDB) DropRedistributeTaskLock(ctx context.Context, id string) error
 
 	_, err := q.cli.Delete(ctx, redistributeTaskLockNodePath(id))
 	return err
+}
+
+func (q *EtcdQDB) SetTxMetaStorage(ctx context.Context, shards []string) error {
+	spqrlog.Zero.Debug().Strs("shards", shards).Msg("etcdqdb: set two-phase transactions metadata storage")
+
+	shardsBytes, err := json.Marshal(shards)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyMissing(twoPhaseTxMetaStoragePath)).Then(clientv3.OpPut(twoPhaseTxMetaStoragePath, string(shardsBytes))).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("re-setting transaction metadata storage is currently forbidden")
+	}
+	return nil
+}
+
+func (q *EtcdQDB) GetTxMetaStorage(ctx context.Context) (shards []string, err error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: get two-phase transactions metadata storage")
+
+	resp, err := q.cli.Get(ctx, twoPhaseTxMetaStoragePath)
+	if err != nil {
+		return
+	}
+	if resp.Count == 0 {
+		return []string{}, nil
+	}
+	err = json.Unmarshal(resp.Kvs[0].Value, &shards)
+	return
 }

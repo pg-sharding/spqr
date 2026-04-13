@@ -42,6 +42,8 @@ var (
 
 	enhancedMultishardProcessing bool
 
+	displayGreeting bool
+
 	showNoticeMessages bool
 	pgprotoDebug       bool
 	profileFile        string
@@ -106,6 +108,9 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initialization")
 
+	// console defaults
+	rootCmd.PersistentFlags().BoolVarP(&displayGreeting, "display_greeting", "", true, "enables SPQR console greeting")
+
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
 }
@@ -147,7 +152,11 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if config.RouterConfig().WithCoordinator {
+		if config.RouterConfig().StoreTxDataPostgresql && !config.RouterConfig().UseCoordinatorInit {
+			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
+		}
+
+		if config.RouterConfig().WithCoordinator || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -238,6 +247,7 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
+		// HERE
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)

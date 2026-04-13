@@ -33,6 +33,7 @@ type Command struct {
 	Warnings        []string  `yaml:"warnings"`
 	Notes           []string  `yaml:"notes"`
 	RelatedCommands []string  `yaml:"related_commands"`
+	Snippet         string    `yaml:"snippet"`
 }
 
 type Param struct {
@@ -161,9 +162,21 @@ func run() error {
 		return fmt.Errorf("generating help files: %w", err)
 	}
 
-	snippetPath := filepath.Join(root, "docs", "snippets", "key_range_commands.mdx")
-	if err := generateMDXSnippet(commands, snippetPath); err != nil {
-		return fmt.Errorf("generating MDX snippet: %w", err)
+	snippetsDir := filepath.Join(root, "docs", "snippets")
+
+	snippetGroups := make(map[string][]*Command)
+	for _, cmd := range commands {
+		if cmd.Snippet == "" {
+			return fmt.Errorf("command %q is missing required 'snippet' field", cmd.Name)
+		}
+		snippetGroups[cmd.Snippet] = append(snippetGroups[cmd.Snippet], cmd)
+	}
+
+	for snippet, cmds := range snippetGroups {
+		snippetPath := filepath.Join(snippetsDir, snippet+".mdx")
+		if err := generateMDXSnippet(cmds, snippetPath); err != nil {
+			return fmt.Errorf("generating MDX snippet %s: %w", snippet, err)
+		}
 	}
 
 	fmt.Println("Done!")

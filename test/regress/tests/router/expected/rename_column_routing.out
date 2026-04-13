@@ -1,0 +1,91 @@
+\c spqr-console
+CREATE DISTRIBUTION ds_rc COLUMN TYPES integer;
+     add distribution     
+--------------------------
+ distribution id -> ds_rc
+(1 row)
+
+CREATE KEY RANGE rc_kr2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds_rc;
+ add key range 
+---------------
+ bound -> 11
+(1 row)
+
+CREATE KEY RANGE rc_kr1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds_rc;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+-- Attach with wrong casing (the real-world use case for RENAME)
+ALTER DISTRIBUTION ds_rc ATTACH RELATION rc_test DISTRIBUTION KEY W_ID;
+        attach table        
+----------------------------
+ relation name   -> rc_test
+ distribution id -> ds_rc
+(2 rows)
+
+SHOW relations;
+ relation_name | distribution_id |  distribution_key  | schema_name 
+---------------+-----------------+--------------------+-------------
+ rc_test       | ds_rc           | ("W_ID", identity) | public
+(1 row)
+
+\c regress
+-- INSERT fails: router can't match column "w_id" to metadata "W_ID"
+INSERT INTO rc_test (w_id, val) VALUES (1, 'row_sh1');
+ERROR:  error processing query 'INSERT INTO rc_test (w_id, val) VALUES (1, 'row_sh1');': too complex query to route
+-- SELECT scatters to all shards: column mismatch
+SELECT * FROM rc_test WHERE w_id = 1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  relation "rc_test" does not exist
+LINE 1: SELECT * FROM rc_test WHERE w_id = 1;
+                      ^
+-- Fix the metadata: W_ID -> w_id
+\c spqr-console
+ALTER DISTRIBUTION ds_rc ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+   rename distribution column    
+---------------------------------
+ distribution id -> ds_rc
+ relation name   -> rc_test
+ renamed column  -> W_ID to w_id
+(3 rows)
+
+SHOW relations;
+ relation_name | distribution_id |  distribution_key  | schema_name 
+---------------+-----------------+--------------------+-------------
+ rc_test       | ds_rc           | ("w_id", identity) | public
+(1 row)
+
+\c regress
+-- After fix, routing targets correct shard
+CREATE TABLE rc_test (w_id int, val text);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rc_test (w_id, val) VALUES (1, 'row_sh1');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO rc_test (w_id, val) VALUES (20, 'row_sh2');
+NOTICE: send query to shard(s) : sh2
+SELECT * FROM rc_test WHERE w_id = 1;
+NOTICE: send query to shard(s) : sh1
+ w_id |   val   
+------+---------
+    1 | row_sh1
+(1 row)
+
+SELECT * FROM rc_test WHERE w_id = 20;
+NOTICE: send query to shard(s) : sh2
+ w_id |   val   
+------+---------
+   20 | row_sh2
+(1 row)
+
+DROP TABLE rc_test;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds_rc
+(1 row)
+

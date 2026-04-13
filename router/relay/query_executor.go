@@ -17,8 +17,9 @@ import (
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
 
-	simple bool
-	exec   *pgproto3.Execute
+	simple    bool
+	ParamsNum int
+	exec      *pgproto3.Execute
 }
 
 type ExecutorState struct {
@@ -63,17 +64,18 @@ type QueryStateExecutor interface {
 	/* Copy execution */
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
-	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
+	ProcCopyComplete(query pgproto3.FrontendMessage, s bool) (txstatus.TXStatus, error)
 
 	ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
+	RFQ() *pgproto3.ReadyForQuery
 
 	ReplyEmptyQuery()
 	FailStatement(err *pgproto3.ErrorResponse)
 
-	ExecSet(rst RelayStateMgr, query, name, value string) error
+	ExecSet(rst RelayStateMgr, query, name, value string, isLocal bool) error
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 

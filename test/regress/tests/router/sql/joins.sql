@@ -3,8 +3,8 @@
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
-ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin DISTRIBUTION KEY id;
-ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
+CREATE RELATION xjoin (id);
+CREATE RELATION yjoin (w_id);
 
 \c regress
 
@@ -23,16 +23,27 @@ INSERT INTO yjoin (w_id) values(10);
 INSERT INTO yjoin (w_id) values(15);
 INSERT INTO yjoin (w_id) values(25);
 
---- XXX: fix
---SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
+
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 and xjoin.id = 15  ORDER BY id;
+
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 and xjoin.id = 1  ORDER BY id;
+
+
 -- XXX: this used to work by miracle. We should re-support this in engine v2
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id /* __spqr__engine_v2: false */;
 -- Join condition is distribution key, scatter out
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id /* __spqr__engine_v2: false  */;
+
+-- self join
+SELECT FROM xjoin a JOIN xjoin b ON true;
+
+-- routable self join
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 15;
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 11;
 
 DROP TABLE xjoin;
 DROP TABLE yjoin;

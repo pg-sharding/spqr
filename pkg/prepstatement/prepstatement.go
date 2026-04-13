@@ -34,6 +34,7 @@ type PreparedStatementMapper interface {
 	PreparedStatementQueryHashByName(name string) uint64
 	StorePreparedStatement(d *PreparedStatementDefinition)
 	ClosePreparedStatement(name string)
+	ListPreparedStatements() []string
 }
 
 func GetParams(paramsFormatCodes []int16, bindParams [][]byte) []int16 {

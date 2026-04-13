@@ -71,7 +71,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
@@ -86,7 +86,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -113,7 +113,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
@@ -174,7 +174,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
@@ -210,7 +210,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
@@ -242,4 +242,131 @@ func TestCreateReferenceRelation(t *testing.T) {
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)
 	})
+}
+
+func TestRenameDistributionColumnSuccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+	existingDist := &distributions.Distribution{
+		Id:       "ds1",
+		ColTypes: []string{"integer"},
+		Relations: map[string]*distributions.DistributedRelation{
+			"t": {
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "SITEID", HashFunction: "identity"},
+				},
+			},
+		},
+	}
+
+	mmgr.EXPECT().
+		GetDistribution(gomock.Any(), "ds1").
+		Return(existingDist, nil)
+
+	mmgr.EXPECT().
+		AlterDistributedRelationDistributionKey(gomock.Any(), "ds1", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, id string, rel *rfqn.RelationFQN, newKey []distributions.DistributionKeyEntry) error {
+			assert.Equal(t, "t", rel.RelationName)
+			assert.Len(t, newKey, 1)
+			assert.Equal(t, "siteid", newKey[0].Column)
+			assert.Equal(t, "identity", newKey[0].HashFunction)
+			return nil
+		})
+
+	stmt := &spqrparser.Alter{
+		Element: &spqrparser.AlterDistribution{
+			Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+			Element: &spqrparser.AlterRelationV2{
+				RelationName: &rfqn.RelationFQN{RelationName: "t"},
+				Element: &spqrparser.RenameDistributionColumn{
+					OldName: "SITEID",
+					NewName: "siteid",
+				},
+			},
+		},
+	}
+
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, tts)
+}
+
+func TestRenameDistributionColumnNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+	existingDist := &distributions.Distribution{
+		Id:       "ds1",
+		ColTypes: []string{"integer"},
+		Relations: map[string]*distributions.DistributedRelation{
+			"t": {
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "id", HashFunction: "identity"},
+				},
+			},
+		},
+	}
+
+	mmgr.EXPECT().
+		GetDistribution(gomock.Any(), "ds1").
+		Return(existingDist, nil)
+
+	stmt := &spqrparser.Alter{
+		Element: &spqrparser.AlterDistribution{
+			Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+			Element: &spqrparser.AlterRelationV2{
+				RelationName: &rfqn.RelationFQN{RelationName: "t"},
+				Element: &spqrparser.RenameDistributionColumn{
+					OldName: "nonexistent",
+					NewName: "new_col",
+				},
+			},
+		},
+	}
+
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	assert.Nil(t, tts)
+	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
+}
+
+func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+	existingDist := &distributions.Distribution{
+		Id:        "ds1",
+		ColTypes:  []string{"integer"},
+		Relations: map[string]*distributions.DistributedRelation{},
+	}
+
+	mmgr.EXPECT().
+		GetDistribution(gomock.Any(), "ds1").
+		Return(existingDist, nil)
+
+	stmt := &spqrparser.Alter{
+		Element: &spqrparser.AlterDistribution{
+			Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+			Element: &spqrparser.AlterRelationV2{
+				RelationName: &rfqn.RelationFQN{RelationName: "missing_rel"},
+				Element: &spqrparser.RenameDistributionColumn{
+					OldName: "col",
+					NewName: "new_col",
+				},
+			},
+		},
+	}
+
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	assert.Nil(t, tts)
+	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
 }

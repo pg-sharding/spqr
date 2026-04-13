@@ -14,7 +14,7 @@ import (
 )
 
 type ParamManager interface {
-	SetParam(string, string)
+	SetParam(string, string, bool)
 	ResetParam(string)
 	ResetAll()
 	ConstructClientParams() *pgproto3.Query

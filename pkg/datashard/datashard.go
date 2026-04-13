@@ -26,7 +26,7 @@ type Conn struct {
 	dedicated          conn.DBInstance
 	ps                 shard.ParameterSet
 	backend_key_pid    uint32
-	backend_key_secret uint32
+	backend_key_secret []byte
 
 	sync_in  int64
 	sync_out int64
@@ -413,15 +413,15 @@ func NewShardHostInstance(
 	return dtSh, nil
 }
 
+// TODO : unit tests
+
 // Auth handles the authentication process for a shard connection.
 //
 // Parameters:
-//   - sm (*pgproto3.StartupMessage): The startup message for the connection.
+//   - sp (*pgproto3.StartupParams): The startup params for the connection. Currently, only search_path is supported.
 //
 // Returns:
 //   - error: An error if authentication fails.
-
-// TODO : unit tests
 func (sh *Conn) Auth(sp *startup.StartupParams) error {
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
@@ -483,7 +483,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			sh.backend_key_secret = v.SecretKey
 			spqrlog.Zero.Debug().
 				Uint32("process-id", v.ProcessID).
-				Uint32("secret-key", v.SecretKey).
+				Bytes("secret-key", v.SecretKey).
 				Msg("backend key data")
 		default:
 			spqrlog.Zero.Debug().

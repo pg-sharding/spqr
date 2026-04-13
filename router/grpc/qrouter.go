@@ -38,6 +38,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedBalancerTaskServiceServer
 	protos.UnimplementedReferenceRelationsServiceServer
 	protos.UnimplementedMetaTransactionGossipServiceServer
+	protos.UnimplementedTwoPhaseTxMetaServiceServer
 
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
@@ -131,7 +132,14 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	if err := l.mgr.AddDataShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &emptypb.Empty{}, nil
+}
+
+func (l *LocalQrouterServer) UpdateShard(ctx context.Context, request *protos.UpdateShardRequest) (*emptypb.Empty, error) {
+	if err := l.mgr.UpdateShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (l *LocalQrouterServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
@@ -629,7 +637,12 @@ func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *proto
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false)
+}
+
+// TODO: unit tests
+func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
 }
 
 // TODO: unit tests
@@ -788,6 +801,20 @@ func (l *LocalQrouterServer) ListDistributionUniqueIndexes(ctx context.Context, 
 	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
 }
 
+// GetTwoPhaseTxMetaStorage implements [proto.TwoPhaseTxMetaServiceServer].
+func (l *LocalQrouterServer) GetTwoPhaseTxMetaStorage(ctx context.Context, _ *emptypb.Empty) (*protos.TwoPhaseTxMetaStorageReply, error) {
+	storage, err := l.mgr.GetTwoPhaseTxMetaStorage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.TwoPhaseTxMetaStorageReply{Storage: storage}, nil
+}
+
+// SetTwoPhaseTxMetaStorage implements [proto.TwoPhaseTxMetaServiceServer].
+func (l *LocalQrouterServer) SetTwoPhaseTxMetaStorage(ctx context.Context, req *protos.SetTwoPhaseTxMetaStorageRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.SetTwoPhaseTxMetaStorage(ctx, req.Storage)
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -810,6 +837,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterReferenceRelationsServiceServer(server, lqr)
 	protos.RegisterMetaTransactionGossipServiceServer(server, lqr)
 	protos.RegisterShardServiceServer(server, lqr)
+	protos.RegisterTwoPhaseTxMetaServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -824,3 +852,4 @@ var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
 var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}
 var _ protos.MetaTransactionGossipServiceServer = &LocalQrouterServer{}
+var _ protos.TwoPhaseTxMetaServiceServer = &LocalQrouterServer{}

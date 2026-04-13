@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -601,10 +602,24 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts)); err != nil {
+				if err := qc.db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts, topology.TLSConfigToDB(cfg.TLS))); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
+				}
+			}
+			shardList, err := qc.db.GetTxMetaStorage(ctx)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
+			} else if len(shardList) == 0 {
+				shardIds := make([]string, 0, len(shards.ShardsData))
+				for id := range shards.ShardsData {
+					shardIds = append(shardIds, id)
+				}
+				firstShardId := slices.Min(shardIds)
+				s := []string{firstShardId}
+				if err := qc.db.SetTxMetaStorage(ctx, s); err != nil {
+					spqrlog.Zero.Error().Err(err).Strs("shard ids", s).Msg("failed to set two phase tx storage shards")
 				}
 			}
 		}
@@ -673,9 +688,20 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	relsSet := make(map[string]struct{})
 	for _, ds := range dss {
+		if ds.Id == distributions.REPLICATED {
+			continue
+		}
 		for _, rel := range ds.FQNRelations {
 			relations = append(relations, rel.Relation)
+			relsSet[rel.Relation.String()] = struct{}{}
+		}
+		for _, rel := range ds.Relations {
+			if _, ok := relsSet[rel.Relation.String()]; !ok {
+				relations = append(relations, rel.Relation)
+				relsSet[rel.Relation.String()] = struct{}{}
+			}
 		}
 	}
 
@@ -974,7 +1000,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 					return err
 				}
 				tranMngr := meta.NewTranEntityManager(qc)
-				if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
+				if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 					return err
 				}
 				if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1019,12 +1045,16 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			move.Status = qdb.MoveKeyRangeDataMoved
 		case qdb.MoveKeyRangeDataMoved:
 			keyRange.ShardID = req.ShardId
+			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+			if err != nil {
+				return err
+			}
 			// TODO: move check to meta layer
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
 			tranMngr := meta.NewTranEntityManager(qc)
-			if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
+			if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 				return err
 			}
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
@@ -1895,11 +1925,22 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
+
+	if nowait {
+		go func() {
+			if err := qc.executeMoveInternal(ctx, taskGroup, true); err != nil {
+				spqrlog.Zero.Err(err).Str("task group id", id).Msg("failed to retry move task group")
+			}
+		}()
+
+		return nil
+	}
+
 	return qc.executeMoveInternal(ctx, taskGroup, true)
 }
 
@@ -2016,6 +2057,9 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 }
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
+	if !req.Apply {
+		return nil
+	}
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
 	if err != nil {
 		return err
@@ -2178,17 +2222,45 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		for _, sh := range shardResp.Shards {
 			routerShards = append(routerShards, topology.DataShardFromProto(sh))
 		}
-		needToAdd, needToDelete := qc.shardsDiff(routerShards, coordShards)
+		needToAdd, needToDelete, needToUpdate := qc.shardsDiff(routerShards, coordShards)
+
+		// Process adds, updates and deletes with continue-on-error so that a
+		// single shard failure does not block progress on remaining shards.
+		// Connection-level errors (gRPC connection closing) still abort
+		// immediately because the transport is broken for all operations.
+		var shardErrs []error
 
 		for _, sh := range needToAdd {
 			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh)})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return retry.RetryableError(err)
+						// Connection broken — abort immediately as retryable.
+						return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s (add): %w", sh.ID, err))...))
 					}
 				}
-				return err
+				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard add failed; continuing to next shard")
+				shardErrs = append(shardErrs, fmt.Errorf("shard %s (add): %w", sh.ID, err))
+				continue
+			}
+		}
+
+		for _, sh := range needToUpdate {
+			_, err = shCl.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(sh)})
+			if err != nil {
+				if st, ok := status.FromError(err); ok {
+					switch st.Code() {
+					case codes.Canceled:
+						if st.Message() == "grpc: the client connection is closing" {
+							return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s: %w", sh.ID, err))...))
+						}
+					case codes.Unimplemented:
+						return fmt.Errorf("router does not support UpdateShard RPC; please upgrade all routers before changing shard configuration")
+					}
+				}
+				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard update failed; continuing to next shard")
+				shardErrs = append(shardErrs, fmt.Errorf("shard %s: %w", sh.ID, err))
+				continue
 			}
 		}
 		for _, sh := range needToDelete {
@@ -2198,11 +2270,18 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return retry.RetryableError(err)
+						// Connection broken — abort immediately as retryable.
+						return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s (delete): %w", sh.ID, err))...))
 					}
 				}
-				return err
+				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard delete failed; continuing to next shard")
+				shardErrs = append(shardErrs, fmt.Errorf("shard %s (delete): %w", sh.ID, err))
+				continue
 			}
+		}
+
+		if len(shardErrs) > 0 {
+			return errors.Join(shardErrs...)
 		}
 		return nil
 	}); err != nil {
@@ -2298,6 +2377,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 				commands := []*proto.MetaTransactionGossipCommand{
 					{CreateKeyRange: &proto.CreateKeyRangeGossip{
 						KeyRangeInfo: kRange.ToProto(),
+						ColumnTypes:  ds.ColTypes,
 					}},
 				}
 				resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})
@@ -2319,6 +2399,25 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		return nil
 	}); err != nil {
 		spqrlog.Zero.Debug().Err(err).Msg("error in distribution & key range")
+		return err
+	}
+
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewConstant(time.Second)), func(ctx context.Context) error {
+		cc, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+
+		storage, err := qc.db.GetTxMetaStorage(ctx)
+		if err != nil {
+			return err
+		}
+
+		s := proto.NewTwoPhaseTxMetaServiceClient(cc)
+		// Ignore the error
+		_, _ = s.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
+		return nil
+	}); err != nil {
 		return err
 	}
 
@@ -2495,7 +2594,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		"DateStyle":       "ISO",
 	}
 	for k, v := range params {
-		cl.SetParam(k, v)
+		cl.SetParam(k, v, false)
 	}
 
 	r.SetParams(cl.Params())
@@ -2568,7 +2667,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 }
 
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
+	if err := qc.db.AddShard(ctx, topology.DataShardToDB(shard)); err != nil {
 		return err
 	}
 
@@ -2578,6 +2677,26 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 			Shard: topology.DataShardToProto(shard),
 		})
 		return err
+	})
+}
+
+func (qc *ClusteredCoordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	if err := qc.Coordinator.UpdateShard(ctx, shard); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.UpdateShard(ctx, &proto.UpdateShardRequest{
+			Shard: topology.DataShardToProto(shard),
+		})
+		if err != nil {
+			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+				return fmt.Errorf("router does not support UpdateShard RPC; please upgrade all routers to a version that supports it")
+			}
+			return err
+		}
+		return nil
 	})
 }
 
@@ -3049,7 +3168,7 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId strin
 	})
 }
 
-func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard) {
+func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, updated []*topology.DataShard) {
 	routerShardsMap := map[string]*topology.DataShard{}
 	coordShardsMap := map[string]*topology.DataShard{}
 
@@ -3061,8 +3180,10 @@ func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, c
 	}
 
 	for id, sh := range coordShardsMap {
-		if _, exist := routerShardsMap[id]; !exist {
+		if rSh, exist := routerShardsMap[id]; !exist {
 			added = append(added, sh)
+		} else if !topology.ShardConfigEqual(rSh, sh) {
+			updated = append(updated, sh)
 		}
 	}
 	for id, sh := range routerShardsMap {
