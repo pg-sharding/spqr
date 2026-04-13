@@ -70,7 +70,6 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "ds1").Return(d, nil)
 
 	client.EXPECT().SetAutoDistribution("ds1")
-	client.EXPECT().SetDistributionKey("i")
 
 	rst := RelayStateImpl{
 		msgBuf:              nil,
