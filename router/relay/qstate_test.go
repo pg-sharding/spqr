@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	distribution "github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/qdb"
