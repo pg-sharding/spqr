@@ -66,7 +66,7 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	d := distribution.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
+	d := distributions.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "ds1").Return(d, nil)
 
 	client.EXPECT().SetAutoDistribution("ds1")
@@ -108,7 +108,7 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
-	d := distribution.NewDistribution(distributions.REPLICATED, []string{})
+	d := distributions.NewDistribution(distributions.REPLICATED, []string{})
 	mmgr.EXPECT().GetDistribution(gomock.Any(), distributions.REPLICATED).Return(d, nil)
 
 	client.EXPECT().SetAutoDistribution(distributions.REPLICATED)
