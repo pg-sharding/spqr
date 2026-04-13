@@ -1,5 +1,6 @@
 name: ALTER DISTRIBUTION
 snippet: distribution_commands
+order: 3
 description: |
   Modifies distribution metadata.
 

@@ -1,5 +1,6 @@
 name: DROP DISTRIBUTION
 snippet: distribution_commands
+order: 2
 description: |
   Removes a distribution from cluster metadata.
 

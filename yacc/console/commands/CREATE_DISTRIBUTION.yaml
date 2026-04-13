@@ -1,5 +1,6 @@
 name: CREATE DISTRIBUTION
 snippet: distribution_commands
+order: 1
 description: |
   Creates a sharding distribution with a distribution identifier and key column types.
 
