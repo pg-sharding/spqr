@@ -1,4 +1,5 @@
 name: DROP KEY RANGE
+snippet: key_range_commands
 description: |
   Removes a key range from the cluster. This deletes the key range metadata
   but does not affect the actual data stored on the shard.

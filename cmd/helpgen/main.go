@@ -164,14 +164,12 @@ func run() error {
 
 	snippetsDir := filepath.Join(root, "docs", "snippets")
 
-	// Group commands by snippet file. Default is "key_range_commands".
 	snippetGroups := make(map[string][]*Command)
 	for _, cmd := range commands {
-		snippet := cmd.Snippet
-		if snippet == "" {
-			snippet = "key_range_commands"
+		if cmd.Snippet == "" {
+			return fmt.Errorf("command %q is missing required 'snippet' field", cmd.Name)
 		}
-		snippetGroups[snippet] = append(snippetGroups[snippet], cmd)
+		snippetGroups[cmd.Snippet] = append(snippetGroups[cmd.Snippet], cmd)
 	}
 
 	for snippet, cmds := range snippetGroups {

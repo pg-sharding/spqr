@@ -1,4 +1,5 @@
 name: LOCK KEY RANGE
+snippet: key_range_commands
 description: |
   Locks a key range to prevent concurrent modifications. This is typically
   used before performing operations like SPLIT or UNITE that require
