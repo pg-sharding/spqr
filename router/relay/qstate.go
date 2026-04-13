@@ -621,6 +621,8 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 			switch name {
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
+			case session.SPQR_DISTRIBUTION_KEY:
+				rst.Client().SetDistributionKey(hintVal)
 			case session.SPQR_DISTRIBUTED_RELATION:
 				rst.Client().SetDistributedRelation(lvl, hintVal)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
@@ -683,7 +685,6 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 
 				/* This is an ddl query, which creates relation along with attaching to distribution */
 				rst.Client().SetAutoDistribution(hintVal)
-				rst.Client().SetDistributionKey(valDistribKey)
 
 				/*
 				* this is too early to do anything with distribution hint, as we do not yet parsed
