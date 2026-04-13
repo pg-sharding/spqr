@@ -372,6 +372,7 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) 
 				Tx:      cl.txCnt,
 				Value:   opvalue,
 				IsLocal: isLocal,
+				Levels:  map[string]string{},
 			})
 		}
 
@@ -380,6 +381,7 @@ func (cl *SimpleSessionParamHandler) SetParam(name, value string, isLocal bool) 
 			Tx:      cl.txCnt,
 			Value:   value,
 			IsLocal: isLocal,
+			Levels:  map[string]string{},
 		})
 	}
 }
