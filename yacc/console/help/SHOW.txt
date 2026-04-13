@@ -1,20 +1,23 @@
 NAME
-    SHOW - Displays cluster metadata and state information. SHOW queries various
+    SHOW - Displays cluster metadata, topology, configuration, and runtime status.
 
 SYNTAX
-    SHOW <target> [(<columns>)] [WHERE <condition>] [GROUP BY <column>] [ORDER BY <column> [ASC|DESC]]
+    SHOW <target> [(<columns>)]
+      [WHERE <condition>]
+      [GROUP BY <column>]
+      [ORDER BY <column> [ASC|DESC]]
 
 DESCRIPTION
-    Displays cluster metadata and state information. SHOW queries various
-    aspects of the SPQR cluster including topology, configuration, and runtime status.
+    Displays cluster metadata, topology, configuration, and runtime status.
 
-    Valid targets: databases, routers, shards, distributions, key_ranges,
-    key_ranges_extended, relations, reference_relations, pools, clients,
-    backend_connections, hosts, version, status, instance, sequences, users,
-    task_group, task_groups, task_group_ext, task_groups_ext, move_task, move_tasks,
-    redistribute_tasks, prepared_statements, time_quantiles, unique_indexes,
-    coordinator_address, is_read_only, move_stats, errors, startup_finished,
-    two_phase_tx, dcs_storage, file_settings, tsa_cache.
+    Valid targets: `databases`, `routers`, `shards`, `distributions`, `key_ranges`,
+    `key_ranges_extended`, `relations`, `reference_relations`, `pools`, `clients`,
+    `backend_connections`, `hosts`, `version`, `status`, `instance`, `sequences`,
+    `users`, `task_group`, `task_groups`, `task_group_ext`, `task_groups_ext`,
+    `move_task`, `move_tasks`, `redistribute_tasks`, `prepared_statements`,
+    `time_quantiles`, `unique_indexes`, `coordinator_address`, `is_read_only`,
+    `move_stats`, `errors`, `startup_finished`, `two_phase_tx`, `dcs_storage`,
+    `file_settings`, `tsa_cache`.
 
 PARAMETERS
     <target> - The metadata category to display (e.g., databases, shards, key_ranges, distributions)
@@ -27,11 +30,11 @@ EXAMPLES
     Show all shards:
         SHOW shards;
     Show key ranges with specific columns:
-        SHOW key_ranges (id, shard_id);
+        SHOW key_ranges (key_range_id, shard_id);
     Show backend connections filtered by hostname:
         SHOW backend_connections WHERE hostname = 'localhost';
-    Show clients ordered by connection time:
-        SHOW clients ORDER BY connect_time DESC;
+    Show clients ordered by user:
+        SHOW clients ORDER BY user DESC;
     Show backend connections grouped by shard:
         SHOW backend_connections GROUP BY shard_key_name;
 

@@ -190,41 +190,39 @@ HELP SPLIT KEY RANGE;
 (1 row)
 
 HELP MOVE KEY RANGE;
-                                             help                                              
------------------------------------------------------------------------------------------------
- NAME                                                                                         +
-     MOVE KEY RANGE - Updates the routing metadata to assign a key range to a different shard.+
-                                                                                              +
- SYNTAX                                                                                       +
-     MOVE KEY RANGE <keyRangeID> TO <shardID>                                                 +
-                                                                                              +
- DESCRIPTION                                                                                  +
-     Updates the routing metadata to assign a key range to a different shard.                 +
-     This only changes where new queries for this key range are routed — it does NOT          +
-     migrate the actual data between shards.                                                  +
-                                                                                              +
-     To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.                      +
-                                                                                              +
- WARNINGS                                                                                     +
-     - MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data. +
-                                                                                              +
- PARAMETERS                                                                                   +
-     <keyRangeID> - Identifier of the key range to move                                       +
-     <shardID> - Target shard ID to route this key range to                                   +
-                                                                                              +
- EXAMPLES                                                                                     +
-     Move a key range to a different shard:                                                   +
-         MOVE KEY RANGE krid1 TO sh2;                                                         +
-                                                                                              +
- TIPS                                                                                         +
-     - Use this command when data has already been migrated externally                        +
-     - For a complete migration including data, use REDISTRIBUTE KEY RANGE                    +
-     - Verify the target shard exists with SHOW SHARDS before moving                          +
-                                                                                              +
- RELATED COMMANDS                                                                             +
-     REDISTRIBUTE KEY RANGE                                                                   +
-     SHOW KEY RANGES                                                                          +
-     CREATE KEY RANGE                                                                         +
+                                                      help                                                       
+-----------------------------------------------------------------------------------------------------------------
+ NAME                                                                                                           +
+     MOVE KEY RANGE - Updates the routing metadata to assign a key range to a different shard.                  +
+                                                                                                                +
+ SYNTAX                                                                                                         +
+     MOVE KEY RANGE <keyRangeID> TO <shardID>                                                                   +
+                                                                                                                +
+ DESCRIPTION                                                                                                    +
+     Updates the routing metadata to assign a key range to a different shard.                                   +
+     This only changes where new queries for this key range are routed — it does NOT                            +
+     migrate the actual data between shards.                                                                    +
+                                                                                                                +
+ WARNINGS                                                                                                       +
+     - MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.+
+                                                                                                                +
+ PARAMETERS                                                                                                     +
+     <keyRangeID> - Identifier of the key range to move                                                         +
+     <shardID> - Target shard ID to route this key range to                                                     +
+                                                                                                                +
+ EXAMPLES                                                                                                       +
+     Move a key range to a different shard:                                                                     +
+         MOVE KEY RANGE krid1 TO sh2;                                                                           +
+                                                                                                                +
+ TIPS                                                                                                           +
+     - Use this command when data has already been migrated externally                                          +
+     - For a complete migration including data, use REDISTRIBUTE KEY RANGE                                      +
+     - Verify the target shard exists with SHOW SHARDS before moving                                            +
+                                                                                                                +
+ RELATED COMMANDS                                                                                               +
+     REDISTRIBUTE KEY RANGE                                                                                     +
+     SHOW KEY RANGES                                                                                            +
+     CREATE KEY RANGE                                                                                           +
      DROP KEY RANGE
 (1 row)
 
@@ -322,54 +320,57 @@ HELP REDISTRIBUTE KEY RANGE;
 (1 row)
 
 HELP SHOW;
-                                                  help                                                  
---------------------------------------------------------------------------------------------------------
- NAME                                                                                                  +
-     SHOW - Displays cluster metadata and state information. SHOW queries various                      +
-                                                                                                       +
- SYNTAX                                                                                                +
-     SHOW <target> [(<columns>)] [WHERE <condition>] [GROUP BY <column>] [ORDER BY <column> [ASC|DESC]]+
-                                                                                                       +
- DESCRIPTION                                                                                           +
-     Displays cluster metadata and state information. SHOW queries various                             +
-     aspects of the SPQR cluster including topology, configuration, and runtime status.                +
-                                                                                                       +
-     Valid targets: databases, routers, shards, distributions, key_ranges,                             +
-     key_ranges_extended, relations, reference_relations, pools, clients,                              +
-     backend_connections, hosts, version, status, instance, sequences, users,                          +
-     task_group, task_groups, task_group_ext, task_groups_ext, move_task, move_tasks,                  +
-     redistribute_tasks, prepared_statements, time_quantiles, unique_indexes,                          +
-     coordinator_address, is_read_only, move_stats, errors, startup_finished,                          +
-     two_phase_tx, dcs_storage, file_settings, tsa_cache.                                              +
-                                                                                                       +
- PARAMETERS                                                                                            +
-     <target> - The metadata category to display (e.g., databases, shards, key_ranges, distributions)  +
-     <columns> - Optional column projection to display only specific fields (e.g., "(id, status)")     +
-     <WHERE condition> - Optional filter to restrict rows by column values (e.g., WHERE id = 'shard1') +
-     <GROUP BY column> - Optional grouping by a column                                                 +
-     <ORDER BY column> - Optional sorting by a column, with optional ASC or DESC direction             +
-                                                                                                       +
- EXAMPLES                                                                                              +
-     Show all shards:                                                                                  +
-         SHOW shards;                                                                                  +
-     Show key ranges with specific columns:                                                            +
-         SHOW key_ranges (id, shard_id);                                                               +
-     Show backend connections filtered by hostname:                                                    +
-         SHOW backend_connections WHERE hostname = 'localhost';                                        +
-     Show clients ordered by connection time:                                                          +
-         SHOW clients ORDER BY connect_time DESC;                                                      +
-     Show backend connections grouped by shard:                                                        +
-         SHOW backend_connections GROUP BY shard_key_name;                                             +
-                                                                                                       +
- TIPS                                                                                                  +
-     - Use column projection to reduce output to only the fields you need                              +
-     - Combine WHERE and ORDER BY for targeted diagnostics                                             +
-     - Use key_ranges_extended for additional detail including shard names                             +
-     - Use task_group_ext / task_groups_ext for extended task group information                        +
-                                                                                                       +
- RELATED COMMANDS                                                                                      +
-     CREATE KEY RANGE                                                                                  +
-     CREATE DISTRIBUTION                                                                               +
+                                                 help                                                  
+-------------------------------------------------------------------------------------------------------
+ NAME                                                                                                 +
+     SHOW - Displays cluster metadata, topology, configuration, and runtime status.                   +
+                                                                                                      +
+ SYNTAX                                                                                               +
+     SHOW <target> [(<columns>)]                                                                      +
+       [WHERE <condition>]                                                                            +
+       [GROUP BY <column>]                                                                            +
+       [ORDER BY <column> [ASC|DESC]]                                                                 +
+                                                                                                      +
+ DESCRIPTION                                                                                          +
+     Displays cluster metadata, topology, configuration, and runtime status.                          +
+                                                                                                      +
+     Valid targets: `databases`, `routers`, `shards`, `distributions`, `key_ranges`,                  +
+     `key_ranges_extended`, `relations`, `reference_relations`, `pools`, `clients`,                   +
+     `backend_connections`, `hosts`, `version`, `status`, `instance`, `sequences`,                    +
+     `users`, `task_group`, `task_groups`, `task_group_ext`, `task_groups_ext`,                       +
+     `move_task`, `move_tasks`, `redistribute_tasks`, `prepared_statements`,                          +
+     `time_quantiles`, `unique_indexes`, `coordinator_address`, `is_read_only`,                       +
+     `move_stats`, `errors`, `startup_finished`, `two_phase_tx`, `dcs_storage`,                       +
+     `file_settings`, `tsa_cache`.                                                                    +
+                                                                                                      +
+ PARAMETERS                                                                                           +
+     <target> - The metadata category to display (e.g., databases, shards, key_ranges, distributions) +
+     <columns> - Optional column projection to display only specific fields (e.g., "(id, status)")    +
+     <WHERE condition> - Optional filter to restrict rows by column values (e.g., WHERE id = 'shard1')+
+     <GROUP BY column> - Optional grouping by a column                                                +
+     <ORDER BY column> - Optional sorting by a column, with optional ASC or DESC direction            +
+                                                                                                      +
+ EXAMPLES                                                                                             +
+     Show all shards:                                                                                 +
+         SHOW shards;                                                                                 +
+     Show key ranges with specific columns:                                                           +
+         SHOW key_ranges (key_range_id, shard_id);                                                    +
+     Show backend connections filtered by hostname:                                                   +
+         SHOW backend_connections WHERE hostname = 'localhost';                                       +
+     Show clients ordered by user:                                                                    +
+         SHOW clients ORDER BY user DESC;                                                             +
+     Show backend connections grouped by shard:                                                       +
+         SHOW backend_connections GROUP BY shard_key_name;                                            +
+                                                                                                      +
+ TIPS                                                                                                 +
+     - Use column projection to reduce output to only the fields you need                             +
+     - Combine WHERE and ORDER BY for targeted diagnostics                                            +
+     - Use key_ranges_extended for additional detail including shard names                            +
+     - Use task_group_ext / task_groups_ext for extended task group information                       +
+                                                                                                      +
+ RELATED COMMANDS                                                                                     +
+     CREATE KEY RANGE                                                                                 +
+     CREATE DISTRIBUTION                                                                              +
      REDISTRIBUTE KEY RANGE
 (1 row)
 
