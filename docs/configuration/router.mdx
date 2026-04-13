@@ -111,19 +111,19 @@ Query routing settings are nested under the `query_routing` configuration key an
 
 Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/router.go) file for the most up-to-date configuration options.
 
-| Setting                                        | Description                                                                                                              | Possible Values  | Default |
-|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------|---------|
-| `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries. Can be overridden by the [__spqr__default_route_behaviour](/routing/hints#spqr-default-route-behaviour) hint. | `BLOCK`, `ALLOW` | `BLOCK` |
-| `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. Can be overridden by the [__spqr__target_session_attrs](/routing/hints#spqr-target-session-attrs) hint. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` | `smart-read-write` |
-| `query_routing.enhanced_multishard_processing` | Enables engine V2 with enhanced multishard query processing, including [automatic batch INSERT/COPY](/sharding/bulk) splitting across shards. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | `false` |
-| `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | `false` |
-| `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | `false` |
+| Setting                                        | Description                                                                                                              | Possible Values  | Overridable by Hint | Default |
+|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------|---------------------|------------------|
+| `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries. Can be overridden by the [__spqr__default_route_behaviour](/routing/hints#spqr-default-route-behaviour) hint. | `BLOCK`, `ALLOW` | Yes | `BLOCK` |
+| `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. Can be overridden by the [__spqr__target_session_attrs](/routing/hints#spqr-target-session-attrs) hint. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` | Yes | `smart-read-write` |
+| `query_routing.enhanced_multishard_processing` | Enables engine V2 with enhanced multishard query processing, including [automatic batch INSERT/COPY](/sharding/bulk) splitting across shards. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes | `false` |
+| `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | No | `false` |
+| `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | No | `false` |
 
 ## Transaction Settings
 
-| Setting                   | Description                                                                                                              | Possible Values                     | Default |
-|---------------------------|--------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------|
-| `default_commit_strategy` | Default commit strategy for distributed transactions. Can be overridden per session with the [__spqr__commit_strategy](/routing/hints#spqr-commit-strategy) hint. See [Distributed Transactions](/sharding/distributed_transactions) for details. | `best-effort`, `1pc`, `2pc` | (none) |
+| Setting                   | Description                                                                                                              | Possible Values                     | Overridable by Hint | Default |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------|--------|
+| `default_commit_strategy` | Default commit strategy for distributed transactions. Can be overridden per session with the [__spqr__commit_strategy](/routing/hints#spqr-commit-strategy) hint. See [Distributed Transactions](/sharding/distributed_transactions) for details. | `best-effort`, `1pc`, `2pc` | Yes | (none) |
 
 ## Mode Settings
 
@@ -135,15 +135,15 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 
 ## Debug Settings
 
-| Setting          | Description                                           | Possible Values    | Default |
-|------------------|-------------------------------------------------------|--------------------|---------|
-| `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | `false` |
-| `display_greeting` | Whether to display greeting message on client connection. | `true`, `false`    | `true` |
-| `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | `"{shard}@{host}"` |
-| `pid_filename`   | The file name to store the process ID.                | Any valid filepath | (none) |
-| `log_filename`   | The file name for logging output.                     | Any valid filepath | (none) |
-| `pgproto_debug`  | PostgreSQL protocol debug flag.                       | `true`, `false`    | `false` |
-| `log_min_duration_statement` | Log queries that exceed this duration. Set to `-1` to disable query logging by duration. | Duration in milliseconds (e.g., `100ms`, `1s`) or `-1` to disable | `-1` |
+| Setting          | Description                                           | Possible Values    | Overridable by Hint | Default |
+|------------------|-------------------------------------------------------|--------------------|---------------------|--------------------|
+| `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | Yes | `false` |
+| `display_greeting` | Whether to display greeting message on client connection. | `true`, `false`    | No | `true` |
+| `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | No | `"{shard}@{host}"` |
+| `pid_filename`   | The file name to store the process ID.                | Any valid filepath | No | (none) |
+| `log_filename`   | The file name for logging output.                     | Any valid filepath | No | (none) |
+| `pgproto_debug`  | PostgreSQL protocol debug flag.                       | `true`, `false`    | No | `false` |
+| `log_min_duration_statement` | Log queries that exceed this duration. Set to `-1` to disable query logging by duration. | Duration in milliseconds (e.g., `100ms`, `1s`) or `-1` to disable | No | `-1` |
 
 ## DBpool Settings
 
