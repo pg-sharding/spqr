@@ -194,6 +194,17 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		err := rst.QueryExecutor().ExecRollback(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
+
+	case parser.Discard:
+		/* Close all prepared */
+
+		for _, name := range rst.QueryExecutor().Client().ListPreparedStatements() {
+			rst.QueryExecutor().Client().ClosePreparedStatement(name)
+		}
+
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+
+		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD")
 	case parser.Deallocate:
 		if st.Name == "" {
 			/* Close all */
