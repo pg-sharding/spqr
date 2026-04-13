@@ -658,7 +658,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		if err := sh.Send(query); err != nil {
 			return txstatus.TXERR, err
 		}
-		/* https://git.postgresql.org/cgit/postgresql.git/tree/src/interfaces/libpq/fe-exec.c?h=REL_18_3#n2797 */ /* #no-spell-check-line */
+		/* https://git.postgresql.org/cgit/postgresql.git/tree/src/interfaces/libpq/fe-exec.c?h=REL_18_3#n2797 */
 		if !simple {
 			if err := sh.Send(pgsync); err != nil {
 				return txstatus.TXERR, err
