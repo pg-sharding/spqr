@@ -77,6 +77,16 @@ type ParseStatePrepareStmt struct {
 	Query string
 }
 
+type Deallocate struct {
+	ParseState
+	Name string
+}
+
+type Discard struct {
+	ParseState
+	Kind string
+}
+
 type ParseStateExecute struct {
 	ParseState
 	ParamsQuerySuf string
@@ -188,6 +198,16 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			return qp.state, comment, nil
 		default:
 		}
+	case *lyx.DeallocateStmt:
+		qp.state = Deallocate{
+			Name: q.Name,
+		}
+		return qp.state, comment, nil
+	case *lyx.DiscardStmt:
+		qp.state = Discard{
+			Kind: q.Kind,
+		}
+		return qp.state, comment, nil
 	default:
 	}
 

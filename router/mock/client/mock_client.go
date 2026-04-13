@@ -538,6 +538,20 @@ func (mr *MockRouterClientMockRecorder) Init(cfg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockRouterClient)(nil).Init), cfg)
 }
 
+// ListPreparedStatements mocks base method.
+func (m *MockRouterClient) ListPreparedStatements() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPreparedStatements")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// ListPreparedStatements indicates an expected call of ListPreparedStatements.
+func (mr *MockRouterClientMockRecorder) ListPreparedStatements() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockRouterClient)(nil).ListPreparedStatements))
+}
+
 // MaintainParams mocks base method.
 func (m *MockRouterClient) MaintainParams() bool {
 	m.ctrl.T.Helper()
