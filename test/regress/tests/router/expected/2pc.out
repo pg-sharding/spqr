@@ -7,6 +7,7 @@ SELECT __spqr__console_execute('CREATE REFERENCE RELATION ref_2pc');
 
 CREATE TABLE ref_2pc(i INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__engine_v2 TO true;
 SET __spqr__commit_strategy TO 2pc;
 BEGIN;
