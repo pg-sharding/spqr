@@ -675,10 +675,9 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 
 				/* Should we create distributed or reference relation? */
 
-				valDistribKey, ok := mp[session.SPQR_DISTRIBUTION_KEY]
+				_, ok := mp[session.SPQR_DISTRIBUTION_KEY]
 				if !ok {
-					valDistribKey = rst.Client().DistributionKey()
-					if valDistribKey == "" {
+					if rst.Client().DistributionKey() == "" {
 						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
 					}
 				}
