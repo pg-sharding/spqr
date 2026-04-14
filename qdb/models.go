@@ -95,7 +95,7 @@ type GenericOption struct {
 type Shard struct {
 	ID       string          `json:"id"`
 	RawHosts []string        `json:"hosts"` // format host:port:availability_zone
-	Options  []GenericOption `json:"options"`
+	Options  []GenericOption `json:"options,omitempty"`
 }
 
 func NewShard(ID string, hosts []string, options []GenericOption) *Shard {
