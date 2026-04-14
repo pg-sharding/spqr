@@ -20,7 +20,7 @@ SELECT __spqr__ctid('zz');
 SET __spqr__auto_distribution TO REPLICATED;
 SHOW __spqr__auto_distribution;
 
-SET __spqr__auto_distribution TO REPLICATEDzzz;
+SET __spqr__auto_distribution TO REPLICATEDzz;
 SHOW __spqr__auto_distribution;
 
 SET __spqr__auto_distribution TO REPLICATED;
