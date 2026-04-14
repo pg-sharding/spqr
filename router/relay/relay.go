@@ -1033,6 +1033,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, stri
 		return nil, "", err
 	}
 
+	/* XXX remove from here */
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
 		// load columns from information schema

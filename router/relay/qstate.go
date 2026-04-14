@@ -210,7 +210,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 
 		default:
-			return nil, fmt.Errorf("unknown transacttion statement kind: %+v", st.Kind)
+			return nil, fmt.Errorf("unknown transaction statement kind: %+v", st.Kind)
 		}
 
 	case *lyx.DiscardStmt:

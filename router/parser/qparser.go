@@ -58,7 +58,6 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 		i = j + 3
 	}
 
-	qp.stmt = nil
 	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
 
 	routerStmts, pos, err := lyx.Parse(query)
@@ -69,5 +68,8 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
 		}
 	}
+
+	qp.stmt = routerStmts[0]
+
 	return routerStmts, comment, nil
 }
