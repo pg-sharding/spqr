@@ -1,0 +1,8 @@
+NAME
+    ALTER DISTRIBUTION DETACH RELATION - Detaches a relation from the distribution using the DETACH RELATION clause.
+
+SYNTAX
+    ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>
+
+DESCRIPTION
+    Detaches a relation from the distribution using the DETACH RELATION clause.
