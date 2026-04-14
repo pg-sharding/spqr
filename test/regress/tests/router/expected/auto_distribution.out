@@ -49,6 +49,21 @@ SHOW __spqr__auto_distribution;
  REPLICATED
 (1 row)
 
+SET __spqr__auto_distribution TO REPLICATEDzz;
+ERROR:  SPQR invalid distribution 'REPLICATEDzz' for hint __spqr__auto_distribution
+SHOW __spqr__auto_distribution;
+ __spqr__auto_distribution 
+---------------------------
+ 
+(1 row)
+
+SET __spqr__auto_distribution TO REPLICATED;
+SHOW __spqr__auto_distribution;
+ __spqr__auto_distribution 
+---------------------------
+ REPLICATED
+(1 row)
+
 CREATE TABLE zz2(i int, j int, k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
