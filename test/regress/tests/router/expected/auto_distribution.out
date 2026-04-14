@@ -42,6 +42,40 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  shard sh4    | 4 | 5 | 6
 (12 rows)
 
+SET __spqr__auto_distribution TO REPLICATED;
+SHOW __spqr__auto_distribution;
+ __spqr__auto_distribution 
+---------------------------
+ REPLICATED
+(1 row)
+
+CREATE TABLE zz2(i int, j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO zz2 (i,j,k) VALUES(1,2,3);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO zz2 (i,j,k) VALUES(2,3,4);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO zz2 (i,j,k) VALUES(4,5,6);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT __spqr__ctid('zz2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | i | j | k 
+--------------+---+---+---
+ shard sh1    | 1 | 2 | 3
+ shard sh1    | 2 | 3 | 4
+ shard sh1    | 4 | 5 | 6
+ shard sh2    | 1 | 2 | 3
+ shard sh2    | 2 | 3 | 4
+ shard sh2    | 4 | 5 | 6
+ shard sh3    | 1 | 2 | 3
+ shard sh3    | 2 | 3 | 4
+ shard sh3    | 4 | 5 | 6
+ shard sh4    | 1 | 2 | 3
+ shard sh4    | 2 | 3 | 4
+ shard sh4    | 4 | 5 | 6
+(12 rows)
+
 -- should fail
 CREATE TABLE d_zz (i int, j int);
 ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found
@@ -77,6 +111,8 @@ CREATE TABLE d_zz2 (i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE zz;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE zz2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE d_zz;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

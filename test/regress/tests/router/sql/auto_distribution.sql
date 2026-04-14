@@ -17,6 +17,23 @@ INSERT INTO zz (i,j,k) VALUES(4,5,6);
 
 SELECT __spqr__ctid('zz');
 
+SET __spqr__auto_distribution TO REPLICATED;
+SHOW __spqr__auto_distribution;
+
+SET __spqr__auto_distribution TO REPLICATEDzzz;
+SHOW __spqr__auto_distribution;
+
+SET __spqr__auto_distribution TO REPLICATED;
+SHOW __spqr__auto_distribution;
+
+CREATE TABLE zz2(i int, j int, k int);
+
+INSERT INTO zz2 (i,j,k) VALUES(1,2,3);
+INSERT INTO zz2 (i,j,k) VALUES(2,3,4);
+INSERT INTO zz2 (i,j,k) VALUES(4,5,6);
+
+SELECT __spqr__ctid('zz2');
+
 -- should fail
 CREATE TABLE d_zz (i int, j int);
 
@@ -42,6 +59,7 @@ SET __spqr__auto_distribution TO ds1;
 CREATE TABLE d_zz2 (i int, j int);
 
 DROP TABLE zz;
+DROP TABLE zz2;
 DROP TABLE d_zz;
 DROP TABLE d_zz2;
 
