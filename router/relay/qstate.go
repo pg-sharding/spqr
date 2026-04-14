@@ -86,6 +86,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 	var pd *PortalDesc
 
+l:
 	for i, stmt := range stmts {
 
 		if i > 0 {
@@ -94,7 +95,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			case *lyx.VariableSetStmt, *lyx.VariableShowStmt:
 				/* ok */
 			default:
-				return nil, rerrors.ErrComplexQuery
+				continue l
 			}
 
 			/* Okay, respond with CommandComplete first. */
