@@ -10,7 +10,7 @@ DROP SHARD sh1;
  sh1
 (1 row)
 
-CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432', HOST 'another_host:6432');
+CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
     add shard    
 -----------------
  shard id -> sh1
@@ -23,11 +23,11 @@ ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
  options  -> {sslmode=require}
 (2 rows)
 
-ALTER SHARD sh1 OPTIONS (DROP HOST 'another_host:6432');
-             alter shard              
---------------------------------------
+ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
+                 alter shard                  
+----------------------------------------------
  shard id -> sh1
- options  -> {host=another_host:6432}
+ options  -> {host=spqr_shard_1_replica:6432}
 (2 rows)
 
 UNREGISTER ROUTER ALL;

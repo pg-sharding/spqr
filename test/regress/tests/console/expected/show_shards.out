@@ -72,7 +72,6 @@ SHOW hosts;
 
 CREATE SHARD sh5 OPTIONS (HOST "127.0.0.1:1");
 ERROR:  shard host "127.0.0.1:1" is not reachable: dial tcp 127.0.0.1:1: connect: connection refused
-
 SHOW shards;
  shard 
 -------
