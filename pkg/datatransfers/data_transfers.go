@@ -726,6 +726,11 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	if toCount > 0 && fromCount != 0 {
 		return fmt.Errorf("key count on sender & receiver mismatch")
 	}
+	if config.CoordinatorConfig().EnableICP {
+		if err := icp.CheckControlPoint(nil, icp.CopyReferenceRelationDataCP); err != nil {
+			spqrlog.Zero.Info().Str("cp", icp.CopyReferenceRelationDataCP).Err(err).Msg("error while checking control point")
+		}
+	}
 	tx, err := to.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("could not start transaction to copy reference table data: %s", err)
