@@ -90,6 +90,13 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 		if i > 0 {
 
+			switch stmt.(type) {
+			case *lyx.VariableSetStmt, *lyx.VariableShowStmt:
+				/* ok */
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().DeriveCommandComplete()
 			if err != nil {
