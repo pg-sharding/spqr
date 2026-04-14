@@ -86,7 +86,18 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 	var pd *PortalDesc
 
-	for _, stmt := range stmts {
+	for i, stmt := range stmts {
+
+		if i > 0 {
+
+			/* Okay, respond with CommandComplete first. */
+			err = rst.QueryExecutor().DeriveCommandComplete()
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		rst.qp.SetStmt(stmt)
 
 		txbefore := rst.QueryExecutor().TxStatus()
 		if txbefore == txstatus.TXERR {
@@ -118,7 +129,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			spqrlog.Zero.Error().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("completing client relay")
+		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("executed statement in client relay")
 	}
 	return pd, err
 }
