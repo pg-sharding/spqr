@@ -923,7 +923,7 @@ func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.
 
 func SetUpSPQRGuard(distributedRelations []*rfqn.RelationFQN, referenceRelations []*rfqn.RelationFQN) func(context.Context, *pgx.Conn) error {
 	return func(ctx context.Context, conn *pgx.Conn) error {
-		if hasSPQRGuard, err := shard.CheckExtension(ctx, conn, "spqrguard", "2.2"); err != nil {
+		if hasSPQRGuard, err := shard.CheckExtension(ctx, conn, "spqrguard", "2.3"); err != nil {
 			return err
 		} else if !hasSPQRGuard {
 			// TODO: should we return error?
