@@ -94,6 +94,7 @@ datatransfer
 datname
 dboptions
 dbpool
+dbshard
 dbtpcc
 dbutils
 dcd
