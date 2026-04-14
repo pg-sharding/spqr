@@ -242,11 +242,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 	case *lyx.VariableShowStmt:
 		var pd *PortalDesc
 
-		/* This is hacky and very-very bad. Should fix multi-statement. */
-		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-			return nil, err
-		}
-
 		q, ok := stmt.(*lyx.VariableShowStmt)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -485,11 +480,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return pd, nil
 	case *lyx.VariableSetStmt:
-
-		/* This is hacky and very-very bad. Should fix multi-statement. */
-		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-			return nil, err
-		}
 
 		q, ok := stmt.(*lyx.VariableSetStmt)
 		if !ok {
