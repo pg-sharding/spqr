@@ -104,17 +104,19 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 			/* If user supplied COMMIT in already-errored tx, simply rollback
 			* and end tx block. */
-			if st, ok := stmt.(*lyx.TransactionStmt); ok {
-				/* It is necessary here to change state to trigger correct
-				* execution path ProcQueryAdvanced, that is, single-slice scatter-out
-				* query (no 2pc commit management!) */
-				if st.Kind == lyx.TRANS_STMT_COMMIT {
-					st.Kind = lyx.TRANS_STMT_ROLLBACK
-					/* We will actually send COMMIT as use command to shards, do not
-					* override `query` */
-				} else if st.Kind != lyx.TRANS_STMT_ROLLBACK {
-					return nil, errAbortedTx
-				}
+			st, ok := stmt.(*lyx.TransactionStmt)
+			if !ok {
+				return nil, errAbortedTx
+			}
+			/* It is necessary here to change state to trigger correct
+			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
+			* query (no 2pc commit management!) */
+			if st.Kind == lyx.TRANS_STMT_COMMIT {
+				st.Kind = lyx.TRANS_STMT_ROLLBACK
+				/* We will actually send COMMIT as use command to shards, do not
+				* override `query` */
+			} else if st.Kind != lyx.TRANS_STMT_ROLLBACK {
+				return nil, errAbortedTx
 			}
 		}
 
