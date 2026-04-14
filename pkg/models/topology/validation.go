@@ -17,7 +17,13 @@ func ValidateDataShardHosts(ctx context.Context, shard *DataShard) error {
 		return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "shard definition is nil")
 	}
 
-	hosts := shard.Hosts()
+	hosts := retrieveRawHostsFromOptions(shard.options)
+	if len(hosts) == 0 {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has no valid hosts configured", shard.ID)
+	}
+	if len(hosts) != len(shard.Hosts()) {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has invalid or unsupported host definitions", shard.ID)
+	}
 
 	dialer := &net.Dialer{Timeout: defaultShardHostValidationTimeout}
 	errCh := make(chan error, len(hosts))

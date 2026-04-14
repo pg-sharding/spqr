@@ -82,13 +82,18 @@ func (ds *DataShard) HostsAZ() []config.Host {
 }
 
 func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, []string) {
+	hosts := retrieveRawHostsFromOptions(options)
+	return parseHosts(hosts)
+}
+
+func retrieveRawHostsFromOptions(options []GenericOption) []string {
 	hosts := make([]string, 0)
 	for _, opt := range options {
 		if opt.Name == "host" {
 			hosts = append(hosts, opt.Arg)
 		}
 	}
-	return parseHosts(hosts)
+	return hosts
 }
 
 func (ds *DataShard) TLS() *config.TLSConfig {

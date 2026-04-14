@@ -117,13 +117,13 @@ func TestCreateShardValidatesReachableHosts(t *testing.T) {
 	}()
 
 	statement := spqrparser.ShardDefinition{
-		Id:    "sh-new",
-		Hosts: []string{listener.Addr().String()},
+		Id:      "sh-new",
+		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
 	}
 
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
 
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.NoError(t, err)
@@ -153,13 +153,13 @@ func TestCreateShardRejectsUnreachableHosts(t *testing.T) {
 	}()
 
 	statement := spqrparser.ShardDefinition{
-		Id:    "sh-bad",
-		Hosts: []string{addr},
+		Id:      "sh-bad",
+		Options: []spqrparser.GenericOption{{Name: "host", Arg: addr}},
 	}
 
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
 
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "not reachable")
@@ -177,8 +177,8 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	}()
 
 	statement := spqrparser.ShardDefinition{
-		Id:    "sh-new",
-		Hosts: []string{listener.Addr().String()},
+		Id:      "sh-new",
+		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
 	}
 
 	ctrl := gomock.NewController(t)
@@ -188,7 +188,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, fmt.Errorf("rpc error: code = Unknown desc = unknown shard sh-new"))
 	mngr.EXPECT().AddDataShard(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, shard *topology.DataShard) error {
 		assert.Equal(t, "sh-new", shard.ID)
-		assert.Equal(t, []string{listener.Addr().String()}, shard.Cfg.RawHosts)
+		assert.Equal(t, []string{listener.Addr().String()}, shard.Hosts())
 		return nil
 	})
 
