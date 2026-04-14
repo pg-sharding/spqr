@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -590,11 +589,14 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			// prepare *name* as *query*
 			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
 
-			/* no oid for SQL level prep stmt */
-			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
-				Name:  st.Name,
-				Query: ss,
-			})
+			if _, err := rst.relayParsePrepared(context.TODO(), st.Name, ss, nil); err != nil {
+				return nil, err
+			}
+
+			if err := rst.QueryExecutor().ReplyCommandComplete("PREPARE"); err != nil {
+				return nil, err
+			}
+
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
 		} else {
@@ -605,9 +607,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		}
 	case *lyx.Execute:
 		if AdvancedPoolModeNeeded(rst) {
-			// do nothing
-			// wtf? TODO: test and fix
-			rst.Client().PreparedStatementQueryByName(st.Id)
+
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
 		} else {
