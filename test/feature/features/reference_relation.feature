@@ -473,3 +473,83 @@ Scenario: Dropping shard from reference relation metadata works
         }
     ]
     """
+
+    Scenario: Ref relations are locked on sync
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    ATTACH CONTROL POINT copy_reference_relation_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int, name text[]);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY[]::text[]);
+    INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
+    INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
+    INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "1"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "name": 69,
+        "enabled": true
+    }]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT (SELECT reloid FROM spqr_metadata.spqr_reference_relations) = 't'::regclass::oid as check;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "check": true
+    }]
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "router"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY['should fail']);
+    """
+    Then command return code should be "1"
+    And SQL error on host "router" should match regexp
+    """
+    unable to modify SPQR reference relation within read-only transaction
+    """
