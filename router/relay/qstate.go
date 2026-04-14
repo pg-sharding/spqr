@@ -104,8 +104,6 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 				} else if st.Kind != lyx.TRANS_STMT_ROLLBACK {
 					return nil, errAbortedTx
 				}
-
-			} else {
 			}
 		}
 
