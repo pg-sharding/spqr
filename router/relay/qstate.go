@@ -623,8 +623,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 	}
 }
 
-func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
-
+func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	mp map[string]string, isLocal bool, isStmt bool) error {
 
 	lvl := session.VirtualParamLevelTxBlock
@@ -714,7 +713,7 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context,
 				if hintVal == distributions.REPLICATED {
 					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
 					rst.Client().SetAutoDistribution(hintVal)
-					return nil
+					continue
 				}
 
 				_, err := rst.QueryRouter().Mgr().GetDistribution(context.TODO(), hintVal)
