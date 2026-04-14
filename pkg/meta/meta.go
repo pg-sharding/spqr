@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"syscall"
@@ -585,6 +586,23 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return tts, nil
 	case *spqrparser.ShardDefinition:
+		_, err := mngr.GetShard(ctx, stmt.Id)
+		if err == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard with id %s already exists", stmt.Id)
+		}
+
+		var spErr *spqrerror.SpqrError
+		if errors.As(err, &spErr) {
+			if spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
+				return nil, err
+			}
+		} else {
+			cleanErr := spqrerror.CleanGrpcError(err)
+			if !strings.Contains(cleanErr.Error(), "unknown shard") {
+				return nil, cleanErr
+			}
+		}
+
 		shardCfg := &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
@@ -598,7 +616,11 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				RootCertFile: stmt.RootCertFile,
 			}
 		}
+
 		dataShard := topology.NewDataShard(stmt.Id, shardCfg)
+		if err := topology.ValidateDataShardHosts(ctx, dataShard); err != nil {
+			return nil, err
+		}
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
 			return nil, err
 		}
