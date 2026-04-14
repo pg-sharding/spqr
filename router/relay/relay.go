@@ -795,7 +795,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		case *pgproto3.Parse:
 			if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
 				return err
-			} else {
+			} else if retMsg != nil {
 				if err := rst.Client().Send(retMsg); err != nil {
 					return err
 				}
