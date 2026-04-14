@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
@@ -55,7 +54,7 @@ type QueryStateExecutor interface {
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
 
-	ExecBegin(query string, st *parser.ParseStateTXBegin) error
+	ExecBegin(query string, st *lyx.TransactionStmt) error
 	ExecCommit(query string) error
 	ExecRollback(query string) error
 
