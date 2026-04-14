@@ -43,7 +43,7 @@ type RelayStateMgr interface {
 	Reset() error
 	ResetWithError(err error) error
 
-	Parse(query string, doCaching bool) (parser.ParseState, string, error)
+	Parse(query string, doCaching bool) ([]lyx.Node, string, error)
 
 	CompleteRelay() error
 	CompleteRelayClient() error
@@ -73,7 +73,7 @@ type PortalDesc struct {
 }
 
 type ParseCacheEntry struct {
-	ps   parser.ParseState
+	ps   []lyx.Node
 	comm string
 	stmt lyx.Node
 }
@@ -494,32 +494,30 @@ var (
 	}
 )
 
-func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *pgproto3.Parse) error {
+func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, name, query string, ParameterOIDs []uint32) error {
 
 	startTime := time.Now()
 
 	// analyze statement and maybe rewrite query
-
-	query := currentMsg.Query
-	_, _, err := rst.Parse(query, true)
+	stmts, _, err := rst.Parse(query, true)
 	if err != nil {
 		return err
 	}
 
 	/* XXX: check that we have reference relation insert here */
-	stmt := rst.qp.Stmt()
+	stmt := stmts[0]
 
 	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt)
 	if err != nil {
 		return err
 	}
 
-	rst.savedRM[currentMsg.Name] = rm
+	rst.savedRM[name] = rm
 
 	def := &prepstatement.PreparedStatementDefinition{
-		Name:          currentMsg.Name,
+		Name:          name,
 		Query:         query,
-		ParameterOIDs: currentMsg.ParameterOIDs,
+		ParameterOIDs: ParameterOIDs,
 	}
 
 	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
@@ -575,17 +573,17 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 
 	rst.Client().StorePreparedStatement(def)
 
-	hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.Name)
+	hash := rst.Client().PreparedStatementQueryHashByName(name)
 
 	spqrlog.Zero.Debug().
-		Str("name", currentMsg.Name).
-		Str("query", currentMsg.Query).
+		Str("name", name).
+		Str("query", query).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
 		Msg("Parsing prepared statement")
 
 	if config.RouterConfig().PgprotoDebug {
-		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", currentMsg.Name, currentMsg.Query, hash); err != nil {
+		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", name, query, hash); err != nil {
 			return err
 		}
 	}
@@ -593,7 +591,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 	/* TODO: refactor code to make this less ugly */
 	saveTxStatus := rst.qse.TxStatus()
 
-	_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
+	_, retMsg, err := rst.gangDeployPrepStmtByName(name)
 	if err != nil {
 		return err
 	}
@@ -601,7 +599,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 	rst.qse.SetTxStatus(saveTxStatus)
 
 	// tdb: fix this
-	rst.plainQ = currentMsg.Query
+	rst.plainQ = query
 
 	if err := rst.Client().Send(retMsg); err != nil {
 		return err
@@ -611,7 +609,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 		return err
 	}
 
-	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
+	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, query, time.Since(startTime))
 	return nil
 }
 
@@ -635,7 +633,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 		switch currentMsg := msg.(type) {
 		case *pgproto3.Parse:
-			if err := rst.relayParsePrepared(ctx, currentMsg); err != nil {
+			if err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
 				return err
 			}
 		case *pgproto3.Bind:
@@ -1022,14 +1020,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseState, string, error) {
+func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
 		rst.qp.SetOriginQuery(query)
 		return cache.ps, cache.comm, nil
 	}
 
-	state, comm, err := rst.qp.Parse(query)
+	stmts, comm, err := rst.qp.Parse(query)
 
 	if err != nil {
 		return nil, "", err
@@ -1047,7 +1045,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName))
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
-						return state, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
+						return stmts, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
 					}
 				}
 			}
@@ -1060,7 +1058,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 		switch stmt.(type) {
 		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
 			rst.parseCache[query] = ParseCacheEntry{
-				ps:   state,
+				ps:   stmts,
 				comm: comm,
 				stmt: stmt,
 			}
@@ -1068,7 +1066,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	rst.plainQ = query
-	return state, comm, nil
+	return stmts, comm, nil
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}

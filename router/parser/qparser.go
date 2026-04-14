@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"strings"
-
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -10,7 +8,6 @@ import (
 
 type QParser struct {
 	query string
-	state ParseState
 	stmt  lyx.Node
 }
 
@@ -30,71 +27,8 @@ func (qp *QParser) SetStmt(stmt lyx.Node) {
 	qp.stmt = stmt
 }
 
-type ParseState any
-
-type ParseStateTXBegin struct {
-	ParseState
-	Options []lyx.TransactionModeItem
-}
-
-type ParseStateTXRollback struct {
-	ParseState
-}
-
-type ParseStateTXCommit struct {
-	ParseState
-}
-
-type ParseStateQuery struct {
-	ParseState
-}
-
-type ParseStateEmptyQuery struct {
-	ParseState
-}
-
-type ParseStateErr struct {
-	ParseState
-}
-
-type ParseStateSkip struct {
-	ParseState
-}
-
-type ParseStateSetStmt struct {
-	ParseState
-	Stmts []lyx.Node
-}
-
-type ParseStateShowStmt struct {
-	ParseState
-	Stmts []lyx.Node
-}
-
-type ParseStatePrepareStmt struct {
-	ParseState
-	Name  string
-	Query string
-}
-
-type Deallocate struct {
-	ParseState
-	Name string
-}
-
-type Discard struct {
-	ParseState
-	Kind string
-}
-
-type ParseStateExecute struct {
-	ParseState
-	ParamsQuerySuf string
-	Name           string
-}
-
 // TODO : unit tests
-func (qp *QParser) Parse(query string) (ParseState, string, error) {
+func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 	qp.query = query
 
 	comment := ""
@@ -135,81 +69,5 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
 		}
 	}
-	if routerStmts == nil || routerStmts[0] == nil {
-		qp.state = ParseStateEmptyQuery{}
-		return qp.state, comment, nil
-	}
-
-	qp.stmt = routerStmts[0]
-	qp.state = ParseStateQuery{}
-
-	spqrlog.Zero.Debug().Type("stmt-type", routerStmts).Msg("parsed query statements")
-	qp.state = ParseStateQuery{}
-
-	switch q := routerStmts[0].(type) {
-	case *lyx.Execute:
-		varStmt := ParseStateExecute{}
-		varStmt.Name = q.Id
-		ss := strings.Split(strings.Split(strings.ToLower(query), "execute")[1], strings.ToLower(varStmt.Name))[1]
-
-		varStmt.ParamsQuerySuf = ss
-		qp.state = varStmt
-
-		return varStmt, comment, nil
-	case *lyx.Prepare:
-		varStmt := ParseStatePrepareStmt{}
-		spqrlog.Zero.Debug().
-			Type("query-type", q).
-			Msg("prep stmt query")
-		varStmt.Name = q.Id
-		// prepare *name* as *query*
-		ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
-		varStmt.Query = ss
-		qp.query = ss
-		spqrlog.Zero.Debug().
-			Str("name", varStmt.Name).
-			Str("query", varStmt.Query).
-			Msg("parsed prep stmt")
-		qp.state = varStmt
-
-		return qp.state, comment, nil
-	case *lyx.VariableShowStmt:
-		return ParseStateShowStmt{
-			Stmts: routerStmts,
-		}, comment, nil
-	case *lyx.VariableSetStmt:
-
-		qp.state = ParseStateSetStmt{
-			Stmts: routerStmts,
-		}
-		return qp.state, comment, nil
-	case *lyx.TransactionStmt:
-		switch q.Kind {
-		case lyx.TRANS_STMT_BEGIN:
-			qp.state = ParseStateTXBegin{
-				Options: q.Options,
-			}
-			return qp.state, comment, nil
-		case lyx.TRANS_STMT_COMMIT:
-			qp.state = ParseStateTXCommit{}
-			return qp.state, comment, nil
-		case lyx.TRANS_STMT_ROLLBACK:
-			qp.state = ParseStateTXRollback{}
-			return qp.state, comment, nil
-		default:
-		}
-	case *lyx.DeallocateStmt:
-		qp.state = Deallocate{
-			Name: q.Name,
-		}
-		return qp.state, comment, nil
-	case *lyx.DiscardStmt:
-		qp.state = Discard{
-			Kind: q.Kind,
-		}
-		return qp.state, comment, nil
-	default:
-	}
-
-	return ParseStateQuery{}, comment, nil
+	return routerStmts, comment, nil
 }
