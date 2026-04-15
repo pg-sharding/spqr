@@ -497,6 +497,7 @@ func TestTranListSequences(t *testing.T) {
 		assert.NoError(t, err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
 		statements, err := memqdb.CreateSequence(ctx, "test1", 1)
+		is.NoError(err)
 		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 		tranMngr := meta.NewTranEntityManager(mngr)
