@@ -15,6 +15,7 @@ const (
 	TwoPhaseDecisionCP2 = "2pc_after_decision_cp"
 
 	CopyDataCP                  = "copy_data_cp"
+	AfterCopyDataCP                  = "after_copy_data_cp"
 	CopyReferenceRelationDataCP = "copy_reference_relation_data_cp"
 )
 
@@ -94,7 +95,7 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -113,7 +114,7 @@ func ResetICP(name string) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]

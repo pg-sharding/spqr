@@ -216,6 +216,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterCopyDataCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterCopyDataCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			tx.Status = qdb.DataCopied
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
 			statistics.RecordShardOperation("copyData", time.Since(t))
