@@ -1,0 +1,36 @@
+NAME
+    CREATE RELATION - This command is a shorthand for [ALTER DISTRIBUTION ATTACH RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a distribution in a single statement.
+
+SYNTAX
+    CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
+
+DESCRIPTION
+    This command is a shorthand for [ALTER DISTRIBUTION ATTACH RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a distribution in a single statement.
+    The `DISTRIBUTED` keyword is optional and has no effect on the behavior.
+
+    There are two syntax forms for specifying distribution keys:
+
+    **Parenthesized syntax** — column names and optional hash functions are listed inside parentheses:
+
+EXAMPLES
+    Simple column with no hash function (uses default distribution):
+        CREATE RELATION r (i);
+    Column with hash function:
+        CREATE RELATION r (i HASH MURMUR);
+    Attach to a specific distribution:
+        CREATE RELATION t (id) IN ds1;
+    Using FOR DISTRIBUTION syntax:
+        CREATE DISTRIBUTED RELATION table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;
+    Composite key with multiple columns:
+        CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
+    Routing expression syntax for composite keys with typed columns:
+        CREATE RELATION tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
+    Schema-qualified relation name:
+        CREATE DISTRIBUTED RELATION sh1.r (i) IN d;
+    DISTRIBUTION KEY syntax:
+        CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
+    Composite key without hash using DISTRIBUTION KEY syntax:
+        CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;
+
+NOTES
+    - **DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause: `CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> DISTRIBUTION KEY <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`
