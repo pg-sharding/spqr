@@ -19,7 +19,9 @@ func TestStepOne(t *testing.T) {
 	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	ctx := context.TODO()
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
@@ -47,7 +49,9 @@ func TestStepFive(t *testing.T) {
 	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	ctx := context.TODO()
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
@@ -94,7 +98,9 @@ func TestStepOne_concurrent(t *testing.T) {
 	ctx := context.TODO()
 
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
@@ -134,7 +140,9 @@ func TestStepFive_concurrent(t *testing.T) {
 	ctx := context.TODO()
 
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{

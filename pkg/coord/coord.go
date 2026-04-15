@@ -180,7 +180,19 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 		/* Ahh... fix this*/
 		ret[entry.Column] = distributions.SequenceName(r.RelationName.RelationName, entry.Column)
 
-		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
+		seqName := ret[entry.Column]
+		ok, err := lc.qdb.CheckSequence(ctx, seqName)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return fmt.Errorf("the sequence %s already exists", seqName)
+		}
+		statements, err := lc.qdb.CreateSequence(ctx, seqName, int64(entry.Start))
+		if err != nil {
+			return err
+		}
+		if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 			return err
 		}
 		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.RelationName, entry.Column); err != nil {
@@ -844,12 +856,15 @@ func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 	}
 	for _, rel := range ds.Relations {
 		for colName, SeqName := range rel.ColumnSequenceMapping {
-
-			if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
+			statements, err := lc.qdb.CreateSequence(ctx, SeqName, 0)
+			if err != nil {
+				return nil, err
+			}
+			if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 				return nil, err
 			}
 			qualifiedName := rel.QualifiedName()
-			err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
+			err = lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return nil, err
 			}

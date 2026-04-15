@@ -360,3 +360,41 @@ func TestGetMoveTaskGroup(t *testing.T) {
 		})
 	})
 }
+
+func TestCreateSequence(t *testing.T) {
+	is := assert.New(t)
+	err := setupTestSet(t)
+	is.NoError(err)
+	defer func() {
+		_ = Down()
+	}()
+	is.NoError(err)
+
+	t.Run("test CreateSequence", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+		defer cancel()
+		db, err := setupSubTest(ctx)
+		is.NoError(err)
+
+		t.Run("happy path", func(t *testing.T) {
+			err := cleanupDb(ctx, db)
+			is.NoError(err)
+			seqExists, err := db.CheckSequence(ctx, "test1")
+			is.NoError(err)
+			is.Equal(false, seqExists)
+			statements, err := db.CreateSequence(ctx, "test1", 0)
+			is.NoError(err)
+			is.Equal(1, len(statements))
+			err = db.ExecNoTransaction(ctx, statements)
+			is.NoError(err)
+			seqExists, err = db.CheckSequence(ctx, "test1")
+			is.NoError(err)
+			is.Equal(true, seqExists)
+			actual, err := db.ListSequences(ctx)
+			is.NoError(err)
+			is.Equal([]string{"test1"}, actual)
+		})
+
+	})
+
+}

@@ -693,7 +693,10 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	_ = db.CreateSequence(context.TODO(), "s1", 10)
+	chunk, err = db.CreateSequence(context.TODO(), "s1", 10)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
