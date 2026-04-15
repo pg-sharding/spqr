@@ -21,7 +21,7 @@ type CoordinatorService struct {
 }
 
 // DropAllKeyRanges implements proto.KeyRangeServiceServer.
-func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
+func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, _ *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
 	err := c.impl.DropKeyRangeAll(ctx)
 	if err != nil {
 		return nil, err
@@ -31,12 +31,12 @@ func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *empt
 }
 
 // DEPRECATED
-func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
+func (c *CoordinatorService) DropKeyRange(_ context.Context, _ *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange in CoordinatorService). Use ExecuteNoTran or CommitTran")
 }
 
 // DEPRECATED
-func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
+func (c *CoordinatorService) CreateKeyRange(_ context.Context, _ *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange in CoordinatorService). Use ExecuteNoTran or CommitTran")
 }
 

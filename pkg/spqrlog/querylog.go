@@ -11,7 +11,7 @@ import (
 type ZeroTraceLogger struct{}
 
 // Log implements [tracelog.Logger].
-func (z *ZeroTraceLogger) Log(ctx context.Context, level tracelog.LogLevel, msg string, data map[string]any) {
+func (z *ZeroTraceLogger) Log(_ context.Context, level tracelog.LogLevel, msg string, data map[string]any) {
 	var event *zerolog.Event
 	switch level {
 	case tracelog.LogLevelTrace:

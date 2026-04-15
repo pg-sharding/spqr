@@ -91,13 +91,13 @@ func TestCacheCleanupIntegration(t *testing.T) {
 // emptyMultiShardPool is a minimal implementation for testing
 type emptyMultiShardPool struct{}
 
-func (e *emptyMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (e *emptyMultiShardPool) ConnectionHost(_ uint, _ kr.ShardKey, _ config.Host) (shard.ShardHostInstance, error) {
 	return nil, fmt.Errorf("test pool - no connections available")
 }
-func (e *emptyMultiShardPool) SetRule(rule *config.BackendRule)                   {}
-func (e *emptyMultiShardPool) ForEach(cb func(sh shard.ShardHostCtl) error) error { return nil }
-func (e *emptyMultiShardPool) Put(sh shard.ShardHostInstance) error               { return nil }
-func (e *emptyMultiShardPool) Discard(sh shard.ShardHostInstance) error           { return nil }
-func (e *emptyMultiShardPool) ForEachPool(cb func(pool Pool) error) error         { return nil }
-func (e *emptyMultiShardPool) View() Statistics                                   { return Statistics{} }
-func (e *emptyMultiShardPool) ID() uint                                           { return 0 }
+func (e *emptyMultiShardPool) SetRule(_ *config.BackendRule)                     {}
+func (e *emptyMultiShardPool) ForEach(_ func(sh shard.ShardHostCtl) error) error { return nil }
+func (e *emptyMultiShardPool) Put(_ shard.ShardHostInstance) error               { return nil }
+func (e *emptyMultiShardPool) Discard(_ shard.ShardHostInstance) error           { return nil }
+func (e *emptyMultiShardPool) ForEachPool(_ func(pool Pool) error) error         { return nil }
+func (e *emptyMultiShardPool) View() Statistics                                  { return Statistics{} }
+func (e *emptyMultiShardPool) ID() uint                                          { return 0 }

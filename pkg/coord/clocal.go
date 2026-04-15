@@ -126,7 +126,7 @@ func (lc *LocalInstanceMetadataMgr) DropDistribution(ctx context.Context, id str
 //
 // Returns:
 // - error: An error if the addition of the world shard fails.
-func (lc *LocalInstanceMetadataMgr) AddWorldShard(ctx context.Context, ds *topology.DataShard) error {
+func (lc *LocalInstanceMetadataMgr) AddWorldShard(_ context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("shard", ds.ID).
 		Msg("adding world datashard, noop")
@@ -352,7 +352,7 @@ func listRoutersInner(host string, port string) *topology.Router {
 // Returns:
 // - []*topology.Router: a slice of Router objects representing all routers.
 // - error: an error if the retrieval encounters any issues.
-func (lc *LocalInstanceMetadataMgr) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.Router, error) {
 	host := config.RouterConfig().Host
 	port := config.RouterConfig().GrpcApiPort
 	return []*topology.Router{listRoutersInner(host, port)}, nil
@@ -376,7 +376,7 @@ var ErrNotCoordinator = fmt.Errorf("request is unprocessable in router")
 //
 // Returns:
 // - error: An error indicating the registration status.
-func (lc *LocalInstanceMetadataMgr) RegisterRouter(ctx context.Context, r *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) RegisterRouter(_ context.Context, _ *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -388,7 +388,7 @@ func (lc *LocalInstanceMetadataMgr) RegisterRouter(ctx context.Context, r *topol
 //
 // Returns:
 // - error: An error indicating the unregistration status.
-func (lc *LocalInstanceMetadataMgr) UnregisterRouter(ctx context.Context, id string) error {
+func (lc *LocalInstanceMetadataMgr) UnregisterRouter(context.Context, string) error {
 	return ErrNotCoordinator
 }
 
@@ -400,7 +400,7 @@ func (lc *LocalInstanceMetadataMgr) UnregisterRouter(ctx context.Context, id str
 //
 // Returns:
 // - error: An error indicating the synchronization status. In this case, it returns ErrNotCoordinator.
-func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(_ context.Context, _ *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -412,7 +412,7 @@ func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(ctx context.Context, rout
 //
 // Returns:
 // - error: An error indicating the update status.
-func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(context.Context, *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -494,7 +494,7 @@ func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ strin
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
+func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ []*rfqn.RelationFQN, _ string) error {
 	return ErrNotCoordinator
 }
 

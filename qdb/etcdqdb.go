@@ -214,7 +214,7 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
@@ -316,7 +316,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
@@ -363,7 +363,7 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, error) {
+func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
@@ -773,7 +773,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 
 // TODO : unit tests
 // TODO : implement
-func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
+func (q *EtcdQDB) UpdateCoordinator(_ context.Context, _ string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemented")
 }
 
@@ -1333,7 +1333,7 @@ func (q *EtcdQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelat
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribution) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
@@ -2682,7 +2682,7 @@ func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 //                                 SEQUENCES
 // ==============================================================================
 
-func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")

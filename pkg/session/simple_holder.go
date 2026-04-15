@@ -210,12 +210,12 @@ func (cl *SimpleSessionParamHandler) MaintainParams() bool {
 }
 
 // SetMaintainParams implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetMaintainParams(level string, val bool) {
+func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
 	cl.maintain_params = val
 }
 
 // SetShowNoticeMsg implements client.Client.
-func (cl *SimpleSessionParamHandler) SetShowNoticeMsg(level string, val bool) {
+func (cl *SimpleSessionParamHandler) SetShowNoticeMsg(_ string, val bool) {
 	cl.showNoticeMessages = val
 }
 

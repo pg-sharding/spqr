@@ -197,7 +197,7 @@ func (ci grpcConnMgr) ClientPoolForeach(cb func(client client.ClientInfo) error)
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnMgr) Put(client client.Client) error {
+func (ci grpcConnMgr) Put(_ client.Client) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator put not implemented")
 }
 
@@ -212,7 +212,7 @@ func (ci grpcConnMgr) ErrorCounts() map[string]uint64 {
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnMgr) Pop(id uint) (bool, error) {
+func (ci grpcConnMgr) Pop(_ uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
 
@@ -247,7 +247,7 @@ func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 
 // TODO : unit tests
 func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
-	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+	return ci.IterRouter(func(cc *grpc.ClientConn, _ string) error {
 		ctx := context.TODO()
 		rrBackConn := proto.NewPoolServiceClient(cc)
 

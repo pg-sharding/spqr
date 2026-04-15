@@ -361,7 +361,7 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 
 	mmgr.EXPECT().
 		AlterDistributedRelationDistributionKey(gomock.Any(), "ds1", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, id string, rel *rfqn.RelationFQN, newKey []distributions.DistributionKeyEntry) error {
+		DoAndReturn(func(_ context.Context, _ string, rel *rfqn.RelationFQN, newKey []distributions.DistributionKeyEntry) error {
 			assert.Equal(t, "t", rel.RelationName)
 			assert.Len(t, newKey, 1)
 			assert.Equal(t, "siteid", newKey[0].Column)

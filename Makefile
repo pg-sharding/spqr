@@ -191,7 +191,7 @@ fmtcheck:
 	@sh -c "'$(CURDIR)/script/gofmtcheck.sh'"
 
 lint:
-	golangci-lint run --timeout=10m --color=always
+	golangci-lint run --color=always
 
 ####################### GENERATE #######################
 

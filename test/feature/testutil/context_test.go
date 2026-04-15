@@ -25,7 +25,7 @@ func TestMatchContext(t *testing.T) {
 			exp: true,
 		},
 		{
-			newCtx: func(ctx context.Context) context.Context {
+			newCtx: func(_ context.Context) context.Context {
 				return context.Background()
 			},
 			exp: false,

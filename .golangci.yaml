@@ -1,6 +1,16 @@
 version: "2"
 
 linters:
+  enable:
+    - revive
+  settings:
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: unused-parameter
   exclusions:
     paths:
       - yacc/console/lex.go
+
+run:
+  timeout: 10m

@@ -1101,7 +1101,7 @@ func (qr *ProxyQrouter) addSortToPlan(
 }
 
 func (qr *ProxyQrouter) addLimitToPlan(
-	ctx context.Context,
+	_ context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	p plan.Plan,
 ) (plan.Plan, error) {

@@ -211,22 +211,22 @@ func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
 //                               KEY RANGE MOVES
 // ==============================================================================
 
-func (q *MemQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
+func (q *MemQDB) RecordKeyRangeMove(_ context.Context, _ *MoveKeyRange) error {
 	// TODO implement
 	return nil
 }
 
-func (q *MemQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
+func (q *MemQDB) ListKeyRangeMoves(_ context.Context) ([]*MoveKeyRange, error) {
 	// TODO implement
 	return nil, nil
 }
 
-func (q *MemQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+func (q *MemQDB) UpdateKeyRangeMoveStatus(_ context.Context, _ string, _ MoveKeyRangeStatus) error {
 	// TODO implement
 	return nil
 }
 
-func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string) error {
 	// TODO implement
 	return nil
 }
@@ -511,7 +511,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
-func (q *MemQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
+func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
 		Msg("memqdb: get list locked key range")
@@ -527,7 +527,7 @@ func (q *MemQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
+func (q *MemQDB) CheckLockedKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: check locked key range")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -641,7 +641,7 @@ func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	return nil
 }
 
-func (q *MemQDB) GetCoordinator(ctx context.Context) (string, error) {
+func (q *MemQDB) GetCoordinator(_ context.Context) (string, error) {
 	spqrlog.Zero.Debug().Str("address", q.Coordinator).Msg("memqdb: get coordinator address")
 	return q.Coordinator, nil
 }
@@ -801,7 +801,7 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 // ==============================================================================
 
 // CreateReferenceRelation implements XQDB.
-func (q *MemQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error {
+func (q *MemQDB) CreateReferenceRelation(_ context.Context, r *ReferenceRelation) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.ReferenceRelations[r.TableName] = r
@@ -824,7 +824,7 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, relName *rfqn.RelationF
 }
 
 // AlterReferenceRelationStorage implements XQDB.
-func (q *MemQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	tableName := relName.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -836,7 +836,7 @@ func (q *MemQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfq
 }
 
 // DropReferenceRelation implements XQDB.
-func (q *MemQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+func (q *MemQDB) DropReferenceRelation(_ context.Context, relName *rfqn.RelationFQN) error {
 	tableName := relName.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -848,7 +848,7 @@ func (q *MemQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relati
 }
 
 // ListReferenceRelations implements XQDB.
-func (q *MemQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error) {
+func (q *MemQDB) ListReferenceRelations(_ context.Context) ([]*ReferenceRelation, error) {
 	var rrs []*ReferenceRelation
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -930,7 +930,7 @@ func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error {
+func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*DistributedRelation) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1010,7 +1010,7 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error {
+func (q *MemQDB) AlterDistributedRelation(_ context.Context, id string, rel *DistributedRelation) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1037,7 +1037,7 @@ func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *D
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
+func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation schema")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1064,7 +1064,7 @@ func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, 
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
+func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation schema")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1094,7 +1094,7 @@ func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, r
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error {
+func (q *MemQDB) AlterDistributedRelationDistributionKey(_ context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation distribution key")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1260,7 +1260,7 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context, id string) (*MoveTaskGroup,
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error {
+func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTaskGroup, _ int64, _ *MoveTask) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: write task group")
@@ -1320,7 +1320,7 @@ func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, id string, tota
 }
 
 // TODO: unit tests
-func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+func (q *MemQDB) AddMoveTaskGroupStopFlag(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: put task group stop flag")
@@ -1332,7 +1332,7 @@ func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error 
 }
 
 // TODO: unit tests
-func (q *MemQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+func (q *MemQDB) CheckMoveTaskGroupStopFlag(_ context.Context, id string) (bool, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: put task group stop flag")
@@ -1375,7 +1375,7 @@ func (q *MemQDB) ListMoveTasks(_ context.Context) (map[string]*MoveTask, error) 
 }
 
 // TODO: unit tests
-func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
+func (q *MemQDB) GetMoveTask(_ context.Context, id string) (*MoveTask, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: get move task")
@@ -1386,7 +1386,7 @@ func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) 
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
+func (q *MemQDB) WriteMoveTask(_ context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().
 		Str("id", task.ID).
 		Msg("memqdb: write move task")
@@ -1401,7 +1401,7 @@ func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
+func (q *MemQDB) UpdateMoveTask(_ context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().
 		Str("id", task.ID).
 		Msg("memqdb: update move task")
@@ -1417,7 +1417,7 @@ func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) DropMoveTask(ctx context.Context, id string) error {
+func (q *MemQDB) DropMoveTask(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: remove move task")
@@ -1490,7 +1490,7 @@ func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask)
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeId))
 }
 
-func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) (string, error) {
+func (q *MemQDB) GetRedistributeTaskTaskGroupId(_ context.Context, id string) (string, error) {
 	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get redistribute task task group ID")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -1498,7 +1498,7 @@ func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) 
 	return q.RedistributeTaskTaskGroupId[id], nil
 }
 
-func (q *MemQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+func (q *MemQDB) GetKeyRangeRedistributeTaskId(_ context.Context, _ string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
@@ -1531,7 +1531,7 @@ func (q *MemQDB) DropBalancerTask(_ context.Context) error {
 	return nil
 }
 
-func (q *MemQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error {
+func (q *MemQDB) WriteTaskGroupStatus(_ context.Context, id string, status *TaskGroupStatus) error {
 	spqrlog.Zero.Debug().
 		Str("task group ID", id).
 		Str("state", status.State).
@@ -1544,7 +1544,7 @@ func (q *MemQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *Ta
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TaskGroupIDToStatus, id, status))
 }
 
-func (q *MemQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error) {
+func (q *MemQDB) GetTaskGroupStatus(_ context.Context, id string) (*TaskGroupStatus, error) {
 	spqrlog.Zero.Debug().
 		Str("task group ID", id).
 		Msg("memqdb: get task group status")
@@ -1555,7 +1555,7 @@ func (q *MemQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupS
 	return status, nil
 }
 
-func (q *MemQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error) {
+func (q *MemQDB) GetAllTaskGroupStatuses(_ context.Context) (map[string]*TaskGroupStatus, error) {
 	spqrlog.Zero.Debug().
 		Msg("memqdb: get task groups statuses")
 	q.mu.RLock()
@@ -1586,7 +1586,7 @@ func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue 
 	return q.createSequenceQdbStatements(seqName, initialValue)
 }
 
-func (q *MemQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
+func (q *MemQDB) CheckSequence(_ context.Context, seqName string) (bool, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	_, ok := q.Sequences[seqName]
@@ -1625,7 +1625,7 @@ func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName *rfqn.Re
 	return nil
 }
 
-func (q *MemQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+func (q *MemQDB) GetSequenceRelations(_ context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	rels := []*rfqn.RelationFQN{}
 	for col, seq := range q.ColumnSequence {
 		if seq == seqName {
@@ -1637,7 +1637,7 @@ func (q *MemQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*r
 	return rels, nil
 }
 
-func (q *MemQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
+func (q *MemQDB) DropSequence(_ context.Context, seqName string, force bool) error {
 	for col, colSeq := range q.ColumnSequence {
 		if colSeq == seqName && !force {
 			data := strings.Split(col, "_")
@@ -1886,7 +1886,7 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 	return memOperations, nil
 }
 
-func (q *MemQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
+func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1897,7 +1897,7 @@ func (q *MemQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatemen
 	}
 }
 
-func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
+func (q *MemQDB) CommitTransaction(_ context.Context, transaction *QdbTransaction) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec transaction")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -2032,22 +2032,22 @@ func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 //                               TASK GROUP STATE
 // ==============================================================================
 
-func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder string) error {
+func (q *MemQDB) TryTaskGroupLock(_ context.Context, _ string, _ string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+func (q *MemQDB) CheckTaskGroupLocked(_ context.Context, _ string) (bool, error) {
 	return false, fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
+func (q *MemQDB) DropTaskGroupLock(_ context.Context, _ string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) LockRedistributeTask(ctx context.Context, _, _ string) error {
+func (q *MemQDB) LockRedistributeTask(_ context.Context, _, _ string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) DropRedistributeTaskLock(ctx context.Context, id string) error {
+func (q *MemQDB) DropRedistributeTaskLock(_ context.Context, _ string) error {
 	return fmt.Errorf("not implemented")
 }

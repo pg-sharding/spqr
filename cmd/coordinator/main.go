@@ -40,7 +40,7 @@ var rootCmd = &cobra.Command{
 	Version:       pkg.SpqrVersionRevision,
 	SilenceUsage:  false,
 	SilenceErrors: false,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
 		if err != nil {
 			return err
@@ -119,7 +119,7 @@ var rootCmd = &cobra.Command{
 var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			cfgPath = args[0]
 		}

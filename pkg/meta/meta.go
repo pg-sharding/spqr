@@ -1329,9 +1329,9 @@ func ProcMetadataCommand(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context,
+func ProcessKill(_ context.Context,
 	stmt *spqrparser.Kill,
-	mngr EntityMgr,
+	_ EntityMgr,
 	ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
@@ -1393,7 +1393,7 @@ func ProcessShowExtended(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr,
-	ro bool) (*tupleslot.TupleTableSlot, error) {
+	_ bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process extended show statement")
 
 	var tts *tupleslot.TupleTableSlot
@@ -2206,7 +2206,7 @@ func processRedistribute(ctx context.Context,
 }
 
 // ProcessHelp processes HELP command and returns formatted help text
-func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
+func ProcessHelp(_ context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
 
 	// If no command specified, list all available commands

@@ -29,7 +29,7 @@ func (srv *ShardServer) ToMultishard() Server {
 }
 
 // ExpandGang implements Server.
-func (srv *ShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+func (srv *ShardServer) ExpandGang(_ uint, _ kr.ShardKey, _ tsa.TSA, _ bool) error {
 	return fmt.Errorf("expanding gang on single shard server in unsupported")
 }
 

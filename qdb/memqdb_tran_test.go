@@ -29,7 +29,7 @@ func TestPackMemqdbCommands(t *testing.T) {
 	is.NoError(err)
 	dataDistribution2, err := json.Marshal(distribution2)
 	is.NoError(err)
-	t.Run("test happy path pack commands", func(t *testing.T) {
+	t.Run("test happy path pack commands", func(_ *testing.T) {
 		commands := []QdbStatement{
 			{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 			{CmdType: CMD_PUT, Key: relation.Name, Value: distribution1.ID, Extension: MapRelationDistribution},
@@ -44,7 +44,7 @@ func TestPackMemqdbCommands(t *testing.T) {
 		}
 		is.Equal(expected, actual)
 	})
-	t.Run("fail: invalid extension", func(t *testing.T) {
+	t.Run("fail: invalid extension", func(_ *testing.T) {
 		commands := []QdbStatement{
 			{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 			{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: "testMap1"},
@@ -68,7 +68,7 @@ func TestMemQdbTransactions(t *testing.T) {
 	dataDistribution3, err := json.Marshal(distribution3)
 	is.NoError(err)
 	t.Run("test Begin tran", func(t *testing.T) {
-		t.Run("simple begin tran success", func(t *testing.T) {
+		t.Run("simple begin tran success", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran, err := NewTransaction()
@@ -77,7 +77,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal(tran.transactionId, memqdb.activeTransaction)
 		})
-		t.Run("2 begin tran success", func(t *testing.T) {
+		t.Run("2 begin tran success", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran1, err := NewTransaction()
@@ -94,7 +94,7 @@ func TestMemQdbTransactions(t *testing.T) {
 		})
 	})
 	t.Run("test exec no tran", func(t *testing.T) {
-		t.Run("happy path", func(t *testing.T) {
+		t.Run("happy path", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			commands := []QdbStatement{
@@ -107,7 +107,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal([]*Distribution{distribution1, distribution2}, actual)
 		})
-		t.Run("2 sequential runs", func(t *testing.T) {
+		t.Run("2 sequential runs", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			commands := []QdbStatement{
@@ -129,7 +129,7 @@ func TestMemQdbTransactions(t *testing.T) {
 		})
 	})
 	t.Run("test commit tran", func(t *testing.T) {
-		t.Run("happy path commit tran", func(t *testing.T) {
+		t.Run("happy path commit tran", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran, err := NewTransaction()
@@ -148,7 +148,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal([]*Distribution{distribution1, distribution2}, actual)
 		})
-		t.Run("fail commit tran after begin another tran", func(t *testing.T) {
+		t.Run("fail commit tran after begin another tran", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran1, err := NewTransaction()
@@ -170,7 +170,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			err = memqdb.CommitTransaction(ctx, tran1)
 			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
 		})
-		t.Run("fails invalid tran", func(t *testing.T) {
+		t.Run("fails invalid tran", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran1, err := NewTransaction()

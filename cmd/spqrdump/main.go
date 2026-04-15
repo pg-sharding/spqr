@@ -271,7 +271,7 @@ func DumpRelationsPsql() error {
 var dump = &cobra.Command{
 	Use:   "dump",
 	Short: "dump current sharding configuration",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.ReloadLogger("", logLevel, false)
 
 		spqrlog.Zero.Debug().

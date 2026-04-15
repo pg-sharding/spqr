@@ -46,7 +46,7 @@ func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relNam
 }
 
 // AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
-func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, _ *rfqn.RelationFQN, _ []string) error {
 	return ErrNotCoordinator
 }
 
@@ -93,7 +93,7 @@ func (lc *Coordinator) UpdateShard(ctx context.Context, shard *topology.DataShar
 }
 
 // AddWorldShard implements meta.EntityMgr.
-func (lc *Coordinator) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
+func (lc *Coordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
 	panic("unimplemented")
 }
 
@@ -140,7 +140,7 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (lc *Coordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
 	panic("unimplemented")
 }
 
@@ -357,7 +357,7 @@ func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, err
 }
 
 // Move implements meta.EntityMgr.
-func (lc *Coordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (lc *Coordinator) Move(_ context.Context, _ *kr.MoveKeyRange) error {
 	panic("unimplemented")
 }
 
@@ -378,7 +378,7 @@ func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
 	panic("unimplemented")
 }
 
@@ -410,22 +410,22 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) error {
 	panic("unimplemented")
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr
-func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
+func (lc *Coordinator) StopMoveTaskGroup(_ context.Context, _ string) error {
 	panic("unimplemented")
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
-func (lc *Coordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+func (lc *Coordinator) SyncRouterCoordinatorAddress(_ context.Context, _ *topology.Router) error {
 	panic("unimplemented")
 }
 
 // SyncRouterMetadata implements meta.EntityMgr.
-func (lc *Coordinator) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+func (lc *Coordinator) SyncRouterMetadata(_ context.Context, _ *topology.Router) error {
 	panic("unimplemented")
 }
 
@@ -733,7 +733,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 	return lc.qdb.DropMoveTaskGroup(ctx, id)
 }
 
-func (lc *Coordinator) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
+func (lc *Coordinator) GetMoveTaskGroupBoundsCache(context.Context, string) ([][][]byte, int, error) {
 	return nil, 0, ErrNotCoordinator
 }
 

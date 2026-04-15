@@ -269,7 +269,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, net.Conn, error) {
+func bootstrapConnection(_ *testing.T) (*pgproto3.Frontend, net.Conn, error) {
 	conn, err := getC()
 	if err != nil {
 		return nil, nil, err

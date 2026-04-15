@@ -119,7 +119,7 @@ func (l *LDAPCfg) ModifySearchAttribute() string {
 	}
 }
 
-func (l *LDAPCfg) ModifySearchFilter(searchAttribute string, username string) string {
+func (l *LDAPCfg) ModifySearchFilter(_ string, username string) string {
 	switch l.SearchFilter {
 	case "":
 		return fmt.Sprintf("(%s=%s)", l.SearchAttribute, ldap.EscapeFilter(username))
