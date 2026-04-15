@@ -253,7 +253,6 @@ killall
 kinit
 Kirill
 Klepov
-klepov
 kpass
 krb
 krdb
@@ -294,7 +293,6 @@ lol
 lowlevel
 lsb
 lval
-Lvl
 maxuint
 mcol
 mdblocales
@@ -614,6 +612,7 @@ ullam
 ullamco
 umi
 unconfigured
+unmark
 unmarshalling
 unmatch
 unrecognised
