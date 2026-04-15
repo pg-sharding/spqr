@@ -55,7 +55,7 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	d1 := &distributions.Distribution{Id: "ds1", ColTypes: []string{"integer"}}
+	d1 := &distributions.Distribution{ID: "ds1", ColTypes: []string{"integer"}}
 	if chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d1)); err != nil {
 		return nil, err
 	} else {
@@ -63,7 +63,7 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 			return nil, err
 		}
 	}
-	d2 := &distributions.Distribution{Id: "ds_hashed", ColTypes: []string{"uinteger"}}
+	d2 := &distributions.Distribution{ID: "ds_hashed", ColTypes: []string{"uinteger"}}
 	if chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d2)); err != nil {
 		return nil, err
 	} else {
@@ -71,7 +71,7 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 			return nil, err
 		}
 	}
-	d3 := &distributions.Distribution{Id: "ds_2keys", ColTypes: []string{"integer", "varchar"}}
+	d3 := &distributions.Distribution{ID: "ds_2keys", ColTypes: []string{"integer", "varchar"}}
 	if chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d3)); err != nil {
 		return nil, err
 	} else {

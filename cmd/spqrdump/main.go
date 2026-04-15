@@ -185,7 +185,7 @@ func DumpKeyRanges() error {
 	} else {
 		for _, krg := range keys.KeyRangesInfo {
 			ds, err := dCl.GetDistribution(context.Background(), &protos.GetDistributionRequest{
-				Id: krg.DistributionId,
+				Id: krg.DistributionID,
 			})
 			if err != nil {
 				return err

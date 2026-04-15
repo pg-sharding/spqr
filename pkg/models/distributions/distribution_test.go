@@ -53,7 +53,7 @@ func TestGetHashedColumn(t *testing.T) {
 			col:      "a",
 			hash:     "invalid",
 			expected: "",
-			err:      spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"invalid\""),
+			err:      spqrerror.New(spqrerror.SpqrKeyrangeError, "invalid hash function \"invalid\""),
 		},
 	} {
 		cond, err := distributions.GetHashedColumn(c.col, c.hash)
@@ -124,7 +124,7 @@ func TestGetDistributionKeyColumns(t *testing.T) {
 				},
 			},
 			expected: nil,
-			err:      spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"invalid\""),
+			err:      spqrerror.New(spqrerror.SpqrKeyrangeError, "invalid hash function \"invalid\""),
 		},
 	} {
 		cond, err := c.rel.GetDistributionKeyColumns()

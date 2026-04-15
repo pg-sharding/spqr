@@ -389,7 +389,7 @@ func (x *MetaTransactionGossipRequest) GetCommands() []*MetaTransactionGossipCom
 
 type MetaTransactionReply struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
-	TransactionId string                          `protobuf:"bytes,1,opt,name=transactionId,proto3" json:"transactionId,omitempty"`
+	TransactionID string                          `protobuf:"bytes,1,opt,name=transactionId,proto3" json:"transactionId,omitempty"`
 	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,2,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -427,7 +427,7 @@ func (*MetaTransactionReply) Descriptor() ([]byte, []int) {
 
 func (x *MetaTransactionReply) GetTransactionId() string {
 	if x != nil {
-		return x.TransactionId
+		return x.TransactionID
 	}
 	return ""
 }
@@ -441,7 +441,7 @@ func (x *MetaTransactionReply) GetMetaCmdList() []*MetaTransactionGossipCommand 
 
 type MetaTransactionRequest struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
-	TransactionId string                          `protobuf:"bytes,1,opt,name=transactionId,proto3" json:"transactionId,omitempty"`
+	TransactionID string                          `protobuf:"bytes,1,opt,name=transactionId,proto3" json:"transactionId,omitempty"`
 	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,2,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -479,7 +479,7 @@ func (*MetaTransactionRequest) Descriptor() ([]byte, []int) {
 
 func (x *MetaTransactionRequest) GetTransactionId() string {
 	if x != nil {
-		return x.TransactionId
+		return x.TransactionID
 	}
 	return ""
 }

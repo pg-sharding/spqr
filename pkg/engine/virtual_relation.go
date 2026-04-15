@@ -85,9 +85,9 @@ func KeyRangeVirtualRelationScanExtended(
 	// Build distribution map for lookup
 	distMap := make(map[string]*distributions.Distribution)
 	for _, d := range dists {
-		distMap[d.Id] = d
+		distMap[d.ID] = d
 		if len(d.ColTypes) == 0 {
-			return nil, fmt.Errorf("malformed distribution %v", d.Id)
+			return nil, fmt.Errorf("malformed distribution %v", d.ID)
 		}
 	}
 
@@ -312,7 +312,7 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
-			fmt.Appendf(nil, "%+v", r.ShardIds),
+			fmt.Appendf(nil, "%+v", r.ShardIDs),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
 		})
 	}
@@ -374,7 +374,7 @@ func PreparedStatementsVirtualRelationScan(ctx context.Context, shs []shard.Prep
 	tts := &tupleslot.TupleTableSlot{Desc: GetVPHeader("name", "backend_id", "hash", "query")}
 
 	for _, sh := range shs {
-		tts.WriteDataRow(sh.Name, fmt.Sprintf("%d", sh.ServerId), fmt.Sprintf("%d", sh.Hash), sh.Query)
+		tts.WriteDataRow(sh.Name, fmt.Sprintf("%d", sh.ServerID), fmt.Sprintf("%d", sh.Hash), sh.Query)
 	}
 
 	return tts
@@ -528,7 +528,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 			[]byte(cl.DB()),
 			[]byte(hostname),
 			[]byte(rAddr),
-			fmt.Appendf(nil, "%v", netutil.TCP_CheckAliveness(cl.Conn()))}
+			fmt.Appendf(nil, "%v", netutil.TCPCheckAliveness(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
@@ -597,7 +597,7 @@ func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statu
 		if group.CurrentTask != nil {
 			currTaskId = group.CurrentTask.ID
 		}
-		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message, group.CreatedAt.Format("02-01-2006 15:04:05"), status.UpdatedAt.Format("02-01-2006 15:04:05"))
+		tts.WriteDataRow(group.ID, group.ShardToID, group.KrIDFrom, group.KrIDTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message, group.CreatedAt.Format("02-01-2006 15:04:05"), status.UpdatedAt.Format("02-01-2006 15:04:05"))
 	}
 	return tts
 }
@@ -631,7 +631,7 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 		tts.WriteDataRow(
 			task.TaskGroupID,
 			task.ID,
-			task.KrIdTemp,
+			task.KrIDTemp,
 			strings.Join(krData, ";"),
 			tasks.TaskStateToStr(task.State),
 		)
@@ -693,8 +693,8 @@ func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tup
 		tts.WriteDataRow(
 			task.ID,
 			id,
-			task.KeyRangeId,
-			task.ShardId,
+			task.KeyRangeID,
+			task.ShardID,
 			strconv.FormatInt(int64(task.BatchSize), 10),
 		)
 	}

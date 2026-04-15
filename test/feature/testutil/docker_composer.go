@@ -26,7 +26,7 @@ const defaultDockerTimeout = 30 * time.Second
 const defaultDockerComposeTimeout = 90 * time.Second
 const defaultContainerStopTimeout = 30 * time.Second
 const shell = "/bin/bash"
-const FEATURE_TEST_NETWORK = "feature_test_network"
+const FeatureTestNetwork = "feature_test_network"
 
 // Composer manipulate images/vm's during integration tests
 type Composer interface {
@@ -235,29 +235,29 @@ func (dc *DockerComposer) GetMappedPort(testHost string, internalPort string) (u
 		return 0, apiErr
 	}
 	for _, cnt := range containers {
-		if _, ok := cnt.NetworkSettings.Networks[FEATURE_TEST_NETWORK]; !ok {
+		if _, ok := cnt.NetworkSettings.Networks[FeatureTestNetwork]; !ok {
 			continue
 		}
 		cntName := strings.Replace(cnt.Names[0], "/", "", 1)
 		if cntName == testHost {
-			if cntInspect, errI := dc.api.ContainerInspect(ctx, cntName); errI != nil {
-				return 0, errI
-			} else {
-				port, errPort := nat.NewPort("tcp", internalPort)
-				if errPort != nil {
-					return 0, errPort
-				}
-				if bindings, ok := cntInspect.HostConfig.PortBindings[port]; ok {
-					for _, extPort := range bindings {
-						if res, err := strconv.Atoi(extPort.HostPort); err != nil {
-							return 0, err
-						} else {
-							return uint(res), nil
-						}
-					}
-				}
-				return 0, fmt.Errorf("port for host=%s:%s not found (case 1)", testHost, internalPort)
+			cntInspect, err := dc.api.ContainerInspect(ctx, cntName)
+			if err != nil {
+				return 0, err
 			}
+			port, err := nat.NewPort("tcp", internalPort)
+			if err != nil {
+				return 0, err
+			}
+			if bindings, ok := cntInspect.HostConfig.PortBindings[port]; ok {
+				for _, extPort := range bindings {
+					res, err := strconv.Atoi(extPort.HostPort)
+					if err != nil {
+						return 0, err
+					}
+					return uint(res), nil
+				}
+			}
+			return 0, fmt.Errorf("port for host=%s:%s not found (case 1)", testHost, internalPort)
 		}
 	}
 	return 0, fmt.Errorf("port for host=%s:%s not found (case 0)", testHost, internalPort)

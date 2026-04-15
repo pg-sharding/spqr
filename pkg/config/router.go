@@ -62,7 +62,7 @@ type Router struct {
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
-	GrpcApiPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	GrpcAPIPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
@@ -294,36 +294,36 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 func validateRouterConfig(cfg *Router) error {
 	for sh, shCfg := range cfg.ShardMapping {
 		if shCfg == nil {
-			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)
+			return spqrerror.Newf(spqrerror.SpqrConfigError, "shard \"%s\" is stated in config, but no actual config is provided", sh)
 		}
 	}
 	for _, rule := range cfg.BackendRules {
 		for name, authRule := range rule.AuthRules {
 			if authRule == nil {
-				return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "user \"%s\" is stated in backend rule \"%s.%s\", but no auth config is provided", name, rule.Usr, rule.DB)
+				return spqrerror.Newf(spqrerror.SpqrConfigError, "user \"%s\" is stated in backend rule \"%s.%s\", but no auth config is provided", name, rule.Usr, rule.DB)
 			}
 		}
 	}
 	for _, rule := range cfg.FrontendRules {
 		if rule.AuthRule == nil {
-			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "No auth rule provided for frontend rule \"%s.%s\"", rule.Usr, rule.DB)
+			return spqrerror.Newf(spqrerror.SpqrConfigError, "No auth rule provided for frontend rule \"%s.%s\"", rule.Usr, rule.DB)
 		}
 		if rule.PoolMode == PoolModeSession && len(cfg.ShardMapping) > 1 {
-			return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "session pooling makes sence only for single-shard (balancer) deployment")
+			return spqrerror.New(spqrerror.SpqrConfigError, "session pooling makes sence only for single-shard (balancer) deployment")
 		}
 		switch rule.AuthRule.Method {
 		case AuthGSS:
 			if rule.AuthRule.GssConfig == nil {
-				return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "Frontend rule \"%s.%s\" has auth method GSS, but no GSS config is provided", rule.Usr, rule.DB)
+				return spqrerror.Newf(spqrerror.SpqrConfigError, "Frontend rule \"%s.%s\" has auth method GSS, but no GSS config is provided", rule.Usr, rule.DB)
 			}
 		case AuthLDAP:
 			if rule.AuthRule.LDAPConfig == nil {
-				return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "Frontend rule \"%s.%s\" has auth method LDAP, but no LDAP config is provided", rule.Usr, rule.DB)
+				return spqrerror.Newf(spqrerror.SpqrConfigError, "Frontend rule \"%s.%s\" has auth method LDAP, but no LDAP config is provided", rule.Usr, rule.DB)
 			}
 		case AuthNotOK, AuthOK, AuthClearText, AuthMD5, AuthSCRAM:
 			continue
 		default:
-			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid auth method \"%s\"", rule.AuthRule.Method)
+			return spqrerror.Newf(spqrerror.SpqrConfigError, "invalid auth method \"%s\"", rule.AuthRule.Method)
 		}
 	}
 	return nil

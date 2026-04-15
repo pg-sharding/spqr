@@ -850,7 +850,7 @@ alter_stmt:
 	|
 	ALTER SHARD any_id alter_shard_options
 	{
-		$4.Id = $3
+		$4.ID = $3
 		$$ = &Alter{Element: $4}
 	}
 
@@ -1135,7 +1135,7 @@ create_stmt:
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
-				ShardIds: $6,
+				ShardIDs: $6,
 			},
 		}
 	}
@@ -1432,7 +1432,7 @@ shard_define_stmt:
 	SHARD any_id WITH HOSTS any_id_list opt_shard_tls
 	{
 		sd := $6
-		sd.Id = $2
+		sd.ID = $2
 		sd.Hosts = $5
 		$$ = sd
 	}
@@ -1444,7 +1444,7 @@ shard_define_stmt:
 			panic(err)
 		}
 		sd := $5
-		sd.Id = "shard" + str
+		sd.ID = "shard" + str
 		sd.Hosts = $4
 		$$ = sd
 	}
@@ -1547,7 +1547,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
-			Id: $6,
+			ID: $6,
 			Check: true,
 			Apply: true,
 		}
@@ -1556,7 +1556,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
-			Id: $6,
+			ID: $6,
 			Check: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
@@ -1564,7 +1564,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
-			Id: $6,
+			ID: $6,
 			Apply: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
@@ -1572,7 +1572,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
-			Id: $6,
+			ID: $6,
 			Check: false, /* or true, doesnt matter */
 			Apply: true,
 			NoWait: true,

@@ -1044,7 +1044,7 @@ func (x *ListRelationSequencesReply) GetColumnSequences() map[string]string {
 
 type CreateUniqueIndexRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	DistributionId string                 `protobuf:"bytes,1,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
+	DistributionID string                 `protobuf:"bytes,1,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
 	Idx            *UniqueIndex           `protobuf:"bytes,2,opt,name=idx,proto3" json:"idx,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -1080,9 +1080,9 @@ func (*CreateUniqueIndexRequest) Descriptor() ([]byte, []int) {
 	return file_protos_distribution_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *CreateUniqueIndexRequest) GetDistributionId() string {
+func (x *CreateUniqueIndexRequest) GetDistributionID() string {
 	if x != nil {
-		return x.DistributionId
+		return x.DistributionID
 	}
 	return ""
 }
@@ -1140,7 +1140,7 @@ func (x *DropUniqueIndexRequest) GetIdxId() string {
 
 type ListDistributionUniqueIndexesRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	DistributionId string                 `protobuf:"bytes,1,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
+	DistributionID string                 `protobuf:"bytes,1,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1175,9 +1175,9 @@ func (*ListDistributionUniqueIndexesRequest) Descriptor() ([]byte, []int) {
 	return file_protos_distribution_proto_rawDescGZIP(), []int{23}
 }
 
-func (x *ListDistributionUniqueIndexesRequest) GetDistributionId() string {
+func (x *ListDistributionUniqueIndexesRequest) GetDistributionID() string {
 	if x != nil {
-		return x.DistributionId
+		return x.DistributionID
 	}
 	return ""
 }

@@ -29,7 +29,7 @@ func NewDefaultShardManager(distribution *distributions.Distribution,
 }
 
 func DefaultKeyRangeId(distrib *distributions.Distribution) string {
-	return distrib.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
+	return distrib.ID + "." + spqrparser.DefaultKeyRangeSuffix
 }
 
 func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
@@ -56,7 +56,7 @@ func (manager *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.
 		keyRange := &kr.KeyRange{
 			ShardID:      DefaultShardId,
 			ID:           DefaultKeyRangeId(manager.distribution),
-			Distribution: manager.distribution.Id,
+			Distribution: manager.distribution.ID,
 			ColumnTypes:  manager.distribution.ColTypes,
 			LowerBound:   lowerBound,
 		}
@@ -80,24 +80,24 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 	keyRange, err := manager.keyRangeDefault(defaultShard.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error (1) when adding default key range for: " +
-			manager.distribution.Id)
+			manager.distribution.ID)
 		return err
 	}
 	tranMngr := NewTranEntityManager(manager.mngr)
 	if err := CreateKeyRangeStrict(ctx, tranMngr, keyRange, manager.distribution.ColTypes); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error (2) when adding default key range for: " +
-			manager.distribution.Id)
+			manager.distribution.ID)
 		return err
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range as default: %s", err.Error())
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to commit a new key range as default: %s", err.Error())
 	}
 	return nil
 }
 
 func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (string, error) {
 	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, DefaultKeyRangeId(manager.distribution)); err != nil {
-		return "", fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
+		return "", fmt.Errorf("distribution id=%s have not default shard", manager.distribution.ID)
 	} else {
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
 		tranMngr := NewTranEntityManager(manager.mngr)

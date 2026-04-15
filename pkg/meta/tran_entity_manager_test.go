@@ -20,15 +20,15 @@ import (
 func TestTranEntitySaveBefore(t *testing.T) {
 	is := assert.New(t)
 	list := meta.NewMetaEntityList[*distributions.Distribution]()
-	list.Save("ds1", &distributions.Distribution{Id: "ds1", ColTypes: []string{"integer"}})
-	list.Save("ds2", &distributions.Distribution{Id: "ds2", ColTypes: []string{"integer"}})
-	expectedExist := map[string]*distributions.Distribution{"ds1": {Id: "ds1", ColTypes: []string{"integer"}}, "ds2": {Id: "ds2", ColTypes: []string{"integer"}}}
+	list.Save("ds1", &distributions.Distribution{ID: "ds1", ColTypes: []string{"integer"}})
+	list.Save("ds2", &distributions.Distribution{ID: "ds2", ColTypes: []string{"integer"}})
+	expectedExist := map[string]*distributions.Distribution{"ds1": {ID: "ds1", ColTypes: []string{"integer"}}, "ds2": {ID: "ds2", ColTypes: []string{"integer"}}}
 	expectedDeleted := map[string]struct{}{}
 	is.Equal(expectedExist, list.Items())
 	is.Equal(expectedDeleted, list.DeletedItems())
 
 	list.Delete("ds1")
-	expectedExist = map[string]*distributions.Distribution{"ds2": {Id: "ds2", ColTypes: []string{"integer"}}}
+	expectedExist = map[string]*distributions.Distribution{"ds2": {ID: "ds2", ColTypes: []string{"integer"}}}
 	expectedDeleted = map[string]struct{}{"ds1": {}}
 	is.Equal(expectedExist, list.Items())
 	is.Equal(expectedDeleted, list.DeletedItems())
@@ -43,8 +43,8 @@ func TestTranEntityDelBefore(t *testing.T) {
 	is.Equal(expectedExist, list.Items())
 	is.Equal(expectedDeleted, list.DeletedItems())
 
-	list.Save("ds3", &distributions.Distribution{Id: "ds3", ColTypes: []string{"integer"}})
-	expectedExist = map[string]*distributions.Distribution{"ds3": {Id: "ds3", ColTypes: []string{"integer"}}}
+	list.Save("ds3", &distributions.Distribution{ID: "ds3", ColTypes: []string{"integer"}})
+	expectedExist = map[string]*distributions.Distribution{"ds3": {ID: "ds3", ColTypes: []string{"integer"}}}
 	expectedDeleted = map[string]struct{}{"ds1": {}}
 	is.Equal(expectedExist, list.Items())
 	is.Equal(expectedDeleted, list.DeletedItems())
@@ -80,7 +80,7 @@ func TestTranGetDistribution(t *testing.T) {
 		is.NoError(err)
 		is.Len(actualList, 3)
 		is.Equal(map[string]*distributions.Distribution{"ds1": ds1, "ds2": ds2, "ds0": ds0},
-			map[string]*distributions.Distribution{actualList[0].Id: actualList[0], actualList[1].Id: actualList[1], actualList[2].Id: actualList[2]})
+			map[string]*distributions.Distribution{actualList[0].ID: actualList[0], actualList[1].ID: actualList[1], actualList[2].ID: actualList[2]})
 
 		//check Get
 		actual1, err := tranMngr.GetDistribution(ctx, "ds1")
@@ -284,7 +284,7 @@ func TestTranState(t *testing.T) {
 			Id:          "ds1",
 			ColumnTypes: []string{"integer"},
 		}
-		transactionId1, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
+		transactionID1, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
 		is.NoError(err)
 		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
 			{
@@ -296,7 +296,7 @@ func TestTranState(t *testing.T) {
 		)
 		is.NoError(err)
 		tran1 := mtran.MetaTransaction{
-			TransactionId: transactionId1,
+			TransactionID: transactionID1,
 			Operations:    chunk,
 		}
 
@@ -310,9 +310,9 @@ func TestTranState(t *testing.T) {
 			Id:          "ds1",
 			ColumnTypes: []string{"integer"},
 		}
-		transactionId1, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
+		transactionID1, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
 		is.NoError(err)
-		transactionId2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
+		transactionID2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
 		is.NoError(err)
 		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
 			{
@@ -324,11 +324,11 @@ func TestTranState(t *testing.T) {
 		)
 		is.NoError(err)
 		tran1 := mtran.MetaTransaction{
-			TransactionId: transactionId1,
+			TransactionID: transactionID1,
 			Operations:    chunk,
 		}
 		tran2 := mtran.MetaTransaction{
-			TransactionId: transactionId2,
+			TransactionID: transactionID2,
 			Operations:    chunk,
 		}
 
@@ -344,7 +344,7 @@ func TestTranState(t *testing.T) {
 			Id:          "ds1",
 			ColumnTypes: []string{"integer"},
 		}
-		transactionId2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
+		transactionID2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
 		is.NoError(err)
 		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
 			{
@@ -356,7 +356,7 @@ func TestTranState(t *testing.T) {
 		)
 		is.NoError(err)
 		tran2 := mtran.MetaTransaction{
-			TransactionId: transactionId2,
+			TransactionID: transactionID2,
 			Operations:    chunk,
 		}
 
@@ -378,7 +378,7 @@ func TestTranState(t *testing.T) {
 			Id:          "ds1",
 			ColumnTypes: []string{"integer"},
 		}
-		transactionId2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
+		transactionID2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
 		is.NoError(err)
 		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
 			{
@@ -390,7 +390,7 @@ func TestTranState(t *testing.T) {
 		)
 		is.NoError(err)
 		tran2 := mtran.MetaTransaction{
-			TransactionId: transactionId2,
+			TransactionID: transactionID2,
 			Operations:    chunk,
 		}
 

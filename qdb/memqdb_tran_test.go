@@ -29,11 +29,11 @@ func TestPackMemqdbCommands(t *testing.T) {
 	is.NoError(err)
 	dataDistribution2, err := json.Marshal(distribution2)
 	is.NoError(err)
-	t.Run("test happy path pack commands", func(t *testing.T) {
+	t.Run("test happy path pack commands", func(_ *testing.T) {
 		commands := []QdbStatement{
-			{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
-			{CmdType: CMD_PUT, Key: relation.Name, Value: distribution1.ID, Extension: MapRelationDistribution},
-			{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
+			{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
+			{CmdType: CmdPut, Key: relation.Name, Value: distribution1.ID, Extension: MapRelationDistribution},
+			{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 		}
 		actual, err := memqdb.packMemqdbCommands(commands)
 		is.NoError(err)
@@ -44,10 +44,10 @@ func TestPackMemqdbCommands(t *testing.T) {
 		}
 		is.Equal(expected, actual)
 	})
-	t.Run("fail: invalid extension", func(t *testing.T) {
+	t.Run("fail: invalid extension", func(_ *testing.T) {
 		commands := []QdbStatement{
-			{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
-			{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: "testMap1"},
+			{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
+			{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: "testMap1"},
 		}
 		_, err := memqdb.packMemqdbCommands(commands)
 		is.EqualError(err, "not implemented for transaction memqdb part testMap1")
@@ -67,39 +67,39 @@ func TestMemQdbTransactions(t *testing.T) {
 	is.NoError(err)
 	dataDistribution3, err := json.Marshal(distribution3)
 	is.NoError(err)
-	t.Run("test Begin tran", func(t *testing.T) {
-		t.Run("simple begin tran success", func(t *testing.T) {
+	t.Run("test Begin tran", func(_ *testing.T) {
+		t.Run("simple begin tran success", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran, err := NewTransaction()
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran)
 			is.NoError(err)
-			is.Equal(tran.transactionId, memqdb.activeTransaction)
+			is.Equal(tran.transactionID, memqdb.activeTransaction)
 		})
-		t.Run("2 begin tran success", func(t *testing.T) {
+		t.Run("2 begin tran success", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			tran1, err := NewTransaction()
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran1)
 			is.NoError(err)
-			is.Equal(tran1.transactionId, memqdb.activeTransaction)
+			is.Equal(tran1.transactionID, memqdb.activeTransaction)
 
 			tran2, err := NewTransaction()
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran2)
 			is.NoError(err)
-			is.Equal(tran2.transactionId, memqdb.activeTransaction)
+			is.Equal(tran2.transactionID, memqdb.activeTransaction)
 		})
 	})
 	t.Run("test exec no tran", func(t *testing.T) {
-		t.Run("happy path", func(t *testing.T) {
+		t.Run("happy path", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			commands := []QdbStatement{
-				{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
-				{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
 			err = memqdb.ExecNoTransaction(ctx, commands)
 			is.NoError(err)
@@ -111,14 +111,14 @@ func TestMemQdbTransactions(t *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
 			commands := []QdbStatement{
-				{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
-				{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
 			err = memqdb.ExecNoTransaction(ctx, commands)
 			is.NoError(err)
 
 			commands = []QdbStatement{
-				{CmdType: CMD_PUT, Key: distribution3.ID, Value: string(dataDistribution3), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution3.ID, Value: string(dataDistribution3), Extension: MapDistributions},
 			}
 			err = memqdb.ExecNoTransaction(ctx, commands)
 			is.NoError(err)
@@ -137,8 +137,8 @@ func TestMemQdbTransactions(t *testing.T) {
 			err = memqdb.BeginTransaction(ctx, tran)
 			is.NoError(err)
 			commands := []QdbStatement{
-				{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
-				{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
 			err = tran.Append(commands)
 			is.NoError(err)
@@ -156,8 +156,8 @@ func TestMemQdbTransactions(t *testing.T) {
 			err = memqdb.BeginTransaction(ctx, tran1)
 			is.NoError(err)
 			commands := []QdbStatement{
-				{CmdType: CMD_PUT, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
-				{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
+				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
 			err = tran1.Append(commands)
 			is.NoError(err)
@@ -168,7 +168,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 
 			err = memqdb.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.ID()))
 		})
 		t.Run("fails invalid tran", func(t *testing.T) {
 			memqdb, err := NewMemQDB("")
@@ -180,7 +180,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			statements := []QdbStatement{}
 			_ = tran1.Append(statements) //handling this error was skipped intentionally
 			err = memqdb.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.Id(), tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.ID(), tran1.ID()))
 		})
 	})
 }
@@ -195,32 +195,32 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
 			ShardID:        "sh1",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 			Locked:         false,
 		}
 		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
-				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":false,\"Version\":0}",
+				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionID\":\"ds1\",\"Locked\":false,\"Version\":0}",
 				Extension: "Krs",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     "false",
 				Extension: "Locks",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     "false",
 				Extension: "Freq",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     1,
 				Extension: MapKrVersions,
@@ -237,31 +237,31 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
 			ShardID:        "sh1",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 		}
 		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
-				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":false,\"Version\":0}",
+				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionID\":\"ds1\",\"Locked\":false,\"Version\":0}",
 				Extension: "Krs",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     "false",
 				Extension: "Locks",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     "false",
 				Extension: "Freq",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     1,
 				Extension: MapKrVersions,
@@ -278,32 +278,32 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
 			ShardID:        "sh1",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 			Locked:         true,
 		}
 		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
-				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":true,\"Version\":0}",
+				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionID\":\"ds1\",\"Locked\":true,\"Version\":0}",
 				Extension: "Krs",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     "true",
 				Extension: "Locks",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     "true",
 				Extension: "Freq",
 			},
 			{
-				CmdType:   CMD_PUT,
+				CmdType:   CmdPut,
 				Key:       "krid1",
 				Value:     1,
 				Extension: MapKrVersions,
@@ -322,19 +322,19 @@ func TestDropKeyRangeQdbStatements(t *testing.T) {
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
-				CmdType:   CMD_DELETE,
+				CmdType:   CmdDelete,
 				Key:       "testKr",
 				Value:     "",
 				Extension: "Krs",
 			},
 			{
-				CmdType:   CMD_DELETE,
+				CmdType:   CmdDelete,
 				Key:       "testKr",
 				Value:     "",
 				Extension: "Locks",
 			},
 			{
-				CmdType:   CMD_DELETE,
+				CmdType:   CmdDelete,
 				Key:       "testKr",
 				Value:     "",
 				Extension: "Freq",

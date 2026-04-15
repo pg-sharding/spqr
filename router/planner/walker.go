@@ -186,12 +186,13 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 			for _, innerExp := range e.Args {
 				switch iE := innerExp.(type) {
 				case *lyx.Select:
-					if tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE); err != nil {
+					tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE)
+					if err != nil {
 						return nil, err
-					} else {
-						p = plan.Combine(p, tmp)
-						deduced = true
 					}
+					p = plan.Combine(p, tmp)
+					deduced = true
+					
 				case *lyx.SubLink:
 					if tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE.SubSelect); err != nil {
 						return nil, err

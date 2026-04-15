@@ -9,7 +9,7 @@ import (
 )
 
 // TODO : unit tests
-func unlockMutex(mu *concurrency.Mutex, ctx context.Context) {
+func unlockMutex(ctx context.Context, mu *concurrency.Mutex) {
 	if err := mu.Unlock(ctx); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 	}
@@ -23,8 +23,8 @@ func closeSession(sess *concurrency.Session) {
 }
 
 var (
-	local   *MemQDB   = nil
-	localPg *MemPgQDB = nil
+	local   *MemQDB
+	localPg *MemPgQDB
 )
 
 func GetMemQDB() (*MemQDB, error) {
@@ -76,7 +76,6 @@ func GetMemPgQDB() (*MemPgQDB, error) {
 func GetStateKeeperQDB() (StateKeeperQDB, error) {
 	if config.RouterConfig().StoreTxDataPostgresql {
 		return GetMemPgQDB()
-	} else {
-		return GetMemQDB()
 	}
+	return GetMemQDB()
 }

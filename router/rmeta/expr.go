@@ -30,7 +30,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
+	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, er
 			return nil, err
 		}
 
-		if ds.Id == distributions.REPLICATED {
+		if ds.ID == distributions.REPLICATED {
 			var shs []kr.ShardKey
 			if IsRelationCatalog(&qualName) {
 				shs = nil
@@ -217,13 +217,13 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 		if err != nil {
 			return nil, err
 		}
-		if ds.Id == distributions.REPLICATED {
+		if ds.ID == distributions.REPLICATED {
 			continue
 		}
 
 		relation, exists := ds.TryGetRelation(&qualName)
 		if !exists {
-			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
+			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.ID)
 		}
 		/* XXX: do better here */
 		relation.Relation.SchemaName = qualName.SchemaName

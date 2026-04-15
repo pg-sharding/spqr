@@ -67,7 +67,7 @@ const (
 	taskGroupLocksNamespace              = "/task_group_locks/"
 	moveTaskNamespace                    = "/move_tasks/"
 	redistributeTasksNamespace           = "/redistribute_tasks/"
-	redistributeTaskTaskGroupIdNamespace = "/redistribute_task_task_group_id"
+	redistributeTaskTaskGroupIDNamespace = "/redistribute_task_task_group_id"
 	keyRangeRedistributeTasksNamespace   = "/key_range_redistribute_tasks/"
 	redistributeTaskLockNamespace        = "/redistribute_task_locks/"
 	balancerTaskPath                     = "/balancer_task/"
@@ -83,7 +83,7 @@ const (
 	uniqueIndexesByRelationNamespace     = "/relation_unique_indexes"
 	twoPhaseTxMetaStoragePath            = "/2pc_meta_storage"
 
-	CoordKeepAliveTtl  = 3
+	CoordKeepAliveTTL  = 3
 	coordLockKey       = "coordinator_exists"
 	sequenceSpace      = "sequence_space"
 	transactionRequest = "transaction_request"
@@ -185,8 +185,8 @@ func redistributeTaskNodePath(id string) string {
 	return path.Join(redistributeTasksNamespace, id)
 }
 
-func redistributeTaskTaskGroupIdNodePath(id string) string {
-	return path.Join(redistributeTaskTaskGroupIdNamespace, id)
+func redistributeTaskTaskGroupIDNodePath(id string) string {
+	return path.Join(redistributeTaskTaskGroupIDNamespace, id)
 }
 
 func keyRangeRedistributeTaskNodePath(id string) string {
@@ -226,7 +226,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 		return nil, err
 	}
 	respKR := make([]QdbStatement, 2, 3)
-	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	resp, err := NewQdbStatement(CmdPut, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
 	}
@@ -236,14 +236,14 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key range: failed to marshal metadata: %s", err)
 	}
-	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	resp, err = NewQdbStatement(CmdPut, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
 	if err != nil {
 		return nil, err
 	}
 	respKR[1] = *resp
 
 	if keyRange.Locked {
-		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
+		resp, err := NewQdbStatement(CmdPut, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
 		if err != nil {
 			return nil, err
 		}
@@ -271,10 +271,10 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, erro
 		Commit()
 
 	if err != nil {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range at \"%s\": failed to commit transaction: %s", krNodePath, err)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to fetch key range at \"%s\": failed to commit transaction: %s", krNodePath, err)
 	}
 	if !resp.Succeeded {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "no key range found at %v", krNodePath)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "no key range found at %v", krNodePath)
 	}
 	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to fetch key range at \"%s\": unexpected etcd response count %d", krNodePath, len(resp.Responses))
@@ -330,12 +330,12 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 		return nil, fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
 	respKR := make([]QdbStatement, 2)
-	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	resp, err := NewQdbStatement(CmdPut, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
 	}
 	respKR[0] = *resp
-	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	resp, err = NewQdbStatement(CmdPut, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
 	if err != nil {
 		return nil, err
 	}
@@ -369,13 +369,13 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, 
 		Msg("etcdqdb: drop key range")
 
 	resp := make([]QdbStatement, 2)
-	statement, err := NewQdbStatement(CMD_DELETE, keyRangeNodePath(id), "")
+	statement, err := NewQdbStatement(CmdDelete, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
 	}
 	resp[0] = *statement
 	// TODO: update to INT_MAX instead of deleting
-	statement, err = NewQdbStatement(CMD_DELETE, keyRangeMetaNodePath(id), "")
+	statement, err = NewQdbStatement(CmdDelete, keyRangeMetaNodePath(id), "")
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*Ke
 	keyRanges := make([]*KeyRange, 0, len(allKrs))
 
 	for i := range allKrs {
-		if allKrs[i].DistributionId == distribution {
+		if allKrs[i].DistributionID == distribution {
 			keyRanges = append(keyRanges, allKrs[i])
 		}
 	}
@@ -469,22 +469,22 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	return keyRanges, nil
 }
 
-func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId string) (*KeyRange, error) {
+func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeID string) (*KeyRange, error) {
 	resp, err := q.cli.Txn(ctx).
 		If(
 			//check exists key range lock
-			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(keyRangeId))), "=", 0),
+			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(keyRangeID))), "=", 0),
 			//check exists key range
-			clientv3.Compare(clientv3.Version(keyRangeNodePath(keyRangeId)), ">", 0),
+			clientv3.Compare(clientv3.Version(keyRangeNodePath(keyRangeID)), ">", 0),
 		).
 		Then(
-			clientv3.OpPut(LockPath(keyRangeNodePath(keyRangeId)), "locked"),
-			clientv3.OpGet(keyRangeNodePath(keyRangeId)),
-			clientv3.OpGet(keyRangeMetaNodePath(keyRangeId)),
+			clientv3.OpPut(LockPath(keyRangeNodePath(keyRangeID)), "locked"),
+			clientv3.OpGet(keyRangeNodePath(keyRangeID)),
+			clientv3.OpGet(keyRangeMetaNodePath(keyRangeID)),
 		).
 		Else(
-			clientv3.OpGet(LockPath(keyRangeNodePath(keyRangeId)), clientv3.WithCountOnly()),
-			clientv3.OpGet(keyRangeNodePath(keyRangeId), clientv3.WithCountOnly()),
+			clientv3.OpGet(LockPath(keyRangeNodePath(keyRangeID)), clientv3.WithCountOnly()),
+			clientv3.OpGet(keyRangeNodePath(keyRangeID), clientv3.WithCountOnly()),
 		).
 		Commit()
 	if err != nil {
@@ -493,50 +493,49 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
 			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
-				keyRangeId, len(resp.Responses))
+				keyRangeID, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", keyRangeId)
+			return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "cant't lock non existent key range %v", keyRangeID)
 		}
 		spqrlog.Zero.Debug().
-			Str("id", keyRangeId).
-			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
-		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeId))
+			Str("id", keyRangeID).
+			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeID, resp.Responses[0], resp.Responses[1]))
+		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v is locked", keyRangeID))
 	} else {
 		if len(resp.Responses) != 3 {
 			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
-				keyRangeId, len(resp.Responses))
-		} else {
-			rng := resp.Responses[1].GetResponseRange()
-			if len(rng.Kvs) != 1 {
-				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
-					keyRangeId, len(rng.Kvs))
-			}
-			if rng.Kvs[0] == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
-					keyRangeId)
-			}
-			kv := rng.Kvs[0].Value
-			if kv == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
-					keyRangeId)
-			}
+				keyRangeID, len(resp.Responses))
+		}
+		rng := resp.Responses[1].GetResponseRange()
+		if len(rng.Kvs) != 1 {
+			return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
+				keyRangeID, len(rng.Kvs))
+		}
+		if rng.Kvs[0] == nil {
+			return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
+				keyRangeID)
+		}
+		kv := rng.Kvs[0].Value
+		if kv == nil {
+			return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
+				keyRangeID)
+		}
 
-			rng = resp.Responses[2].GetResponseRange()
-			ver := 0
-			if rng.Count > 0 {
-				var meta *KeyRangeMeta
-				if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
-					return nil, err
-				}
-				ver = meta.Version
-			}
-			keyRange := &internalKeyRange{}
-			if err := json.Unmarshal(kv, &keyRange); err != nil {
+		rng = resp.Responses[2].GetResponseRange()
+		ver := 0
+		if rng.Count > 0 {
+			var meta *KeyRangeMeta
+			if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
 				return nil, err
 			}
-			return keyRangeFromInternal(keyRange, true, ver), nil
+			ver = meta.Version
 		}
+		keyRange := &internalKeyRange{}
+		if err := json.Unmarshal(kv, &keyRange); err != nil {
+			return nil, err
+		}
+		return keyRangeFromInternal(keyRange, true, ver), nil
 	}
 }
 
@@ -598,7 +597,7 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 	}
 	if !kRange.Locked {
 		statistics.RecordQDBOperation("CheckLockedKeyRange", time.Since(t))
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v not locked", id)
 	}
 	statistics.RecordQDBOperation("CheckLockedKeyRange", time.Since(t))
 	return kRange, nil
@@ -613,22 +612,22 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
 	spqrlog.Zero.Debug().
-		Str("id", krId).
-		Str("new id", krIdNew).
+		Str("id", krID).
+		Str("new id", krIDNew).
 		Msg("etcdqdb: rename key range")
 
 	t := time.Now()
 
-	kr, err := q.fetchKeyRange(ctx, krId)
+	kr, err := q.fetchKeyRange(ctx, krID)
 	if err != nil {
 		return err
 	}
-	kr.KeyRangeID = krIdNew
+	kr.KeyRangeID = krIDNew
 	kr.Locked = false
 
-	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeNodePath(krId)), clientv3.OpDelete(LockPath(keyRangeNodePath(krId))), clientv3.OpDelete(keyRangeMetaNodePath(krId))).Commit()
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeNodePath(krID)), clientv3.OpDelete(LockPath(keyRangeNodePath(krID))), clientv3.OpDelete(keyRangeMetaNodePath(krID))).Commit()
 	if err != nil {
 		return err
 	}
@@ -725,7 +724,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 		Str("address", addr).
 		Msg("etcdqdb: try coordinator lock")
 
-	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTtl)
+	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTTL)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
 		return err
@@ -755,7 +754,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 		if err != nil {
 			return err
 		}
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
+		return spqrerror.New(spqrerror.SpqrUnexpected, "qdb is already in use")
 	}
 
 	// okay, we acquired lock, time to spawn keep alive channel
@@ -774,7 +773,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 // TODO : unit tests
 // TODO : implement
 func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemented")
+	return spqrerror.New(spqrerror.SpqrNotImplemented, "UpdateCoordinator not implemented")
 }
 
 // TODO : unit tests
@@ -789,11 +788,11 @@ func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
 
 	switch len(resp.Kvs) {
 	case 0:
-		return "", spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "coordinator address was not found")
+		return "", spqrerror.New(spqrerror.SpqrConnectionError, "coordinator address was not found")
 	case 1:
 		return string(resp.Kvs[0].Value), nil
 	default:
-		return "", spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "multiple addresses were found")
+		return "", spqrerror.New(spqrerror.SpqrConnectionError, "multiple addresses were found")
 	}
 }
 
@@ -814,7 +813,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 		return err
 	}
 	if len(getResp.Kvs) != 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router id %s already exists", r.ID)
+		return spqrerror.Newf(spqrerror.SpqrRouterError, "router id %s already exists", r.ID)
 	}
 
 	routers, err := q.ListRouters(ctx)
@@ -823,7 +822,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	}
 	for _, router := range routers {
 		if router.Address == r.Address {
-			return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with address %s already exists", r.Address)
+			return spqrerror.Newf(spqrerror.SpqrRouterError, "router with address %s already exists", r.Address)
 		}
 	}
 
@@ -891,7 +890,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exist", id)
+		return spqrerror.Newf(spqrerror.SpqrRouterError, "router with id %s does not exist", id)
 	}
 
 	var routers []*Router
@@ -907,7 +906,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	/*  */
 
 	if len(routers) != 1 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "sync failed: more than one router with id %s", id)
+		return spqrerror.Newf(spqrerror.SpqrRouterError, "sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == OPENED {
@@ -944,7 +943,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exist", id)
+		return spqrerror.Newf(spqrerror.SpqrRouterError, "router with id %s does not exist", id)
 	}
 
 	var routers []*Router
@@ -958,7 +957,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 	}
 
 	if len(routers) != 1 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "sync failed: more than one router with id %s", id)
+		return spqrerror.Newf(spqrerror.SpqrRouterError, "sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == CLOSED {
@@ -1100,10 +1099,10 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrNoDatashard, "unknown shard %s", id)
 	}
 	if len(resp.Kvs) > 1 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+		return nil, spqrerror.Newf(spqrerror.SpqrMetadataCorruption,
 			"multiple metadata entries (%d) found for shard %q; expected exactly one",
 			len(resp.Kvs), id)
 	}
@@ -1141,7 +1140,7 @@ func (q *EtcdQDB) UpdateShard(ctx context.Context, shard *Shard) error {
 		return err
 	}
 	if !resp.Succeeded {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+		return spqrerror.Newf(spqrerror.SpqrNoDatashard, "shard %s does not exist", shard.ID)
 	}
 
 	statistics.RecordQDBOperation("UpdateShard", time.Since(t))
@@ -1171,14 +1170,14 @@ func (q *EtcdQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelat
 		Str("tablename", r.TableName).
 		Msg("etcdqdb: create reference relation")
 
-	rrJson, err := json.Marshal(r)
+	rrJSON, err := json.Marshal(r)
 	if err != nil {
 		return err
 	}
 	resp, err := q.cli.Put(ctx, referenceRelationNodePath(&rfqn.RelationFQN{
 		RelationName: r.TableName,
 		SchemaName:   r.SchemaName,
-	}), string(rrJson))
+	}), string(rrJSON))
 	if err != nil {
 		return err
 	}
@@ -1202,7 +1201,7 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relation *rfqn.Relat
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "reference relation \"%s\" not found", relation)
 	}
 
 	var refRel *ReferenceRelation
@@ -1230,7 +1229,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 	switch len(resp.Kvs) {
 	case 0:
 		return spqrerror.Newf(
-			spqrerror.SPQR_OBJECT_NOT_EXIST,
+			spqrerror.SpqrObjectNotExist,
 			"reference relation \"%s\" not found", relation)
 	case 1:
 
@@ -1238,14 +1237,14 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
 			return err
 		}
-		rrs.ShardIds = shs
+		rrs.ShardIDs = shs
 
-		rrJson, err := json.Marshal(rrs)
+		rrJSON, err := json.Marshal(rrs)
 		if err != nil {
 			return err
 		}
 
-		resp, err := q.cli.Put(ctx, nodePath, string(rrJson))
+		resp, err := q.cli.Put(ctx, nodePath, string(rrJSON))
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
@@ -1253,7 +1252,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1272,7 +1271,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relation *rfqn.Rela
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relation)
+		return spqrerror.Newf(spqrerror.SpqrObjectNotExist, "reference relation \"%s\" not found", relation)
 	case 1:
 
 		var rrs *ReferenceRelation
@@ -1293,7 +1292,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relation *rfqn.Rela
 		_, err = q.cli.Delete(ctx, relationMappingNodePath(relation))
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1338,11 +1337,11 @@ func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribu
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
 
-	distrJson, err := json.Marshal(distribution)
+	distrJSON, err := json.Marshal(distribution)
 	if err != nil {
 		return nil, err
 	}
-	if resp, err := NewQdbStatement(CMD_PUT, distributionNodePath(distribution.ID), string(distrJson)); err != nil {
+	if resp, err := NewQdbStatement(CmdPut, distributionNodePath(distribution.ID), string(distrJSON)); err != nil {
 		return nil, err
 	} else {
 		spqrlog.Zero.Debug().
@@ -1395,7 +1394,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution present in qdb")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution present in qdb")
 	case 1:
 
 		var distrib *Distribution
@@ -1422,7 +1421,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 		return nil
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much distributions matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "too much distributions matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1452,8 +1451,8 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
-			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
+			if e.ErrorCode != spqrerror.SpqrObjectNotExist {
+				return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is already attached", qname.String())
 			}
 
 			distribution.Relations[rel.Name] = rel
@@ -1463,14 +1462,12 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 			}
 			if r, ok := ds.GetRelation(qname); ok {
 				if r.SchemaName == rel.SchemaName {
-					return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
-				} else {
-					/* Ok, store this to FQN relations. */
-
-					distribution.FQNRelations[rel.QualifiedName().MetadataKey()] = rel
+					return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is already attached", qname.String())
 				}
+				/* Ok, store this to FQN relations. */
+				distribution.FQNRelations[rel.QualifiedName().MetadataKey()] = rel
 			} else {
-				return spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
+				return spqrerror.NewByCode(spqrerror.SpqrMetadataCorruption)
 			}
 		}
 
@@ -1530,14 +1527,14 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 	}
 
 	if _, ok := distribution.Relations[rel.Name]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", rel.Name)
 	}
 	distribution.Relations[rel.Name] = rel
 	qname := rel.QualifiedName()
 	if ds, err := q.GetRelationDistribution(ctx, qname); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", rel.Name)
 	} else if ds.ID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)
 	}
 
 	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
@@ -1561,13 +1558,13 @@ func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string,
 	}
 
 	if _, ok := distribution.Relations[relation.RelationName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	}
 	distribution.Relations[relation.RelationName].SchemaName = schemaName
 	if ds, err := q.GetRelationDistribution(ctx, relation); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	} else if ds.ID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), ds.ID, id)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), ds.ID, id)
 	}
 
 	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
@@ -1590,31 +1587,31 @@ func (q *EtcdQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string
 	}
 
 	if _, ok := distribution.Relations[relation.RelationName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	}
 	distribution.Relations[relation.RelationName].SchemaName = schemaName
 	if ds, err := q.GetRelationDistribution(ctx, relation); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	} else if ds.ID != dsID {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation, ds.ID, dsID)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation, ds.ID, dsID)
 	}
 	rel, err := q.GetReferenceRelation(ctx, relation)
 	if err != nil {
 		return fmt.Errorf("failed to get reference table: %s", err)
 	}
 	rel.SchemaName = schemaName
-	relJson, err := json.Marshal(rel)
+	relJSON, err := json.Marshal(rel)
 	if err != nil {
 		return fmt.Errorf("failed to marshal reference table: %s", err)
 	}
 
-	distrJson, err := json.Marshal(distribution)
+	distrJSON, err := json.Marshal(distribution)
 	if err != nil {
 		return err
 	}
 	_, err = q.cli.Txn(ctx).Then(
-		clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
-		clientv3.OpPut(referenceRelationNodePath(relation), string(relJson)),
+		clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJSON)),
+		clientv3.OpPut(referenceRelationNodePath(relation), string(relJSON)),
 	).Commit()
 	return err
 }
@@ -1632,14 +1629,14 @@ func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, i
 	}
 
 	if _, ok := distribution.Relations[relation.RelationName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	}
 	distribution.Relations[relation.RelationName].DistributionKey = distributionKey
 	if ds, err := q.GetRelationDistribution(ctx, relation); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	} else if ds.ID != id {
 		return spqrerror.Newf(
-			spqrerror.SPQR_INVALID_REQUEST,
+			spqrerror.SpqrInvalidRequest,
 			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation, ds.ID, id)
 	}
 
@@ -1662,7 +1659,7 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution \"%s\" not found", id)
 	}
 
 	var distrib *Distribution
@@ -1716,13 +1713,13 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.Rel
 			}
 		}
 
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relName)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution for relation \"%s\" not found", relName)
 	case 1:
 		id := string(resp.Kvs[0].Value)
 		return q.GetDistribution(ctx, id)
 	default:
 		// metadata corruption
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrMetadataCorruption)
 	}
 }
 
@@ -1761,12 +1758,12 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 		return err
 	}
 
-	ds, err := q.GetDistribution(ctx, idx.DistributionId)
+	ds, err := q.GetDistribution(ctx, idx.DistributionID)
 	if err != nil {
 		return err
 	}
 	ds.UniqueIndexes[idx.ID] = idx
-	idxJson, err := json.Marshal(idx)
+	idxJSON, err := json.Marshal(idx)
 	if err != nil {
 		return err
 	}
@@ -1777,7 +1774,7 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	for _, col := range idx.ColumnNames {
 		currRelIdxs[col] = idx
 	}
-	idxsByRelJson, err := json.Marshal(currRelIdxs)
+	idxsByRelJSON, err := json.Marshal(currRelIdxs)
 	if err != nil {
 		return err
 	}
@@ -1788,12 +1785,12 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err = tx.Append(dsCommand); err != nil {
 		return err
 	}
-	idxCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexNodePath(idx.ID), string(idxJson))
+	idxCommand, err := NewQdbStatement(CmdPut, uniqueIndexNodePath(idx.ID), string(idxJSON))
 	if err != nil {
 		return err
 	}
 
-	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJson))
+	idxByRelCommand, err := NewQdbStatement(CmdPut, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJSON))
 	if err != nil {
 		return err
 	}
@@ -1832,7 +1829,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	if err = json.Unmarshal(resp.Kvs[0].Value, &idx); err != nil {
 		return err
 	}
-	ds, err := q.GetDistribution(ctx, idx.DistributionId)
+	ds, err := q.GetDistribution(ctx, idx.DistributionID)
 	if err != nil {
 		return err
 	}
@@ -1845,7 +1842,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	for _, col := range idx.ColumnNames {
 		delete(currRelIdxs, col)
 	}
-	idxsByRelJson, err := json.Marshal(currRelIdxs)
+	idxsByRelJSON, err := json.Marshal(currRelIdxs)
 	if err != nil {
 		return err
 	}
@@ -1857,12 +1854,12 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	if err = tx.Append(dsCommand); err != nil {
 		return err
 	}
-	idxCommand, err := NewQdbStatement(CMD_DELETE, uniqueIndexNodePath(idx.ID), "")
+	idxCommand, err := NewQdbStatement(CmdDelete, uniqueIndexNodePath(idx.ID), "")
 	if err != nil {
 		return err
 	}
 
-	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJson))
+	idxByRelCommand, err := NewQdbStatement(CmdPut, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJSON))
 	if err != nil {
 		return err
 	}
@@ -1964,7 +1961,7 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 
 	group.CreatedAt = t
 
-	groupJson, err := json.Marshal(group)
+	groupJSON, err := json.Marshal(group)
 	if err != nil {
 		return err
 	}
@@ -1973,21 +1970,21 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 	}
 
 	ops := []clientv3.Op{
-		clientv3.OpPut(taskGroupNodePath(id), string(groupJson)),
+		clientv3.OpPut(taskGroupNodePath(id), string(groupJSON)),
 		clientv3.OpPut(totalKeysNodePath(id), fmt.Sprintf("%d", totalKeys)),
 		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 	}
 	if group.Issuer != nil && group.Issuer.Type == IssuerRedistributeTask {
-		ops = append(ops, clientv3.OpPut(redistributeTaskTaskGroupIdNodePath(group.Issuer.Id), id))
+		ops = append(ops, clientv3.OpPut(redistributeTaskTaskGroupIDNodePath(group.Issuer.ID), id))
 	}
 	if task != nil {
-		taskJson, err := json.Marshal(task)
+		taskJSON, err := json.Marshal(task)
 		if err != nil {
 			return err
 		}
 
 		ops = append(ops,
-			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJSON)),
 			clientv3.OpPut(moveTaskByGroupNodePath(id), task.ID),
 		)
 		cmp = append(cmp, clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0))
@@ -2017,7 +2014,7 @@ func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int
 		spqrlog.Zero.Debug().
 			Str("id", id).Err(err).Msg("etcdqdb: failed to get total key count")
 
-		return -1, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "failed to convert current task index to integer: %s", resp.Kvs[0].Value)
+		return -1, spqrerror.Newf(spqrerror.SpqrMetadataCorruption, "failed to convert current task index to integer: %s", resp.Kvs[0].Value)
 	}
 
 	spqrlog.Zero.Debug().
@@ -2116,7 +2113,7 @@ func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bo
 func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
 
-	taskJson, err := json.Marshal(task)
+	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
@@ -2127,7 +2124,7 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 			clientv3.Compare(clientv3.Version(taskGroupNodePath(taskGroupID)), "!=", 0),
 		).
 		Then(
-			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJSON)),
 			clientv3.OpPut(moveTaskByGroupNodePath(taskGroupID), task.ID),
 		).
 		Else(
@@ -2158,13 +2155,13 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: update move task")
 
-	taskJson, err := json.Marshal(task)
+	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
 	resp, err := q.cli.Txn(ctx).
 		If(clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "!=", 0)).
-		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson))).
+		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJSON))).
 		Commit()
 
 	if err != nil {
@@ -2279,7 +2276,7 @@ func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *Redistribute
 		Str("id", task.ID).
 		Msg("etcdqdb: create redistribute task")
 
-	taskJson, err := json.Marshal(task)
+	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
@@ -2287,14 +2284,14 @@ func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *Redistribute
 	resp, err := q.cli.Txn(ctx).
 		If(
 			clientv3util.KeyMissing(redistributeTaskNodePath(task.ID)),
-			clientv3util.KeyMissing(keyRangeRedistributeTaskNodePath(task.KeyRangeId)),
+			clientv3util.KeyMissing(keyRangeRedistributeTaskNodePath(task.KeyRangeID)),
 		).
 		Then(
-			clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson)),
-			clientv3.OpPut(keyRangeRedistributeTaskNodePath(task.KeyRangeId), task.ID),
+			clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJSON)),
+			clientv3.OpPut(keyRangeRedistributeTaskNodePath(task.KeyRangeID), task.ID),
 		).
 		Else(
-			clientv3.OpGet(keyRangeRedistributeTaskNodePath(task.KeyRangeId)),
+			clientv3.OpGet(keyRangeRedistributeTaskNodePath(task.KeyRangeID)),
 			clientv3.OpGet(redistributeTaskNodePath(task.ID)),
 		).
 		Commit()
@@ -2306,7 +2303,7 @@ func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *Redistribute
 			return fmt.Errorf("unexpected response count: create redistribute task \"%s\" response parts count=%d", task.ID, len(resp.Responses))
 		}
 		if resp.Responses[0].GetResponseRange().Count > 0 {
-			return fmt.Errorf("could not create redistribute task: task \"%s\" for key range \"%s\" already exists", resp.Responses[0].GetResponseRange().Kvs[0].Value, task.KeyRangeId)
+			return fmt.Errorf("could not create redistribute task: task \"%s\" for key range \"%s\" already exists", resp.Responses[0].GetResponseRange().Kvs[0].Value, task.KeyRangeID)
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
 			return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
@@ -2323,12 +2320,12 @@ func (q *EtcdQDB) UpdateRedistributeTask(ctx context.Context, task *Redistribute
 		Str("id", task.ID).
 		Msg("etcdqdb: update redistribute task")
 
-	taskJson, err := json.Marshal(task)
+	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
 
-	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(redistributeTaskNodePath(task.ID))).Then(clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson))).Commit()
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(redistributeTaskNodePath(task.ID))).Then(clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJSON))).Commit()
 	if err != nil {
 		return fmt.Errorf("could not update redistribute task: error executing transaction: %s", err)
 	}
@@ -2344,16 +2341,16 @@ func (q *EtcdQDB) DropRedistributeTask(ctx context.Context, task *RedistributeTa
 		Str("id", task.ID).
 		Msg("etcdqdb: remove redistribute task")
 
-	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeId)), clientv3.OpDelete(redistributeTaskTaskGroupIdNodePath(task.ID))).Commit()
+	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeID)), clientv3.OpDelete(redistributeTaskTaskGroupIDNodePath(task.ID))).Commit()
 	return err
 }
 
-func (q *EtcdQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) (string, error) {
+func (q *EtcdQDB) GetRedistributeTaskTaskGroupID(ctx context.Context, id string) (string, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: get redistribute task task group id")
 
-	resp, err := q.cli.Get(ctx, redistributeTaskTaskGroupIdNodePath(id))
+	resp, err := q.cli.Get(ctx, redistributeTaskTaskGroupIDNodePath(id))
 	if err != nil {
 		return "", err
 	}
@@ -2363,12 +2360,12 @@ func (q *EtcdQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string)
 	return string(resp.Kvs[0].Value), nil
 }
 
-func (q *EtcdQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+func (q *EtcdQDB) GetKeyRangeRedistributeTaskID(ctx context.Context, keyRangeID string) (string, error) {
 	spqrlog.Zero.Debug().
-		Str("key range id", keyRangeId).
+		Str("key range id", keyRangeID).
 		Msg("etcdqdb: get redistribute task of the key range")
 
-	resp, err := q.cli.Get(ctx, keyRangeRedistributeTaskNodePath(keyRangeId))
+	resp, err := q.cli.Get(ctx, keyRangeRedistributeTaskNodePath(keyRangeID))
 	if err != nil {
 		return "", err
 	}
@@ -2406,12 +2403,12 @@ func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) err
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write balancer task")
 
-	taskJson, err := json.Marshal(task)
+	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
 
-	_, err = q.cli.Put(ctx, balancerTaskPath, string(taskJson))
+	_, err = q.cli.Put(ctx, balancerTaskPath, string(taskJSON))
 	return err
 }
 
@@ -2522,7 +2519,7 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 // TODO : unit tests
 func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
 	spqrlog.Zero.Debug().
-		Str("id", m.MoveId).
+		Str("id", m.MoveID).
 		Msg("etcdqdb: add move key range operation")
 	t := time.Now()
 
@@ -2531,7 +2528,7 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 	if err != nil {
 		return err
 	}
-	resp, err := q.cli.Put(ctx, keyRangeMovesNodePath(m.MoveId), string(rawMoveKeyRange))
+	resp, err := q.cli.Put(ctx, keyRangeMovesNodePath(m.MoveID), string(rawMoveKeyRange))
 	if err != nil {
 		return err
 	}
@@ -2545,18 +2542,18 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveID string, s MoveKeyRangeStatus) error {
 	spqrlog.Zero.Debug().
-		Str("id", moveId).
+		Str("id", moveID).
 		Msg("etcdqdb: update key range move status")
 	t := time.Now()
 
-	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveID))
 	if err != nil {
 		return err
 	}
 	if resp.Count == 0 {
-		return fmt.Errorf("failed to update key range move status: key range move \"%s\" not found", moveId)
+		return fmt.Errorf("failed to update key range move status: key range move \"%s\" not found", moveID)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
@@ -2568,7 +2565,7 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	if err != nil {
 		return err
 	}
-	respModify, err := q.cli.Put(ctx, keyRangeMovesNodePath(moveKr.MoveId), string(rawMoveKeyRange))
+	respModify, err := q.cli.Put(ctx, keyRangeMovesNodePath(moveKr.MoveID), string(rawMoveKeyRange))
 	if err != nil {
 		return err
 	}
@@ -2581,18 +2578,18 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	return nil
 }
 
-func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveID string) error {
 	spqrlog.Zero.Debug().
-		Str("id", moveId).
+		Str("id", moveID).
 		Msg("etcdqdb: delete key range move")
 	t := time.Now()
 
-	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveID))
 	if err != nil {
 		return err
 	}
 	if resp.Count == 0 {
-		return fmt.Errorf("failed to delete key range move: key range move \"%s\" not found", moveId)
+		return fmt.Errorf("failed to delete key range move: key range move \"%s\" not found", moveID)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
@@ -2601,7 +2598,7 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	if moveKr.Status != MoveKeyRangeComplete {
 		return fmt.Errorf("cannot remove non-completed key range move")
 	}
-	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveID))
 
 	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
 	return err
@@ -2733,7 +2730,7 @@ func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
 	return ret, nil
 }
 
-func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error) {
+func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIDRange, error) {
 	spqrlog.Zero.Debug().Str("seqName", seqName).Uint64("size", rangeSize).Msg("etcdqdb: next id ranges")
 
 	id := sequenceNodePath(seqName)
@@ -2747,14 +2744,14 @@ func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint6
 	if err = mu.Lock(ctx); err != nil {
 		return nil, err
 	}
-	defer unlockMutex(mu, ctx)
+	defer unlockMutex(ctx, mu)
 
 	resp, err := q.cli.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	var nextval int64 = 0
+	var nextval int64
 	switch resp.Count {
 	case 1:
 		var err error
@@ -2790,7 +2787,7 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 		return -1, err
 	}
 
-	var nextval int64 = 0
+	var nextval int64
 	switch resp.Count {
 	case 1:
 		var err error
@@ -2808,13 +2805,13 @@ func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
 	writeOperations := make([]clientv3.Op, 0)
 	for _, v := range operations {
 		switch v.CmdType {
-		case CMD_PUT:
+		case CmdPut:
 			val, ok := v.Value.(string)
 			if !ok {
-				return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", v.Value)
+				return nil, fmt.Errorf("incorrect value type %T for CmdPut, string is expected", v.Value)
 			}
 			writeOperations = append(writeOperations, clientv3.OpPut(v.Key, val))
-		case CMD_DELETE:
+		case CmdDelete:
 			writeOperations = append(writeOperations, clientv3.OpDelete(v.Key))
 		default:
 			return nil, fmt.Errorf("not found operation type: %d", v.CmdType)
@@ -2843,7 +2840,7 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 		return fmt.Errorf("cant't commit empty transaction")
 	}
 	if err := transaction.Validate(); err != nil {
-		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
+		return fmt.Errorf("invalid transaction %s: %w", transaction.ID(), err)
 	}
 	ops, err := packEtcdCommands(transaction.commands)
 	if err != nil {
@@ -2851,15 +2848,15 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 	}
 	ops = append(ops, clientv3.OpDelete(transactionRequest))
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String())).
+		If(clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionID.String())).
 		Then(ops...).
 		Commit()
 
 	if err != nil {
-		return fmt.Errorf("failed to commit transaction %s: %w", transaction.Id(), err)
+		return fmt.Errorf("failed to commit transaction %s: %w", transaction.ID(), err)
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.ID())
 	}
 	return nil
 }
@@ -2868,7 +2865,7 @@ func (q *EtcdQDB) BeginTransaction(ctx context.Context, transaction *QdbTransact
 	if transaction == nil {
 		return fmt.Errorf("cant't begin empty transaction")
 	}
-	_, err := q.cli.Put(ctx, transactionRequest, transaction.transactionId.String())
+	_, err := q.cli.Put(ctx, transactionRequest, transaction.transactionID.String())
 	return err
 }
 
@@ -2876,9 +2873,9 @@ func (q *EtcdQDB) BeginTransaction(ctx context.Context, transaction *QdbTransact
 //                               TASK STATE
 // ==============================================================================
 
-func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder string) error {
+func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgID string, holder string) error {
 	spqrlog.Zero.Debug().
-		Str("id", tgId).
+		Str("id", tgID).
 		Msg("etcdqdb: try task group lock")
 
 	leaseGrantResp, err := q.cli.Grant(ctx, TaskGroupLeaseTTL)
@@ -2901,7 +2898,7 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder stri
 	if holder == "" {
 		holder = "no_holder_id"
 	}
-	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(taskGroupLockNodePath(tgId))).Then(clientv3.OpPut(taskGroupLockNodePath(tgId), holder, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID))))
+	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(taskGroupLockNodePath(tgID))).Then(clientv3.OpPut(taskGroupLockNodePath(tgID), holder, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID))))
 	stat, err := tx.Commit()
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit task group lock")
@@ -2913,14 +2910,14 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder stri
 		if err != nil {
 			return err
 		}
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "lock is already taken")
+		return spqrerror.New(spqrerror.SpqrUnexpected, "lock is already taken")
 	}
 
 	// okay, we acquired lock, time to spawn keep alive channel
 	go func() {
 		for resp := range keepAliveCh {
 			spqrlog.Zero.Debug().
-				Str("task group id", tgId).
+				Str("task group id", tgID).
 				Uint64("raft-term", resp.RaftTerm).
 				Int64("lease-id", int64(resp.ID)).
 				Msg("etcd keep alive channel")
@@ -2930,23 +2927,23 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder stri
 	return nil
 }
 
-func (q *EtcdQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+func (q *EtcdQDB) CheckTaskGroupLocked(ctx context.Context, tgID string) (bool, error) {
 	spqrlog.Zero.Debug().
-		Str("id", tgId).
+		Str("id", tgID).
 		Msg("etcdqdb: check for group lock")
-	resp, err := q.cli.Get(ctx, taskGroupLockNodePath(tgId), clientv3.WithCountOnly())
+	resp, err := q.cli.Get(ctx, taskGroupLockNodePath(tgID), clientv3.WithCountOnly())
 	if err != nil {
 		return false, err
 	}
 	return resp.Count == 1, nil
 }
 
-func (q *EtcdQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
+func (q *EtcdQDB) DropTaskGroupLock(ctx context.Context, tgID string) error {
 	spqrlog.Zero.Debug().
-		Str("id", tgId).
+		Str("id", tgID).
 		Msg("etcdqdb: drop task group lock")
 
-	_, err := q.cli.Delete(ctx, taskGroupLockNodePath(tgId))
+	_, err := q.cli.Delete(ctx, taskGroupLockNodePath(tgID))
 
 	return err
 }
@@ -2988,7 +2985,7 @@ func (q *EtcdQDB) LockRedistributeTask(ctx context.Context, id, holder string) e
 		if err != nil {
 			return err
 		}
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "lock is already taken")
+		return spqrerror.New(spqrerror.SpqrUnexpected, "lock is already taken")
 	}
 
 	// okay, we acquired lock, time to spawn keep alive channel

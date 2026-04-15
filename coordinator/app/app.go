@@ -164,7 +164,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
 
-	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)
+	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		spqrlog.Zero.Error().

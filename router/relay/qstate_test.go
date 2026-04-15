@@ -30,7 +30,7 @@ func TestAutoDistributionSetFail(t *testing.T) {
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	errNotFoundDistr := spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", "distrNotFound")
+	errNotFoundDistr := spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution \"%s\" not found", "distrNotFound")
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "distrNotFound").Return(nil, errNotFoundDistr)
 
 	rst := RelayStateImpl{

@@ -324,7 +324,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 }
 
 /* TODO: proper support for rollback to savepoint */
-func (s *QueryStateExecutorImpl) ExecRollback(query string) error {
+func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
@@ -366,7 +366,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	return nil
 }
 
-func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, query, setting string) error {
+func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, _, setting string) error {
 	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		return rst.ProcessSimpleQuery(rst.Client().ConstructClientParams(), false)
 	}
@@ -432,7 +432,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 	if err != nil {
 		return nil, err
 	}
-	if ds.Id == distributions.REPLICATED {
+	if ds.ID == distributions.REPLICATED {
 		rr, err := s.mgr.GetReferenceRelation(ctx, relname)
 		if err != nil {
 			return nil, err
@@ -446,12 +446,12 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 
 	dRel, ok := ds.TryGetRelation(relname)
 	if !ok {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrNoDatashard)
 	}
 
 	hashFunc := make([]hashfunction.HashFunctionType, len(dRel.DistributionKey))
 
-	krs, err := s.mgr.ListKeyRanges(ctx, ds.Id)
+	krs, err := s.mgr.ListKeyRanges(ctx, ds.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +523,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		return nil, nil
 	}
 
-	var leftoverMsgData []byte = nil
+	var leftoverMsgData []byte
 
 	rowsMp := map[string][]byte{}
 
@@ -665,8 +665,8 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		}
 	}
 
-	var ccmsg *pgproto3.CommandComplete = nil
-	var errmsg *pgproto3.ErrorResponse = nil
+	var ccmsg *pgproto3.CommandComplete
+	var errmsg *pgproto3.ErrorResponse
 
 	txt := txstatus.TXIDLE
 

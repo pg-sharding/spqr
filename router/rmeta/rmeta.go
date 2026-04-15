@@ -68,7 +68,7 @@ type RoutingMetadataContext struct {
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
-	Is_SPQR_CTID  bool
+	IsSpqrCtid  bool
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 
@@ -114,7 +114,7 @@ var CatalogDistribution = distributions.Distribution{
 	Relations:         map[string]*distributions.DistributedRelation{},
 	FQNRelations:      map[string]*distributions.DistributedRelation{},
 	UniqueIndexesByID: map[string]*distributions.UniqueIndex{},
-	Id:                distributions.REPLICATED,
+	ID:                distributions.REPLICATED,
 	ColTypes:          nil,
 }
 
@@ -131,7 +131,7 @@ func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, qualN
 	if err != nil {
 		return false, err
 	}
-	return ds.Id == distributions.REPLICATED, nil
+	return ds.ID == distributions.REPLICATED, nil
 }
 
 func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
@@ -311,7 +311,7 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 	ctx context.Context,
 	distrib *distributions.Distribution, val string) (kr.ShardKey, error) {
 
-	krs, err := rm.Mgr.ListKeyRanges(ctx, distrib.Id)
+	krs, err := rm.Mgr.ListKeyRanges(ctx, distrib.ID)
 	if err != nil {
 		return kr.ShardKey{}, err
 	}
@@ -375,7 +375,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 
 		dsId := rm.SPH.Distribution()
 		if dsId == "" {
-			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "sharding key in comment without distribution")
+			return nil, spqrerror.New(spqrerror.SpqrObjectNotExist, "sharding key in comment without distribution")
 		}
 
 		distrib, err := rm.Mgr.GetDistribution(ctx, dsId)
@@ -384,7 +384,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 		}
 
 		if len(distrib.ColTypes) > 1 {
-			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
+			return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "multi-column sharding key in comment no supported yet")
 		}
 
 		et, err := rm.ResolveKeyShard(ctx, distrib, val)
@@ -405,7 +405,7 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 	ds, err := rm.GetRelationDistribution(context.TODO(), resolvedRelation)
 	if err != nil {
 		return -1, ""
-	} else if ds.Id == distributions.REPLICATED {
+	} else if ds.ID == distributions.REPLICATED {
 		return -1, ""
 	}
 	// TODO: optimize
@@ -488,7 +488,7 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.Relat
 		return nil
 	}
 
-	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+	if rm.Distributions[*resolvedRelation].ID == distributions.REPLICATED {
 		// reference relation, skip
 		return nil
 	}

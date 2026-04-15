@@ -564,18 +564,18 @@ func (mr *MockEntityMgrMockRecorder) GetDistribution(ctx, id any) *gomock.Call {
 }
 
 // GetKeyRange mocks base method.
-func (m *MockEntityMgr) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+func (m *MockEntityMgr) GetKeyRange(ctx context.Context, krID string) (*kr.KeyRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetKeyRange", ctx, krId)
+	ret := m.ctrl.Call(m, "GetKeyRange", ctx, krID)
 	ret0, _ := ret[0].(*kr.KeyRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetKeyRange indicates an expected call of GetKeyRange.
-func (mr *MockEntityMgrMockRecorder) GetKeyRange(ctx, krId any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) GetKeyRange(ctx, krID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).GetKeyRange), ctx, krId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).GetKeyRange), ctx, krID)
 }
 
 // GetMoveTask mocks base method.
@@ -969,10 +969,10 @@ func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 }
 
 // NextRange mocks base method.
-func (m *MockEntityMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
+func (m *MockEntityMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIDRange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NextRange", ctx, seqName, rangeSize)
-	ret0, _ := ret[0].(*qdb.SequenceIdRange)
+	ret0, _ := ret[0].(*qdb.SequenceIDRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1026,17 +1026,17 @@ func (mr *MockEntityMgrMockRecorder) RegisterRouter(ctx, r any) *gomock.Call {
 }
 
 // RenameKeyRange mocks base method.
-func (m *MockEntityMgr) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+func (m *MockEntityMgr) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RenameKeyRange", ctx, krId, krIdNew)
+	ret := m.ctrl.Call(m, "RenameKeyRange", ctx, krID, krIDNew)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RenameKeyRange indicates an expected call of RenameKeyRange.
-func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krID, krIDNew any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RenameKeyRange), ctx, krId, krIdNew)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RenameKeyRange), ctx, krID, krIDNew)
 }
 
 // RetryMoveTaskGroup mocks base method.

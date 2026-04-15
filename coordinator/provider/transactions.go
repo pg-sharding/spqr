@@ -40,6 +40,6 @@ func (mts *MetaTransactionServer) BeginTran(ctx context.Context, _ *emptypb.Empt
 	if tran, err := mts.impl.BeginTran(ctx); err != nil {
 		return nil, err
 	} else {
-		return &proto.MetaTransactionReply{TransactionId: tran.TransactionId.String()}, nil
+		return &proto.MetaTransactionReply{TransactionID: tran.TransactionID.String()}, nil
 	}
 }

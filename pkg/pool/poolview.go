@@ -41,19 +41,19 @@ func NewPoolView(info *protos.PoolInfo) *PoolView {
 }
 
 func (r *PoolView) Put(host shard.ShardHostInstance) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Put not implemented")
+	return spqrerror.New(spqrerror.SpqrNotImplemented, "PoolView.Put not implemented")
 }
 
 func (r *PoolView) Discard(sh shard.ShardHostInstance) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Discard not implemented")
+	return spqrerror.New(spqrerror.SpqrNotImplemented, "PoolView.Discard not implemented")
 }
 
 func (r *PoolView) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Connection method not implemented")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "PoolView.Connection method not implemented")
 }
 
 func (r *PoolView) ForEach(cb func(p shard.ShardHostCtl) error) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.ForEach method not implemented")
+	return spqrerror.New(spqrerror.SpqrNotImplemented, "PoolView.ForEach method not implemented")
 }
 
 func (r *PoolView) View() Statistics {

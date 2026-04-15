@@ -58,16 +58,16 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 			return err
 		}
 
-		if len(rel.ShardIds) == 0 {
+		if len(rel.ShardIDs) == 0 {
 			// XXX: should we error-our here?
 			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
 		}
-		fromShard := rel.ShardIds[0]
+		fromShard := rel.ShardIDs[0]
 
 		// XXX: should we ignore the command/error here?
-		destShards := rel.ShardIds
-		if !slices.Contains(rel.ShardIds, destShard) {
-			destShards = append(rel.ShardIds, destShard)
+		destShards := rel.ShardIDs
+		if !slices.Contains(rel.ShardIDs, destShard) {
+			destShards = append(rel.ShardIDs, destShard)
 		}
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
@@ -100,7 +100,7 @@ func (lc *Coordinator) AddWorldShard(ctx context.Context, shard *topology.DataSh
 // AlterDistributedRelation implements meta.EntityMgr.
 func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
 	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "sequences are supported for replicated relations only")
 	}
 	qdbRel := distributions.DistributedRelationToDB(rel)
 	if err := lc.qdb.AlterDistributedRelation(ctx, id, qdbRel); err != nil {
@@ -161,7 +161,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
 		statements, err := lc.CreateDistribution(ctx, &distributions.Distribution{
-			Id:       distributions.REPLICATED,
+			ID:       distributions.REPLICATED,
 			ColTypes: nil,
 		})
 		if err != nil {
@@ -288,8 +288,8 @@ func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 	for _, keyRange := range keyRanges {
 		var colTypes []string
 		ok := false
-		if colTypes, ok = dsIdColTypes[keyRange.DistributionId]; !ok {
-			ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
+		if colTypes, ok = dsIdColTypes[keyRange.DistributionID]; !ok {
+			ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionID)
 			if err != nil {
 				return nil, err
 			}
@@ -350,7 +350,7 @@ func (lc *Coordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 }
 
 // NextVal implements meta.EntityMgr.
-func (lc *Coordinator) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
+func (lc *Coordinator) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIDRange, error) {
 	return lc.qdb.NextRange(ctx, seqName, rangeSize)
 }
 
@@ -381,17 +381,17 @@ func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
 }
 
 // RenameKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew string) error {
-	if _, err := lc.GetKeyRange(ctx, krId); err != nil {
+func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew string) error {
+	if _, err := lc.GetKeyRange(ctx, krID); err != nil {
 		return err
 	}
-	if _, err := meta.LockKeyRange(ctx, lc, krId); err != nil {
+	if _, err := meta.LockKeyRange(ctx, lc, krID); err != nil {
 		return err
 	}
-	if _, err := lc.GetKeyRange(ctx, krIdNew); err == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
-	if err := lc.qdb.RenameKeyRange(ctx, krId, krIdNew); err != nil {
+	if err := lc.qdb.RenameKeyRange(ctx, krID, krIDNew); err != nil {
 		return err
 	}
 	return nil
@@ -608,21 +608,21 @@ func (lc *Coordinator) ListShards(ctx context.Context) ([]*topology.DataShard, e
 // TODO unit tests
 
 // GetKeyRange gets key range by id
-// GetKeyRange retrieves a key range identified by krId from the LocalCoordinator.
+// GetKeyRange retrieves a key range identified by krID from the LocalCoordinator.
 //
 // Parameters:
 // - ctx (context.Context): the context of the operation.
-// - krId (string): the ID of the key range to retrieve.
+// - krID (string): the ID of the key range to retrieve.
 //
 // Returns:
 // - *kr.KeyRange: the KeyRange object retrieved.
 // - error: an error if the retrieval encounters any issues.
-func (lc *Coordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
-	krDb, err := lc.qdb.GetKeyRange(ctx, krId)
+func (lc *Coordinator) GetKeyRange(ctx context.Context, krID string) (*kr.KeyRange, error) {
+	krDb, err := lc.qdb.GetKeyRange(ctx, krID)
 	if err != nil {
 		return nil, err
 	}
-	ds, err := lc.qdb.GetDistribution(ctx, krDb.DistributionId)
+	ds, err := lc.qdb.GetDistribution(ctx, krDb.DistributionID)
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +707,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 		return nil
 	}
 	if cascade && taskGroup.Issuer != nil && taskGroup.Issuer.Type == tasks.IssuerRedistributeTask {
-		return lc.DropRedistributeTask(ctx, taskGroup.Issuer.Id, true)
+		return lc.DropRedistributeTask(ctx, taskGroup.Issuer.ID, true)
 	}
 	task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
@@ -766,11 +766,11 @@ func (lc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redi
 	}
 	res := make([]*tasks.RedistributeTask, len(tasksDb))
 	for i, taskDb := range tasksDb {
-		taskGroupId, err := lc.qdb.GetRedistributeTaskTaskGroupId(ctx, taskDb.ID)
+		taskGroupID, err := lc.qdb.GetRedistributeTaskTaskGroupID(ctx, taskDb.ID)
 		if err != nil {
 			return nil, err
 		}
-		taskGroup, err := lc.GetMoveTaskGroup(ctx, taskGroupId)
+		taskGroup, err := lc.GetMoveTaskGroup(ctx, taskGroupID)
 		if err != nil {
 			return nil, err
 		}
@@ -787,18 +787,18 @@ func (lc *Coordinator) DropRedistributeTask(ctx context.Context, id string, casc
 	if task == nil {
 		return nil
 	}
-	taskGroupId, err := lc.qdb.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+	taskGroupID, err := lc.qdb.GetRedistributeTaskTaskGroupID(ctx, task.ID)
 	if err != nil {
 		return err
 	}
-	if taskGroup, err := lc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
+	if taskGroup, err := lc.GetMoveTaskGroup(ctx, taskGroupID); err != nil {
 		return err
 	} else if taskGroup != nil && !cascade {
-		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupID)
 	}
 
 	// TODO use meta transactions
-	if err := lc.DropMoveTaskGroup(ctx, taskGroupId, false); err != nil {
+	if err := lc.DropMoveTaskGroup(ctx, taskGroupID, false); err != nil {
 		return err
 	}
 	return lc.qdb.DropRedistributeTask(ctx, task)
@@ -839,7 +839,7 @@ func (lc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 }
 
 func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
-	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
+	if len(ds.ColTypes) == 0 && ds.ID != distributions.REPLICATED {
 		return nil, fmt.Errorf("empty distributions are disallowed")
 	}
 	for _, rel := range ds.Relations {
@@ -880,7 +880,7 @@ func (lc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, r
 	}
 	rel, ok := ds.Relations[relName.RelationName]
 	if !ok {
-		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.Id)
+		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.ID)
 	}
 	if len(rel.UniqueIndexesByColumn) > 0 {
 		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relName.RelationName)
@@ -941,7 +941,7 @@ func (lc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 	if err != nil {
 		return nil, err
 	}
-	ds, err := lc.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
+	ds, err := lc.qdb.GetDistribution(ctx, keyRangeDB.DistributionID)
 	if err != nil {
 		_ = lc.UnlockKeyRange(ctx, keyRangeID)
 		return nil, err
@@ -993,7 +993,7 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 			return err
 		}
 		if !r.ReplicatedRelation && len(r.ColumnSequenceMapping) > 0 {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
+			return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "sequence are supported for replicated relations only")
 		}
 		dRels = append(dRels, distributions.DistributedRelationToDB(r))
 	}
@@ -1047,10 +1047,10 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	}
 
 	if krBase.ShardID != krAppendage.ShardID {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, "failed to unite key ranges routing different shards")
 	}
 	if krBase.Distribution != krAppendage.Distribution {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, "failed to unite key ranges of different distributions")
 	}
 	krLeft, krRight := krBase, krAppendage
 	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound, ds.ColTypes) {
@@ -1066,16 +1066,16 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 			kRange.ID != krRight.ID &&
 			kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound, ds.ColTypes) &&
 			kr.CmpRangesLessEqual(kRange.LowerBound, krRight.LowerBound, ds.ColTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
+			return spqrerror.New(spqrerror.SpqrKeyrangeError, "failed to unite non-adjacent key ranges")
 		}
 	}
 
 	statements, err := lc.qdb.DropKeyRange(ctx, krAppendage.ID)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err.Error())
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to drop an old key range: %s (prepare)", err.Error())
 	}
 	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to drop an old key range: %s (exec)", err.Error())
 	}
 
 	if krLeft.ID != krBase.ID {
@@ -1090,7 +1090,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to update a new key range: %s", err)
 	}
 	return nil
 }
@@ -1142,7 +1142,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			// already split, so no-op
 			return nil
 		}
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v already present in qdb", req.Krid)
 	}
 
 	krOld, err := lc.LockKeyRange(ctx, req.SourceID)
@@ -1168,11 +1168,11 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	}
 
 	if kr.CmpRangesEqual(krOld.LowerBound, eph.LowerBound, ds.ColTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower of the key range")
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, "failed to split because bound equals lower of the key range")
 	}
 
 	if kr.CmpRangesLess(eph.LowerBound, krOld.LowerBound, ds.ColTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, "failed to split because bound is out of key range")
 	}
 
 	krs, err := lc.ListKeyRanges(ctx, ds.ID)
@@ -1181,7 +1181,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	}
 	for _, kRange := range krs {
 		if kr.CmpRangesLess(krOld.LowerBound, kRange.LowerBound, ds.ColTypes) && kr.CmpRangesLessEqual(kRange.LowerBound, eph.LowerBound, ds.ColTypes) {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound intersects with \"%s\" key range", kRange.ID)
+			return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to split because bound intersects with \"%s\" key range", kRange.ID)
 		}
 	}
 
@@ -1191,7 +1191,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			LowerBound:     req.Bound,
 			KeyRangeID:     uuid.NewString(),
 			ShardID:        krOld.ShardID,
-			DistributionId: krOld.Distribution,
+			DistributionID: krOld.Distribution,
 		},
 		ds.ColTypes,
 	)
@@ -1228,7 +1228,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to commit a new key range: %s", err.Error())
 	}
 	return nil
 }
@@ -1262,7 +1262,7 @@ func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTr
 	if err != nil {
 		return err
 	}
-	qdbTran := qdb.NewTransactionWithCmd(transaction.TransactionId, qdbStatements)
+	qdbTran := qdb.NewTransactionWithCmd(transaction.TransactionID, qdbStatements)
 	return lc.qdb.CommitTransaction(ctx, qdbTran)
 }
 
@@ -1288,12 +1288,12 @@ func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *
 	}
 	rel, ok := ds.Relations[idx.RelationName.RelationName]
 	if !ok {
-		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.Id)
+		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.ID)
 	}
 
 	/* Current implementation restriction. */
 	if len(ds.ColTypes) != 1 {
-		return fmt.Errorf("unique indexes are supported only for single-column distributions, but %s has %d", ds.Id, len(ds.ColTypes))
+		return fmt.Errorf("unique indexes are supported only for single-column distributions, but %s has %d", ds.ID, len(ds.ColTypes))
 	}
 
 	switch ds.ColTypes[0] {
@@ -1324,7 +1324,7 @@ func (lc *Coordinator) ListDistributionIndexes(ctx context.Context, dsId string)
 	}
 	res := make(map[string]*distributions.UniqueIndex)
 	for id, idx := range idxs {
-		if idx.DistributionId == dsId {
+		if idx.DistributionID == dsId {
 			res[id] = distributions.UniqueIndexFromDB(idx)
 		}
 	}

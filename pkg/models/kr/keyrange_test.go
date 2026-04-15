@@ -147,7 +147,7 @@ func TestGetKRCondition(t *testing.T) {
 			upperBound: []any{"b"},
 			prefix:     "",
 			expected:   "",
-			err:        spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"nonexistent\""),
+			err:        spqrerror.New(spqrerror.SpqrKeyrangeError, "invalid hash function \"nonexistent\""),
 		},
 		// expression routing, murmur hash
 		{

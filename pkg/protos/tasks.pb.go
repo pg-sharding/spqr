@@ -615,7 +615,7 @@ type MoveTaskGroup struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ID             string                 `protobuf:"bytes,13,opt,name=ID,proto3" json:"ID,omitempty"`
 	Type           SplitType              `protobuf:"varint,2,opt,name=type,proto3,enum=spqr.SplitType" json:"type,omitempty"`
-	ShardIdTo      string                 `protobuf:"bytes,4,opt,name=shardIdTo,proto3" json:"shardIdTo,omitempty"`
+	ShardIDTo      string                 `protobuf:"bytes,4,opt,name=shardIdTo,proto3" json:"shardIdTo,omitempty"`
 	KeyRangeIdFrom string                 `protobuf:"bytes,5,opt,name=keyRangeIdFrom,proto3" json:"keyRangeIdFrom,omitempty"`
 	KeyRangeIdTo   string                 `protobuf:"bytes,6,opt,name=keyRangeIdTo,proto3" json:"keyRangeIdTo,omitempty"`
 	CurrentTask    *MoveTask              `protobuf:"bytes,7,opt,name=currentTask,proto3" json:"currentTask,omitempty"`
@@ -673,9 +673,9 @@ func (x *MoveTaskGroup) GetType() SplitType {
 	return SplitType_SplitLeft
 }
 
-func (x *MoveTaskGroup) GetShardIdTo() string {
+func (x *MoveTaskGroup) GetShardIDTo() string {
 	if x != nil {
-		return x.ShardIdTo
+		return x.ShardIDTo
 	}
 	return ""
 }
@@ -1125,7 +1125,7 @@ type BalancerTask struct {
 	KeyRangeIdFrom string                 `protobuf:"bytes,2,opt,name=keyRangeIdFrom,proto3" json:"keyRangeIdFrom,omitempty"`
 	KeyRangeIdTo   string                 `protobuf:"bytes,3,opt,name=keyRangeIdTo,proto3" json:"keyRangeIdTo,omitempty"`
 	KeyRangeIdTemp string                 `protobuf:"bytes,4,opt,name=keyRangeIdTemp,proto3" json:"keyRangeIdTemp,omitempty"`
-	ShardIdTo      string                 `protobuf:"bytes,5,opt,name=shardIdTo,proto3" json:"shardIdTo,omitempty"`
+	ShardIDTo      string                 `protobuf:"bytes,5,opt,name=shardIdTo,proto3" json:"shardIdTo,omitempty"`
 	KeyCount       int64                  `protobuf:"varint,6,opt,name=keyCount,proto3" json:"keyCount,omitempty"`
 	State          BalancerTaskStatus     `protobuf:"varint,7,opt,name=state,proto3,enum=spqr.BalancerTaskStatus" json:"state,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -1190,9 +1190,9 @@ func (x *BalancerTask) GetKeyRangeIdTemp() string {
 	return ""
 }
 
-func (x *BalancerTask) GetShardIdTo() string {
+func (x *BalancerTask) GetShardIDTo() string {
 	if x != nil {
-		return x.ShardIdTo
+		return x.ShardIDTo
 	}
 	return ""
 }
@@ -1302,11 +1302,11 @@ func (x *WriteBalancerTaskRequest) GetTask() *BalancerTask {
 type RedistributeTask struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
-	KeyRangeId    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
+	KeyRangeID    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
 	ShardId       string                 `protobuf:"bytes,2,opt,name=shardId,proto3" json:"shardId,omitempty"`
 	BatchSize     int64                  `protobuf:"varint,3,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	State         RedistributeTaskState  `protobuf:"varint,4,opt,name=state,proto3,enum=spqr.RedistributeTaskState" json:"state,omitempty"`
-	TaskGroupId   string                 `protobuf:"bytes,5,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
+	TaskGroupID   string                 `protobuf:"bytes,5,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
 	TaskGroup     *MoveTaskGroup         `protobuf:"bytes,7,opt,name=taskGroup,proto3" json:"taskGroup,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1351,7 +1351,7 @@ func (x *RedistributeTask) GetId() string {
 
 func (x *RedistributeTask) GetKeyRangeId() string {
 	if x != nil {
-		return x.KeyRangeId
+		return x.KeyRangeID
 	}
 	return ""
 }
@@ -1377,9 +1377,9 @@ func (x *RedistributeTask) GetState() RedistributeTaskState {
 	return RedistributeTaskState_RedistributeTaskPlanned
 }
 
-func (x *RedistributeTask) GetTaskGroupId() string {
+func (x *RedistributeTask) GetTaskGroupID() string {
 	if x != nil {
-		return x.TaskGroupId
+		return x.TaskGroupID
 	}
 	return ""
 }

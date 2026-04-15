@@ -49,7 +49,7 @@ func RecordMoveStart(t time.Time) error {
 func RecordMoveFinish(t time.Time) error {
 	spqrlog.Zero.Debug().Msg("move stats: record move finish")
 	if !moveStatistics.MoveInProgress {
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "unable to record move finish: there's no move in progress")
+		return spqrerror.New(spqrerror.SpqrUnexpected, "unable to record move finish: there's no move in progress")
 	}
 	moveStatistics.totalTimesMu.Lock()
 	defer moveStatistics.totalTimesMu.Unlock()

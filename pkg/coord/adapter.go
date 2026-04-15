@@ -74,17 +74,17 @@ func (a *Adapter) StartupFinished() bool {
 // Returns:
 // - error: An error indicating if the key range sharing was successful or not.
 func (a *Adapter) ShareKeyRange(id string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
+	return spqrerror.New(spqrerror.SpqrNotImplemented, "ShareKeyRange not implemented")
 }
 
 // GetReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "GetReferenceRelation not implemented")
 }
 
 // GetSequenceColumns implements meta.EntityMgr.
 func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "GetSequenceColumns not implemented")
 }
 
 // GetSequenceColumns implements meta.EntityMgr.
@@ -116,7 +116,7 @@ func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, rel
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
 		Relation: rfqn.RelationFQNToProto(relName),
-		ShardIds: shs,
+		ShardIDs: shs,
 	})
 	return err
 }
@@ -166,16 +166,16 @@ func (a *Adapter) ListReferenceRelations(ctx context.Context) ([]*rrelation.Refe
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - krId (string): The ID of the key range to retrieve.
+// - krID (string): The ID of the key range to retrieve.
 //
 // Returns:
 // - *kr.KeyRange: The retrieved key range.
 // - error: An error if the retrieval was unsuccessful.
-func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+func (a *Adapter) GetKeyRange(ctx context.Context, krID string) (*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	dc := proto.NewDistributionServiceClient(a.conn)
 	reply, err := c.GetKeyRange(ctx, &proto.GetKeyRangeRequest{
-		Ids: []string{krId},
+		Ids: []string{krID},
 	})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
@@ -185,7 +185,7 @@ func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, e
 		return nil, nil
 	}
 	ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{
-		Id: reply.KeyRangesInfo[0].DistributionId,
+		Id: reply.KeyRangesInfo[0].DistributionID,
 	})
 
 	if err != nil {
@@ -270,7 +270,7 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
 	for i, keyRange := range reply.KeyRangesInfo {
-		ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
+		ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionID})
 		if err != nil {
 			return nil, spqrerror.CleanGrpcError(err)
 		}
@@ -285,12 +285,12 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 
 // DEPRECATED
 func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // DEPRECATED
 func (a *Adapter) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (UpdateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "DEPRECATED (UpdateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -324,7 +324,7 @@ func (a *Adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		}
 	}
 
-	return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", krid)
+	return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range with id %s not found", krid)
 }
 
 // TODO : unit tests
@@ -382,7 +382,7 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.Krid)
+	return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range with id %s not found", split.Krid)
 }
 
 // TODO : unit tests
@@ -423,12 +423,12 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 			continue
 		}
 		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
+			return spqrerror.New(spqrerror.SpqrKeyrangeError, "failed to unite non-adjacent key ranges")
 		}
 	}
 
 	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, "key range on left or right was not found")
 	}
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
@@ -460,13 +460,13 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 				Id:        keyRange.ID,
-				ToShardId: move.ShardId,
+				ToShardID: move.ShardID,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
+	return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range with id %s not found", move.Krid)
 }
 
 // TODO : unit tests
@@ -490,9 +490,9 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
 	}
 	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
-		TaskGroupId: req.TaskGroupId,
-		KeyRangeId:  req.KeyRangeId,
-		ToShardId:   req.ShardId,
+		TaskGroupID: req.TaskGroupID,
+		KeyRangeID:  req.KeyRangeID,
+		ToShardID:   req.ShardID,
 		ToKrId:      req.DestKrId,
 		LimitType:   limitType,
 		Limit:       limit,
@@ -524,9 +524,9 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
-		TaskGroupId: req.TaskGroupId,
+		TaskGroupID: req.TaskGroupID,
 		Krid:        req.KrId,
-		ShardId:     req.ShardId,
+		ShardId:     req.ShardID,
 		BatchSize:   int64(req.BatchSize),
 		Check:       req.Check,
 		Apply:       req.Apply,
@@ -541,23 +541,23 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 //
 // Parameters:
 //   - ctx (context.Context): The context for the request.
-//   - krId (string): The ID of the key range to be renamed.
-//   - krIdNew (string): The new ID for the specified key range.
+//   - krID (string): The ID of the key range to be renamed.
+//   - krIDNew (string): The new ID for the specified key range.
 //
 // Returns:
 // - error: An error if renaming key range was unsuccessful.
-func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+func (a *Adapter) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{
-		KeyRangeId:    krId,
-		NewKeyRangeId: krIdNew,
+		KeyRangeID:    krID,
+		NewKeyRangeId: krIDNew,
 	})
 	return spqrerror.CleanGrpcError(err)
 }
 
 // DEPRECATED
 func (a *Adapter) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -716,7 +716,7 @@ func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
 // Returns:
 // - error: An error if the world shard addition fails, otherwise nil.
 func (a *Adapter) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
+	return spqrerror.New(spqrerror.SpqrNotImplemented, "addWorldShard not implemented")
 }
 
 // TODO : unit tests
@@ -793,7 +793,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 
 // DEPRECATED
 func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "DEPRECATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -1300,7 +1300,7 @@ func (a *Adapter) DropSequence(ctx context.Context, seqName string, force bool) 
 	return spqrerror.CleanGrpcError(err)
 }
 
-func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
+func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIDRange, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.NextRange(ctx, &proto.NextRangeRequest{
 		Seq:       seqName,
@@ -1309,7 +1309,7 @@ func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint6
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	return qdb.NewSequenceIdRange(resp.Left, resp.Right)
+	return qdb.NewSequenceIDRange(resp.Left, resp.Right)
 }
 
 func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {
@@ -1358,7 +1358,7 @@ func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionCh
 func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
 	request := &proto.MetaTransactionRequest{
-		TransactionId: transaction.TransactionId.String(),
+		TransactionID: transaction.TransactionID.String(),
 		MetaCmdList:   transaction.Operations.GossipRequests,
 	}
 	_, err := conn.CommitTran(ctx, request)
@@ -1382,7 +1382,7 @@ func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error)
 func (a *Adapter) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.CreateUniqueIndex(ctx, &proto.CreateUniqueIndexRequest{
-		DistributionId: dsId,
+		DistributionID: dsId,
 		Idx:            distributions.UniqueIndexToProto(idx),
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -1401,7 +1401,7 @@ func (a *Adapter) DropUniqueIndex(ctx context.Context, idxId string) error {
 func (a *Adapter) ListDistributionIndexes(ctx context.Context, dsId string) (map[string]*distributions.UniqueIndex, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	idxs, err := c.ListDistributionUniqueIndexes(ctx, &proto.ListDistributionUniqueIndexesRequest{
-		DistributionId: dsId,
+		DistributionID: dsId,
 	})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)

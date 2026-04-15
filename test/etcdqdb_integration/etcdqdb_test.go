@@ -135,7 +135,7 @@ func TestLockUnlock(t *testing.T) {
 				LowerBound:     [][]byte{[]byte("1111")},
 				ShardID:        "sh1",
 				KeyRangeID:     "krid1",
-				DistributionId: "ds1",
+				DistributionID: "ds1",
 			}
 			statements, err := db.CreateKeyRange(ctx, &keyRange1)
 			is.NoError(err)
@@ -145,7 +145,7 @@ func TestLockUnlock(t *testing.T) {
 			err = db.UnlockKeyRange(ctx, keyRange1.KeyRangeID)
 			is.NoError(err)
 			_, err = db.CheckLockedKeyRange(ctx, keyRange1.KeyRangeID)
-			expectedErr := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange1.KeyRangeID)
+			expectedErr := spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v not locked", keyRange1.KeyRangeID)
 			is.Equal(expectedErr, err)
 		})
 	})
@@ -172,7 +172,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			result, err := db.Client().Get(ctx, "transaction_request")
 			is.NoError(err)
-			is.Equal(tran.Id().String(), string(result.Kvs[0].Value))
+			is.Equal(tran.ID().String(), string(result.Kvs[0].Value))
 		})
 		t.Run("2 begin tran success", func(t *testing.T) {
 			tran1, err := qdb.NewTransaction()
@@ -185,7 +185,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			result, err := db.Client().Get(ctx, "transaction_request")
 			is.NoError(err)
-			is.Equal(tran2.Id().String(), string(result.Kvs[0].Value))
+			is.Equal(tran2.ID().String(), string(result.Kvs[0].Value))
 		})
 	})
 	t.Run("test exec no tran", func(t *testing.T) {
@@ -195,9 +195,9 @@ func TestTransactions(t *testing.T) {
 		is.NoError(err)
 		t.Run("happy path", func(t *testing.T) {
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
-				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
-				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test2", Value: "val2"},
+				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
 			err := db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
@@ -215,7 +215,7 @@ func TestTransactions(t *testing.T) {
 		t.Run("2 sequential runs", func(t *testing.T) {
 			//run1
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test3", Value: "val3"},
+				{CmdType: qdb.CmdPut, Key: "test3", Value: "val3"},
 			}
 			err := db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
@@ -225,8 +225,8 @@ func TestTransactions(t *testing.T) {
 			is.Equal("val3", string(result.Kvs[0].Value))
 			//run2
 			statements = []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
-				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
 			err = db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
@@ -250,9 +250,9 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
-				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
-				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test2", Value: "val2"},
+				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
 			err = tran.Append(statements)
 			is.NoError(err)
@@ -275,7 +275,7 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 			}
 			err = tran1.Append(statements)
 			is.NoError(err)
@@ -285,7 +285,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 
 			err = db.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.ID()))
 		})
 		t.Run("suddenly there was a boxwood", func(t *testing.T) {
 			tran1, err := qdb.NewTransaction()
@@ -293,7 +293,7 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 			}
 			err = tran1.Append(statements)
 			is.NoError(err)
@@ -301,7 +301,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 
 			err = db.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.ID()))
 		})
 
 		t.Run("fails invalid tran", func(t *testing.T) {
@@ -312,7 +312,7 @@ func TestTransactions(t *testing.T) {
 			statements := []qdb.QdbStatement{}
 			_ = tran1.Append(statements) //handling this error was skipped intentionally
 			err = db.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.Id(), tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.ID(), tran1.ID()))
 		})
 
 	})
@@ -344,7 +344,7 @@ func TestGetMoveTaskGroup(t *testing.T) {
 			assert.Nil(taskGroup)
 		})
 		t.Run("base case", func(t *testing.T) {
-			tg := &qdb.MoveTaskGroup{ShardToId: "shard_to", KrIdFrom: "kr_from", KrIdTo: "kr_to"}
+			tg := &qdb.MoveTaskGroup{ShardToID: "shard_to", KrIDFrom: "kr_from", KrIDTo: "kr_to"}
 			assert.NoError(db.WriteMoveTaskGroup(
 				ctx,
 				"some_task_group",
@@ -354,9 +354,9 @@ func TestGetMoveTaskGroup(t *testing.T) {
 			))
 			taskGroup, err := db.GetMoveTaskGroup(ctx, "some_task_group")
 			assert.NoError(err)
-			assert.Equal(tg.KrIdFrom, taskGroup.KrIdFrom)
-			assert.Equal(tg.KrIdTo, taskGroup.KrIdTo)
-			assert.Equal(tg.ShardToId, taskGroup.ShardToId)
+			assert.Equal(tg.KrIDFrom, taskGroup.KrIDFrom)
+			assert.Equal(tg.KrIDTo, taskGroup.KrIDTo)
+			assert.Equal(tg.ShardToID, taskGroup.ShardToID)
 		})
 	})
 }

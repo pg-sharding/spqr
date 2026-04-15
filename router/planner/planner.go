@@ -165,7 +165,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
 	qualName *rfqn.RelationFQN,
-	values *lyx.ValueClause,
+	_ *lyx.ValueClause,
 	idCache IdentityRouterCache,
 ) (plan.Plan, error) {
 
@@ -192,7 +192,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 
 func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
-	relation *distributions.DistributedRelation,
+	_ *distributions.DistributedRelation,
 	tp string,
 	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 
@@ -237,12 +237,12 @@ func PlanDistributedRelationInsert(
 	}
 
 	/* Omit distributed relations */
-	if ds.Id == distributions.REPLICATED {
+	if ds.ID == distributions.REPLICATED {
 		/* should not happen */
 		return nil, rerrors.ErrComplexQuery
 	}
 
-	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
+	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func PlanDistributedRelationInsert(
 	tupleShards := make([]kr.ShardKey, len(routingList))
 	relation, ok := ds.TryGetRelation(qualName)
 	if !ok {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrNoDatashard)
 	}
 
 	for i := range routingList {
@@ -384,7 +384,7 @@ func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
 	case *lyx.AExprSConst:
 		return vv.Value, nil
 	default:
-		return "", spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong argument type for %s", fname)
+		return "", spqrerror.Newf(spqrerror.SpqrInvalidRequest, "wrong argument type for %s", fname)
 	}
 }
 
@@ -652,7 +652,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		if len(args) != 1 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SpqrInvalidRequest, "wrong number of arguments for %s", fname)
 		}
 
 		k, err := parseStringFuncArg(fname, args[0])
@@ -665,7 +665,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				[][]byte{[]byte(k),
 					fmt.Appendf(nil, "%v", v.CR.RW)})
 		} else {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong first argument for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SpqrInvalidRequest, "wrong first argument for %s", fname)
 		}
 
 		return tts, nil
@@ -696,7 +696,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		/* First arg is SPQR distribution name, second arg is
 		* routing key itself */
 		if len(args) != 2 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SpqrInvalidRequest, "wrong number of arguments for %s", fname)
 		}
 
 		id, err := parseStringFuncArg(fname, args[0])
@@ -855,7 +855,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
-			} else if ds.ID() != distributions.REPLICATED {
+			} else if ds.ID != distributions.REPLICATED {
 				return nil, rerrors.ErrComplexQuery
 			}
 		default:
@@ -876,7 +876,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, rerrors.ErrComplexQuery
-			} else if ds.Id != distributions.REPLICATED {
+			} else if ds.ID != distributions.REPLICATED {
 
 				switch q := v.SubSelect.(type) {
 				case *lyx.ValueClause:
@@ -933,7 +933,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, rerrors.ErrComplexQuery
-			} else if ds.Id != distributions.REPLICATED {
+			} else if ds.ID != distributions.REPLICATED {
 				return &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
@@ -965,7 +965,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, rerrors.ErrComplexQuery
-			} else if ds.Id != distributions.REPLICATED {
+			} else if ds.ID != distributions.REPLICATED {
 				return &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
@@ -986,6 +986,6 @@ func (plr *PlannerV2) PlanDistributedQuery(
 			return nil, rerrors.ErrComplexQuery
 		}
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 	}
 }

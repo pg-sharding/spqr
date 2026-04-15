@@ -33,12 +33,12 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRan
 	}
 
 	if _, err := mngr.GetKeyRange(ctx, keyRange.ID); err == nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", keyRange.ID)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v already present in qdb", keyRange.ID)
 	}
 
 	_, err := mngr.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "trying to add key range to a nonexistent distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "trying to add key range to a nonexistent distribution")
 	}
 
 	existsKrids, err := mngr.ListKeyRanges(ctx, keyRange.Distribution)
@@ -56,10 +56,10 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRan
 		}
 	}
 	if nearestKr != nil && kr.CmpRangesEqual(nearestKr.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v equals key range %v in QDB", keyRange.ID, nearestKr.ID)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v equals key range %v in QDB", keyRange.ID, nearestKr.ID)
 	}
 	if nearestKr != nil && nearestKr.ShardID != keyRange.ShardID {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, nearestKr.ID)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v intersects with key range %v in QDB", keyRange.ID, nearestKr.ID)
 	}
 
 	return nil
@@ -81,7 +81,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 	}
 
 	if krLock.IsLocked == nil || !(*krLock.IsLocked) {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange.ID)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v not locked", keyRange.ID)
 	}
 
 	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
@@ -106,7 +106,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 			return err
 		}
 		if kr.CmpRangesEqual(keyRange.LowerBound, eph.LowerBound, keyRange.ColumnTypes) {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, qdbKeyRange.KeyRangeID)
+			return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v intersects with key range %v in QDB", keyRange.ID, qdbKeyRange.KeyRangeID)
 		}
 	}
 
@@ -144,15 +144,15 @@ func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrpars
 	if stmt.Distribution.ID == "default" {
 		list, err := mngr.ListDistributions(ctx)
 		if err != nil {
-			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
+			return nil, spqrerror.New(spqrerror.SpqrObjectNotExist, "error while selecting list of distributions")
 		}
 		if len(list) == 0 {
-			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
+			return nil, spqrerror.New(spqrerror.SpqrObjectNotExist, "you don't have any distributions")
 		}
 		if len(list) > 1 {
-			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+			return nil, spqrerror.New(spqrerror.SpqrObjectNotExist, "distributions count not equal one, use FOR DISTRIBUTION syntax")
 		}
-		stmt.Distribution.ID = list[0].Id
+		stmt.Distribution.ID = list[0].ID
 	}
 	ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
 	if err != nil {

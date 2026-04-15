@@ -31,7 +31,7 @@ func (m *ctxMatcher) String() string {
 	return "context matcher"
 }
 
-func MatchContext(t *testing.T, ctx context.Context) (context.Context, gomock.Matcher) {
+func MatchContext(ctx context.Context, t *testing.T) (context.Context, gomock.Matcher) {
 	uuidVal, err := uuid.NewRandom()
 	require.NoError(t, err)
 	ctx = context.WithValue(ctx, ctxIDKeyName, uuidVal.String())

@@ -120,7 +120,7 @@ type KeyRangeInfo struct {
 	Bound          *KeyRangeBound         `protobuf:"bytes,1,opt,name=bound,proto3" json:"bound,omitempty"`
 	Krid           string                 `protobuf:"bytes,2,opt,name=krid,proto3" json:"krid,omitempty"`
 	ShardId        string                 `protobuf:"bytes,3,opt,name=shardId,proto3" json:"shardId,omitempty"`
-	DistributionId string                 `protobuf:"bytes,4,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
+	DistributionID string                 `protobuf:"bytes,4,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
 	Locked         *bool                  `protobuf:"varint,5,opt,name=locked,proto3,oneof" json:"locked,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -177,9 +177,9 @@ func (x *KeyRangeInfo) GetShardId() string {
 	return ""
 }
 
-func (x *KeyRangeInfo) GetDistributionId() string {
+func (x *KeyRangeInfo) GetDistributionID() string {
 	if x != nil {
-		return x.DistributionId
+		return x.DistributionID
 	}
 	return ""
 }
@@ -402,7 +402,7 @@ func (x *MergeKeyRangeRequest) GetAppendageId() string {
 type MoveKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ToShardId     string                 `protobuf:"bytes,2,opt,name=toShardId,proto3" json:"toShardId,omitempty"`
+	ToShardID     string                 `protobuf:"bytes,2,opt,name=toShardId,proto3" json:"toShardId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -444,9 +444,9 @@ func (x *MoveKeyRangeRequest) GetId() string {
 	return ""
 }
 
-func (x *MoveKeyRangeRequest) GetToShardId() string {
+func (x *MoveKeyRangeRequest) GetToShardID() string {
 	if x != nil {
-		return x.ToShardId
+		return x.ToShardID
 	}
 	return ""
 }
@@ -893,14 +893,14 @@ func (x *GetKeyRangeRequest) GetIds() []string {
 
 type BatchMoveKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	KeyRangeId    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
-	ToShardId     string                 `protobuf:"bytes,2,opt,name=toShardId,proto3" json:"toShardId,omitempty"`
+	KeyRangeID    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
+	ToShardID     string                 `protobuf:"bytes,2,opt,name=toShardId,proto3" json:"toShardId,omitempty"`
 	ToKrId        string                 `protobuf:"bytes,3,opt,name=toKrId,proto3" json:"toKrId,omitempty"`
 	LimitType     RedistributeLimitType  `protobuf:"varint,4,opt,name=limitType,proto3,enum=spqr.RedistributeLimitType" json:"limitType,omitempty"`
 	Limit         int64                  `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
 	BatchSize     int64                  `protobuf:"varint,6,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	SplitType     SplitType              `protobuf:"varint,7,opt,name=splitType,proto3,enum=spqr.SplitType" json:"splitType,omitempty"`
-	TaskGroupId   string                 `protobuf:"bytes,8,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
+	TaskGroupID   string                 `protobuf:"bytes,8,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
 	Issuer        *MoveTaskGroupIssuer   `protobuf:"bytes,9,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -938,14 +938,14 @@ func (*BatchMoveKeyRangeRequest) Descriptor() ([]byte, []int) {
 
 func (x *BatchMoveKeyRangeRequest) GetKeyRangeId() string {
 	if x != nil {
-		return x.KeyRangeId
+		return x.KeyRangeID
 	}
 	return ""
 }
 
-func (x *BatchMoveKeyRangeRequest) GetToShardId() string {
+func (x *BatchMoveKeyRangeRequest) GetToShardID() string {
 	if x != nil {
-		return x.ToShardId
+		return x.ToShardID
 	}
 	return ""
 }
@@ -985,9 +985,9 @@ func (x *BatchMoveKeyRangeRequest) GetSplitType() SplitType {
 	return SplitType_SplitLeft
 }
 
-func (x *BatchMoveKeyRangeRequest) GetTaskGroupId() string {
+func (x *BatchMoveKeyRangeRequest) GetTaskGroupID() string {
 	if x != nil {
-		return x.TaskGroupId
+		return x.TaskGroupID
 	}
 	return ""
 }
@@ -1007,7 +1007,7 @@ type RedistributeKeyRangeRequest struct {
 	Check         bool                   `protobuf:"varint,4,opt,name=check,proto3" json:"check,omitempty"`
 	Apply         bool                   `protobuf:"varint,5,opt,name=apply,proto3" json:"apply,omitempty"`
 	NoWait        bool                   `protobuf:"varint,6,opt,name=noWait,proto3" json:"noWait,omitempty"`
-	TaskGroupId   string                 `protobuf:"bytes,7,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
+	TaskGroupID   string                 `protobuf:"bytes,7,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1084,16 +1084,16 @@ func (x *RedistributeKeyRangeRequest) GetNoWait() bool {
 	return false
 }
 
-func (x *RedistributeKeyRangeRequest) GetTaskGroupId() string {
+func (x *RedistributeKeyRangeRequest) GetTaskGroupID() string {
 	if x != nil {
-		return x.TaskGroupId
+		return x.TaskGroupID
 	}
 	return ""
 }
 
 type RenameKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	KeyRangeId    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
+	KeyRangeID    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
 	NewKeyRangeId string                 `protobuf:"bytes,2,opt,name=newKeyRangeId,proto3" json:"newKeyRangeId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1131,7 +1131,7 @@ func (*RenameKeyRangeRequest) Descriptor() ([]byte, []int) {
 
 func (x *RenameKeyRangeRequest) GetKeyRangeId() string {
 	if x != nil {
-		return x.KeyRangeId
+		return x.KeyRangeID
 	}
 	return ""
 }

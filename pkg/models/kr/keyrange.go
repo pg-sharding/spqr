@@ -342,7 +342,7 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 	kr := &KeyRange{
 		ShardID:      krdb.ShardID,
 		ID:           krdb.KeyRangeID,
-		Distribution: krdb.DistributionId,
+		Distribution: krdb.DistributionID,
 		ColumnTypes:  colTypes,
 		IsLocked:     &krdb.Locked,
 		Version:      krdb.Version,
@@ -433,7 +433,7 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) (*KeyRang
 	kr := &KeyRange{
 		ShardID:      krproto.ShardId,
 		ID:           krproto.Krid,
-		Distribution: krproto.DistributionId,
+		Distribution: krproto.DistributionID,
 		ColumnTypes:  colTypes,
 		IsLocked:     krproto.Locked,
 
@@ -468,7 +468,7 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 		LowerBound:     make([][]byte, len(kr.ColumnTypes)),
 		ShardID:        kr.ShardID,
 		KeyRangeID:     kr.ID,
-		DistributionId: kr.Distribution,
+		DistributionID: kr.Distribution,
 		Locked:         isLocked,
 		Version:        kr.Version,
 	}
@@ -492,7 +492,7 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 		},
 		ShardId:        kr.ShardID,
 		Krid:           kr.ID,
-		DistributionId: kr.Distribution,
+		DistributionID: kr.Distribution,
 		Locked:         kr.IsLocked,
 	}
 

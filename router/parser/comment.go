@@ -23,23 +23,23 @@ func ParseComment(comm string) (map[string]string, error) {
 
 		// now we are looking at *probably* first char of opt name
 		j := i
-		for ; j < len(comm) && comm[j] != ':' && !unicode.IsSpace(rune(comm[j])); j++ {
+		for ; j < len(comm) && comm[j] != ':' && !unicode.IsSpace(rune(comm[j])); j++ { //nolint:revive // empty-block: intentional iterator
 		}
-		optarg_end := j - 1
+		optargEnd := j - 1
 
 		// colon symbol not found
 		if j == len(comm) {
 			return nil, xerrors.New("invalid comment format")
 		}
-		optarg_len := optarg_end - i + 1
+		optargLen := optargEnd - i + 1
 
-		if optarg_len == 0 {
+		if optargLen == 0 {
 			// empty opt name
 			return nil, xerrors.New("invalid comment format: empty option name")
 		}
 
 		// skip spaces after colon
-		for ; j < len(comm) && unicode.IsSpace(rune(comm[j])); j++ {
+		for ; j < len(comm) && unicode.IsSpace(rune(comm[j])); j++ { //nolint:revive // empty-block: intentional iterator
 		}
 
 		if j == len(comm) || comm[j] != ':' {
@@ -49,7 +49,7 @@ func ParseComment(comm string) (map[string]string, error) {
 		j++
 
 		//skip spaces after colon
-		for ; j < len(comm) && unicode.IsSpace(rune(comm[j])); j++ {
+		for ; j < len(comm) && unicode.IsSpace(rune(comm[j])); j++ { //nolint:revive // empty-block: intentional iterator
 		}
 
 		if j == len(comm) {
@@ -58,19 +58,19 @@ func ParseComment(comm string) (map[string]string, error) {
 		}
 
 		// now we are looking at first char of opt value
-		optval_pos := j
+		optvalPos := j
 		for j+1 < len(comm) && !unicode.IsSpace(rune(comm[j+1])) && comm[j+1] != ',' {
 			j++
 		}
 
-		optval_end := j
+		optvalEnd := j
 
-		opt_name := comm[i : optarg_end+1]
-		if after, ok := strings.CutPrefix(opt_name, "__spqr__."); ok {
-			opt_name = "__spqr__" + after
+		optName := comm[i : optargEnd+1]
+		if after, ok := strings.CutPrefix(optName, "__spqr__."); ok {
+			optName = "__spqr__" + after
 		}
 
-		opts[opt_name] = comm[optval_pos : optval_end+1]
+		opts[optName] = comm[optvalPos : optvalEnd+1]
 
 		j++
 		// skip spaces after value

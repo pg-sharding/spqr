@@ -354,7 +354,7 @@ func AnalyzeQueryV1(
 				return err
 			}
 		default:
-			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			return spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 		}
 
 		if err := analyzeFromNode(ctx, tr, routable, rm); err != nil {
@@ -386,7 +386,7 @@ func AnalyzeQueryV1(
 			case *lyx.FuncApplication:
 				if e.Name == virtual.VirtualCTID {
 					/* we only support this if query is simple select */
-					rm.Is_SPQR_CTID = true
+					rm.IsSpqrCtid = true
 				}
 				for _, innerExp := range e.Args {
 					switch iE := innerExp.(type) {
@@ -489,7 +489,7 @@ func AnalyzeQueryV1(
 				}
 			}
 		default:
-			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			return spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 		}
 
 		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {

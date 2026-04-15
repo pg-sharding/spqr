@@ -84,7 +84,7 @@ func (r *RuleRouterImpl) ErrorCounts() map[string]uint64 {
 }
 
 // ReportError implements [RuleRouter].
-func (r *RuleRouterImpl) ReportError(errtype string) {
+func (r *RuleRouterImpl) ReportError(_ string) {
 	/* nothing */
 }
 
@@ -237,7 +237,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 		if err := cl.AssignRule(rule); err != nil {
 			_ = cl.ReplyErrMsg(
 				"failed to assign rule",
-				spqrerror.SPQR_ROUTING_ERROR,
+				spqrerror.SpqrRoutingError,
 				0,
 				txstatus.TXIDLE)
 			return nil, err
@@ -330,7 +330,7 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 	if err := cl.AssignRule(frRule); err != nil {
 		_ = cl.ReplyErrMsg(
 			"failed to assign rule",
-			spqrerror.SPQR_ROUTING_ERROR,
+			spqrerror.SpqrRoutingError,
 			0,
 			txstatus.TXIDLE)
 		return nil, err
@@ -388,7 +388,7 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	return popped, err
 }
 
-func (rr *RuleRouterImpl) Put(id client.Client) error {
+func (rr *RuleRouterImpl) Put(_ client.Client) error {
 	return nil
 }
 

@@ -13,5 +13,5 @@ func SearchSysCacheOperator(oid int) (Operator, error) {
 	if op, ok := s_operators[oid]; ok {
 		return op, nil
 	}
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "operator not supported")
+	return nil, spqrerror.New(spqrerror.SpqrNotImplemented, "operator not supported")
 }

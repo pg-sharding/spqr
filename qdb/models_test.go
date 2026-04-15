@@ -14,7 +14,7 @@ func TestIdRanges(t *testing.T) {
 		name      string
 		rangeLeft int64
 		rangeSize uint64
-		expected  *SequenceIdRange
+		expected  *SequenceIDRange
 		err       error
 	}
 
@@ -23,21 +23,21 @@ func TestIdRanges(t *testing.T) {
 			name:      "test0",
 			rangeLeft: 0,
 			rangeSize: 1,
-			expected:  &SequenceIdRange{Left: 0, Right: 0},
+			expected:  &SequenceIDRange{Left: 0, Right: 0},
 			err:       nil,
 		},
 		{
 			name:      "test1",
 			rangeLeft: 1,
 			rangeSize: 1,
-			expected:  &SequenceIdRange{Left: 1, Right: 1},
+			expected:  &SequenceIDRange{Left: 1, Right: 1},
 			err:       nil,
 		},
 		{
 			name:      "test2",
 			rangeLeft: 1,
 			rangeSize: 2,
-			expected:  &SequenceIdRange{Left: 1, Right: 2},
+			expected:  &SequenceIDRange{Left: 1, Right: 2},
 			err:       nil,
 		},
 		{
@@ -58,14 +58,14 @@ func TestIdRanges(t *testing.T) {
 			name:      "test5",
 			rangeLeft: 9223372036854775707,
 			rangeSize: 50,
-			expected:  &SequenceIdRange{Left: 9223372036854775707, Right: 9223372036854775756},
+			expected:  &SequenceIDRange{Left: 9223372036854775707, Right: 9223372036854775756},
 			err:       nil,
 		},
 		{
 			name:      "test6",
 			rangeLeft: 50,
 			rangeSize: 1000,
-			expected:  &SequenceIdRange{Left: 50, Right: 1049},
+			expected:  &SequenceIDRange{Left: 50, Right: 1049},
 			err:       nil,
 		},
 	} {

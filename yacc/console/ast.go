@@ -79,7 +79,7 @@ type DistributionDefinition struct {
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
-	ShardIds             []string
+	ShardIDs             []string
 }
 
 type UniqueIndexDefinition struct {
@@ -105,7 +105,7 @@ type KeyRangeDefinition struct {
 }
 
 type ShardDefinition struct {
-	Id           string
+	ID           string
 	Hosts        []string
 	SslMode      string
 	CertFile     string
@@ -114,7 +114,7 @@ type ShardDefinition struct {
 }
 
 type AlterShard struct {
-	Id           string
+	ID           string
 	SslMode      string
 	Hosts        []string
 	CertFile     string
@@ -148,7 +148,7 @@ type RedistributeKeyRange struct {
 	DestShardID string
 	KeyRangeID  string
 	BatchSize   int
-	Id          string
+	ID          string
 	Check       bool
 	Apply       bool
 	NoWait      bool
@@ -436,7 +436,7 @@ const (
 
 const (
 	//key range for default shard
-	DEFAULT_KEY_RANGE_SUFFIX = "DEFAULT"
+	DefaultKeyRangeSuffix = "DEFAULT"
 )
 
 // Statement represents a statement.

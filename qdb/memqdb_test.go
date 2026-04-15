@@ -34,8 +34,8 @@ var mockRouter = &qdb.Router{
 	State:   qdb.CLOSED,
 }
 var mockDataTransferTransaction = &qdb.DataTransferTransaction{
-	ToShardId:   mockShard.ID,
-	FromShardId: mockShard.ID,
+	ToShardID:   mockShard.ID,
+	FromShardID: mockShard.ID,
 	Status:      "fake_st",
 }
 
@@ -68,7 +68,7 @@ func TestMemqdbRacing(t *testing.T) {
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
 		func() {
-			_ = memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
+			_ = memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardID, mockDataTransferTransaction)
 		},
 		func() { _, _ = memqdb.ListDistributions(ctx) },
 		func() { _, _ = memqdb.ListAllKeyRanges(ctx) },
@@ -76,14 +76,14 @@ func TestMemqdbRacing(t *testing.T) {
 		func() { _, _ = memqdb.ListShards(ctx) },
 		func() { _, _ = memqdb.GetKeyRange(ctx, mockKeyRange.KeyRangeID) },
 		func() { _, _ = memqdb.GetShard(ctx, mockShard.ID) },
-		func() { _, _ = memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
+		func() { _, _ = memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardID) },
 		func() { _ = memqdb.ShareKeyRange(mockKeyRange.KeyRangeID) },
 		func() {
 			stmts, _ := memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID)
 			_ = memqdb.ExecNoTransaction(ctx, stmts)
 		},
 		func() { _ = memqdb.DropKeyRangeAll(ctx) },
-		func() { _ = memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
+		func() { _ = memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardID) },
 		func() {
 			_, _ = memqdb.LockKeyRange(ctx, mockKeyRange.KeyRangeID)
 			_ = memqdb.UnlockKeyRange(ctx, mockKeyRange.KeyRangeID)
@@ -103,7 +103,7 @@ func TestMemqdbRacing(t *testing.T) {
 				panic("can't unmarshal distribution (exec no transaction test)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
@@ -117,7 +117,7 @@ func TestMemqdbRacing(t *testing.T) {
 				panic("can't unmarshal distribution case(1)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			err = tran.Append(commands)
 			if err != nil {
@@ -252,7 +252,7 @@ func TestDropReferenceRelation(t *testing.T) {
 		TableName:             "test2",
 		SchemaVersion:         1,
 		ColumnSequenceMapping: map[string]string{"id": "test2_id"},
-		ShardIds:              []string{"sh1", "sh2"},
+		ShardIDs:              []string{"sh1", "sh2"},
 	}
 	err = memqdb.CreateReferenceRelation(ctx, referenceRelation)
 	assert.NoError(err)
@@ -295,7 +295,7 @@ func TestKeyRanges(t *testing.T) {
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	})
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
@@ -304,7 +304,7 @@ func TestKeyRanges(t *testing.T) {
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
-		DistributionId: "dserr",
+		DistributionID: "dserr",
 	})
 	assert.Error(err)
 
@@ -336,7 +336,7 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	}
 	statements, err := memqdb.CreateKeyRange(ctx, &keyRange1)
 	assert.NoError(err)
@@ -346,7 +346,7 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
-		DistributionId: "ds2",
+		DistributionID: "ds2",
 	}
 	statements, err = memqdb.CreateKeyRange(ctx, &keyRange2)
 	assert.NoError(err)
@@ -355,7 +355,7 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 	res, _ := memqdb.GetKeyRange(ctx, keyRange1.KeyRangeID)
 	assert.Equal(keyRange1.ShardID, res.ShardID)
 	assert.Equal(keyRange1.KeyRangeID, res.KeyRangeID)
-	assert.Equal(keyRange1.DistributionId, res.DistributionId)
+	assert.Equal(keyRange1.DistributionID, res.DistributionID)
 	assert.Equal(keyRange1.LowerBound, res.LowerBound)
 
 	_, err = memqdb.GetKeyRange(ctx, "krid3")
@@ -418,7 +418,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		KeyRangeID:     "krid1",
 		LowerBound:     [][]byte{[]byte("1")},
 		ShardID:        "sh1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	}
 	statements, err := memqdb.CreateKeyRange(ctx, keyRange1)
 	assert.NoError(err)
@@ -450,7 +450,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		KeyRangeID:     "krid2",
 		LowerBound:     [][]byte{[]byte("2")},
 		ShardID:        "sh1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	}
 	statements, err = memqdb.CreateKeyRange(ctx, keyRange2)
 	assert.NoError(err)
@@ -472,7 +472,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		KeyRangeID:     "krid3",
 		LowerBound:     [][]byte{[]byte("3")},
 		ShardID:        "sh1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	}
 	statements, err = memqdb.CreateKeyRange(ctx, keyRange3)
 	assert.NoError(err)
@@ -511,7 +511,7 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 		KeyRangeID:     "krid1",
 		LowerBound:     [][]byte{[]byte("1")},
 		ShardID:        "sh1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	}
 	statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)
 	assert.NoError(err)
@@ -532,7 +532,7 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 	assert.Equal("krid2", krNew.KeyRangeID)
 	assert.Equal([][]byte{[]byte("1")}, krNew.LowerBound)
 	assert.Equal("sh1", krNew.ShardID)
-	assert.Equal("ds1", krNew.DistributionId)
+	assert.Equal("ds1", krNew.DistributionID)
 
 	_, ok = memqdb.Locks["krid1"]
 	assert.False(ok)
@@ -550,7 +550,7 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 		KeyRangeID:     "krid3",
 		LowerBound:     [][]byte{[]byte("3")},
 		ShardID:        "sh1",
-		DistributionId: "ds1",
+		DistributionID: "ds1",
 	}
 	statements, err = memqdb.CreateKeyRange(ctx, otherKeyRange)
 	assert.NoError(err)
@@ -867,12 +867,12 @@ func TestDropReferenceRelation_PrefixNameBug(t *testing.T) {
 	rrPrefixName := &qdb.ReferenceRelation{
 		TableName:     "zz",
 		SchemaVersion: 1,
-		ShardIds:      []string{},
+		ShardIDs:      []string{},
 	}
 	rrWithPrefixName := &qdb.ReferenceRelation{
 		TableName:     "zzx",
 		SchemaVersion: 1,
-		ShardIds:      []string{},
+		ShardIDs:      []string{},
 	}
 
 	assert.NoError(memqdb.CreateReferenceRelation(ctx, rrPrefixName))
@@ -908,7 +908,7 @@ func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
 
 		for _, name := range []string{"a", "ab", "abc"} {
 			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
-				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+				TableName: name, SchemaVersion: 1, ShardIDs: []string{},
 			}))
 		}
 
@@ -929,7 +929,7 @@ func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
 
 		for _, name := range []string{"a", "ab", "abc"} {
 			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
-				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+				TableName: name, SchemaVersion: 1, ShardIDs: []string{},
 			}))
 		}
 
@@ -957,7 +957,7 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
 			ShardID:        "sh1",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 			Locked:         false,
 		}
 		statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)
@@ -981,7 +981,7 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
 			ShardID:        "sh1",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 			Locked:         true,
 		}
 		statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)

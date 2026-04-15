@@ -62,7 +62,7 @@ func (l *LocalQrouterServer) CreateReferenceRelations(ctx context.Context, reque
 // CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 
-	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIDs); err != nil {
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, 
 // CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 
-	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIDs); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (l *LocalQrouterServer) DropShard(ctx context.Context, request *protos.Drop
 	return nil, l.mgr.DropShard(ctx, request.Id)
 }
 
-func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
+func (l *LocalQrouterServer) AddWorldShard(_ context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("LocalQrouterServer.AddWorldShard not implemented")
 }
 
@@ -168,7 +168,7 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 }
 
 // CreateDistribution creates distribution in QDB
-func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+func (l *LocalQrouterServer) CreateDistribution(_ context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateDistribution), remove after meta transaction implementation")
 }
 
@@ -243,7 +243,7 @@ func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, reque
 	}
 	curRel, ok := ds.TryGetRelation(rfqn)
 	if !ok {
-		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
+		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.ID)
 	}
 	rel, err := distributions.DistributedRelationFromProto(request.GetRelation(), curRel.UniqueIndexesByColumn)
 	if err != nil {
@@ -293,7 +293,7 @@ func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, reques
 	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, err
 }
 
-func (l *LocalQrouterServer) ListRouters(ctx context.Context, _ *emptypb.Empty) (*protos.ListRoutersReply, error) {
+func (l *LocalQrouterServer) ListRouters(_ context.Context, _ *emptypb.Empty) (*protos.ListRoutersReply, error) {
 	return nil, fmt.Errorf("not a coordinator")
 }
 
@@ -340,7 +340,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.Id, ShardId: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.Id, ShardID: request.ToShardID})
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
+	return nil, l.mgr.RenameKeyRange(ctx, request.KeyRangeID, request.NewKeyRangeId)
 }
 
 // TODO : unit tests
@@ -763,7 +763,7 @@ func (l *LocalQrouterServer) NextRange(ctx context.Context, req *protos.NextRang
 }
 
 func (l *LocalQrouterServer) CreateUniqueIndex(ctx context.Context, req *protos.CreateUniqueIndexRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.CreateUniqueIndex(ctx, req.DistributionId, distributions.UniqueIndexFromProto(req.Idx))
+	return nil, l.mgr.CreateUniqueIndex(ctx, req.DistributionID, distributions.UniqueIndexFromProto(req.Idx))
 }
 
 func (l *LocalQrouterServer) DropUniqueIndex(ctx context.Context, req *protos.DropUniqueIndexRequest) (*emptypb.Empty, error) {
@@ -797,7 +797,7 @@ func (l *LocalQrouterServer) ListRelationUniqueIndexes(ctx context.Context, req 
 }
 
 func (l *LocalQrouterServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
-	idxs, err := l.mgr.ListDistributionIndexes(ctx, req.DistributionId)
+	idxs, err := l.mgr.ListDistributionIndexes(ctx, req.DistributionID)
 	if err != nil {
 		return nil, err
 	}

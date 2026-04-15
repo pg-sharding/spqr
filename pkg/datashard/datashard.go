@@ -65,7 +65,7 @@ func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor
 		ret = append(ret,
 			shard.PreparedStatementsMgrDescriptor{
 				Hash:     hash,
-				ServerId: sh.ID(),
+				ServerID: sh.ID(),
 				Query:    def.Query,
 				Name:     def.Name,
 			},
@@ -592,8 +592,8 @@ func (sh *Conn) TxStatus() txstatus.TXStatus {
 // Returns:
 // - bool: true if the prepared statement exists, false otherwise.
 // - *shard.PreparedStatementDescriptor: the prepared statement descriptor, or nil if it does not exist.
-func (srv *Conn) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
-	if shardId != srv.ID() {
+func (srv *Conn) HasPrepareStatement(hash uint64, shardID uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	if shardID != srv.ID() {
 		return false, nil
 	}
 	rd, ok := srv.stmtDesc[hash]
@@ -610,10 +610,10 @@ func (srv *Conn) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstat
 //
 // Returns:
 // - None.
-func (srv *Conn) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+func (srv *Conn) StorePrepareStatement(hash uint64, shardID uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
 	id := srv.ID()
-	if shardId != id {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "Cannot store stmt for shard \"%d\" in shard \"%d\"", shardId, id)
+	if shardID != id {
+		return spqrerror.Newf(spqrerror.SpqrRoutingError, "Cannot store stmt for shard \"%d\" in shard \"%d\"", shardID, id)
 	}
 	srv.stmtDef[hash] = def
 	srv.stmtDesc[hash] = rd

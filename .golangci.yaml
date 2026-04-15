@@ -10,6 +10,7 @@ linters:
         text: "^(exported|package-comments):"
     paths:
       - yacc/console/lex.go
+  max-same-issues: 0
 
 run:
   timeout: 10m

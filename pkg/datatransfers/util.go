@@ -43,10 +43,10 @@ func GetConnStrings(s *config.ShardConnect, applicationName string) map[string]s
 //   - error: error if any occurred
 //
 // TODO: unit tests
-func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupId string) (*pgx.Conn, error) {
+func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupID string) (*pgx.Conn, error) {
 	applicationName := ""
-	if taskGroupId != "" {
-		applicationName = spqrTransferApplicationName + "_" + taskGroupId
+	if taskGroupID != "" {
+		applicationName = spqrTransferApplicationName + "_" + taskGroupID
 	}
 	for _, dsn := range GetConnStrings(s, applicationName) {
 		conn, err := connectDsn(ctx, dsn)
@@ -63,7 +63,7 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		}
 		_ = conn.Close(ctx)
 	}
-	return nil, retry.RetryableError(spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master"))
+	return nil, retry.RetryableError(spqrerror.New(spqrerror.SpqrTransferError, "unable to find master"))
 }
 
 func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) {
@@ -88,7 +88,7 @@ func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) 
 			return parts[0], nil
 		}
 	}
-	return "", spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
+	return "", spqrerror.New(spqrerror.SpqrTransferError, "unable to find master")
 }
 
 func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {

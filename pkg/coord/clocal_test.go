@@ -30,35 +30,35 @@ func TestListKeyRangesCaches(t *testing.T) {
 			LowerBound:     [][]byte{[]byte("1")},
 			ShardID:        "sh1",
 			KeyRangeID:     "kr1",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 		},
 
 		{
 			LowerBound:     [][]byte{[]byte("2")},
 			ShardID:        "sh2",
 			KeyRangeID:     "kr2",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 		},
 
 		{
 			LowerBound:     [][]byte{[]byte("3")},
 			ShardID:        "sh3",
 			KeyRangeID:     "kr3",
-			DistributionId: "ds1",
+			DistributionID: "ds1",
 		},
 
 		{
 			LowerBound:     [][]byte{[]byte("4")},
 			ShardID:        "sh4",
 			KeyRangeID:     "kr4",
-			DistributionId: "ds2",
+			DistributionID: "ds2",
 		},
 
 		{
 			LowerBound:     [][]byte{[]byte("5")},
 			ShardID:        "sh5",
 			KeyRangeID:     "kr5",
-			DistributionId: "ds2",
+			DistributionID: "ds2",
 		},
 	}
 	db.EXPECT().ListAllKeyRanges(gomock.All()).Return(krs, nil)

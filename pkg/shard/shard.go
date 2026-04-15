@@ -41,7 +41,7 @@ type PreparedStatementsMgrDescriptor struct {
 	Name     string
 	Query    string
 	Hash     uint64
-	ServerId uint
+	ServerID uint
 }
 
 type ShardHostCtl interface {

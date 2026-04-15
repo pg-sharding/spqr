@@ -213,12 +213,12 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 	}
 }
 
 func ProcessInsertFromSelectOffsets(
-	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
+	_ context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
@@ -303,7 +303,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 		if err != nil {
 			return err
 		}
-		if ds.Id == distributions.REPLICATED {
+		if ds.ID == distributions.REPLICATED {
 			return nil
 		}
 	default:
@@ -321,7 +321,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 	}
 	rel, ok := ds.TryGetRelation(relname)
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
+		return spqrerror.Newf(spqrerror.SpqrMetadataCorruption, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.ID)
 	}
 	check := true
 	for _, entry := range rel.DistributionKey {

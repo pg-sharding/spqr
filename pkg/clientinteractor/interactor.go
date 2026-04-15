@@ -177,7 +177,7 @@ func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*t
 		return pi.CompleteMsg(0)
 	}
 	for _, ts := range groups {
-		if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+		if err := pi.WriteDataRow(ts.ID, ts.ShardToID, ts.KrIDFrom, ts.KrIDTo); err != nil {
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 		}
 		if err := pi.WriteDataRow(
 			task.ID,
-			task.KrIdTemp,
+			task.KrIDTemp,
 			strings.Join(krData, ";"),
 			tasks.TaskStateToStr(task.State),
 		); err != nil {
@@ -262,7 +262,7 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
+func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(_ context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
@@ -281,6 +281,6 @@ func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation)
 }
 
 // ReplyNotice sends notice message to client
-func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
+func (pi *PSQLInteractor) ReplyNotice(_ context.Context, msg string) error {
 	return pi.cl.ReplyNotice(msg)
 }

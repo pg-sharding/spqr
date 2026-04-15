@@ -51,11 +51,11 @@ func (n RelationFQN) MetadataKey() string {
 	return sch + "." + n.RelationName
 }
 
-func (r *RelationFQN) GetSchema() string {
-	if r.SchemaName == "" {
+func (n *RelationFQN) GetSchema() string {
+	if n.SchemaName == "" {
 		return "public"
 	}
-	return r.SchemaName
+	return n.SchemaName
 }
 
 func ParseFQN(str string) (*RelationFQN, error) {

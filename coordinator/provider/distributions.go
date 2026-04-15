@@ -25,7 +25,7 @@ func NewDistributionServer(impl coordinator.Coordinator) *DistributionsServer {
 
 var _ protos.DistributionServiceServer = &DistributionsServer{}
 
-func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+func (d *DistributionsServer) CreateDistribution(_ context.Context, req *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateDistribution in DistributionsServer). Use ExecuteNoTran or CommitTran")
 }
 
@@ -86,7 +86,7 @@ func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req 
 	}
 	curRel, ok := ds.TryGetRelation(rfqn)
 	if !ok {
-		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.Id)
+		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.ID)
 	}
 	rel, err := distributions.DistributedRelationFromProto(req.GetRelation(), curRel.UniqueIndexesByColumn)
 	if err != nil {
@@ -179,7 +179,7 @@ func (d *DistributionsServer) ListSequences(ctx context.Context, _ *emptypb.Empt
 }
 
 func (d *DistributionsServer) CreateUniqueIndex(ctx context.Context, req *protos.CreateUniqueIndexRequest) (*emptypb.Empty, error) {
-	return nil, d.impl.CreateUniqueIndex(ctx, req.DistributionId, distributions.UniqueIndexFromProto(req.Idx))
+	return nil, d.impl.CreateUniqueIndex(ctx, req.DistributionID, distributions.UniqueIndexFromProto(req.Idx))
 }
 
 func (d *DistributionsServer) DropUniqueIndex(ctx context.Context, req *protos.DropUniqueIndexRequest) (*emptypb.Empty, error) {
@@ -199,7 +199,7 @@ func (d *DistributionsServer) ListUniqueIndexes(ctx context.Context, _ *emptypb.
 }
 
 func (d *DistributionsServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
-	idxs, err := d.impl.ListDistributionIndexes(ctx, req.DistributionId)
+	idxs, err := d.impl.ListDistributionIndexes(ctx, req.DistributionID)
 	if err != nil {
 		return nil, err
 	}

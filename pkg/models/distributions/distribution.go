@@ -70,18 +70,18 @@ func (r *DistributedRelation) GetColumn(name string) (*DistributionKeyEntry, int
 // relation uses expression-based routing only.
 func (r *DistributedRelation) RenameKeyColumn(oldName, newName string) ([]DistributionKeyEntry, error) {
 	if r.IsExpressionRouting() {
-		return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+		return nil, spqrerror.Newf(spqrerror.SpqrInvalidRequest,
 			"relation uses expression-based routing; column rename is not supported")
 	}
 
 	if _, hasIndex := r.UniqueIndexesByColumn[oldName]; hasIndex {
-		return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+		return nil, spqrerror.Newf(spqrerror.SpqrInvalidRequest,
 			"cannot rename column \"%s\": referenced by a unique index", oldName)
 	}
 
 	_, idx := r.GetColumn(oldName)
 	if idx < 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+		return nil, spqrerror.Newf(spqrerror.SpqrInvalidRequest,
 			"column \"%s\" not found in distribution key", oldName)
 	}
 
@@ -101,7 +101,7 @@ func CheckDuplicateKeyColumns(key []DistributionKeyEntry) error {
 			continue
 		}
 		if _, exists := seen[entry.Column]; exists {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+			return spqrerror.Newf(spqrerror.SpqrInvalidRequest,
 				"duplicate column \"%s\" in distribution key", entry.Column)
 		}
 		seen[entry.Column] = struct{}{}
@@ -378,7 +378,7 @@ func ColumnSequenceMappingFromSQL(relName string, autoInc []*spqrparser.AutoIncr
 }
 
 type Distribution struct {
-	Id string
+	ID string
 	// column types to be used
 	// REPLICATED distribution has an empty array here.
 	ColTypes          []string
@@ -429,17 +429,12 @@ func (s *Distribution) ListRelations() []*DistributedRelation {
 //   - *Distribution: The created Distribution object.
 func NewDistribution(id string, coltypes []string) *Distribution {
 	return &Distribution{
-		Id:                id,
+		ID:                id,
 		ColTypes:          coltypes,
 		FQNRelations:      map[string]*DistributedRelation{},
 		Relations:         map[string]*DistributedRelation{},
 		UniqueIndexesByID: map[string]*UniqueIndex{},
 	}
-}
-
-// ID returns the ID of the distribution.
-func (s *Distribution) ID() string {
-	return s.Id
 }
 
 // DistributionFromDB creates a new Distribution object from a qdb.Distribution object.
@@ -482,11 +477,11 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 // Returns:
 //   - *Distribution: The created Distribution object.
 func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
-	idxsById := make(map[string]*UniqueIndex)
+	idxsByID := make(map[string]*UniqueIndex)
 	idxsByRel := make(map[string]map[string]*UniqueIndex)
 	for _, idxProto := range ds.UniqueIndexes {
 		idx := UniqueIndexFromProto(idxProto)
-		idxsById[idx.ID] = idx
+		idxsByID[idx.ID] = idx
 		if _, ok := idxsByRel[idx.RelationName.RelationName]; !ok {
 			idxsByRel[idx.RelationName.RelationName] = make(map[string]*UniqueIndex)
 		}
@@ -530,10 +525,10 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 	}
 
 	return &Distribution{
-		Id:                ds.Id,
+		ID:                ds.Id,
 		ColTypes:          ds.ColumnTypes,
 		Relations:         rels,
-		UniqueIndexesByID: idxsById,
+		UniqueIndexesByID: idxsByID,
 		FQNRelations:      fqn_rels,
 	}, nil
 }
@@ -547,23 +542,23 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 //   - *proto.Distribution: The converted proto.Distribution object.
 func DistributionToProto(ds *Distribution) *proto.Distribution {
 	drels := make([]*proto.DistributedRelation, 0)
-	fqn_rels := make([]*proto.DistributedRelation, 0)
+	fqnRels := make([]*proto.DistributedRelation, 0)
 	for _, r := range ds.Relations {
 		drels = append(drels, DistributedRelationToProto(r))
 	}
 	for _, r := range ds.FQNRelations {
-		fqn_rels = append(fqn_rels, DistributedRelationToProto(r))
+		fqnRels = append(fqnRels, DistributedRelationToProto(r))
 	}
 	dsIdxs := make([]*proto.UniqueIndex, 0, len(ds.UniqueIndexesByID))
 	for _, idx := range ds.UniqueIndexesByID {
 		dsIdxs = append(dsIdxs, UniqueIndexToProto(idx))
 	}
 	return &proto.Distribution{
-		Id:            ds.Id,
+		Id:            ds.ID,
 		ColumnTypes:   ds.ColTypes,
 		Relations:     drels,
 		UniqueIndexes: dsIdxs,
-		FqnRelations:  fqn_rels,
+		FqnRelations:  fqnRels,
 	}
 }
 
@@ -577,7 +572,7 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 //   - *qdb.Distribution: The converted qdb.Distribution struct.
 func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	d := &qdb.Distribution{
-		ID:            ds.Id,
+		ID:            ds.ID,
 		ColTypes:      ds.ColTypes,
 		Relations:     map[string]*qdb.DistributedRelation{},
 		FQNRelations:  map[string]*qdb.DistributedRelation{},
@@ -593,7 +588,7 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	}
 
 	for id, idx := range ds.UniqueIndexesByID {
-		d.UniqueIndexes[id] = UniqueIndexToDB(ds.Id, idx)
+		d.UniqueIndexes[id] = UniqueIndexToDB(ds.ID, idx)
 	}
 
 	return d
@@ -679,7 +674,7 @@ func GetHashedColumn(col string, hash string) (string, error) {
 	case "murmur":
 		return fmt.Sprintf("spqrhash_murmur3(%s)", col), nil
 	default:
-		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
+		return "", spqrerror.Newf(spqrerror.SpqrKeyrangeError, "invalid hash function \"%s\"", hash)
 	}
 }
 

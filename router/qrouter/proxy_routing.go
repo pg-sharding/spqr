@@ -118,7 +118,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				}
 
 				/* Omit distributed relations */
-				if ds.Id == distributions.REPLICATED {
+				if ds.ID == distributions.REPLICATED {
 					break
 				}
 
@@ -493,14 +493,14 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, err
 		}
 
-		krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
+		krs, err := rm.Mgr.ListKeyRanges(ctx, ds.ID)
 		if err != nil {
 			return nil, err
 		}
 
 		distributedRelation, ok := ds.TryGetRelation(qualName)
 		if !ok {
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_OBJECT_NOT_EXIST)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrObjectNotExist)
 		}
 
 		for _, is := range iis {
@@ -647,7 +647,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
-			} else if d.Id == distributions.REPLICATED {
+			} else if d.ID == distributions.REPLICATED {
 				/* Here we do not check for v2 engine. Reference relation is
 				* already v2 feature, so if client chooses to execute queries with that,
 				* then client is ready for >= v2. */
@@ -674,10 +674,10 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 
 		default:
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 		}
 
 	case *lyx.Delete:
@@ -699,7 +699,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
-			} else if d.Id == distributions.REPLICATED {
+			} else if d.ID == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
 					plr := planner.PlannerV2{}
 
@@ -710,7 +710,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					p = plan.Combine(p, tmp)
 					return p, nil
 				}
-				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+				return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 			}
 
 			/* Delete from relation - does it have any reverse index attached? */
@@ -726,9 +726,9 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 		default:
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 		}
 
 	}
@@ -864,7 +864,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	case *lyx.ExplainStmt:
 		return qr.RouteWithRules(ctx, rm, qs.Query)
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrNotImplemented)
 	}
 
 	return pl, nil
@@ -940,7 +940,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		 */
 		switch strings.ToUpper(rm.SPH.DefaultRouteBehaviour()) {
 		case "BLOCK":
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_QUERY_BLOCKED)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrQueryBlocked)
 		case "ALLOW":
 			fallthrough
 		default:
@@ -948,7 +948,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 				/* TODO: config options for this */
 				return v, nil
 			}
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SpqrNoDatashard)
 		}
 	default:
 		return nil, rerrors.ErrComplexQuery
@@ -1231,7 +1231,7 @@ func (qr *ProxyQrouter) plannerV1(
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
-	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
+	guc, err := rm.SPH.FindBoolGUC(session.SpqrAllowPostprocessing)
 	if err != nil {
 		return nil, err
 	}
@@ -1250,7 +1250,7 @@ func (qr *ProxyQrouter) plannerV1(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) planSPQR_CTID(
+func (qr *ProxyQrouter) planSpqrCtid(
 	_ context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
@@ -1470,7 +1470,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-					krs, err := rm.Mgr.ListKeyRanges(ctx, d.Id)
+					krs, err := rm.Mgr.ListKeyRanges(ctx, d.ID)
 					if err != nil {
 						return nil, err
 					}
@@ -1526,13 +1526,13 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_SPLIT_UPDATE)
+		guc, err := rm.SPH.FindBoolGUC(session.SpqrAllowSplitUpdate)
 		if err != nil {
 			return nil, err
 		}
 
 		if !guc.Get(rm.SPH) {
-			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+			return nil, spqrerror.Newf(spqrerror.SpqrNotImplemented, "updating distribution column is not yet supported")
 		}
 
 		/* okay, go through all execution targets of sub-plan
@@ -1689,8 +1689,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	/* TODO: support more cases */
-	if rm.Is_SPQR_CTID {
-		return qr.planSPQR_CTID(ctx, rm)
+	if rm.IsSpqrCtid {
+		return qr.planSpqrCtid(ctx, rm)
 	}
 
 	if rm.IsSplitUpdate {

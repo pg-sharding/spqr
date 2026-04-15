@@ -34,7 +34,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, rv *
 	newReferenceRelation := &rrelation.ReferenceRelation{
 		RelationName:  rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName),
 		SchemaVersion: 1,
-		ShardIds:      shardIds,
+		ShardIDs:      shardIds,
 	}
 
 	mgr, cf, err := coord.DistributedMgr(ctx, localMngr)

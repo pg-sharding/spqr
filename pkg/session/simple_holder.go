@@ -84,7 +84,7 @@ type SimpleSessionParamHandler struct {
 	paramCodes []int16
 
 	showNoticeMessages bool
-	maintain_params    bool
+	maintainParams    bool
 }
 
 func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
@@ -124,94 +124,94 @@ func (cl *SimpleSessionParamHandler) SetUsr(u string) {
 
 // SetDistribution implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDistribution(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_DISTRIBUTION, val)
+	cl.RecordVirtualParam(level, SpqrDistribution, val)
 }
 
 // Distribution implements RouterClient.
 func (cl *SimpleSessionParamHandler) Distribution() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTION, "")
+	return cl.resolveVirtualStringParam(SpqrDistribution, "")
 }
 
 // PreferredEngine implements client.Client.
 func (cl *SimpleSessionParamHandler) PreferredEngine() string {
-	return cl.resolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
+	return cl.resolveVirtualStringParam(SpqrPreferredEngine, "")
 }
 
 // SetPreferredEngine implements client.Client.
 func (cl *SimpleSessionParamHandler) SetPreferredEngine(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_PREFERRED_ENGINE, val)
+	cl.RecordVirtualParam(level, SpqrPreferredEngine, val)
 }
 
 // SetDistributedRelation implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_DISTRIBUTED_RELATION, val)
+	cl.RecordVirtualParam(level, SpqrDistributedRelation, val)
 }
 
 // DistributedRelation implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributedRelation() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTED_RELATION, "")
+	return cl.resolveVirtualStringParam(SpqrDistributedRelation, "")
 }
 
 // SetExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetExecuteOn(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
+	cl.RecordVirtualParam(level, SpqrExecuteOn, val)
 }
 
 // ExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) ExecuteOn() string {
-	return cl.resolveVirtualStringParam(SPQR_EXECUTE_ON, "")
+	return cl.resolveVirtualStringParam(SpqrExecuteOn, "")
 }
 
 // SetExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetEnhancedMultiShardProcessing(level string, val bool) {
 	if val {
-		cl.RecordVirtualParam(level, SPQR_ENGINE_V2, "ok")
+		cl.RecordVirtualParam(level, SpqrEngineV2, "ok")
 	} else {
-		cl.RecordVirtualParam(level, SPQR_ENGINE_V2, "no")
+		cl.RecordVirtualParam(level, SpqrEngineV2, "no")
 	}
 }
 
 // ExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) EnhancedMultiShardProcessing() bool {
-	return cl.ResolveVirtualBoolParam(SPQR_ENGINE_V2, config.RouterConfig().Qr.EnhancedMultiShardProcessing)
+	return cl.ResolveVirtualBoolParam(SpqrEngineV2, config.RouterConfig().Qr.EnhancedMultiShardProcessing)
 }
 
 func (cl *SimpleSessionParamHandler) SetCommitStrategy(val string) {
-	cl.RecordVirtualParam(VirtualParamLevelTxBlock, SPQR_COMMIT_STRATEGY, val)
+	cl.RecordVirtualParam(VirtualParamLevelTxBlock, SpqrCommitStrategy, val)
 }
 
 func (cl *SimpleSessionParamHandler) CommitStrategy() string {
-	return cl.resolveVirtualStringParam(SPQR_COMMIT_STRATEGY, cl.defaultCommitStrategy)
+	return cl.resolveVirtualStringParam(SpqrCommitStrategy, cl.defaultCommitStrategy)
 }
 
 // SetAutoDistribution implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetAutoDistribution(val string) {
-	cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_AUTO_DISTRIBUTION, val)
+	cl.RecordVirtualParam(VirtualParamLevelStatement, SpqrAutoDistribution, val)
 }
 
 // AutoDistribution implements RouterClient.
 func (cl *SimpleSessionParamHandler) AutoDistribution() string {
-	return cl.resolveVirtualStringParam(SPQR_AUTO_DISTRIBUTION, "")
+	return cl.resolveVirtualStringParam(SpqrAutoDistribution, "")
 }
 
 // SetDistributionKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDistributionKey(val string) {
-	cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_DISTRIBUTION_KEY, val)
+	cl.RecordVirtualParam(VirtualParamLevelStatement, SpqrDistributionKey, val)
 }
 
 // DistributionKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributionKey() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTION_KEY, "")
+	return cl.resolveVirtualStringParam(SpqrDistributionKey, "")
 }
 
 // MaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) MaintainParams() bool {
-	return cl.maintain_params
+	return cl.maintainParams
 }
 
 // SetMaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetMaintainParams(level string, val bool) {
-	cl.maintain_params = val
+	cl.maintainParams = val
 }
 
 // SetShowNoticeMsg implements client.Client.
@@ -246,40 +246,40 @@ func (cl *SimpleSessionParamHandler) SetBindParams(p [][]byte) {
 
 // SetShardingKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetShardingKey(level string, k string) {
-	cl.RecordVirtualParam(level, SPQR_SHARDING_KEY, k)
+	cl.RecordVirtualParam(level, SpqrShardingKey, k)
 }
 
 // ShardingKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) ShardingKey() string {
-	return cl.resolveVirtualStringParam(SPQR_SHARDING_KEY, "")
+	return cl.resolveVirtualStringParam(SpqrShardingKey, "")
 }
 
 // SetDefaultRouteBehaviour implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDefaultRouteBehaviour(level string, b string) {
-	cl.RecordVirtualParam(level, SPQR_DEFAULT_ROUTE_BEHAVIOUR, b)
+	cl.RecordVirtualParam(level, SpqrDefaultRouteBehaviour, b)
 }
 
 // DefaultRouteBehaviour implements RouterClient.
 func (cl *SimpleSessionParamHandler) DefaultRouteBehaviour() string {
-	return cl.resolveVirtualStringParam(SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
+	return cl.resolveVirtualStringParam(SpqrDefaultRouteBehaviour, "")
 }
 
 // ScatterQuery implements RouterClient.
 func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
-	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
+	return cl.ResolveVirtualBoolParam(SpqrScatterQuery, false)
 }
 
 // SetScatterQuery implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetScatterQuery(val bool) {
 	if val {
-		cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "ok")
+		cl.RecordVirtualParam(VirtualParamLevelStatement, SpqrScatterQuery, "ok")
 	} else {
-		cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "no")
+		cl.RecordVirtualParam(VirtualParamLevelStatement, SpqrScatterQuery, "no")
 	}
 }
 
 func (cl *SimpleSessionParamHandler) GetTsa() tsa.TSA {
-	return tsa.TSA(cl.resolveVirtualStringParam(SPQR_TARGET_SESSION_ATTRS, cl.defaultTsa))
+	return tsa.TSA(cl.resolveVirtualStringParam(SpqrTargetSessionAttrs, cl.defaultTsa))
 }
 
 func (cl *SimpleSessionParamHandler) SetTsa(level string, s string) {
@@ -290,7 +290,7 @@ func (cl *SimpleSessionParamHandler) SetTsa(level string, s string) {
 		config.TargetSessionAttrsRW,
 		config.TargetSessionAttrsSmartRW,
 		config.TargetSessionAttrsRO:
-		cl.RecordVirtualParam(level, SPQR_TARGET_SESSION_ATTRS, s)
+		cl.RecordVirtualParam(level, SpqrTargetSessionAttrs, s)
 	default:
 		// XXX: else error out!
 	}
@@ -466,13 +466,13 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 
 var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
 	{
-		n: SPQR_ALLOW_SPLIT_UPDATE,
+		n: SpqrAllowSplitUpdate,
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowSplitUpdate
 		},
 	},
 	{
-		n: SPQR_ALLOW_POSTPROCESSING,
+		n: SpqrAllowPostprocessing,
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowPostProcessing
 		},
@@ -489,18 +489,18 @@ func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
+func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
 
 		startupParameters: map[string]string{},
 
 		activeParamSet: map[string]string{
-			SPQR_DISTRIBUTION:            "default",
-			SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
+			SpqrDistribution:            "default",
+			SpqrDefaultRouteBehaviour: defaultRouteBehaviour,
 		},
 		defaultTsa:            t,
-		showNoticeMessages:    show_notice,
+		showNoticeMessages:    showNotice,
 		defaultCommitStrategy: ds,
 	}
 }

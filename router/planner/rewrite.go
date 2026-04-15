@@ -54,7 +54,7 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 	return query, nil
 }
 
-func CommonValuesRewrite(query string, scanStart int, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
 
 	p := &plan.ScatterPlan{
 		SubPlan: &plan.ModifyTable{},
@@ -405,7 +405,7 @@ func getMaxPrepStmtId(s lyx.Node) int {
 	return ret
 }
 
-func InsertSequenceParamRef(ctx context.Context,
+func InsertSequenceParamRef(_ context.Context,
 	query string,
 	ColumnSequenceMapping map[string]string,
 	stmt lyx.Node,
@@ -419,7 +419,7 @@ func InsertSequenceParamRef(ctx context.Context,
 
 			// analyze lyx statement
 			maxId := getMaxPrepStmtId(stmt)
-			def.OverwriteRemoveParamIds = map[int]struct{}{maxId: {}}
+			def.OverwriteRemoveParamIDs = map[int]struct{}{maxId: {}}
 			def.SeqName = seqName
 
 			return fmt.Sprintf("$%d", maxId), nil

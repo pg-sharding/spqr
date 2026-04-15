@@ -50,8 +50,8 @@ func NewShardServer(spool pool.MultiShardTSAPool) *ShardServer {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
-	b, rd := (*srv.shard.Load()).HasPrepareStatement(hash, shardId)
+func (srv *ShardServer) HasPrepareStatement(hash uint64, shardID uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	b, rd := (*srv.shard.Load()).HasPrepareStatement(hash, shardID)
 	return b, rd
 }
 
@@ -64,8 +64,8 @@ func (srv *ShardServer) Name() string {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
-	return (*srv.shard.Load()).StorePrepareStatement(hash, shardId, def, rd)
+func (srv *ShardServer) StorePrepareStatement(hash uint64, shardID uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	return (*srv.shard.Load()).StorePrepareStatement(hash, shardID, def, rd)
 }
 
 // TODO : unit tests
@@ -158,7 +158,7 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.ShardKey) error {
 	localKey := (*srv.shard.Load()).SHKey().Name
 	if localKey != shkey.Name {
-		return spqrerror.Newf(spqrerror.SPQR_CROSS_SHARD_QUERY, "mismatched single-shard destination: %s vs %s", localKey, shkey.Name)
+		return spqrerror.Newf(spqrerror.SpqrCrossShardQuery, "mismatched single-shard destination: %s vs %s", localKey, shkey.Name)
 	}
 	return srv.Send(query)
 }
@@ -179,9 +179,9 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
-	if (*srv.shard.Load()).ID() != shardId {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+func (srv *ShardServer) ReceiveShard(shardID uint) (pgproto3.BackendMessage, error) {
+	if (*srv.shard.Load()).ID() != shardID {
+		return nil, spqrerror.NewByCode(spqrerror.SpqrNoDatashard)
 	}
 	msg, _, err := srv.Receive()
 	return msg, err
@@ -237,7 +237,7 @@ func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 
 // TODO : unit tests
 func (srv *ShardServer) Datashards() []shard.ShardHostInstance {
-	var rv []shard.ShardHostInstance = nil
+	var rv []shard.ShardHostInstance
 	v := srv.shard.Load()
 
 	if v != nil {

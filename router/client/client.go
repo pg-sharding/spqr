@@ -869,7 +869,7 @@ func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
 		}
 		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, er.Position, s)
 	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, s)
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SpqrUnexpected, 0, s)
 	}
 }
 
@@ -883,7 +883,7 @@ func (cl *PsqlClient) ReplyErr(e error) error {
 
 		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, er.Position, txstatus.TXIDLE)
 	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, txstatus.TXIDLE)
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SpqrUnexpected, 0, txstatus.TXIDLE)
 	}
 }
 

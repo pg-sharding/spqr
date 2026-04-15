@@ -47,7 +47,7 @@ type MemQDB struct {
 	MoveTasks                   map[string]*MoveTask                `json:"move_tasks"`
 	TotalKeys                   map[string]int64                    `json:"total_keys"`
 	RedistributeTasks           map[string]*RedistributeTask        `json:"redistribute_tasks"`
-	RedistributeTaskTaskGroupId map[string]string                   `json:"redistribute_task_task_group"`
+	RedistributeTaskTaskGroupID map[string]string                   `json:"redistribute_task_task_group"`
 	KeyRangeRedistributeTasks   map[string]string                   `json:"key_range_redistribute_tasks"`
 	BalancerTask                *BalancerTask                       `json:"balancer_task"`
 	ReferenceRelations          map[string]*ReferenceRelation       `json:"reference_relations"`
@@ -87,7 +87,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		ReferenceRelations:          map[string]*ReferenceRelation{},
 		MoveTaskGroups:              map[string]*MoveTaskGroup{},
 		RedistributeTasks:           map[string]*RedistributeTask{},
-		RedistributeTaskTaskGroupId: map[string]string{},
+		RedistributeTaskTaskGroupID: map[string]string{},
 		TaskGroupIDToStatus:         map[string]*TaskGroupStatus{},
 		StopMoveTaskGroup:           map[string]bool{},
 		TotalKeys:                   map[string]int64{},
@@ -187,12 +187,12 @@ func (q *MemQDB) DumpState() error {
 //                               MISC
 // ==============================================================================
 
-func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
+func (q *MemQDB) dropKeyRangeCommands(krID string) []Command {
 	return []Command{
-		NewDeleteCommand(q.Krs, krId),
-		NewDeleteCommand(q.Freq, krId),
-		NewDeleteCommand(q.Locks, krId),
-		NewDeleteCommand(q.KrVersions, krId),
+		NewDeleteCommand(q.Krs, krID),
+		NewDeleteCommand(q.Freq, krID),
+		NewDeleteCommand(q.Locks, krID),
+		NewDeleteCommand(q.KrVersions, krID),
 	}
 }
 
@@ -209,22 +209,22 @@ func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
 //                               KEY RANGE MOVES
 // ==============================================================================
 
-func (q *MemQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
+func (q *MemQDB) RecordKeyRangeMove(_ context.Context, _ *MoveKeyRange) error {
 	// TODO implement
 	return nil
 }
 
-func (q *MemQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
+func (q *MemQDB) ListKeyRangeMoves(_ context.Context) ([]*MoveKeyRange, error) {
 	// TODO implement
 	return nil, nil
 }
 
-func (q *MemQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+func (q *MemQDB) UpdateKeyRangeMoveStatus(_ context.Context, _ string, _ MoveKeyRangeStatus) error {
 	// TODO implement
 	return nil
 }
 
-func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string) error {
 	// TODO implement
 	return nil
 }
@@ -238,20 +238,20 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
+		cmd, err := NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
 		if err != nil {
 			return nil, err
 		}
 		commands[0] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
+		if cmd, err = NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
 			return nil, err
 		}
 		commands[1] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
+		if cmd, err = NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
 			return nil, err
 		}
 		commands[2] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
+		if cmd, err = NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
 			return nil, err
 		}
 		commands[3] = *cmd
@@ -259,20 +259,20 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	return commands, nil
 }
 
-func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
+func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeID string) ([]QdbStatement, error) {
 	commands := make([]QdbStatement, 3)
 
-	cmd, err := NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapKrs)
+	cmd, err := NewQdbStatementExt(CmdDelete, keyRangeID, "", MapKrs)
 	if err != nil {
 		return nil, err
 	}
 	commands[0] = *cmd
-	cmd, err = NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapLocks)
+	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeID, "", MapLocks)
 	if err != nil {
 		return nil, err
 	}
 	commands[1] = *cmd
-	cmd, err = NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapFreq)
+	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeID, "", MapFreq)
 	if err != nil {
 		return nil, err
 	}
@@ -285,12 +285,12 @@ func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
 			return nil, err
 		} else {
 			commands[0] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
 			return nil, err
 		} else {
 			commands[1] = *cmd
@@ -303,9 +303,9 @@ func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
-	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
-		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
-			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
+	if len(keyRange.DistributionID) > 0 && keyRange.DistributionID != "default" {
+		if _, ok := q.Distributions[keyRange.DistributionID]; !ok {
+			return nil, spqrerror.New(spqrerror.SpqrObjectNotExist, fmt.Sprintf("no such distribution %s", keyRange.DistributionID))
 		}
 	}
 
@@ -323,7 +323,7 @@ func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 	kRangeInt, ok := q.Krs[id]
 	if !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "there is no key range %s", id)
 	}
 	isLocked := false
 	if v, ok := q.Freq[id]; ok {
@@ -354,10 +354,10 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, err
 
 	lock, ok := q.Locks[id]
 	if !ok {
-		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
+		return nil, spqrerror.New(spqrerror.SpqrMetadataCorruption, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
 	if !lock.TryLock() {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v is locked", id)
 	}
 	defer lock.Unlock()
 	return q.dropKeyRangeQdbStatements(id)
@@ -376,9 +376,9 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 			l.Unlock()
 		}
 	}()
-	for krId, l := range q.Locks {
+	for krID, l := range q.Locks {
 		if !l.TryLock() {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", krId)
+			return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range \"%s\" is locked", krID)
 		}
 		locks = append(locks, l)
 	}
@@ -398,7 +398,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRa
 	var ret []*KeyRange
 
 	for _, el := range q.Krs {
-		if el.DistributionId == distribution {
+		if el.DistributionID == distribution {
 			isLocked := false
 			if v, ok := q.Freq[el.KeyRangeID]; ok {
 				isLocked = v
@@ -445,11 +445,11 @@ func (q *MemQDB) tryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 		res = lock.TryLock()
 	}
 	if !res {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v is locked", id)
 	}
 
 	if _, ok := q.Krs[id]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted after lock acquired", id)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range '%s' deleted after lock acquired", id)
 	}
 	return nil
 }
@@ -463,7 +463,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 
 	krs, ok := q.Krs[id]
 	if !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' does not exist", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range '%s' does not exist", id)
 	}
 
 	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
@@ -493,7 +493,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
 	if !q.Freq[id] {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v not locked", id)
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
@@ -509,7 +509,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
-func (q *MemQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
+func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
 		Msg("memqdb: get list locked key range")
@@ -525,7 +525,7 @@ func (q *MemQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
+func (q *MemQDB) CheckLockedKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: check locked key range")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -536,7 +536,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	}
 
 	if !q.Freq[id] {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrKeyrangeError, "key range %v not locked", id)
 	}
 
 	return krs, nil
@@ -551,7 +551,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 
 	lock, ok := q.Locks[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "no such key")
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, "no such key")
 	}
 
 	err := q.tryLockKeyRange(lock, id, true)
@@ -564,26 +564,26 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
+func (q *MemQDB) RenameKeyRange(_ context.Context, krID, krIDNew string) error {
 	spqrlog.Zero.Debug().
-		Str("id", krId).
-		Str("new id", krIdNew).
+		Str("id", krID).
+		Str("new id", krIDNew).
 		Msg("memqdb: rename key range")
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	kr, ok := q.Krs[krId]
+	kr, ok := q.Krs[krID]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krId))
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, fmt.Sprintf("key range '%s' not found", krID))
 	}
-	if _, ok = q.Krs[krIdNew]; ok {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	if _, ok = q.Krs[krIDNew]; ok {
+		return spqrerror.New(spqrerror.SpqrKeyrangeError, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
 
-	kr.KeyRangeID = krIdNew
+	kr.KeyRangeID = krIDNew
 	commands := make([]Command, 0)
-	commands = append(commands, q.dropKeyRangeCommands(krId)...)
+	commands = append(commands, q.dropKeyRangeCommands(krID)...)
 	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1))...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
@@ -639,7 +639,7 @@ func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	return nil
 }
 
-func (q *MemQDB) GetCoordinator(ctx context.Context) (string, error) {
+func (q *MemQDB) GetCoordinator(_ context.Context) (string, error) {
 	spqrlog.Zero.Debug().Str("address", q.Coordinator).Msg("memqdb: get coordinator address")
 	return q.Coordinator, nil
 }
@@ -769,7 +769,7 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 		return shard, nil
 	}
 
-	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
+	return nil, spqrerror.Newf(spqrerror.SpqrNoDatashard, "unknown shard %s", id)
 }
 
 func (q *MemQDB) UpdateShard(_ context.Context, shard *Shard) error {
@@ -778,7 +778,7 @@ func (q *MemQDB) UpdateShard(_ context.Context, shard *Shard) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.Shards[shard.ID]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+		return spqrerror.Newf(spqrerror.SpqrNoDatashard, "shard %s does not exist", shard.ID)
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
@@ -799,7 +799,7 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 // ==============================================================================
 
 // CreateReferenceRelation implements XQDB.
-func (q *MemQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error {
+func (q *MemQDB) CreateReferenceRelation(_ context.Context, r *ReferenceRelation) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.ReferenceRelations[r.TableName] = r
@@ -815,21 +815,21 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, relName *rfqn.RelationF
 	defer q.mu.RUnlock()
 
 	if rr, ok := q.ReferenceRelations[tableName]; !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "reference relation \"%s\" not found", tableName)
 	} else {
 		return rr, nil
 	}
 }
 
 // AlterReferenceRelationStorage implements XQDB.
-func (q *MemQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	tableName := relName.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, ok := q.ReferenceRelations[tableName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+		return spqrerror.Newf(spqrerror.SpqrObjectNotExist, "reference relation \"%s\" not found", tableName)
 	}
-	q.ReferenceRelations[tableName].ShardIds = shs
+	q.ReferenceRelations[tableName].ShardIDs = shs
 	return nil
 }
 
@@ -839,7 +839,7 @@ func (q *MemQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relati
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, ok := q.ReferenceRelations[tableName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+		return spqrerror.Newf(spqrerror.SpqrObjectNotExist, "reference relation \"%s\" not found", tableName)
 	}
 	delete(q.ReferenceRelations, tableName)
 	return nil
@@ -870,7 +870,7 @@ func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distributio
 	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
 		q.RelationDistribution[r.Name] = distribution.ID
-		if cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, r.Name, distribution.ID, MapRelationDistribution); err != nil {
 			return nil, err
 		} else {
 			commands = append(commands, *cmd)
@@ -880,7 +880,7 @@ func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distributio
 	if distributionJSON, err := json.Marshal(*distribution); err != nil {
 		return nil, err
 	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
 			return nil, err
 		} else {
 			commands = append(commands, *cmd)
@@ -913,7 +913,7 @@ func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.Distributions[id]; !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution")
 	}
 
 	for t, ds := range q.RelationDistribution {
@@ -934,7 +934,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	defer q.mu.Unlock()
 
 	if ds, ok := q.Distributions[id]; !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution")
 	} else {
 
 		if ds.FQNRelations == nil {
@@ -952,22 +952,21 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 				* SPQR 3.0.0 transition. */
 				if dr := ds.Relations[r.QualifiedName().RelationName]; dr.SchemaName == r.SchemaName {
 					return spqrerror.Newf(
-						spqrerror.SPQR_INVALID_REQUEST,
+						spqrerror.SpqrInvalidRequest,
 						"relation \"%s\" is already attached", r.QualifiedName().String())
 				} else {
 					_, ok := ds.FQNRelations[r.QualifiedName().String()]
 					if ok {
 						/* error */
 						return spqrerror.Newf(
-							spqrerror.SPQR_INVALID_REQUEST,
+							spqrerror.SpqrInvalidRequest,
 							"relation \"%s\" is already attached", r.QualifiedName().String())
 
-					} else {
-						ds.FQNRelations[r.QualifiedName().String()] = r
-
-						/* Note we do not store relation distribution index here. */
-						return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 					}
+					ds.FQNRelations[r.QualifiedName().String()] = r
+
+					/* Note we do not store relation distribution index here. */
+					return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 				}
 			}
 
@@ -991,7 +990,7 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution \"%s\" not found", id)
 	}
 
 	if err := q.AlterSequenceDetachRelation(ctx, relName); err != nil {
@@ -1015,13 +1014,13 @@ func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *D
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution")
 	}
 	if dsID, ok := q.RelationDistribution[rel.Name]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", rel.Name)
 	} else if dsID != id {
 		return spqrerror.Newf(
-			spqrerror.SPQR_INVALID_REQUEST,
+			spqrerror.SpqrInvalidRequest,
 			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"",
 			rel.QualifiedName().String(), dsID, id)
 	}
@@ -1042,13 +1041,13 @@ func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, 
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution")
 	}
 	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
 		return spqrerror.Newf(
-			spqrerror.SPQR_INVALID_REQUEST,
+			spqrerror.SpqrInvalidRequest,
 			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"",
 			relation.String(), dsID, id)
 	}
@@ -1069,13 +1068,13 @@ func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, r
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution")
 	}
 	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
 		return spqrerror.Newf(
-			spqrerror.SPQR_INVALID_REQUEST,
+			spqrerror.SpqrInvalidRequest,
 			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"",
 			relation.String(), dsID, id)
 	}
@@ -1099,12 +1098,12 @@ func (q *MemQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.New(spqrerror.SpqrObjectNotExist, "no such distribution")
 	}
 	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), dsID, id)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), dsID, id)
 	}
 
 	ds.Relations[relation.RelationName].DistributionKey = distributionKey
@@ -1123,7 +1122,7 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 
 	if ds, ok := q.Distributions[id]; !ok {
 		// DEPRECATE this
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution \"%s\" not found", id)
 	} else {
 		return ds.Copy(), nil
 	}
@@ -1141,7 +1140,7 @@ func (q *MemQDB) CheckDistribution(_ context.Context, id string) (bool, error) {
 
 func (q *MemQDB) relationDistributionInternal(relation *rfqn.RelationFQN) (*Distribution, error) {
 	if ds, ok := q.RelationDistribution[relation.RelationName]; !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution for relation \"%s\" not found", relation)
 	} else {
 		// if there is no distr by key ds
 		// then we have corruption
@@ -1175,9 +1174,9 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[idx.DistributionId]
+	ds, ok := q.Distributions[idx.DistributionID]
 	if !ok {
-		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
+		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionID)
 	}
 	ds.UniqueIndexes[idx.ID] = idx
 
@@ -1204,15 +1203,15 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 		return fmt.Errorf("unique index \"%s\" not found", id)
 	}
 
-	ds, ok := q.Distributions[idx.DistributionId]
+	ds, ok := q.Distributions[idx.DistributionID]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionId)
+		return spqrerror.Newf(spqrerror.SpqrMetadataCorruption, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionID)
 	}
 	delete(ds.UniqueIndexes, idx.ID)
 
 	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.String())
+		return spqrerror.Newf(spqrerror.SpqrMetadataCorruption, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.String())
 	}
 	for _, col := range idx.ColumnNames {
 		delete(idxs, col)
@@ -1258,7 +1257,7 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context, id string) (*MoveTaskGroup,
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error {
+func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTaskGroup, _ int64, _ *MoveTask) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: write task group")
@@ -1272,7 +1271,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 	q.MoveTaskGroups[id] = group
 	q.StopMoveTaskGroup[id] = false
 	if group.Issuer != nil && group.Issuer.Type == IssuerRedistributeTask {
-		q.RedistributeTaskTaskGroupId[group.Issuer.Id] = id
+		q.RedistributeTaskTaskGroupID[group.Issuer.ID] = id
 	}
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTaskGroups, id, group), NewUpdateCommand(q.StopMoveTaskGroup, id, false))
 }
@@ -1457,8 +1456,8 @@ func (q *MemQDB) CreateRedistributeTask(_ context.Context, task *RedistributeTas
 	if _, ok := q.RedistributeTasks[task.ID]; ok {
 		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
 	}
-	if _, ok := q.KeyRangeRedistributeTasks[task.KeyRangeId]; ok {
-		return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
+	if _, ok := q.KeyRangeRedistributeTasks[task.KeyRangeID]; ok {
+		return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeID)
 	}
 	q.RedistributeTasks[task.ID] = task
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
@@ -1484,19 +1483,19 @@ func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask)
 	defer q.mu.Unlock()
 
 	delete(q.RedistributeTasks, task.ID)
-	delete(q.KeyRangeRedistributeTasks, task.KeyRangeId)
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeId))
+	delete(q.KeyRangeRedistributeTasks, task.KeyRangeID)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeID))
 }
 
-func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) (string, error) {
+func (q *MemQDB) GetRedistributeTaskTaskGroupID(ctx context.Context, id string) (string, error) {
 	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get redistribute task task group ID")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.RedistributeTaskTaskGroupId[id], nil
+	return q.RedistributeTaskTaskGroupID[id], nil
 }
 
-func (q *MemQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+func (q *MemQDB) GetKeyRangeRedistributeTaskID(ctx context.Context, keyRangeID string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
@@ -1621,7 +1620,7 @@ func (q *MemQDB) DropSequence(ctx context.Context, seqName string, force bool) e
 			data := strings.Split(col, "_")
 			relName := data[0]
 			colName := data[1]
-			return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", fmt.Sprintf("%s.%s", relName, colName))
+			return spqrerror.Newf(spqrerror.SpqrSequenceError, "column %q is attached to sequence", fmt.Sprintf("%s.%s", relName, colName))
 		}
 	}
 
@@ -1660,7 +1659,7 @@ func (q *MemQDB) ListSequences(_ context.Context) ([]string, error) {
 	return seqNames, nil
 }
 
-func (q *MemQDB) NextRange(_ context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error) {
+func (q *MemQDB) NextRange(_ context.Context, seqName string, rangeSize uint64) (*SequenceIDRange, error) {
 	q.SequenceLock.Lock()
 	defer q.SequenceLock.Unlock()
 	spqrlog.Zero.Debug().
@@ -1695,12 +1694,12 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 
 func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(string)
 		if !ok {
-			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+			return nil, fmt.Errorf("incorrect value type %T for CmdPut, string is expected", stmt.Value)
 		}
 		return NewUpdateCommand(q.RelationDistribution, stmt.Key, val), nil
 	default:
@@ -1709,13 +1708,13 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 }
 func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.Distributions, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		var distr Distribution
 		val, ok := stmt.Value.(string)
 		if !ok {
-			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+			return nil, fmt.Errorf("incorrect value type %T for CmdPut, string is expected", stmt.Value)
 		}
 		if err := json.Unmarshal([]byte(val), &distr); err != nil {
 			return nil, err
@@ -1729,12 +1728,12 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.Krs, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(string)
 		if !ok {
-			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+			return nil, fmt.Errorf("incorrect value type %T for CmdPut, string is expected", stmt.Value)
 		}
 		var kr KeyRange
 		if err := json.Unmarshal([]byte(val), &kr); err != nil {
@@ -1748,9 +1747,9 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.Freq, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		valFreq := true
 		if stmt.Value == "false" {
 			valFreq = false
@@ -1763,12 +1762,12 @@ func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.Locks, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(string)
 		if !ok {
-			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+			return nil, fmt.Errorf("incorrect value type %T for CmdPut, string is expected", stmt.Value)
 		}
 		lock := &sync.RWMutex{}
 		isLocked, err := strconv.ParseBool(val)
@@ -1788,9 +1787,9 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.KrVersions, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(int)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapKrVersions, int is expected", stmt.Value)
@@ -1850,10 +1849,10 @@ func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransact
 		return fmt.Errorf("cant't commit empty transaction")
 	}
 	if err := transaction.Validate(); err != nil {
-		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
+		return fmt.Errorf("invalid transaction %s: %w", transaction.ID(), err)
 	}
-	if transaction.Id() != q.activeTransaction {
-		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
+	if transaction.ID() != q.activeTransaction {
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.ID())
 	}
 	if memOperations, err := q.packMemqdbCommands(transaction.commands); err != nil {
 		return err
@@ -1869,7 +1868,7 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 	if transaction == nil {
 		return fmt.Errorf("empty transaction is not supported")
 	}
-	q.activeTransaction = transaction.Id()
+	q.activeTransaction = transaction.ID()
 	return nil
 }
 
@@ -1921,7 +1920,7 @@ func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []st
 
 	info := &TwoPCInfo{
 		Gid:       id,
-		SHardsIds: shards,
+		SHardsIDs: shards,
 		State:     TwoPhaseInitState,
 		Locked:    true,
 	}
@@ -1939,7 +1938,7 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 	if tx, ok := q.TwoPhaseTx[gid]; !ok {
 		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
 	} else {
-		return tx.SHardsIds, nil
+		return tx.SHardsIDs, nil
 	}
 }
 
@@ -1976,15 +1975,15 @@ func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 //                               TASK GROUP STATE
 // ==============================================================================
 
-func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder string) error {
+func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgID string, holder string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgID string) (bool, error) {
 	return false, fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
+func (q *MemQDB) DropTaskGroupLock(ctx context.Context, tgID string) error {
 	return fmt.Errorf("not implemented")
 }
 

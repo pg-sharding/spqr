@@ -65,7 +65,7 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 		return nil, comment, &spqrerror.SpqrError{
 			Err:       err,
 			Position:  int32(pos),
-			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
+			ErrorCode: spqrerror.PgSyntaxError,
 		}
 	}
 

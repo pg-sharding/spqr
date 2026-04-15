@@ -172,7 +172,7 @@ func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.Prep
 
 	shards := serv.Datashards()
 	if len(shards) == 0 {
-		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+		return nil, nil, spqrerror.New(spqrerror.SpqrNoDatashard, "No active shards")
 	}
 
 	var rd *prepstatement.PreparedStatementDescriptor
@@ -199,10 +199,10 @@ shardLoop:
 
 func pstmtDoesNotExistsErr(name string) error {
 	if len(name) > 0 {
-		return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", name)
+		return spqrerror.Newf(spqrerror.PgPreparedStatementDoesNotExist, "prepared statement \"%s\" does not exist", name)
 	}
 
-	return spqrerror.New(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "unnamed prepared statement does not exist")
+	return spqrerror.New(spqrerror.PgPreparedStatementDoesNotExist, "unnamed prepared statement does not exist")
 }
 
 func (rst *RelayStateImpl) Close() error {
@@ -532,7 +532,7 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, name, query s
 				qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
 				if ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, qualName); err != nil {
 					return err
-				} else if ds.Id == distributions.REPLICATED {
+				} else if ds.ID == distributions.REPLICATED {
 					rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName)
 					if err != nil {
 						return err
@@ -656,7 +656,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				return pstmtDoesNotExistsErr(currentMsg.PreparedStatement)
 			}
 
-			if def.OverwriteRemoveParamIds != nil {
+			if def.OverwriteRemoveParamIDs != nil {
 				// we did query overwrite for sole reason -
 				// to insert next sequence value.
 				// XXX: this needs a massive refactor later
@@ -796,7 +796,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if currentMsg.ObjectType == 'P' {
 
 				if !rst.unnamedPortalExists {
-					return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
+					return spqrerror.New(spqrerror.PgPortalDoesNotExist, "portal \"\" does not exist")
 				}
 
 				spqrlog.Zero.Debug().
@@ -822,7 +822,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					p := rst.bindQueryPlan
 					if currentMsg.Name != "" {
 						if _, ok := rst.executeMp[currentMsg.Name]; !ok {
-							return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, fmt.Sprintf("portal \"%s\" does not exists", currentMsg.Name))
+							return spqrerror.New(spqrerror.PgPortalDoesNotExist, fmt.Sprintf("portal \"%s\" does not exists", currentMsg.Name))
 						}
 						p = rst.bindQueryPlanMP[currentMsg.Name]
 					}
@@ -911,7 +911,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				if desc != nil {
 					// if we did overwrite something - remove our
 					// columns from output
-					for ind := range def.OverwriteRemoveParamIds {
+					for ind := range def.OverwriteRemoveParamIDs {
 						// NB: ind are zero - indexed
 						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
 					}
@@ -1009,7 +1009,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			default:
 				/* Send proper protocol error. */
 				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
+				return spqrerror.Newf(spqrerror.PgErrcodeProtocolViolation, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
 			}
 		default:
 			return fmt.Errorf("unexpected query type %v", msg)
@@ -1046,7 +1046,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, stri
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName))
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
-						return stmts, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
+						return stmts, comm, spqrerror.Newf(spqrerror.SpqrFailedMatch, "failed to get schema cache: %s", err)
 					}
 				}
 			}
@@ -1124,7 +1124,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	case ErrMatchShardError:
 		return nil, &spqrerror.SpqrError{
 			Err:       err,
-			ErrorCode: spqrerror.SPQR_NO_DATASHARD,
+			ErrorCode: spqrerror.SpqrNoDatashard,
 		}
 	default:
 		return q, err
@@ -1168,7 +1168,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	case nil:
 		return nil
 	case ErrMatchShardError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SpqrNoDatashard)
 		return err
 	default:
 		return err
@@ -1218,7 +1218,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	case nil:
 		return p, cf, nil
 	case ErrMatchShardError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SpqrNoDatashard)
 		return currentPlan, noopCloseRouteFunc, err
 	default:
 		return currentPlan, noopCloseRouteFunc, err

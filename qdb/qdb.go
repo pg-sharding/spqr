@@ -14,9 +14,9 @@ type ShardingSchemaKeeper interface {
 	// ListKeyRangeMoves lists all key-range moves that are in progress
 	ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error)
 	// UpdateKeyRangeMoveStatus marks the key range move as complete
-	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error
+	UpdateKeyRangeMoveStatus(ctx context.Context, moveID string, s MoveKeyRangeStatus) error
 	// DeleteKeyRangeMove removes information about key range moves
-	DeleteKeyRangeMove(ctx context.Context, moveId string) error
+	DeleteKeyRangeMove(ctx context.Context, moveID string) error
 }
 
 type TopologyKeeper interface {
@@ -56,9 +56,9 @@ type TXManager interface {
 }
 
 type TaskStateKeeper interface {
-	TryTaskGroupLock(ctx context.Context, tgId string, holder string) error
-	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
-	DropTaskGroupLock(ctx context.Context, tgId string) error
+	TryTaskGroupLock(ctx context.Context, tgID string, holder string) error
+	CheckTaskGroupLocked(ctx context.Context, tgID string) (bool, error)
+	DropTaskGroupLock(ctx context.Context, tgID string) error
 	LockRedistributeTask(ctx context.Context, id string, holder string) error
 	DropRedistributeTaskLock(ctx context.Context, id string) error
 }
@@ -80,7 +80,7 @@ type QDB interface {
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ListLockedKeyRanges(ctx context.Context) ([]string, error)
 	ShareKeyRange(id string) error
-	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
+	RenameKeyRange(ctx context.Context, krID, ktIdNew string) error
 
 	// Distribution management
 	CreateDistribution(ctx context.Context, distr *Distribution) ([]QdbStatement, error)
@@ -130,7 +130,7 @@ type QDB interface {
 	WriteMoveTask(ctx context.Context, task *MoveTask) error
 	UpdateMoveTask(ctx context.Context, task *MoveTask) error
 	DropMoveTask(ctx context.Context, id string) error
-	GetMoveTaskByGroup(ctx context.Context, taskGroupId string) (*MoveTask, error)
+	GetMoveTaskByGroup(ctx context.Context, taskGroupID string) (*MoveTask, error)
 
 	// Redistribute tasks
 	ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error)
@@ -138,8 +138,8 @@ type QDB interface {
 	CreateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	DropRedistributeTask(ctx context.Context, task *RedistributeTask) error
-	GetRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string) (string, error)
-	GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error)
+	GetRedistributeTaskTaskGroupID(ctx context.Context, redistributeTaskID string) (string, error)
+	GetKeyRangeRedistributeTaskID(ctx context.Context, keyRangeID string) (string, error)
 
 	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
@@ -156,7 +156,7 @@ type QDB interface {
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
 	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)
-	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
+	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIDRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
 	GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error)
@@ -258,7 +258,7 @@ const (
 // DataTransferTransaction contains information about data transfer
 // from one shard to another
 type DataTransferTransaction struct {
-	ToShardId   string   `json:"to_shard"`
-	FromShardId string   `json:"from_shard"`
+	ToShardID   string   `json:"to_shard"`
+	FromShardID string   `json:"from_shard"`
 	Status      TxStatus `json:"status"`
 }

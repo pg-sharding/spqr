@@ -15,7 +15,7 @@ type SplitKeyRange struct {
 }
 
 type MoveKeyRange struct {
-	ShardId string
+	ShardID string
 	Krid    string
 }
 
@@ -25,9 +25,9 @@ type UniteKeyRange struct {
 }
 
 type BatchMoveKeyRange struct {
-	TaskGroupId string // if empty, will be a random uuid. Otherwise user-input
-	KeyRangeId  string // KeyRangeId is the source key range id
-	ShardId     string // ShardId is the destination shard id
+	TaskGroupID string // if empty, will be a random uuid. Otherwise user-input
+	KeyRangeID  string // KeyRangeID is the source key range id
+	ShardID     string // ShardID is the destination shard id
 	Limit       int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
 	Can be either negative, in which case the whole key range will be moved,
 	or non-negative, where circa specified amount of keys will be moved. */
@@ -39,9 +39,9 @@ type BatchMoveKeyRange struct {
 }
 
 type RedistributeKeyRange struct {
-	TaskGroupId string // optional id.
+	TaskGroupID string // optional id.
 	KrId        string // KrId is the source key range id
-	ShardId     string // ShardId is the destination shard id
+	ShardID     string // ShardID is the destination shard id
 	BatchSize   int    // BatchSize is the amount of keys to be transferred in every transaction.
 	Check       bool   // if Check is set, we perform a pre-run check for the ability to redistribute
 	Apply       bool   // if Apply is not set, command will be a dry-run
@@ -49,7 +49,7 @@ type RedistributeKeyRange struct {
 }
 
 type KeyRangeMgr interface {
-	GetKeyRange(ctx context.Context, krId string) (*KeyRange, error)
+	GetKeyRange(ctx context.Context, krID string) (*KeyRange, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	ListKeyRangeLocks(ctx context.Context) ([]string, error)
@@ -64,5 +64,5 @@ type KeyRangeMgr interface {
 	DropKeyRangeAll(ctx context.Context) error
 	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error
 	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
-	RenameKeyRange(ctx context.Context, krId, krIdNew string) error
+	RenameKeyRange(ctx context.Context, krID, krIDNew string) error
 }

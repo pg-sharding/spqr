@@ -73,7 +73,7 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 		return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", rel.Relation, ds.ID)
 	}
 	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "sequence are supported for replicated relations only")
 	}
 
 	err = lc.qdb.AlterDistributedRelation(ctx, id, distributions.DistributedRelationToDB(rel))
@@ -152,7 +152,7 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 // Caller should lock key range
 // TODO : unit tests
 
-// Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
+// Move moves a key range identified by req.Krid to a new shard specified by req.ShardID
 //
 // Parameters:
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
@@ -167,7 +167,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 		return err
 	}
 
-	ds, err := lc.qdb.GetDistribution(ctx, krmv.DistributionId)
+	ds, err := lc.qdb.GetDistribution(ctx, krmv.DistributionID)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 	if err != nil {
 		return err
 	}
-	reqKr.ShardID = req.ShardId
+	reqKr.ShardID = req.ShardID
 
 	// TODO: move check to meta layer
 	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
@@ -187,7 +187,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+		return spqrerror.Newf(spqrerror.SpqrKeyrangeError, "failed to update a new key range: %s", err)
 	}
 	return nil
 }
@@ -294,12 +294,12 @@ func (lc *LocalInstanceMetadataMgr) ListAllKeyRanges(ctx context.Context) ([]*kr
 			var ds *qdb.Distribution
 			var err error
 			var ok bool
-			if ds, ok = cache[keyRange.DistributionId]; !ok {
-				ds, err = lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
+			if ds, ok = cache[keyRange.DistributionID]; !ok {
+				ds, err = lc.qdb.GetDistribution(ctx, keyRange.DistributionID)
 				if err != nil {
 					return nil, err
 				}
-				cache[keyRange.DistributionId] = ds
+				cache[keyRange.DistributionID] = ds
 			}
 
 			kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
@@ -343,16 +343,16 @@ func listRoutersInner(host string, port string) *topology.Router {
 // - error: an error if the retrieval encounters any issues.
 func (lc *LocalInstanceMetadataMgr) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	host := config.RouterConfig().Host
-	port := config.RouterConfig().GrpcApiPort
+	port := config.RouterConfig().GrpcAPIPort
 	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 
 // MoveKeyRange is disabled in LocalCoordinator
 //
 // Returns:
-// - error: SPQR_INVALID_REQUEST error
+// - error: SpqrInvalidRequest error
 func (lc *LocalInstanceMetadataMgr) MoveKeyRange(_ context.Context, _ *kr.KeyRange) error {
-	return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "MoveKeyRange is not available in local coordinator")
+	return spqrerror.New(spqrerror.SpqrInvalidRequest, "MoveKeyRange is not available in local coordinator")
 }
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in router")
@@ -430,7 +430,7 @@ func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
+func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIDRange, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
 		return nil, err

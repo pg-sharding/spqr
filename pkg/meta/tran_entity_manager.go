@@ -59,7 +59,7 @@ func (s *TransactionState) SetCommitted() {
 // interface for read only methods of EntityMgr
 type EntityMgrReader interface {
 	GetShard(ctx context.Context, shardID string) (*topology.DataShard, error)
-	GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error)
+	GetKeyRange(ctx context.Context, krID string) (*kr.KeyRange, error)
 	GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error)
 }
@@ -128,7 +128,7 @@ func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distribu
 	if err := t.state.Append(commands); err != nil {
 		return err
 	}
-	t.distributions.Save(ds.Id, ds)
+	t.distributions.Save(ds.ID, ds)
 	return nil
 }
 
@@ -206,7 +206,7 @@ func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
 // GetDistribution implements [EntityMgr].
 func (t *TranEntityManager) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	if _, ok := t.distributions.DeletedItems()[id]; ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "distribution \"%s\" not found", id)
 	}
 	if savedDs, ok := t.distributions.Items()[id]; ok {
 		return savedDs, nil
@@ -220,14 +220,14 @@ func (t *TranEntityManager) GetDistribution(ctx context.Context, id string) (*di
 }
 
 // GetKeyRange implements [EntityMgr].
-func (t *TranEntityManager) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
-	if _, ok := t.keyRanges.DeletedItems()[krId]; ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range \"%s\" not found", krId)
+func (t *TranEntityManager) GetKeyRange(ctx context.Context, krID string) (*kr.KeyRange, error) {
+	if _, ok := t.keyRanges.DeletedItems()[krID]; ok {
+		return nil, spqrerror.Newf(spqrerror.SpqrObjectNotExist, "key range \"%s\" not found", krID)
 	}
-	if savedKr, ok := t.keyRanges.Items()[krId]; ok {
+	if savedKr, ok := t.keyRanges.Items()[krID]; ok {
 		return savedKr, nil
 	}
-	if keyRangeFromQdb, err := t.EntityMgr.GetKeyRange(ctx, krId); err != nil {
+	if keyRangeFromQdb, err := t.EntityMgr.GetKeyRange(ctx, krID); err != nil {
 		return nil, err
 	} else {
 		return keyRangeFromQdb, nil
@@ -250,10 +250,10 @@ func (t *TranEntityManager) ListDistributions(ctx context.Context) ([]*distribut
 			result = append(result, distribution)
 		}
 		for _, distribution := range list {
-			if _, ok := t.distributions.DeletedItems()[distribution.Id]; ok {
+			if _, ok := t.distributions.DeletedItems()[distribution.ID]; ok {
 				continue
 			}
-			if _, ok := t.distributions.Items()[distribution.Id]; ok {
+			if _, ok := t.distributions.Items()[distribution.ID]; ok {
 				continue
 			}
 			result = append(result, distribution)

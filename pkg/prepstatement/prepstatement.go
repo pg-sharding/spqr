@@ -13,7 +13,7 @@ type PreparedStatementDefinition struct {
 	// store here some state to make client see what it actually wants
 
 	// XXX: Currently always one last column
-	OverwriteRemoveParamIds map[int]struct{}
+	OverwriteRemoveParamIDs map[int]struct{}
 	SeqName                 string
 }
 
@@ -24,8 +24,8 @@ type PreparedStatementDescriptor struct {
 }
 
 type PreparedStatementHolder interface {
-	HasPrepareStatement(hash uint64, shardId uint) (bool, *PreparedStatementDescriptor)
-	StorePrepareStatement(hash uint64, shardId uint, d *PreparedStatementDefinition, rd *PreparedStatementDescriptor) error
+	HasPrepareStatement(hash uint64, shardID uint) (bool, *PreparedStatementDescriptor)
+	StorePrepareStatement(hash uint64, shardID uint, d *PreparedStatementDefinition, rd *PreparedStatementDescriptor) error
 }
 
 type PreparedStatementMapper interface {

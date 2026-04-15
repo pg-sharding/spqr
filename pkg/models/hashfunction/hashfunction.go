@@ -42,13 +42,13 @@ var (
 //   - error: An error if any error occurs during the process.
 
 func EncodeUInt64(input uint64) []byte {
-	const ENCODING_BYTES_BIG = binary.MaxVarintLen64
-	const ENCODING_BYTES = 8
-	const BOUND = 1 << 56 /* 72057594037927936 */
+	const encodingBytesBig = binary.MaxVarintLen64
+	const encodingBytes = 8
+	const bound = 1 << 56 /* 72057594037927936 */
 
-	sz := ENCODING_BYTES
-	if input >= BOUND {
-		sz = ENCODING_BYTES_BIG
+	sz := encodingBytes
+	if input >= bound {
+		sz = encodingBytesBig
 	}
 
 	buf := make([]byte, sz)

@@ -21,7 +21,7 @@ type CoordinatorService struct {
 }
 
 // DropAllKeyRanges implements proto.KeyRangeServiceServer.
-func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
+func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, _ *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
 	err := c.impl.DropKeyRangeAll(ctx)
 	if err != nil {
 		return nil, err
@@ -31,12 +31,12 @@ func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *empt
 }
 
 // DEPRECATED
-func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
+func (c *CoordinatorService) DropKeyRange(_ context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange in CoordinatorService). Use ExecuteNoTran or CommitTran")
 }
 
 // DEPRECATED
-func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
+func (c *CoordinatorService) CreateKeyRange(_ context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange in CoordinatorService). Use ExecuteNoTran or CommitTran")
 }
 
@@ -139,7 +139,7 @@ func (c *CoordinatorService) ListKeyRangeLocks(ctx context.Context, _ *emptypb.E
 func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
 		Krid:    request.Id,
-		ShardId: request.ToShardId,
+		ShardID: request.ToShardID,
 	}); err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 		BaseKeyRangeId:      request.GetBaseId(),
 		AppendageKeyRangeId: request.GetAppendageId(),
 	}); err != nil {
-		return nil, spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, err.Error())
+		return nil, spqrerror.New(spqrerror.SpqrKeyrangeError, err.Error())
 	}
 
 	return &protos.ModifyReply{}, nil
@@ -162,10 +162,10 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 // TODO: unit tests
 func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-		TaskGroupId: request.TaskGroupId,
-		KeyRangeId:  request.KeyRangeId,
+		TaskGroupID: request.TaskGroupID,
+		KeyRangeID:  request.KeyRangeID,
 		DestKrId:    request.ToKrId,
-		ShardId:     request.ToShardId,
+		ShardID:     request.ToShardID,
 		Limit: func() int64 {
 			switch request.LimitType {
 			case protos.RedistributeLimitType_RedistributeAllKeys:
@@ -193,9 +193,9 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 // TODO: unit tests
 func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		TaskGroupId: request.TaskGroupId,
+		TaskGroupID: request.TaskGroupID,
 		KrId:        request.Krid,
-		ShardId:     request.ShardId,
+		ShardID:     request.ShardId,
 		BatchSize:   int(request.BatchSize),
 		Check:       request.Check,
 		Apply:       request.Apply,
@@ -205,7 +205,7 @@ func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *
 
 // TODO: unit tests
 func (c *CoordinatorService) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
-	return nil, c.impl.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
+	return nil, c.impl.RenameKeyRange(ctx, request.KeyRangeID, request.NewKeyRangeId)
 }
 
 var _ protos.KeyRangeServiceServer = &CoordinatorService{}

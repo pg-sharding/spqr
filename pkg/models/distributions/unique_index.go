@@ -36,7 +36,7 @@ func UniqueIndexToDB(dsId string, idx *UniqueIndex) *qdb.UniqueIndex {
 		ID:             idx.ID,
 		Relation:       idx.RelationName,
 		ColumnNames:    idx.Columns,
-		DistributionId: dsId,
+		DistributionID: dsId,
 		ColTypes:       idx.ColTypes,
 	}
 }

@@ -76,6 +76,6 @@ func GroupBy(tts *tupleslot.TupleTableSlot, gb spqrparser.GroupByClause) (*tuple
 	case spqrparser.GroupByClauseEmpty:
 		return tts, nil
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
+		return nil, spqrerror.NewByCode(spqrerror.SpqrInvalidRequest)
 	}
 }

@@ -22,38 +22,38 @@ type TransactionMgr interface {
 }
 
 type MetaTransaction struct {
-	TransactionId uuid.UUID
+	TransactionID uuid.UUID
 	Operations    *MetaTransactionChunk
 }
 
 func NewMetaTransaction(qdbTransaction qdb.QdbTransaction) *MetaTransaction {
-	return &MetaTransaction{TransactionId: qdbTransaction.Id()}
+	return &MetaTransaction{TransactionID: qdbTransaction.ID()}
 }
 
-func innerFromProto(TransactionId string, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
-	if tranId, err := uuid.Parse(TransactionId); err != nil {
+func innerFromProto(TransactionID string, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
+	if tranId, err := uuid.Parse(TransactionID); err != nil {
 		return nil, err
 	} else {
-		return &MetaTransaction{TransactionId: tranId,
+		return &MetaTransaction{TransactionID: tranId,
 			Operations: NewMetaTransactionChunk(MetaCmdList),
 		}, nil
 	}
 }
 
 func BeginTranFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
-	idTran, err := uuid.Parse(tran.TransactionId)
+	idTran, err := uuid.Parse(tran.TransactionID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid transaction id=%s", tran.TransactionId)
+		return nil, fmt.Errorf("invalid transaction id=%s", tran.TransactionID)
 	}
-	return &MetaTransaction{TransactionId: idTran}, nil
+	return &MetaTransaction{TransactionID: idTran}, nil
 }
 
 func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
-	return innerFromProto(tran.TransactionId, tran.MetaCmdList)
+	return innerFromProto(tran.TransactionID, tran.MetaCmdList)
 }
 
 func TransactionFromProtoRequest(tran *proto.MetaTransactionRequest) (*MetaTransaction, error) {
-	return innerFromProto(tran.TransactionId, tran.MetaCmdList)
+	return innerFromProto(tran.TransactionID, tran.MetaCmdList)
 }
 
 type MetaTransactionChunk struct {
@@ -64,13 +64,13 @@ type MetaTransactionChunk struct {
 
 // Any change in this enum must change GetGossipRequestType function
 const (
-	GR_ERROR = iota - 1
-	GR_UNKNOWN
-	GR_CreateDistributionRequest
-	GR_CreateKeyRange
-	GR_DropKeyRange
-	GR_UpdateKeyRange
-	GR_CreateSequence
+	GrError = iota - 1
+	GrUnknown
+	GrCreateDistributionRequest
+	GrCreateKeyRange
+	GrDropKeyRange
+	GrUpdateKeyRange
+	GrCreateSequence
 )
 
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
@@ -98,14 +98,14 @@ func NewTransaction() (*MetaTransaction, error) {
 		return nil, err
 	} else {
 		return &MetaTransaction{
-			TransactionId: qdbTran.Id(),
+			TransactionID: qdbTran.ID(),
 			Operations:    &MetaTransactionChunk{},
 		}, nil
 	}
 }
 
 func checkCommandPart(part googleProto.Message, current int, target int) int {
-	if current == GR_ERROR {
+	if current == GrError {
 		return current
 	}
 	if part == nil {
@@ -113,8 +113,8 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 	}
 	v := reflect.ValueOf(part)
 	if v.Kind() == reflect.Ptr && !v.IsNil() {
-		if current != GR_UNKNOWN {
-			return GR_ERROR
+		if current != GrUnknown {
+			return GrError
 		} else {
 			return target
 		}
@@ -123,7 +123,7 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 }
 
 // Checks algebraic type MetaTransactionGossipCommand and returns the command type
-// or GR_UNKNOWN, GR_ERROR if check failed
+// or GrUnknown, GrError if check failed
 //
 // Parameters:
 // - (request *proto.MetaTransactionGossipCommand): generic command
@@ -132,13 +132,13 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 // - type of command
 // - type is recognized
 func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, bool) {
-	result := GR_UNKNOWN
+	result := GrUnknown
 	if request.CreateDistribution != nil {
-		result = GR_CreateDistributionRequest
+		result = GrCreateDistributionRequest
 	}
-	result = checkCommandPart(request.CreateKeyRange, result, GR_CreateKeyRange)
-	result = checkCommandPart(request.DropKeyRange, result, GR_DropKeyRange)
-	result = checkCommandPart(request.UpdateKeyRange, result, GR_UpdateKeyRange)
-	result = checkCommandPart(request.CreateSequence, result, GR_CreateSequence)
-	return result, result != GR_UNKNOWN && result != GR_ERROR
+	result = checkCommandPart(request.CreateKeyRange, result, GrCreateKeyRange)
+	result = checkCommandPart(request.DropKeyRange, result, GrDropKeyRange)
+	result = checkCommandPart(request.UpdateKeyRange, result, GrUpdateKeyRange)
+	result = checkCommandPart(request.CreateSequence, result, GrCreateSequence)
+	return result, result != GrUnknown && result != GrError
 }

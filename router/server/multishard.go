@@ -79,23 +79,23 @@ func NewMultiShardServerFromShard(pool pool.MultiShardTSAPool, sh shard.ShardHos
 }
 
 // HasPrepareStatement implements Server.
-func (m *MultiShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+func (m *MultiShardServer) HasPrepareStatement(hash uint64, shardID uint) (bool, *prepstatement.PreparedStatementDescriptor) {
 	for _, shard := range m.activeShards {
-		if shard.ID() == shardId {
-			return shard.HasPrepareStatement(hash, shardId)
+		if shard.ID() == shardID {
+			return shard.HasPrepareStatement(hash, shardID)
 		}
 	}
 	return false, nil
 }
 
 // StorePrepareStatement implements Server.
-func (m *MultiShardServer) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+func (m *MultiShardServer) StorePrepareStatement(hash uint64, shardID uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
 	for _, shard := range m.activeShards {
-		if shard.ID() == shardId {
-			return shard.StorePrepareStatement(hash, shardId, d, rd)
+		if shard.ID() == shardID {
+			return shard.StorePrepareStatement(hash, shardID, d, rd)
 		}
 	}
-	return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%d\" not found", shardId)
+	return spqrerror.Newf(spqrerror.SpqrNoDatashard, "shard \"%d\" not found", shardID)
 }
 
 // DataPending implements Server.
@@ -219,7 +219,7 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 	}
 
 	if !anyShard {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%s\"", shkey.Name)
+		return spqrerror.Newf(spqrerror.SpqrNoDatashard, "attempt to send message to nonexistent datashard \"%s\"", shkey.Name)
 	}
 	return nil
 }
@@ -473,14 +473,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	return nil, 0, nil
 }
 
-func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+func (m *MultiShardServer) ReceiveShard(shardID uint) (pgproto3.BackendMessage, error) {
 	for _, shard := range m.activeShards {
-		if shard.ID() == shardId {
+		if shard.ID() == shardID {
 			m, err := shard.Receive()
 			return m, err
 		}
 	}
-	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
+	return nil, spqrerror.Newf(spqrerror.SpqrNoDatashard, "cannot find shard \"%d\"", shardID)
 }
 
 func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {

@@ -290,7 +290,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 			}
 
 			/* recheck connection */
-			if netutil.TCP_CheckAliveness(sh.Instance().Conn()) {
+			if netutil.TCPCheckAliveness(sh.Instance().Conn()) {
 				break
 			} else {
 				spqrlog.Zero.Error().
@@ -666,7 +666,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 
 		connTimeout := config.ValueOrDefaultDuration(rule.ConnectionTimeout, defaultInstanceConnectionTimeout)
 		keepAlive := config.ValueOrDefaultDuration(rule.KeepAlive, defaultKeepAlive)
-		tcpUserTimeout := config.ValueOrDefaultDuration(rule.TcpUserTimeout, defaultTcpUserTimeout)
+		tcpUserTimeout := config.ValueOrDefaultDuration(rule.TCPUserTimeout, defaultTcpUserTimeout)
 
 		pgi, err := conn.NewInstanceConn(host.Address, host.AZ, shardKey.Name, tlsconfig, connTimeout, keepAlive, tcpUserTimeout)
 		if err != nil {

@@ -9,22 +9,22 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-const DEFAULT_ID_RANGE_SIZE uint64 = 1
+const DefaultIDRangeSize uint64 = 1
 
 type IdentityRouterCache interface {
 	NextVal(ctx context.Context, sequenceName string) (int64, error)
 }
 
-type CachedIdRange struct {
-	idRange *qdb.SequenceIdRange
+type CachedIDRange struct {
+	idRange *qdb.SequenceIDRange
 	mu      sync.Mutex
 }
 
-func NewCachedIdRange() CachedIdRange {
-	return CachedIdRange{mu: sync.Mutex{}}
+func NewCachedIDRange() CachedIDRange {
+	return CachedIDRange{mu: sync.Mutex{}}
 }
 
-func (cir *CachedIdRange) nextVal() (int64, bool) {
+func (cir *CachedIDRange) nextVal() (int64, bool) {
 	if cir.idRange == nil {
 		return 0, false
 	}
@@ -42,30 +42,30 @@ func (cir *CachedIdRange) nextVal() (int64, bool) {
 }
 
 type IdentityRouterCacheImpl struct {
-	cachedIdentities map[string]*CachedIdRange
+	cachedIdentities map[string]*CachedIDRange
 	defaultRangeSize uint64
 	mu               sync.Mutex
 	mngr             *sequences.SequenceMgr
 }
 
 func NewIdentityRouterCache(defaultRangeSize uint64, mgr *sequences.SequenceMgr) *IdentityRouterCacheImpl {
-	var rngSize = DEFAULT_ID_RANGE_SIZE
+	var rngSize = DefaultIDRangeSize
 	if defaultRangeSize > 0 {
 		rngSize = defaultRangeSize
 	}
 
 	return &IdentityRouterCacheImpl{defaultRangeSize: rngSize,
-		cachedIdentities: make(map[string]*CachedIdRange, 0),
+		cachedIdentities: make(map[string]*CachedIDRange, 0),
 		mu:               sync.Mutex{},
 		mngr:             mgr,
 	}
 }
 
-func (irc *IdentityRouterCacheImpl) getRangeForSeq(sequenceName string) *CachedIdRange {
+func (irc *IdentityRouterCacheImpl) getRangeForSeq(sequenceName string) *CachedIDRange {
 	irc.mu.Lock()
 	defer irc.mu.Unlock()
 	if _, ok := irc.cachedIdentities[sequenceName]; !ok {
-		newRng := NewCachedIdRange()
+		newRng := NewCachedIDRange()
 		irc.cachedIdentities[sequenceName] = &newRng
 	}
 	return irc.cachedIdentities[sequenceName]

@@ -100,7 +100,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 		LowerBound:     [][]byte{{255, 255, 255, 255, 255, 255, 255, 255, 255, 1}},
 		ShardID:        "sh1",
 		KeyRangeID:     "dbTestDefault.DEFAULT",
-		DistributionId: "dbTestDefault",
+		DistributionID: "dbTestDefault",
 		Version:        1,
 	}
 	actualKr, errKr := memqdb.GetKeyRange(ctx, "dbTestDefault.DEFAULT")
@@ -117,7 +117,7 @@ func TestCreateShardValidatesReachableHosts(t *testing.T) {
 	}()
 
 	statement := spqrparser.ShardDefinition{
-		Id:    "sh-new",
+		ID:    "sh-new",
 		Hosts: []string{listener.Addr().String()},
 	}
 
@@ -153,7 +153,7 @@ func TestCreateShardRejectsUnreachableHosts(t *testing.T) {
 	}()
 
 	statement := spqrparser.ShardDefinition{
-		Id:    "sh-bad",
+		ID:    "sh-bad",
 		Hosts: []string{addr},
 	}
 
@@ -177,7 +177,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	}()
 
 	statement := spqrparser.ShardDefinition{
-		Id:    "sh-new",
+		ID:    "sh-new",
 		Hosts: []string{listener.Addr().String()},
 	}
 
@@ -228,7 +228,7 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		Move(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange) error {
 			assert.Equal(t, "krid3", move.Krid)
-			assert.Equal(t, "sh2", move.ShardId)
+			assert.Equal(t, "sh2", move.ShardID)
 			return nil
 		})
 
@@ -290,7 +290,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh1", "sh2"},
+			ShardIDs:              []string{"sh1", "sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
 		}
@@ -308,7 +308,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 			TableName: &rfqn.RelationFQN{
 				RelationName: "xtab",
 			},
-			ShardIds: []string{"sh2"},
+			ShardIDs: []string{"sh2"},
 		}
 		tupleslotExpected := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
@@ -327,7 +327,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh2"},
+			ShardIDs:              []string{"sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
 		}
@@ -344,7 +344,7 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
 	existingDist := &distributions.Distribution{
-		Id:       "ds1",
+		ID:       "ds1",
 		ColTypes: []string{"integer"},
 		Relations: map[string]*distributions.DistributedRelation{
 			"t": {
@@ -395,7 +395,7 @@ func TestRenameDistributionColumnNotFound(t *testing.T) {
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
 	existingDist := &distributions.Distribution{
-		Id:       "ds1",
+		ID:       "ds1",
 		ColTypes: []string{"integer"},
 		Relations: map[string]*distributions.DistributedRelation{
 			"t": {
@@ -436,7 +436,7 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
 	existingDist := &distributions.Distribution{
-		Id:        "ds1",
+		ID:        "ds1",
 		ColTypes:  []string{"integer"},
 		Relations: map[string]*distributions.DistributedRelation{},
 	}

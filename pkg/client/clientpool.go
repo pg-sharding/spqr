@@ -136,7 +136,7 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 //   - error: An error if any occurred during the shutdown process.
 func (c *PoolImpl) Shutdown() error {
 
-	c.pool.Range(func(key, value any) bool {
+	c.pool.Range(func(_, value any) bool {
 		cl := value.(Client)
 		go func(cl Client) {
 			if err := cl.Shutdown(); err != nil {
@@ -167,7 +167,7 @@ func (c *PoolImpl) Shutdown() error {
 //   - error: An error if any occurred during the iteration.
 func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
-	c.pool.Range(func(key, value any) bool {
+	c.pool.Range(func(_, value any) bool {
 		cl := value.(Client)
 
 		if err := cb(ClientInfoImpl{Client: cl, rAddr: "local"}); err != nil {
@@ -209,7 +209,7 @@ func (s *PoolImpl) backgroundHealthCheckLoop() {
 		case <-ticker.C:
 			_ = s.ClientPoolForeach(func(cl ClientInfo) error {
 
-				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+				if !netutil.TCPCheckAliveness(cl.Conn()) {
 
 					spqrlog.Zero.Info().Uint("client-id", cl.ID()).Msg("Found un-alive client")
 					if err := cl.Cancel(); err != nil {
@@ -250,8 +250,8 @@ func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	}
 
 	/* PG errors, which are still very interesting for us.*/
-	pl.counters[spqrerror.PG_PORTAl_DOES_NOT_EXISTS] = &atomic.Uint64{}
-	pl.counters[spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS] = &atomic.Uint64{}
+	pl.counters[spqrerror.PgPortalDoesNotExist] = &atomic.Uint64{}
+	pl.counters[spqrerror.PgPreparedStatementDoesNotExist] = &atomic.Uint64{}
 
 	pl.StartBackgroundHealthCheck()
 

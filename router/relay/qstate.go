@@ -168,7 +168,7 @@ var (
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, _ bool) (*PortalDesc, error) {
 	startTime := time.Now()
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
@@ -188,7 +188,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 				// ignore this
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
+				_ = rst.Client().ReplyWarningf(spqrerror.PgActiveSQLTransaction, "there is already a transaction in progress")
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 			}
 			err := rst.QueryExecutor().ExecBegin(query, st)
@@ -198,7 +198,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		case lyx.TRANS_STMT_COMMIT:
 			if mp, err := parser.ParseComment(comment); err == nil {
 
-				if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
+				if val, ok := mp[session.SpqrCommitStrategy]; ok {
 					switch val {
 					case twopc.COMMIT_STRATEGY_2PC:
 						fallthrough
@@ -213,7 +213,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				_ = rst.Client().ReplyWarningf(spqrerror.PgNoActiveSQLTransaction, "there is no transaction in progress")
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 			}
 			err := rst.QueryExecutor().ExecCommit(query)
@@ -221,7 +221,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				_ = rst.Client().ReplyWarningf(spqrerror.PgNoActiveSQLTransaction, "there is no transaction in progress")
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 			}
 			err := rst.QueryExecutor().ExecRollback(query)
@@ -314,17 +314,17 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		} else {
 			switch param {
-			case session.SPQR_DISTRIBUTION:
+			case session.SpqrDistribution:
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_DISTRIBUTION)
+				return nil, spqrerror.Newf(spqrerror.SpqrNotImplemented, "parameter \"%s\" isn't user accessible",
+					session.SpqrDistribution)
 
-			case session.SPQR_DISTRIBUTED_RELATION:
+			case session.SpqrDistributedRelation:
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_DISTRIBUTED_RELATION)
+				return nil, spqrerror.Newf(spqrerror.SpqrNotImplemented, "parameter \"%s\" isn't user accessible",
+					session.SpqrDistributedRelation)
 
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+			case session.SpqrDefaultRouteBehaviour:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -341,7 +341,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				/* XXX: move this call out of this function */
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_SHARDING_KEY:
+			case session.SpqrShardingKey:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -356,11 +356,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				tts.WriteDataRow(rst.Client().ShardingKey())
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-			case session.SPQR_SCATTER_QUERY:
+			case session.SpqrScatterQuery:
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_SCATTER_QUERY)
-			case session.SPQR_EXECUTE_ON:
+				return nil, spqrerror.Newf(spqrerror.SpqrNotImplemented, "parameter \"%s\" isn't user accessible",
+					session.SpqrScatterQuery)
+			case session.SpqrExecuteOn:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -376,7 +376,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_REPLY_NOTICE:
+			case session.SpqrReplyNotice:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -397,7 +397,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_MAINTAIN_PARAMS:
+			case session.SpqrMaintainParams:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -418,7 +418,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_ENGINE_V2:
+			case session.SpqrEngineV2:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -439,11 +439,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_TARGET_SESSION_ATTRS:
+			case session.SpqrTargetSessionAttrs:
 				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+			case session.SpqrTargetSessionAttrsAlias:
 				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+			case session.SpqrTargetSessionAttrsAlias2:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -459,10 +459,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_PREFERRED_ENGINE:
+			case session.SpqrPreferredEngine:
 				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
 
-			case session.SPQR_COMMIT_STRATEGY:
+			case session.SpqrCommitStrategy:
 
 				tts := tupleslot.TupleTableSlot{
 					Desc: []pgproto3.FieldDescription{
@@ -538,9 +538,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				param := virtualParamTransformName(q.Name)
 				switch param {
-				case session.SPQR_TARGET_SESSION_ATTRS:
+				case session.SpqrTargetSessionAttrs:
 					fallthrough
-				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				case session.SpqrTargetSessionAttrsAlias:
 					rst.Client().ResetTsa()
 				default:
 					rst.Client().ResetParam(param)
@@ -661,46 +661,46 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 		} else {
 
 			switch name {
-			case session.SPQR_SCATTER_QUERY:
-				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
+			case session.SpqrScatterQuery:
+				/* any non-empty value of SpqrScatterQuery is local and means ON */
 				rst.Client().SetScatterQuery(hintVal != "")
-			case session.SPQR_EXECUTE_ON:
+			case session.SpqrExecuteOn:
 				if _, ok := config.RouterConfig().ShardMapping[hintVal]; !ok {
 					return fmt.Errorf("no such shard: %v", hintVal)
 				}
 				rst.Client().SetExecuteOn(lvl, hintVal)
-			case session.SPQR_DISTRIBUTION:
+			case session.SpqrDistribution:
 				rst.Client().SetDistribution(lvl, hintVal)
-			case session.SPQR_DISTRIBUTION_KEY:
+			case session.SpqrDistributionKey:
 				rst.Client().SetDistributionKey(hintVal)
-			case session.SPQR_DISTRIBUTED_RELATION:
+			case session.SpqrDistributedRelation:
 				rst.Client().SetDistributedRelation(lvl, hintVal)
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+			case session.SpqrDefaultRouteBehaviour:
 				rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
-			case session.SPQR_SHARDING_KEY:
+			case session.SpqrShardingKey:
 				rst.Client().SetShardingKey(lvl, hintVal)
-			case session.SPQR_PREFERRED_ENGINE:
+			case session.SpqrPreferredEngine:
 				rst.Client().SetPreferredEngine(lvl, hintVal)
 
-			case session.SPQR_REPLY_NOTICE:
+			case session.SpqrReplyNotice:
 				if value == "on" || value == "true" {
 					rst.Client().SetShowNoticeMsg(lvl, true)
 				} else {
 					rst.Client().SetShowNoticeMsg(lvl, false)
 				}
-			case session.SPQR_MAINTAIN_PARAMS:
+			case session.SpqrMaintainParams:
 				if value == "on" || value == "true" {
 					rst.Client().SetMaintainParams(lvl, true)
 				} else {
 					rst.Client().SetMaintainParams(lvl, false)
 				}
-			case session.SPQR_TARGET_SESSION_ATTRS:
+			case session.SpqrTargetSessionAttrs:
 				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+			case session.SpqrTargetSessionAttrsAlias:
 				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+			case session.SpqrTargetSessionAttrsAlias2:
 				rst.Client().SetTsa(lvl, hintVal)
-			case session.SPQR_ENGINE_V2:
+			case session.SpqrEngineV2:
 				/* Ignore statement level here */
 				switch value {
 				case "true", "on", "ok":
@@ -708,7 +708,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				case "false", "off", "no":
 					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
 				}
-			case session.SPQR_AUTO_DISTRIBUTION:
+			case session.SpqrAutoDistribution:
 
 				if hintVal == distributions.REPLICATED {
 					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
@@ -723,7 +723,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 				/* Should we create distributed or reference relation? */
 
-				_, ok := mp[session.SPQR_DISTRIBUTION_KEY]
+				_, ok := mp[session.SpqrDistributionKey]
 				if !ok {
 					if rst.Client().DistributionKey() == "" {
 						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
@@ -738,7 +738,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				* DDL of about-to-be-created relation
 				 */
 
-			case session.SPQR_COMMIT_STRATEGY:
+			case session.SpqrCommitStrategy:
 				rst.Client().SetCommitStrategy(hintVal)
 			default:
 				rst.Client().SetParam(name, hintVal, isLocal)

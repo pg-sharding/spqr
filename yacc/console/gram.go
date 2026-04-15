@@ -1780,7 +1780,7 @@ yydefault:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line gram.y:852
 		{
-			yyDollar[4].alter_shard.Id = yyDollar[3].str
+			yyDollar[4].alter_shard.ID = yyDollar[3].str
 			yyVAL.alter = &Alter{Element: yyDollar[4].alter_shard}
 		}
 	case 97:
@@ -2153,7 +2153,7 @@ yydefault:
 				Element: &ReferenceRelationDefinition{
 					TableName:            yyDollar[4].qname,
 					AutoIncrementEntries: yyDollar[5].aiEntrieslist,
-					ShardIds:             yyDollar[6].strlist,
+					ShardIDs:             yyDollar[6].strlist,
 				},
 			}
 		}
@@ -2764,7 +2764,7 @@ yydefault:
 //line gram.y:1433
 		{
 			sd := yyDollar[6].shard
-			sd.Id = yyDollar[2].str
+			sd.ID = yyDollar[2].str
 			sd.Hosts = yyDollar[5].strlist
 			yyVAL.shard = sd
 		}
@@ -2777,7 +2777,7 @@ yydefault:
 				panic(err)
 			}
 			sd := yyDollar[5].shard
-			sd.Id = "shard" + str
+			sd.ID = "shard" + str
 			sd.Hosts = yyDollar[4].strlist
 			yyVAL.shard = sd
 		}
@@ -2896,7 +2896,7 @@ yydefault:
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
-				Id:          yyDollar[6].str,
+				ID:          yyDollar[6].str,
 				Check:       true,
 				Apply:       true,
 			}
@@ -2909,7 +2909,7 @@ yydefault:
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
-				Id:          yyDollar[6].str,
+				ID:          yyDollar[6].str,
 				Check:       true,
 			}
 		}
@@ -2921,7 +2921,7 @@ yydefault:
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
-				Id:          yyDollar[6].str,
+				ID:          yyDollar[6].str,
 				Apply:       true,
 			}
 		}
@@ -2933,7 +2933,7 @@ yydefault:
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
-				Id:          yyDollar[6].str,
+				ID:          yyDollar[6].str,
 				Check:       false, /* or true, doesnt matter */
 				Apply:       true,
 				NoWait:      true,

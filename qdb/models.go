@@ -18,7 +18,7 @@ type KeyRange struct {
 	LowerBound     [][]byte
 	ShardID        string
 	KeyRangeID     string
-	DistributionId string
+	DistributionID string
 	Locked         bool
 	Version        int
 }
@@ -28,7 +28,7 @@ type internalKeyRange struct {
 	LowerBound     [][]byte `json:"from"`
 	ShardID        string   `json:"shard_id"`
 	KeyRangeID     string   `json:"key_range_id"`
-	DistributionId string   `json:"distribution_id"`
+	DistributionID string   `json:"distribution_id"`
 }
 
 type KeyRangeMeta struct {
@@ -51,8 +51,8 @@ const (
 )
 
 type MoveKeyRange struct {
-	MoveId     string             `json:"move_id"`
-	ShardId    string             `json:"shard_id"`
+	MoveID     string             `json:"move_id"`
+	ShardID    string             `json:"shard_id"`
 	KeyRangeID string             `json:"key_range_id"`
 	Status     MoveKeyRangeStatus `json:"status"`
 }
@@ -157,7 +157,7 @@ type ReferenceRelation struct {
 	SchemaName            string            `json:"schema_name"`
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
-	ShardIds              []string          `json:"shard_ids"`
+	ShardIDs              []string          `json:"shard_ids"`
 }
 
 type UniqueIndex struct {
@@ -165,7 +165,7 @@ type UniqueIndex struct {
 	Relation       *rfqn.RelationFQN `json:"relation"`
 	ColumnNames    []string          `json:"column"`
 	ColTypes       []string          `json:"column_type"`
-	DistributionId string            `json:"distribution_id"`
+	DistributionID string            `json:"distribution_id"`
 }
 
 func NewDistribution(id string, coltypes []string) *Distribution {
@@ -183,7 +183,7 @@ type MoveTask struct {
 	TaskGroupID string `json:"task_group_id"`
 	ID          string
 	Bound       [][]byte `json:"bound"`
-	KrIdTemp    string   `json:"kr_id_temp"`
+	KrIDTemp    string   `json:"kr_id_temp"`
 	State       int      `json:"state"`
 }
 
@@ -194,14 +194,14 @@ const (
 
 type MoveTaskGroupIssuer struct {
 	Type int    `json:"type"`
-	Id   string `json:"id"`
+	ID   string `json:"id"`
 }
 
 type MoveTaskGroup struct {
 	Type      int                  `json:"type"`
-	ShardToId string               `json:"shard_to_id"`
-	KrIdFrom  string               `json:"kr_id_from"`
-	KrIdTo    string               `json:"kr_id_to"`
+	ShardToID string               `json:"shard_to_id"`
+	KrIDFrom  string               `json:"kr_id_from"`
+	KrIDTo    string               `json:"kr_id_to"`
 	BoundRel  string               `json:"rel"`
 	Coeff     float64              `json:"coeff"`
 	BatchSize int64                `json:"batch_size"`
@@ -218,20 +218,20 @@ type TaskGroupStatus struct {
 
 type RedistributeTask struct {
 	ID          string `json:"id"`
-	TaskGroupId string `json:"task_group_id"`
-	KeyRangeId  string `json:"kr_id"`
-	ShardId     string `json:"shard_id"`
+	TaskGroupID string `json:"task_group_id"`
+	KeyRangeID  string `json:"kr_id"`
+	ShardID     string `json:"shard_id"`
 	BatchSize   int    `json:"batch_size"`
-	TempKrId    string `json:"temp_kr_id"`
+	TempKrID    string `json:"temp_kr_id"`
 	State       int    `json:"state"`
 }
 
 type BalancerTask struct {
 	Type      int    `json:"type"`
-	KrIdFrom  string `json:"krIdFrom"`
-	KrIdTo    string `json:"krIdTo"`
-	KrIdTemp  string `json:"krIdTemp"`
-	ShardIdTo string `json:"shardIdTo"`
+	KrIDFrom  string `json:"krIdFrom"`
+	KrIDTo    string `json:"krIdTo"`
+	KrIDTemp  string `json:"krIdTemp"`
+	ShardIDTo string `json:"shardIdTo"`
 	KeyCount  int64  `json:"keyCount"`
 	State     int    `json:"state"`
 }
@@ -241,19 +241,19 @@ type Sequence struct {
 	ColName string `json:"col_name"`
 }
 
-type SequenceIdRange struct {
+type SequenceIDRange struct {
 	Left  int64
 	Right int64
 }
 
-func NewSequenceIdRange(left int64, right int64) (*SequenceIdRange, error) {
+func NewSequenceIDRange(left int64, right int64) (*SequenceIDRange, error) {
 	if left <= right {
-		return &SequenceIdRange{Left: left, Right: right}, nil
+		return &SequenceIDRange{Left: left, Right: right}, nil
 	}
 	return nil, fmt.Errorf("invalid id range: start=%d > end=%d", left, right)
 }
 
-func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, error) {
+func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIDRange, error) {
 	if rangeSize >= math.MaxInt64 {
 		return nil, fmt.Errorf("invalid (case 0) id-range request: current=%d, request for=%d", currentRight, rangeSize)
 	}
@@ -264,7 +264,7 @@ func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, err
 	if currentRight > newRight {
 		return nil, fmt.Errorf("invalid (case 2) id-range request: current=%d, request for=%d", currentRight, rangeSize)
 	}
-	return NewSequenceIdRange(currentRight, newRight)
+	return NewSequenceIDRange(currentRight, newRight)
 }
 
 func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
@@ -272,7 +272,7 @@ func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
 		KeyRangeID:     keyRange.KeyRangeID,
-		DistributionId: keyRange.DistributionId,
+		DistributionID: keyRange.DistributionID,
 	}
 }
 
@@ -281,7 +281,7 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
 		KeyRangeID:     keyRange.KeyRangeID,
-		DistributionId: keyRange.DistributionId,
+		DistributionID: keyRange.DistributionID,
 		Locked:         locked,
 		Version:        version,
 	}
@@ -289,7 +289,7 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 
 type TwoPCInfo struct {
 	Gid       string   `json:"gid"`
-	SHardsIds []string `json:"shard_ids"`
+	SHardsIDs []string `json:"shard_ids"`
 
 	State TwoPhaseTxState `json:"state"`
 

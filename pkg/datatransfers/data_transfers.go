@@ -152,8 +152,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	if tx == nil {
 		// No transaction in progress
 		tx = &qdb.DataTransferTransaction{
-			ToShardId:   toId,
-			FromShardId: fromId,
+			ToShardID:   toId,
+			FromShardID: fromId,
 			Status:      qdb.Planned,
 		}
 		if err = db.RecordTransferTx(ctx, krg.ID, tx); err != nil {
@@ -168,7 +168,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	}
 	fromCfg, ok := shards.ShardsData[fromId]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "shard with ID \"%s\" not found in config", fromId)
 	}
 	from, err := GetMasterConnection(ctx, fromCfg, executorId)
 	if err != nil {
@@ -180,7 +180,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	}()
 	toCfg, ok := shards.ShardsData[toId]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "shard with ID \"%s\" not found in config", toId)
 	}
 	to, err := GetMasterConnection(ctx, toCfg, executorId)
 	if err != nil {
@@ -287,8 +287,8 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	if tx == nil {
 		// No transaction in progress
 		tx = &qdb.DataTransferTransaction{
-			ToShardId:   toId,
-			FromShardId: fromId,
+			ToShardID:   toId,
+			FromShardID: fromId,
 			Status:      qdb.Planned,
 		}
 		if err = db.RecordTransferTx(ctx, transferKey, tx); err != nil {
@@ -303,7 +303,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	}
 	fromCfg, ok := shards.ShardsData[fromId]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "shard with ID \"%s\" not found in config", fromId)
 	}
 	from, err := GetMasterConnection(ctx, fromCfg, "")
 	if err != nil {
@@ -315,7 +315,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	}()
 	toCfg, ok := shards.ShardsData[toId]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "shard with ID \"%s\" not found in config", toId)
 	}
 	to, err := GetMasterConnection(ctx, toCfg, "reference_table_sync")
 	if err != nil {
@@ -470,7 +470,7 @@ func SetupFDW(
 }
 
 func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
-	for _, shard := range relation.ShardIds {
+	for _, shard := range relation.ShardIDs {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
@@ -504,7 +504,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	}
 	// TODO: process differently to avoid deadlocks
 	if val {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked")
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "reference relations already locked")
 	}
 	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1)", relation.String()); err != nil {
 		return err
@@ -516,7 +516,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 }
 
 func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
-	for _, shard := range relation.ShardIds {
+	for _, shard := range relation.ShardIDs {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
@@ -590,10 +590,10 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	tx, err := to.Begin(ctx)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "could not move the data: could not start transaction on destination shard: %s", err)
 	}
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring constraints: %s", err)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "could not move the data: error deferring constraints: %s", err)
 	}
 	if config.CoordinatorConfig().DataMoveDisableTriggers {
 		if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
@@ -660,11 +660,11 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 `, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.Relation.GetSchema(), strings.ToLower(rel.Relation.RelationName)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
+			return spqrerror.Newf(spqrerror.SpqrTransferError, "could not move the data: %s", err)
 		}
 	}
 	if err = tx.Commit(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not execute transaction: %s", err)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "could not move the data: could not execute transaction: %s", err)
 	}
 	return nil
 }
@@ -746,7 +746,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 `, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%s_%s.%q", serverName, rel.RelationName.GetSchema(), strings.ToLower(rel.RelationName.RelationName)))
 	_, err = tx.Exec(ctx, query)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
+		return spqrerror.Newf(spqrerror.SpqrTransferError, "could not move the data: %s", err)
 	}
 	err = tx.Commit(ctx)
 	if err != nil {

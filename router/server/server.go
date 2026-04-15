@@ -22,7 +22,7 @@ type Server interface {
 	/* XXX: remove two methods below and derive next message in executor */
 	/* message, gang source index, error */
 	Receive() (pgproto3.BackendMessage, uint, error)
-	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
+	ReceiveShard(shardID uint) (pgproto3.BackendMessage, error)
 
 	/* TODO: add and support gang id here. */
 	AllocateGangMember(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error

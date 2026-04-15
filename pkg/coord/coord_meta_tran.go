@@ -94,13 +94,13 @@ func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, c
 		var err error
 		cmdType, _ := mtran.GetGossipRequestType(gossipCommand)
 		switch cmdType {
-		case mtran.GR_CreateDistributionRequest:
+		case mtran.GrCreateDistributionRequest:
 			cmdList, err = createDistributionPrepare(ctx, mngr, gossipCommand.CreateDistribution)
-		case mtran.GR_CreateKeyRange:
+		case mtran.GrCreateKeyRange:
 			cmdList, err = createKeyRangePrepare(ctx, mngr, gossipCommand.CreateKeyRange)
-		case mtran.GR_UpdateKeyRange:
+		case mtran.GrUpdateKeyRange:
 			cmdList, err = updateKeyRangePrepare(ctx, mngr, gossipCommand.UpdateKeyRange)
-		case mtran.GR_DropKeyRange:
+		case mtran.GrDropKeyRange:
 			cmdList, err = dropKeyRangePrepare(ctx, mngr, gossipCommand.DropKeyRange)
 		// TODO: run handlers converting gossip commands to chunk with qdb commands
 		default:

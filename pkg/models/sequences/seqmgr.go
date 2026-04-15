@@ -11,7 +11,7 @@ type SequenceMgr interface {
 	ListSequences(ctx context.Context) ([]string, error)
 	ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error)
 	GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error)
-	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error)
+	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIDRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error
 

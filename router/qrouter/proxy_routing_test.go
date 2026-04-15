@@ -700,7 +700,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		ColumnSequenceMapping: map[string]string{
 			"id1": "s1",
 		},
-		ShardIds: []string{
+		ShardIDs: []string{
 			"sh1", "sh2",
 		},
 	})
@@ -792,7 +792,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
-		ShardIds:  []string{"sh1", "sh2"},
+		ShardIDs:  []string{"sh1", "sh2"},
 	})
 
 	shardMapping := map[string]*config.Shard{
@@ -2400,7 +2400,7 @@ func TestSetStmt(t *testing.T) {
 
 	statements, err := db.CreateKeyRange(ctx, &qdb.KeyRange{
 		ShardID:        "sh1",
-		DistributionId: distribution1,
+		DistributionID: distribution1,
 		KeyRangeID:     "id1",
 		LowerBound:     [][]byte{[]byte("1")},
 	})
@@ -2410,7 +2410,7 @@ func TestSetStmt(t *testing.T) {
 
 	statements, err = db.CreateKeyRange(ctx, &qdb.KeyRange{
 		ShardID:        "sh2",
-		DistributionId: distribution2,
+		DistributionID: distribution2,
 		KeyRangeID:     "id2",
 		LowerBound:     [][]byte{[]byte("1")},
 	})
@@ -2521,7 +2521,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	statements, err := db.CreateKeyRange(ctx, &qdb.KeyRange{
 		ShardID:        "sh1",
-		DistributionId: distribution.ID,
+		DistributionID: distribution.ID,
 		KeyRangeID:     "id1",
 		LowerBound:     [][]byte{[]byte("00000000-0000-0000-0000-000000000000")},
 	})
@@ -2531,7 +2531,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	statements, err = db.CreateKeyRange(ctx, &qdb.KeyRange{
 		ShardID:        "sh2",
-		DistributionId: unusedDistribution.ID,
+		DistributionID: unusedDistribution.ID,
 		KeyRangeID:     "id2",
 		LowerBound:     [][]byte{[]byte("1")},
 	})

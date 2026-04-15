@@ -7,28 +7,28 @@ type VirtualParamVisibility struct {
 	globalMap map[string]string
 }
 
-func (v *VirtualParamVisibility) Commit() {
-	i := len(v.entries) - 1
-	for ; i >= 0 && v.entries[i].Tx > 0; i-- {
-		_, ok := v.entries[i].Levels[VirtualParamLevelTxBlock]
+func (s *VirtualParamVisibility) Commit() {
+	i := len(s.entries) - 1
+	for ; i >= 0 && s.entries[i].Tx > 0; i-- {
+		_, ok := s.entries[i].Levels[VirtualParamLevelTxBlock]
 		if ok {
 			break
 		}
 	}
 
 	if i >= 0 {
-		entry := v.entries[i]
+		entry := s.entries[i]
 		if entry.Tx != 0 {
 			entry.Tx = 0
 			delete(entry.Levels, VirtualParamLevelLocal)
 			delete(entry.Levels, VirtualParamLevelStatement)
 		}
-		v.entries = []ParamEntry{entry}
+		s.entries = []ParamEntry{entry}
 	} else {
-		v.entries = nil
+		s.entries = nil
 	}
 
-	v.updateInGlobal()
+	s.updateInGlobal()
 }
 
 func (s *VirtualParamVisibility) get() (string, bool) {

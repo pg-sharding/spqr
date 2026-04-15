@@ -12,7 +12,7 @@ type ReferenceRelation struct {
 	RelationName          *rfqn.RelationFQN
 	SchemaVersion         uint64
 	ColumnSequenceMapping map[string]string
-	ShardIds              []string
+	ShardIDs              []string
 }
 
 type AutoIncrementEntry struct {
@@ -23,7 +23,7 @@ type AutoIncrementEntry struct {
 func (r *ReferenceRelation) ListStorageRoutes() []kr.ShardKey {
 	var ret []kr.ShardKey
 
-	for _, id := range r.ShardIds {
+	for _, id := range r.ShardIDs {
 		ret = append(ret, kr.ShardKey{
 			Name: id,
 		})
@@ -79,7 +79,7 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 		RelationName:          rfqn.RelationFQNFromProto(p.RelName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
-		ShardIds:              p.ShardIds,
+		ShardIDs:              p.ShardIDs,
 	}
 }
 
@@ -88,7 +88,7 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 		RelName:         rfqn.RelationFQNToProto(p.RelationName),
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
-		ShardIds:        p.ShardIds,
+		ShardIDs:        p.ShardIDs,
 	}
 }
 
@@ -98,7 +98,7 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 		SchemaName:            p.RelationName.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
-		ShardIds:              p.ShardIds,
+		ShardIDs:              p.ShardIDs,
 	}
 }
 
@@ -107,6 +107,6 @@ func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
 		RelationName:          rfqn.RelationFQNFromFullName(p.SchemaName, p.TableName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
-		ShardIds:              p.ShardIds,
+		ShardIDs:              p.ShardIDs,
 	}
 }

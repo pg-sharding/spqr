@@ -36,7 +36,7 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 	shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 
-	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
+	shp := pool.NewShardHostPool(func(_ kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		return shardconn, nil
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -84,7 +84,7 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	shardconn.EXPECT().Close().Times(1)
 
-	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
+	shp := pool.NewShardHostPool(func(_ kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		return shardconn, nil
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,

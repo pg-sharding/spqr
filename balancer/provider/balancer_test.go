@@ -50,7 +50,7 @@ func TestFitsOnShard(t *testing.T) {
 			keyCountToMove: 10,
 			krKeyCount:     100,
 			shard: &ShardMetrics{
-				ShardId:      "sh1",
+				ShardID:      "sh1",
 				MetricsTotal: []float64{20.0, 200.0, 20.0, 200.0},
 			},
 			expected: true,
@@ -61,7 +61,7 @@ func TestFitsOnShard(t *testing.T) {
 			keyCountToMove: 50,
 			krKeyCount:     100,
 			shard: &ShardMetrics{
-				ShardId:      "sh2",
+				ShardID:      "sh2",
 				MetricsTotal: []float64{60.0, 200.0, 60.0, 200.0},
 			},
 			expected: false,
@@ -72,7 +72,7 @@ func TestFitsOnShard(t *testing.T) {
 			keyCountToMove: 20,
 			krKeyCount:     100,
 			shard: &ShardMetrics{
-				ShardId:      "sh3",
+				ShardID:      "sh3",
 				MetricsTotal: []float64{30.0, 900.0, 30.0, 900.0},
 			},
 			expected: false,
@@ -83,7 +83,7 @@ func TestFitsOnShard(t *testing.T) {
 			keyCountToMove: 10,
 			krKeyCount:     100,
 			shard: &ShardMetrics{
-				ShardId:      "sh4",
+				ShardID:      "sh4",
 				MetricsTotal: []float64{0.0, 0.0, 0.0, 0.0},
 			},
 			expected: true,
@@ -94,7 +94,7 @@ func TestFitsOnShard(t *testing.T) {
 			keyCountToMove: 10,
 			krKeyCount:     100,
 			shard: &ShardMetrics{
-				ShardId:      "sh5",
+				ShardID:      "sh5",
 				MetricsTotal: []float64{90.0, 900.0, 90.0, 900.0},
 			},
 			expected: true,
@@ -128,7 +128,7 @@ func TestMaxFitOnShard(t *testing.T) {
 			krMetrics:  []float64{50.0, 500.0, 50.0, 500.0},
 			krKeyCount: 100,
 			shard: &ShardMetrics{
-				ShardId:      "sh1",
+				ShardID:      "sh1",
 				MetricsTotal: []float64{20.0, 200.0, 20.0, 200.0},
 			},
 
@@ -140,7 +140,7 @@ func TestMaxFitOnShard(t *testing.T) {
 			krMetrics:  []float64{10.0, 900.0, 10.0, 900.0},
 			krKeyCount: 100,
 			shard: &ShardMetrics{
-				ShardId:      "sh2",
+				ShardID:      "sh2",
 				MetricsTotal: []float64{10.0, 100.0, 10.0, 100.0},
 			},
 
@@ -152,7 +152,7 @@ func TestMaxFitOnShard(t *testing.T) {
 			krMetrics:  []float64{100.0, 1000.0, 100.0, 1000.0},
 			krKeyCount: 100,
 			shard: &ShardMetrics{
-				ShardId:      "sh3",
+				ShardID:      "sh3",
 				MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0},
 			},
 			checkExact:   true,
@@ -163,7 +163,7 @@ func TestMaxFitOnShard(t *testing.T) {
 			krMetrics:  []float64{10.0, 100.0, 10.0, 100.0},
 			krKeyCount: 1000,
 			shard: &ShardMetrics{
-				ShardId:      "sh4",
+				ShardID:      "sh4",
 				MetricsTotal: []float64{0.0, 0.0, 0.0, 0.0},
 			},
 
@@ -190,19 +190,19 @@ func TestGetAdjacentShards(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		krId     string
+		krID     string
 		expected map[string]struct{}
 	}{
 		{
 			name: "first key range has one adjacent",
-			krId: "kr1",
+			krID: "kr1",
 			expected: map[string]struct{}{
 				"sh2": {},
 			},
 		},
 		{
 			name: "middle key range has two adjacent",
-			krId: "kr2",
+			krID: "kr2",
 			expected: map[string]struct{}{
 				"sh1": {},
 				"sh3": {},
@@ -210,7 +210,7 @@ func TestGetAdjacentShards(t *testing.T) {
 		},
 		{
 			name: "last key range has one adjacent",
-			krId: "kr3",
+			krID: "kr3",
 			expected: map[string]struct{}{
 				"sh2": {},
 			},
@@ -219,7 +219,7 @@ func TestGetAdjacentShards(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := b.getAdjacentShards(tt.krId)
+			result := b.getAdjacentShards(tt.krID)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -232,7 +232,7 @@ func TestGetShardToMoveTo(t *testing.T) {
 		name             string
 		shardMetrics     []*ShardMetrics
 		shardIdToMetrics map[string]*ShardMetrics
-		krId             string
+		krID             string
 		krShardId        string
 		keyCountToMove   int
 		expectedShard    string
@@ -241,31 +241,31 @@ func TestGetShardToMoveTo(t *testing.T) {
 		{
 			name: "move to adjacent shard with capacity",
 			shardMetrics: []*ShardMetrics{
-				{ShardId: "sh3", MetricsTotal: []float64{10.0, 100.0, 10.0, 100.0}},
-				{ShardId: "sh2", MetricsTotal: []float64{20.0, 200.0, 20.0, 200.0}},
-				{ShardId: "sh1", MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0}},
+				{ShardID: "sh3", MetricsTotal: []float64{10.0, 100.0, 10.0, 100.0}},
+				{ShardID: "sh2", MetricsTotal: []float64{20.0, 200.0, 20.0, 200.0}},
+				{ShardID: "sh1", MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0}},
 			},
 			shardIdToMetrics: map[string]*ShardMetrics{
 				"sh1": {
-					ShardId:      "sh1",
+					ShardID:      "sh1",
 					MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0},
 					MetricsKR:    map[string][]float64{"kr1": {50.0, 500.0, 50.0, 500.0}},
 					KeyCountKR:   map[string]int64{"kr1": 100},
 				},
 				"sh2": {
-					ShardId:      "sh2",
+					ShardID:      "sh2",
 					MetricsTotal: []float64{20.0, 200.0, 20.0, 200.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 				"sh3": {
-					ShardId:      "sh3",
+					ShardID:      "sh3",
 					MetricsTotal: []float64{10.0, 100.0, 10.0, 100.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 			},
-			krId:           "kr1",
+			krID:           "kr1",
 			krShardId:      "sh1",
 			keyCountToMove: 10,
 			expectedShard:  "sh2",
@@ -274,31 +274,31 @@ func TestGetShardToMoveTo(t *testing.T) {
 		{
 			name: "no shard with enough capacity",
 			shardMetrics: []*ShardMetrics{
-				{ShardId: "sh2", MetricsTotal: []float64{95.0, 950.0, 95.0, 950.0}},
-				{ShardId: "sh3", MetricsTotal: []float64{95.0, 950.0, 95.0, 950.0}},
-				{ShardId: "sh1", MetricsTotal: []float64{99.0, 990.0, 99.0, 990.0}},
+				{ShardID: "sh2", MetricsTotal: []float64{95.0, 950.0, 95.0, 950.0}},
+				{ShardID: "sh3", MetricsTotal: []float64{95.0, 950.0, 95.0, 950.0}},
+				{ShardID: "sh1", MetricsTotal: []float64{99.0, 990.0, 99.0, 990.0}},
 			},
 			shardIdToMetrics: map[string]*ShardMetrics{
 				"sh1": {
-					ShardId:      "sh1",
+					ShardID:      "sh1",
 					MetricsTotal: []float64{99.0, 990.0, 99.0, 990.0},
 					MetricsKR:    map[string][]float64{"kr1": {100.0, 1000.0, 100.0, 1000.0}},
 					KeyCountKR:   map[string]int64{"kr1": 100},
 				},
 				"sh2": {
-					ShardId:      "sh2",
+					ShardID:      "sh2",
 					MetricsTotal: []float64{95.0, 950.0, 95.0, 950.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 				"sh3": {
-					ShardId:      "sh3",
+					ShardID:      "sh3",
 					MetricsTotal: []float64{95.0, 950.0, 95.0, 950.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 			},
-			krId:           "kr1",
+			krID:           "kr1",
 			krShardId:      "sh1",
 			keyCountToMove: 50,
 			expectedShard:  "",
@@ -307,31 +307,31 @@ func TestGetShardToMoveTo(t *testing.T) {
 		{
 			name: "prefer non-adjacent shard with more capacity",
 			shardMetrics: []*ShardMetrics{
-				{ShardId: "sh3", MetricsTotal: []float64{5.0, 50.0, 5.0, 50.0}},
-				{ShardId: "sh2", MetricsTotal: []float64{85.0, 850.0, 85.0, 850.0}},
-				{ShardId: "sh1", MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0}},
+				{ShardID: "sh3", MetricsTotal: []float64{5.0, 50.0, 5.0, 50.0}},
+				{ShardID: "sh2", MetricsTotal: []float64{85.0, 850.0, 85.0, 850.0}},
+				{ShardID: "sh1", MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0}},
 			},
 			shardIdToMetrics: map[string]*ShardMetrics{
 				"sh1": {
-					ShardId:      "sh1",
+					ShardID:      "sh1",
 					MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0},
 					MetricsKR:    map[string][]float64{"kr1": {40.0, 400.0, 40.0, 400.0}},
 					KeyCountKR:   map[string]int64{"kr1": 100},
 				},
 				"sh2": {
-					ShardId:      "sh2",
+					ShardID:      "sh2",
 					MetricsTotal: []float64{85.0, 850.0, 85.0, 850.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 				"sh3": {
-					ShardId:      "sh3",
+					ShardID:      "sh3",
 					MetricsTotal: []float64{5.0, 50.0, 5.0, 50.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 			},
-			krId:           "kr1",
+			krID:           "kr1",
 			krShardId:      "sh1",
 			keyCountToMove: 15,
 			expectedShard:  "sh2",
@@ -341,7 +341,7 @@ func TestGetShardToMoveTo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shard, ok := b.getShardToMoveTo(tt.shardMetrics, tt.shardIdToMetrics, tt.krId, tt.krShardId, tt.keyCountToMove)
+			shard, ok := b.getShardToMoveTo(tt.shardMetrics, tt.shardIdToMetrics, tt.krID, tt.krShardId, tt.keyCountToMove)
 			assert.Equal(t, tt.expectedOk, ok)
 			if tt.expectedOk {
 				assert.Equal(t, tt.expectedShard, shard)
@@ -357,7 +357,7 @@ func TestMoveMaxPossible(t *testing.T) {
 		name             string
 		shardMetrics     []*ShardMetrics
 		shardIdToMetrics map[string]*ShardMetrics
-		krId             string
+		krID             string
 		krShardId        string
 		expectedShard    string
 		minKeyCount      int
@@ -365,31 +365,31 @@ func TestMoveMaxPossible(t *testing.T) {
 		{
 			name: "find shard with maximum capacity",
 			shardMetrics: []*ShardMetrics{
-				{ShardId: "sh3", MetricsTotal: []float64{5.0, 50.0, 5.0, 50.0}},
-				{ShardId: "sh2", MetricsTotal: []float64{50.0, 500.0, 50.0, 500.0}},
-				{ShardId: "sh1", MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0}},
+				{ShardID: "sh3", MetricsTotal: []float64{5.0, 50.0, 5.0, 50.0}},
+				{ShardID: "sh2", MetricsTotal: []float64{50.0, 500.0, 50.0, 500.0}},
+				{ShardID: "sh1", MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0}},
 			},
 			shardIdToMetrics: map[string]*ShardMetrics{
 				"sh1": {
-					ShardId:      "sh1",
+					ShardID:      "sh1",
 					MetricsTotal: []float64{80.0, 800.0, 80.0, 800.0},
 					MetricsKR:    map[string][]float64{"kr1": {50.0, 500.0, 50.0, 500.0}},
 					KeyCountKR:   map[string]int64{"kr1": 100},
 				},
 				"sh2": {
-					ShardId:      "sh2",
+					ShardID:      "sh2",
 					MetricsTotal: []float64{50.0, 500.0, 50.0, 500.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 				"sh3": {
-					ShardId:      "sh3",
+					ShardID:      "sh3",
 					MetricsTotal: []float64{5.0, 50.0, 5.0, 50.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 			},
-			krId:          "kr1",
+			krID:          "kr1",
 			krShardId:     "sh1",
 			expectedShard: "sh3",
 			minKeyCount:   1,
@@ -397,31 +397,31 @@ func TestMoveMaxPossible(t *testing.T) {
 		{
 			name: "all shards full - return 0",
 			shardMetrics: []*ShardMetrics{
-				{ShardId: "sh2", MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0}},
-				{ShardId: "sh3", MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0}},
-				{ShardId: "sh1", MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0}},
+				{ShardID: "sh2", MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0}},
+				{ShardID: "sh3", MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0}},
+				{ShardID: "sh1", MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0}},
 			},
 			shardIdToMetrics: map[string]*ShardMetrics{
 				"sh1": {
-					ShardId:      "sh1",
+					ShardID:      "sh1",
 					MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0},
 					MetricsKR:    map[string][]float64{"kr1": {100.0, 1000.0, 100.0, 1000.0}},
 					KeyCountKR:   map[string]int64{"kr1": 100},
 				},
 				"sh2": {
-					ShardId:      "sh2",
+					ShardID:      "sh2",
 					MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 				"sh3": {
-					ShardId:      "sh3",
+					ShardID:      "sh3",
 					MetricsTotal: []float64{100.0, 1000.0, 100.0, 1000.0},
 					MetricsKR:    map[string][]float64{},
 					KeyCountKR:   map[string]int64{},
 				},
 			},
-			krId:          "kr1",
+			krID:          "kr1",
 			krShardId:     "sh1",
 			expectedShard: "",
 			minKeyCount:   0,
@@ -430,7 +430,7 @@ func TestMoveMaxPossible(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shard, keyCount := b.moveMaxPossible(tt.shardMetrics, tt.shardIdToMetrics, tt.krId, tt.krShardId)
+			shard, keyCount := b.moveMaxPossible(tt.shardMetrics, tt.shardIdToMetrics, tt.krID, tt.krShardId)
 			assert.GreaterOrEqual(t, keyCount, tt.minKeyCount)
 			if tt.expectedShard != "" {
 				assert.Equal(t, tt.expectedShard, shard)

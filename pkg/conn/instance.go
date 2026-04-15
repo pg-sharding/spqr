@@ -40,7 +40,7 @@ type DBInstance interface {
 
 	Cancel(csm *pgproto3.CancelRequest) error
 
-	Tls() *tls.Config
+	TLS() *tls.Config
 }
 
 type PostgreSQLInstance struct {
@@ -182,7 +182,7 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 }
 
 func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) error {
-	return func(network, address string, c syscall.RawConn) error {
+	return func(_, _ string, c syscall.RawConn) error {
 		var sysErr error
 		var err = c.Control(func(fd uintptr) {
 			/*
@@ -263,14 +263,14 @@ func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
 	return pgi.frontend.Flush()
 }
 
-// Tls returns the TLS configuration of the PostgreSQLInstance.
+// TLS returns the TLS configuration of the PostgreSQLInstance.
 //
 // Parameters:
 // - None.
 //
 // Returns:
 // - *tls.Config: The TLS configuration of the PostgreSQLInstance.
-func (pgi *PostgreSQLInstance) Tls() *tls.Config {
+func (pgi *PostgreSQLInstance) TLS() *tls.Config {
 	return pgi.tlsconfig
 }
 

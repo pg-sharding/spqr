@@ -20,7 +20,7 @@ import (
 var fromShardConnSt = flag.String("from-shard-connstring", "", "Connection string to shard to move data from")
 var toShardConnSt = flag.String("to-shard-connstring", "", "Connection string to shard to move data to")
 
-var krId = flag.String("key-range", "", "ID of key range to move")
+var krID = flag.String("key-range", "", "ID of key range to move")
 var etcdAddr = flag.String("etcd-addr", "", "ETCD address")
 
 // TODO: use schema
@@ -174,13 +174,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	qdbKr, err := db.GetKeyRange(ctx, *krId)
+	qdbKr, err := db.GetKeyRange(ctx, *krID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 
-	ds, err := db.GetDistribution(ctx, qdbKr.DistributionId)
+	ds, err := db.GetDistribution(ctx, qdbKr.DistributionID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		os.Exit(1)

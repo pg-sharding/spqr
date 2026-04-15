@@ -25,7 +25,7 @@ func TestMatchContext(t *testing.T) {
 			exp: true,
 		},
 		{
-			newCtx: func(ctx context.Context) context.Context {
+			newCtx: func(_ context.Context) context.Context {
 				return context.Background()
 			},
 			exp: false,
@@ -42,7 +42,7 @@ func TestMatchContext(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run("", func(t *testing.T) {
-			ctx, matcher := testutil.MatchContext(t, context.Background())
+			ctx, matcher := testutil.MatchContext(context.Background(), t)
 			require.Equal(t, tc.exp, matcher.Matches(tc.newCtx(ctx)))
 		})
 	}

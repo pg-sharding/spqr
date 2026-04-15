@@ -35,9 +35,9 @@ func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 
-	shardId := shard.ID()
+	shardID := shard.ID()
 
-	if ok, rd := shard.HasPrepareStatement(hash, shardId); ok {
+	if ok, rd := shard.HasPrepareStatement(hash, shardID); ok {
 		return rd, &pgproto3.ParseComplete{}, nil
 	}
 
@@ -105,11 +105,11 @@ recvLoop:
 		}
 	}
 	if !deployResultReceived {
-		return nil, nil, fmt.Errorf("error syncing connection on shard: %v", shardId)
+		return nil, nil, fmt.Errorf("error syncing connection on shard: %v", shardID)
 	}
 
 	if deployed {
-		if err := shard.StorePrepareStatement(hash, shardId, d, rd); err != nil {
+		if err := shard.StorePrepareStatement(hash, shardID, d, rd); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -121,11 +121,11 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 
 	shards := serv.Datashards()
 	if len(shards) == 0 {
-		return nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+		return nil, spqrerror.New(spqrerror.SpqrNoDatashard, "No active shards")
 	}
 
 	shard := shards[0]
-	shardId := shard.ID()
+	shardID := shard.ID()
 	shkey := shard.SHKey()
 
 	if err := serv.SendShard(bind, shkey); err != nil {
@@ -160,7 +160,7 @@ recvLoop:
 	for {
 		// https://www.postgresql.org/docs/current/protocol-flow.html
 
-		msg, err := serv.ReceiveShard(shardId)
+		msg, err := serv.ReceiveShard(shardID)
 		if err != nil {
 			return nil, err
 		}

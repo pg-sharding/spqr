@@ -269,7 +269,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func bootstrapConnection(t *testing.T) (*pgproto3.Frontend, net.Conn, error) {
+func bootstrapConnection(_ *testing.T) (*pgproto3.Frontend, net.Conn, error) {
 	conn, err := getC()
 	if err != nil {
 		return nil, nil, err
@@ -329,7 +329,7 @@ func TestSimpleQuery(t *testing.T) {
 				&pgproto3.NoticeResponse{
 					Severity: "WARNING",
 					Message:  "there is already a transaction in progress",
-					Code:     spqrerror.PG_ACTIVE_SQL_TRANSACTION,
+					Code:     spqrerror.PgActiveSQLTransaction,
 				},
 
 				&pgproto3.CommandComplete{
@@ -351,7 +351,7 @@ func TestSimpleQuery(t *testing.T) {
 				&pgproto3.NoticeResponse{
 					Severity: "WARNING",
 					Message:  "there is no transaction in progress",
-					Code:     spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION,
+					Code:     spqrerror.PgNoActiveSQLTransaction,
 				},
 
 				&pgproto3.CommandComplete{
@@ -1403,7 +1403,7 @@ func TestUnknownBindStatementError(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Code:     spqrerror.PgPreparedStatementDoesNotExist,
 					Message:  "prepared statement \"ppp_qqq_2\" does not exist",
 				},
 
@@ -1485,7 +1485,7 @@ func TestUnknownDescribeStatementError(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Code:     spqrerror.PgPreparedStatementDoesNotExist,
 					Message:  "prepared statement \"ppp_qqq_d_2\" does not exist",
 				},
 
@@ -5987,7 +5987,7 @@ func TestClose(t *testing.T) {
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 					Message:  "prepared statement \"p3\" does not exist",
-					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Code:     spqrerror.PgPreparedStatementDoesNotExist,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6036,7 +6036,7 @@ func TestClose(t *testing.T) {
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 					Message:  "invalid CLOSE message subtype 90",
-					Code:     spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION,
+					Code:     spqrerror.PgErrcodeProtocolViolation,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6112,7 +6112,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 
-					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Code: spqrerror.PgPreparedStatementDoesNotExist,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6164,7 +6164,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.BindComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_PORTAl_DOES_NOT_EXISTS,
+					Code:     spqrerror.PgPortalDoesNotExist,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6210,7 +6210,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Code:     spqrerror.PgPreparedStatementDoesNotExist,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6325,7 +6325,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 
-					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Code: spqrerror.PgPreparedStatementDoesNotExist,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -6416,7 +6416,7 @@ func TestParseErrorThenReuseName(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PG_SYNTAX_ERROR,
+					Code:     spqrerror.PgSyntaxError,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

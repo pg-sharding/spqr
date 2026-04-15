@@ -27,7 +27,7 @@ type ReferenceRelation struct {
 	RelName         *QualifiedName         `protobuf:"bytes,1,opt,name=relName,proto3" json:"relName,omitempty"`
 	SequenceColumns map[string]string      `protobuf:"bytes,2,rep,name=sequenceColumns,proto3" json:"sequenceColumns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	SchemaVersion   uint64                 `protobuf:"varint,3,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
-	ShardIds        []string               `protobuf:"bytes,4,rep,name=shardIds,proto3" json:"shardIds,omitempty"`
+	ShardIDs        []string               `protobuf:"bytes,4,rep,name=shardIds,proto3" json:"shardIds,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -85,7 +85,7 @@ func (x *ReferenceRelation) GetSchemaVersion() uint64 {
 
 func (x *ReferenceRelation) GetShardIds() []string {
 	if x != nil {
-		return x.ShardIds
+		return x.ShardIDs
 	}
 	return nil
 }
@@ -337,7 +337,7 @@ func (x *SyncReferenceRelationsRequest) GetRelations() []*QualifiedName {
 type AlterReferenceRelationStorageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Relation      *QualifiedName         `protobuf:"bytes,1,opt,name=relation,proto3" json:"relation,omitempty"`
-	ShardIds      []string               `protobuf:"bytes,2,rep,name=shard_ids,json=shardIds,proto3" json:"shard_ids,omitempty"`
+	ShardIDs      []string               `protobuf:"bytes,2,rep,name=shard_ids,json=shardIds,proto3" json:"shard_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -381,7 +381,7 @@ func (x *AlterReferenceRelationStorageRequest) GetRelation() *QualifiedName {
 
 func (x *AlterReferenceRelationStorageRequest) GetShardIds() []string {
 	if x != nil {
-		return x.ShardIds
+		return x.ShardIDs
 	}
 	return nil
 }

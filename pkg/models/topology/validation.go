@@ -14,18 +14,18 @@ const defaultShardHostValidationTimeout = 3 * time.Second
 
 func ValidateDataShardHosts(ctx context.Context, shard *DataShard) error {
 	if shard == nil {
-		return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "shard definition is nil")
+		return spqrerror.New(spqrerror.SpqrInvalidRequest, "shard definition is nil")
 	}
 	if shard.Cfg == nil {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has no config", shard.ID)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "shard %q has no config", shard.ID)
 	}
 
 	hosts := shard.Cfg.Hosts()
 	if len(shard.Cfg.RawHosts) != 0 && len(hosts) != len(shard.Cfg.RawHosts) {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has invalid or unsupported host definitions", shard.ID)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "shard %q has invalid or unsupported host definitions", shard.ID)
 	}
 	if len(hosts) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has no valid hosts configured", shard.ID)
+		return spqrerror.Newf(spqrerror.SpqrInvalidRequest, "shard %q has no valid hosts configured", shard.ID)
 	}
 
 	dialer := &net.Dialer{Timeout: defaultShardHostValidationTimeout}
@@ -38,7 +38,7 @@ func ValidateDataShardHosts(ctx context.Context, shard *DataShard) error {
 			defer wg.Done()
 			conn, err := dialer.DialContext(ctx, "tcp", h)
 			if err != nil {
-				errCh <- spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard host %q is not reachable: %v", h, err)
+				errCh <- spqrerror.Newf(spqrerror.SpqrInvalidRequest, "shard host %q is not reachable: %v", h, err)
 				return
 			}
 			if err := conn.Close(); err != nil {

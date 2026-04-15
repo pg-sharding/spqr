@@ -104,35 +104,35 @@ const (
 )
 
 const (
-	SPQR_DISTRIBUTION            = "__spqr__distribution"
-	SPQR_DISTRIBUTED_RELATION    = "__spqr__distributed_relation"
-	SPQR_DEFAULT_ROUTE_BEHAVIOUR = "__spqr__default_route_behaviour"
-	SPQR_AUTO_DISTRIBUTION       = "__spqr__auto_distribution"
-	SPQR_DISTRIBUTION_KEY        = "__spqr__distribution_key"
-	SPQR_SHARDING_KEY            = "__spqr__sharding_key"
-	SPQR_PREFERRED_ENGINE        = "__spqr__preferred_engine"
-	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
-	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
-	SPQR_EXECUTE_ON              = "__spqr__execute_on"
+	SpqrDistribution            = "__spqr__distribution"
+	SpqrDistributedRelation    = "__spqr__distributed_relation"
+	SpqrDefaultRouteBehaviour = "__spqr__default_route_behaviour"
+	SpqrAutoDistribution       = "__spqr__auto_distribution"
+	SpqrDistributionKey        = "__spqr__distribution_key"
+	SpqrShardingKey            = "__spqr__sharding_key"
+	SpqrPreferredEngine        = "__spqr__preferred_engine"
+	SpqrCommitStrategy         = "__spqr__commit_strategy"
+	SpqrTargetSessionAttrs    = "__spqr__target_session_attrs"
+	SpqrExecuteOn              = "__spqr__execute_on"
 
 	/* backward compatibility */
-	SPQR_TARGET_SESSION_ATTRS_ALIAS   = "target_session_attrs"
-	SPQR_TARGET_SESSION_ATTRS_ALIAS_2 = "target-session-attrs"
+	SpqrTargetSessionAttrsAlias   = "target_session_attrs"
+	SpqrTargetSessionAttrsAlias2 = "target-session-attrs"
 
 	/* Boolean */
-	SPQR_SCATTER_QUERY   = "__spqr__scatter_query"
-	SPQR_REPLY_NOTICE    = "__spqr__reply_notice"
-	SPQR_MAINTAIN_PARAMS = "__spqr__maintain_params"
-	SPQR_ENGINE_V2       = "__spqr__engine_v2"
+	SpqrScatterQuery   = "__spqr__scatter_query"
+	SpqrReplyNotice    = "__spqr__reply_notice"
+	SpqrMaintainParams = "__spqr__maintain_params"
+	SpqrEngineV2       = "__spqr__engine_v2"
 	/*XXX: should we ever disallow?*/
-	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
-	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
+	SpqrAllowSplitUpdate   = "__spqr__allow_split_update"
+	SpqrAllowPostprocessing = "__spqr__allow_postprocessing"
 )
 
 func ParamIsBoolean(n string) bool {
 	switch n {
-	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING:
+	/* SpqrMaintainParams, SpqrReplyNotice SpqrScatterQuery & SpqrEngineV2 are intentionally missed */
+	case SpqrAllowSplitUpdate, SpqrAllowPostprocessing:
 		return true
 	default:
 		return false

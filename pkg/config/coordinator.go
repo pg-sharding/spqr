@@ -14,7 +14,7 @@ type Coordinator struct {
 	QdbAddr              string          `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
 	QdbAddrs             []string        `json:"qdb_addrs" toml:"qdb_addrs" yaml:"qdb_addrs"`
 	CoordinatorPort      string          `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
-	GrpcApiPort          string          `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	GrpcAPIPort          string          `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	Host                 string          `json:"host" toml:"host" yaml:"host"`
 	FrontendTLS          *TLSConfig      `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
 	FrontendRules        []*FrontendRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
