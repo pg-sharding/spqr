@@ -431,6 +431,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
 			"spqrguard.prevent_distributed_table_modify": "off",
+			"spqrguard.prevent_reference_table_modify":   "off",
 		},
 	}
 

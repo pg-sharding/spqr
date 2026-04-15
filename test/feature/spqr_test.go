@@ -287,6 +287,7 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connCfg.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	connCfg.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
 	connStr := stdlib.RegisterConnConfig(connCfg)
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {

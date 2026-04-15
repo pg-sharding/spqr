@@ -77,6 +77,38 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			}, nil
 		}
 
+		isReferenceRel := false
+		dsRel := node.TableRv
+		if node.PartitionOf != nil {
+			dsRel = node.PartitionOf
+		}
+		rv, ok := dsRel.(*lyx.RangeVar)
+		if !ok {
+			return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
+		}
+		relname := rfqn.RelationFQNFromRangeRangeVar(rv)
+		iis, err := rm.Mgr.ListUniqueIndexes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		found := false
+		for _, is := range iis {
+			if is.ID == relname.String() {
+				/* this is an index table */
+				found = true
+				break
+			}
+		}
+		if !found {
+			ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+			if err != nil {
+				return nil, err
+			}
+			if ds.Id == distributions.REPLICATED {
+				isReferenceRel = true
+			}
+		}
+
 		tmpPlan := &plan.ScatterPlan{
 			IsDDL:    true,
 			SubSlice: p,
@@ -122,9 +154,13 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		relFQN := rfqn.RelationFQNFromFullName(rvNode.SchemaName, rvNode.RelationName)
 		tmpPlan.OverwriteQuery = make(map[string]string)
 		p.OverwriteQuery = make(map[string]string)
-		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", relFQN.String())
+		relType := "distributed"
+		if isReferenceRel {
+			relType = "reference"
+		}
+		oq := fmt.Sprintf("SELECT spqr_metadata.mark_%s_relation('%s')", relType, relFQN.String())
 		if node.IfNotExists {
-			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relFQN.String())
+			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_%s_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relType, relFQN.String())
 		}
 		shards, err := rm.Mgr.ListShards(ctx)
 		if err != nil {
@@ -307,7 +343,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 			return nil
 		}
 	default:
-		return fmt.Errorf("wrong type of table range var")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
 	}
 
 	entries := make(map[string]struct{})
