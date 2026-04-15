@@ -774,7 +774,7 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 }
 
-func (q *MemQDB) AlterShard(ctx context.Context, newShard *Shard) error {
+func (q *MemQDB) AlterShard(_ context.Context, newShard *Shard) error {
 	spqrlog.Zero.Debug().Str("shard", newShard.ID).Msg("memqdb: alter shard options")
 	q.mu.Lock()
 	defer q.mu.Unlock()

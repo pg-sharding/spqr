@@ -685,13 +685,13 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 
 // TODO : unit tests
 // TODO : implement
-func (a *Adapter) AlterShardOptions(ctx context.Context, shardId string, options []topology.GenericOption) error {
+func (a *Adapter) AlterShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardOptions not implemented")
 }
 
 // TODO : unit tests
 // TODO : implement
-func (a *Adapter) SetShardOptions(ctx context.Context, shardId string, options []topology.GenericOption) error {
+func (a *Adapter) SetShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "setShardOptions not implemented")
 }
 
