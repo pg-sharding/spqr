@@ -46,7 +46,7 @@ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POST
 
 
 # Create extension
-for extension in postgres_fdw pg_stat_statements pg_stat_kcache pg_comment_stats spqrhash spqrguard
+for extension in postgres_fdw pg_stat_statements pg_stat_kcache pg_comment_stats spqrhash
 do
     sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS ${extension};" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
         echo "ERROR: extension creation failed, examine the log"
@@ -54,6 +54,12 @@ do
         exit 1
     }
 done
+
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS spqrguard VERSION '2.3';" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
+    echo "ERROR: extension creation failed, examine the log"
+    cat "$SETUP_LOG"
+    exit 1
+}
 
 # Create users
 sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE ROLE $POSTGRES_USER WITH LOGIN SUPERUSER" -d postgres >> $SETUP_LOG 2>&1 || {
