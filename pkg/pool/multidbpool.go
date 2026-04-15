@@ -7,6 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -14,13 +15,13 @@ import (
 type MultiDBPool struct {
 	dbs      sync.Map
 	be       *config.BackendRule
-	mapping  map[string]*config.Shard
+	mapping  map[string]*topology.DataShard
 	poolSize int
 
 	// TODO implement LRU cache
 }
 
-func NewMultiDBPool(mapping map[string]*config.Shard, be *config.BackendRule, poolSize int) *MultiDBPool {
+func NewMultiDBPool(mapping map[string]*topology.DataShard, be *config.BackendRule, poolSize int) *MultiDBPool {
 	return &MultiDBPool{
 		be:       be,
 		mapping:  mapping,
@@ -96,7 +97,7 @@ func (p *MultiDBPool) View() Statistics {
 	panic("MultiDBPool.View not implemented")
 }
 
-func getRandomShard(mapping map[string]*config.Shard) (string, *config.Shard) {
+func getRandomShard(mapping map[string]*topology.DataShard) (string, *topology.DataShard) {
 	i := rand.Int() % len(mapping)
 	for k, v := range mapping {
 		if i == 0 {

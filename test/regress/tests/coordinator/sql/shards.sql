@@ -1,6 +1,8 @@
 REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 
-ALTER SHARD sh1 SSLMODE 'invalid';
-ALTER SHARD sh1 SSLMODE 'require';
+DROP SHARD sh1;
+CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
+ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
+ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
 
 UNREGISTER ROUTER ALL;

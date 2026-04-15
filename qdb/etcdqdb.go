@@ -1118,33 +1118,36 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
-func (q *EtcdQDB) UpdateShard(ctx context.Context, shard *Shard) error {
+func (q *EtcdQDB) AlterShard(ctx context.Context, newShard *Shard) error {
 	spqrlog.Zero.Debug().
-		Str("id", shard.ID).
-		Msg("etcdqdb: update shard")
-	t := time.Now()
+		Str("id", newShard.ID).
+		Msg("etcdqdb: alter shard options")
 
+	return q.alterShard(ctx, newShard)
+}
+
+func (q *EtcdQDB) alterShard(ctx context.Context, shard *Shard) error {
 	bytes, err := json.Marshal(shard)
 	if err != nil {
 		return err
 	}
-	nodePath := shardNodePath(shard.ID)
 	resp, err := q.cli.Txn(ctx).
 		If(
-			clientv3.Compare(clientv3.Version(nodePath), ">", 0),
+			//check exists shard with key
+			clientv3.Compare(clientv3.Version(shardNodePath(shard.ID)), "!=", 0),
 		).
 		Then(
-			clientv3.OpPut(nodePath, string(bytes)),
+			clientv3.OpPut(shardNodePath(shard.ID), string(bytes)),
 		).
 		Commit()
+
 	if err != nil {
 		return err
 	}
-	if !resp.Succeeded {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+	if len(resp.Responses) == 0 {
+		return fmt.Errorf("shard with id %s does not exist", shard.ID)
 	}
 
-	statistics.RecordQDBOperation("UpdateShard", time.Since(t))
 	return nil
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
@@ -123,6 +124,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		topology.InitShardMapping(topology.DataShardMapFromConfig(config.RouterConfig().ShardMapping))
 
 		if config.RouterConfig().EnableRoleSystem {
 			if config.RouterConfig().RolesFile == "" {
@@ -475,6 +478,7 @@ var testCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		topology.InitShardMapping(topology.DataShardMapFromConfig(config.RouterConfig().ShardMapping))
 		fmt.Println(cfgStr)
 		return nil
 	},

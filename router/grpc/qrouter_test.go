@@ -25,8 +25,10 @@ func TestAddDataShardPassesRequestToManager(t *testing.T) {
 
 	_, err := server.AddDataShard(context.Background(), &protos.AddShardRequest{
 		Shard: &protos.Shard{
-			Id:    "sh-bad",
-			Hosts: []string{"127.0.0.1:1"},
+			Id: "sh-bad",
+			Options: []*protos.GenericOption{
+				{Name: "host", Value: "127.0.0.1"},
+			},
 		},
 	})
 

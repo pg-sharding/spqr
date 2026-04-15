@@ -151,6 +151,20 @@ func (mr *MockTopologyKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddShard", reflect.TypeOf((*MockTopologyKeeper)(nil).AddShard), ctx, shard)
 }
 
+// AlterShard mocks base method.
+func (m *MockTopologyKeeper) AlterShard(ctx context.Context, newShard *qdb.Shard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShard", ctx, newShard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShard indicates an expected call of AlterShard.
+func (mr *MockTopologyKeeperMockRecorder) AlterShard(ctx, newShard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockTopologyKeeper)(nil).AlterShard), ctx, newShard)
+}
+
 // CloseRouter mocks base method.
 func (m *MockTopologyKeeper) CloseRouter(ctx context.Context, rID string) error {
 	m.ctrl.T.Helper()
@@ -264,20 +278,6 @@ func (m *MockTopologyKeeper) OpenRouter(ctx context.Context, rID string) error {
 func (mr *MockTopologyKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).OpenRouter), ctx, rID)
-}
-
-// UpdateShard mocks base method.
-func (m *MockTopologyKeeper) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateShard indicates an expected call of UpdateShard.
-func (mr *MockTopologyKeeperMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockTopologyKeeper)(nil).UpdateShard), ctx, shard)
 }
 
 // MockTransferXactKeeper is a mock of TransferXactKeeper interface.
@@ -1855,6 +1855,20 @@ func (mr *MockXDCStateKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).AddShard), ctx, shard)
 }
 
+// AlterShard mocks base method.
+func (m *MockXDCStateKeeper) AlterShard(ctx context.Context, newShard *qdb.Shard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShard", ctx, newShard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShard indicates an expected call of AlterShard.
+func (mr *MockXDCStateKeeperMockRecorder) AlterShard(ctx, newShard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).AlterShard), ctx, newShard)
+}
+
 // ChangeTxStatus mocks base method.
 func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
@@ -2086,20 +2100,6 @@ func (mr *MockXDCStateKeeperMockRecorder) TXStatus(ctx, gid any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXStatus), ctx, gid)
 }
 
-// UpdateShard mocks base method.
-func (m *MockXDCStateKeeper) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateShard indicates an expected call of UpdateShard.
-func (mr *MockXDCStateKeeperMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).UpdateShard), ctx, shard)
-}
-
 // MockXQDB is a mock of XQDB interface.
 type MockXQDB struct {
 	ctrl     *gomock.Controller
@@ -2290,6 +2290,20 @@ func (m *MockXQDB) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.Re
 func (mr *MockXQDBMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockXQDB)(nil).AlterSequenceDetachRelation), ctx, rel)
+}
+
+// AlterShard mocks base method.
+func (m *MockXQDB) AlterShard(ctx context.Context, newShard *qdb.Shard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShard", ctx, newShard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShard indicates an expected call of AlterShard.
+func (mr *MockXQDBMockRecorder) AlterShard(ctx, newShard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockXQDB)(nil).AlterShard), ctx, newShard)
 }
 
 // BeginTransaction mocks base method.
@@ -3529,20 +3543,6 @@ func (mr *MockXQDBMockRecorder) UpdateRedistributeTask(ctx, task any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).UpdateRedistributeTask), ctx, task)
 }
 
-// UpdateShard mocks base method.
-func (m *MockXQDB) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateShard indicates an expected call of UpdateShard.
-func (mr *MockXQDBMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockXQDB)(nil).UpdateShard), ctx, shard)
-}
-
 // WriteBalancerTask mocks base method.
 func (m *MockXQDB) WriteBalancerTask(ctx context.Context, task *qdb.BalancerTask) error {
 	m.ctrl.T.Helper()
@@ -3804,6 +3804,20 @@ func (m *MockStateKeeperQDB) AlterSequenceDetachRelation(ctx context.Context, re
 func (mr *MockStateKeeperQDBMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockStateKeeperQDB)(nil).AlterSequenceDetachRelation), ctx, rel)
+}
+
+// AlterShard mocks base method.
+func (m *MockStateKeeperQDB) AlterShard(ctx context.Context, newShard *qdb.Shard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShard", ctx, newShard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShard indicates an expected call of AlterShard.
+func (mr *MockStateKeeperQDBMockRecorder) AlterShard(ctx, newShard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockStateKeeperQDB)(nil).AlterShard), ctx, newShard)
 }
 
 // BeginTransaction mocks base method.
@@ -5112,20 +5126,6 @@ func (m *MockStateKeeperQDB) UpdateRedistributeTask(ctx context.Context, task *q
 func (mr *MockStateKeeperQDBMockRecorder) UpdateRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRedistributeTask", reflect.TypeOf((*MockStateKeeperQDB)(nil).UpdateRedistributeTask), ctx, task)
-}
-
-// UpdateShard mocks base method.
-func (m *MockStateKeeperQDB) UpdateShard(ctx context.Context, shard *qdb.Shard) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateShard indicates an expected call of UpdateShard.
-func (mr *MockStateKeeperQDBMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockStateKeeperQDB)(nil).UpdateShard), ctx, shard)
 }
 
 // WriteBalancerTask mocks base method.

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -87,9 +88,50 @@ func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataSha
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
-// UpdateShard implements meta.EntityMgr.
-func (lc *Coordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	return lc.qdb.UpdateShard(ctx, topology.DataShardToDB(shard))
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	shard, err := lc.GetShard(ctx, shardID)
+	if err != nil {
+		return err
+	}
+
+	newOptions := shard.Options()
+	for _, opt := range options {
+		optionInd := slices.IndexFunc(shard.Options(), func(el topology.GenericOption) bool { return el.Name == opt.Name })
+
+		switch opt.Action {
+		case topology.GenericOptionActionUnspecified:
+			fallthrough
+		case topology.GenericOptionActionAdd:
+			if optionInd != -1 {
+				return fmt.Errorf("option \"%s\" was specified more than once", opt.Name)
+			}
+			newOptions = append(newOptions, topology.GenericOption{Name: opt.Name, Arg: opt.Arg})
+		case topology.GenericOptionActionSet:
+			if optionInd == -1 {
+				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			}
+			newOptions[optionInd].Arg = opt.Arg
+		case topology.GenericOptionActionDrop:
+			if optionInd == -1 {
+				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			}
+
+			for i := len(newOptions) - 1; i >= 0; i-- {
+				if opt.Name == newOptions[i].Name && (opt.Arg == "" || opt.Arg == newOptions[i].Arg) {
+					newOptions = slices.Delete(newOptions, i, i+1)
+				}
+			}
+		}
+	}
+
+	shard.SetOptions(newOptions)
+
+	return lc.qdb.AlterShard(ctx, topology.DataShardToDB(shard))
+}
+
+func (lc *Coordinator) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	dbshard := topology.DataShardToDB(topology.NewDataShard(shardID, config.DataShard, options))
+	return lc.qdb.AlterShard(ctx, dbshard)
 }
 
 // AddWorldShard implements meta.EntityMgr.

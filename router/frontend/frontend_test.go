@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -136,7 +137,7 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, nil).Times(1)
 
-	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*topology.DataShard{
 		"sh1": {},
 	}, time.Duration(0) /* never do healthcheck */)
 
@@ -251,7 +252,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*topology.DataShard{
 		"sh1": {},
 	}, time.Duration(0) /* never do healthcheck */)
 

@@ -22,86 +22,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type TLSConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Sslmode       string                 `protobuf:"bytes,1,opt,name=sslmode,proto3" json:"sslmode,omitempty"`
-	CertFile      string                 `protobuf:"bytes,2,opt,name=cert_file,json=certFile,proto3" json:"cert_file,omitempty"`
-	KeyFile       string                 `protobuf:"bytes,3,opt,name=key_file,json=keyFile,proto3" json:"key_file,omitempty"`
-	RootCertFile  string                 `protobuf:"bytes,4,opt,name=root_cert_file,json=rootCertFile,proto3" json:"root_cert_file,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TLSConfig) Reset() {
-	*x = TLSConfig{}
-	mi := &file_protos_shard_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TLSConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TLSConfig) ProtoMessage() {}
-
-func (x *TLSConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TLSConfig.ProtoReflect.Descriptor instead.
-func (*TLSConfig) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *TLSConfig) GetSslmode() string {
-	if x != nil {
-		return x.Sslmode
-	}
-	return ""
-}
-
-func (x *TLSConfig) GetCertFile() string {
-	if x != nil {
-		return x.CertFile
-	}
-	return ""
-}
-
-func (x *TLSConfig) GetKeyFile() string {
-	if x != nil {
-		return x.KeyFile
-	}
-	return ""
-}
-
-func (x *TLSConfig) GetRootCertFile() string {
-	if x != nil {
-		return x.RootCertFile
-	}
-	return ""
-}
-
 type Shard struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Hosts         []string               `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
-	Tls           *TLSConfig             `protobuf:"bytes,3,opt,name=tls,proto3" json:"tls,omitempty"`
+	Options       []*GenericOption       `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Shard) Reset() {
 	*x = Shard{}
-	mi := &file_protos_shard_proto_msgTypes[1]
+	mi := &file_protos_shard_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -113,7 +44,7 @@ func (x *Shard) String() string {
 func (*Shard) ProtoMessage() {}
 
 func (x *Shard) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_shard_proto_msgTypes[1]
+	mi := &file_protos_shard_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -126,7 +57,7 @@ func (x *Shard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Shard.ProtoReflect.Descriptor instead.
 func (*Shard) Descriptor() ([]byte, []int) {
-	return file_protos_shard_proto_rawDescGZIP(), []int{1}
+	return file_protos_shard_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Shard) GetId() string {
@@ -136,24 +67,69 @@ func (x *Shard) GetId() string {
 	return ""
 }
 
-func (x *Shard) GetHosts() []string {
+func (x *Shard) GetOptions() []*GenericOption {
 	if x != nil {
-		return x.Hosts
+		return x.Options
 	}
 	return nil
 }
 
-func (x *Shard) GetTls() *TLSConfig {
+type GenericOption struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenericOption) Reset() {
+	*x = GenericOption{}
+	mi := &file_protos_shard_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenericOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenericOption) ProtoMessage() {}
+
+func (x *GenericOption) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_shard_proto_msgTypes[1]
 	if x != nil {
-		return x.Tls
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	return nil
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenericOption.ProtoReflect.Descriptor instead.
+func (*GenericOption) Descriptor() ([]byte, []int) {
+	return file_protos_shard_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GenericOption) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GenericOption) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
 }
 
 type ShardInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Hosts         []string               `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	Options       []*GenericOption       `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -195,9 +171,9 @@ func (x *ShardInfo) GetId() string {
 	return ""
 }
 
-func (x *ShardInfo) GetHosts() []string {
+func (x *ShardInfo) GetOptions() []*GenericOption {
 	if x != nil {
-		return x.Hosts
+		return x.Options
 	}
 	return nil
 }
@@ -378,27 +354,28 @@ func (x *AddShardRequest) GetShard() *Shard {
 	return nil
 }
 
-type UpdateShardRequest struct {
+type AlterShardRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Shard         *Shard                 `protobuf:"bytes,1,opt,name=shard,proto3" json:"shard,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Options       []*GenericOption       `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *UpdateShardRequest) Reset() {
-	*x = UpdateShardRequest{}
+func (x *AlterShardRequest) Reset() {
+	*x = AlterShardRequest{}
 	mi := &file_protos_shard_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UpdateShardRequest) String() string {
+func (x *AlterShardRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UpdateShardRequest) ProtoMessage() {}
+func (*AlterShardRequest) ProtoMessage() {}
 
-func (x *UpdateShardRequest) ProtoReflect() protoreflect.Message {
+func (x *AlterShardRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_protos_shard_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -410,14 +387,21 @@ func (x *UpdateShardRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateShardRequest.ProtoReflect.Descriptor instead.
-func (*UpdateShardRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use AlterShardRequest.ProtoReflect.Descriptor instead.
+func (*AlterShardRequest) Descriptor() ([]byte, []int) {
 	return file_protos_shard_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *UpdateShardRequest) GetShard() *Shard {
+func (x *AlterShardRequest) GetId() string {
 	if x != nil {
-		return x.Shard
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AlterShardRequest) GetOptions() []*GenericOption {
+	if x != nil {
+		return x.Options
 	}
 	return nil
 }
@@ -514,19 +498,16 @@ var File_protos_shard_proto protoreflect.FileDescriptor
 
 const file_protos_shard_proto_rawDesc = "" +
 	"\n" +
-	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"\x83\x01\n" +
-	"\tTLSConfig\x12\x18\n" +
-	"\asslmode\x18\x01 \x01(\tR\asslmode\x12\x1b\n" +
-	"\tcert_file\x18\x02 \x01(\tR\bcertFile\x12\x19\n" +
-	"\bkey_file\x18\x03 \x01(\tR\akeyFile\x12$\n" +
-	"\x0eroot_cert_file\x18\x04 \x01(\tR\frootCertFile\"P\n" +
+	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"F\n" +
 	"\x05Shard\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05hosts\x18\x02 \x03(\tR\x05hosts\x12!\n" +
-	"\x03tls\x18\x03 \x01(\v2\x0f.spqr.TLSConfigR\x03tls\"1\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"9\n" +
+	"\rGenericOption\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"J\n" +
 	"\tShardInfo\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05hosts\x18\x02 \x03(\tR\x05hosts\"/\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"/\n" +
 	"\n" +
 	"ShardReply\x12!\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\x1e\n" +
@@ -535,18 +516,20 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\x0fListShardsReply\x12#\n" +
 	"\x06shards\x18\x01 \x03(\v2\v.spqr.ShardR\x06shards\"4\n" +
 	"\x0fAddShardRequest\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"7\n" +
-	"\x12UpdateShardRequest\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"9\n" +
+	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"R\n" +
+	"\x11AlterShardRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"9\n" +
 	"\x14AddWorldShardRequest\x12!\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\"\n" +
 	"\x10DropShardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id2\x8b\x03\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id2\x89\x03\n" +
 	"\fShardService\x12=\n" +
 	"\n" +
 	"ListShards\x12\x16.google.protobuf.Empty\x1a\x15.spqr.ListShardsReply\"\x00\x12?\n" +
-	"\fAddDataShard\x12\x15.spqr.AddShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x12A\n" +
-	"\vUpdateShard\x12\x18.spqr.UpdateShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x12=\n" +
+	"\fAddDataShard\x12\x15.spqr.AddShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x12?\n" +
+	"\n" +
+	"AlterShard\x12\x17.spqr.AlterShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x12=\n" +
 	"\tDropShard\x12\x16.spqr.DropShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x12E\n" +
 	"\rAddWorldShard\x12\x1a.spqr.AddWorldShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x122\n" +
 	"\bGetShard\x12\x12.spqr.ShardRequest\x1a\x10.spqr.ShardReply\"\x00B\fZ\n" +
@@ -566,42 +549,43 @@ func file_protos_shard_proto_rawDescGZIP() []byte {
 
 var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_protos_shard_proto_goTypes = []any{
-	(*TLSConfig)(nil),            // 0: spqr.TLSConfig
-	(*Shard)(nil),                // 1: spqr.Shard
+	(*Shard)(nil),                // 0: spqr.Shard
+	(*GenericOption)(nil),        // 1: spqr.GenericOption
 	(*ShardInfo)(nil),            // 2: spqr.ShardInfo
 	(*ShardReply)(nil),           // 3: spqr.ShardReply
 	(*ShardRequest)(nil),         // 4: spqr.ShardRequest
 	(*ListShardsReply)(nil),      // 5: spqr.ListShardsReply
 	(*AddShardRequest)(nil),      // 6: spqr.AddShardRequest
-	(*UpdateShardRequest)(nil),   // 7: spqr.UpdateShardRequest
+	(*AlterShardRequest)(nil),    // 7: spqr.AlterShardRequest
 	(*AddWorldShardRequest)(nil), // 8: spqr.AddWorldShardRequest
 	(*DropShardRequest)(nil),     // 9: spqr.DropShardRequest
 	(*emptypb.Empty)(nil),        // 10: google.protobuf.Empty
 }
 var file_protos_shard_proto_depIdxs = []int32{
-	0,  // 0: spqr.Shard.tls:type_name -> spqr.TLSConfig
-	1,  // 1: spqr.ShardReply.shard:type_name -> spqr.Shard
-	1,  // 2: spqr.ListShardsReply.shards:type_name -> spqr.Shard
-	1,  // 3: spqr.AddShardRequest.shard:type_name -> spqr.Shard
-	1,  // 4: spqr.UpdateShardRequest.shard:type_name -> spqr.Shard
-	1,  // 5: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
-	10, // 6: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
-	6,  // 7: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
-	7,  // 8: spqr.ShardService.UpdateShard:input_type -> spqr.UpdateShardRequest
-	9,  // 9: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
-	8,  // 10: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
-	4,  // 11: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
-	5,  // 12: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
-	10, // 13: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
-	10, // 14: spqr.ShardService.UpdateShard:output_type -> google.protobuf.Empty
-	10, // 15: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
-	10, // 16: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
-	3,  // 17: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	1,  // 0: spqr.Shard.options:type_name -> spqr.GenericOption
+	1,  // 1: spqr.ShardInfo.options:type_name -> spqr.GenericOption
+	0,  // 2: spqr.ShardReply.shard:type_name -> spqr.Shard
+	0,  // 3: spqr.ListShardsReply.shards:type_name -> spqr.Shard
+	0,  // 4: spqr.AddShardRequest.shard:type_name -> spqr.Shard
+	1,  // 5: spqr.AlterShardRequest.options:type_name -> spqr.GenericOption
+	0,  // 6: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
+	10, // 7: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
+	6,  // 8: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
+	7,  // 9: spqr.ShardService.AlterShard:input_type -> spqr.AlterShardRequest
+	9,  // 10: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
+	8,  // 11: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
+	4,  // 12: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
+	5,  // 13: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
+	10, // 14: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
+	10, // 15: spqr.ShardService.AlterShard:output_type -> google.protobuf.Empty
+	10, // 16: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
+	10, // 17: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
+	3,  // 18: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
+	13, // [13:19] is the sub-list for method output_type
+	7,  // [7:13] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_protos_shard_proto_init() }

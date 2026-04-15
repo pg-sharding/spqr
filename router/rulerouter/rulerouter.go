@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -156,6 +157,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		return err
 	}
 	rcfg := config.RouterConfig()
+	topology.InitShardMapping(topology.DataShardMapFromConfig(rcfg.ShardMapping))
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -186,7 +188,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 
 func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	return &RuleRouterImpl{
-		RoutePool: NewRouterPoolImpl(rcfg.ShardMapping),
+		RoutePool: NewRouterPoolImpl(topology.ShardMapping),
 		rcfg:      rcfg,
 		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,

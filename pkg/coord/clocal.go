@@ -28,7 +28,7 @@ type LocalInstanceMetadataMgr struct {
 	cache *cache.SchemaCache
 
 	updateShardsMapping bool
-	shardMapping        map[string]*config.Shard
+	shardMapping        map[string]*topology.DataShard
 	shardMappingMutex   sync.Mutex
 
 	poolShardHosts shard.ShardHostIterator
@@ -230,26 +230,48 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 
 	if lc.updateShardsMapping {
 		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMapping[ds.ID] = ds
 		lc.shardMappingMutex.Unlock()
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
-func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topology.DataShard) error {
-	spqrlog.Zero.Info().
-		Str("node", ds.ID).
-		Msg("updating datashard node in local coordinator")
-
-	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	if err := lc.Coordinator.SetShardOptions(ctx, shardID, options); err != nil {
 		return err
 	}
+
 	if lc.updateShardsMapping {
+		shard, err := lc.GetShard(ctx, shardID)
+		if err != nil {
+			return err
+		}
+
 		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMapping[shardID].SetOptions(shard.Options())
 		lc.shardMappingMutex.Unlock()
 	}
-	return lc.invalidatePoolsForShard(ds.ID)
+
+	return lc.invalidatePoolsForShard(shardID)
+}
+
+func (lc *LocalInstanceMetadataMgr) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	if err := lc.Coordinator.AlterShardOptions(ctx, shardID, options); err != nil {
+		return err
+	}
+
+	if lc.updateShardsMapping {
+		shard, err := lc.GetShard(ctx, shardID)
+		if err != nil {
+			return err
+		}
+
+		lc.shardMappingMutex.Lock()
+		lc.shardMapping[shardID].SetOptions(shard.Options())
+		lc.shardMappingMutex.Unlock()
+	}
+
+	return lc.invalidatePoolsForShard(shardID)
 }
 
 func (lc *LocalInstanceMetadataMgr) invalidatePoolsForShard(shardID string) error {
@@ -508,7 +530,7 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ 
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
-	shardMapping map[string]*config.Shard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
+	shardMapping map[string]*topology.DataShard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
 
 	lc := &LocalInstanceMetadataMgr{
 		Coordinator:         NewCoordinator(db, d),

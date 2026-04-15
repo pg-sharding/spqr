@@ -595,14 +595,15 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 
 		if shards != nil {
-			for id, cfg := range shards.ShardsData {
+			topologyMap := topology.DataShardMapFromShardConnectConfig(shards.ShardsData)
+			for id, shard := range topologyMap {
 				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
 					spqrlog.Zero.Debug().
 						Str("shard", id).
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts, topology.TLSConfigToDB(cfg.TLS))); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -2257,7 +2258,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 
 		for _, sh := range needToUpdate {
-			_, err = shCl.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(sh)})
+			_, err = shCl.AlterShard(ctx, &proto.AlterShardRequest{
+				Id:      sh.ID,
+				Options: topology.GenericOptionsToProto(sh.Options()),
+			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					switch st.Code() {
@@ -2708,19 +2712,25 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 	return nil
 }
 
-func (qc *ClusteredCoordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.Coordinator.UpdateShard(ctx, shard); err != nil {
+func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId string, options []topology.GenericOption) error {
+	if err := qc.Coordinator.AlterShardOptions(ctx, shardId, options); err != nil {
+		return err
+	}
+
+	shard, err := qc.GetShard(ctx, shardId)
+	if err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
-		_, err := c.UpdateShard(ctx, &proto.UpdateShardRequest{
-			Shard: topology.DataShardToProto(shard),
+		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
+			Id:      shardId,
+			Options: topology.GenericOptionsToProto(shard.Options()),
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
-				return fmt.Errorf("router does not support UpdateShard RPC; please upgrade all routers to a version that supports it")
+				return fmt.Errorf("router does not support AlterShardOptions RPC; please upgrade all routers to a version that supports it")
 			}
 			return err
 		}

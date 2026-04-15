@@ -7,15 +7,16 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
 func TestDBPool_CacheCleanupBasic(t *testing.T) {
 	// Create shard mapping with Yandex zones
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas", "host2:5432:klg", "host3:5432:vla"},
-		},
+		}),
 	}
 
 	// Create DBPool with short cache age for testing
@@ -53,10 +54,10 @@ func TestDBPool_CacheCleanupBasic(t *testing.T) {
 
 func TestDBPool_CacheCleanupGoroutine(t *testing.T) {
 	// Create a simple test to verify the goroutine starts and stops properly
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas"},
-		},
+		}),
 	}
 
 	dbPool := NewDBPoolFromMultiPool(mapping, nil, &emptyMultiShardPool{}, time.Hour)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -57,7 +58,7 @@ type ShardHostsPool interface {
 type MultiShardTSAPool interface {
 	ShardHostsPool
 
-	ShardMapping() map[string]*config.Shard
+	ShardMapping() map[string]*topology.DataShard
 	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry

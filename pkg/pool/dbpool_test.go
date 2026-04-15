@@ -13,6 +13,7 @@ import (
 	mockpool "github.com/pg-sharding/spqr/pkg/mock/pool"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -37,14 +38,14 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	clId := uint(1)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		key.Name: {
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"h1:6432",
 				"h2:6432",
 				"h3:6432",
 			},
-		},
+		}),
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
@@ -217,12 +218,12 @@ func TestDbPoolRaces(t *testing.T) {
 		}
 	}
 
-	cfg := map[string]*config.Shard{}
+	cfg := map[string]*topology.DataShard{}
 
 	for _, sh := range shards {
-		cfg[sh] = &config.Shard{
+		cfg[sh] = topology.DataShardFromConfig(sh, &config.Shard{
 			RawHosts: hosts,
-		}
+		})
 	}
 
 	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
@@ -276,14 +277,14 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	clId := uint(1)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		key.Name: {
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"h1:6432",
 				"h2:6432",
 				"h3:6432",
 			},
-		},
+		}),
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
@@ -414,8 +415,8 @@ func TestBuildHostOrder(t *testing.T) {
 		Name: "sh1",
 	}
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		key.Name: {
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"sas-123.db.yandex.net:6432:sas",
 				"sas-234.db.yandex.net:6432:sas",
@@ -424,7 +425,7 @@ func TestBuildHostOrder(t *testing.T) {
 				"klg-123.db.yandex.net:6432:klg",
 				"klg-234.db.yandex.net:6432:klg",
 			},
-		},
+		}),
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	tests := []struct {
@@ -513,8 +514,8 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 		Name: "sh1",
 	}
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		key.Name: {
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"h1:6432:sas",
 				"h2:6432:sas",
@@ -522,7 +523,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				"h4:6432:vla",
 				"h5:6432:klg",
 			},
-		},
+		}),
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	tests := []struct {
@@ -721,10 +722,10 @@ func TestBuildHostOrderNonExistentShard(t *testing.T) {
 
 	underlying_pool := mockpool.NewMockShardHostsPool(ctrl)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		"existing_shard": {
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+		"existing_shard": topology.DataShardFromConfig("existing_shard", &config.Shard{
 			RawHosts: []string{"h1:6432:sas"},
-		},
+		}),
 	}, &startup.StartupParams{}, underlying_pool, time.Hour)
 
 	key := kr.ShardKey{

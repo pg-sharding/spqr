@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/stretchr/testify/assert"
@@ -118,7 +118,7 @@ func TestAlterDistributionAttach(t *testing.T) {
 	} {
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
 		err = innerAlterDistributionAttach(ctx, mngr, &testData.rel, testData.dsId, testData.keyColumn)
 		if testData.err != nil {
 			is.EqualError(err, testData.err.Error())

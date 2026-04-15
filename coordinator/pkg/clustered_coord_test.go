@@ -17,7 +17,7 @@ func TestClusteredCoordinatorAddDataShardStoresShardMetadata(t *testing.T) {
 	qc, err := NewClusteredCoordinator(nil, db)
 	assert.NoError(t, err)
 
-	err = qc.AddDataShard(context.Background(), topology.NewDataShard("sh-bad", &config.Shard{
+	err = qc.AddDataShard(context.Background(), topology.DataShardFromConfig("sh-bad", &config.Shard{
 		RawHosts: []string{"127.0.0.1:1"},
 		Type:     config.DataShard,
 	}))

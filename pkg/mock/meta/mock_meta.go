@@ -190,6 +190,20 @@ func (mr *MockEntityMgrMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockEntityMgr)(nil).AlterSequenceDetachRelation), ctx, rel)
 }
 
+// AlterShardOptions mocks base method.
+func (m *MockEntityMgr) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShardOptions indicates an expected call of AlterShardOptions.
+func (mr *MockEntityMgrMockRecorder) AlterShardOptions(ctx, shardID, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockEntityMgr)(nil).AlterShardOptions), ctx, shardID, options)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()
@@ -1053,6 +1067,20 @@ func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id, nowait)
 }
 
+// SetShardOptions mocks base method.
+func (m *MockEntityMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetShardOptions", ctx, shardID, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetShardOptions indicates an expected call of SetShardOptions.
+func (mr *MockEntityMgrMockRecorder) SetShardOptions(ctx, shardID, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardOptions", reflect.TypeOf((*MockEntityMgr)(nil).SetShardOptions), ctx, shardID, options)
+}
+
 // SetTwoPhaseTxMetaStorage mocks base method.
 func (m *MockEntityMgr) SetTwoPhaseTxMetaStorage(arg0 context.Context, arg1 []string) error {
 	m.ctrl.T.Helper()
@@ -1234,20 +1262,6 @@ func (m *MockEntityMgr) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) (
 func (mr *MockEntityMgrMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).UpdateKeyRange), ctx, arg1)
-}
-
-// UpdateShard mocks base method.
-func (m *MockEntityMgr) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateShard indicates an expected call of UpdateShard.
-func (mr *MockEntityMgrMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockEntityMgr)(nil).UpdateShard), ctx, shard)
 }
 
 // WriteBalancerTask mocks base method.

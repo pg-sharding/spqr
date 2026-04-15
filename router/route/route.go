@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -55,7 +56,7 @@ type Route struct {
 
 func NewRoute(beRule *config.BackendRule,
 	frRule *config.FrontendRule,
-	mapping map[string]*config.Shard,
+	mapping map[string]*topology.DataShard,
 	clientDeadCheckInterval time.Duration,
 ) *Route {
 	sp := &startup.StartupParams{}

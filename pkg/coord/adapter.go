@@ -683,11 +683,16 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 	return spqrerror.CleanGrpcError(err)
 }
 
-// UpdateShard updates an existing data shard in the system.
-func (a *Adapter) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(shard)})
-	return spqrerror.CleanGrpcError(err)
+// TODO : unit tests
+// TODO : implement
+func (a *Adapter) AlterShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardOptions not implemented")
+}
+
+// TODO : unit tests
+// TODO : implement
+func (a *Adapter) SetShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "setShardOptions not implemented")
 }
 
 // DropShard drops a data shard from the system.

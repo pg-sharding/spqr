@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -699,7 +700,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
 				rst.Client().SetScatterQuery(hintVal != "")
 			case session.SPQR_EXECUTE_ON:
-				if _, ok := config.RouterConfig().ShardMapping[hintVal]; !ok {
+				if _, ok := topology.ShardMapping[hintVal]; !ok {
 					return fmt.Errorf("no such shard: %v", hintVal)
 				}
 				rst.Client().SetExecuteOn(lvl, hintVal)

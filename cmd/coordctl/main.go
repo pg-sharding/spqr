@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -142,11 +143,12 @@ var addShardCmd = &cobra.Command{
 		}
 
 		rCl := protos.NewShardServiceClient(cc)
+		shard := topology.DataShardToProto(topology.DataShardFromConfig(shardID, &config.Shard{
+			Type:     config.DataShard,
+			RawHosts: shardHosts,
+		}))
 		if _, err := rCl.AddDataShard(context.Background(), &protos.AddShardRequest{
-			Shard: &protos.Shard{
-				Id:    shardID,
-				Hosts: shardHosts,
-			},
+			Shard: shard,
 		}); err == nil {
 			fmt.Printf("-------------------------------------\n")
 			fmt.Printf("create shard with id: %s and hosts: %+v\n", shardID, shardHosts)
@@ -181,7 +183,8 @@ var listShardCmd = &cobra.Command{
 			fmt.Printf("%d shards found\n", len(resp.Shards))
 
 			for _, shard := range resp.Shards {
-				fmt.Printf("router %s serving on host group %+v\n", shard.Id, shard.Hosts)
+				ds := topology.DataShardFromProto(shard)
+				fmt.Printf("router %s serving on host group %+v\n", shard.Id, ds.Hosts())
 			}
 
 			fmt.Printf("-------------------------------------\n")
