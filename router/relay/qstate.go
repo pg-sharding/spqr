@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/twopc"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
@@ -605,8 +606,41 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, err
 		}
-	case *lyx.Execute:
+	case *lyx.ExecuteStmt:
 		if AdvancedPoolModeNeeded(rst) {
+
+			var Params [][]byte
+			var ParameterFormatCodes []int16
+			var ResultFormatCodes []int16
+
+			for _, p := range st.Params {
+				switch q := p.(type) {
+				case *lyx.AExprSConst:
+					Params = append(Params, []byte(q.Value))
+				default:
+					return nil, rerrors.ErrComplexQuery
+				}
+				ParameterFormatCodes = append(ParameterFormatCodes, xproto.FormatCodeText)
+				ResultFormatCodes = append(ResultFormatCodes, xproto.FormatCodeText)
+			}
+
+			if err := rst.BindPrepared(context.TODO(),
+				st.Name /* unnamed portal */, "",
+				Params,
+				ParameterFormatCodes,
+				ResultFormatCodes); err != nil {
+				return nil, err
+			}
+
+			if err := rst.DescribePrepared(xproto.ObjectTypeStatement,
+				st.Name,
+				nil); err != nil {
+				return nil, err
+			}
+
+			if err := rst.ExecutePortal( /* unnamed portal */ ""); err != nil {
+				return nil, err
+			}
 
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
