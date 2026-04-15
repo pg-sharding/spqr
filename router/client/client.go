@@ -956,7 +956,7 @@ func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
-func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
+func (f FakeClient) Send(_ pgproto3.BackendMessage) error {
 	return nil
 }
 

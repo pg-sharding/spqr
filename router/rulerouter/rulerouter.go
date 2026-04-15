@@ -84,7 +84,7 @@ func (r *RuleRouterImpl) ErrorCounts() map[string]uint64 {
 }
 
 // ReportError implements [RuleRouter].
-func (r *RuleRouterImpl) ReportError(errtype string) {
+func (r *RuleRouterImpl) ReportError(_ string) {
 	/* nothing */
 }
 
@@ -388,7 +388,7 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	return popped, err
 }
 
-func (rr *RuleRouterImpl) Put(id client.Client) error {
+func (rr *RuleRouterImpl) Put(_ client.Client) error {
 	return nil
 }
 

@@ -53,7 +53,7 @@ func TestTranEntityDelBefore(t *testing.T) {
 func TestTranGetDistribution(t *testing.T) {
 	is := assert.New(t)
 
-	t.Run("test with save changes", func(t *testing.T) {
+	t.Run("test with save changes", func(_ *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
@@ -93,7 +93,7 @@ func TestTranGetDistribution(t *testing.T) {
 		is.EqualError(err, "distribution \"ds-1\" not found")
 	})
 
-	t.Run("test with delete changes", func(t *testing.T) {
+	t.Run("test with delete changes", func(_ *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
@@ -139,7 +139,7 @@ func TestTranGetDistribution(t *testing.T) {
 }
 func TestTranGetKeyRange(t *testing.T) {
 	is := assert.New(t)
-	t.Run("test with save changes", func(t *testing.T) {
+	t.Run("test with save changes", func(_ *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
@@ -221,7 +221,7 @@ func TestTranGetKeyRange(t *testing.T) {
 
 	})
 
-	t.Run("test drop key range", func(t *testing.T) {
+	t.Run("test drop key range", func(_ *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
@@ -278,7 +278,7 @@ func TestTranGetKeyRange(t *testing.T) {
 }
 
 func TestTranState(t *testing.T) {
-	t.Run("setTransaction happy path", func(t *testing.T) {
+	t.Run("setTransaction happy path", func(_ *testing.T) {
 		is := assert.New(t)
 		distribution := &proto.Distribution{
 			Id:          "ds1",
@@ -304,7 +304,7 @@ func TestTranState(t *testing.T) {
 		err = state.SetTransaction(&tran1)
 		is.NoError(err)
 	})
-	t.Run("setTransaction tran over tran fails", func(t *testing.T) {
+	t.Run("setTransaction tran over tran fails", func(_ *testing.T) {
 		is := assert.New(t)
 		distribution := &proto.Distribution{
 			Id:          "ds1",
@@ -338,7 +338,7 @@ func TestTranState(t *testing.T) {
 		err = state.SetTransaction(&tran2)
 		is.EqualError(err, "corrupted transaction state (setTransaction)")
 	})
-	t.Run("setTransaction tran over chunk fails", func(t *testing.T) {
+	t.Run("setTransaction tran over chunk fails", func(_ *testing.T) {
 		is := assert.New(t)
 		distribution := &proto.Distribution{
 			Id:          "ds1",
@@ -372,7 +372,7 @@ func TestTranState(t *testing.T) {
 		err = state.SetTransaction(&tran2)
 		is.EqualError(err, "transaction state begins with no transaction flow")
 	})
-	t.Run("append chunk for tran success", func(t *testing.T) {
+	t.Run("append chunk for tran success", func(_ *testing.T) {
 		is := assert.New(t)
 		distribution := &proto.Distribution{
 			Id:          "ds1",
@@ -410,7 +410,7 @@ func TestTranState(t *testing.T) {
 		is.NoError(err)
 	})
 
-	t.Run("append chunk for chunk success", func(t *testing.T) {
+	t.Run("append chunk for chunk success", func(_ *testing.T) {
 		is := assert.New(t)
 		distribution1 := &proto.Distribution{Id: "ds1", ColumnTypes: []string{"integer"}}
 		distribution2 := &proto.Distribution{Id: "ds2", ColumnTypes: []string{"integer"}}
@@ -454,7 +454,7 @@ func TestTranState(t *testing.T) {
 		is.Equal(state.Chunk, expected)
 	})
 
-	t.Run("test double execute chunk fails", func(t *testing.T) {
+	t.Run("test double execute chunk fails", func(_ *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
@@ -470,7 +470,7 @@ func TestTranState(t *testing.T) {
 		err = tranMngr.ExecNoTran(ctx)
 		is.EqualError(err, "can't double execute chunk")
 	})
-	t.Run("test double commit transaction fails", func(t *testing.T) {
+	t.Run("test double commit transaction fails", func(_ *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
@@ -490,7 +490,7 @@ func TestTranState(t *testing.T) {
 }
 
 func TestTranListSequences(t *testing.T) {
-	t.Run("test with save changes", func(t *testing.T) {
+	t.Run("test with save changes", func(_ *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)

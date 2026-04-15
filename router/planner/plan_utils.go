@@ -254,7 +254,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 }
 
 func ProcessInsertFromSelectOffsets(
-	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
+	_ context.Context, stmt *lyx.Insert, _ *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().

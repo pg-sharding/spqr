@@ -86,7 +86,7 @@ func NewGrantsChecker(enableRoleSystem bool, tableGroups []config.TableGroup) (G
 type FakeChecker struct{}
 
 // CheckGrants fake implementation.
-func (f *FakeChecker) CheckGrants(target string, rule *config.FrontendRule) error {
+func (f *FakeChecker) CheckGrants(_ string, _ *config.FrontendRule) error {
 	// Always allow access in the fake checker
 	return nil
 }

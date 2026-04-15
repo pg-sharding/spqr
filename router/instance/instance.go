@@ -73,7 +73,7 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
+func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err

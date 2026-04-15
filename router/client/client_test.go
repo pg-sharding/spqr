@@ -75,7 +75,7 @@ func TestNoGSSAPI(t *testing.T) {
 	exprErr := fmt.Errorf("stop test")
 
 	rconn.EXPECT().Read(gomock.Any()).DoAndReturn(
-		func(b []byte) (int, error) {
+		func(_ []byte) (int, error) {
 
 			return 0, exprErr
 		}).Times(1)

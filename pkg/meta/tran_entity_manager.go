@@ -119,7 +119,7 @@ func (t *TranEntityManager) CommitTran(ctx context.Context) error {
 }
 
 // CreateDistribution implements [EntityMgr].
-func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (t *TranEntityManager) CreateDistribution(_ context.Context, ds *distributions.Distribution) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{CreateDistribution: &proto.CreateDistributionGossip{
 			Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
@@ -133,7 +133,7 @@ func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distribu
 }
 
 // CreateKeyRange implements [EntityMgr].
-func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange, colTypes []string) error {
+func (t *TranEntityManager) CreateKeyRange(_ context.Context, kr *kr.KeyRange, colTypes []string) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{CreateKeyRange: &proto.CreateKeyRangeGossip{
 			KeyRangeInfo: kr.ToProto(),
@@ -150,7 +150,7 @@ func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange,
 	return nil
 }
 
-func (t *TranEntityManager) DropKeyRange(ctx context.Context, idKeyRange string) error {
+func (t *TranEntityManager) DropKeyRange(_ context.Context, idKeyRange string) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{DropKeyRange: &proto.DropKeyRangeGossip{
 			Id: []string{idKeyRange},
@@ -164,7 +164,7 @@ func (t *TranEntityManager) DropKeyRange(ctx context.Context, idKeyRange string)
 }
 
 // UpdateKeyRange implements [EntityMgr].
-func (t *TranEntityManager) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange, colTypes []string) error {
+func (t *TranEntityManager) UpdateKeyRange(_ context.Context, kr *kr.KeyRange, colTypes []string) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{UpdateKeyRange: &proto.UpdateKeyRangeGossip{
 			KeyRangeInfo: kr.ToProto(),
@@ -182,7 +182,7 @@ func (t *TranEntityManager) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange,
 }
 
 // DropDistribution implements [EntityMgr].
-func (t *TranEntityManager) DropDistribution(ctx context.Context, id string) error {
+func (t *TranEntityManager) DropDistribution(_ context.Context, id string) error {
 	t.distributions.Delete(id)
 	return nil
 }
@@ -308,7 +308,7 @@ func (t *TranEntityManager) ListSequences(ctx context.Context) ([]string, error)
 	return result, nil
 }
 
-func (t *TranEntityManager) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+func (t *TranEntityManager) CreateSequence(_ context.Context, seqName string, initialValue int64) error {
 	commands := []*proto.MetaTransactionGossipCommand{
 		{CreateSequence: &proto.CreateSequenceGossip{
 			SeqName:      seqName,

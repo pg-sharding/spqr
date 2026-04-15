@@ -80,13 +80,13 @@ func TestAddShard(t *testing.T) {
 	}()
 	is.NoError(err)
 
-	t.Run("test AddShard", func(t *testing.T) {
+	t.Run("test AddShard", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
 
-		t.Run("happy path", func(t *testing.T) {
+		t.Run("happy path", func(_ *testing.T) {
 			err := cleanupDb(ctx, db)
 			is.NoError(err)
 			sh := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"}, nil)
@@ -98,7 +98,7 @@ func TestAddShard(t *testing.T) {
 			is.Equal(actual, expected)
 		})
 
-		t.Run("fail", func(t *testing.T) {
+		t.Run("fail", func(_ *testing.T) {
 			err := cleanupDb(ctx, db)
 			is.NoError(err)
 			err = db.AddShard(ctx, qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"}, nil))
@@ -123,12 +123,12 @@ func TestLockUnlock(t *testing.T) {
 	}()
 	is.NoError(err)
 
-	t.Run("test UnLock", func(t *testing.T) {
+	t.Run("test UnLock", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
-		t.Run("happy path", func(t *testing.T) {
+		t.Run("happy path", func(_ *testing.T) {
 			err := cleanupDb(ctx, db)
 			is.NoError(err)
 			keyRange1 := qdb.KeyRange{
@@ -160,12 +160,12 @@ func TestTransactions(t *testing.T) {
 		_ = Down()
 	}()
 	is.NoError(err)
-	t.Run("test Begin tran", func(t *testing.T) {
+	t.Run("test Begin tran", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
-		t.Run("simple begin tran success", func(t *testing.T) {
+		t.Run("simple begin tran success", func(_ *testing.T) {
 			tran, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran)
@@ -174,7 +174,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal(tran.Id().String(), string(result.Kvs[0].Value))
 		})
-		t.Run("2 begin tran success", func(t *testing.T) {
+		t.Run("2 begin tran success", func(_ *testing.T) {
 			tran1, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
@@ -188,12 +188,12 @@ func TestTransactions(t *testing.T) {
 			is.Equal(tran2.Id().String(), string(result.Kvs[0].Value))
 		})
 	})
-	t.Run("test exec no tran", func(t *testing.T) {
+	t.Run("test exec no tran", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
-		t.Run("happy path", func(t *testing.T) {
+		t.Run("happy path", func(_ *testing.T) {
 			statements := []qdb.QdbStatement{
 				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
 				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
@@ -212,7 +212,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal(0, len(result.Kvs))
 		})
-		t.Run("2 sequential runs", func(t *testing.T) {
+		t.Run("2 sequential runs", func(_ *testing.T) {
 			//run1
 			statements := []qdb.QdbStatement{
 				{CmdType: qdb.CMD_PUT, Key: "test3", Value: "val3"},
@@ -239,12 +239,12 @@ func TestTransactions(t *testing.T) {
 			is.Equal(0, len(result.Kvs))
 		})
 	})
-	t.Run("test commit tran", func(t *testing.T) {
+	t.Run("test commit tran", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
-		t.Run("happy path commit tran", func(t *testing.T) {
+		t.Run("happy path commit tran", func(_ *testing.T) {
 			tran, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran)
@@ -269,7 +269,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal(0, len(result.Kvs))
 		})
-		t.Run("fail commit tran after begin another tran", func(t *testing.T) {
+		t.Run("fail commit tran after begin another tran", func(_ *testing.T) {
 			tran1, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
@@ -287,7 +287,7 @@ func TestTransactions(t *testing.T) {
 			err = db.CommitTransaction(ctx, tran1)
 			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
 		})
-		t.Run("suddenly there was a boxwood", func(t *testing.T) {
+		t.Run("suddenly there was a boxwood", func(_ *testing.T) {
 			tran1, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
@@ -304,7 +304,7 @@ func TestTransactions(t *testing.T) {
 			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
 		})
 
-		t.Run("fails invalid tran", func(t *testing.T) {
+		t.Run("fails invalid tran", func(_ *testing.T) {
 			tran1, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
@@ -326,12 +326,12 @@ func TestGetMoveTaskGroup(t *testing.T) {
 		_ = Down()
 	}()
 	assert.NoError(err)
-	t.Run("test Begin tran", func(t *testing.T) {
+	t.Run("test Begin tran", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		assert.NoError(err)
-		t.Run("empty request returns no task groups", func(t *testing.T) {
+		t.Run("empty request returns no task groups", func(_ *testing.T) {
 			assert.NoError(db.WriteMoveTaskGroup(
 				ctx,
 				"tg1",
@@ -343,7 +343,7 @@ func TestGetMoveTaskGroup(t *testing.T) {
 			assert.NoError(err)
 			assert.Nil(taskGroup)
 		})
-		t.Run("base case", func(t *testing.T) {
+		t.Run("base case", func(_ *testing.T) {
 			tg := &qdb.MoveTaskGroup{ShardToId: "shard_to", KrIdFrom: "kr_from", KrIdTo: "kr_to"}
 			assert.NoError(db.WriteMoveTaskGroup(
 				ctx,
@@ -370,13 +370,13 @@ func TestCreateSequence(t *testing.T) {
 	}()
 	is.NoError(err)
 
-	t.Run("test CreateSequence", func(t *testing.T) {
+	t.Run("test CreateSequence", func(_ *testing.T) {
 		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
 		defer cancel()
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
 
-		t.Run("happy path", func(t *testing.T) {
+		t.Run("happy path", func(_ *testing.T) {
 			err := cleanupDb(ctx, db)
 			is.NoError(err)
 			seqExists, err := db.CheckSequence(ctx, "test1")

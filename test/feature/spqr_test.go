@@ -1443,7 +1443,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	}
 	tctx.debug = debug
 
-	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
+	s.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
 		//tctx.cleanup()
 		tctx.composerEnv = []string{
 			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
@@ -1458,7 +1458,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		tctx.templateErr = tctx.templateStep(step)
 		return ctx, nil
 	})
-	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
+	s.StepContext().After(func(ctx context.Context, step *godog.Step, _ godog.StepResultStatus, err error) (context.Context, error) {
 		if err != nil {
 			if !debug {
 				return ctx, err

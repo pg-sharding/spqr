@@ -138,7 +138,7 @@ func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalC
 
 // Clear removes all cached entries
 func (c *DbpoolCache) Clear() {
-	c.cache.Range(func(key, value any) bool {
+	c.cache.Range(func(key, _ any) bool {
 		c.cache.Delete(key)
 		return true
 	})

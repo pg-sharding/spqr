@@ -136,7 +136,7 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 //   - error: An error if any occurred during the shutdown process.
 func (c *PoolImpl) Shutdown() error {
 
-	c.pool.Range(func(key, value any) bool {
+	c.pool.Range(func(_, value any) bool {
 		cl := value.(Client)
 		go func(cl Client) {
 			if err := cl.Shutdown(); err != nil {
@@ -167,7 +167,7 @@ func (c *PoolImpl) Shutdown() error {
 //   - error: An error if any occurred during the iteration.
 func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
-	c.pool.Range(func(key, value any) bool {
+	c.pool.Range(func(_, value any) bool {
 		cl := value.(Client)
 
 		if err := cb(ClientInfoImpl{Client: cl, rAddr: "local"}); err != nil {

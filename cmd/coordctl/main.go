@@ -40,7 +40,7 @@ var rootCmd = &cobra.Command{
 var addRouterCmd = &cobra.Command{
 	Use:   "AddRouter",
 	Short: "add routers in topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -84,7 +84,7 @@ var addRouterCmd = &cobra.Command{
 var listRouterCmd = &cobra.Command{
 	Use:   "ListRouters",
 	Short: "list running routers in current topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -120,7 +120,7 @@ var listRouterCmd = &cobra.Command{
 var addShardCmd = &cobra.Command{
 	Use:   "AddShard",
 	Short: "list running routers in current topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -163,7 +163,7 @@ var addShardCmd = &cobra.Command{
 var listShardCmd = &cobra.Command{
 	Use:   "ListShards",
 	Short: "list running routers in current topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")

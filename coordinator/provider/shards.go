@@ -49,7 +49,7 @@ func (s *ShardServer) DropShard(ctx context.Context, request *protos.DropShardRe
 	return nil, s.impl.DropShard(ctx, request.Id)
 }
 
-func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
+func (s *ShardServer) AddWorldShard(_ context.Context, _ *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("ShardServer.AddWorldShard not implemented")
 }
 

@@ -118,7 +118,7 @@ func init() {
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		_, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
@@ -467,7 +467,7 @@ var runCmd = &cobra.Command{
 var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			rcfgPath = args[0]
 		}

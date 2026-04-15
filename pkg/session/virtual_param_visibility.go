@@ -103,7 +103,7 @@ func (s *VirtualParamVisibility) CleanupStatementSet() {
 	s.updateInGlobal()
 }
 
-func (s *VirtualParamVisibility) Reset(tx int, defaultValue *string) {
+func (s *VirtualParamVisibility) Reset(_ int, defaultValue *string) {
 	if defaultValue != nil {
 		s.globalMap[s.name] = *defaultValue
 	} else {
