@@ -1,6 +1,15 @@
 version: "2"
 
 linters:
+  enable:
+    - revive
   exclusions:
+    rules:
+      # Suppress "exported func/type/var should have comment" and "package should have comment"
+      - linters: [revive]
+        text: "^(exported|package-comments):"
     paths:
       - yacc/console/lex.go
+
+run:
+  timeout: 10m
