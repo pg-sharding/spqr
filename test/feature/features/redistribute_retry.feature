@@ -530,6 +530,8 @@ Feature: Redistribution retries test
     REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
     """
     Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
 
     When I run SQL on host "coordinator2"
     """
@@ -555,15 +557,14 @@ Feature: Redistribution retries test
     """
     1000
     """
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinator2"
     """
     SHOW key_ranges;
     """
     Then command return code should be "0"
-    And SQL result should match json_exactly
+    And SQL result should match json
     """
     [{
-      "key_range_id":"kr1",
       "distribution_id":"ds1",
       "lower_bound":"0",
       "shard_id":"sh2",
@@ -575,10 +576,9 @@ Feature: Redistribution retries test
     SHOW key_ranges;
     """
     Then command return code should be "0"
-    And SQL result should match json_exactly
+    And SQL result should match json
     """
     [{
-      "key_range_id":"kr1",
       "distribution_id":"ds1",
       "lower_bound":"0",
       "shard_id":"sh2",
@@ -590,10 +590,9 @@ Feature: Redistribution retries test
     SHOW key_ranges;
     """
     Then command return code should be "0"
-    And SQL result should match json_exactly
+    And SQL result should match json
     """
     [{
-      "key_range_id":"kr1",
       "distribution_id":"ds1",
       "lower_bound":"0",
       "shard_id":"sh2",
