@@ -594,6 +594,59 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 	}
 }
 
+func TestSimpleMixedPreparedStmt(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Query{
+					String: "PREPARE p1 AS SELECT round(4+ 2);",
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "p1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("PREPARE"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("6")},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	XprotoTestRunner(t, frontend, tt)
+}
+
 func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 	thisIsSPQRSpecificTest(t)
 
@@ -6925,7 +6978,20 @@ func TestDiscardAllRemovesPstmts(t *testing.T) {
 				},
 			},
 		},
+	}
+	XprotoTestRunner(t, frontend, tt)
+}
 
+func TestDiscardAllRemovesPstmtsByXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 		/* by Execute(DISCARD) */
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -7104,6 +7170,20 @@ func TestDeallocateRemovesPstmts(t *testing.T) {
 				},
 			},
 		},
+	}
+	XprotoTestRunner(t, frontend, tt)
+}
+
+func TestDeallocateRemovesPstmtsByXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 		/* by Execute(DEALLOCATE ALL) */
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -7342,6 +7422,20 @@ func TestDeallocatePrepareRemovesPstmts(t *testing.T) {
 				},
 			},
 		},
+	}
+	XprotoTestRunner(t, frontend, tt)
+}
+
+func TestDeallocatePrepareRemovesPstmtsByXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 		/* by Execute(DEALLOCATE ALL) */
 		{
 			Request: []pgproto3.FrontendMessage{

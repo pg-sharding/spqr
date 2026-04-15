@@ -39,8 +39,10 @@ type Router struct {
 	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
 	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 
-	// TimeQuantiles is deprecated, use TimeQuantilesStr instead
-	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
+	// TimeQuantiles is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
+	TimeQuantiles []string `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
+	// Deprecated: use TimeQuantiles instead
+	//
 	// TimeQuantilesStr is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
 	TimeQuantilesStr []string `json:"time_quantiles_str" toml:"time_quantiles_str" yaml:"time_quantiles_str"`
 
@@ -140,12 +142,14 @@ func (r *Router) PostProcess() error {
 		return err
 	}
 
-	if len(r.TimeQuantilesStr) > 0 {
-		if err := statistics.InitStatisticsStr(r.TimeQuantilesStr); err != nil {
+	if len(r.TimeQuantiles) > 0 {
+		if err := statistics.InitStatisticsStr(r.TimeQuantiles); err != nil {
 			return err
 		}
 	} else {
-		statistics.InitStatistics(r.TimeQuantiles)
+		if err := statistics.InitStatisticsStr(r.TimeQuantilesStr); err != nil {
+			return err
+		}
 	}
 
 	rps.SetEnableRPSAggregation(r.Qr.RouterRpsAggregation)

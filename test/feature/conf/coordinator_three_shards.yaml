@@ -13,3 +13,4 @@ frontend_rules:
 data_move_disable_triggers: true
 data_move_bound_batch_size: 10
 forbid_direct_shard_queries: true
+enable_icp: true
