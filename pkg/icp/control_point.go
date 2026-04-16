@@ -15,6 +15,7 @@ const (
 	TwoPhaseDecisionCP2 = "2pc_after_decision_cp"
 
 	AfterRenameKeyRangeCP       = "after_rename_key_range_cp"
+	AfterSplitKeyRangeCP        = "after_split_key_range_cp"
 	AfterLockKeyRangeCP         = "after_lock_key_range_cp"
 	CopyDataCP                  = "copy_data_cp"
 	AfterCopyDataCP             = "after_copy_data_cp"
@@ -102,7 +103,11 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP, AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP, AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP,
+		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
+		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
+		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
+		AfterSplitKeyRangeCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -121,7 +126,11 @@ func ResetICP(name string) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP, AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP, AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP,
+		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
+		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
+		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
+		AfterSplitKeyRangeCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]

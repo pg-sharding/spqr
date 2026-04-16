@@ -1912,6 +1912,11 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 					return err
 				}
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterSplitKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterSplitKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			task.State = tasks.TaskSplit
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
