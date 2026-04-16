@@ -14,7 +14,18 @@ const (
 	TwoPhaseDecisionCP  = "2pc_decision_cp"
 	TwoPhaseDecisionCP2 = "2pc_after_decision_cp"
 
+	AfterRenameKeyRangeCP       = "after_rename_key_range_cp"
+	AfterSplitKeyRangeCP        = "after_split_key_range_cp"
+	AfterLockKeyRangeCP         = "after_lock_key_range_cp"
 	CopyDataCP                  = "copy_data_cp"
+	AfterCopyDataCP             = "after_copy_data_cp"
+	AfterDeleteCP               = "after_delete_cp"
+	AfterMoveKeysCP             = "after_move_keys_cp"
+	AfterCoordUpdateKeyRangeCP  = "after_coordinator_update_key_range_cp"
+	AfterRouterUpdateKeyRangeCP = "after_router_update_key_range_cp"
+	AfterUnlockKeyRangeCP       = "after_unlock_key_range_cp"
+	AfterMoveCP                 = "after_move_cp"
+	AfterUniteKeyRangeCP        = "after_unite_key_range_cp"
 	CopyReferenceRelationDataCP = "copy_reference_relation_data_cp"
 )
 
@@ -94,7 +105,11 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP,
+		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
+		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
+		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
+		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -113,7 +128,11 @@ func ResetICP(name string) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP,
+		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
+		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
+		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
+		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]
