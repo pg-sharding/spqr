@@ -24,10 +24,9 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -587,14 +586,15 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
 }
 
-func TestReportErrorCleansGrpcPrefix(t *testing.T) {
+func TestReportErrorIncludesHintFromSpqrError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 
 	gomock.InOrder(
 		ca.EXPECT().Send(&pgproto3.ErrorResponse{
 			Severity: "ERROR",
-			Message:  "shard \"shard2\" not found",
+			Message:  "Shard \"shard2\" not found.",
+			Hint:     "Run 'SHOW shards' to see all configured shards.",
 		}),
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
@@ -602,7 +602,13 @@ func TestReportErrorCleansGrpcPrefix(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	err := interactor.ReportError(status.Error(codes.Unknown, "shard \"shard2\" not found"))
+	err := interactor.ReportError(
+		spqrerror.NewWithHint(
+			spqrerror.SPQR_NO_DATASHARD,
+			"Shard \"shard2\" not found.",
+			"Run 'SHOW shards' to see all configured shards.",
+		),
+	)
 	assert.NoError(t, err)
 }
 

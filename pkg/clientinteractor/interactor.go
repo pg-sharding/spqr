@@ -238,10 +238,21 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 	if err == nil {
 		return nil
 	}
-	err = spqrerror.CleanGrpcError(err)
+
+	errorMessage := ""
+	hint := ""
+	if spErr, ok := err.(*spqrerror.SpqrError); ok {
+		errorMessage = spErr.Error()
+		hint = spErr.ErrHint
+	} else {
+		err = spqrerror.CleanGrpcError(err)
+		errorMessage = err.Error()
+	}
+
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{Severity: "ERROR",
-			Message: err.Error(),
+			Message: errorMessage,
+			Hint:    hint,
 		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
