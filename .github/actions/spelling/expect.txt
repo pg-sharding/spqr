@@ -92,7 +92,9 @@ datarow
 datashard
 datatransfer
 datname
+dboptions
 dbpool
+dbshard
 dbtpcc
 dbutils
 dcd
@@ -253,7 +255,6 @@ killall
 kinit
 Kirill
 Klepov
-klepov
 kpass
 krb
 krdb
@@ -613,6 +614,7 @@ ullam
 ullamco
 umi
 unconfigured
+unmark
 unmarshalling
 unmatch
 unrecognised

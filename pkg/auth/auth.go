@@ -242,7 +242,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		clientKeyHash.Write(h.Sum(nil))
 		storedKey := clientKeyHash.Sum(nil)
 		serverSHA256, err := scram.SHA256.NewServer(
-			func(username string) (scram.StoredCredentials, error) {
+			func(_ string) (scram.StoredCredentials, error) {
 				return scram.StoredCredentials{
 					KeyFactors: scram.KeyFactors{
 						Salt:  string(salt),

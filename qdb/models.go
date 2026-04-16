@@ -87,24 +87,22 @@ func (r Router) Addr() string {
 	return r.Address
 }
 
-type TLSConfig struct {
-	SslMode      string `json:"sslmode,omitempty"`
-	CertFile     string `json:"cert_file,omitempty"`
-	KeyFile      string `json:"key_file,omitempty"`
-	RootCertFile string `json:"root_cert_file,omitempty"`
+type GenericOption struct {
+	Name  string
+	Value string
 }
 
 type Shard struct {
-	ID       string     `json:"id"`
-	RawHosts []string   `json:"hosts"` // format host:port:availability_zone
-	TLS      *TLSConfig `json:"tls,omitempty"`
+	ID       string          `json:"id"`
+	RawHosts []string        `json:"hosts"` // format host:port:availability_zone
+	Options  []GenericOption `json:"options,omitempty"`
 }
 
-func NewShard(ID string, hosts []string, tls *TLSConfig) *Shard {
+func NewShard(ID string, hosts []string, options []GenericOption) *Shard {
 	return &Shard{
 		ID:       ID,
 		RawHosts: hosts,
-		TLS:      tls,
+		Options:  options,
 	}
 }
 

@@ -28,7 +28,7 @@ type LocalInstanceMetadataMgr struct {
 	cache *cache.SchemaCache
 
 	updateShardsMapping bool
-	shardMapping        map[string]*config.Shard
+	shardMapping        map[string]*topology.DataShard
 	shardMappingMutex   sync.Mutex
 
 	poolShardHosts shard.ShardHostIterator
@@ -80,9 +80,20 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 	if err != nil {
 		return err
 	}
-
 	for colName, SeqName := range rel.ColumnSequenceMapping {
-		if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
+		ok, err := lc.qdb.CheckSequence(ctx, SeqName)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return fmt.Errorf("the sequence %s already exists", SeqName)
+		}
+		statements, err := lc.qdb.CreateSequence(ctx, SeqName, 0)
+		if err != nil {
+			return err
+		}
+		err = lc.qdb.ExecNoTransaction(ctx, statements)
+		if err != nil {
 			return err
 		}
 		qualifiedName := rel.QualifiedName()
@@ -115,7 +126,7 @@ func (lc *LocalInstanceMetadataMgr) DropDistribution(ctx context.Context, id str
 //
 // Returns:
 // - error: An error if the addition of the world shard fails.
-func (lc *LocalInstanceMetadataMgr) AddWorldShard(ctx context.Context, ds *topology.DataShard) error {
+func (lc *LocalInstanceMetadataMgr) AddWorldShard(_ context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("shard", ds.ID).
 		Msg("adding world datashard, noop")
@@ -219,26 +230,48 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 
 	if lc.updateShardsMapping {
 		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMapping[ds.ID] = ds
 		lc.shardMappingMutex.Unlock()
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
-func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topology.DataShard) error {
-	spqrlog.Zero.Info().
-		Str("node", ds.ID).
-		Msg("updating datashard node in local coordinator")
-
-	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	if err := lc.Coordinator.SetShardOptions(ctx, shardID, options); err != nil {
 		return err
 	}
+
 	if lc.updateShardsMapping {
+		shard, err := lc.GetShard(ctx, shardID)
+		if err != nil {
+			return err
+		}
+
 		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMapping[shardID].SetOptions(shard.Options())
 		lc.shardMappingMutex.Unlock()
 	}
-	return lc.invalidatePoolsForShard(ds.ID)
+
+	return lc.invalidatePoolsForShard(shardID)
+}
+
+func (lc *LocalInstanceMetadataMgr) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	if err := lc.Coordinator.AlterShardOptions(ctx, shardID, options); err != nil {
+		return err
+	}
+
+	if lc.updateShardsMapping {
+		shard, err := lc.GetShard(ctx, shardID)
+		if err != nil {
+			return err
+		}
+
+		lc.shardMappingMutex.Lock()
+		lc.shardMapping[shardID].SetOptions(shard.Options())
+		lc.shardMappingMutex.Unlock()
+	}
+
+	return lc.invalidatePoolsForShard(shardID)
 }
 
 func (lc *LocalInstanceMetadataMgr) invalidatePoolsForShard(shardID string) error {
@@ -341,7 +374,7 @@ func listRoutersInner(host string, port string) *topology.Router {
 // Returns:
 // - []*topology.Router: a slice of Router objects representing all routers.
 // - error: an error if the retrieval encounters any issues.
-func (lc *LocalInstanceMetadataMgr) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.Router, error) {
 	host := config.RouterConfig().Host
 	port := config.RouterConfig().GrpcApiPort
 	return []*topology.Router{listRoutersInner(host, port)}, nil
@@ -365,7 +398,7 @@ var ErrNotCoordinator = fmt.Errorf("request is unprocessable in router")
 //
 // Returns:
 // - error: An error indicating the registration status.
-func (lc *LocalInstanceMetadataMgr) RegisterRouter(ctx context.Context, r *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) RegisterRouter(_ context.Context, _ *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -377,7 +410,7 @@ func (lc *LocalInstanceMetadataMgr) RegisterRouter(ctx context.Context, r *topol
 //
 // Returns:
 // - error: An error indicating the unregistration status.
-func (lc *LocalInstanceMetadataMgr) UnregisterRouter(ctx context.Context, id string) error {
+func (lc *LocalInstanceMetadataMgr) UnregisterRouter(context.Context, string) error {
 	return ErrNotCoordinator
 }
 
@@ -389,7 +422,7 @@ func (lc *LocalInstanceMetadataMgr) UnregisterRouter(ctx context.Context, id str
 //
 // Returns:
 // - error: An error indicating the synchronization status. In this case, it returns ErrNotCoordinator.
-func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(_ context.Context, _ *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -401,7 +434,7 @@ func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(ctx context.Context, rout
 //
 // Returns:
 // - error: An error indicating the update status.
-func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(context.Context, *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -483,7 +516,7 @@ func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ strin
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
+func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ []*rfqn.RelationFQN, _ string) error {
 	return ErrNotCoordinator
 }
 
@@ -497,7 +530,7 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
-	shardMapping map[string]*config.Shard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
+	shardMapping map[string]*topology.DataShard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
 
 	lc := &LocalInstanceMetadataMgr{
 		Coordinator:         NewCoordinator(db, d),

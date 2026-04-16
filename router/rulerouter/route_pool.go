@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -28,12 +29,12 @@ type RoutePool interface {
 type RoutePoolImpl struct {
 	/*  route.Key -> *route.Route */
 	pool         sync.Map
-	shardMapping map[string]*config.Shard
+	shardMapping map[string]*topology.DataShard
 }
 
 var _ RoutePool = &RoutePoolImpl{}
 
-func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
+func NewRouterPoolImpl(shardMapping map[string]*topology.DataShard) *RoutePoolImpl {
 	return &RoutePoolImpl{
 		shardMapping: shardMapping,
 		pool:         sync.Map{},
@@ -51,7 +52,7 @@ func (r *RoutePoolImpl) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) error {
 	var err error
 
-	r.pool.Range(func(key, value any) bool {
+	r.pool.Range(func(_, value any) bool {
 		rt := value.(*route.Route)
 
 		if cont, err := cb(rt); err != nil {
@@ -80,7 +81,7 @@ func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 // TODO : unit tests
 func (r *RoutePoolImpl) Shutdown() error {
 
-	r.pool.Range(func(k, v any) bool {
+	r.pool.Range(func(_, v any) bool {
 		rt := v.(*route.Route)
 		go func() {
 			_ = rt.NotifyClients(func(cl client.ClientInfo) error {
@@ -130,7 +131,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 // TODO : unit tests
 func (r *RoutePoolImpl) ForEachPool(cb func(pool.Pool) error) error {
 
-	r.pool.Range(func(k, v any) bool {
+	r.pool.Range(func(_, v any) bool {
 		route := v.(*route.Route)
 		_ = route.ForEachPool(cb)
 		return true

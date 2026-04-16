@@ -262,7 +262,7 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
+func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(_ context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
@@ -281,6 +281,6 @@ func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation)
 }
 
 // ReplyNotice sends notice message to client
-func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
+func (pi *PSQLInteractor) ReplyNotice(_ context.Context, msg string) error {
 	return pi.cl.ReplyNotice(msg)
 }

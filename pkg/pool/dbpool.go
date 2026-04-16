@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -35,7 +36,7 @@ type LocalCheckResult struct {
 
 type DBPool struct {
 	pool         ShardHostsPool
-	shardMapping map[string]*config.Shard
+	shardMapping map[string]*topology.DataShard
 	checker      *tsa.CachedTSAChecker
 
 	cache        *DbpoolCache
@@ -106,7 +107,7 @@ func (s *DBPool) recheckFailedHosts() {
 // recheckSingleHost performs health check on a specific host
 func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 	// Find the shard that contains this host
-	var targetShard *config.Shard
+	var targetShard *topology.DataShard
 	var shardName string
 
 	for name, shard := range s.shardMapping {
@@ -563,7 +564,7 @@ func (s *DBPool) SetRule(rule *config.BackendRule) {
 //
 // Returns:
 //   - map[string]*config.Shard: The shard mapping of the instance pool.
-func (s *DBPool) ShardMapping() map[string]*config.Shard {
+func (s *DBPool) ShardMapping() map[string]*topology.DataShard {
 	return s.shardMapping
 }
 
@@ -655,11 +656,11 @@ func (s *DBPool) StopCacheWatchdog() {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, hostCheckTTL time.Duration, hostCheckInterval time.Duration) MultiShardTSAPool {
+func NewDBPool(mapping map[string]*topology.DataShard, startupParams *startup.StartupParams, preferAZ string, hostCheckTTL time.Duration, hostCheckInterval time.Duration) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
-		tlsconfig, err := shardConfig.TLS.Init(hostname)
+		tlsconfig, err := shardConfig.TLS().Init(hostname)
 		if err != nil {
 			return nil, err
 		}
@@ -706,6 +707,6 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPoolWithDisabledFeatures(mapping map[string]*config.Shard) MultiShardTSAPool {
+func NewDBPoolWithDisabledFeatures(mapping map[string]*topology.DataShard) MultiShardTSAPool {
 	return NewDBPool(mapping, &startup.StartupParams{}, "", time.Duration(0), time.Duration(0))
 }

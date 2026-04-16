@@ -324,7 +324,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 }
 
 /* TODO: proper support for rollback to savepoint */
-func (s *QueryStateExecutorImpl) ExecRollback(query string) error {
+func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
@@ -366,7 +366,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	return nil
 }
 
-func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, query, setting string) error {
+func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, _, _ string) error {
 	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		return rst.ProcessSimpleQuery(rst.Client().ConstructClientParams(), false)
 	}

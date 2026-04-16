@@ -1,11 +1,7 @@
 package config
 
 import (
-	"fmt"
-	"log"
 	"os"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -39,8 +35,10 @@ type Router struct {
 	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
 	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 
-	// TimeQuantiles is deprecated, use TimeQuantilesStr instead
-	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
+	// TimeQuantiles is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
+	TimeQuantiles []string `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
+	// Deprecated: use TimeQuantiles instead
+	//
 	// TimeQuantilesStr is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
 	TimeQuantilesStr []string `json:"time_quantiles_str" toml:"time_quantiles_str" yaml:"time_quantiles_str"`
 
@@ -140,12 +138,14 @@ func (r *Router) PostProcess() error {
 		return err
 	}
 
-	if len(r.TimeQuantilesStr) > 0 {
-		if err := statistics.InitStatisticsStr(r.TimeQuantilesStr); err != nil {
+	if len(r.TimeQuantiles) > 0 {
+		if err := statistics.InitStatisticsStr(r.TimeQuantiles); err != nil {
 			return err
 		}
 	} else {
-		statistics.InitStatistics(r.TimeQuantiles)
+		if err := statistics.InitStatisticsStr(r.TimeQuantilesStr); err != nil {
+			return err
+		}
 	}
 
 	rps.SetEnableRPSAggregation(r.Qr.RouterRpsAggregation)
@@ -194,10 +194,7 @@ const (
 )
 
 type Shard struct {
-	RawHosts        []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
-	parsedHosts     []Host
-	parsedAddresses []string
-	once            sync.Once
+	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
@@ -206,41 +203,6 @@ type Shard struct {
 type Host struct {
 	Address string // format host:port
 	AZ      string // Availability zone
-}
-
-// parseHosts parses the raw hosts into a slice of Hosts.
-// The format of the RawHost is host:port:availability_zone.
-// If the availability_zone is not provided, it is empty.
-// If the port is not provided, it does not matter
-func (s *Shard) parseHosts() {
-	for _, rawHost := range s.RawHosts {
-		host := Host{}
-		parts := strings.Split(rawHost, ":")
-		if len(parts) > 3 {
-			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
-			continue
-		} else if len(parts) == 3 {
-			host.AZ = parts[2]
-			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
-		} else {
-			host.Address = rawHost
-		}
-
-		s.parsedHosts = append(s.parsedHosts, host)
-		s.parsedAddresses = append(s.parsedAddresses, host.Address)
-	}
-}
-
-func (s *Shard) Hosts() []string {
-	s.once.Do(s.parseHosts)
-
-	return s.parsedAddresses
-}
-
-func (s *Shard) HostsAZ() []Host {
-	s.once.Do(s.parseHosts)
-
-	return s.parsedHosts
 }
 
 func ValueOrDefaultInt(value int, def int) int {

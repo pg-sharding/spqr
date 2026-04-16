@@ -198,7 +198,7 @@ func (ci grpcConnMgr) ClientPoolForeach(cb func(client client.ClientInfo) error)
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnMgr) Put(client client.Client) error {
+func (ci grpcConnMgr) Put(_ client.Client) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator put not implemented")
 }
 
@@ -213,7 +213,7 @@ func (ci grpcConnMgr) ErrorCounts() map[string]uint64 {
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnMgr) Pop(id uint) (bool, error) {
+func (ci grpcConnMgr) Pop(_ uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
 
@@ -248,7 +248,7 @@ func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 
 // TODO : unit tests
 func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
-	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+	return ci.IterRouter(func(cc *grpc.ClientConn, _ string) error {
 		ctx := context.TODO()
 		rrBackConn := proto.NewPoolServiceClient(cc)
 
@@ -596,14 +596,15 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 
 		if shards != nil {
-			for id, cfg := range shards.ShardsData {
+			topologyMap := topology.DataShardMapFromShardConnectConfig(shards.ShardsData)
+			for id, shard := range topologyMap {
 				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
 					spqrlog.Zero.Debug().
 						Str("shard", id).
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts, topology.TLSConfigToDB(cfg.TLS))); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -684,7 +685,8 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("start setting up spqrguard")
 
-	relations := make([]*rfqn.RelationFQN, 0)
+	distributedRelations := make([]*rfqn.RelationFQN, 0)
+	referenceRelations := make([]*rfqn.RelationFQN, 0)
 	dss, err := qc.ListDistributions(ctx)
 	if err != nil {
 		return err
@@ -692,21 +694,31 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	relsSet := make(map[string]struct{})
 	for _, ds := range dss {
 		if ds.Id == distributions.REPLICATED {
+			for _, rel := range ds.FQNRelations {
+				referenceRelations = append(referenceRelations, rel.Relation)
+				relsSet[rel.Relation.String()] = struct{}{}
+			}
+			for _, rel := range ds.Relations {
+				if _, ok := relsSet[rel.Relation.String()]; !ok {
+					referenceRelations = append(referenceRelations, rel.Relation)
+					relsSet[rel.Relation.String()] = struct{}{}
+				}
+			}
 			continue
 		}
 		for _, rel := range ds.FQNRelations {
-			relations = append(relations, rel.Relation)
+			distributedRelations = append(distributedRelations, rel.Relation)
 			relsSet[rel.Relation.String()] = struct{}{}
 		}
 		for _, rel := range ds.Relations {
 			if _, ok := relsSet[rel.Relation.String()]; !ok {
-				relations = append(relations, rel.Relation)
+				distributedRelations = append(distributedRelations, rel.Relation)
 				relsSet[rel.Relation.String()] = struct{}{}
 			}
 		}
 	}
 
-	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(relations))
+	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(distributedRelations, referenceRelations))
 }
 
 // TODO : unit tests
@@ -2292,7 +2304,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 
 		for _, sh := range needToUpdate {
-			_, err = shCl.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(sh)})
+			_, err = shCl.AlterShard(ctx, &proto.AlterShardRequest{
+				Id:      sh.ID,
+				Options: topology.GenericOptionsToProto(sh.Options()),
+			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					switch st.Code() {
@@ -2743,19 +2758,25 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 	return nil
 }
 
-func (qc *ClusteredCoordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.Coordinator.UpdateShard(ctx, shard); err != nil {
+func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId string, options []topology.GenericOption) error {
+	if err := qc.Coordinator.AlterShardOptions(ctx, shardId, options); err != nil {
+		return err
+	}
+
+	shard, err := qc.GetShard(ctx, shardId)
+	if err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
-		_, err := c.UpdateShard(ctx, &proto.UpdateShardRequest{
-			Shard: topology.DataShardToProto(shard),
+		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
+			Id:      shardId,
+			Options: topology.GenericOptionsToProto(shard.Options()),
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
-				return fmt.Errorf("router does not support UpdateShard RPC; please upgrade all routers to a version that supports it")
+				return fmt.Errorf("router does not support AlterShardOptions RPC; please upgrade all routers to a version that supports it")
 			}
 			return err
 		}
@@ -2801,6 +2822,13 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 	if err := qc.Coordinator.CreateReferenceRelation(ctx, r, entry); err != nil {
 		return err
 	}
+
+	rfqns := []*rfqn.RelationFQN{r.RelationName}
+	go func() {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard([]*rfqn.RelationFQN{}, rfqns)); err != nil {
+			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
+		}
+	}()
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
@@ -2966,7 +2994,7 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 		rfqns[i] = rel.Relation
 	}
 	go func() {
-		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns)); err != nil {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns, []*rfqn.RelationFQN{})); err != nil {
 			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
 		}
 	}()

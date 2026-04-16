@@ -165,7 +165,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
 	qualName *rfqn.RelationFQN,
-	values *lyx.ValueClause,
+	_ *lyx.ValueClause,
 	idCache IdentityRouterCache,
 ) (plan.Plan, error) {
 
@@ -192,7 +192,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 
 func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
-	relation *distributions.DistributedRelation,
+	_ *distributions.DistributedRelation,
 	tp string,
 	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 

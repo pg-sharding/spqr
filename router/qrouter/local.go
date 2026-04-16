@@ -28,7 +28,7 @@ type LocalQrouter struct {
 }
 
 // AnalyzeQuery implements QueryRouter.
-func (qr *LocalQrouter) AnalyzeQuery(ctx context.Context, sph session.SessionParamsHolder, rule *config.FrontendRule, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+func (qr *LocalQrouter) AnalyzeQuery(_ context.Context, _ session.SessionParamsHolder, _ *config.FrontendRule, _ string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
 	/* outer code expect this */
 	qr.rm.Stmt = stmt
 	return qr.rm, nil
@@ -54,7 +54,7 @@ func (l *LocalQrouter) WorldShardsRoutes() []kr.ShardKey {
 
 var _ QueryRouter = &LocalQrouter{}
 
-func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, error) {
+func NewLocalQrouter(shardMapping map[string]*topology.DataShard) (*LocalQrouter, error) {
 	if len(shardMapping) != 1 {
 		err := fmt.Errorf("local router support only single-datashard routing")
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -66,17 +66,8 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 		rm:    &rmeta.RoutingMetadataContext{},
 	}
 
-	var name string
-	var cfg *config.Shard
-
 	for k, v := range shardMapping {
-		name = k
-		cfg = v
-	}
-
-	l.ds = &topology.DataShard{
-		ID:  name,
-		Cfg: cfg,
+		l.ds = topology.NewDataShard(k, v.Type, v.Options())
 	}
 
 	return l, nil

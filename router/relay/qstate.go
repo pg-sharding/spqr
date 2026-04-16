@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -168,7 +169,7 @@ var (
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, _ bool) (*PortalDesc, error) {
 	startTime := time.Now()
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
@@ -699,7 +700,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
 				rst.Client().SetScatterQuery(hintVal != "")
 			case session.SPQR_EXECUTE_ON:
-				if _, ok := config.RouterConfig().ShardMapping[hintVal]; !ok {
+				if _, ok := topology.ShardMapping[hintVal]; !ok {
 					return fmt.Errorf("no such shard: %v", hintVal)
 				}
 				rst.Client().SetExecuteOn(lvl, hintVal)

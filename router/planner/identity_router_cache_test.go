@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/stretchr/testify/assert"
@@ -19,14 +19,16 @@ func TestStepOne(t *testing.T) {
 	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	ctx := context.TODO()
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(1, &seqMngr)
 	actualNext, err := identityMgr.NextVal(ctx, "testSeq")
@@ -47,14 +49,16 @@ func TestStepFive(t *testing.T) {
 	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	ctx := context.TODO()
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(5, &seqMngr)
 	actualNext, err := identityMgr.NextVal(ctx, "testSeq")
@@ -94,14 +98,16 @@ func TestStepOne_concurrent(t *testing.T) {
 	ctx := context.TODO()
 
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(1, &seqMngr)
 
@@ -134,14 +140,16 @@ func TestStepFive_concurrent(t *testing.T) {
 	ctx := context.TODO()
 
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	err := db.CreateSequence(ctx, "testSeq", 0)
+	statements, err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(5, &seqMngr)
 

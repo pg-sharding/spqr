@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	spqrguardDistributedRelationsLock = 42
-	spqrguardReferenceRelationLock    = 69
+	spqrguardDistributedRelationsLock         = 42
+	spqrguardReferenceRelationLock            = 69
+	spqrguardTransferredReferenceRelationLock = 70
 )
 
 const spqrTransferApplicationName = "spqr-transfer"
@@ -507,7 +508,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
 		return err
 	}
-	row := tx.QueryRow(ctx, "SELECT enabled as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLock)
+	row := tx.QueryRow(ctx, "SELECT enabled as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardTransferredReferenceRelationLock)
 	val := false
 	if err = row.Scan(&val); err != nil && err != pgx.ErrNoRows {
 		return err
@@ -516,10 +517,10 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if val {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked")
 	}
-	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1)", relation.String()); err != nil {
+	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_transferred_reference_relation($1)", relation.String()); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true)", spqrguardReferenceRelationLock); err != nil {
+	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true)", spqrguardTransferredReferenceRelationLock); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -550,10 +551,10 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_reference_relations WHERE reloid = ($1)::regclass::oid;", relation.String()); err != nil {
+	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.unmark_transferred_reference_relation(($1)::regclass::oid);", relation.String()); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_global_settings WHERE name=$1", spqrguardReferenceRelationLock); err != nil {
+	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_global_settings WHERE name=$1", spqrguardTransferredReferenceRelationLock); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -935,7 +936,7 @@ func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.
 	return nil
 }
 
-func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Conn) error {
+func SetUpSPQRGuard(distributedRelations []*rfqn.RelationFQN, referenceRelations []*rfqn.RelationFQN) func(context.Context, *pgx.Conn) error {
 	return func(ctx context.Context, conn *pgx.Conn) error {
 		if hasSPQRGuard, err := shard.CheckExtension(ctx, conn, "spqrguard", "2.3"); err != nil {
 			return err
@@ -955,7 +956,7 @@ func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Co
 			}
 		}()
 
-		for _, rel := range relations {
+		for _, rel := range distributedRelations {
 			row := tx.QueryRow(ctx, fmt.Sprintf("SELECT count(*) > 0 as table_exists FROM spqr_metadata.spqr_distributed_relations WHERE reloid = '%s'::regclass::oid;", rel.String()))
 			exists := false
 			if err := row.Scan(&exists); err != nil {
@@ -968,12 +969,25 @@ func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Co
 			}
 		}
 
+		for _, rel := range referenceRelations {
+			row := tx.QueryRow(ctx, fmt.Sprintf("SELECT count(*) > 0 as table_exists FROM spqr_metadata.spqr_reference_relations WHERE reloid = '%s'::regclass::oid;", rel.String()))
+			exists := false
+			if err := row.Scan(&exists); err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec(ctx, fmt.Sprintf("SELECT spqr_metadata.mark_reference_relation('%s')", rel.String())); err != nil {
+					return err
+				}
+			}
+		}
+
 		if config.CoordinatorConfig().ForbidDirectShardQueries {
 			if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
 				return err
 			}
 
-			if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (%d, true);", spqrguardDistributedRelationsLock)); err != nil {
+			if _, err := tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true), ($2, true);", spqrguardDistributedRelationsLock, spqrguardReferenceRelationLock); err != nil {
 				return err
 			}
 		}

@@ -37,8 +37,8 @@ type TopologyKeeper interface {
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
-	UpdateShard(ctx context.Context, shard *Shard) error
 	DropShard(ctx context.Context, shardID string) error
+	AlterShard(ctx context.Context, newShard *Shard) error
 }
 
 // Keep track of the status of the two-phase data move transaction.
@@ -152,7 +152,8 @@ type QDB interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 
 	// Sequences for reference relation
-	CreateSequence(ctx context.Context, seqName string, initialValue int64) error
+	CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error)
+	CheckSequence(ctx context.Context, seqName string) (bool, error)
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
 	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)

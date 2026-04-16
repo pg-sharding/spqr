@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -38,7 +39,7 @@ type QueryRouter interface {
 }
 
 func NewQrouter(qtype config.RouterMode,
-	shardMapping map[string]*config.Shard,
+	shardMapping map[string]*topology.DataShard,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,

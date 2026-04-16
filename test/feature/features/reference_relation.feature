@@ -313,7 +313,7 @@ Feature: Reference relation test
   
     When I run SQL on host "shard1"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -322,7 +322,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard1"
     """
-    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -331,7 +331,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -340,7 +340,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -367,7 +367,7 @@ Scenario: Ref relation sync fails when reference relations are locked in spqrgua
     INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
     INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
     INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
-    INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (69, true);
+    INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (70, true);
     """
     Then command return code should be "0"
     
@@ -481,19 +481,19 @@ Scenario: Dropping shard from reference relation metadata works
   
     When I run SQL on host "shard1"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [{
-        "name": 69,
+        "name": 70,
         "enabled": true
     }]
     """
     When I run SQL on host "shard1"
     """
-    SELECT (SELECT reloid FROM spqr_metadata.spqr_reference_relations) = 't'::regclass::oid as check;
+    SELECT (SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations) = 't'::regclass::oid as check;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -504,7 +504,7 @@ Scenario: Dropping shard from reference relation metadata works
     """
     When I run SQL on host "shard2"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -513,7 +513,7 @@ Scenario: Dropping shard from reference relation metadata works
     """
     When I run SQL on host "shard2"
     """
-    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations
     """
     Then command return code should be "0"
     And SQL result should match json_exactly

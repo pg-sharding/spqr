@@ -14,6 +14,7 @@ import (
 
 	config "github.com/pg-sharding/spqr/pkg/config"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	pool "github.com/pg-sharding/spqr/pkg/pool"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
@@ -467,10 +468,10 @@ func (mr *MockMultiShardTSAPoolMockRecorder) SetRule(rule any) *gomock.Call {
 }
 
 // ShardMapping mocks base method.
-func (m *MockMultiShardTSAPool) ShardMapping() map[string]*config.Shard {
+func (m *MockMultiShardTSAPool) ShardMapping() map[string]*topology.DataShard {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShardMapping")
-	ret0, _ := ret[0].(map[string]*config.Shard)
+	ret0, _ := ret[0].(map[string]*topology.DataShard)
 	return ret0
 }
 

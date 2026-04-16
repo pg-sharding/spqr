@@ -22,31 +22,31 @@ DROP SHARD sh4;
  sh4
 (1 row)
 
-CREATE SHARD sh1 WITH HOSTS "spqr_shard_1:6432","spqr_shard_1_replica:6432";
+CREATE SHARD sh1 OPTIONS (HOST "spqr_shard_1:6432", HOST "spqr_shard_1_replica:6432");
     add shard    
 -----------------
  shard id -> sh1
 (1 row)
 
-CREATE SHARD sh2 WITH HOSTS "spqr_shard_2:6432","spqr_shard_2_replica:6432";
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432");
     add shard    
 -----------------
  shard id -> sh2
 (1 row)
 
-CREATE SHARD sh3 WITH HOSTS "spqr_shard_3:6432","spqr_shard_3_replica:6432";
+CREATE SHARD sh3 OPTIONS (HOST "spqr_shard_3:6432", HOST "spqr_shard_3_replica:6432");
     add shard    
 -----------------
  shard id -> sh3
 (1 row)
 
-CREATE SHARD sh4 WITH HOSTS "spqr_shard_4:6432","spqr_shard_4_replica:6432";
+CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6432");
     add shard    
 -----------------
  shard id -> sh4
 (1 row)
 
-CREATE SHARD sh1 WITH HOSTS "localhost:6432";
+CREATE SHARD sh1 OPTIONS (HOST "localhost:6432");
 ERROR:  shard with id sh1 already exists
 SHOW shards;
  shard 
@@ -70,7 +70,7 @@ SHOW hosts;
  sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
 (8 rows)
 
-CREATE SHARD sh5 WITH HOSTS "127.0.0.1:1";
+CREATE SHARD sh5 OPTIONS (HOST "127.0.0.1:1");
 ERROR:  shard host "127.0.0.1:1" is not reachable: dial tcp 127.0.0.1:1: connect: connection refused
 SHOW shards;
  shard 

@@ -38,9 +38,11 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ShardServer) UpdateShard(ctx context.Context, request *protos.UpdateShardRequest) (*emptypb.Empty, error) {
-	if err := s.impl.UpdateShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
-		return nil, err
+func (s *ShardServer) UpdateShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
+	if request.GetOptions() != nil {
+		if err := s.impl.SetShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions())); err != nil {
+			return nil, err
+		}
 	}
 	return &emptypb.Empty{}, nil
 }
@@ -49,7 +51,7 @@ func (s *ShardServer) DropShard(ctx context.Context, request *protos.DropShardRe
 	return nil, s.impl.DropShard(ctx, request.Id)
 }
 
-func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
+func (s *ShardServer) AddWorldShard(_ context.Context, _ *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("ShardServer.AddWorldShard not implemented")
 }
 
