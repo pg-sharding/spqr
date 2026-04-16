@@ -1071,6 +1071,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterCoordUpdateKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterCoordUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err
 			}
@@ -1091,6 +1096,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterRouterUpdateKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterRouterUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to update key range move status")
 			}
