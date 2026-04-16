@@ -1045,6 +1045,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveKeysCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveKeysCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataMoved); err != nil {
 				return err
 			}
