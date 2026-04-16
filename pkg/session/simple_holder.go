@@ -485,6 +485,12 @@ var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
 			return config.RouterConfig().Qr.AllowPostProcessing
 		},
 	},
+	{
+		n: SPQR_LINEARIZE_DISPATCH,
+		def: func() bool {
+			return false
+		},
+	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {

@@ -128,12 +128,14 @@ const (
 	/*XXX: should we ever disallow?*/
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
+
+	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
 )
 
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING:
+	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH:
 		return true
 	default:
 		return false

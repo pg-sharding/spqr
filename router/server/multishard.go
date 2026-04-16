@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 type ShardState int
@@ -48,6 +49,8 @@ type MultiShardServer struct {
 
 	status txstatus.TXStatus
 
+	prefetchMp map[string][]pgproto3.BackendMessage
+
 	copyBuf []*pgproto3.CopyOutResponse
 }
 
@@ -60,6 +63,7 @@ func NewMultiShardServer(pool pool.MultiShardTSAPool) (Server, error) {
 	ret := &MultiShardServer{
 		pool:         pool,
 		activeShards: []shard.ShardHostInstance{},
+		prefetchMp:   map[string][]pgproto3.BackendMessage{},
 	}
 
 	return ret, nil
@@ -112,7 +116,8 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) expandGangUtil(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+func (m *MultiShardServer) expandGangUtil(clid uint,
+	shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
 
@@ -201,6 +206,67 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	return nil
 }
 
+func (m *MultiShardServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error {
+	anyShard := false
+	for _, shard := range m.activeShards {
+		if shard.SHKey().Name != shkey.Name {
+			continue
+		}
+		for {
+			msg, err := shard.Receive()
+			if err != nil {
+				return err
+			}
+			switch msg.(type) {
+			case *pgproto3.ReadyForQuery:
+				syncCnt--
+			default:
+				// ok
+			}
+
+			cpQ, err := xproto.CopyBackendMsg(msg)
+			if err != nil {
+				return err
+			}
+
+			m.prefetchMp[shkey.Name] = append(m.prefetchMp[shkey.Name],
+				cpQ)
+
+			if syncCnt == 0 {
+				return nil
+			}
+		}
+	}
+	if !anyShard {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%s\"", shkey.Name)
+	}
+	return nil
+}
+func (m *MultiShardServer) internalShardSync(i int) int64 {
+	b := int64(0)
+	if msgs, ok := m.prefetchMp[m.activeShards[i].Name()]; ok {
+		b = b + int64(len(msgs))
+	}
+	// all shards should be in rfq state
+	return m.activeShards[i].Sync() + b
+}
+
+func (m *MultiShardServer) internalReceiveShard(i int) (pgproto3.BackendMessage, error) {
+
+	if msgs, ok := m.prefetchMp[m.activeShards[i].Name()]; ok {
+		msg, msgs := msgs[0], msgs[1:]
+
+		if len(msgs) > 0 {
+			m.prefetchMp[m.activeShards[i].Name()] = msgs
+		} else {
+			delete(m.prefetchMp, m.activeShards[i].Name())
+		}
+		return msg, nil
+	}
+	// all shards should be in rfq state
+	return m.activeShards[i].Receive()
+}
+
 func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.ShardKey) error {
 	anyShard := false
 	for _, shard := range m.activeShards {
@@ -248,12 +314,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		for i := range m.activeShards {
 
 			/* maybe query ass partially dispatched */
-			if m.activeShards[i].Sync() == 0 {
+			if m.internalShardSync(i) == 0 {
 				continue
 			}
 			for {
-				// all shards should be in rfq state
-				msg, err := m.activeShards[i].Receive()
+				msg, err := m.internalReceiveShard(i)
 				if err != nil {
 					spqrlog.Zero.Info().
 						Uint("shard", m.activeShards[i].ID()).
@@ -362,11 +427,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			if m.states[i] == ShardCCState {
 				continue
 			}
-			if m.activeShards[i].Sync() == 0 {
+			if m.internalShardSync(i) == 0 {
 				continue
 			}
 
-			msg, err := m.activeShards[i].Receive()
+			msg, err := m.internalReceiveShard(i)
 			if err != nil {
 				spqrlog.Zero.Info().
 					Uint("shard", m.activeShards[i].ID()).
@@ -413,7 +478,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			// all shards shall be in cc state
 			spqrlog.Zero.Info().Uint("shard", m.activeShards[i].ID()).Msg("multishard server: await server")
 
-			if m.activeShards[i].Sync() == 0 {
+			if m.internalShardSync(i) == 0 {
 				continue
 			}
 
@@ -425,7 +490,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 
 			if err := func() error {
 				for {
-					msg, err := m.activeShards[i].Receive()
+					msg, err := m.internalReceiveShard(i)
 					if err != nil {
 						return err
 					}
@@ -474,10 +539,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 }
 
 func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
-	for _, shard := range m.activeShards {
+	for i, shard := range m.activeShards {
 		if shard.ID() == shardId {
-			m, err := shard.Receive()
-			return m, err
+			return m.internalReceiveShard(i)
 		}
 	}
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
@@ -505,8 +569,8 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 
 func (m *MultiShardServer) Sync() int64 {
 	var syncCount int64
-	for _, shard := range m.activeShards {
-		syncCount += shard.Sync()
+	for i := range m.activeShards {
+		syncCount += m.internalShardSync(i)
 	}
 	return syncCount
 }
