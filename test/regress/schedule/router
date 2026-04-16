@@ -53,3 +53,4 @@ test: schema_qual
 test: postprocessing
 test: virtual_func
 test: 2pc
+test: xproto
