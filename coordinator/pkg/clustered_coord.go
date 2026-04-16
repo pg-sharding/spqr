@@ -1925,6 +1925,11 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err := qc.Move(ctx, &kr.MoveKeyRange{Krid: task.KrIdTemp, ShardId: taskGroup.ShardToId}); err != nil {
 				return err
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			task.State = tasks.TaskMoved
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
