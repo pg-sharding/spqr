@@ -258,7 +258,7 @@ func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
 	tranMngr := meta.NewTranEntityManager(mngr)
 
-	err = tranMngr.CreateKeyRange(ctx, kr1)
+	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
