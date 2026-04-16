@@ -2,12 +2,13 @@ package coord
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 func DistributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.EntityMgr, func(), error) {
@@ -21,7 +22,9 @@ func DistributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.
 		return nil, nil, err
 	}
 
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})))
 	if err != nil {
 		return nil, nil, err
 	}
