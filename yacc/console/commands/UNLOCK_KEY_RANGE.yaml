@@ -1,4 +1,5 @@
 name: UNLOCK KEY RANGE
+snippet: key_range_commands
 description: |
   Releases the lock on a key range that was previously locked with LOCK KEY RANGE.
   After unlocking, queries routed to this key range will resume normal processing.

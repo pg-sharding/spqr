@@ -287,6 +287,7 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connCfg.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	connCfg.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
 	connStr := stdlib.RegisterConnConfig(connCfg)
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
@@ -990,7 +991,7 @@ func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog
 	if err != nil {
 		return nil
 	}
-	return fmt.Errorf("should not match")
+	return fmt.Errorf("result should not match, result: %s", string(res))
 }
 
 func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.DocString) error {
@@ -1442,7 +1443,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	}
 	tctx.debug = debug
 
-	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
+	s.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
 		//tctx.cleanup()
 		tctx.composerEnv = []string{
 			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
@@ -1457,7 +1458,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		tctx.templateErr = tctx.templateStep(step)
 		return ctx, nil
 	})
-	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
+	s.StepContext().After(func(ctx context.Context, step *godog.Step, _ godog.StepResultStatus, err error) (context.Context, error) {
 		if err != nil {
 			if !debug {
 				return ctx, err

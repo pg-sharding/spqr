@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ShardService_ListShards_FullMethodName    = "/spqr.ShardService/ListShards"
 	ShardService_AddDataShard_FullMethodName  = "/spqr.ShardService/AddDataShard"
-	ShardService_UpdateShard_FullMethodName   = "/spqr.ShardService/UpdateShard"
+	ShardService_AlterShard_FullMethodName    = "/spqr.ShardService/AlterShard"
 	ShardService_DropShard_FullMethodName     = "/spqr.ShardService/DropShard"
 	ShardService_AddWorldShard_FullMethodName = "/spqr.ShardService/AddWorldShard"
 	ShardService_GetShard_FullMethodName      = "/spqr.ShardService/GetShard"
@@ -34,7 +34,7 @@ const (
 type ShardServiceClient interface {
 	ListShards(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListShardsReply, error)
 	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	UpdateShard(ctx context.Context, in *UpdateShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AlterShard(ctx context.Context, in *AlterShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DropShard(ctx context.Context, in *DropShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error)
@@ -68,10 +68,10 @@ func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardReque
 	return out, nil
 }
 
-func (c *shardServiceClient) UpdateShard(ctx context.Context, in *UpdateShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *shardServiceClient) AlterShard(ctx context.Context, in *AlterShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ShardService_UpdateShard_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ShardService_AlterShard_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (c *shardServiceClient) GetShard(ctx context.Context, in *ShardRequest, opt
 type ShardServiceServer interface {
 	ListShards(context.Context, *emptypb.Empty) (*ListShardsReply, error)
 	AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error)
-	UpdateShard(context.Context, *UpdateShardRequest) (*emptypb.Empty, error)
+	AlterShard(context.Context, *AlterShardRequest) (*emptypb.Empty, error)
 	DropShard(context.Context, *DropShardRequest) (*emptypb.Empty, error)
 	AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error)
 	GetShard(context.Context, *ShardRequest) (*ShardReply, error)
@@ -134,8 +134,8 @@ func (UnimplementedShardServiceServer) ListShards(context.Context, *emptypb.Empt
 func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddDataShard not implemented")
 }
-func (UnimplementedShardServiceServer) UpdateShard(context.Context, *UpdateShardRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method UpdateShard not implemented")
+func (UnimplementedShardServiceServer) AlterShard(context.Context, *AlterShardRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AlterShard not implemented")
 }
 func (UnimplementedShardServiceServer) DropShard(context.Context, *DropShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DropShard not implemented")
@@ -203,20 +203,20 @@ func _ShardService_AddDataShard_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ShardService_UpdateShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateShardRequest)
+func _ShardService_AlterShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterShardRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ShardServiceServer).UpdateShard(ctx, in)
+		return srv.(ShardServiceServer).AlterShard(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ShardService_UpdateShard_FullMethodName,
+		FullMethod: ShardService_AlterShard_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShardServiceServer).UpdateShard(ctx, req.(*UpdateShardRequest))
+		return srv.(ShardServiceServer).AlterShard(ctx, req.(*AlterShardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -291,8 +291,8 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ShardService_AddDataShard_Handler,
 		},
 		{
-			MethodName: "UpdateShard",
-			Handler:    _ShardService_UpdateShard_Handler,
+			MethodName: "AlterShard",
+			Handler:    _ShardService_AlterShard_Handler,
 		},
 		{
 			MethodName: "DropShard",

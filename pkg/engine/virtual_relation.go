@@ -272,7 +272,7 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
 
 	for _, shard := range shards {
-		for _, h := range shard.Cfg.Hosts() {
+		for _, h := range shard.Hosts() {
 			hc, ok := ihc[h]
 			if !ok {
 
@@ -344,7 +344,7 @@ func TSAVirtualRelationScan(cacheEntries map[pool.TsaKey]pool.CachedEntry) *tupl
 }
 
 // TODO refactor it to make more user-friendly
-func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) *tupleslot.TupleTableSlot {
+func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader(
@@ -370,7 +370,7 @@ func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) 
 	return tts
 }
 
-func PreparedStatementsVirtualRelationScan(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) *tupleslot.TupleTableSlot {
+func PreparedStatementsVirtualRelationScan(_ context.Context, shs []shard.PreparedStatementsMgrDescriptor) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{Desc: GetVPHeader("name", "backend_id", "hash", "query")}
 
 	for _, sh := range shs {
@@ -502,7 +502,7 @@ func BackendConnectionsVirtualRelationScan(shs []shard.ShardHostCtl) (*tupleslot
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo) (*tupleslot.TupleTableSlot, error) {
+func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) (*tupleslot.TupleTableSlot, error) {
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{

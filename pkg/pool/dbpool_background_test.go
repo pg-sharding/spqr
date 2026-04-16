@@ -5,15 +5,16 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
-func TestDBPool_BackgroundHealthCheck(t *testing.T) {
+func TestDBPool_BackgroundHealthCheck(_ *testing.T) {
 	// Create shard mapping
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas", "host2:5432:klg"},
-		},
+		}),
 	}
 
 	// Create DBPool with background health checking enabled (short interval for test)
@@ -41,12 +42,12 @@ func TestDBPool_BackgroundHealthCheck(t *testing.T) {
 	// Test passes if no panics occur
 }
 
-func TestDBPool_BackgroundHealthCheckDisabled(t *testing.T) {
+func TestDBPool_BackgroundHealthCheckDisabled(_ *testing.T) {
 	// Create shard mapping
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas"},
-		},
+		}),
 	}
 
 	// Create DBPool with background health checking disabled
@@ -110,7 +111,7 @@ func TestDBPool_EvaluateTSAMatch(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			actual := dbPool.evaluateTSAMatch(tt.result, tt.requiredTSA)
 			if actual != tt.expected {
 				t.Errorf("evaluateTSAMatch() = %v, expected %v", actual, tt.expected)

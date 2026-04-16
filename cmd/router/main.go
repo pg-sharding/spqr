@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
@@ -42,6 +43,8 @@ var (
 	defaultRouteBehaviour string
 
 	enhancedMultishardProcessing bool
+
+	displayGreeting bool
 
 	showNoticeMessages bool
 	pgprotoDebug       bool
@@ -124,6 +127,9 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initialization")
 
+	// console defaults
+	rootCmd.PersistentFlags().BoolVarP(&displayGreeting, "display_greeting", "", true, "enables SPQR console greeting")
+
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
 }
@@ -131,11 +137,13 @@ func init() {
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		_, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
+
+		topology.InitShardMapping(topology.DataShardMapFromConfig(config.RouterConfig().ShardMapping))
 
 		if config.RouterConfig().EnableRoleSystem {
 			if config.RouterConfig().RolesFile == "" {
@@ -475,7 +483,7 @@ var runCmd = &cobra.Command{
 var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			rcfgPath = args[0]
 		}
@@ -483,6 +491,7 @@ var testCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		topology.InitShardMapping(topology.DataShardMapFromConfig(config.RouterConfig().ShardMapping))
 		fmt.Println(cfgStr)
 		return nil
 	},

@@ -105,5 +105,6 @@ func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {
 		LogLevel: level,
 	}
 	connConfig.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	connConfig.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
 	return pgx.ConnectConfig(ctx, connConfig)
 }

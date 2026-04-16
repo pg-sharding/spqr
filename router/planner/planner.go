@@ -165,7 +165,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
 	qualName *rfqn.RelationFQN,
-	values *lyx.ValueClause,
+	_ *lyx.ValueClause,
 	idCache IdentityRouterCache,
 ) (plan.Plan, error) {
 
@@ -192,7 +192,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 
 func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
-	relation *distributions.DistributedRelation,
+	_ *distributions.DistributedRelation,
 	tp string,
 	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 
@@ -377,6 +377,15 @@ func PlanDistributedRelationInsert(
 		tupleShards[i] = tupleShard
 	}
 	return tupleShards, nil
+}
+
+func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
+	switch vv := arg.(type) {
+	case *lyx.AExprSConst:
+		return vv.Value, nil
+	default:
+		return "", spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong argument type for %s", fname)
+	}
 }
 
 func MetadataVirtualFunctionCall(ctx context.Context,
@@ -642,25 +651,21 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			},
 		}
 
-		if len(args) == 1 {
-			var k string
+		if len(args) != 1 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+		}
 
-			switch vv := args[0].(type) {
-			case *lyx.AExprSConst:
-				k = vv.Value
-			default:
-				return nil, fmt.Errorf("incorrect argument type for %s", virtual.VirtualFuncHosts)
-			}
+		k, err := parseStringFuncArg(fname, args[0])
+		if err != nil {
+			return nil, err
+		}
 
-			if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
-				tts.Raw = append(tts.Raw,
-					[][]byte{[]byte(k),
-						fmt.Appendf(nil, "%v", v.CR.RW)})
-			} else {
-				return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
-			}
+		if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
+			tts.Raw = append(tts.Raw,
+				[][]byte{[]byte(k),
+					fmt.Appendf(nil, "%v", v.CR.RW)})
 		} else {
-			return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong first argument for %s", fname)
 		}
 
 		return tts, nil
@@ -684,6 +689,51 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		} else {
 			tts.Raw = [][][]byte{[][]byte{[]byte{'f'}}}
 		}
+
+		return tts, nil
+	case virtual.VirtualRouteKey:
+
+		/* First arg is SPQR distribution name, second arg is
+		* routing key itself */
+		if len(args) != 2 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+		}
+
+		id, err := parseStringFuncArg(fname, args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		d, err := rm.Mgr.GetDistribution(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+
+		strVal, err := parseStringFuncArg(fname, args[1])
+		if err != nil {
+			return nil, err
+		}
+
+		et, err := rm.ResolveKeyShard(ctx, d, strVal)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte(fname),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+		}
+
+		tts.WriteDataRow(et.Name)
 
 		return tts, nil
 	}

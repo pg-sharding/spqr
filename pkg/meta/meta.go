@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"syscall"
@@ -585,20 +586,28 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return tts, nil
 	case *spqrparser.ShardDefinition:
-		shardCfg := &config.Shard{
-			RawHosts: stmt.Hosts,
-			Type:     config.DataShard,
+		_, err := mngr.GetShard(ctx, stmt.Id)
+		if err == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard with id %s already exists", stmt.Id)
 		}
-		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
-		if needsTLS {
-			shardCfg.TLS = &config.TLSConfig{
-				SslMode:      stmt.SslMode,
-				CertFile:     stmt.CertFile,
-				KeyFile:      stmt.KeyFile,
-				RootCertFile: stmt.RootCertFile,
+
+		var spErr *spqrerror.SpqrError
+		if errors.As(err, &spErr) {
+			if spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
+				return nil, err
+			}
+		} else {
+			cleanErr := spqrerror.CleanGrpcError(err)
+			if !strings.Contains(cleanErr.Error(), "unknown shard") {
+				return nil, cleanErr
 			}
 		}
-		dataShard := topology.NewDataShard(stmt.Id, shardCfg)
+
+		dataShard := topology.NewDataShard(stmt.Id, config.DataShard, topology.OptionsFromSQL(stmt.Options))
+		if err := topology.ValidateDataShardHosts(ctx, dataShard); err != nil {
+			return nil, err
+		}
+
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
 			return nil, err
 		}
@@ -689,39 +698,10 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
 	case *spqrparser.AlterShard:
-		existing, err := mngr.GetShard(ctx, stmt.Id)
-		if err != nil {
-			return nil, err
+		if stmt.Shard == nil {
+			return nil, fmt.Errorf("failed to process 'ALTER SHARD' statement: shard ID is nil")
 		}
-		if len(stmt.Hosts) > 0 {
-			existing.Cfg.RawHosts = stmt.Hosts
-		}
-		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
-		if needsTLS && existing.Cfg.TLS == nil {
-			existing.Cfg.TLS = &config.TLSConfig{}
-		}
-		if stmt.SslMode != "" {
-			existing.Cfg.TLS.SslMode = stmt.SslMode
-		}
-		if stmt.CertFile != "" {
-			existing.Cfg.TLS.CertFile = stmt.CertFile
-		}
-		if stmt.KeyFile != "" {
-			existing.Cfg.TLS.KeyFile = stmt.KeyFile
-		}
-		if stmt.RootCertFile != "" {
-			existing.Cfg.TLS.RootCertFile = stmt.RootCertFile
-		}
-		if err := mngr.UpdateShard(ctx, existing); err != nil {
-			return nil, err
-		}
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("alter shard"),
-			Raw: [][][]byte{
-				{fmt.Appendf(nil, "shard id -> %s", stmt.Id)},
-			},
-		}
-		return tts, nil
+		return processAlterShard(ctx, stmt.Element, mngr, stmt.Shard.ID)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1307,9 +1287,9 @@ func ProcMetadataCommand(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context,
+func ProcessKill(_ context.Context,
 	stmt *spqrparser.Kill,
-	mngr EntityMgr,
+	_ EntityMgr,
 	ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
@@ -1371,7 +1351,7 @@ func ProcessShowExtended(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr,
-	ro bool) (*tupleslot.TupleTableSlot, error) {
+	_ bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process extended show statement")
 
 	var tts *tupleslot.TupleTableSlot
@@ -2184,7 +2164,7 @@ func processRedistribute(ctx context.Context,
 }
 
 // ProcessHelp processes HELP command and returns formatted help text
-func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
+func ProcessHelp(_ context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
 
 	// If no command specified, list all available commands
@@ -2210,6 +2190,43 @@ func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTa
 	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
+}
+
+func processAlterShard(ctx context.Context,
+	astmt spqrparser.Statement,
+	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterShardOptions:
+		optionsMap := topology.OptionsFromSQL(stmt.Options)
+		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", shardId),
+				},
+
+				{
+					fmt.Appendf(nil, "options  -> %s", optionsToTuple(optionsMap)),
+				},
+			},
+		}
+
+		return tts, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+}
+
+func optionsToTuple(opts []topology.GenericOption) []byte {
+	t := []string{}
+	for _, v := range opts {
+		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
+	}
+	return []byte(fmt.Sprintf("{%s}", strings.Join(t, ",")))
 }
 
 func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector string) (map[string]*tasks.MoveTaskGroup, error) {

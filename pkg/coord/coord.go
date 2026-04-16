@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -48,7 +49,7 @@ func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relNam
 }
 
 // AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
-func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, _ *rfqn.RelationFQN, _ []string) error {
 	return ErrNotCoordinator
 }
 
@@ -89,13 +90,54 @@ func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataSha
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
-// UpdateShard implements meta.EntityMgr.
-func (lc *Coordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	return lc.qdb.UpdateShard(ctx, topology.DataShardToDB(shard))
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	shard, err := lc.GetShard(ctx, shardID)
+	if err != nil {
+		return err
+	}
+
+	newOptions := shard.Options()
+	for _, opt := range options {
+		optionInd := slices.IndexFunc(shard.Options(), func(el topology.GenericOption) bool { return el.Name == opt.Name })
+
+		switch opt.Action {
+		case topology.GenericOptionActionUnspecified:
+			fallthrough
+		case topology.GenericOptionActionAdd:
+			if optionInd != -1 {
+				return fmt.Errorf("option \"%s\" was specified more than once", opt.Name)
+			}
+			newOptions = append(newOptions, topology.GenericOption{Name: opt.Name, Arg: opt.Arg})
+		case topology.GenericOptionActionSet:
+			if optionInd == -1 {
+				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			}
+			newOptions[optionInd].Arg = opt.Arg
+		case topology.GenericOptionActionDrop:
+			if optionInd == -1 {
+				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			}
+
+			for i := len(newOptions) - 1; i >= 0; i-- {
+				if opt.Name == newOptions[i].Name && (opt.Arg == "" || opt.Arg == newOptions[i].Arg) {
+					newOptions = slices.Delete(newOptions, i, i+1)
+				}
+			}
+		}
+	}
+
+	shard.SetOptions(newOptions)
+
+	return lc.qdb.AlterShard(ctx, topology.DataShardToDB(shard))
+}
+
+func (lc *Coordinator) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	dbshard := topology.DataShardToDB(topology.NewDataShard(shardID, config.DataShard, options))
+	return lc.qdb.AlterShard(ctx, dbshard)
 }
 
 // AddWorldShard implements meta.EntityMgr.
-func (lc *Coordinator) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
+func (lc *Coordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
 	panic("unimplemented")
 }
 
@@ -142,7 +184,7 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (lc *Coordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
 	panic("unimplemented")
 }
 
@@ -182,7 +224,19 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 		/* Ahh... fix this*/
 		ret[entry.Column] = distributions.SequenceName(r.RelationName.RelationName, entry.Column)
 
-		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
+		seqName := ret[entry.Column]
+		ok, err := lc.qdb.CheckSequence(ctx, seqName)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return fmt.Errorf("the sequence %s already exists", seqName)
+		}
+		statements, err := lc.qdb.CreateSequence(ctx, seqName, int64(entry.Start))
+		if err != nil {
+			return err
+		}
+		if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 			return err
 		}
 		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.RelationName, entry.Column); err != nil {
@@ -347,7 +401,7 @@ func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, err
 }
 
 // Move implements meta.EntityMgr.
-func (lc *Coordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (lc *Coordinator) Move(_ context.Context, _ *kr.MoveKeyRange) error {
 	panic("unimplemented")
 }
 
@@ -368,7 +422,7 @@ func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
 	panic("unimplemented")
 }
 
@@ -400,22 +454,22 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) error {
 	panic("unimplemented")
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr
-func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
+func (lc *Coordinator) StopMoveTaskGroup(_ context.Context, _ string) error {
 	panic("unimplemented")
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
-func (lc *Coordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+func (lc *Coordinator) SyncRouterCoordinatorAddress(_ context.Context, _ *topology.Router) error {
 	panic("unimplemented")
 }
 
 // SyncRouterMetadata implements meta.EntityMgr.
-func (lc *Coordinator) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+func (lc *Coordinator) SyncRouterMetadata(_ context.Context, _ *topology.Router) error {
 	panic("unimplemented")
 }
 
@@ -723,7 +777,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 	return lc.qdb.DropMoveTaskGroup(ctx, id)
 }
 
-func (lc *Coordinator) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
+func (lc *Coordinator) GetMoveTaskGroupBoundsCache(context.Context, string) ([][][]byte, int, error) {
 	return nil, 0, ErrNotCoordinator
 }
 
@@ -846,12 +900,15 @@ func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 	}
 	for _, rel := range ds.Relations {
 		for colName, SeqName := range rel.ColumnSequenceMapping {
-
-			if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
+			statements, err := lc.qdb.CreateSequence(ctx, SeqName, 0)
+			if err != nil {
+				return nil, err
+			}
+			if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 				return nil, err
 			}
 			qualifiedName := rel.QualifiedName()
-			err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
+			err = lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return nil, err
 			}

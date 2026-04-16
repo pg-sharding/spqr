@@ -7,15 +7,16 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
 func TestDBPool_CacheCleanupBasic(t *testing.T) {
 	// Create shard mapping with Yandex zones
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas", "host2:5432:klg", "host3:5432:vla"},
-		},
+		}),
 	}
 
 	// Create DBPool with short cache age for testing
@@ -53,10 +54,10 @@ func TestDBPool_CacheCleanupBasic(t *testing.T) {
 
 func TestDBPool_CacheCleanupGoroutine(t *testing.T) {
 	// Create a simple test to verify the goroutine starts and stops properly
-	mapping := map[string]*config.Shard{
-		"test_shard": {
+	mapping := map[string]*topology.DataShard{
+		"test_shard": topology.DataShardFromConfig("test_shard", &config.Shard{
 			RawHosts: []string{"host1:5432:sas"},
-		},
+		}),
 	}
 
 	dbPool := NewDBPoolFromMultiPool(mapping, nil, &emptyMultiShardPool{}, time.Hour)
@@ -91,13 +92,13 @@ func TestCacheCleanupIntegration(t *testing.T) {
 // emptyMultiShardPool is a minimal implementation for testing
 type emptyMultiShardPool struct{}
 
-func (e *emptyMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (e *emptyMultiShardPool) ConnectionHost(_ uint, _ kr.ShardKey, _ config.Host) (shard.ShardHostInstance, error) {
 	return nil, fmt.Errorf("test pool - no connections available")
 }
-func (e *emptyMultiShardPool) SetRule(rule *config.BackendRule)                   {}
-func (e *emptyMultiShardPool) ForEach(cb func(sh shard.ShardHostCtl) error) error { return nil }
-func (e *emptyMultiShardPool) Put(sh shard.ShardHostInstance) error               { return nil }
-func (e *emptyMultiShardPool) Discard(sh shard.ShardHostInstance) error           { return nil }
-func (e *emptyMultiShardPool) ForEachPool(cb func(pool Pool) error) error         { return nil }
-func (e *emptyMultiShardPool) View() Statistics                                   { return Statistics{} }
-func (e *emptyMultiShardPool) ID() uint                                           { return 0 }
+func (e *emptyMultiShardPool) SetRule(_ *config.BackendRule)                     {}
+func (e *emptyMultiShardPool) ForEach(_ func(sh shard.ShardHostCtl) error) error { return nil }
+func (e *emptyMultiShardPool) Put(_ shard.ShardHostInstance) error               { return nil }
+func (e *emptyMultiShardPool) Discard(_ shard.ShardHostInstance) error           { return nil }
+func (e *emptyMultiShardPool) ForEachPool(_ func(pool Pool) error) error         { return nil }
+func (e *emptyMultiShardPool) View() Statistics                                  { return Statistics{} }
+func (e *emptyMultiShardPool) ID() uint                                          { return 0 }

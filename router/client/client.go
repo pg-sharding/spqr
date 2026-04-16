@@ -276,6 +276,16 @@ func (cl *PsqlClient) ClosePreparedStatement(name string) {
 	delete(cl.prepStmtsHash, name)
 }
 
+func (cl *PsqlClient) ListPreparedStatements() []string {
+	var ret []string
+
+	for k := range cl.prepStmts {
+		ret = append(ret, k)
+	}
+
+	return ret
+}
+
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	if v, ok := cl.prepStmts[name]; ok {
 		return v.Query
@@ -946,7 +956,7 @@ func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
-func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
+func (f FakeClient) Send(_ pgproto3.BackendMessage) error {
 	return nil
 }
 

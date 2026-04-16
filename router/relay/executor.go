@@ -20,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -244,7 +243,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
-func (s *QueryStateExecutorImpl) ExecBegin(query string, st *parser.ParseStateTXBegin) error {
+func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt) error {
 	if s.poolMgr.ConnectionActive(s) {
 		return s.DeploySliceTransactionQuery(query)
 	}
@@ -325,7 +324,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 }
 
 /* TODO: proper support for rollback to savepoint */
-func (s *QueryStateExecutorImpl) ExecRollback(query string) error {
+func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
@@ -367,7 +366,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	return nil
 }
 
-func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, query, setting string) error {
+func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, _, _ string) error {
 	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		return rst.ProcessSimpleQuery(rst.Client().ConstructClientParams(), false)
 	}
@@ -641,7 +640,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error) {
+func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage, simple bool) (txstatus.TXStatus, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Type("query-type", query).
@@ -658,6 +657,12 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		if err := sh.Send(query); err != nil {
 			return txstatus.TXERR, err
 		}
+		/* https://git.postgresql.org/cgit/postgresql.git/tree/src/interfaces/libpq/fe-exec.c?h=REL_18_3#n2797 */
+		if !simple {
+			if err := sh.Send(pgsync); err != nil {
+				return txstatus.TXERR, err
+			}
+		}
 	}
 
 	var ccmsg *pgproto3.CommandComplete = nil
@@ -666,6 +671,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	txt := txstatus.TXIDLE
 
 	for _, sh := range server.Datashards() {
+
 	wl:
 		for {
 			msg, err := sh.Receive()
@@ -706,7 +712,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyFromExecutor() error {
+func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
@@ -739,14 +745,15 @@ func (s *QueryStateExecutorImpl) copyFromExecutor() error {
 				return err
 			}
 		case *pgproto3.CopyDone, *pgproto3.CopyFail:
-			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
+			txt, err := s.ProcCopyComplete(cpMsg, simple)
+			if err != nil {
 				return err
-			} else {
-				if txt != s.cl.Server().TxStatus() {
-					return rerrors.ErrExecutorSyncLost
-				}
-				s.SetTxStatus(txt)
 			}
+
+			if txt != s.cl.Server().TxStatus() {
+				return rerrors.ErrExecutorSyncLost
+			}
+			s.SetTxStatus(txt)
 
 			return nil
 		default:
@@ -957,7 +964,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return err
 			}
 
-			return s.copyFromExecutor()
+			return s.copyFromExecutor(qd.simple)
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
@@ -996,7 +1003,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return err
 			}
 
-			return s.copyFromExecutor()
+			return s.copyFromExecutor(qd.simple)
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {

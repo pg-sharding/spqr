@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -21,7 +22,7 @@ import (
 
 type Conn struct {
 	beRule             *config.BackendRule
-	cfg                *config.Shard
+	cfg                *topology.DataShard
 	name               string
 	dedicated          conn.DBInstance
 	ps                 shard.ParameterSet
@@ -265,7 +266,7 @@ func (sh *Conn) Name() string {
 //
 // Returns:
 // - *config.Shard: The shard configuration.
-func (sh *Conn) Cfg() *config.Shard {
+func (sh *Conn) Cfg() *topology.DataShard {
 	return sh.cfg
 }
 
@@ -385,7 +386,7 @@ func (sh *Conn) Params() shard.ParameterSet {
 func NewShardHostInstance(
 	key kr.ShardKey,
 	pgi conn.DBInstance,
-	cfg *config.Shard,
+	cfg *topology.DataShard,
 	beRule *config.BackendRule,
 	sp *startup.StartupParams) (shard.ShardHostInstance, error) {
 
@@ -413,15 +414,15 @@ func NewShardHostInstance(
 	return dtSh, nil
 }
 
+// TODO : unit tests
+
 // Auth handles the authentication process for a shard connection.
 //
 // Parameters:
-//   - sm (*pgproto3.StartupMessage): The startup message for the connection.
+//   - sp (*pgproto3.StartupParams): The startup params for the connection. Currently, only search_path is supported.
 //
 // Returns:
 //   - error: An error if authentication fails.
-
-// TODO : unit tests
 func (sh *Conn) Auth(sp *startup.StartupParams) error {
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
@@ -431,6 +432,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
 			"spqrguard.prevent_distributed_table_modify": "off",
+			"spqrguard.prevent_reference_table_modify":   "off",
 		},
 	}
 

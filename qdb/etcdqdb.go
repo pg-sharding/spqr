@@ -214,7 +214,7 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
@@ -316,7 +316,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
@@ -363,7 +363,7 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, error) {
+func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
@@ -773,7 +773,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 
 // TODO : unit tests
 // TODO : implement
-func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
+func (q *EtcdQDB) UpdateCoordinator(_ context.Context, _ string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemented")
 }
 
@@ -1118,33 +1118,36 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
-func (q *EtcdQDB) UpdateShard(ctx context.Context, shard *Shard) error {
+func (q *EtcdQDB) AlterShard(ctx context.Context, newShard *Shard) error {
 	spqrlog.Zero.Debug().
-		Str("id", shard.ID).
-		Msg("etcdqdb: update shard")
-	t := time.Now()
+		Str("id", newShard.ID).
+		Msg("etcdqdb: alter shard options")
 
+	return q.alterShard(ctx, newShard)
+}
+
+func (q *EtcdQDB) alterShard(ctx context.Context, shard *Shard) error {
 	bytes, err := json.Marshal(shard)
 	if err != nil {
 		return err
 	}
-	nodePath := shardNodePath(shard.ID)
 	resp, err := q.cli.Txn(ctx).
 		If(
-			clientv3.Compare(clientv3.Version(nodePath), ">", 0),
+			//check exists shard with key
+			clientv3.Compare(clientv3.Version(shardNodePath(shard.ID)), "!=", 0),
 		).
 		Then(
-			clientv3.OpPut(nodePath, string(bytes)),
+			clientv3.OpPut(shardNodePath(shard.ID), string(bytes)),
 		).
 		Commit()
+
 	if err != nil {
 		return err
 	}
-	if !resp.Succeeded {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+	if len(resp.Responses) == 0 {
+		return fmt.Errorf("shard with id %s does not exist", shard.ID)
 	}
 
-	statistics.RecordQDBOperation("UpdateShard", time.Since(t))
 	return nil
 }
 
@@ -1333,7 +1336,7 @@ func (q *EtcdQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelat
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribution) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
@@ -2678,25 +2681,36 @@ func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 	return rels, nil
 }
 
-func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+// ==============================================================================
+//                                 SEQUENCES
+// ==============================================================================
+
+func (q *EtcdQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")
+	key := sequenceNodePath(seqName)
+	statement, err := NewQdbStatement(CMD_PUT, key, fmt.Sprintf("%d", initialValue))
+	if err != nil {
+		return nil, err
+	}
+	return []QdbStatement{*statement}, nil
+}
 
+func (q *EtcdQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
 	key := sequenceNodePath(seqName)
 	resp, err := q.cli.Get(ctx, key)
 	if err != nil {
-		return err
+		return false, err
 	}
-
-	if len(resp.Kvs) == 0 {
-		_, err := q.cli.Put(ctx, key, fmt.Sprintf("%d", initialValue))
-		if err != nil {
-			return err
-		}
+	if len(resp.Kvs) == 1 {
+		return true, nil
 	}
-
-	return nil
+	if len(resp.Kvs) > 1 {
+		return false, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+			"multiple sequence entries (%s) expected exactly one", seqName)
+	}
+	return false, nil
 }
 
 func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) error {

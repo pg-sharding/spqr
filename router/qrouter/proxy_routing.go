@@ -13,7 +13,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
@@ -126,10 +128,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					return nil, err
 				}
 
-				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
-				if err != nil {
-					return nil, err
-				}
+				cols := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
 
 				for i, colRef := range subS.TargetList {
 					switch cc := colRef.(type) {
@@ -1103,7 +1102,7 @@ func (qr *ProxyQrouter) addSortToPlan(
 }
 
 func (qr *ProxyQrouter) addLimitToPlan(
-	ctx context.Context,
+	_ context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	p plan.Plan,
 ) (plan.Plan, error) {
@@ -1233,7 +1232,12 @@ func (qr *ProxyQrouter) plannerV1(
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
-	if config.RouterConfig().Qr.AllowPostProcessing {
+	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
+	if err != nil {
+		return nil, err
+	}
+
+	if guc.Get(rm.SPH) {
 		p, err = qr.addSortToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err
@@ -1430,10 +1434,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				/* We are updating non-distributed relation */
 				return nil, nil
 			}
-			distribCols, err = r.GetDistributionKeyColumnNames()
-			if err != nil {
-				return nil, err
-			}
+			distribCols = r.GetDistributionKeyColumnNames()
 
 			if len(distribCols) != 1 {
 				/* TODO: multi-column support here */
@@ -1464,11 +1465,9 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			case *lyx.ResTarget:
 				if rt.Name == distribCols[0] {
 
-					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, []lyx.Node{rt.Value}); err != nil {
+					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
 						return nil, err
 					}
-
-					spqrlog.Zero.Debug().Msgf("rm params %+v", rm.Exprs)
 
 					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
@@ -1479,7 +1478,6 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 					hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
 					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 						return nil, err
 					}
 
@@ -1509,8 +1507,8 @@ func (qr *ProxyQrouter) planSplitUpdate(
 						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
 						return nil, err
 					}
-					et = currroute
 
+					et = currroute
 				}
 			default:
 				return nil, rerrors.ErrComplexQuery
@@ -1529,7 +1527,12 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		if !rm.SPH.AllowSplitUpdate() {
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_SPLIT_UPDATE)
+		if err != nil {
+			return nil, err
+		}
+
+		if !guc.Get(rm.SPH) {
 			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
 		}
 
@@ -1731,9 +1734,9 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(config.RouterConfig().ShardMapping) == 1 {
+		if len(topology.ShardMapping) == 1 {
 			firstShard := ""
-			for s := range config.RouterConfig().ShardMapping {
+			for s := range topology.ShardMapping {
 				firstShard = s
 			}
 

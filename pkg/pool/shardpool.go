@@ -359,7 +359,7 @@ func NewPool(allocFn ConnectionAllocFn) ShardHostsPool {
 //
 // TODO : unit tests
 func (c *cPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
-	c.pools.Range(func(key, value any) bool {
+	c.pools.Range(func(_, value any) bool {
 		_ = value.(Pool).ForEach(cb)
 		return true
 	})
@@ -379,7 +379,7 @@ func (c *cPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 //
 // TODO : unit tests
 func (c *cPool) ForEachPool(cb func(p Pool) error) error {
-	c.pools.Range(func(key, value any) bool {
+	c.pools.Range(func(_, value any) bool {
 		_ = cb(value.(Pool))
 		return true
 	})

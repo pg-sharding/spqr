@@ -81,7 +81,7 @@ func (s *ScatterPlan) Subplan() Plan {
 	return s.SubSlice
 }
 
-func (s *ScatterPlan) PrepareRunSlice(serv server.Server) error {
+func (s *ScatterPlan) PrepareRunSlice(_ server.Server) error {
 	if s.PrepareRunF != nil {
 		/* prepare our slice */
 		if err := s.PrepareRunF(); err != nil {

@@ -10,7 +10,7 @@ import "net"
 //
 // For production deployments, SPQR should run on Linux where the full
 // TCP state checking is available.
-func TCP_CheckAliveness(conn net.Conn) bool {
+func TCP_CheckAliveness(_ net.Conn) bool {
 	// On non-Linux platforms, assume the connection is alive.
 	// The actual connection health will be detected on first use.
 	return true

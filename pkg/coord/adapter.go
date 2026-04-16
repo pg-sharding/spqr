@@ -75,17 +75,17 @@ func (a *Adapter) StartupFinished() bool {
 //
 // Returns:
 // - error: An error indicating if the key range sharing was successful or not.
-func (a *Adapter) ShareKeyRange(id string) error {
+func (a *Adapter) ShareKeyRange(_ string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
 }
 
 // GetReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+func (a *Adapter) GetReferenceRelation(_ context.Context, _ *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
 }
 
 // GetSequenceColumns implements meta.EntityMgr.
-func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+func (a *Adapter) GetSequenceColumns(_ context.Context, _ string) ([]string, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
 }
 
@@ -104,12 +104,12 @@ func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
+func (a *Adapter) SyncReferenceRelations(_ context.Context, _ []*rfqn.RelationFQN, _ string) error {
 	return fmt.Errorf("request is unprocessable in router")
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
-func (a *Adapter) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (a *Adapter) AlterReferenceRelationStorage(_ context.Context, _ *rfqn.RelationFQN, _ []string) error {
 	return fmt.Errorf("AlterReferenceRelationStorage should not be used in proxy adapter")
 }
 
@@ -286,12 +286,12 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 }
 
 // DEPRECATED
-func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (a *Adapter) CreateKeyRange(_ context.Context, _ *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // DEPRECATED
-func (a *Adapter) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (a *Adapter) UpdateKeyRange(_ context.Context, _ *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (UpdateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
@@ -558,7 +558,7 @@ func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 }
 
 // DEPRECATED
-func (a *Adapter) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
+func (a *Adapter) DropKeyRange(_ context.Context, _ string) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
@@ -685,11 +685,16 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 	return spqrerror.CleanGrpcError(err)
 }
 
-// UpdateShard updates an existing data shard in the system.
-func (a *Adapter) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
-	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(shard)})
-	return spqrerror.CleanGrpcError(err)
+// TODO : unit tests
+// TODO : implement
+func (a *Adapter) AlterShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardOptions not implemented")
+}
+
+// TODO : unit tests
+// TODO : implement
+func (a *Adapter) SetShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "setShardOptions not implemented")
 }
 
 // DropShard drops a data shard from the system.
@@ -717,7 +722,7 @@ func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
 //
 // Returns:
 // - error: An error if the world shard addition fails, otherwise nil.
-func (a *Adapter) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
+func (a *Adapter) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
 }
 
@@ -794,7 +799,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 }
 
 // DEPRECATED
-func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
+func (a *Adapter) CreateDistribution(_ context.Context, _ *distributions.Distribution) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
 }
 

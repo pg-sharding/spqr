@@ -182,7 +182,7 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 }
 
 func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) error {
-	return func(network, address string, c syscall.RawConn) error {
+	return func(_, _ string, c syscall.RawConn) error {
 		var sysErr error
 		var err = c.Control(func(fd uintptr) {
 			/*

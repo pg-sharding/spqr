@@ -55,8 +55,6 @@ INSERT INTO yjoin (w_id) values(15);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO yjoin (w_id) values(25);
 NOTICE: send query to shard(s) : sh2
---- XXX: fix
---SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
@@ -66,9 +64,22 @@ NOTICE: send query to shard(s) : sh2
  15 |   15
 (1 row)
 
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 and xjoin.id = 15  ORDER BY id;
+NOTICE: send query to shard(s) : sh2
+ id | w_id 
+----+------
+ 15 |   15
+(1 row)
+
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 and xjoin.id = 1  ORDER BY id;
+NOTICE: send query to shard(s) : sh1,sh2
+ id | w_id 
+----+------
+(0 rows)
+
 -- XXX: this used to work by miracle. We should re-support this in engine v2
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id /* __spqr__engine_v2: false */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh2
  id | w_id 
 ----+------
  15 |   15

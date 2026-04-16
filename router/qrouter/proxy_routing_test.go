@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -91,10 +92,11 @@ func TestMultiShardRouting(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
+
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
 	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
@@ -226,9 +228,9 @@ func TestCreateTable(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -370,9 +372,9 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -573,9 +575,9 @@ func TestRoutingByExpression(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -693,7 +695,10 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	_ = db.CreateSequence(context.TODO(), "s1", 10)
+	chunk, err = db.CreateSequence(context.TODO(), "s1", 10)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
@@ -705,9 +710,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		},
 	})
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -795,9 +800,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 		ShardIds:  []string{"sh1", "sh2"},
 	})
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -1014,9 +1019,9 @@ func TestComment(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -1132,10 +1137,10 @@ func TestCTE(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
-		"sh3": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
+		"sh3": {ID: "sh3"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -1492,9 +1497,9 @@ func TestSingleShard(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -1809,9 +1814,9 @@ func TestInsertOffsets(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -1971,9 +1976,9 @@ func TestJoins(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2005,33 +2010,22 @@ func TestJoins(t *testing.T) {
 		},
 
 		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
-			exp: &plan.ScatterPlan{
-				ExecTargets: []kr.ShardKey{
-					{
-						Name: "sh1",
-					},
-					{
-						Name: "sh2",
-					},
+			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where x.i = 15 ORDER BY id;",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
 				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
 
-		// sharding columns, but unparsed
+		/* column reference ambiguity */
 		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp: &plan.ScatterPlan{ExecTargets: []kr.ShardKey{
-				{
-					Name: "sh1",
-				},
-				{
-					Name: "sh2",
-				},
-			},
-			},
-			err: nil,
+			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where i = 15 ORDER BY id;",
+			exp:   nil,
+
+			err: rerrors.ErrComplexQuery,
 		},
 
 		// non-sharding columns
@@ -2061,12 +2055,22 @@ func TestJoins(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
-		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
-
 		if tt.err != nil {
-			assert.Equal(tt.err, err, "query %s", tt.query)
+
+			if err := planner.AnalyzeQueryV1(context.TODO(), rm, stmt); err != nil {
+
+				assert.Equal(tt.err, err, "query %s", tt.query)
+			} else {
+				_, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+
+				assert.Equal(tt.err, err, "query %s", tt.query)
+			}
 		} else {
+
+			assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt), tt.query)
+
+			tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+
 			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
@@ -2127,9 +2131,9 @@ func TestUnnest(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2238,9 +2242,9 @@ func TestCopySingleShard(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2333,9 +2337,9 @@ func TestCopyMultiShard(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2419,9 +2423,9 @@ func TestSetStmt(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2540,9 +2544,9 @@ func TestRouteWithRules_Select(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2871,9 +2875,9 @@ func TestHashRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 
@@ -2966,9 +2970,9 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		return nil, err
 	}
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil, qdb.DefaultMaxTxnSize)
 

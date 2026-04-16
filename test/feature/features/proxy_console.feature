@@ -314,7 +314,7 @@ Feature: Proxy console
     Scenario: add and drop shard on router-admin
         When I run SQL on host "router-admin"
         """
-        CREATE SHARD sh5 WITH HOSTS klepov:6432;
+        CREATE SHARD sh5 OPTIONS (HOST 'spqr_shard_1:6432');
         """
         Then command return code should be "0"
 

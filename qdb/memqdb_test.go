@@ -129,6 +129,7 @@ func TestMemqdbRacing(t *testing.T) {
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
+		func() { _, _ = memqdb.CheckSequence(ctx, "testSeq") },
 	}
 	for range 1000 {
 		for _, m := range methods {
@@ -362,6 +363,28 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 	assert.NotNil(err)
 }
 
+func TestMemQDB_CreateSequence(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := qdb.NewMemQDB("")
+	assert.NoError(err)
+
+	seqExists, err := memqdb.CheckSequence(ctx, "seq")
+	assert.NoError(err)
+	assert.Equal(false, seqExists)
+	statements, err := memqdb.CreateSequence(ctx, "seq", 0)
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(context.TODO(), statements)
+	assert.NoError(err)
+	seqExists, err = memqdb.CheckSequence(ctx, "seq")
+	assert.NoError(err)
+	assert.Equal(true, seqExists)
+	actual, err := memqdb.ListSequences(ctx)
+	assert.NoError(err)
+	assert.Equal([]string{"seq"}, actual)
+}
+
 func TestMemQDB_NextVal(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
@@ -369,7 +392,9 @@ func TestMemQDB_NextVal(t *testing.T) {
 	memqdb, err := qdb.NewMemQDB("")
 	assert.NoError(err)
 
-	err = memqdb.CreateSequence(ctx, "seq", 0)
+	statements, err := memqdb.CreateSequence(ctx, "seq", 0)
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	err = memqdb.AlterSequenceAttach(ctx, "seq", &rfqn.RelationFQN{RelationName: "test"}, "id")

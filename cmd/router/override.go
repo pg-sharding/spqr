@@ -25,6 +25,7 @@ type Overrides struct {
 	WithCoordinator              *bool
 	EnhancedMultiShardProcessing *bool
 	UseCoordinatorInit           *bool
+	DisplayGreeting              *bool
 }
 
 func collectOverrides(cmd *cobra.Command) Overrides {
@@ -68,6 +69,9 @@ func collectOverrides(cmd *cobra.Command) Overrides {
 	}
 	if cmd.Flags().Changed("use_coordinator_init") {
 		ov.UseCoordinatorInit = &useCoordInit
+	}
+	if cmd.Flags().Changed("display_greeting") {
+		ov.DisplayGreeting = &displayGreeting
 	}
 
 	return ov
@@ -129,6 +133,10 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 
 	if ov.EnhancedMultiShardProcessing != nil {
 		cfg.Qr.EnhancedMultiShardProcessing = *ov.EnhancedMultiShardProcessing
+	}
+
+	if ov.DisplayGreeting != nil {
+		cfg.DisplayGreeting = *ov.DisplayGreeting
 	}
 
 	return nil

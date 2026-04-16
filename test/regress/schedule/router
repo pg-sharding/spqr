@@ -26,6 +26,7 @@ test: part_table
 test: target_list_routing
 test: reference_table
 test: insert_processing
+test: insert_processing_hash
 test: sequence
 test: cte
 test: cte_hashed
@@ -49,3 +50,6 @@ test: spqr_execute
 test: default_shard_uuid
 test: set_param
 test: schema_qual
+test: postprocessing
+test: virtual_func
+test: 2pc

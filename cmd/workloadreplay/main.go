@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 var replayLogsCmd = &cobra.Command{
 	Use:   "replay",
 	Short: "replay written logs to db",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		err := workloadreplay.ReplayLogs(host, port, user, dbname, file)
 		return err
 	},

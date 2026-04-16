@@ -111,7 +111,7 @@ func (t *TxConnManager) TXEndCB(rst GangMgr) error {
 type SessConnManager struct {
 }
 
-func (s *SessConnManager) TXEndCB(rst GangMgr) error {
+func (s *SessConnManager) TXEndCB(_ GangMgr) error {
 	return nil
 }
 
@@ -133,17 +133,17 @@ type VirtualConnManager struct {
 }
 
 // ConnectionActive implements PoolMgr.
-func (v *VirtualConnManager) ConnectionActive(rst GangMgr) bool {
+func (v *VirtualConnManager) ConnectionActive(_ GangMgr) bool {
 	return true
 }
 
 // TXEndCB implements PoolMgr.
-func (v *VirtualConnManager) TXEndCB(rst GangMgr) error {
+func (v *VirtualConnManager) TXEndCB(_ GangMgr) error {
 	return nil
 }
 
 // ValidateGangChange implements PoolMgr.
-func (v *VirtualConnManager) ValidateGangChange(rst GangMgr) bool {
+func (v *VirtualConnManager) ValidateGangChange(_ GangMgr) bool {
 	return false
 }
 
