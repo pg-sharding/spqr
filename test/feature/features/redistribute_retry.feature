@@ -780,7 +780,7 @@ Feature: Redistribution retries test
     }]
     """
   
-  Scenario: redistribute is retryable after fail to update MoveTask to MoveKeyRangeLocked in QDB 
+  Scenario: redistribute is not retryable after fail to update MoveTask to MoveKeyRangeLocked in QDB 
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -807,65 +807,8 @@ Feature: Redistribution retries test
     """
     RETRY TASK GROUP tg1;
     """
-    Then command return code should be "0"
-  
-    When I run SQL on host "shard1"
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
     """
-    SELECT count(*) FROM xMove
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    0
-    """
-    When I run SQL on host "shard2"
-    """
-    SELECT count(*) FROM xMove
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    1000
-    """
-    When I run SQL on host "coordinator2"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh2",
-      "locked":"false"
-    }]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh2",
-      "locked":"false"
-    }]
-    """
-    When I run SQL on host "router2-admin"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh2",
-      "locked":"false"
-    }]
+    key range .* is locked
     """
