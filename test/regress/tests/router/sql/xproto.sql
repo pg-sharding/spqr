@@ -27,7 +27,7 @@ SELECT __spqr__ctid('ref_p_exec');
 
 INSERT INTO d_p_exec(i) VALUES(1);
 
-PREPARE p5 AS SELECT $1 FROM d_p_exec;
+PREPARE p5 AS SELECT $1 FROM d_p_exec /* __spqr__execute_on: sh1 */;
 
 EXECUTE p5 ('aaaa');
 
