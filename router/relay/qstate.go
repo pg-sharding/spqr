@@ -222,7 +222,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				//_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
 				rst.QueryExecutor().SetCommandCompleteTag("COMMIT")
 
 				return noDataPd, nil
@@ -231,7 +231,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				//_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
 				rst.QueryExecutor().SetCommandCompleteTag("ROLLBACK")
 				return noDataPd, nil
 			}
