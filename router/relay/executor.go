@@ -245,7 +245,7 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *parser.ParseStateTX
 		return s.DeploySliceTransactionQuery(query)
 	}
 
-	s.SetTxStatus(txstatus.TXACT)
+	s.SetTxStatus(txstatus.TXIDLE)
 	s.cl.StartTx()
 
 	// explicitly set silent query message, as it can differ from query begin in xproto

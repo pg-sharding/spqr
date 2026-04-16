@@ -276,7 +276,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		}
 
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+			// _ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 		}
 		err := rst.QueryExecutor().ExecCommit(query)
@@ -284,7 +284,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		return noDataPd, err
 	case parser.ParseStateTXRollback:
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+			// _ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 		}
 		err := rst.QueryExecutor().ExecRollback(query)
