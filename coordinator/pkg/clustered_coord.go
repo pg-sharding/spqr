@@ -1940,14 +1940,19 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 					return err
 				}
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterUniteKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterUniteKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			taskGroup.CurrentTask = nil
 			// TODO: get exact key count here
 			taskGroup.TotalKeys += taskGroup.BatchSize
 			// TODO: wrap in transaction inside etcd
-			if err := qc.QDB().UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
+			if err := qc.db.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
 				return err
 			}
-			if err := qc.QDB().DropMoveTask(ctx, task.ID); err != nil {
+			if err := qc.db.DropMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}
