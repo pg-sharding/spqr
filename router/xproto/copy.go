@@ -87,7 +87,7 @@ func CopyBackendMsg(msg pgproto3.BackendMessage) (pgproto3.BackendMessage, error
 
 	default:
 		/* All ok? */
-		return nil, fmt.Errorf("unexpected messge type: %T", msg)
+		return nil, fmt.Errorf("unexpected message type: %T", msg)
 	}
 
 }

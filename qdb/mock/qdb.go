@@ -3893,6 +3893,21 @@ func (mr *MockStateKeeperQDBMockRecorder) CheckMoveTaskGroupStopFlag(ctx, id any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckMoveTaskGroupStopFlag", reflect.TypeOf((*MockStateKeeperQDB)(nil).CheckMoveTaskGroupStopFlag), ctx, id)
 }
 
+// CheckSequence mocks base method.
+func (m *MockStateKeeperQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckSequence", ctx, seqName)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckSequence indicates an expected call of CheckSequence.
+func (mr *MockStateKeeperQDBMockRecorder) CheckSequence(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckSequence", reflect.TypeOf((*MockStateKeeperQDB)(nil).CheckSequence), ctx, seqName)
+}
+
 // CheckTaskGroupLocked mocks base method.
 func (m *MockStateKeeperQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -3995,11 +4010,12 @@ func (mr *MockStateKeeperQDBMockRecorder) CreateReferenceRelation(ctx, r any) *g
 }
 
 // CreateSequence mocks base method.
-func (m *MockStateKeeperQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+func (m *MockStateKeeperQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSequence", ctx, seqName, initialValue)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateSequence indicates an expected call of CreateSequence.
