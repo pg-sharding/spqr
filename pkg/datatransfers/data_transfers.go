@@ -269,6 +269,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
 			}
 			statistics.RecordShardOperation("dropData", time.Since(t))
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterDeleteCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterDeleteCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
 			}
