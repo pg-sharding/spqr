@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -975,6 +976,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			_, err = qc.LockKeyRange(ctx, req.Krid)
 			if err != nil {
 				return err
+			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterLockKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterLockKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
 			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeLocked); err != nil {
 				return err
