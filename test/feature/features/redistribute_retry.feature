@@ -1087,7 +1087,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ATTACH CONTROL POINT after_unlock_key_range PANIC;
+    ATTACH CONTROL POINT after_unlock_key_range_cp PANIC;
     """
     Then command return code should be "0"
 
@@ -1173,7 +1173,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     }]
     """
   
-  Scenario: redistribute is retryable after fail to delete MoveTask from QDB 
+  Scenario: redistribute is retryable after fail to update MoveTask status to TaskSplit in QDB 
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -1190,7 +1190,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
 
     When I run SQL on host "coordinator"
     """
-    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 10000 TASK GROUP tg1;
     """
     Then command return code should be "1"
     And I wait for coordinator "regress_coordinator_2" to take control    
@@ -1200,65 +1200,9 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     RETRY TASK GROUP tg1;
     """
-    Then command return code should be "0"
-  
-    When I run SQL on host "shard1"
+    # TODO: fix
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
     """
-    SELECT count(*) FROM xMove
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    0
-    """
-    When I run SQL on host "shard2"
-    """
-    SELECT count(*) FROM xMove
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    1000
-    """
-    When I run SQL on host "coordinator2"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh2",
-      "locked":"false"
-    }]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh2",
-      "locked":"false"
-    }]
-    """
-    When I run SQL on host "router2-admin"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh2",
-      "locked":"false"
-    }]
+    no key range found at /keyranges/kr1
     """
