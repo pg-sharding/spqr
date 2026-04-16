@@ -510,7 +510,7 @@ Feature: Redistribution retries test
     }]
     """
 
-  Scenario: redistribute is retryable after copydata fail
+  Scenario: redistribute is retryable after data copying fail
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
