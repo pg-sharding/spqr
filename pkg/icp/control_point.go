@@ -21,6 +21,7 @@ const (
 	AfterMoveKeysCP             = "after_move_keys_cp"
 	AfterCoordUpdateKeyRangeCP  = "after_coordinator_update_key_range_cp"
 	AfterRouterUpdateKeyRangeCP = "after_router_update_key_range_cp"
+	AfterUnlockKeyRangeCP       = "after_unlock_key_range_cp"
 	CopyReferenceRelationDataCP = "copy_reference_relation_data_cp"
 )
 
@@ -100,7 +101,7 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP, AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP, AfterRouterUpdateKeyRangeCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP, AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP, AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -119,7 +120,7 @@ func ResetICP(name string) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP, AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP, AfterRouterUpdateKeyRangeCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP, CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP, AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP, AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]

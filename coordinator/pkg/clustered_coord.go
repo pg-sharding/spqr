@@ -1110,6 +1110,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range")
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterUnlockKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterUnlockKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
 				return err
 			}
