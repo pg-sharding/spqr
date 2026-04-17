@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,6 +30,17 @@ var (
 	prettyLogging bool
 	logLevel      string
 )
+
+func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
+	maxTxnBatchSize := qdb.DefaultMaxTxnSize
+	if configCoord.EtcdMaxTxnOps > math.MaxUint16 {
+		maxTxnBatchSize = math.MaxUint16
+	} else if configCoord.EtcdMaxTxnOps > 0 {
+		maxTxnBatchSize = uint16(configCoord.EtcdMaxTxnOps)
+	}
+	spqrlog.Zero.Info().Str("maxTxnBatchSize", fmt.Sprintf("%d", maxTxnBatchSize))
+	return maxTxnBatchSize
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "spqr-coordinator run --config `path-to-config`",
@@ -86,7 +98,9 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("init frontend TLS: %w", err)
 		}
 
-		coordinator, err := coord.NewClusteredCoordinator(frTLS, db)
+		maxTxnBatchSize := getMaxTxnBatchSize(config.CoordinatorConfig())
+
+		coordinator, err := coord.NewClusteredCoordinator(frTLS, db, maxTxnBatchSize)
 		if err != nil {
 			return err
 		}

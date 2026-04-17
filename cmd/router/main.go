@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -74,6 +75,23 @@ var (
 
 	startupOverrides Overrides
 )
+
+func getMaxTxnBatchSize(configRouter *config.Router, configCoord *config.Coordinator) uint16 {
+	maxTxnBatchSize := qdb.DefaultMaxTxnSize
+	if configRouter.QdbMaxTxnOps > 0 {
+		maxTxnBatchSize = uint16(configRouter.QdbMaxTxnOps)
+	}
+	// The coordinator option EtcdMaxTxnOps has a stronger effect than the router option QdbMaxTxnOps.
+	if configCoord != nil && configCoord.EtcdMaxTxnOps > 0 {
+		if configCoord.EtcdMaxTxnOps > math.MaxUint16 {
+			maxTxnBatchSize = math.MaxUint16
+		} else {
+			maxTxnBatchSize = uint16(configCoord.EtcdMaxTxnOps)
+		}
+	}
+	spqrlog.Zero.Info().Str("maxTxnBatchSize", fmt.Sprintf("%d", maxTxnBatchSize))
+	return maxTxnBatchSize
+}
 
 func init() {
 	// Router and coordinator config paths
@@ -159,7 +177,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
 		}
 
-		if config.RouterConfig().WithCoordinator || config.RouterConfig().StoreTxDataPostgresql {
+		if config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -250,8 +268,8 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
-		// HERE
-		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
+		maxTxnBatchSize := getMaxTxnBatchSize(config.RouterConfig(), config.CoordinatorConfig())
+		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
 
@@ -277,7 +295,7 @@ var runCmd = &cobra.Command{
 						return fmt.Errorf("init frontend TLS: %w", err)
 					}
 
-					coordinator, err := coord.NewClusteredCoordinator(frTLS, db)
+					coordinator, err := coord.NewClusteredCoordinator(frTLS, db, maxTxnBatchSize)
 					if err != nil {
 						return err
 					}
@@ -375,11 +393,6 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		} else if config.RouterConfig().UseCoordinatorInit {
-			/* load config if not yet */
-			_, err := config.LoadCoordinatorCfg(ccfgPath)
-			if err != nil {
-				return err
-			}
 			e := instance.NewEtcdMetadataBootstrapper(config.CoordinatorConfig().QdbAddrs)
 			if err := e.InitializeMetadata(ctx, router); err != nil {
 				return err

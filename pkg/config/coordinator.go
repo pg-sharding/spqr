@@ -27,6 +27,7 @@ type Coordinator struct {
 	RolesFile            string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
 	EtcdMaxSendBytes          int    `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
+	EtcdMaxTxnOps             int    `json:"etcd_max_txn_ops" toml:"etcd_max_txn_ops" yaml:"etcd_max_txn_ops"`
 	DataMoveDisableTriggers   bool   `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
 	DataMoveBoundBatchSize    int64  `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
 	DataMoveQueryLogLevel     string `json:"data_move_query_log_level" toml:"data_move_query_log_level" yaml:"data_move_query_log_level"`

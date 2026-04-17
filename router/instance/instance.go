@@ -74,7 +74,7 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
+func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceImpl, error) {
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
@@ -125,6 +125,7 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 		topology.ShardMapping,
 		config.RouterConfig().ManageShardsByCoordinator,
 		rr,
+		maxTxnBatchSize,
 	)
 
 	var seqMngr sequences.SequenceMgr = lc

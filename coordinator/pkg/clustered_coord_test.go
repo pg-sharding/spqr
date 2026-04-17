@@ -14,7 +14,7 @@ func TestClusteredCoordinatorAddDataShardStoresShardMetadata(t *testing.T) {
 	db, err := qdb.NewMemQDB("")
 	assert.NoError(t, err)
 
-	qc, err := NewClusteredCoordinator(nil, db)
+	qc, err := NewClusteredCoordinator(nil, db, qdb.DefaultMaxTxnSize)
 	assert.NoError(t, err)
 
 	err = qc.AddDataShard(context.Background(), topology.DataShardFromConfig("sh-bad", &config.Shard{

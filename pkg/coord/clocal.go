@@ -32,6 +32,7 @@ type LocalInstanceMetadataMgr struct {
 	shardMappingMutex   sync.Mutex
 
 	poolShardHosts shard.ShardHostIterator
+	maxTxnBatch    uint16
 }
 
 const DefaultRouterId = "r1"
@@ -480,7 +481,7 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	mgr := NewAdapter(conn)
+	mgr := NewAdapter(conn, lc.maxTxnBatch)
 	return mgr.NextRange(ctx, seqName, rangeSize)
 }
 
@@ -501,7 +502,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	mgr := NewAdapter(conn)
+	mgr := NewAdapter(conn, lc.maxTxnBatch)
 	return mgr.CurrVal(ctx, seqName)
 }
 
@@ -530,14 +531,15 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ 
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
-	shardMapping map[string]*topology.DataShard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
+	shardMapping map[string]*topology.DataShard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator, maxTxnBatch uint16) meta.EntityMgr {
 
 	lc := &LocalInstanceMetadataMgr{
-		Coordinator:         NewCoordinator(db, d),
+		Coordinator:         NewCoordinator(db, d, maxTxnBatch),
 		cache:               cache,
 		shardMapping:        shardMapping,
 		updateShardsMapping: updateShardsMapping,
 		poolShardHosts:      poolShardHosts,
+		maxTxnBatch:         maxTxnBatch,
 	}
 
 	return lc
