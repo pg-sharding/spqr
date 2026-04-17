@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -743,8 +744,6 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		if len(args) != 2 {
 			return nil, fmt.Errorf("%s function accepts two arguments", virtual.VirtualRemoteExecute)
 		}
-
-		// TODO: split & run many queries
 		strVal, ok := args[0].(*lyx.AExprSConst)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -754,31 +753,37 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
 		}
-		q := strVal.Value
+		queriesStr := strVal.Value
+		queries := strings.Split(queriesStr, ";")
 		conn, err := pgx.Connect(ctx, dsn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to remote host: %w", err)
 		}
-		rows, err := conn.Query(ctx, q)
-		if err != nil {
-			return nil, err
-		}
 		tts := &tupleslot.TupleTableSlot{
 			Desc: tupleslot.TupleDesc{},
 		}
-		for _, desc := range rows.FieldDescriptions() {
-			tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
-		}
-		for rows.Next() {
-			vals, err := rows.Values()
+		for i, q := range queries {
+			rows, err := conn.Query(ctx, q)
 			if err != nil {
 				return nil, err
 			}
-			strVals := make([]string, len(vals))
-			for i, val := range vals {
-				strVals[i] = fmt.Sprintf("%v", val)
+			if i < len(queries)-1 {
+				continue
 			}
-			tts.WriteDataRow(strVals...)
+			for _, desc := range rows.FieldDescriptions() {
+				tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
+			}
+			for rows.Next() {
+				vals, err := rows.Values()
+				if err != nil {
+					return nil, err
+				}
+				strVals := make([]string, len(vals))
+				for i, val := range vals {
+					strVals[i] = fmt.Sprintf("%v", val)
+				}
+				tts.WriteDataRow(strVals...)
+			}
 		}
 		return tts, nil
 	case virtual.VirtualRun2PCRecover:
