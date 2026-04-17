@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -735,6 +736,48 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 		tts.WriteDataRow(et.Name)
 
+		return tts, nil
+	case virtual.VirtualRemoteExecute:
+		if len(args) != 2 {
+			return nil, fmt.Errorf("%s function accepts two arguments", virtual.VirtualRemoteExecute)
+		}
+
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		dsn := strVal.Value
+		strVal, ok = args[1].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		q := strVal.Value
+		conn, err := pgx.Connect(ctx, dsn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to remote host: %w", err)
+		}
+		rows, err := conn.Query(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: tupleslot.TupleDesc{},
+		}
+		for _, desc := range rows.FieldDescriptions() {
+			tts.Desc = append(tts.Desc, pgproto3.FieldDescription{
+				Name:                 []byte(desc.Name),
+				TableOID:             desc.TableOID,
+				TableAttributeNumber: desc.TableAttributeNumber,
+				DataTypeOID:          desc.DataTypeOID,
+				DataTypeSize:         desc.DataTypeSize,
+				TypeModifier:         desc.TypeModifier,
+				Format:               desc.Format,
+			})
+		}
+		for rows.Next() {
+			data := rows.RawValues()
+			tts.Raw = append(tts.Raw, data)
+		}
 		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
