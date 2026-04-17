@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -988,6 +989,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err != nil {
 				return err
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterLockKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterLockKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeLocked); err != nil {
 				return err
 			}
@@ -1051,6 +1057,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveKeysCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveKeysCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataMoved); err != nil {
 				return err
 			}
@@ -1072,6 +1083,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterCoordUpdateKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterCoordUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err
 			}
@@ -1092,6 +1108,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterRouterUpdateKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterRouterUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to update key range move status")
 			}
@@ -1100,6 +1121,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			// unlock key range
 			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range")
+			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterUnlockKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterUnlockKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
 			}
 			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
 				return err
@@ -1869,6 +1895,11 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				if err := qc.RenameKeyRange(ctx, taskGroup.KrIdFrom, task.KrIdTemp); err != nil {
 					return err
 				}
+				if config.CoordinatorConfig().EnableICP {
+					if err := icp.CheckControlPoint(nil, icp.AfterRenameKeyRangeCP); err != nil {
+						spqrlog.Zero.Info().Str("cp", icp.AfterRenameKeyRangeCP).Err(err).Msg("error while checking control point")
+					}
+				}
 				task.State = tasks.TaskSplit
 				if err := qc.UpdateMoveTask(ctx, task); err != nil {
 					return err
@@ -1893,6 +1924,11 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 					return err
 				}
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterSplitKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterSplitKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			task.State = tasks.TaskSplit
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
@@ -1900,6 +1936,11 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		case tasks.TaskSplit:
 			if err := qc.Move(ctx, &kr.MoveKeyRange{Krid: task.KrIdTemp, ShardId: taskGroup.ShardToId}); err != nil {
 				return err
+			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveCP).Err(err).Msg("error while checking control point")
+				}
 			}
 			task.State = tasks.TaskMoved
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
@@ -1911,14 +1952,19 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 					return err
 				}
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterUniteKeyRangeCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterUniteKeyRangeCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			taskGroup.CurrentTask = nil
 			// TODO: get exact key count here
 			taskGroup.TotalKeys += taskGroup.BatchSize
 			// TODO: wrap in transaction inside etcd
-			if err := qc.QDB().UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
+			if err := qc.db.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
 				return err
 			}
-			if err := qc.QDB().DropMoveTask(ctx, task.ID); err != nil {
+			if err := qc.db.DropMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}
