@@ -262,18 +262,11 @@ func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 }
 
 func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
-	var resolvedRelation *rfqn.RelationFQN
-	var err error
+	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
 
-	resolvedRelation = rm.TryResolveByDistributionColumn(colname)
-
-	if resolvedRelation == nil {
-		resolvedRelation, err = rm.ResolveRelationByAlias(alias)
-
-		if err != nil {
-			// failed to resolve relation, skip column
-			return err
-		}
+	if err != nil {
+		// failed to resolve relation, skip column
+		return nil
 	}
 
 	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)

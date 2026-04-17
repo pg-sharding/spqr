@@ -79,7 +79,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 
 -- XXX: this used to work by miracle. We should re-support this in engine v2
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id /* __spqr__engine_v2: false */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | w_id 
 ----+------
  15 |   15
