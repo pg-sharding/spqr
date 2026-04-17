@@ -10,11 +10,28 @@ DROP SHARD sh1;
  sh1
 (1 row)
 
+SHOW SHARDS;
+ shard |                         options                         
+-------+---------------------------------------------------------
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(3 rows)
+
 CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
     add shard    
 -----------------
  shard id -> sh1
 (1 row)
+
+SHOW SHARDS;
+ shard |                         options                         
+-------+---------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(4 rows)
 
 ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
           alter shard          
@@ -23,12 +40,30 @@ ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
  options  -> {sslmode=require}
 (2 rows)
 
+SHOW SHARDS;
+ shard |                                 options                                 
+-------+-------------------------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,sslmode=require}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(4 rows)
+
 ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
                  alter shard                  
 ----------------------------------------------
  shard id -> sh1
  options  -> {host=spqr_shard_1_replica:6432}
 (2 rows)
+
+SHOW SHARDS;
+ shard |                         options                         
+-------+---------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,sslmode=require}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(4 rows)
 
 UNREGISTER ROUTER ALL;
  unregister router 
