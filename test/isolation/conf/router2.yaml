@@ -87,6 +87,25 @@ backend_rules:
       sh4:
         auth_method: md5
         password: 12345678
+watchdog_backend_rule:
+  db: regress
+  usr: regress
+  connection_limit: 50
+  pool_discard: true
+  pool_rollback: true
+  auth_rules:
+    sh1:
+      auth_method: md5
+      password: 12345678
+    sh2:
+      auth_method: md5
+      password: 12345678
+    sh3:
+      auth_method: md5
+      password: 12345678
+    sh4:
+      auth_method: md5
+      password: 12345678
 schema_cache_backend_rule:
   usr: regress
   db: regress
