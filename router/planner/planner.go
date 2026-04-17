@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -764,19 +765,18 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			Desc: tupleslot.TupleDesc{},
 		}
 		for _, desc := range rows.FieldDescriptions() {
-			tts.Desc = append(tts.Desc, pgproto3.FieldDescription{
-				Name:                 []byte(desc.Name),
-				TableOID:             desc.TableOID,
-				TableAttributeNumber: desc.TableAttributeNumber,
-				DataTypeOID:          desc.DataTypeOID,
-				DataTypeSize:         desc.DataTypeSize,
-				TypeModifier:         desc.TypeModifier,
-				Format:               desc.Format,
-			})
+			tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
 		}
 		for rows.Next() {
-			data := rows.RawValues()
-			tts.Raw = append(tts.Raw, data)
+			vals, err := rows.Values()
+			if err != nil {
+				return nil, err
+			}
+			strVals := make([]string, len(vals))
+			for i, val := range vals {
+				strVals[i] = fmt.Sprintf("%v", val)
+			}
+			tts.WriteDataRow(strVals...)
 		}
 		return tts, nil
 	}
