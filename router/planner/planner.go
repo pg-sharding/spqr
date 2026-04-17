@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/console"
+	"github.com/pg-sharding/spqr/router/recovery"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -778,6 +779,28 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			}
 			tts.WriteDataRow(strVals...)
 		}
+		return tts, nil
+	case virtual.VirtualRun2PCRecover:
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualRun2PCRecover)
+		}
+
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		gid := strVal.Value
+
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := wd.LockAndRecover2PhaseCommitTX(gid); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("gid")}}
+		tts.WriteDataRow(gid)
 		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)

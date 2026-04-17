@@ -7,6 +7,7 @@ const (
 	VirtualConsoleExecute = "__spqr__console_execute"
 	VirtualRemoteExecute  = "__spqr__remote_execute"
 	VirtualRouteKey       = "__spqr__route_key"
+	VirtualRun2PCRecover  = "__spqr__run_2pc_recover"
 
 	VirtualCTID      = "__spqr__ctid"
 	VirtualFuncHosts = "__spqr__host_status"
@@ -20,7 +21,7 @@ func IsVirtualFuncName(n string) bool {
 	switch n {
 	case VirtualFuncIsReady, VirtualShards, VirtualShow, VirtualConsoleExecute,
 		VirtualCTID, VirtualFuncHosts, VirtualAwaitTask,
-		VirtualRouteKey, VirtualRemoteExecute,
+		VirtualRouteKey, VirtualRemoteExecute, VirtualRun2PCRecover,
 		PGIsolationTestSessionIsBlocked:
 		return true
 	default:

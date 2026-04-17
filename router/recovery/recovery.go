@@ -127,26 +127,27 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		* when DCStateKeeper in router-local mem-QDB, not etcd)
 		* 3) another recovery routine raced with us and won the race.
 		*/
-
-		if err := func() error {
-			ctx, cancel := context.WithCancel(context.TODO())
-			defer cancel()
-			acq, err := d.d.AcquireTxOwnership(ctx, gid)
-			if err != nil {
-				return err
-			}
-			if acq {
-				/* Try to fix things  */
-				if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
-					spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
-				}
-			}
-			return nil
-		}(); err != nil {
+		if err := d.LockAndRecover2PhaseCommitTX(gid); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(gid string) error {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+	acq, err := d.d.AcquireTxOwnership(ctx, gid)
+	if err != nil {
+		return err
+	}
+	if acq {
+		/* Try to fix things  */
+		if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
+			spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+		}
+	}
 	return nil
 }
 
