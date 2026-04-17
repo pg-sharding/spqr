@@ -55,7 +55,6 @@ func (r *DistributedRelation) IsExpressionRouting() bool {
 
 // GetColumn looks up a distribution key entry by column name.
 // Returns the entry and its index, or nil, -1 if not found.
-// Does not work for expression routing
 func (r *DistributedRelation) GetColumn(name string) (*DistributionKeyEntry, int) {
 	for i := range r.DistributionKey {
 		if r.DistributionKey[i].Column == name {
@@ -647,18 +646,12 @@ func (rel *DistributedRelation) GetDistributionKeyColumnType(
 // Returns:
 //   - []string: Columns with optional hash function.
 //   - error: An error if any occurred
-func (rel *DistributedRelation) GetDistributionKeyColumnNames() []string {
-	var res []string
-	for _, col := range rel.DistributionKey {
-		if col.Column != "" {
-			res = append(res, col.Column)
-		} else {
-			for _, ee := range col.Expr.ColRefs {
-				res = append(res, ee.ColName)
-			}
-		}
+func (rel *DistributedRelation) GetDistributionKeyColumnNames() ([]string, error) {
+	res := make([]string, len(rel.DistributionKey))
+	for i, col := range rel.DistributionKey {
+		res[i] = col.Column
 	}
-	return res
+	return res, nil
 }
 
 // GetHashedColumn returns column name with optional hash function application

@@ -90,6 +90,10 @@ func DispatchSlice(qd *QueryDesc,
 							return err
 						}
 
+						if err := serv.PrefetchResult(targ, 1); err != nil {
+							return err
+						}
+
 					} else {
 
 						/* Assert for IsQuery here? */
