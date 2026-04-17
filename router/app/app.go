@@ -156,7 +156,7 @@ func (app *App) ServeWD(ctx context.Context) error {
 			spqrlog.Zero.Info().Msg("recovery watchdog done")
 			return nil
 		default:
-			err := wd.RecoverDistributedTx()
+			_, err := wd.RecoverDistributedTx()
 			if err != nil {
 				spqrlog.Zero.Error().Err(err)
 			}

@@ -44,12 +44,12 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 	return wd, nil
 }
 
-func (d *TwoPCWatchDog) RecoverDistributedTx() error {
+func (d *TwoPCWatchDog) RecoverDistributedTx() ([]string, error) {
 	ctx := context.TODO()
 
 	shs, err := d.d.ListShards(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	gids := []string{}
@@ -62,7 +62,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		}, tsa.TSA(config.TargetSessionAttrsAny))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
+			return nil, err
 		}
 
 		if err := serv.Instance().Send(&pgproto3.Query{
@@ -72,7 +72,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		}); err != nil {
 			/* Be tidy, return acquired connection. */
 			_ = d.p.Discard(serv)
-			return err
+			return nil, err
 		}
 
 		/* okay, collect unfinished GID's from this shard */
@@ -109,11 +109,11 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		}(); err != nil {
 			/* Be tidy, return acquired connection. */
 			_ = d.p.Discard(serv)
-			return err
+			return nil, err
 		}
 
 		if err := d.p.Put(serv); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -128,11 +128,11 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		* 3) another recovery routine raced with us and won the race.
 		*/
 		if err := d.LockAndRecover2PhaseCommitTX(gid); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return gids, nil
 }
 
 func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(gid string) error {

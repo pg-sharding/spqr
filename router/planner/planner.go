@@ -744,6 +744,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function accepts two arguments", virtual.VirtualRemoteExecute)
 		}
 
+		// TODO: split & run many queries
 		strVal, ok := args[0].(*lyx.AExprSConst)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -781,26 +782,36 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 		return tts, nil
 	case virtual.VirtualRun2PCRecover:
-		if len(args) != 1 {
-			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualRun2PCRecover)
+		if len(args) > 1 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
 		}
-
-		strVal, ok := args[0].(*lyx.AExprSConst)
-		if !ok {
-			return nil, rerrors.ErrComplexQuery
-		}
-		gid := strVal.Value
 
 		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := wd.LockAndRecover2PhaseCommitTX(gid); err != nil {
-			return nil, err
-		}
 		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("gid")}}
-		tts.WriteDataRow(gid)
+		if len(args) == 1 {
+			strVal, ok := args[0].(*lyx.AExprSConst)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
+			gid := strVal.Value
+
+			if err := wd.LockAndRecover2PhaseCommitTX(gid); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(gid)
+		} else {
+			gids, err := wd.RecoverDistributedTx()
+			if err != nil {
+				return nil, err
+			}
+			for _, gid := range gids {
+				tts.WriteDataRow(gid)
+			}
+		}
 		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
