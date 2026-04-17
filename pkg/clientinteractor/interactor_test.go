@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -583,6 +584,32 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	_, err = engine.GroupBy(ftts, cmd.GroupBy)
 
 	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
+}
+
+func TestReportErrorIncludesHintFromSpqrError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+
+	gomock.InOrder(
+		ca.EXPECT().Send(&pgproto3.ErrorResponse{
+			Severity: "ERROR",
+			Message:  "Shard \"shard2\" not found.",
+			Hint:     "Run 'SHOW shards' to see all configured shards.",
+		}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(txstatus.TXIDLE),
+		}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	err := interactor.ReportError(
+		spqrerror.NewWithHint(
+			spqrerror.SPQR_NO_DATASHARD,
+			"Shard \"shard2\" not found.",
+			"Run 'SHOW shards' to see all configured shards.",
+		),
+	)
+	assert.NoError(t, err)
 }
 
 func TestKeyRangesSuccess(t *testing.T) {
