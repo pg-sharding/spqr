@@ -42,6 +42,83 @@ func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
 	return maxTxnBatchSize
 }
 
+func runCoordinator(cmd *cobra.Command) error {
+	cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
+	if err != nil {
+		return err
+	}
+	log.Println("Running config:", cfgStr)
+
+	if config.CoordinatorConfig().EnableRoleSystem {
+		if config.CoordinatorConfig().RolesFile == "" {
+			return fmt.Errorf("role system enabled but no roles file specified, see `enable_role_system` and `roles_file` in config")
+		}
+		rolesCfgStr, err := config.LoadRolesCfg(config.CoordinatorConfig().RolesFile)
+		if err != nil {
+			return err
+		}
+		log.Println("Running roles config:", rolesCfgStr)
+	}
+
+	if logLevel != "" {
+		config.CoordinatorConfig().LogLevel = logLevel
+	}
+	if cmd.Flags().Changed("pretty-log") {
+		config.CoordinatorConfig().PrettyLogging = prettyLogging
+	}
+
+	spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+
+	if err := spqrparser.InitHelpRegistry(); err != nil {
+		spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
+	}
+
+	if gomaxprocs > 0 {
+		runtime.GOMAXPROCS(gomaxprocs)
+	}
+
+	db, err := qdb.NewXQDB(qdbImpl)
+	if err != nil {
+		return err
+	}
+
+	// frontend
+	frTLS, err := config.CoordinatorConfig().FrontendTLS.Init(config.CoordinatorConfig().Host)
+	if err != nil {
+		return fmt.Errorf("init frontend TLS: %w", err)
+	}
+
+	maxTxnBatchSize := getMaxTxnBatchSize(config.CoordinatorConfig())
+
+	coordinator, err := coord.NewClusteredCoordinator(frTLS, db, maxTxnBatchSize)
+	if err != nil {
+		return err
+	}
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGUSR1)
+	go func() {
+		for {
+			s := <-sigs
+			spqrlog.Zero.Info().Str("signal", s.String()).Msg("received signal")
+
+			switch s {
+			case syscall.SIGUSR1:
+				spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+			default:
+				return
+			}
+		}
+	}()
+
+	app := app.NewApp(coordinator)
+	// run pprof without wait group
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	return app.Run(true)
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "spqr-coordinator run --config `path-to-config`",
 	Short: "spqr-coordinator",
@@ -53,80 +130,15 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  false,
 	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
-		if err != nil {
-			return err
-		}
-		log.Println("Running config:", cfgStr)
+		return runCoordinator(cmd)
+	},
+}
 
-		if config.CoordinatorConfig().EnableRoleSystem {
-			if config.CoordinatorConfig().RolesFile == "" {
-				return fmt.Errorf("role system enabled but no roles file specified, see `enable_role_system` and `roles_file` in config")
-			}
-			rolesCfgStr, err := config.LoadRolesCfg(config.CoordinatorConfig().RolesFile)
-			if err != nil {
-				return err
-			}
-			log.Println("Running roles config:", rolesCfgStr)
-		}
-
-		if logLevel != "" {
-			config.CoordinatorConfig().LogLevel = logLevel
-		}
-		if cmd.Flags().Changed("pretty-log") {
-			config.CoordinatorConfig().PrettyLogging = prettyLogging
-		}
-
-		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
-
-		if err := spqrparser.InitHelpRegistry(); err != nil {
-			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
-		}
-
-		if gomaxprocs > 0 {
-			runtime.GOMAXPROCS(gomaxprocs)
-		}
-
-		db, err := qdb.NewXQDB(qdbImpl)
-		if err != nil {
-			return err
-		}
-
-		// frontend
-		frTLS, err := config.CoordinatorConfig().FrontendTLS.Init(config.CoordinatorConfig().Host)
-		if err != nil {
-			return fmt.Errorf("init frontend TLS: %w", err)
-		}
-
-		maxTxnBatchSize := getMaxTxnBatchSize(config.CoordinatorConfig())
-
-		coordinator, err := coord.NewClusteredCoordinator(frTLS, db, maxTxnBatchSize)
-		if err != nil {
-			return err
-		}
-
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGUSR1)
-		go func() {
-			for {
-				s := <-sigs
-				spqrlog.Zero.Info().Str("signal", s.String()).Msg("received signal")
-
-				switch s {
-				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
-				default:
-					return
-				}
-			}
-		}()
-
-		app := app.NewApp(coordinator)
-		// run pprof without wait group
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
-		return app.Run(true)
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "run coordinator",
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return runCoordinator(cmd)
 	},
 }
 
@@ -153,6 +165,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
 
+	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
 }
 
