@@ -728,6 +728,20 @@ func (mr *MockEntityMgrMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockEntityMgr)(nil).GetTwoPhaseTxMetaStorage), arg0)
 }
 
+// GetTxnBatchSize mocks base method.
+func (m *MockEntityMgr) GetTxnBatchSize() uint16 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTxnBatchSize")
+	ret0, _ := ret[0].(uint16)
+	return ret0
+}
+
+// GetTxnBatchSize indicates an expected call of GetTxnBatchSize.
+func (mr *MockEntityMgrMockRecorder) GetTxnBatchSize() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxnBatchSize", reflect.TypeOf((*MockEntityMgr)(nil).GetTxnBatchSize))
+}
+
 // ListAllKeyRanges mocks base method.
 func (m *MockEntityMgr) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	m.ctrl.T.Helper()

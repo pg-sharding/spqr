@@ -729,6 +729,20 @@ func (mr *MockCoordinatorMockRecorder) GetTwoPhaseTxMetaStorage(arg0 any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwoPhaseTxMetaStorage", reflect.TypeOf((*MockCoordinator)(nil).GetTwoPhaseTxMetaStorage), arg0)
 }
 
+// GetTxnBatchSize mocks base method.
+func (m *MockCoordinator) GetTxnBatchSize() uint16 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTxnBatchSize")
+	ret0, _ := ret[0].(uint16)
+	return ret0
+}
+
+// GetTxnBatchSize indicates an expected call of GetTxnBatchSize.
+func (mr *MockCoordinatorMockRecorder) GetTxnBatchSize() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxnBatchSize", reflect.TypeOf((*MockCoordinator)(nil).GetTxnBatchSize))
+}
+
 // IsReadOnly mocks base method.
 func (m *MockCoordinator) IsReadOnly() bool {
 	m.ctrl.T.Helper()
