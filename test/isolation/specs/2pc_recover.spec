@@ -44,21 +44,26 @@ teardown
 
 session s1
 step s1_ddl                 { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=regress', 'SET __spqr__engine_v2 TO on; SET __spqr__commit_strategy TO 2pc; BEGIN; ALTER TABLE r_2pc_aux ADD COLUMN z INT; COMMIT') /*__spqr__preferred_engine: v2 */; }
-step s1_attach_cp           { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_decision_cp PANIC') /*__spqr__preferred_engine: v2 */; }
-step s1_attach_after_cp     { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_after_decision_cp PANIC') /*__spqr__preferred_engine: v2 */; }
-step s1_show_2pc_tx         { select __spqr__console_execute('SHOW two_phase_tx(status);'); }
-step s1_run_2pc_recovery    { select __spqr__run_2pc_recover(); }
 
 session s2
-step s2_unregister_router { select __spqr__console_execute('unregister router r2') /*__spqr__preferred_engine: v2 */; }
-step s2_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */; }
+step s2_attach_cp           { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_decision_cp WAIT') /*__spqr__preferred_engine: v2 */; }
+step s2_attach_after_cp     { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_after_decision_cp WAIT') /*__spqr__preferred_engine: v2 */; }
+step s2_detach_cp           { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */; }
+step s2_detach_after_cp     { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'DETACH CONTROL POINT 2pc_after_decision_cp') /*__spqr__preferred_engine: v2 */; }
+step s2_show_2pc_tx         { select __spqr__console_execute('SHOW two_phase_tx(status);'); }
+step s2_run_2pc_recovery    { select __spqr__run_2pc_recover(); }
+
+session s3
+step s3_unregister_router { select __spqr__console_execute('unregister router r2') /*__spqr__preferred_engine: v2 */; }
+step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */; }
 
 
 permutation 
-    s1_attach_cp
+    s2_attach_cp
     s1_ddl
-    s1_show_2pc_tx
-    s1_run_2pc_recovery
-    s1_show_2pc_tx
-    s2_unregister_router
-    s2_clean
+    s2_show_2pc_tx
+    s2_run_2pc_recovery
+    s2_show_2pc_tx
+    s2_detach_cp
+    s3_unregister_router
+    s3_clean
