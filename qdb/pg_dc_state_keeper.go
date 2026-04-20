@@ -85,11 +85,7 @@ func (q *PgDCStateKeeper) getStorageShardConnect() (*config.ShardConnect, error)
 }
 
 func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
-	shardCfg, err := q.getStorageShardConnect()
-	if err != nil {
-		return nil, err
-	}
-	conn, err := q.getShardMasterConn(context.Background(), shardCfg)
+	conn, err := q.getConn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +98,18 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 		return nil, err
 	}
 	return &tx, nil
+}
+
+func (q *PgDCStateKeeper) getConn(ctx context.Context) (*pgxpool.Conn, error) {
+	shardCfg, err := q.getStorageShardConnect()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := q.getShardMasterConn(context.Background(), shardCfg)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
@@ -229,15 +237,23 @@ func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTx
 	}
 }
 
-func (q *PgDCStateKeeper) ListTXNames(_ context.Context) ([]string, error) {
+func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	res := make([]string, 0, len(q.locks))
-	for id := range q.locks {
-		res = append(res, id)
+	conn, err := q.getConn(ctx)
+	if err != nil {
+		return nil, err
 	}
+	rows, err := conn.Query(ctx, "SELECT id FROM spqr_metadata.spqr_tx_status")
+	ids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+		id := ""
+		if err := row.Scan(&id); err != nil {
+			return "", err
+		}
+		return id, nil
+	})
 
-	return res, nil
+	return ids, nil
 }
 
 func (q *PgDCStateKeeper) GetTxMetaStorage() []string {
