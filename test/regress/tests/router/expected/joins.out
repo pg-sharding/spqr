@@ -31,12 +31,22 @@ CREATE RELATION yjoin (w_id);
  distribution id -> ds1
 (2 rows)
 
+CREATE RELATION zjoin (a);
+       attach table       
+--------------------------
+ relation name   -> zjoin
+ distribution id -> ds1
+(2 rows)
+
 \c regress
 SET __spqr__engine_v2 TO on;
 CREATE TABLE xjoin(id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE yjoin(w_id int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE zjoin(a int, b int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xjoin (id) values(1);
@@ -113,9 +123,21 @@ NOTICE: send query to shard(s) : sh2
 --
 (0 rows)
 
+SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+--
+(0 rows)
+
+SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE WHERE b = 1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+--
+(0 rows)
+
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE yjoin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE zjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 RESET __spqr__engine_v2;
 \c spqr-console
