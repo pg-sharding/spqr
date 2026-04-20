@@ -44,7 +44,7 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 	return wd, nil
 }
 
-func (d *TwoPCWatchDog) RecoverDistributedTx() ([]string, error) {
+func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 	ctx := context.TODO()
 
 	shs, err := d.d.ListShards(ctx)
@@ -52,7 +52,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() ([]string, error) {
 		return nil, err
 	}
 
-	gids := []string{}
+	gids := map[string]struct{}{}
 
 	for _, sh := range shs {
 		spqrlog.Zero.Info().Str("shard", sh.ID).Msg("fetching stale two phase commit data")
@@ -96,7 +96,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() ([]string, error) {
 
 					/* XXX: Recheck gid status ? */
 
-					gids = append(gids, gid)
+					gids[gid] = struct{}{}
 
 				case *pgproto3.CommandComplete:
 					/* ok */
@@ -117,7 +117,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() ([]string, error) {
 		}
 	}
 
-	for _, gid := range gids {
+	for gid := range gids {
 		/* Try to acquire lock on this GID lifecycle
 		* management. We expecting failure here if
 		* one of those events happens:

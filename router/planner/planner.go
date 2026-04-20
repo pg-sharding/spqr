@@ -821,7 +821,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("gid")}}
+		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("run_2pc_recover")}}
 		if len(args) == 1 {
 			strVal, ok := args[0].(*lyx.AExprSConst)
 			if !ok {
@@ -838,8 +838,8 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			for _, gid := range gids {
-				tts.WriteDataRow(gid)
+			for range gids {
+				tts.WriteDataRow("")
 			}
 		}
 		return tts, nil
