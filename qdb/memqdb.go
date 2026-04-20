@@ -1957,7 +1957,15 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 		info.Locked = true
 		return true, nil
 	}
-	return false, nil
+	info := &TwoPCInfo{
+		Gid:       id,
+		SHardsIds: nil,
+		State:     TwoPhaseInitState,
+		Locked:    true,
+	}
+
+	q.TwoPhaseTx[id] = info
+	return true, nil
 }
 
 func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
