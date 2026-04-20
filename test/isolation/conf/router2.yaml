@@ -19,6 +19,7 @@ notice_message_format: "{shard}"
 query_routing:
     forbid_direct_shard_queries: true
     enhanced_multishard_processing: true
+store_tx_data_postgresql: True
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -755,37 +756,61 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 		queriesStr := strVal.Value
 		queries := strings.Split(queriesStr, ";")
-		conn, err := pgx.Connect(ctx, dsn)
+		connConfig, err := pgx.ParseConfig(dsn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to connect to remote host: %w", err)
+			return nil, err
 		}
-		tts := &tupleslot.TupleTableSlot{
-			Desc: tupleslot.TupleDesc{},
+		connConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		connConfig.RuntimeParams["standard_conforming_strings"] = "on"
+		connConfig.RuntimeParams["idle_session_timeout"] = "10000"
+		level, err := tracelog.LogLevelFromString(tracelog.LogLevelDebug.String())
+		if err != nil {
+			return nil, err
 		}
-		for i, q := range queries {
-			rows, err := conn.Query(ctx, q)
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		return func() (*tupleslot.TupleTableSlot, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conn, err := pgx.ConnectConfig(ctx, connConfig)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to connect to remote host: %w", err)
 			}
-			if i < len(queries)-1 {
-				continue
+			tts := &tupleslot.TupleTableSlot{
+				Desc: tupleslot.TupleDesc{},
 			}
-			for _, desc := range rows.FieldDescriptions() {
-				tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
-			}
-			for rows.Next() {
-				vals, err := rows.Values()
-				if err != nil {
+			for i, q := range queries {
+				if err := func() error {
+					rows, err := conn.Query(ctx, q)
+					if err != nil {
+						return err
+					}
+					defer rows.Close()
+					for _, desc := range rows.FieldDescriptions() {
+						tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
+					}
+					for rows.Next() {
+						if i == len(queries)-1 {
+							vals, err := rows.Values()
+							if err != nil {
+								return err
+							}
+							strVals := make([]string, len(vals))
+							for i, val := range vals {
+								strVals[i] = fmt.Sprintf("%v", val)
+							}
+							tts.WriteDataRow(strVals...)
+						}
+					}
+					return nil
+				}(); err != nil {
 					return nil, err
 				}
-				strVals := make([]string, len(vals))
-				for i, val := range vals {
-					strVals[i] = fmt.Sprintf("%v", val)
-				}
-				tts.WriteDataRow(strVals...)
 			}
-		}
-		return tts, nil
+			return tts, nil
+		}()
 	case virtual.VirtualRun2PCRecover:
 		if len(args) > 1 {
 			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
