@@ -972,11 +972,6 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 		return err
 	}
 
-	/* Okay, respond with CommandComplete first. */
-	if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-		return err
-	}
-
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 	return nil
 }
@@ -1026,6 +1021,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if err := rst.ExecutePortal(currentMsg.Portal); err != nil {
 				return err
 			}
+
+			/* Okay, respond with CommandComplete first. */
+			if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+				return err
+			}
+
 		case *pgproto3.Close:
 			/* Validate ObjectType */
 			switch currentMsg.ObjectType {
