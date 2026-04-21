@@ -74,7 +74,7 @@ jobs:
   regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
 
     strategy:
       matrix:
@@ -106,7 +106,7 @@ jobs:
   regress-clustered-pgdg:
     name: regress-clustered
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress', 'regress-pgdg']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
 
     strategy:
       matrix:
@@ -127,7 +127,7 @@ jobs:
   isolation-regress:
     name: Isolation tests
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
 
     steps:
 
@@ -177,7 +177,7 @@ jobs:
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress']
     outputs:
       output1: ${{ steps.step1.outputs.features }}
     steps:
