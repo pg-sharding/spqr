@@ -51,6 +51,7 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 			}
 		} else {
 			if rerr := rst.ResetWithError(err); rerr != nil {
+				rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 				return rerr
 			}
 		}
@@ -82,6 +83,9 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		err := rst.ProcessExtendedBuffer(context.Background())
+
+		/* XXX: dont do it in flush case */
+		rst.PipelineCleanup()
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
