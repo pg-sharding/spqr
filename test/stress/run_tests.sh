@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 export PGDATABASE=stress
 export PGUSER=stress
 export PGSSLMODE=disable
@@ -11,6 +13,8 @@ NUM_TRANSACTIONS=1000
 TEST_DURATION=60
 
 sleep 10
+
+psql -h stress_router -U $PGUSER $PGDATABASE -f boot.sql
 
 echo "======== GENERATING TEST DATA ========"
 pgbench -i -h spqr_shard_1 -U $PGUSER $PGDATABASE
@@ -24,6 +28,9 @@ pgbench --builtin select-only -c $NUM_CLIENTS -T $TEST_DURATION -n -h stress_rou
 
 echo "======== RUN AGAINST POSTGRES ========"
 pgbench --builtin select-only -c $NUM_CLIENTS -T $TEST_DURATION -n -h spqr_shard_1 -U $PGUSER $PGDATABASE
+
+echo "======== RUN DEADLOCK TEST ========"
+pgbench -f f.sql -c $NUM_CLIENTS -T $TEST_DURATION -n -h stress_router -U $PGUSER $PGDATABASE --progress 1
 
 
 # TODO

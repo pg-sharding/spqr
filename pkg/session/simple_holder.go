@@ -478,11 +478,17 @@ var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
 		},
 	},
 	{
-		n: SPQR_ALLOW_POSTPROCESSING,
-
+		n:         SPQR_ALLOW_POSTPROCESSING,
 		shortName: "allow postprocessing",
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowPostProcessing
+		},
+	},
+	{
+		n:         SPQR_LINEARIZE_DISPATCH,
+		shortName: "linearize dispatch",
+		def: func() bool {
+			return false
 		},
 	},
 }

@@ -32,6 +32,7 @@ type Server interface {
 
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 	Datashards() []shard.ShardHostInstance
+	PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
 
 	Cancel() error
 	CancellableIDs() []uint32

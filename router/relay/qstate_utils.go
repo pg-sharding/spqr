@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/server"
 )
@@ -88,6 +89,17 @@ func DispatchSlice(qd *QueryDesc,
 							String: ovMsg,
 						}, targ); err != nil {
 							return err
+						}
+
+						guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+						if err != nil {
+							return err
+						}
+
+						if guc.Get(cl) {
+							if err := serv.PrefetchResult(targ, 1); err != nil {
+								return err
+							}
 						}
 
 					} else {
