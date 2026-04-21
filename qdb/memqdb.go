@@ -2039,7 +2039,7 @@ func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return []string{"local"}, nil
 }
 
-func (q *MemQDB) ClearTxStatuses(ctx context.Context) error {
+func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

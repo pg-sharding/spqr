@@ -65,7 +65,7 @@ func (q *PgDCStateKeeper) getHostConn(ctx context.Context, dsn string) (*pgxpool
 	ok := false
 	if pool, ok = q.pooler[dsn]; !ok {
 		var err error
-		pool, err = pgxpool.New(context.TODO(), dsn)
+		pool, err = pgxpool.New(context.Background(), dsn)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func (q *PgDCStateKeeper) getConn(ctx context.Context) (*pgxpool.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := q.getShardMasterConn(context.Background(), shardCfg)
+	conn, err := q.getShardMasterConn(ctx, shardCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -246,15 +246,13 @@ func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	ids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
 		id := ""
 		if err := row.Scan(&id); err != nil {
 			return "", err
 		}
 		return id, nil
 	})
-
-	return ids, nil
 }
 
 func (q *PgDCStateKeeper) GetTxMetaStorage() []string {
