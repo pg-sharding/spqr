@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 export PGDATABASE=stress
 export PGUSER=stress
 export PGSSLMODE=disable
