@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/xproto"
 
@@ -49,8 +48,6 @@ func XprotoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGro
 				break
 			}
 			retMsg, err := frontend.Receive()
-
-			spqrlog.Zero.Debug().Msgf("JJIOJIOJIOJ %+v %+T", retMsg, retMsg)
 			assert.NoError(t, err)
 			switch retMsgType := retMsg.(type) {
 			case *pgproto3.ErrorResponse:
