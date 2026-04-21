@@ -3,6 +3,7 @@ package session
 import "github.com/pg-sharding/spqr/pkg/tsa"
 
 type BoolGUC interface {
+	ShortName() string
 	Get(sph SessionParamsHolder) bool
 	Set(sph SessionParamsHolder, level string, val bool)
 	Reset()
