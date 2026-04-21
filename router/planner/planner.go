@@ -843,6 +843,21 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			}
 		}
 		return tts, nil
+	case virtual.VirtualClear2PCData:
+		if len(args) > 0 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+		}
+		db, err := qdb.GetStateKeeperQDB()
+		if err != nil {
+			return nil, err
+		}
+		if err := db.ClearTxStatuses(ctx); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("clear_2pc_data"),
+		}
+		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
