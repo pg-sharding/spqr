@@ -114,3 +114,7 @@ func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {
 func (q *MemPgQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return q.stateKeeper.GetTxMetaStorage(), nil
 }
+
+func (q *MemPgQDB) ClearTxStatuses(ctx context.Context) error {
+	return q.stateKeeper.ClearTxStatuses(ctx)
+}

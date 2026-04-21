@@ -1957,7 +1957,15 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 		info.Locked = true
 		return true, nil
 	}
-	return false, nil
+	info := &TwoPCInfo{
+		Gid:       id,
+		SHardsIds: nil,
+		State:     TwoPhaseInitState,
+		Locked:    true,
+	}
+
+	q.TwoPhaseTx[id] = info
+	return true, nil
 }
 
 func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
@@ -2029,6 +2037,18 @@ func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {
 
 func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return []string{"local"}, nil
+}
+
+func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	commands := make([]Command, 0, len(q.TwoPhaseTx))
+	for gid := range q.TwoPhaseTx {
+		commands = append(commands, NewDeleteCommand(q.TwoPhaseTx, gid))
+	}
+	q.TwoPhaseTx = map[string]*TwoPCInfo{}
+	return ExecuteCommands(q.DumpState, commands...)
 }
 
 // ==============================================================================

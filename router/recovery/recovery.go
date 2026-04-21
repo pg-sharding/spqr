@@ -44,15 +44,15 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 	return wd, nil
 }
 
-func (d *TwoPCWatchDog) RecoverDistributedTx() error {
+func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 	ctx := context.TODO()
 
 	shs, err := d.d.ListShards(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	gids := []string{}
+	gids := map[string]struct{}{}
 
 	for _, sh := range shs {
 		spqrlog.Zero.Info().Str("shard", sh.ID).Msg("fetching stale two phase commit data")
@@ -62,7 +62,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		}, tsa.TSA(config.TargetSessionAttrsAny))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
+			return nil, err
 		}
 
 		if err := serv.Instance().Send(&pgproto3.Query{
@@ -72,7 +72,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		}); err != nil {
 			/* Be tidy, return acquired connection. */
 			_ = d.p.Discard(serv)
-			return err
+			return nil, err
 		}
 
 		/* okay, collect unfinished GID's from this shard */
@@ -96,7 +96,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 
 					/* XXX: Recheck gid status ? */
 
-					gids = append(gids, gid)
+					gids[gid] = struct{}{}
 
 				case *pgproto3.CommandComplete:
 					/* ok */
@@ -109,15 +109,15 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		}(); err != nil {
 			/* Be tidy, return acquired connection. */
 			_ = d.p.Discard(serv)
-			return err
+			return nil, err
 		}
 
 		if err := d.p.Put(serv); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	for _, gid := range gids {
+	for gid := range gids {
 		/* Try to acquire lock on this GID lifecycle
 		* management. We expecting failure here if
 		* one of those events happens:
@@ -127,26 +127,27 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 		* when DCStateKeeper in router-local mem-QDB, not etcd)
 		* 3) another recovery routine raced with us and won the race.
 		*/
-
-		if err := func() error {
-			ctx, cancel := context.WithCancel(context.TODO())
-			defer cancel()
-			acq, err := d.d.AcquireTxOwnership(ctx, gid)
-			if err != nil {
-				return err
-			}
-			if acq {
-				/* Try to fix things  */
-				if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
-					spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
-				}
-			}
-			return nil
-		}(); err != nil {
-			return err
+		if err := d.LockAndRecover2PhaseCommitTX(gid); err != nil {
+			return nil, err
 		}
 	}
 
+	return gids, nil
+}
+
+func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(gid string) error {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+	acq, err := d.d.AcquireTxOwnership(ctx, gid)
+	if err != nil {
+		return err
+	}
+	if acq {
+		/* Try to fix things  */
+		if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
+			spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+		}
+	}
 	return nil
 }
 

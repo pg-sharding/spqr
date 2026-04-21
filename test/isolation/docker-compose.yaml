@@ -148,6 +148,38 @@ services:
                 condition: service_healthy
             shard4-replica:
                 condition: service_healthy
+    
+    router2:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "6434:6432"
+        environment:
+            - ROUTER_CONFIG=/spqr/test/isolation/conf/router2.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+        hostname: regress_router_2
+        container_name: regress_router_2
+        healthcheck:
+          <<: *shard-primary-healthcheck
+        depends_on:
+            shard1:
+                condition: service_healthy
+            shard2:
+                condition: service_healthy
+            shard3:
+                condition: service_healthy
+            shard4:
+                condition: service_healthy
+            shard1-replica:
+                condition: service_healthy
+            shard2-replica:
+                condition: service_healthy
+            shard3-replica:
+                condition: service_healthy
+            shard4-replica:
+                condition: service_healthy
 
     coordinator:
         build:
@@ -162,6 +194,7 @@ services:
         container_name: regress_coordinator
         depends_on:
             - router
+            - router2
             - qdb01
 
     qdb01:
@@ -182,6 +215,7 @@ services:
         container_name: regress_tests
         depends_on:
             - router
+            - router2
             - coordinator
             - pooler
             # - regress-mdb-image

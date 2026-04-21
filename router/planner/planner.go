@@ -3,14 +3,18 @@ package planner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -23,11 +27,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/console"
+	"github.com/pg-sharding/spqr/router/recovery"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/sethvargo/go-retry"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -493,7 +501,16 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				defer cf()
 			}
 
-			return meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+			return retry.DoValue(ctx, retry.WithMaxRetries(2, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+				tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+				if err != nil {
+					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+						return nil, retry.RetryableError(err)
+					}
+					return nil, err
+				}
+				return tts, nil
+			})
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -735,6 +752,123 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 		tts.WriteDataRow(et.Name)
 
+		return tts, nil
+	case virtual.VirtualRemoteExecute:
+		if len(args) != 2 {
+			return nil, fmt.Errorf("%s function accepts two arguments", virtual.VirtualRemoteExecute)
+		}
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		dsn := strVal.Value
+		strVal, ok = args[1].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		queriesStr := strVal.Value
+		queries := strings.Split(queriesStr, ";")
+		connConfig, err := pgx.ParseConfig(dsn)
+		if err != nil {
+			return nil, err
+		}
+		connConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		connConfig.RuntimeParams["standard_conforming_strings"] = "on"
+		connConfig.RuntimeParams["idle_session_timeout"] = "10000"
+		level, err := tracelog.LogLevelFromString(tracelog.LogLevelDebug.String())
+		if err != nil {
+			return nil, err
+		}
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		return func() (*tupleslot.TupleTableSlot, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conn, err := pgx.ConnectConfig(ctx, connConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to connect to remote host: %w", err)
+			}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: tupleslot.TupleDesc{},
+			}
+			for i, q := range queries {
+				if err := func() error {
+					rows, err := conn.Query(ctx, q)
+					if err != nil {
+						return err
+					}
+					defer rows.Close()
+					for _, desc := range rows.FieldDescriptions() {
+						tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
+					}
+					for rows.Next() {
+						if i == len(queries)-1 {
+							vals, err := rows.Values()
+							if err != nil {
+								return err
+							}
+							strVals := make([]string, len(vals))
+							for i, val := range vals {
+								strVals[i] = fmt.Sprintf("%v", val)
+							}
+							tts.WriteDataRow(strVals...)
+						}
+					}
+					return nil
+				}(); err != nil {
+					return nil, err
+				}
+			}
+			return tts, nil
+		}()
+	case virtual.VirtualRun2PCRecover:
+		if len(args) > 1 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+		}
+
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("run_2pc_recover")}}
+		if len(args) == 1 {
+			strVal, ok := args[0].(*lyx.AExprSConst)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
+			gid := strVal.Value
+
+			if err := wd.LockAndRecover2PhaseCommitTX(gid); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(gid)
+		} else {
+			gids, err := wd.RecoverDistributedTx()
+			if err != nil {
+				return nil, err
+			}
+			for range gids {
+				tts.WriteDataRow("")
+			}
+		}
+		return tts, nil
+	case virtual.VirtualClear2PCData:
+		if len(args) > 0 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+		}
+		db, err := qdb.GetStateKeeperQDB()
+		if err != nil {
+			return nil, err
+		}
+		if err := db.ClearTxStatuses(ctx); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("clear_2pc_data"),
+		}
 		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)

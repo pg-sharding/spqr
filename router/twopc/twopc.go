@@ -38,6 +38,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	}
 	gid := uid7.String()
 
+	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+		return txstatus.TXERR, err
+	} else if !ok {
+		return txstatus.TXERR, fmt.Errorf("failed to acquire ownership for tx \"%s\"", gid)
+	}
+
 	/* Store our intentions in state keeper */
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	shs := []string{}
