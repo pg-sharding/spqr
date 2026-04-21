@@ -1,6 +1,7 @@
 package xproto
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -43,4 +44,69 @@ func CopyByteSlices(src [][]byte) [][]byte {
 		}
 	}
 	return dst
+}
+
+func CopyBackendMsg(msg pgproto3.BackendMessage) (pgproto3.BackendMessage, error) {
+
+	switch v := msg.(type) {
+	case *pgproto3.ReadyForQuery:
+
+		cpQ := &pgproto3.ReadyForQuery{
+			TxStatus: v.TxStatus,
+		}
+
+		return cpQ, nil
+
+	case *pgproto3.CommandComplete:
+
+		cpQ := &pgproto3.CommandComplete{}
+
+		cpQ.CommandTag = slices.Clone(v.CommandTag)
+
+		return cpQ, nil
+
+	case *pgproto3.RowDescription:
+
+		cpQ := &pgproto3.RowDescription{}
+		cpQ.Fields = CopyFieldDescriptions(v.Fields)
+
+		return cpQ, nil
+	case *pgproto3.ErrorResponse:
+		cpQ := *v
+
+		return &cpQ, nil
+
+	case *pgproto3.DataRow:
+		cpQ := &pgproto3.DataRow{}
+		cpQ.Values = make([][]byte, len(v.Values))
+
+		for i := range v.Values {
+			cpQ.Values[i] = slices.Clone(v.Values[i])
+		}
+		return cpQ, nil
+
+		/* SPlit update uses it */
+	case *pgproto3.CopyOutResponse:
+		cpQ := &pgproto3.CopyOutResponse{
+			OverallFormat:     v.OverallFormat,
+			ColumnFormatCodes: slices.Clone(v.ColumnFormatCodes),
+		}
+		return cpQ, nil
+
+	case *pgproto3.CopyInResponse:
+		cpQ := &pgproto3.CopyOutResponse{
+			OverallFormat:     v.OverallFormat,
+			ColumnFormatCodes: slices.Clone(v.ColumnFormatCodes),
+		}
+		return cpQ, nil
+
+	case *pgproto3.CopyDone:
+		cpQ := &pgproto3.CopyDone{}
+		return cpQ, nil
+
+	default:
+		/* All ok? */
+		return nil, fmt.Errorf("unexpected message type: %T", msg)
+	}
+
 }

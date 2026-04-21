@@ -265,17 +265,15 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr l
 	var resolvedRelation *rfqn.RelationFQN
 	var err error
 
-	resolvedRelation = rm.TryResolveByDistributionColumn(colname)
+	resolvedRelation, err = rm.ResolveRelationByAlias(alias, colname)
 
-	if resolvedRelation == nil {
-		resolvedRelation, err = rm.ResolveRelationByAlias(alias)
-
-		if err != nil {
-			// failed to resolve relation, skip column
-			return err
-		}
+	if err != nil {
+		// failed to resolve relation, skip column
+		return err
 	}
-
+	if resolvedRelation == nil {
+		return nil
+	}
 	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
 }
 

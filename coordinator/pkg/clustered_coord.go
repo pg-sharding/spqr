@@ -317,6 +317,7 @@ type ClusteredCoordinator struct {
 	routerConnMutex sync.RWMutex
 
 	startupFinished bool
+	maxTxnBatch     uint16
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -484,9 +485,9 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
-func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
+func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:  coord.NewCoordinator(db, nil),
+		Coordinator:  coord.NewCoordinator(db, nil, maxTxnBatch),
 		db:           db,
 		tlsconfig:    tlsconfig,
 		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
@@ -497,6 +498,7 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoor
 		index:  &sync.Map{},
 		// index:           make(map[string]int),
 		routerConnCache: make(map[string]*grpc.ClientConn),
+		maxTxnBatch:     maxTxnBatch,
 	}, nil
 }
 
@@ -3212,6 +3214,10 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 
 func (qc *ClusteredCoordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
 	return qc.Coordinator.BeginTran(ctx)
+}
+
+func (qc *ClusteredCoordinator) GetTxnBatchSize() uint16 {
+	return qc.maxTxnBatch
 }
 
 func (qc *ClusteredCoordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {

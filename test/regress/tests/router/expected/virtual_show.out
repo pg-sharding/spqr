@@ -117,3 +117,17 @@ SHOW __spqr__engine_v2;
  on
 (1 row)
 
+SET __spqr__allow_postprocessing TO true;
+SHOW __spqr__allow_postprocessing;
+ allow postprocessing 
+----------------------
+ true
+(1 row)
+
+SET __spqr__allow_split_update TO true;
+SHOW __spqr__allow_split_update;
+ allow split update 
+--------------------
+ true
+(1 row)
+

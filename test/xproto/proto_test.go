@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -7557,5 +7558,37 @@ func TestDeallocatePrepareRemovesPstmtsByXproto(t *testing.T) {
 			},
 		},
 	}
+	XprotoTestRunner(t, frontend, tt)
+}
+
+func TestFlush(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "pstmt",
+					Query: "select 42",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Flush{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
 	XprotoTestRunner(t, frontend, tt)
 }

@@ -38,8 +38,9 @@ type ParamEntry struct {
 }
 
 type BoolGUCimpl struct {
-	n   string
-	def func() bool
+	n         string
+	shortName string
+	def       func() bool
 }
 
 func (guc BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
@@ -48,6 +49,10 @@ func (guc BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
 	} else {
 		cl.RecordVirtualParam(level, guc.n, "no")
 	}
+}
+
+func (guc BoolGUCimpl) ShortName() string {
+	return guc.shortName
 }
 
 func (guc BoolGUCimpl) Reset() {
@@ -466,15 +471,24 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 
 var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
 	{
-		n: SPQR_ALLOW_SPLIT_UPDATE,
+		n:         SPQR_ALLOW_SPLIT_UPDATE,
+		shortName: "allow split update",
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowSplitUpdate
 		},
 	},
 	{
-		n: SPQR_ALLOW_POSTPROCESSING,
+		n:         SPQR_ALLOW_POSTPROCESSING,
+		shortName: "allow postprocessing",
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowPostProcessing
+		},
+	},
+	{
+		n:         SPQR_LINEARIZE_DISPATCH,
+		shortName: "linearize dispatch",
+		def: func() bool {
+			return false
 		},
 	},
 }

@@ -19,6 +19,8 @@ type TransactionMgr interface {
 	CommitTran(ctx context.Context, transaction *MetaTransaction) error
 	// Begins transaction in qdb
 	BeginTran(ctx context.Context) (*MetaTransaction, error)
+	// Gets txn batch size
+	GetTxnBatchSize() uint16
 }
 
 type MetaTransaction struct {

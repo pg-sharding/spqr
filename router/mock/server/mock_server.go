@@ -160,6 +160,20 @@ func (mr *MockServerMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockServer)(nil).Name))
 }
 
+// PrefetchResult mocks base method.
+func (m *MockServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrefetchResult", shkey, syncCnt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PrefetchResult indicates an expected call of PrefetchResult.
+func (mr *MockServerMockRecorder) PrefetchResult(shkey, syncCnt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrefetchResult", reflect.TypeOf((*MockServer)(nil).PrefetchResult), shkey, syncCnt)
+}
+
 // Receive mocks base method.
 func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	m.ctrl.T.Helper()

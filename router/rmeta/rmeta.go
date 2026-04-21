@@ -252,15 +252,8 @@ func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *
 	return nil
 }
 
-func (rm *RoutingMetadataContext) TryResolveByDistributionColumn(colname string) *rfqn.RelationFQN {
-	if l, ok := rm.RelationsByDistributionCol[colname]; ok && len(l) == 1 {
-		return l[0]
-	}
-	return nil
-}
-
 // TODO : unit tests
-func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (*rfqn.RelationFQN, error) {
+func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) (*rfqn.RelationFQN, error) {
 	if _, ok := rm.Rels[rfqn.RelationFQN{RelationName: alias}]; ok {
 		return &rfqn.RelationFQN{RelationName: alias}, nil
 	}
@@ -270,8 +263,16 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (*rfqn.Re
 	} else {
 		// TBD: postpone routing from here to root of parsing tree
 		if len(rm.Rels) != 1 {
-			// ambiguity in column aliasing
-			return nil, rerrors.ErrComplexQuery
+
+			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
+				if len(l) > 1 {
+					// ambiguity in column aliasing
+					return nil, rerrors.ErrComplexQuery
+				}
+				return l[0], nil
+			} else {
+				return nil, nil
+			}
 		}
 		for tbl := range rm.Rels {
 			resolvedRelation = tbl

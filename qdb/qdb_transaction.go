@@ -11,6 +11,8 @@ const (
 	CMD_DELETE
 )
 
+const DefaultMaxTxnSize uint16 = 128 // like ETCD max-txn-ops default value
+
 type QdbStatement struct {
 	CmdType int32
 	Key     string
