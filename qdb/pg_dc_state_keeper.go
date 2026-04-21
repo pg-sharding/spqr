@@ -33,8 +33,7 @@ const (
 type PgDCStateKeeper struct {
 	mu sync.RWMutex
 
-	shards *config.DatatransferConnections
-	// txs     map[string]*pgx.Tx `json:"-"`
+	shards  *config.DatatransferConnections
 	storage []string
 	pooler  map[string]*pgxpool.Pool
 	locks   map[string]any
@@ -253,6 +252,47 @@ func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
 		}
 		return id, nil
 	})
+}
+
+func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error) {
+	conn, err := q.getConn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	_, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_tx_status IN ACCESS EXCLUSIVE MODE")
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx, "SELECT (id, status, members, updated_at) FROM spqr_metadat.spqr_tx_status")
+	if err != nil {
+		return nil, err
+	}
+	txInfoSlice, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*TwoPCInfo, error) {
+		info := &TwoPCInfo{
+			SHardsIds: []string{},
+		}
+		if err := row.Scan(&info.Gid, &info.State, &info.SHardsIds, &info.UpdatedAt); err != nil {
+			return nil, err
+		}
+		return info, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	txInfo := map[string]*TwoPCInfo{}
+	for _, tx := range txInfoSlice {
+		txInfo[tx.Gid] = tx
+	}
+	return txInfo, tx.Commit(ctx)
 }
 
 func (q *PgDCStateKeeper) GetTxMetaStorage() []string {

@@ -2031,6 +2031,13 @@ func (q *MemQDB) ListTXNames(_ context.Context) ([]string, error) {
 	return rt, nil
 }
 
+func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.TwoPhaseTx, nil
+}
+
 func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {
 	return nil
 }

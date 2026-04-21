@@ -292,7 +292,8 @@ type TwoPCInfo struct {
 	State TwoPhaseTxState `json:"state"`
 
 	/* ephemeral part of state */
-	Locked bool `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+	Locked    bool      `json:"-"`
 }
 
 func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation, bool) {
