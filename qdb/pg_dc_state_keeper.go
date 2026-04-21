@@ -222,18 +222,7 @@ func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTx
 	if err = row.Scan(&status); err != nil {
 		return "", err
 	}
-	switch status {
-	case pgStatePlanned:
-		return TwoPhaseInitState, nil
-	case pgStateCommitting:
-		return TwoPhaseP1, nil
-	case pgStateCommitted:
-		return TwoPhaseP2, nil
-	case pgStateRejected:
-		return TwoPhaseP2Rejected, nil
-	default:
-		return "", fmt.Errorf("unknown tx state in postgres: \"%s\"", status)
-	}
+	return TwoPhaseTXStateFromString(status)
 }
 
 func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
@@ -280,10 +269,16 @@ func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, er
 		info := &TwoPCInfo{
 			SHardsIds: []string{},
 		}
-		if err := row.Scan(&info.Gid, &info.State, &info.SHardsIds, &info.UpdatedAt); err != nil {
+		status := ""
+		if err := row.Scan(&info.Gid, &status, &info.SHardsIds, &info.UpdatedAt); err != nil {
 			return nil, err
 		}
-		return info, err
+		state, err := TwoPhaseTXStateFromString(status)
+		if err != nil {
+			return nil, err
+		}
+		info.State = state
+		return info, nil
 	})
 	if err != nil {
 		return nil, err
