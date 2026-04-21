@@ -857,7 +857,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		return tts, nil
 	case virtual.VirtualClear2PCData:
 		if len(args) > 0 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualClear2PCData)
 		}
 		db, err := qdb.GetStateKeeperQDB()
 		if err != nil {
@@ -868,6 +868,25 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("clear_2pc_data"),
+		}
+		return tts, nil
+	case virtual.VirtualCleanOutdated2PCData:
+		if len(args) > 0 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualCleanOutdated2PCData)
+		}
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		if err != nil {
+			return nil, err
+		}
+		gids, err := wd.CleanUpOldTXs(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("gid"),
+		}
+		for _, gid := range gids {
+			tts.WriteDataRow(gid)
 		}
 		return tts, nil
 	}

@@ -285,18 +285,20 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 	}
 }
 
-func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) error {
+func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 	txs, err := d.d.GetTXs(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	res := make([]string, 0)
 	for _, tx := range txs {
 		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && !tx.UpdatedAt.IsZero() && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			res = append(res, tx.Gid)
 			if err := d.d.RemoveTXData(ctx, tx.Gid); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return nil
+	return res, nil
 }
