@@ -51,7 +51,7 @@ SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE;
 
 SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE WHERE b = 1;
 
--- catalog JOIN rouring.
+-- catalog JOIN routing.
 SELECT t.oid, typarray FROM pg_type t JOIN pg_namespace ns ON typnamespace = ns.oid WHERE typname = 'hstore';
 
 DROP TABLE xjoin;

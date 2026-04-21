@@ -581,6 +581,8 @@ tlt
 TMINUS
 tmpfs
 tmpnum
+typarray
+typname
 Toidxs
 topbar
 TOPENBR

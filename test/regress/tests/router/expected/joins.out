@@ -133,7 +133,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 --
 (0 rows)
 
--- catalog JOIN rouring.
+-- catalog JOIN routing.
 SELECT t.oid, typarray FROM pg_type t JOIN pg_namespace ns ON typnamespace = ns.oid WHERE typname = 'hstore';
 NOTICE: send query to shard(s) : sh2
  oid | typarray 
