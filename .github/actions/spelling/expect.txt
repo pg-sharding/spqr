@@ -581,6 +581,9 @@ tlt
 TMINUS
 tmpfs
 tmpnum
+typarray
+typname
+typnamespace
 Toidxs
 topbar
 TOPENBR
@@ -661,3 +664,4 @@ yjoin
 YMid
 yylex
 zerolog
+zjoin

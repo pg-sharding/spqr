@@ -5,6 +5,7 @@ CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
 CREATE RELATION xjoin (id);
 CREATE RELATION yjoin (w_id);
+CREATE RELATION zjoin (a);
 
 \c regress
 
@@ -12,6 +13,7 @@ SET __spqr__engine_v2 TO on;
 
 CREATE TABLE xjoin(id int);
 CREATE TABLE yjoin(w_id int);
+CREATE TABLE zjoin(a int, b int);
 
 INSERT INTO xjoin (id) values(1);
 INSERT INTO xjoin (id) values(10);
@@ -45,8 +47,16 @@ SELECT FROM xjoin a JOIN xjoin b ON true;
 SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 15;
 SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 11;
 
+SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE;
+
+SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE WHERE b = 1;
+
+-- catalog JOIN routing. XXX: make it deterministic and support.
+-- SELECT t.oid, typarray FROM pg_type t JOIN pg_namespace ns ON typnamespace = ns.oid WHERE typname = 'hstore';
+
 DROP TABLE xjoin;
 DROP TABLE yjoin;
+DROP TABLE zjoin;
 
 RESET __spqr__engine_v2;
 
