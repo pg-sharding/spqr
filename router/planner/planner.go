@@ -33,6 +33,9 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/sethvargo/go-retry"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -498,7 +501,16 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				defer cf()
 			}
 
-			return meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+			return retry.DoValue(ctx, retry.WithMaxRetries(2, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+				tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+				if err != nil {
+					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+						return nil, retry.RetryableError(err)
+					}
+					return nil, err
+				}
+				return tts, nil
+			})
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
