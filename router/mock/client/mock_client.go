@@ -440,6 +440,20 @@ func (mr *MockRouterClientMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockRouterClient)(nil).FindBoolGUC), arg0)
 }
 
+// Flush mocks base method.
+func (m *MockRouterClient) Flush() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Flush")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Flush indicates an expected call of Flush.
+func (mr *MockRouterClientMockRecorder) Flush() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Flush", reflect.TypeOf((*MockRouterClient)(nil).Flush))
+}
+
 // GetCancelKey mocks base method.
 func (m *MockRouterClient) GetCancelKey() []byte {
 	m.ctrl.T.Helper()
