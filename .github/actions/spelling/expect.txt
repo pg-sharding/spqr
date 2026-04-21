@@ -583,6 +583,7 @@ tmpfs
 tmpnum
 typarray
 typname
+typnamespace
 Toidxs
 topbar
 TOPENBR
