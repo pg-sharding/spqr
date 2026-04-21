@@ -313,6 +313,20 @@ func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
 	return nil
 }
 
+func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) error {
+	tx, err := q.getTx(ctx, txid)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = (*tx).Rollback(ctx)
+	}()
+	if _, err = (*tx).Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid); err != nil {
+		return err
+	}
+	return (*tx).Commit(ctx)
+}
+
 func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
 	conn, err := q.getConn(ctx)
 	if err != nil {

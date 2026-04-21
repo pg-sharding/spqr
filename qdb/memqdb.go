@@ -2046,6 +2046,14 @@ func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return []string{"local"}, nil
 }
 
+func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.TwoPhaseTx, gid)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.TwoPhaseTx, gid))
+}
+
 func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
