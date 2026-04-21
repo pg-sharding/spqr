@@ -292,8 +292,10 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) error {
 	}
 
 	for _, tx := range txs {
-		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
-			// TODO: remove tx data
+		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && !tx.UpdatedAt.IsZero() && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			if err := d.d.RemoveTXData(ctx, tx.Gid); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
