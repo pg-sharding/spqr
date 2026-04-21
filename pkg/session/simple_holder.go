@@ -102,10 +102,9 @@ func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaul
 
 func (cl *SimpleSessionParamHandler) RecordVirtualParam(level string, name string, val string) {
 	cl.getParamVisibility(name, true).Set(ParamEntry{
-		Tx:    cl.txCnt,
-		Value: val,
+		Tx: cl.txCnt,
 		Levels: map[string]string{
-			level: level,
+			level: val,
 		},
 	})
 }
