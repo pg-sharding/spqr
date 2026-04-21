@@ -615,7 +615,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 			shardList, err := qc.db.GetTxMetaStorage(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
-			} else if len(shardList) == 0 {
+			} else if len(shardList) == 0 && len(shards.ShardsData) > 0 {
 				shardIds := make([]string, 0, len(shards.ShardsData))
 				for id := range shards.ShardsData {
 					shardIds = append(shardIds, id)
