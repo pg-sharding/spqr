@@ -161,6 +161,12 @@ func (app *App) ServeWD(ctx context.Context) error {
 				spqrlog.Zero.Error().Err(err)
 			}
 
+			if config.RouterConfig().TxDataTTL != 0 {
+				if err := wd.CleanUpOldTXs(ctx); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to clean up outdated two-phase commit transaction data")
+				}
+			}
+
 			/* wait for some period of time */
 			time.Sleep(config.ValueOrDefaultDuration(config.RouterConfig().WatchdogSleepInterval, time.Second))
 		}
