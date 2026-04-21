@@ -180,7 +180,11 @@ Feature: MemQDB with PG dc state keeper test
     }]
     """
     When host "router" is started
-    And we wait for "30" seconds
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__run_2pc_recover();
+    """
+    Then command return code should be "0"
     When I run SQL on host "shard1"
     """
     SELECT count(gid) FROM pg_prepared_xacts
@@ -273,7 +277,11 @@ Feature: MemQDB with PG dc state keeper test
     }]
     """
     When host "router" is started
-    And we wait for "30" seconds
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__run_2pc_recover();
+    """
+    Then command return code should be "0"
     When I run SQL on host "shard1"
     """
     SELECT count(gid) FROM pg_prepared_xacts
