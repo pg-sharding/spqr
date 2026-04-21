@@ -238,13 +238,14 @@ func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTx
 }
 
 func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	conn, err := q.getConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := conn.Query(ctx, "SELECT id FROM spqr_metadata.spqr_tx_status")
+	if err != nil {
+		return nil, err
+	}
 	ids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
 		id := ""
 		if err := row.Scan(&id); err != nil {
@@ -272,6 +273,15 @@ func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
 	}
 	q.storage = storage
 	return nil
+}
+
+func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+	conn, err := q.getConn(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status")
+	return err
 }
 
 func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {

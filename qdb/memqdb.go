@@ -2039,6 +2039,18 @@ func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return []string{"local"}, nil
 }
 
+func (q *MemQDB) ClearTxStatuses(ctx context.Context) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	commands := make([]Command, 0, len(q.TwoPhaseTx))
+	for gid := range q.TwoPhaseTx {
+		commands = append(commands, NewDeleteCommand(q.TwoPhaseTx, gid))
+	}
+	q.TwoPhaseTx = map[string]*TwoPCInfo{}
+	return ExecuteCommands(q.DumpState, commands...)
+}
+
 // ==============================================================================
 //                               TASK GROUP STATE
 // ==============================================================================
