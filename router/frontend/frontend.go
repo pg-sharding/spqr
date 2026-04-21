@@ -67,8 +67,17 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Flush:
-		/* Ignore. XXX: proper support in future? */
-		return nil
+		err := rst.ProcessExtendedBuffer(context.Background())
+
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Msg("client connection flushed")
+
+		return rst.Client().Flush()
 	case *pgproto3.Sync:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 

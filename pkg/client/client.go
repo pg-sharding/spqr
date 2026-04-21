@@ -63,6 +63,8 @@ type Client interface {
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
 
+	Flush() error
+
 	Shutdown() error
 	Reset() error
 	Close() error

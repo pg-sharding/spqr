@@ -757,6 +757,10 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	return msg, err
 }
 
+func (cl *PsqlClient) Flush() error {
+	return cl.be.Flush()
+}
+
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
