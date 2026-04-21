@@ -7588,7 +7588,7 @@ func TestFlush(t *testing.T) {
 		},
 	}
 
-	conn.SetDeadline(time.Now().Add(30 * time.Second))
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
 
 	XprotoTestRunner(t, frontend, tt)
 }
