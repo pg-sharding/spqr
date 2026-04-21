@@ -1,14 +1,14 @@
 resource "yandex_mdb_postgresql_cluster_v2" "shards" {
   count       = var.shards_count
 
-  name        = format("spqr-shard-${var.pr_number}-%02d", count.index + 1)
+  name        = format("spqr-shard-${substr(var.pr_number, 0, 16)}-%02d", count.index + 1)
   environment = "PRODUCTION"
   network_id  = yandex_vpc_network.spqr-net.id
 
   config {
     version = 16
     resources {
-      resource_preset_id = "s3-c8-m32"
+      resource_preset_id = var.shard_resource_preset
       disk_type_id       = "network-ssd"
       disk_size          = 300
     }
