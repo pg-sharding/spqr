@@ -26,6 +26,12 @@ echo "======== RUN AGAINST POSTGRES ========"
 pgbench --builtin select-only -c $NUM_CLIENTS -T $TEST_DURATION -n -h spqr_shard_1 -U $PGUSER $PGDATABASE
 
 
+psql -h spqr_shard_1 -U $PGUSER $PGDATABASE -f boot.sql
+
+echo "======== RUN DEADLOCK TEST ========"
+pgbench --builtin select-only -f f.sql -c $NUM_CLIENTS -T $TEST_DURATION -n -h stress_router -U $PGUSER $PGDATABASE
+
+
 # TODO
 # run select-only script
 # pgbench --show-script simple-update

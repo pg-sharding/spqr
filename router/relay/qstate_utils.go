@@ -97,7 +97,6 @@ func DispatchSlice(qd *QueryDesc,
 						}
 
 						if guc.Get(cl) {
-
 							if err := serv.PrefetchResult(targ, 1); err != nil {
 								return err
 							}

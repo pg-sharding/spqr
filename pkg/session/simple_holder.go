@@ -102,9 +102,10 @@ func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaul
 
 func (cl *SimpleSessionParamHandler) RecordVirtualParam(level string, name string, val string) {
 	cl.getParamVisibility(name, true).Set(ParamEntry{
-		Tx: cl.txCnt,
+		Tx:    cl.txCnt,
+		Value: val,
 		Levels: map[string]string{
-			level: val,
+			level: level,
 		},
 	})
 }
@@ -478,15 +479,15 @@ var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
 		},
 	},
 	{
-		n: SPQR_ALLOW_POSTPROCESSING,
-
+		n:         SPQR_ALLOW_POSTPROCESSING,
 		shortName: "allow postprocessing",
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowPostProcessing
 		},
 	},
 	{
-		n: SPQR_LINEARIZE_DISPATCH,
+		n:         SPQR_LINEARIZE_DISPATCH,
+		shortName: "linearize dispatch",
 		def: func() bool {
 			return false
 		},

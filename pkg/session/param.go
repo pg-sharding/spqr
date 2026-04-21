@@ -125,7 +125,7 @@ const (
 	SPQR_REPLY_NOTICE    = "__spqr__reply_notice"
 	SPQR_MAINTAIN_PARAMS = "__spqr__maintain_params"
 	SPQR_ENGINE_V2       = "__spqr__engine_v2"
-	/*XXX: should we ever disallow?*/
+	/* XXX: should we ever disallow? */
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
 
