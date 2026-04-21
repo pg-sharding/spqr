@@ -289,20 +289,20 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		if session.ParamIsBoolean(param) {
 
+			guc, err := rst.Client().FindBoolGUC(param)
+			if err != nil {
+				return nil, err
+			}
+
 			tts := tupleslot.TupleTableSlot{
 				Desc: []pgproto3.FieldDescription{
 					{
-						Name:         []byte("allow split update"),
+						Name:         []byte(guc.ShortName()),
 						DataTypeOID:  catalog.TEXTOID,
 						DataTypeSize: -1,
 						TypeModifier: -1,
 					},
 				},
-			}
-
-			guc, err := rst.Client().FindBoolGUC(param)
-			if err != nil {
-				return nil, err
 			}
 
 			if guc.Get(rst.Client()) {

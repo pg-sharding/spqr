@@ -35,3 +35,9 @@ SHOW __spqr__.engine_v2;
 
 RESET __spqr__.engine_v2;
 SHOW __spqr__engine_v2;
+
+SET __spqr__allow_postprocessing TO true;
+SHOW __spqr__allow_postprocessing;
+
+SET __spqr__allow_split_update TO true;
+SHOW __spqr__allow_split_update;
