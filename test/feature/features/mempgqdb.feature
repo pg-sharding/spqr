@@ -734,10 +734,10 @@ Feature: MemQDB with PG dc state keeper test
     """
     [
       {
-        "gid": "done_outdated",
+        "gid": "done_outdated"
       },
       {
-        "gid": "rejected_outdated",
+        "gid": "rejected_outdated"
       }
     ]
     """
@@ -750,22 +750,22 @@ Feature: MemQDB with PG dc state keeper test
     """
     [
       {
-        "id": "done_not_outdated",
+        "id": "done_not_outdated"
       },
       {
-        "id": "rejected_not_outdated",
+        "id": "rejected_not_outdated"
       },
       {
-        "id": "planned_outdated",
+        "id": "planned_outdated"
       },
       {
-        "id": "planned_not_outdated",
+        "id": "planned_not_outdated"
       },
       {
-        "id": "committing_outdated",
+        "id": "committing_outdated"
       },
       {
-        "id": "committing_not_outdated",
+        "id": "committing_not_outdated"
       }
     ]
     """

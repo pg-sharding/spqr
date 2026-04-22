@@ -261,7 +261,7 @@ func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, er
 		return nil, err
 	}
 
-	rows, err := tx.Query(ctx, "SELECT (id, status, members, updated_at) FROM spqr_metadat.spqr_tx_status")
+	rows, err := tx.Query(ctx, "SELECT id, status, members, updated_at FROM spqr_metadata.spqr_tx_status")
 	if err != nil {
 		return nil, err
 	}
