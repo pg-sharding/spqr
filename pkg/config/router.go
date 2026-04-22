@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
@@ -149,8 +148,6 @@ func (r *Router) PostProcess() error {
 		}
 	}
 
-	rps.SetEnableRPSAggregation(r.Qr.RouterRpsAggregation)
-
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if r.Qr.DefaultTSA == "" {
 		r.Qr.DefaultTSA = TargetSessionAttrsSmartRW
@@ -177,10 +174,6 @@ type QRouter struct {
 
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
-
-	// Controls whether to calculate sliding window RPS stats (requires mutex).
-	// Total requests are always counted atomically.
-	RouterRpsAggregation bool `json:"router_rps_aggregation" toml:"router_rps_aggregation" yaml:"router_rps_aggregation"`
 
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 }
