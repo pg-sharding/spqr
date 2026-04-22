@@ -13,6 +13,7 @@ query_routing:
 store_tx_data_postgresql: true
 use_coordinator_init: true
 enable_icp: true
+enable_2pc_watchdog: true
 watchdog_backend_rule:
   db: regress
   usr: regress
