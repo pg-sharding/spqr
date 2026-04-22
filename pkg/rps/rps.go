@@ -9,8 +9,6 @@ import (
 // It's a bit heavier than a simple counter, but gives much smoother "instant" numbers.
 // Thread-safe, naturally.
 type RPSStats struct {
-	mu sync.RWMutex
-
 	totalRequests int64 // lifetime request count (atomic, monotonically increasing)
 }
 
