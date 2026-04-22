@@ -97,6 +97,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		return nil
 	case *pgproto3.Query:
 		rps.OnRequest()
+		ttS := time.Now()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		// copy interface
@@ -114,7 +115,13 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		rst.Client().ClosePreparedStatement("")
 
-		return teardownPipeline(rst, err)
+		if err := teardownPipeline(rst, err); err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Info().Dur("time", (time.Duration(time.Now().Sub(ttS)))).Msg("query served")
+
+		return nil
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
 		// copy interface
