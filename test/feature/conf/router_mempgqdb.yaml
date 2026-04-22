@@ -11,6 +11,7 @@ show_notice_messages: true
 query_routing:
   forbid_direct_shard_queries: true
 store_tx_data_postgresql: true
+tx_data_ttl: 1y
 use_coordinator_init: true
 enable_icp: true
 watchdog_backend_rule:
