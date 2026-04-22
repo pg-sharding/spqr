@@ -119,7 +119,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			return err
 		}
 
-		spqrlog.Zero.Info().Dur("time", (time.Duration(time.Now().Sub(ttS)))).Msg("query served")
+		spqrlog.Zero.Info().Dur("time", (time.Duration(time.Now().Sub(ttS)))).Str("query", q.String).Msg("query served")
 
 		return nil
 	/* These messages do not trigger immediate processing */
