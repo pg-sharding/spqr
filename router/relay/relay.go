@@ -65,6 +65,8 @@ type RelayStateMgr interface {
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(ctx context.Context) error
 
+	PipelineCleanup()
+
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
 
@@ -102,6 +104,8 @@ type RelayStateImpl struct {
 	saveBind        pgproto3.Bind
 	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
+
+	WaitSync bool
 
 	parseCache map[string]ParseCacheEntry
 	savedRM    map[string]*rmeta.RoutingMetadataContext
@@ -145,6 +149,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		parseCache:          map[string]ParseCacheEntry{},
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
+		WaitSync:            false,
 	}
 }
 
@@ -224,6 +229,7 @@ func (rst *RelayStateImpl) Reset() error {
 	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
 
+	/* See flush vs sync */
 	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
 	_ = rst.Client().Reset()
@@ -976,6 +982,80 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 	return nil
 }
 
+func (rst *RelayStateImpl) PipelineCleanup() {
+	rst.bindQueryPlan = nil
+	rst.WaitSync = false
+}
+
+func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
+
+	switch currentMsg := msg.(type) {
+	case *pgproto3.Parse:
+		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
+			return err
+		} else if retMsg != nil {
+			if err := rst.Client().Send(retMsg); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	case *pgproto3.Bind:
+		return rst.BindPrepared(ctx,
+			currentMsg.PreparedStatement,
+			currentMsg.DestinationPortal,
+			currentMsg.Parameters,
+			currentMsg.ParameterFormatCodes,
+			currentMsg.ResultFormatCodes)
+
+	case *pgproto3.Describe:
+		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)
+	case *pgproto3.Execute:
+		if err := rst.ExecutePortal(currentMsg.Portal); err != nil {
+			return err
+		}
+
+		/* Okay, respond with CommandComplete first. */
+		return rst.QueryExecutor().DeriveCommandComplete()
+
+	case *pgproto3.Close:
+		/* Validate ObjectType */
+		switch currentMsg.ObjectType {
+		case 'P':
+			/* Portal */
+			if currentMsg.Name != "" {
+				delete(rst.executeMp, currentMsg.Name)
+			}
+			if err := rst.Client().ReplyCloseComplete(); err != nil {
+				return err
+			}
+		case 'S':
+			/* Statement */
+
+			def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
+
+			if def == nil {
+				/* this prepared statement was not prepared by client */
+				return pstmtDoesNotExistsErr(currentMsg.Name)
+			} else {
+				rst.Client().ClosePreparedStatement(currentMsg.Name)
+				if err := rst.Client().ReplyCloseComplete(); err != nil {
+					return err
+				}
+			}
+
+		default:
+			/* Send proper protocol error. */
+			/* this prepared statement was not prepared by client */
+			return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("unexpected query type %v", msg)
+	}
+}
+
 // TODO : unit tests
 // If we enter this function, then we need to process whole messages buffer
 // in current statement pipeline bounds.
@@ -984,81 +1064,26 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Int("xBuf", len(rst.xBuf)).
+		Bool("wait sync", rst.WaitSync).
 		Msg("process extended buffer")
 
 	defer func() {
 		// cleanup
 		rst.xBuf = nil
-		rst.bindQueryPlan = nil
 	}()
 
+	if rst.WaitSync {
+		return nil
+	}
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+		return errAbortedTx
+	}
+
 	for _, msg := range rst.xBuf {
-
-		switch currentMsg := msg.(type) {
-		case *pgproto3.Parse:
-			if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
-				return err
-			} else if retMsg != nil {
-				if err := rst.Client().Send(retMsg); err != nil {
-					return err
-				}
-			}
-		case *pgproto3.Bind:
-			if err := rst.BindPrepared(ctx,
-				currentMsg.PreparedStatement,
-				currentMsg.DestinationPortal,
-				currentMsg.Parameters,
-				currentMsg.ParameterFormatCodes,
-				currentMsg.ResultFormatCodes); err != nil {
-				return err
-			}
-		case *pgproto3.Describe:
-
-			if err := rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg); err != nil {
-				return err
-			}
-		case *pgproto3.Execute:
-			if err := rst.ExecutePortal(currentMsg.Portal); err != nil {
-				return err
-			}
-
-			/* Okay, respond with CommandComplete first. */
-			if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-				return err
-			}
-
-		case *pgproto3.Close:
-			/* Validate ObjectType */
-			switch currentMsg.ObjectType {
-			case 'P':
-				/* Portal */
-				if currentMsg.Name != "" {
-					delete(rst.executeMp, currentMsg.Name)
-				}
-				if err := rst.Client().ReplyCloseComplete(); err != nil {
-					return err
-				}
-			case 'S':
-				/* Statement */
-
-				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
-
-				if def == nil {
-					/* this prepared statement was not prepared by client */
-					return pstmtDoesNotExistsErr(currentMsg.Name)
-				} else {
-					rst.Client().ClosePreparedStatement(currentMsg.Name)
-					if err := rst.Client().ReplyCloseComplete(); err != nil {
-						return err
-					}
-				}
-			default:
-				/* Send proper protocol error. */
-				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
-			}
-		default:
-			return fmt.Errorf("unexpected query type %v", msg)
+		if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+			rst.WaitSync = true
+			return err
 		}
 	}
 

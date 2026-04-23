@@ -19,8 +19,9 @@ import (
 )
 
 type MessageGroup struct {
-	Request  []pgproto3.FrontendMessage
-	Response []pgproto3.BackendMessage
+	Request   []pgproto3.FrontendMessage
+	Response  []pgproto3.BackendMessage
+	CheckCode bool
 }
 
 func isPurePGTesting() bool {
@@ -55,10 +56,16 @@ func XprotoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGro
 				retMsgType.Line = 0
 				retMsgType.Routine = ""
 				retMsgType.Position = 0
+				retMsgType.Hint = ""
+				retMsgType.Detail = ""
+
 				retMsgType.SeverityUnlocalized = ""
 				retMsgType.File = ""
-				retMsgType.Code = ""
-
+				if msgroup.CheckCode {
+					retMsgType.Message = ""
+				} else {
+					retMsgType.Code = ""
+				}
 			case *pgproto3.RowDescription:
 				for i := range retMsgType.Fields {
 					// We don't want to check table OID
@@ -6339,8 +6346,58 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for gr, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
+			CheckCode: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_1",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Flush{},
+
+				&pgproto3.Parse{
+					Name:  "P0",
+					Query: "SELECT 1",
+				},
+
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "P0",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+
+					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+
+					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			CheckCode: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "err_test_1",
@@ -6386,52 +6443,68 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				retMsgType.File = ""
-				retMsgType.Line = 0
-				retMsgType.SeverityUnlocalized = ""
-				retMsgType.Routine = ""
-				retMsgType.Detail = ""
-				retMsgType.Message = ""
-				retMsgType.Position = 0
-
-				switch me := msg.(type) {
-				case *pgproto3.ErrorResponse:
-					if me.Code == "" {
-						retMsgType.Code = ""
-					}
-				}
-
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter %d", gr, ind))
-		}
 	}
+
+	XprotoTestRunner(t, frontend, tt)
+}
+
+func TestExtendedErrorImplicitTX(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			CheckCode: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_1",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Parse{
+					Name:  "P0",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "P0",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+
+					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+
+					Code: spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	XprotoTestRunner(t, frontend, tt)
 }
 
 func TestParseErrorThenReuseName(t *testing.T) {
