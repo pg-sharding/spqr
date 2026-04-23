@@ -1727,7 +1727,7 @@ func ProcessShowExtended(ctx context.Context,
 // RouterVersionInfo contains version information retrieved from a router.
 type RouterVersionInfo struct {
 	Version         string
-	MetadataVersion int64
+	MetadataVersion uint64
 	Error           error
 }
 
@@ -1806,7 +1806,7 @@ func showRouters(ctx context.Context, mngr EntityMgr, ci connmgr.ConnectionMgr) 
 		status := string(msg.State)
 		// Get version from gRPC query, or fall back to static version
 		version := pkg.SpqrVersionRevision
-		metadataVersion := int64(0)
+		metadataVersion := uint64(0)
 		if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
 			version = vInfo.Version
 			metadataVersion = vInfo.MetadataVersion

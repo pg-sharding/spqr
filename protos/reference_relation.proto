@@ -6,12 +6,16 @@ option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
 import "protos/qualified_name.proto";
+import "protos/acl.proto";
 
 message ReferenceRelation {
   QualifiedName relName = 1;
   map<string, string> sequenceColumns = 2;
   uint64 schema_version = 3;
   repeated string shardIds = 4;
+
+  uint64 version = 5;
+  repeated ACL acl = 6;
 }
 
 message AutoIncrementEntry {
