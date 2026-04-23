@@ -3,6 +3,7 @@ package recovery
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -282,4 +283,22 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 	default:
 		return fmt.Errorf("unexpected 2pc state: %s", status)
 	}
+}
+
+func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
+	txs, err := d.d.GetTXs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]string, 0)
+	for _, tx := range txs {
+		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && !tx.UpdatedAt.IsZero() && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			res = append(res, tx.Gid)
+			if err := d.d.RemoveTXData(ctx, tx.Gid); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return res, nil
 }

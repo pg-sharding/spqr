@@ -656,3 +656,116 @@ Feature: MemQDB with PG dc state keeper test
     ]
     """
 
+  Scenario: old transaction data is removed
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb.yaml
+    """
+    Given cluster is up and running
+    And host "router2" is stopped
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+    And I wait for host "coordinator" to finish startup
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO spqr_metadata.spqr_tx_status (id, members, status, updated_at) VALUES
+    (
+      'done_outdated',
+      ARRAY['sh1', 'sh2'],
+      'committed',
+      now() - INTERVAL '2 years'
+    ),
+    (
+      'rejected_outdated',
+      ARRAY['sh1', 'sh2'],
+      'rejected',
+      now() - INTERVAL '2 years'
+    ),
+    (
+      'done_not_outdated',
+      ARRAY['sh1', 'sh2'],
+      'committed',
+      now()
+    ),
+    (
+      'rejected_not_outdated',
+      ARRAY['sh1', 'sh2'],
+      'rejected',
+      now()
+    ),
+    (
+      'planned_outdated',
+      ARRAY['sh1', 'sh2'],
+      'planned',
+      now() - INTERVAL '2 years'
+    ),
+    (
+      'planned_not_outdated',
+      ARRAY['sh1', 'sh2'],
+      'planned',
+      now()
+    ),
+    (
+      'committing_outdated',
+      ARRAY['sh1', 'sh2'],
+      'committing',
+      now() - INTERVAL '2 years'
+    ),
+    (
+      'committing_not_outdated',
+      ARRAY['sh1', 'sh2'],
+      'committing',
+      now()
+    )
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__clean_outdated_2pc_data();
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "gid": "done_outdated"
+      },
+      {
+        "gid": "rejected_outdated"
+      }
+    ]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT id FROM spqr_metadata.spqr_tx_status;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "id": "done_not_outdated"
+      },
+      {
+        "id": "rejected_not_outdated"
+      },
+      {
+        "id": "planned_outdated"
+      },
+      {
+        "id": "planned_not_outdated"
+      },
+      {
+        "id": "committing_outdated"
+      },
+      {
+        "id": "committing_not_outdated"
+      }
+    ]
+    """

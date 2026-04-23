@@ -107,12 +107,20 @@ func (q *MemPgQDB) ListTXNames(ctx context.Context) ([]string, error) {
 	return q.stateKeeper.ListTXNames(ctx)
 }
 
+func (q *MemPgQDB) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error) {
+	return q.stateKeeper.GetTXs(ctx)
+}
+
 func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {
 	return q.stateKeeper.SetTxMetaStorage(storage)
 }
 
 func (q *MemPgQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return q.stateKeeper.GetTxMetaStorage(), nil
+}
+
+func (q *MemPgQDB) RemoveTXData(ctx context.Context, txid string) error {
+	return q.stateKeeper.RemoveTXData(ctx, txid)
 }
 
 func (q *MemPgQDB) ClearTxStatuses(ctx context.Context) error {

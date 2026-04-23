@@ -187,12 +187,15 @@ type DCStateKeeper interface {
 	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState) error
 
 	ListTXNames(ctx context.Context) ([]string, error)
+	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
 
 	AcquireTxOwnership(ctx context.Context, gid string) (bool, error)
 	ReleaseTxOwnership(ctx context.Context, gid string) error
 
 	TXStatus(ctx context.Context, gid string) (TwoPhaseTxState, error)
 	TXCohortShards(ctx context.Context, gid string) ([]string, error)
+
+	RemoveTXData(ctx context.Context, gid string) error
 	ClearTxStatuses(ctx context.Context) error
 }
 

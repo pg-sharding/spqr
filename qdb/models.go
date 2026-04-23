@@ -292,7 +292,8 @@ type TwoPCInfo struct {
 	State TwoPhaseTxState `json:"state"`
 
 	/* ephemeral part of state */
-	Locked bool `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+	Locked    bool      `json:"-"`
 }
 
 func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation, bool) {
@@ -317,4 +318,19 @@ func (d *Distribution) Copy() *Distribution {
 	maps.Copy(retDs.FQNRelations, d.FQNRelations)
 	maps.Copy(retDs.UniqueIndexes, d.UniqueIndexes)
 	return retDs
+}
+
+func TwoPhaseTXStateFromString(status string) (TwoPhaseTxState, error) {
+	switch status {
+	case pgStatePlanned:
+		return TwoPhaseInitState, nil
+	case pgStateCommitting:
+		return TwoPhaseP1, nil
+	case pgStateCommitted:
+		return TwoPhaseP2, nil
+	case pgStateRejected:
+		return TwoPhaseP2Rejected, nil
+	default:
+		return TwoPhaseInitState, fmt.Errorf("unknown tx state: %s", status)
+	}
 }

@@ -2031,12 +2031,27 @@ func (q *MemQDB) ListTXNames(_ context.Context) ([]string, error) {
 	return rt, nil
 }
 
+func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.TwoPhaseTx, nil
+}
+
 func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {
 	return nil
 }
 
 func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return []string{"local"}, nil
+}
+
+func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.TwoPhaseTx, gid)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.TwoPhaseTx, gid))
 }
 
 func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
