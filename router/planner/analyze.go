@@ -132,7 +132,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 			switch q := texpr.SubLink.(type) {
 			case *lyx.AExprList:
 				for _, expr := range q.List {
-					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+					if _, err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
 						return err
 					}
 				}
@@ -173,7 +173,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 				alias, colname := right.TableAlias, right.ColName
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
-				if err := rm.ProcessConstExpr(alias, colname, lft); err != nil {
+				if _, err := rm.ProcessConstExpr(alias, colname, lft); err != nil {
 					return err
 				}
 			}
@@ -189,29 +189,37 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
-				if err := rm.ProcessConstExpr(alias, colname, right); err != nil {
+				if _, err := rm.ProcessConstExpr(alias, colname, right); err != nil {
 					return err
 				}
 
 			case *lyx.ColumnRef:
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(right) {
-					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+
+					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
 						return err
+					} else if ok {
+
+						searchKey := rm.SearckKeyByColRef(right)
+						rm.UsedAuxCTE[searchKey] = struct{}{}
 					}
 				}
 
 				alias, colname := right.TableAlias, right.ColName
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(lft) {
-					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
 						return err
+					} else if ok {
+						searchKey := rm.SearckKeyByColRef(right)
+						rm.UsedAuxCTE[searchKey] = struct{}{}
 					}
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
-					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+					if _, err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
 						return err
 					}
 				}

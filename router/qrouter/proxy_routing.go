@@ -1229,13 +1229,7 @@ func (qr *ProxyQrouter) plannerV1(
 		}
 	}
 
-	/* Postprocessing time. Adjuest multishard select query for aux values case. */
-
-	if sc, ok := p.(*plan.ScatterPlan); ok {
-		if len(rm.AuxValues) != 0 {
-
-		}
-	}
+	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
@@ -1473,7 +1467,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			case *lyx.ResTarget:
 				if rt.Name == distribCols[0] {
 
-					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
+					if _, err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
 						return nil, err
 					}
 

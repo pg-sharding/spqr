@@ -232,22 +232,30 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	return rs, nil
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, expr lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(
+	resolvedRelation *rfqn.RelationFQN,
+	colname string,
+	expr lyx.Node) (bool, error) {
 
 	if rm.RFQNIsCTE(resolvedRelation) {
 		// CTE, skip
-		return nil
+		return false, nil
 	}
 
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
 
 	if off == -1 {
 		// column not from distr key
-		return nil
+		return false, nil
+	}
+
+	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+		// reference relation, skip
+		return false, nil
 	}
 
 	/* simple key-value pair */
-	return rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr)
+	return true, rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr)
 }
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
@@ -262,7 +270,9 @@ func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 	}
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExpr(
+	alias, colname string,
+	expr lyx.Node) (bool, error) {
 	var resolvedRelation *rfqn.RelationFQN
 	var err error
 
@@ -270,10 +280,10 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr l
 
 	if err != nil {
 		// failed to resolve relation, skip column
-		return err
+		return false, err
 	}
 	if resolvedRelation == nil {
-		return nil
+		return false, nil
 	}
 	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
 }

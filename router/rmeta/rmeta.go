@@ -59,7 +59,8 @@ type RoutingMetadataContext struct {
 	Query string
 	Stmt  lyx.Node
 
-	AuxValues map[AuxValuesKey][]lyx.Node
+	AuxValues  map[AuxValuesKey][]lyx.Node
+	UsedAuxCTE map[string]struct{}
 
 	/* Is query proven to be read-only? */
 	ro bool
@@ -100,6 +101,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
+		UsedAuxCTE:                 map[string]struct{}{},
 		SPH:                        sph,
 		CSM:                        csm,
 		Mgr:                        mgr,
@@ -185,11 +187,18 @@ func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col strin
 	return []any{singleVal}, err
 }
 
-func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+func (rm *RoutingMetadataContext) SearckKeyByColRef(cf *lyx.ColumnRef) string {
 	searchKey := cf.TableAlias
 	if fullName, ok := rm.CTEAliases[cf.TableAlias]; ok {
 		searchKey = fullName
 	}
+
+	return searchKey
+}
+
+func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+
+	searchKey := rm.SearckKeyByColRef(cf)
 
 	k := AuxValuesKey{
 		CTEName:   searchKey,
@@ -483,11 +492,6 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 }
 
 func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
-
-	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
-		// reference relation, skip
-		return nil
-	}
 
 	v, err := ParseExprValue(tp, expr)
 	if err != nil {
