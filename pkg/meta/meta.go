@@ -1380,15 +1380,11 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 		tts = &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("shard"),
+			Desc: engine.GetVPHeader("shard", "options"),
 		}
 
 		for _, shard := range shards {
-			tts.Raw = append(tts.Raw,
-				[][]byte{
-					[]byte(shard.ID),
-				},
-			)
+			tts.WriteDataRow(shard.ID, optionsToTuple(shard.Options()))
 		}
 
 	case spqrparser.HostsStr:
@@ -2221,12 +2217,12 @@ func processAlterShard(ctx context.Context,
 	}
 }
 
-func optionsToTuple(opts []topology.GenericOption) []byte {
+func optionsToTuple(opts []topology.GenericOption) string {
 	t := []string{}
 	for _, v := range opts {
 		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
 	}
-	return []byte(fmt.Sprintf("{%s}", strings.Join(t, ",")))
+	return fmt.Sprintf("{%s}", strings.Join(t, ","))
 }
 
 func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector string) (map[string]*tasks.MoveTaskGroup, error) {

@@ -325,7 +325,20 @@ Feature: Proxy console
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [{"shard":"sh1"}, {"shard":"sh2"} ,{"shard":"sh5"}]
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+            },
+            {
+                "shard":"sh5",
+                "options": "{host=spqr_shard_1:6432}"
+            }
+        ]
         """
 
         When I run SQL on host "router-admin"
@@ -341,6 +354,15 @@ Feature: Proxy console
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [{"shard":"sh1"}, {"shard":"sh2"}]
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+            }
+        ]
         """
     
