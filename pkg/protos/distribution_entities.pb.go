@@ -184,6 +184,8 @@ type DistributedRelation struct {
 	ReplicatedRelation bool                    `protobuf:"varint,3,opt,name=ReplicatedRelation,proto3" json:"ReplicatedRelation,omitempty"`
 	SequenceColumns    map[string]string       `protobuf:"bytes,4,rep,name=sequenceColumns,proto3" json:"sequenceColumns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	SchemaName         string                  `protobuf:"bytes,5,opt,name=schema_name,json=schemaName,proto3" json:"schema_name,omitempty"`
+	Version            uint64                  `protobuf:"varint,6,opt,name=version,proto3" json:"version,omitempty"`
+	Acl                []*ACL                  `protobuf:"bytes,7,rep,name=acl,proto3" json:"acl,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -253,6 +255,20 @@ func (x *DistributedRelation) GetSchemaName() string {
 	return ""
 }
 
+func (x *DistributedRelation) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *DistributedRelation) GetAcl() []*ACL {
+	if x != nil {
+		return x.Acl
+	}
+	return nil
+}
+
 type Distribution struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -260,6 +276,8 @@ type Distribution struct {
 	Relations     []*DistributedRelation `protobuf:"bytes,3,rep,name=relations,proto3" json:"relations,omitempty"`
 	UniqueIndexes []*UniqueIndex         `protobuf:"bytes,4,rep,name=uniqueIndexes,proto3" json:"uniqueIndexes,omitempty"`
 	FqnRelations  []*DistributedRelation `protobuf:"bytes,5,rep,name=fqn_relations,json=fqnRelations,proto3" json:"fqn_relations,omitempty"`
+	Version       uint64                 `protobuf:"varint,6,opt,name=version,proto3" json:"version,omitempty"`
+	Acl           []*ACL                 `protobuf:"bytes,7,rep,name=acl,proto3" json:"acl,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -329,6 +347,20 @@ func (x *Distribution) GetFqnRelations() []*DistributedRelation {
 	return nil
 }
 
+func (x *Distribution) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *Distribution) GetAcl() []*ACL {
+	if x != nil {
+		return x.Acl
+	}
+	return nil
+}
+
 type UniqueIndex struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -337,6 +369,8 @@ type UniqueIndex struct {
 	ColType       string                 `protobuf:"bytes,4,opt,name=colType,proto3" json:"colType,omitempty"`
 	Columns       []string               `protobuf:"bytes,5,rep,name=columns,proto3" json:"columns,omitempty"`
 	ColTypes      []string               `protobuf:"bytes,6,rep,name=colTypes,proto3" json:"colTypes,omitempty"`
+	Version       uint64                 `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
+	Acl           []*ACL                 `protobuf:"bytes,8,rep,name=acl,proto3" json:"acl,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -413,11 +447,25 @@ func (x *UniqueIndex) GetColTypes() []string {
 	return nil
 }
 
+func (x *UniqueIndex) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *UniqueIndex) GetAcl() []*ACL {
+	if x != nil {
+		return x.Acl
+	}
+	return nil
+}
+
 var File_protos_distribution_entities_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\n" +
-	"\"protos/distribution_entities.proto\x12\x04spqr\x1a\x1bprotos/qualified_name.proto\"M\n" +
+	"\"protos/distribution_entities.proto\x12\x04spqr\x1a\x1bprotos/qualified_name.proto\x1a\x10protos/acl.proto\"M\n" +
 	"\vTypedColRef\x12\x1e\n" +
 	"\n" +
 	"columnName\x18\x01 \x01(\tR\n" +
@@ -430,30 +478,36 @@ const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\x14DistributionKeyEntry\x12\x16\n" +
 	"\x06column\x18\x01 \x01(\tR\x06column\x12\"\n" +
 	"\fhashFunction\x18\x02 \x01(\tR\fhashFunction\x12%\n" +
-	"\x04Expr\x18\x03 \x01(\v2\x11.spqr.RoutingExprR\x04Expr\"\xde\x02\n" +
+	"\x04Expr\x18\x03 \x01(\v2\x11.spqr.RoutingExprR\x04Expr\"\x95\x03\n" +
 	"\x13DistributedRelation\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12D\n" +
 	"\x0fdistributionKey\x18\x02 \x03(\v2\x1a.spqr.DistributionKeyEntryR\x0fdistributionKey\x12.\n" +
 	"\x12ReplicatedRelation\x18\x03 \x01(\bR\x12ReplicatedRelation\x12X\n" +
 	"\x0fsequenceColumns\x18\x04 \x03(\v2..spqr.DistributedRelation.SequenceColumnsEntryR\x0fsequenceColumns\x12\x1f\n" +
 	"\vschema_name\x18\x05 \x01(\tR\n" +
-	"schemaName\x1aB\n" +
+	"schemaName\x12\x18\n" +
+	"\aversion\x18\x06 \x01(\x04R\aversion\x12\x1b\n" +
+	"\x03acl\x18\a \x03(\v2\t.spqr.ACLR\x03acl\x1aB\n" +
 	"\x14SequenceColumnsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf2\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa9\x02\n" +
 	"\fDistribution\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vColumnTypes\x18\x02 \x03(\tR\vColumnTypes\x127\n" +
 	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\x127\n" +
 	"\runiqueIndexes\x18\x04 \x03(\v2\x11.spqr.UniqueIndexR\runiqueIndexes\x12>\n" +
-	"\rfqn_relations\x18\x05 \x03(\v2\x19.spqr.DistributedRelationR\ffqnRelations\"\xba\x01\n" +
+	"\rfqn_relations\x18\x05 \x03(\v2\x19.spqr.DistributedRelationR\ffqnRelations\x12\x18\n" +
+	"\aversion\x18\x06 \x01(\x04R\aversion\x12\x1b\n" +
+	"\x03acl\x18\a \x03(\v2\t.spqr.ACLR\x03acl\"\xf1\x01\n" +
 	"\vUniqueIndex\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\ttableName\x18\x02 \x01(\v2\x13.spqr.QualifiedNameR\ttableName\x12\x18\n" +
 	"\acolName\x18\x03 \x01(\tR\acolName\x12\x18\n" +
 	"\acolType\x18\x04 \x01(\tR\acolType\x12\x18\n" +
 	"\acolumns\x18\x05 \x03(\tR\acolumns\x12\x1a\n" +
-	"\bcolTypes\x18\x06 \x03(\tR\bcolTypesB\fZ\n" +
+	"\bcolTypes\x18\x06 \x03(\tR\bcolTypes\x12\x18\n" +
+	"\aversion\x18\a \x01(\x04R\aversion\x12\x1b\n" +
+	"\x03acl\x18\b \x03(\v2\t.spqr.ACLR\x03aclB\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (
@@ -477,22 +531,26 @@ var file_protos_distribution_entities_proto_goTypes = []any{
 	(*Distribution)(nil),         // 4: spqr.Distribution
 	(*UniqueIndex)(nil),          // 5: spqr.UniqueIndex
 	nil,                          // 6: spqr.DistributedRelation.SequenceColumnsEntry
-	(*QualifiedName)(nil),        // 7: spqr.QualifiedName
+	(*ACL)(nil),                  // 7: spqr.ACL
+	(*QualifiedName)(nil),        // 8: spqr.QualifiedName
 }
 var file_protos_distribution_entities_proto_depIdxs = []int32{
-	0, // 0: spqr.RoutingExpr.colRefs:type_name -> spqr.TypedColRef
-	1, // 1: spqr.DistributionKeyEntry.Expr:type_name -> spqr.RoutingExpr
-	2, // 2: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
-	6, // 3: spqr.DistributedRelation.sequenceColumns:type_name -> spqr.DistributedRelation.SequenceColumnsEntry
-	3, // 4: spqr.Distribution.relations:type_name -> spqr.DistributedRelation
-	5, // 5: spqr.Distribution.uniqueIndexes:type_name -> spqr.UniqueIndex
-	3, // 6: spqr.Distribution.fqn_relations:type_name -> spqr.DistributedRelation
-	7, // 7: spqr.UniqueIndex.tableName:type_name -> spqr.QualifiedName
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	0,  // 0: spqr.RoutingExpr.colRefs:type_name -> spqr.TypedColRef
+	1,  // 1: spqr.DistributionKeyEntry.Expr:type_name -> spqr.RoutingExpr
+	2,  // 2: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
+	6,  // 3: spqr.DistributedRelation.sequenceColumns:type_name -> spqr.DistributedRelation.SequenceColumnsEntry
+	7,  // 4: spqr.DistributedRelation.acl:type_name -> spqr.ACL
+	3,  // 5: spqr.Distribution.relations:type_name -> spqr.DistributedRelation
+	5,  // 6: spqr.Distribution.uniqueIndexes:type_name -> spqr.UniqueIndex
+	3,  // 7: spqr.Distribution.fqn_relations:type_name -> spqr.DistributedRelation
+	7,  // 8: spqr.Distribution.acl:type_name -> spqr.ACL
+	8,  // 9: spqr.UniqueIndex.tableName:type_name -> spqr.QualifiedName
+	7,  // 10: spqr.UniqueIndex.acl:type_name -> spqr.ACL
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_protos_distribution_entities_proto_init() }
@@ -501,6 +559,7 @@ func file_protos_distribution_entities_proto_init() {
 		return
 	}
 	file_protos_qualified_name_proto_init()
+	file_protos_acl_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

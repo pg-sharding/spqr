@@ -28,6 +28,8 @@ type ReferenceRelation struct {
 	SequenceColumns map[string]string      `protobuf:"bytes,2,rep,name=sequenceColumns,proto3" json:"sequenceColumns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	SchemaVersion   uint64                 `protobuf:"varint,3,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
 	ShardIds        []string               `protobuf:"bytes,4,rep,name=shardIds,proto3" json:"shardIds,omitempty"`
+	Version         uint64                 `protobuf:"varint,5,opt,name=version,proto3" json:"version,omitempty"`
+	Acl             []*ACL                 `protobuf:"bytes,6,rep,name=acl,proto3" json:"acl,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -86,6 +88,20 @@ func (x *ReferenceRelation) GetSchemaVersion() uint64 {
 func (x *ReferenceRelation) GetShardIds() []string {
 	if x != nil {
 		return x.ShardIds
+	}
+	return nil
+}
+
+func (x *ReferenceRelation) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *ReferenceRelation) GetAcl() []*ACL {
+	if x != nil {
+		return x.Acl
 	}
 	return nil
 }
@@ -390,12 +406,14 @@ var File_protos_reference_relation_proto protoreflect.FileDescriptor
 
 const file_protos_reference_relation_proto_rawDesc = "" +
 	"\n" +
-	"\x1fprotos/reference_relation.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\"\xa1\x02\n" +
+	"\x1fprotos/reference_relation.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\x1a\x10protos/acl.proto\"\xd8\x02\n" +
 	"\x11ReferenceRelation\x12-\n" +
 	"\arelName\x18\x01 \x01(\v2\x13.spqr.QualifiedNameR\arelName\x12V\n" +
 	"\x0fsequenceColumns\x18\x02 \x03(\v2,.spqr.ReferenceRelation.SequenceColumnsEntryR\x0fsequenceColumns\x12%\n" +
 	"\x0eschema_version\x18\x03 \x01(\x04R\rschemaVersion\x12\x1a\n" +
-	"\bshardIds\x18\x04 \x03(\tR\bshardIds\x1aB\n" +
+	"\bshardIds\x18\x04 \x03(\tR\bshardIds\x12\x18\n" +
+	"\aversion\x18\x05 \x01(\x04R\aversion\x12\x1b\n" +
+	"\x03acl\x18\x06 \x03(\v2\t.spqr.ACLR\x03acl\x1aB\n" +
 	"\x14SequenceColumnsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"N\n" +
@@ -449,34 +467,36 @@ var file_protos_reference_relation_proto_goTypes = []any{
 	(*AlterReferenceRelationStorageRequest)(nil), // 6: spqr.AlterReferenceRelationStorageRequest
 	nil,                   // 7: spqr.ReferenceRelation.SequenceColumnsEntry
 	(*QualifiedName)(nil), // 8: spqr.QualifiedName
-	(*emptypb.Empty)(nil), // 9: google.protobuf.Empty
+	(*ACL)(nil),           // 9: spqr.ACL
+	(*emptypb.Empty)(nil), // 10: google.protobuf.Empty
 }
 var file_protos_reference_relation_proto_depIdxs = []int32{
 	8,  // 0: spqr.ReferenceRelation.relName:type_name -> spqr.QualifiedName
 	7,  // 1: spqr.ReferenceRelation.sequenceColumns:type_name -> spqr.ReferenceRelation.SequenceColumnsEntry
-	0,  // 2: spqr.CreateReferenceRelationsRequest.relation:type_name -> spqr.ReferenceRelation
-	1,  // 3: spqr.CreateReferenceRelationsRequest.entries:type_name -> spqr.AutoIncrementEntry
-	8,  // 4: spqr.DropReferenceRelationsRequest.relations:type_name -> spqr.QualifiedName
-	0,  // 5: spqr.ListReferenceRelationsReply.relations:type_name -> spqr.ReferenceRelation
-	8,  // 6: spqr.SyncReferenceRelationsRequest.relations:type_name -> spqr.QualifiedName
-	8,  // 7: spqr.AlterReferenceRelationStorageRequest.relation:type_name -> spqr.QualifiedName
-	2,  // 8: spqr.ReferenceRelationsService.CreateReferenceRelations:input_type -> spqr.CreateReferenceRelationsRequest
-	3,  // 9: spqr.ReferenceRelationsService.DropReferenceRelations:input_type -> spqr.DropReferenceRelationsRequest
-	9,  // 10: spqr.ReferenceRelationsService.ListReferenceRelations:input_type -> google.protobuf.Empty
-	6,  // 11: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:input_type -> spqr.AlterReferenceRelationStorageRequest
-	5,  // 12: spqr.ReferenceRelationsService.SyncReferenceRelations:input_type -> spqr.SyncReferenceRelationsRequest
-	6,  // 13: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:input_type -> spqr.AlterReferenceRelationStorageRequest
-	9,  // 14: spqr.ReferenceRelationsService.CreateReferenceRelations:output_type -> google.protobuf.Empty
-	9,  // 15: spqr.ReferenceRelationsService.DropReferenceRelations:output_type -> google.protobuf.Empty
-	4,  // 16: spqr.ReferenceRelationsService.ListReferenceRelations:output_type -> spqr.ListReferenceRelationsReply
-	9,  // 17: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:output_type -> google.protobuf.Empty
-	9,  // 18: spqr.ReferenceRelationsService.SyncReferenceRelations:output_type -> google.protobuf.Empty
-	9,  // 19: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:output_type -> google.protobuf.Empty
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	9,  // 2: spqr.ReferenceRelation.acl:type_name -> spqr.ACL
+	0,  // 3: spqr.CreateReferenceRelationsRequest.relation:type_name -> spqr.ReferenceRelation
+	1,  // 4: spqr.CreateReferenceRelationsRequest.entries:type_name -> spqr.AutoIncrementEntry
+	8,  // 5: spqr.DropReferenceRelationsRequest.relations:type_name -> spqr.QualifiedName
+	0,  // 6: spqr.ListReferenceRelationsReply.relations:type_name -> spqr.ReferenceRelation
+	8,  // 7: spqr.SyncReferenceRelationsRequest.relations:type_name -> spqr.QualifiedName
+	8,  // 8: spqr.AlterReferenceRelationStorageRequest.relation:type_name -> spqr.QualifiedName
+	2,  // 9: spqr.ReferenceRelationsService.CreateReferenceRelations:input_type -> spqr.CreateReferenceRelationsRequest
+	3,  // 10: spqr.ReferenceRelationsService.DropReferenceRelations:input_type -> spqr.DropReferenceRelationsRequest
+	10, // 11: spqr.ReferenceRelationsService.ListReferenceRelations:input_type -> google.protobuf.Empty
+	6,  // 12: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:input_type -> spqr.AlterReferenceRelationStorageRequest
+	5,  // 13: spqr.ReferenceRelationsService.SyncReferenceRelations:input_type -> spqr.SyncReferenceRelationsRequest
+	6,  // 14: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:input_type -> spqr.AlterReferenceRelationStorageRequest
+	10, // 15: spqr.ReferenceRelationsService.CreateReferenceRelations:output_type -> google.protobuf.Empty
+	10, // 16: spqr.ReferenceRelationsService.DropReferenceRelations:output_type -> google.protobuf.Empty
+	4,  // 17: spqr.ReferenceRelationsService.ListReferenceRelations:output_type -> spqr.ListReferenceRelationsReply
+	10, // 18: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:output_type -> google.protobuf.Empty
+	10, // 19: spqr.ReferenceRelationsService.SyncReferenceRelations:output_type -> google.protobuf.Empty
+	10, // 20: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:output_type -> google.protobuf.Empty
+	15, // [15:21] is the sub-list for method output_type
+	9,  // [9:15] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_protos_reference_relation_proto_init() }
@@ -485,6 +505,7 @@ func file_protos_reference_relation_proto_init() {
 		return
 	}
 	file_protos_qualified_name_proto_init()
+	file_protos_acl_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

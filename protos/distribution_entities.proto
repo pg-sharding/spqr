@@ -5,6 +5,7 @@ package spqr;
 option go_package = "spqr/proto";
 
 import "protos/qualified_name.proto";
+import "protos/acl.proto";
 
 message TypedColRef {
   string columnName = 1;
@@ -27,6 +28,9 @@ message DistributedRelation {
   bool ReplicatedRelation = 3;
   map<string, string> sequenceColumns = 4;
   string schema_name = 5;
+
+  uint64 version = 6;
+  repeated ACL acl = 7;
 }
 
 message Distribution {
@@ -35,6 +39,9 @@ message Distribution {
   repeated DistributedRelation relations = 3;
   repeated UniqueIndex uniqueIndexes = 4;
   repeated DistributedRelation fqn_relations = 5;
+
+  uint64 version = 6; 
+  repeated ACL acl = 7;
 }
 
 message UniqueIndex {
@@ -44,4 +51,7 @@ message UniqueIndex {
   string colType = 4;
   repeated string columns = 5;
   repeated string colTypes = 6;
+
+  uint64 version = 7;
+  repeated ACL acl = 8;
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -24,6 +25,9 @@ type DistributionKeyEntry struct {
 	Column       string
 	HashFunction string
 	Expr         RoutingExpr
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 type DistributedRelation struct {
@@ -32,6 +36,9 @@ type DistributedRelation struct {
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
 	UniqueIndexesByColumn map[string]*UniqueIndex
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
@@ -122,7 +129,11 @@ const (
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*UniqueIndex) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Relation: rel.QualifiedName(),
+		Relation:              rel.QualifiedName(),
+		ReplicatedRelation:    rel.ReplicatedRelation,
+		UniqueIndexesByColumn: idxs,
+		Version:               rel.Version,
+		ACL:                   acl.ACLFromDB(rel.ACL),
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -134,9 +145,6 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*Un
 			},
 		})
 	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-	rdistr.UniqueIndexesByColumn = idxs
 
 	return rdistr
 }
@@ -155,6 +163,9 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 		SchemaName:         rel.QualifiedName().SchemaName,
 		DistributionKey:    DistributionKeyToDB(rel.DistributionKey),
 		ReplicatedRelation: rel.ReplicatedRelation,
+
+		Version: rel.Version,
+		ACL:     acl.ACLTODB(rel.ACL),
 	}
 }
 
@@ -199,6 +210,9 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 		SequenceColumns:    rel.ColumnSequenceMapping,
 		DistributionKey:    DistributionKeyToProto(rel.DistributionKey),
 		ReplicatedRelation: rel.ReplicatedRelation,
+
+		Version: rel.Version,
+		Acl:     acl.ACLTOProto(rel.ACL),
 	}
 
 	return rdistr
@@ -267,6 +281,9 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation, idxsByColumns 
 		DistributionKey:       key,
 		ReplicatedRelation:    rel.ReplicatedRelation,
 		UniqueIndexesByColumn: idxsByColumns,
+
+		Version: rel.Version,
+		ACL:     acl.ACLFromProto(rel.Acl),
 	}, nil
 }
 
@@ -386,6 +403,9 @@ type Distribution struct {
 	UniqueIndexesByID map[string]*UniqueIndex
 
 	FQNRelations map[string]*DistributedRelation
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelation {
@@ -434,6 +454,7 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 		FQNRelations:      map[string]*DistributedRelation{},
 		Relations:         map[string]*DistributedRelation{},
 		UniqueIndexesByID: map[string]*UniqueIndex{},
+		ACL:               []acl.ACLItem{},
 	}
 }
 
@@ -471,6 +492,11 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 	for name, val := range distr.FQNRelations {
 		ret.FQNRelations[name] = DistributedRelationFromDB(val, make(map[string]*UniqueIndex))
 	}
+
+	ret.Version = distr.Version
+
+	ret.ACL = acl.ACLFromDB(distr.ACL)
+
 	return ret
 }
 
@@ -535,6 +561,10 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		Relations:         rels,
 		UniqueIndexesByID: idxsById,
 		FQNRelations:      fqn_rels,
+
+		Version: ds.Version,
+
+		ACL: acl.ACLFromProto(ds.Acl),
 	}, nil
 }
 
@@ -564,6 +594,9 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 		Relations:     drels,
 		UniqueIndexes: dsIdxs,
 		FqnRelations:  fqn_rels,
+
+		Version: ds.Version,
+		Acl:     acl.ACLTOProto(ds.ACL),
 	}
 }
 
@@ -582,6 +615,9 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 		Relations:     map[string]*qdb.DistributedRelation{},
 		FQNRelations:  map[string]*qdb.DistributedRelation{},
 		UniqueIndexes: map[string]*qdb.UniqueIndex{},
+
+		Version: ds.Version,
+		ACL:     acl.ACLTODB(ds.ACL),
 	}
 
 	for _, r := range ds.Relations {

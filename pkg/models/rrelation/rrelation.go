@@ -1,6 +1,7 @@
 package rrelation
 
 import (
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -13,6 +14,9 @@ type ReferenceRelation struct {
 	SchemaVersion         uint64
 	ColumnSequenceMapping map[string]string
 	ShardIds              []string
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 type AutoIncrementEntry struct {
@@ -80,6 +84,9 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
 		ShardIds:              p.ShardIds,
+
+		Version: p.Version,
+		ACL:     acl.ACLFromProto(p.Acl),
 	}
 }
 
@@ -89,6 +96,9 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
 		ShardIds:        p.ShardIds,
+
+		Version: p.Version,
+		Acl:     acl.ACLTOProto(p.ACL),
 	}
 }
 
@@ -99,6 +109,9 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,
+
+		Version: p.Version,
+		ACL:     acl.ACLTODB(p.ACL),
 	}
 }
 
@@ -108,5 +121,8 @@ func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,
+
+		Version: p.Version,
+		ACL:     acl.ACLFromDB(p.ACL),
 	}
 }
