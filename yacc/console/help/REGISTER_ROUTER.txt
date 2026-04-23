@@ -1,0 +1,32 @@
+NAME
+    REGISTER ROUTER - Registers a router with the SPQR coordinator.
+
+SYNTAX
+    REGISTER ROUTER <routerID> ADDRESS <address>
+
+    where <routerID> is a unique identifier for the router (unquoted or quoted string)
+    where <address> is the network address in the format '[host]:port'
+
+DESCRIPTION
+    Registers a router with the SPQR coordinator.
+
+    When a router is registered, the coordinator becomes aware of it and can manage
+    it as part of the cluster. After registration, the coordinator automatically
+    synchronizes metadata (shards, key ranges, distributions) to the router.
+
+WARNINGS
+    - This command is not available for installations without SPQR coordinator.
+
+PARAMETERS
+    <routerID> - Unique identifier for the router (e.g., r1 or 'my-router')
+    <address> - Network address of the router in '[host]:port' format (e.g., '[localhost]:6432')
+
+EXAMPLES
+    Register a router on localhost:
+        REGISTER ROUTER r1 ADDRESS '[localhost]:6432';
+    Register a router with a custom address:
+        REGISTER ROUTER r2 ADDRESS '[router-host]:7432';
+
+RELATED COMMANDS
+    UNREGISTER ROUTER
+    SHOW

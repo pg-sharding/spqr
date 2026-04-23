@@ -162,4 +162,3 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `init_sql`             | Path to SQL file that router will execute before the start     | Any valid file path   | (none) |
 | `exit_on_init_sql`     | Whether to exit if the parsing of the SQL file fails           | `true`, `false`       | `false` |
 | `memqdb_backup_path`   | MemQDB backup state path. MemQDB's state restored if a file backup exists during the router startup. If there is no file, init.sql will be used | Any valid file path | (none) |
-| `qdb_max_txn_ops`      | Maximum number of subcommands allowed in a single qdb transaction. Default is 128. coordinator param `etcd_max_txn_ops` is stronger  | Integer value in the range 0–65535 |
