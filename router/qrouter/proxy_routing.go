@@ -1486,19 +1486,14 @@ func (qr *ProxyQrouter) planSplitUpdate(
 					/* len should be one */
 					compositeKey := make([]any, len(r.DistributionKey))
 
-					valList, err := rm.ResolveValue(rqdn, rt.Name, queryParamsFormatCodes)
+					val, err := rm.ResolveValue(rqdn, rt.Name, queryParamsFormatCodes)
 
 					if err != nil {
 						/* Is this ok? */
 						return nil, err
 					}
 
-					if len(valList) != 1 {
-						/* should not happen */
-						return nil, rerrors.ErrComplexQuery
-					}
-
-					compositeKey[0], err = hashfunction.ApplyHashFunction(valList[0], d.ColTypes[0], hf)
+					compositeKey[0], err = hashfunction.ApplyHashFunction(val, d.ColTypes[0], hf)
 
 					if err != nil {
 						return nil, err

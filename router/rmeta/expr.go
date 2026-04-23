@@ -92,7 +92,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 		}
 		col := relation.DistributionKey[lvl].Column
 
-		vals, err := rm.ResolveValue(qname, col, queryParamsFormatCodes)
+		val, err := rm.ResolveValue(qname, col, queryParamsFormatCodes)
 
 		if err != nil {
 			/* Is this ok? */
@@ -101,38 +101,35 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 
 		/* TODO: correct support for composite keys here */
 
-		for _, val := range vals {
+		compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
 
-			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+			return err
+		}
 
+		spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
+
+		if lvl+1 == len(relation.DistributionKey) {
+			currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
 				return err
 			}
 
-			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
+			spqrlog.Zero.Debug().
+				Interface("current route", currroute).
+				Str("table", qname.String()).
+				Msg("calculated route for table/cols")
 
-			if lvl+1 == len(relation.DistributionKey) {
-				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-				if err != nil {
-					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
-					return err
-				}
+			p = plan.Combine(p, &plan.ShardDispatchPlan{
+				ExecTarget:         currroute,
+				TargetSessionAttrs: tsa,
+			})
 
-				spqrlog.Zero.Debug().
-					Interface("current route", currroute).
-					Str("table", qname.String()).
-					Msg("calculated route for table/cols")
-
-				p = plan.Combine(p, &plan.ShardDispatchPlan{
-					ExecTarget:         currroute,
-					TargetSessionAttrs: tsa,
-				})
-
-			} else {
-				if err := rec(lvl + 1); err != nil {
-					return err
-				}
+		} else {
+			if err := rec(lvl + 1); err != nil {
+				return err
 			}
 		}
 
@@ -320,26 +317,23 @@ func (rm *RoutingMetadataContext) ComputeRoutingExpr(
 			return nil
 		}
 
-		vals, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
+		val, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
 		if err != nil {
 			return err
 		}
 
-		for _, v := range vals {
+		lExpr, err := hashfunction.ApplyNonIdentHashFunction(val, rExpr.ColRefs[i].ColType, hf)
+		if err != nil {
+			/* Is this ok? */
+			return err
+		}
 
-			lExpr, err := hashfunction.ApplyNonIdentHashFunction(v, rExpr.ColRefs[i].ColType, hf)
-			if err != nil {
-				/* Is this ok? */
-				return err
-			}
+		buf := hashfunction.EncodeUInt64(uint64(lExpr))
 
-			buf := hashfunction.EncodeUInt64(uint64(lExpr))
+		localAcc := append(acc, buf...)
 
-			localAcc := append(acc, buf...)
-
-			if err := rec(localAcc, i+1); err != nil {
-				return err
-			}
+		if err := rec(localAcc, i+1); err != nil {
+			return err
 		}
 		return nil
 	}
