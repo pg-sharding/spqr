@@ -833,6 +833,37 @@ func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
 }
 
+func (cl *PsqlClient) replySpqrErr(
+	e *spqrerror.SpqrError, s txstatus.TXStatus) error {
+	var clErrMsg string
+
+	if cl.ReplyClientId {
+		clErrMsg = fmt.Sprintf("client %p: error %v", cl, e.Err.Error())
+	} else {
+		clErrMsg = e.Err.Error()
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ErrorResponse{
+			Message:  clErrMsg,
+			Severity: "ERROR",
+			Hint:     e.ErrHint,
+			Detail:   e.ErrDetail,
+			Code:     e.ErrorCode,
+			Position: e.Position,
+			Where:    e.ErrContext,
+		},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(s),
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (cl *PsqlClient) replyErrMsgHint(
 	msg string,
 	code string,
@@ -871,7 +902,7 @@ func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
 		if cl.ec != nil {
 			cl.ec.ReportError(er.ErrorCode)
 		}
-		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, er.Position, s)
+		return cl.replySpqrErr(er, s)
 	default:
 		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, s)
 	}
