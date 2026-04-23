@@ -77,7 +77,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		case nil:
 			/* ok */
 
-			return nil
+			return rst.Client().Flush()
 		case io.ErrUnexpectedEOF:
 			fallthrough
 		case io.EOF:
