@@ -201,6 +201,14 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					}
 				}
 
+				alias, colname := right.TableAlias, right.ColName
+				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
+				for _, v := range rm.AuxExprByColref(lft) {
+					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+						return err
+					}
+				}
+
 			case *lyx.AExprList:
 				for _, expr := range right.List {
 					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
