@@ -356,16 +356,14 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 			"avg_rps",
 			"peak_rps")}
 
-	stats := rps.GetRPSFullSnapshot()
+	stats := rps.GetRPSStats()
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.TotalTcpCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
 		fmt.Sprintf("%v", ci.ActiveTcpCount()),
-		fmt.Sprintf("%d", stats.TotalRequests),
-		fmt.Sprintf("%.2f", stats.CurrentRPS),
-		fmt.Sprintf("%.2f", stats.AvgRPS),
-		fmt.Sprintf("%.2f", stats.PeakRPS))
+		fmt.Sprintf("%d", stats.GetTotalRequests()),
+	)
 
 	return tts
 }
