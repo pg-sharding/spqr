@@ -866,7 +866,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		name     string
 		query    string
 		cteName  string
 		expected plan.Plan
@@ -876,7 +875,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			name:    "simple rewrite",
 			query:   `with vals (i) as (VALUES (1), (300)) INSERT INTO t select i from vals;`,
 			cteName: "vals",
 			shs: []kr.ShardKey{
@@ -906,7 +904,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		},
 
 		{
-			name:    "simple rewrite",
 			query:   `with vals as (VALUES (1), (300)) INSERT INTO t select * from vals;`,
 			cteName: "vals",
 			shs: []kr.ShardKey{
@@ -936,7 +933,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		},
 
 		{
-			name:    "simple rewrite",
 			query:   `with s as (select * from tt), vals (i) as (VALUES (1), (300)) INSERT INTO t select i from vals;`,
 			cteName: "vals",
 			shs: []kr.ShardKey{
@@ -964,18 +960,47 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 			},
 			wantErr: false,
 		},
+
+		{
+			query:   `with vals (i) as (VALUES (1), (300)) select i from vals JOIN t ON t.i = vals.i;`,
+			cteName: "vals",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `with vals (i) as (VALUES (1)) select i from vals JOIN t ON t.i = vals.i;`,
+					"sh2": `with vals (i) as (VALUES (300)) select i from vals JOIN t ON t.i = vals.i;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
 	} {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run("rewrite", func(t *testing.T) {
 			result, err := RewriteDistributedRelWithValues(tt.query, tt.cteName, tt.shs)
 
 			if tt.wantErr && err == nil {
-				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
+				t.Errorf("ModifyQuery expected error, got nil. Plan: %+v", result)
 				return
 			}
 
 			if err != nil {
 				if (err != nil) != tt.wantErr {
-					t.Errorf("ModifyQuery/%s error = %v", tt.name, err)
+					t.Errorf("ModifyQuery error = %v", err)
 				}
 				return
 			}
