@@ -54,6 +54,17 @@ SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE WHERE b = 1;
 -- catalog JOIN routing. XXX: make it deterministic and support.
 -- SELECT t.oid, typarray FROM pg_type t JOIN pg_namespace ns ON typnamespace = ns.oid WHERE typname = 'hstore';
 
+
+--with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on v.i = t.id;
+--with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on v.i = t.id;
+with v (i) as (values(10), (20), (25)) select * from v join xjoin t on v.i = t.id;
+
+--with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
+--with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on t.id = v.i;
+with v (i) as (values(10), (20), (25)) select * from v join xjoin t on t.id = v.i;
+
+with v (i) as (values(10), (20), (25)), z as (select * from v join xjoin t on v.i = t.id) SELECT * FROM z;
+
 DROP TABLE xjoin;
 DROP TABLE yjoin;
 DROP TABLE zjoin;
