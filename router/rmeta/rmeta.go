@@ -159,7 +159,7 @@ func (rm *RoutingMetadataContext) ResolveTypedParamRef(paramResCodes []int16, in
 	return plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
 }
 
-func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
+func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) (any, error) {
 	/* explicit assignment in query */
 	if vals, ok := rm.Exprs[*rfqn][col]; ok {
 		return vals, nil
@@ -182,7 +182,7 @@ func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col strin
 
 	singleVal, err := rm.ResolveTypedParamRef(paramResCodes, ind, tp)
 
-	return []any{singleVal}, err
+	return singleVal, err
 }
 
 func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
