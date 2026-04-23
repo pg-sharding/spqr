@@ -187,7 +187,7 @@ func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col strin
 	return []any{singleVal}, err
 }
 
-func (rm *RoutingMetadataContext) SearckKeyByColRef(cf *lyx.ColumnRef) string {
+func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) string {
 	searchKey := cf.TableAlias
 	if fullName, ok := rm.CTEAliases[cf.TableAlias]; ok {
 		searchKey = fullName
@@ -198,7 +198,7 @@ func (rm *RoutingMetadataContext) SearckKeyByColRef(cf *lyx.ColumnRef) string {
 
 func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
 
-	searchKey := rm.SearckKeyByColRef(cf)
+	searchKey := rm.SearchKeyByColRef(cf)
 
 	k := AuxValuesKey{
 		CTEName:   searchKey,

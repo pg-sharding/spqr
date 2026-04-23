@@ -201,7 +201,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 						return err
 					} else if ok {
 
-						searchKey := rm.SearckKeyByColRef(right)
+						searchKey := rm.SearchKeyByColRef(right)
 						rm.UsedAuxCTE[searchKey] = struct{}{}
 					}
 				}
@@ -212,7 +212,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
 						return err
 					} else if ok {
-						searchKey := rm.SearckKeyByColRef(right)
+						searchKey := rm.SearchKeyByColRef(right)
 						rm.UsedAuxCTE[searchKey] = struct{}{}
 					}
 				}
