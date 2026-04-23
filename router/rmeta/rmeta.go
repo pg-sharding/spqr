@@ -484,11 +484,6 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 
 func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
 
-	if rm.RFQNIsCTE(resolvedRelation) {
-		// CTE, skip
-		return nil
-	}
-
 	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
 		// reference relation, skip
 		return nil

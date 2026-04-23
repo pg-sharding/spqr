@@ -1229,6 +1229,14 @@ func (qr *ProxyQrouter) plannerV1(
 		}
 	}
 
+	/* Postprocessing time. Adjuest multishard select query for aux values case. */
+
+	if sc, ok := p.(*plan.ScatterPlan); ok {
+		if len(rm.AuxValues) != 0 {
+
+		}
+	}
+
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 

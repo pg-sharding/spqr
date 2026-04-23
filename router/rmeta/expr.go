@@ -234,6 +234,11 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 
 func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, expr lyx.Node) error {
 
+	if rm.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return nil
+	}
+
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
 
 	if off == -1 {
@@ -242,11 +247,7 @@ func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.
 	}
 
 	/* simple key-value pair */
-	if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-		return err
-	}
-
-	return nil
+	return rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr)
 }
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
