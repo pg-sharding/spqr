@@ -105,6 +105,8 @@ type RelayStateImpl struct {
 	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
+	WaitSync bool
+
 	parseCache map[string]ParseCacheEntry
 	savedRM    map[string]*rmeta.RoutingMetadataContext
 
@@ -147,6 +149,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		parseCache:          map[string]ParseCacheEntry{},
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
+		WaitSync:            false,
 	}
 }
 
@@ -442,8 +445,6 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	}
 
 	rst.QueryExecutor().Reset()
-
-	rst.QueryExecutor().ActiveShardsReset()
 
 	return nil
 }
@@ -983,6 +984,7 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 
 func (rst *RelayStateImpl) PipelineCleanup() {
 	rst.bindQueryPlan = nil
+	rst.WaitSync = false
 }
 
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
@@ -1062,6 +1064,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Int("xBuf", len(rst.xBuf)).
+		Bool("wait sync", rst.WaitSync).
 		Msg("process extended buffer")
 
 	defer func() {
@@ -1069,12 +1072,17 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		rst.xBuf = nil
 	}()
 
+	if rst.WaitSync {
+		return nil
+	}
+
 	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 		return errAbortedTx
 	}
 
 	for _, msg := range rst.xBuf {
 		if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+			rst.WaitSync = true
 			return err
 		}
 	}

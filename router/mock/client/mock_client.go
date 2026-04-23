@@ -808,20 +808,6 @@ func (mr *MockRouterClientMockRecorder) ReplyErr(errmsg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErr", reflect.TypeOf((*MockRouterClient)(nil).ReplyErr), errmsg)
 }
 
-// ReplyErrMsg mocks base method.
-func (m *MockRouterClient) ReplyErrMsg(e, c string, p int32, s txstatus.TXStatus) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c, p, s)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ReplyErrMsg indicates an expected call of ReplyErrMsg.
-func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c, p, s any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c, p, s)
-}
-
 // ReplyErrMsgByCode mocks base method.
 func (m *MockRouterClient) ReplyErrMsgByCode(code string) error {
 	m.ctrl.T.Helper()
@@ -834,6 +820,20 @@ func (m *MockRouterClient) ReplyErrMsgByCode(code string) error {
 func (mr *MockRouterClientMockRecorder) ReplyErrMsgByCode(code any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsgByCode", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsgByCode), code)
+}
+
+// ReplyErrMsgPure mocks base method.
+func (m *MockRouterClient) ReplyErrMsgPure(errmsg error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyErrMsgPure", errmsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyErrMsgPure indicates an expected call of ReplyErrMsgPure.
+func (mr *MockRouterClientMockRecorder) ReplyErrMsgPure(errmsg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsgPure", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsgPure), errmsg)
 }
 
 // ReplyErrWithTxStatus mocks base method.
