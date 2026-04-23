@@ -238,7 +238,10 @@ func processDrop(ctx context.Context,
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.ListRelations()) != 0 && !isCascade {
-					return nil, spqrerror.NewWithHint(spqrerror.SPQR_INVALID_REQUEST, fmt.Sprintf("cannot drop distribution %s because there are relations attached to it", ds.Id), "HINT: Use DROP ... CASCADE to detach relations automatically.")
+					return nil,
+						spqrerror.
+							Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it", ds.Id).
+							Hint("Use DROP ... CASCADE to detach relations automatically.")
 				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
