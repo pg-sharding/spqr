@@ -454,6 +454,7 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 		FQNRelations:      map[string]*DistributedRelation{},
 		Relations:         map[string]*DistributedRelation{},
 		UniqueIndexesByID: map[string]*UniqueIndex{},
+		ACL:               []acl.ACLItem{},
 	}
 }
 

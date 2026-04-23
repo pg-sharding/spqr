@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -293,6 +294,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 			ShardIds:              []string{"sh1", "sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
+			ACL:                   []acl.ACLItem{},
 		}
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)
@@ -330,6 +332,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 			ShardIds:              []string{"sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
+			ACL:                   []acl.ACLItem{},
 		}
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)

@@ -10,6 +10,8 @@ addprinc
 adipiscing
 adminpassword
 AExpr
+ACLTO
+ACLTODB
 afe
 aliasname
 aliqua
@@ -409,6 +411,7 @@ postgresql
 ppp
 pppp
 prepstatement
+privs
 procps
 proident
 protobuf
