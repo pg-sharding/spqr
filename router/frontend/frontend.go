@@ -51,7 +51,6 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 			}
 		} else {
 			if rerr := rst.ResetWithError(err); rerr != nil {
-				rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 				return rerr
 			}
 		}
@@ -90,10 +89,6 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 				Msg("client iteration done with error")
 
 			/* try to report error to user  */
-			if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
-				rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
-			}
-
 			if rerr := rst.Reset(); rerr != nil {
 				return rerr
 			}
