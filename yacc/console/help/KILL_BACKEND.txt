@@ -1,0 +1,21 @@
+NAME
+    KILL BACKEND - Cancels a backend (shard) connection by its numeric ID.
+
+SYNTAX
+    KILL BACKEND <backend_id>
+
+DESCRIPTION
+    Cancels a backend (shard) connection by its numeric ID.
+
+    Use SHOW BACKEND_CONNECTIONS to find backend IDs.
+
+PARAMETERS
+    <backend_id> - Numeric identifier of the backend connection to cancel
+
+EXAMPLES
+    Cancel a backend connection:
+        KILL BACKEND 17;
+
+RELATED COMMANDS
+    KILL CLIENT
+    SHOW

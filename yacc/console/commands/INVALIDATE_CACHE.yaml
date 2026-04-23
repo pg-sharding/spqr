@@ -1,0 +1,18 @@
+name: INVALIDATE CACHE
+snippet: admin_commands
+order: 3
+description: |
+  Invalidates the router's schema cache, forcing it to be rebuilt on the
+  next query.
+
+syntax: |
+  INVALIDATE CACHE
+  INVALIDATE SCHEMA CACHE
+
+examples:
+  - description: Invalidate the schema cache
+    code: INVALIDATE CACHE;
+
+related_commands:
+  - INVALIDATE BACKENDS
+  - INVALIDATE STALE CLIENTS

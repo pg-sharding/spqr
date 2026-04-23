@@ -1,0 +1,16 @@
+name: INVALIDATE STALE CLIENTS
+snippet: admin_commands
+order: 5
+description: |
+  Identifies clients with dead TCP connections and signals them to close.
+
+syntax: |
+  INVALIDATE STALE CLIENTS
+
+examples:
+  - description: Clean up stale client connections
+    code: INVALIDATE STALE CLIENTS;
+
+related_commands:
+  - INVALIDATE CACHE
+  - INVALIDATE BACKENDS
