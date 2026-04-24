@@ -6400,7 +6400,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 			CheckCode: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
-					Name:  "err_test_1",
+					Name:  "err_test_2",
 					Query: "SELECT 1",
 				},
 				&pgproto3.Bind{
