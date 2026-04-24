@@ -20,13 +20,13 @@ func virtualParamTransformName(name string) string {
 }
 
 func DispatchSlice(qd *QueryDesc,
-	P plan.Plan, cl client.RouterClient, replyCl bool) error {
+	p plan.Plan, cl client.RouterClient, replyCl bool) error {
 
 	serv := cl.Server()
 
 	shkey := server.ServerShkeys(serv)
 
-	if P == nil {
+	if p == nil {
 
 		if qd.simple {
 			if err := serv.Send(qd.Msg); err != nil {
@@ -49,7 +49,7 @@ func DispatchSlice(qd *QueryDesc,
 		}
 
 	} else {
-		et := P.ExecutionTargets()
+		et := p.ExecutionTargets()
 
 		if len(et) == 0 {
 
@@ -82,7 +82,7 @@ func DispatchSlice(qd *QueryDesc,
 					* This is only execution patch for non-top level slice
 					 */
 
-					if ovMsg := P.GetGangMemberMsg(targ); ovMsg != "" {
+					if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
 						/* Uh, oh, this is very ugly hack */
 
 						if err := serv.SendShard(&pgproto3.Query{

@@ -763,7 +763,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan, _ bool) error {
+func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan, _ bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
@@ -775,21 +775,21 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 
 	implicitTx := false
 
-	if P != nil {
+	if p != nil {
 
-		stmt := P.Stmt()
+		stmt := p.Stmt()
 
 		serv := s.Client().Server()
 
 		if serv == nil {
 			/* serv == nil only if plan is purely virtual */
 
-			_, ok := P.(*plan.VirtualPlan)
+			_, ok := p.(*plan.VirtualPlan)
 			if !ok {
 				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 			}
 
-			if P.Subplan() != nil {
+			if p.Subplan() != nil {
 				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 			}
 		}
@@ -807,7 +807,7 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 				}
 			}
 		}
-		if P.Subplan() != nil {
+		if p.Subplan() != nil {
 			if serv.TxStatus() == txstatus.TXIDLE {
 				implicitTx = true
 			}

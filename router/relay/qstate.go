@@ -610,26 +610,26 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 	case *lyx.ExecuteStmt:
 		if AdvancedPoolModeNeeded(rst) {
 
-			var Params [][]byte
-			var ParameterFormatCodes []int16
-			var ResultFormatCodes []int16
+			var params [][]byte
+			var parameterFormatCodes []int16
+			var resultFormatCodes []int16
 
 			for _, p := range st.Params {
 				switch q := p.(type) {
 				case *lyx.AExprSConst:
-					Params = append(Params, []byte(q.Value))
+					params = append(params, []byte(q.Value))
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
-				ParameterFormatCodes = append(ParameterFormatCodes, xproto.FormatCodeText)
-				ResultFormatCodes = append(ResultFormatCodes, xproto.FormatCodeText)
+				parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
+				resultFormatCodes = append(resultFormatCodes, xproto.FormatCodeText)
 			}
 
 			if err := rst.BindPrepared(context.TODO(),
 				st.Name /* unnamed portal */, "",
-				Params,
-				ParameterFormatCodes,
-				ResultFormatCodes); err != nil {
+				params,
+				parameterFormatCodes,
+				resultFormatCodes); err != nil {
 				return nil, err
 			}
 
