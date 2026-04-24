@@ -2998,7 +2998,6 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context, relat
 		if err != nil {
 			return err
 		}
-
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("create reference relation response")

@@ -408,12 +408,23 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 			/* ???? */
 			continue
 		}
-		o := opt.(*lyx.Option)
+		o, ok := opt.(*lyx.Option)
+		if !ok {
+			continue
+		}
 		if strings.ToLower(o.Name) == "delimiter" {
-			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
+			arg, ok := o.Arg.(*lyx.AExprSConst)
+			if !ok {
+				return nil, fmt.Errorf("unsupported COPY option arg type %T", o.Arg)
+			}
+			delimiter = arg.Value[0]
 		}
 		if strings.ToLower(o.Name) == "format" {
-			if o.Arg.(*lyx.AExprSConst).Value == "csv" {
+			arg, ok := o.Arg.(*lyx.AExprSConst)
+			if !ok {
+				return nil, fmt.Errorf("unsupported COPY option arg type %T", o.Arg)
+			}
+			if arg.Value == "csv" {
 				delimiter = ','
 			}
 		}

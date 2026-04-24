@@ -10,7 +10,7 @@ linters:
          - name: add-constant
            disabled: true
          - name: line-length-limit
-           arguments: [120]
+           disabled: true
          - name: package-comments
            disabled: true
          - name: cognitive-complexity

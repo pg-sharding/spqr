@@ -37,7 +37,11 @@ func (c *SchemaCache) GetColumns(db string, rel *rfqn.RelationFQN) ([]string, er
 	}
 
 	if v, ok := c.tableColumnsCache.Load(rel.String()); ok {
-		return v.([]string), nil
+		columns, ok := v.([]string)
+		if ok {
+			return columns, nil
+		}
+		// Cache miss - treat as if not found and proceed to fetch
 	}
 
 	conn, err := c.pool.Connection(db)

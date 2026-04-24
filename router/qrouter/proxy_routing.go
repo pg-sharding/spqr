@@ -1303,8 +1303,11 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 					return nil, err
 				}
 
-				/* Assert here? */
-				relation = sVal.(string)
+				val, ok := sVal.(string)
+				if !ok {
+					return nil, rerrors.ErrComplexQuery
+				}
+				relation = val
 
 			case *lyx.AExprSConst:
 				relation = v.Value

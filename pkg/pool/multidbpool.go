@@ -51,10 +51,15 @@ func (p *MultiDBPool) Discard(conn shard.ShardHostInstance) error {
 
 	pool, ok := p.dbs.Load(conn.DB())
 	if !ok {
-		panic(fmt.Sprintf("db %s not found in pool", conn.DB()))
+		return fmt.Errorf("db %s not found in pool", conn.DB())
 	}
 
-	return pool.(*DBPool).Discard(conn)
+	dbPool, ok := pool.(*DBPool)
+	if !ok {
+		return fmt.Errorf("unexpected pool type %T for db %s", pool, conn.DB())
+	}
+
+	return dbPool.Discard(conn)
 }
 
 func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
@@ -76,7 +81,11 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 		p.dbs.Store(db, newPool)
 		pool = newPool
 	} else {
-		pool = poolElement.(*DBPool)
+		dbPool, ok := poolElement.(*DBPool)
+		if !ok {
+			return nil, fmt.Errorf("unexpected pool type %T", poolElement)
+		}
+		pool = dbPool
 	}
 
 	// get random host from random shard
