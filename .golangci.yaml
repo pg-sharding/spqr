@@ -9,6 +9,7 @@ linters:
       rules:
         - name: unused-parameter
         - name: unexported-naming
+        - name: var-naming
   exclusions:
     paths:
       - yacc/console/lex.go
