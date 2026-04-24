@@ -79,12 +79,12 @@ $$
 language plpgsql;`, spqrTransferApplicationName, config.CoordinatorConfig().DataMoveAwaitPIDException)
 }
 
-func checkColumnExistsQuery(relation *rfqn.RelationFQN, colName string) string {
+func checkColumnExistsQuery(relationFQN *rfqn.RelationFQN, colName string) string {
 	return fmt.Sprintf(`
 	SELECT
 		count(*) > 0 as column_exists
 	FROM information_schema.columns
-	WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, strings.ToLower(relation.RelationName), strings.ToLower(relation.GetSchema()), colName)
+	WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, strings.ToLower(relationFQN.RelationName), strings.ToLower(relationFQN.GetSchema()), colName)
 }
 
 func checkConstraintsQuery(dsRelOids, rpRelsClause string) string {

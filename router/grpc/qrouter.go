@@ -223,8 +223,8 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
-	for _, relName := range request.GetRelNames() {
-		qualifiedName := &rfqn.RelationFQN{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
+	for _, relationFQN := range request.GetRelNames() {
+		qualifiedName := &rfqn.RelationFQN{RelationName: relationFQN.RelationName, SchemaName: relationFQN.SchemaName}
 		if err := l.mgr.AlterDistributionDetach(ctx, request.GetId(), qualifiedName); err != nil {
 			return nil, err
 		}
@@ -235,13 +235,13 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	rfqn := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
+	relationFQN := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
 
-	ds, err := l.mgr.GetRelationDistribution(ctx, rfqn)
+	ds, err := l.mgr.GetRelationDistribution(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.TryGetRelation(rfqn)
+	curRel, ok := ds.TryGetRelation(relationFQN)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
 	}

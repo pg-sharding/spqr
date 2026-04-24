@@ -131,11 +131,11 @@ func processDrop(ctx context.Context,
 		}
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
-		relName := &rfqn.RelationFQN{
+		relationFQN := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
 
-		seqs, err := mngr.ListRelationSequences(ctx, relName)
+		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +145,7 @@ func processDrop(ctx context.Context,
 			}
 		}
 
-		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
+		if err := mngr.DropReferenceRelation(ctx, relationFQN); err != nil {
 			return nil, err
 		}
 
@@ -850,19 +850,19 @@ func processAlterDistribution(ctx context.Context,
 // - astmt (spqrparser.Statement): The alter relation statement to be processed.
 // - mngr (EntityMgr): The entity manager for performing the operation.
 // - dsId (string): ID of the distribution, to which the relation belongs.
-// - relName (string): the name of the relation to alter.
+// - relationFQN (string): the name of the relation to alter.
 //
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
-func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationName *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationFQN *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
-		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationName, stmt.SchemaName); err != nil {
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationFQN, stmt.SchemaName); err != nil {
 			return nil, err
 		}
 
-		nRelationName := relationName
+		nRelationName := relationFQN
 		nRelationName.SchemaName = stmt.SchemaName
 
 		tts := &tupleslot.TupleTableSlot{
@@ -884,7 +884,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
 			return nil, err
 		}
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationFQN, newKey); err != nil {
 			return nil, err
 		}
 
@@ -896,7 +896,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationFQN.String()),
 				},
 			},
 		}
@@ -907,10 +907,10 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err != nil {
 			return nil, err
 		}
-		rel := ds.GetRelation(relationName)
+		rel := ds.GetRelation(relationFQN)
 		if rel == nil {
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
-				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
+				"relation \"%s\" is not attached to distribution \"%s\"", relationFQN.String(), dsId)
 		}
 		newKey, err := rel.RenameKeyColumn(stmt.OldName, stmt.NewName)
 		if err != nil {
@@ -919,7 +919,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
 			return nil, err
 		}
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationFQN, newKey); err != nil {
 			return nil, err
 		}
 
@@ -930,7 +930,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 					fmt.Appendf(nil, "distribution id -> %s", dsId),
 				},
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationFQN.String()),
 				},
 				{
 					fmt.Appendf(nil, "renamed column  -> %s to %s", stmt.OldName, stmt.NewName),

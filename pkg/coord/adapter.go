@@ -97,8 +97,8 @@ func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 		return nil, spqrerror.CleanGrpcError(err)
 	}
 	result := make([]*rfqn.RelationFQN, 0, len(resp.GetRelNames()))
-	for _, relName := range resp.GetRelNames() {
-		result = append(result, rfqn.RelationFQNFromProto(relName))
+	for _, relationFQN := range resp.GetRelNames() {
+		result = append(result, rfqn.RelationFQNFromProto(relationFQN))
 	}
 	return result, nil
 }
@@ -114,10 +114,10 @@ func (a *Adapter) AlterReferenceRelationStorage(_ context.Context, _ *rfqn.Relat
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
-func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
-		Relation: rfqn.RelationFQNToProto(relName),
+		Relation: rfqn.RelationFQNToProto(relationFQN),
 		ShardIds: shs,
 	})
 	return err
@@ -134,12 +134,12 @@ func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.Refe
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+func (a *Adapter) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
 	/* XXX: fix protos to new schema */
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
 		Relations: []*proto.QualifiedName{
-			rfqn.RelationFQNToProto(relName),
+			rfqn.RelationFQNToProto(relationFQN),
 		},
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -875,16 +875,16 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution of the relation.
-// - relName (string): The name of the relation.
+// - relationFQN (string): The name of the relation.
 // - schemaName (string): the new schema name for the relation.
 //
 // Returns:
 // - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
+func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, schemaName string) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 		Id:           id,
-		RelationName: relationName.RelationName,
+		RelationName: relationFQN.RelationName,
 		SchemaName:   schemaName,
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -895,16 +895,16 @@ func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string,
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution of the relation.
-// - relName (string): The name of the relation.
+// - relationFQN (string): The name of the relation.
 // - distributionKey ([]distributions.DistributionKeyEntry): the new distribution key for the relation.
 //
 // Returns:
 // - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
 		Id:              id,
-		RelationName:    relationName.RelationName,
+		RelationName:    relationFQN.RelationName,
 		DistributionKey: distributions.DistributionKeyToProto(distributionKey),
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -915,15 +915,15 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution to detach from.
-// - relName (*rfqn.RelationFQN): The qualified name of the relation to detach.
+// - relationFQN (*rfqn.RelationFQN): The qualified name of the relation to detach.
 //
 // Returns:
 // - error: An error if the detachment fails, otherwise nil.
-func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 		Id:       id,
-		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
+		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relationFQN)},
 	})
 
 	return spqrerror.CleanGrpcError(err)
@@ -957,16 +957,16 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - relationName (string): The ID of the relation (type: string).
+// - relationFQN (string): Relation Fully Qualified Name
 //
 // Returns:
 // - *distributions.Distribution: The retrieved distribution related to the relation.
 // - error: An error if the retrieval of the distribution fails, otherwise nil.
-func (a *Adapter) GetRelationDistribution(ctx context.Context, relationName *rfqn.RelationFQN) (*distributions.Distribution, error) {
+func (a *Adapter) GetRelationDistribution(ctx context.Context, relationFQN *rfqn.RelationFQN) (*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.GetRelationDistribution(ctx, &proto.GetRelationDistributionRequest{
-		Name:       relationName.RelationName,
-		SchemaName: relationName.SchemaName,
+		Name:       relationFQN.RelationName,
+		SchemaName: relationFQN.SchemaName,
 	})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
@@ -1330,11 +1330,11 @@ func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return resp.Value, nil
 }
 
-func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
+func (a *Adapter) ListRelationSequences(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]string, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.ListRelationSequences(ctx, &proto.ListRelationSequencesRequest{
-		Name:       relName.RelationName,
-		SchemaName: relName.SchemaName,
+		Name:       relationFQN.RelationName,
+		SchemaName: relationFQN.SchemaName,
 	})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
@@ -1343,10 +1343,10 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 	return resp.ColumnSequences, nil
 }
 
-func (a *Adapter) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+func (a *Adapter) AlterSequenceDetachRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterSequenceDetachRelation(ctx, &proto.AlterSequenceDetachRelationRequest{
-		RelationName: rfqn.RelationFQNToProto(rel),
+		RelationName: rfqn.RelationFQNToProto(relationFQN),
 	})
 	if err != nil {
 		return spqrerror.CleanGrpcError(err)
@@ -1439,9 +1439,9 @@ func (a *Adapter) ListUniqueIndexes(ctx context.Context) (map[string]*distributi
 }
 
 // ListDistributionIndexes implements meta.EntityMgr.
-func (a *Adapter) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+func (a *Adapter) ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
-	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: /* fix that */ relName.RelationName})
+	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: /* fix that */ relationFQN.RelationName})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}

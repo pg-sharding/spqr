@@ -44,8 +44,8 @@ func (lc *Coordinator) StartupFinished() bool {
 }
 
 // AlterReferenceRelationStorage alters shards, on which reference relation is contained.
-func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
-	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
+func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
+	return lc.qdb.AlterReferenceRelationStorage(ctx, relationFQN, shs)
 }
 
 // AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
@@ -54,8 +54,8 @@ func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, 
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	for _, qualName := range relNames {
+func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQN []*rfqn.RelationFQN, destShard string) error {
+	for _, qualName := range relationFQN {
 		rel, err := lc.GetReferenceRelation(ctx, qualName)
 		if err != nil {
 			return err
@@ -291,12 +291,12 @@ func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
-func (lc *Coordinator) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
-	err := lc.qdb.DropReferenceRelation(ctx, relName)
+func (lc *Coordinator) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
+	err := lc.qdb.DropReferenceRelation(ctx, relationFQN)
 	if err != nil {
 		return err
 	}
-	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, relName)
+	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, relationFQN)
 }
 
 // DropSequence implements meta.EntityMgr.
@@ -618,8 +618,8 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 
 // GetReference relations retrieves info about ref relation from QDB
 // TODO: unit tests
-func (lc *Coordinator) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	ret, err := lc.qdb.GetReferenceRelation(ctx, relName)
+func (lc *Coordinator) GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+	ret, err := lc.qdb.GetReferenceRelation(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}
@@ -879,11 +879,11 @@ func (lc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	for _, ds := range distrs {
 		ret := distributions.DistributionFromDB(ds)
 		for relName := range ds.Relations {
-			qualifiedName, err := rfqn.ParseFQN(relName)
+			relationFQN, err := rfqn.ParseFQN(relName)
 			if err != nil {
 				return nil, err
 			}
-			mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
+			mapping, err := lc.qdb.GetRelationSequence(ctx, relationFQN)
 			if err != nil {
 				return nil, err
 			}
@@ -928,23 +928,23 @@ func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 // - id (string): the ID of the distribution to be altered.
-// - relName (string): the name of the distributed relation to be detached.
+// - relationFQN (string): the name of the distributed relation to be detached.
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (lc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+func (lc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
 	ds, err := lc.GetDistribution(ctx, id)
 	if err != nil {
 		return err
 	}
-	rel, ok := ds.Relations[relName.RelationName]
+	rel, ok := ds.Relations[relationFQN.RelationName]
 	if !ok {
-		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.Id)
+		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relationFQN.RelationName, ds.Id)
 	}
 	if len(rel.UniqueIndexesByColumn) > 0 {
-		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relName.RelationName)
+		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relationFQN.RelationName)
 	}
-	return lc.qdb.AlterDistributionDetach(ctx, id, relName)
+	return lc.qdb.AlterDistributionDetach(ctx, id, relationFQN)
 }
 
 // ShareKeyRange shares a key range with the LocalCoordinator.
@@ -1408,8 +1408,8 @@ func (lc *Coordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distr
 }
 
 // ListRelationIndexes implements meta.EntityMgr.
-func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
-	idxs, err := lc.qdb.ListRelationIndexes(ctx, relName)
+func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListRelationIndexes(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}

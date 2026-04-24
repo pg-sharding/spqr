@@ -2825,9 +2825,9 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 		return err
 	}
 
-	rfqns := []*rfqn.RelationFQN{r.RelationName}
+	relationFQNs := []*rfqn.RelationFQN{r.RelationName}
 	go func() {
-		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard([]*rfqn.RelationFQN{}, rfqns)); err != nil {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard([]*rfqn.RelationFQN{}, relationFQNs)); err != nil {
 			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
 		}
 	}()
@@ -2850,17 +2850,17 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 	})
 }
 
-func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	if err := qc.Coordinator.SyncReferenceRelations(ctx, relNames, destShard); err != nil {
+func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relationFQNs []*rfqn.RelationFQN, destShard string) error {
+	if err := qc.Coordinator.SyncReferenceRelations(ctx, relationFQNs, destShard); err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
 
-		for _, relName := range relNames {
+		for _, relationFQN := range relationFQNs {
 
-			rel, err := qc.GetReferenceRelation(ctx, relName)
+			rel, err := qc.GetReferenceRelation(ctx, relationFQN)
 
 			if err != nil {
 				return err
@@ -2868,7 +2868,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 
 			resp, err := cl.AlterReferenceRelationStorage(ctx,
 				&proto.AlterReferenceRelationStorageRequest{
-					Relation: rfqn.RelationFQNToProto(relName),
+					Relation: rfqn.RelationFQNToProto(relationFQN),
 					ShardIds: rel.ShardIds,
 				})
 			if err != nil {
@@ -2886,8 +2886,8 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
-func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
-	rel, err := qc.GetReferenceRelation(ctx, relName)
+func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
+	rel, err := qc.GetReferenceRelation(ctx, relationFQN)
 	if err != nil {
 		return err
 	}
@@ -2907,13 +2907,13 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 
 	if len(shardsIntersect) < len(rel.ShardIds) {
 		// We need to drop shards
-		if err := qc.db.AlterReferenceRelationStorage(ctx, relName, shardsIntersect); err != nil {
+		if err := qc.db.AlterReferenceRelationStorage(ctx, relationFQN, shardsIntersect); err != nil {
 			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
 		}
 		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 			c := proto.NewReferenceRelationsServiceClient(cc)
 			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
-				Relation: rfqn.RelationFQNToProto(relName),
+				Relation: rfqn.RelationFQNToProto(relationFQN),
 				ShardIds: shardsIntersect,
 			})
 			return err
@@ -2922,7 +2922,7 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 		}
 	}
 
-	rels := []*rfqn.RelationFQN{relName}
+	rels := []*rfqn.RelationFQN{relationFQN}
 	for _, sh := range shardsToAdd {
 		if err := qc.SyncReferenceRelations(ctx, rels, sh); err != nil {
 			return fmt.Errorf("failed to alter reference relation storage: failed to sync relation on shard \"%s\": %s", sh, err)
@@ -2932,9 +2932,8 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 }
 
 // TODO: unit tests
-func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
-	relName *rfqn.RelationFQN) error {
-	if err := qc.Coordinator.DropReferenceRelation(ctx, relName); err != nil {
+func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
+	if err := qc.Coordinator.DropReferenceRelation(ctx, relationFQN); err != nil {
 		return err
 	}
 
@@ -2942,7 +2941,7 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 		cl := proto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.DropReferenceRelations(ctx,
 			&proto.DropReferenceRelationsRequest{
-				Relations: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
+				Relations: []*proto.QualifiedName{rfqn.RelationFQNToProto(relationFQN)},
 			})
 		if err != nil {
 			return err
@@ -2991,12 +2990,12 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 		return err
 	}
 
-	rfqns := make([]*rfqn.RelationFQN, len(rels))
+	relationFQNs := make([]*rfqn.RelationFQN, len(rels))
 	for i, rel := range rels {
-		rfqns[i] = rel.Relation
+		relationFQNs[i] = rel.Relation
 	}
 	go func() {
-		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns, []*rfqn.RelationFQN{})); err != nil {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(relationFQNs, []*rfqn.RelationFQN{})); err != nil {
 			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
 		}
 	}()
@@ -3050,8 +3049,8 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 
 // AlterDistributedRelationSchema changes the schema name of a relation attached to a distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
-	if err := qc.Coordinator.AlterDistributedRelationSchema(ctx, id, relationName, schemaName); err != nil {
+func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, schemaName string) error {
+	if err := qc.Coordinator.AlterDistributedRelationSchema(ctx, id, relationFQN, schemaName); err != nil {
 		return err
 	}
 
@@ -3059,7 +3058,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Conte
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 			Id:           id,
-			RelationName: relationName.RelationName,
+			RelationName: relationFQN.RelationName,
 			SchemaName:   schemaName,
 		})
 		if err != nil {
@@ -3075,18 +3074,16 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Conte
 
 // AlterDistributedRelationSchema changes the distribution key of a relation attached to a distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
-	if err := qc.Coordinator.AlterDistributedRelationDistributionKey(ctx, id, relationName, distributionKey); err != nil {
+func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+	if err := qc.Coordinator.AlterDistributedRelationDistributionKey(ctx, id, relationFQN, distributionKey); err != nil {
 		return err
 	}
-
-	relName := relationName.RelationName
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
 			Id:              id,
-			RelationName:    relName,
+			RelationName:    relationFQN.RelationName,
 			DistributionKey: distributions.DistributionKeyToProto(distributionKey),
 		})
 		if err != nil {
@@ -3142,9 +3139,9 @@ func (qc *ClusteredCoordinator) AlterSequenceDetachRelation(ctx context.Context,
 
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
 	/* Do what needs to be done in metadata */
-	if err := qc.Coordinator.AlterDistributionDetach(ctx, id, relName); err != nil {
+	if err := qc.Coordinator.AlterDistributionDetach(ctx, id, relationFQN); err != nil {
 		return err
 	}
 
@@ -3152,7 +3149,7 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
+			RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relationFQN)},
 		})
 		if err != nil {
 			return err
