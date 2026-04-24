@@ -151,46 +151,18 @@ func (mr *MockTopologyKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddShard", reflect.TypeOf((*MockTopologyKeeper)(nil).AddShard), ctx, shard)
 }
 
-<<<<<<< HEAD
 // AlterShard mocks base method.
 func (m *MockTopologyKeeper) AlterShard(ctx context.Context, newShard *qdb.Shard) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterShard", ctx, newShard)
-=======
-// AlterShardHosts mocks base method.
-func (m *MockTopologyKeeper) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
->>>>>>> 37e567f1 (regress tests)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-<<<<<<< HEAD
 // AlterShard indicates an expected call of AlterShard.
 func (mr *MockTopologyKeeperMockRecorder) AlterShard(ctx, newShard any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockTopologyKeeper)(nil).AlterShard), ctx, newShard)
-=======
-// AlterShardHosts indicates an expected call of AlterShardHosts.
-func (mr *MockTopologyKeeperMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockTopologyKeeper)(nil).AlterShardHosts), ctx, shardID, hosts)
-}
-
-// AlterShardOptions mocks base method.
-func (m *MockTopologyKeeper) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AlterShardOptions indicates an expected call of AlterShardOptions.
-func (mr *MockTopologyKeeperMockRecorder) AlterShardOptions(ctx, shardID, options any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockTopologyKeeper)(nil).AlterShardOptions), ctx, shardID, options)
->>>>>>> 37e567f1 (regress tests)
 }
 
 // CloseRouter mocks base method.
@@ -1940,34 +1912,6 @@ func (mr *MockXDCStateKeeperMockRecorder) AlterShard(ctx, newShard any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockXDCStateKeeper)(nil).AlterShard), ctx, newShard)
 }
 
-// AlterShardHosts mocks base method.
-func (m *MockDCStateKeeper) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AlterShardHosts indicates an expected call of AlterShardHosts.
-func (mr *MockDCStateKeeperMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockDCStateKeeper)(nil).AlterShardHosts), ctx, shardID, hosts)
-}
-
-// AlterShardOptions mocks base method.
-func (m *MockDCStateKeeper) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AlterShardOptions indicates an expected call of AlterShardOptions.
-func (mr *MockDCStateKeeperMockRecorder) AlterShardOptions(ctx, shardID, options any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockDCStateKeeper)(nil).AlterShardOptions), ctx, shardID, options)
-}
-
 // ChangeTxStatus mocks base method.
 func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
@@ -2434,46 +2378,18 @@ func (mr *MockXQDBMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockXQDB)(nil).AlterSequenceDetachRelation), ctx, rel)
 }
 
-<<<<<<< HEAD
 // AlterShard mocks base method.
 func (m *MockXQDB) AlterShard(ctx context.Context, newShard *qdb.Shard) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterShard", ctx, newShard)
-=======
-// AlterShardHosts mocks base method.
-func (m *MockXQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
->>>>>>> 37e567f1 (regress tests)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-<<<<<<< HEAD
 // AlterShard indicates an expected call of AlterShard.
 func (mr *MockXQDBMockRecorder) AlterShard(ctx, newShard any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShard", reflect.TypeOf((*MockXQDB)(nil).AlterShard), ctx, newShard)
-=======
-// AlterShardHosts indicates an expected call of AlterShardHosts.
-func (mr *MockXQDBMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockXQDB)(nil).AlterShardHosts), ctx, shardID, hosts)
-}
-
-// AlterShardOptions mocks base method.
-func (m *MockXQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AlterShardOptions indicates an expected call of AlterShardOptions.
-func (mr *MockXQDBMockRecorder) AlterShardOptions(ctx, shardID, options any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockXQDB)(nil).AlterShardOptions), ctx, shardID, options)
->>>>>>> 37e567f1 (regress tests)
 }
 
 // BeginTransaction mocks base method.

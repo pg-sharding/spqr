@@ -85,7 +85,6 @@ func randomHex(n int) (string, error) {
 
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
-	alter_shard 		   *AlterShard
 	distributed_relation   *DistributedRelation
 	alter_default_shard    *AlterDefaultShard
 
@@ -122,7 +121,7 @@ func randomHex(n int) (string, error) {
 	routingExpr				[]TypedColRef
 
 	alter_relation          *AlterRelationV2
-	alter_shard             *AlterShard
+	alter_shard 		    *AlterShard
 	option				   	GenericOption
 	options				   	[]GenericOption
 }
@@ -928,11 +927,6 @@ alter_generic_option_elem:
 		$$ = GenericOption{Name: strings.ToLower($2), Arg: $3}
 		$$.Action = OptionActionDrop;
 	}
-	|
-	ALTER shard_alter_stmt
-	{
-		$$ = &Alter{Element: $2}
-	}
 
 distribution_alter_stmt:
 	distribution_select_stmt relation_attach_stmt
@@ -1462,27 +1456,6 @@ shard_define_stmt:
 			panic(err)
 		}
 		$$ = &ShardDefinition{Id: "shard" + str, Options: $2}
-	}
-
-shard_alter_stmt:
-	SHARD any_id HOSTS any_id_list
-	{
-		$$ = &AlterShard{
-			Shard: &ShardSelector{ID: $2},
-			Element: &AlterShardHosts{
-				Hosts: $4,
-			},
-		}
-	}
-	|
-	SHARD any_id options
-	{
-		$$ = &AlterShard{
-			Shard: &ShardSelector{ID: $2},
-			Element: &AlterShardOptions{
-				Options: $3,
-			},
-		}
 	}
 
 any_id_list:

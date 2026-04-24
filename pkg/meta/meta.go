@@ -944,54 +944,6 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 	}
 }
 
-func processAlterShard(ctx context.Context,
-	astmt spqrparser.Statement,
-	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
-	switch stmt := astmt.(type) {
-	case *spqrparser.AlterShardHosts:
-		if err := mngr.AlterShardHosts(ctx, shardId, stmt.Hosts); err != nil {
-			return nil, err
-		}
-
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("alter shard hosts"),
-			Raw: [][][]byte{
-				{
-					fmt.Appendf(nil, "shard id -> %s", shardId),
-				},
-
-				{
-					fmt.Appendf(nil, "hosts    -> %s", strings.Join(stmt.Hosts, ",")),
-				},
-			},
-		}
-
-		return tts, nil
-	case *spqrparser.AlterShardOptions:
-		optionsMap := optionsToMap(stmt.Options)
-		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
-			return nil, err
-		}
-
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("alter shard options"),
-			Raw: [][][]byte{
-				{
-					fmt.Appendf(nil, "shard id -> %s", shardId),
-				},
-
-				{
-					fmt.Appendf(nil, "options  -> %s", optionsToTuple(optionsMap)),
-				},
-			},
-		}
-
-		return tts, nil
-	default:
-		return nil, ErrUnknownCoordinatorCommand
-	}
-}
-
 // TODO : unit tests
 
 // ProcMetadataCommand processes various coordinator commands based on the provided statement.

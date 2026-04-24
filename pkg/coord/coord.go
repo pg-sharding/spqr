@@ -3,9 +3,11 @@ package coord
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -53,7 +55,38 @@ func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, 
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	panic("unimplemented")
+	for _, qualName := range relNames {
+		rel, err := lc.GetReferenceRelation(ctx, qualName)
+		if err != nil {
+			return err
+		}
+
+		if len(rel.ShardIds) == 0 {
+			// XXX: should we error-our here?
+			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
+		}
+		fromShard := rel.ShardIds[0]
+
+		// XXX: should we ignore the command/error here?
+		destShards := rel.ShardIds
+		if !slices.Contains(rel.ShardIds, destShard) {
+			destShards = append(rel.ShardIds, destShard)
+		}
+
+		shards, err := lc.LoadShardsConnectionData()
+		if err != nil {
+			return err
+		}
+		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, shards, rel, lc.qdb); err != nil {
+			return err
+		}
+
+		if err := lc.qdb.AlterReferenceRelationStorage(ctx, qualName, destShards); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // AddDataShard implements meta.EntityMgr.
@@ -152,14 +185,6 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relation, schemaName)
 	}
 	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relation, schemaName)
-}
-
-func (lc *Coordinator) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	return lc.qdb.AlterShardHosts(ctx, shardID, hosts)
-}
-
-func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
-	return lc.qdb.AlterShardOptions(ctx, shardID, options)
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
@@ -1405,4 +1430,42 @@ func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []s
 
 func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
 	return lc.qdb.GetTxMetaStorage(ctx)
+}
+
+func (lc *Coordinator) LoadShardsConnectionData() (map[string]*config.ShardConnect, error) {
+	if config.CoordinatorConfig().ShardDataInQDB {
+		shards, err := lc.qdb.ListShards(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+		m := map[string]*config.ShardConnect{}
+		for _, sh := range shards {
+			dbname := ""
+			user := ""
+			password := ""
+
+			for _, opt := range sh.Options {
+				if opt.Name == "dbname" {
+					dbname = opt.Value
+				}
+				if opt.Name == "user" {
+					user = opt.Value
+				}
+				if opt.Name == "password" {
+					password = opt.Value
+				}
+			}
+
+			m[sh.ID] = &config.ShardConnect{
+				Hosts:    sh.RawHosts,
+				DB:       dbname,
+				User:     user,
+				Password: password,
+			}
+		}
+		return m, nil
+	}
+
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	return conns.ShardsData, err
 }

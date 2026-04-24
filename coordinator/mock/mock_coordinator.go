@@ -163,22 +163,14 @@ func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
-<<<<<<< HEAD
 // AlterReferenceRelationStorageAdvanced mocks base method.
 func (m *MockCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterReferenceRelationStorageAdvanced", ctx, relName, shs)
-=======
-// AlterShardHosts mocks base method.
-func (m *MockCoordinator) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
->>>>>>> 37e567f1 (regress tests)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-<<<<<<< HEAD
 // AlterReferenceRelationStorageAdvanced indicates an expected call of AlterReferenceRelationStorageAdvanced.
 func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorageAdvanced(ctx, relName, shs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
@@ -201,16 +193,6 @@ func (mr *MockCoordinatorMockRecorder) AlterSequenceDetachRelation(ctx, rel any)
 
 // AlterShardOptions mocks base method.
 func (m *MockCoordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
-=======
-// AlterShardHosts indicates an expected call of AlterShardHosts.
-func (mr *MockCoordinatorMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockCoordinator)(nil).AlterShardHosts), ctx, shardID, hosts)
-}
-
-// AlterShardOptions mocks base method.
-func (m *MockCoordinator) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
->>>>>>> 37e567f1 (regress tests)
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
 	ret0, _ := ret[0].(error)

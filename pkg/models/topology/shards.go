@@ -37,8 +37,6 @@ type ShardsMgr interface {
 	AlterShardOptions(ctx context.Context, shardID string, options []GenericOption) error
 	SetShardOptions(ctx context.Context, shardID string, options []GenericOption) error
 	DropShard(ctx context.Context, id string) error
-	AlterShardHosts(ctx context.Context, shardID string, hosts []string) error
-	AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error
 }
 
 func (ds *DataShard) Options() []GenericOption {

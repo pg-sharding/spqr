@@ -10,7 +10,6 @@ DROP SHARD sh1;
  sh1
 (1 row)
 
-<<<<<<< HEAD
 SHOW SHARDS;
  shard |                         options                         
 -------+---------------------------------------------------------
@@ -72,53 +71,3 @@ UNREGISTER ROUTER ALL;
  router id -> *
 (1 row)
 
-=======
-SHOW shards;
- shard  |   options    
---------+--------------
- sh1    | {}
- sh2    | {}
- sh3    | {}
- sh4    | {}
- shard1 | {user=user1}
- shard2 | {dbname=db1}
-(6 rows)
-
-ALTER SHARD shard1 OPTIONS (dbname db1);
-   alter shard options    
---------------------------
- shard id -> shard1
- options  -> {dbname=db1}
-(2 rows)
-
-ALTER SHARD shard2 HOSTS 'localhost3:6432';
-      alter shard hosts      
------------------------------
- shard id -> shard2
- hosts    -> localhost3:6432
-(2 rows)
-
-SHOW shards;
- shard  |   options    
---------+--------------
- sh1    | {}
- sh2    | {}
- sh3    | {}
- sh4    | {}
- shard1 | {dbname=db1}
- shard2 | {dbname=db1}
-(6 rows)
-
-DROP SHARD shard1;
- shard_id 
-----------
- shard1
-(1 row)
-
-DROP SHARD shard2;
- shard_id 
-----------
- shard2
-(1 row)
-
->>>>>>> 37e567f1 (regress tests)
