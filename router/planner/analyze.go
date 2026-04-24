@@ -307,8 +307,8 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	return nil
 }
 
-func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, WithClause []*lyx.CommonTableExpr) error {
-	for _, cte := range WithClause {
+func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, withClause []*lyx.CommonTableExpr) error {
+	for _, cte := range withClause {
 		rm.CteNames[cte.Name] = struct{}{}
 		switch qq := cte.SubQuery.(type) {
 		case *lyx.ValueClause:

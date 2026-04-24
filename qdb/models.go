@@ -98,9 +98,9 @@ type Shard struct {
 	Options  []GenericOption `json:"options,omitempty"`
 }
 
-func NewShard(ID string, hosts []string, options []GenericOption) *Shard {
+func NewShard(id string, hosts []string, options []GenericOption) *Shard {
 	return &Shard{
-		ID:       ID,
+		ID:       id,
 		RawHosts: hosts,
 		Options:  options,
 	}

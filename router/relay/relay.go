@@ -503,7 +503,7 @@ var (
 
 func (rst *RelayStateImpl) relayParsePrepared(
 	ctx context.Context,
-	name, query string, ParameterOIDs []uint32) (pgproto3.BackendMessage, error) {
+	name, query string, parameterOIDs []uint32) (pgproto3.BackendMessage, error) {
 
 	startTime := time.Now()
 
@@ -526,7 +526,7 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	def := &prepstatement.PreparedStatementDefinition{
 		Name:          name,
 		Query:         query,
-		ParameterOIDs: ParameterOIDs,
+		ParameterOIDs: parameterOIDs,
 	}
 
 	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
@@ -784,17 +784,17 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 
 func (rst *RelayStateImpl) BindPrepared(
 	ctx context.Context,
-	PreparedStatement string,
-	DestinationPortal string,
-	Parameters [][]byte,
-	ParameterFormatCodes []int16,
-	ResultFormatCodes []int16,
+	preparedStatement string,
+	destinationPortal string,
+	parameters [][]byte,
+	parameterFormatCodes []int16,
+	resultFormatCodes []int16,
 ) error {
 	startTime := time.Now()
 
 	spqrlog.Zero.Debug().
-		Str("name", PreparedStatement).
-		Str("portal", DestinationPortal).
+		Str("name", preparedStatement).
+		Str("portal", destinationPortal).
 		Uint("client", rst.Client().ID()).
 		Msg("Binding prepared statement")
 
@@ -802,11 +802,11 @@ func (rst *RelayStateImpl) BindPrepared(
 	// However, to execute commit, rollbacks, etc., we need to wait for the next query
 	// or process it locally (set statement)
 
-	def := rst.Client().PreparedStatementDefinitionByName(PreparedStatement)
+	def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
 
 	if def == nil {
 		/* this prepared statement was not prepared by client */
-		return pstmtDoesNotExistsErr(PreparedStatement)
+		return pstmtDoesNotExistsErr(preparedStatement)
 	}
 
 	if def.OverwriteRemoveParamIds != nil {
@@ -819,7 +819,7 @@ func (rst *RelayStateImpl) BindPrepared(
 			return err
 		}
 
-		Parameters = append(Parameters, fmt.Appendf(nil, "%d", v))
+		parameters = append(parameters, fmt.Appendf(nil, "%d", v))
 	}
 
 	// We implicitly assume that there is always Execute after Bind for the same portal.
@@ -828,38 +828,38 @@ func (rst *RelayStateImpl) BindPrepared(
 		return err
 	}
 
-	rst.lastBindName = PreparedStatement
+	rst.lastBindName = preparedStatement
 	rst.unnamedPortalExists = true
 
 	/* only populate map for non-empty portal */
-	if DestinationPortal == "" {
+	if destinationPortal == "" {
 		rst.execute = emptyExecFunc
 	} else {
-		rst.executeMp[DestinationPortal] = emptyExecFunc
+		rst.executeMp[destinationPortal] = emptyExecFunc
 	}
 
 	pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 		var bnd *pgproto3.Bind
 
-		if DestinationPortal == "" {
+		if destinationPortal == "" {
 			bnd = &rst.saveBind
 		} else {
-			rst.saveBindNamed[DestinationPortal] = &pgproto3.Bind{}
-			bnd = rst.saveBindNamed[DestinationPortal]
+			rst.saveBindNamed[destinationPortal] = &pgproto3.Bind{}
+			bnd = rst.saveBindNamed[destinationPortal]
 		}
 
-		bnd.DestinationPortal = DestinationPortal
+		bnd.DestinationPortal = destinationPortal
 
-		rm := rst.savedRM[PreparedStatement]
+		rm := rst.savedRM[preparedStatement]
 
-		hash := rst.Client().PreparedStatementQueryHashByName(PreparedStatement)
+		hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 
 		bnd.PreparedStatement = fmt.Sprintf("%d", hash)
-		bnd.ParameterFormatCodes = ParameterFormatCodes
-		rst.Client().SetBindParams(Parameters)
-		rst.Client().SetParamFormatCodes(ParameterFormatCodes)
-		bnd.ResultFormatCodes = ResultFormatCodes
-		bnd.Parameters = Parameters
+		bnd.ParameterFormatCodes = parameterFormatCodes
+		rst.Client().SetBindParams(parameters)
+		rst.Client().SetParamFormatCodes(parameterFormatCodes)
+		bnd.ResultFormatCodes = resultFormatCodes
+		bnd.Parameters = parameters
 
 		ctx := context.TODO()
 
@@ -872,10 +872,10 @@ func (rst *RelayStateImpl) BindPrepared(
 
 		rst.routingDecisionPlan = queryPlan
 
-		if DestinationPortal == "" {
+		if destinationPortal == "" {
 			rst.bindQueryPlan = rst.routingDecisionPlan
 		} else {
-			rst.bindQueryPlanMP[DestinationPortal] = rst.routingDecisionPlan
+			rst.bindQueryPlanMP[destinationPortal] = rst.routingDecisionPlan
 		}
 
 		if rst.routingDecisionPlan == nil {
@@ -884,8 +884,8 @@ func (rst *RelayStateImpl) BindPrepared(
 
 		f := func() error {
 			p := rst.bindQueryPlan
-			if DestinationPortal != "" {
-				p = rst.bindQueryPlanMP[DestinationPortal]
+			if destinationPortal != "" {
+				p = rst.bindQueryPlanMP[destinationPortal]
 			}
 			forceSimple := false
 
@@ -902,8 +902,8 @@ func (rst *RelayStateImpl) BindPrepared(
 					return err
 				}
 
-				def := rst.Client().PreparedStatementDefinitionByName(PreparedStatement)
-				hash := rst.Client().PreparedStatementQueryHashByName(PreparedStatement)
+				def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
+				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 				name := fmt.Sprintf("%d", hash)
 
 				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
@@ -917,14 +917,14 @@ func (rst *RelayStateImpl) BindPrepared(
 				}
 			}
 
-			return BindAndReadSliceResult(rst, forceSimple, bnd, DestinationPortal)
+			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal)
 		}
 
 		/* only populate map for non-empty portal */
-		if DestinationPortal == "" {
+		if destinationPortal == "" {
 			rst.execute = f
 		} else {
-			rst.executeMp[DestinationPortal] = f
+			rst.executeMp[destinationPortal] = f
 		}
 
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
@@ -938,7 +938,7 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	if pd != nil {
-		rst.savedPortalDesc[PreparedStatement] = pd
+		rst.savedPortalDesc[preparedStatement] = pd
 	}
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 	return nil

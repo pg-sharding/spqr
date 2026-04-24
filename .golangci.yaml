@@ -8,6 +8,7 @@ linters:
       enable-all-rules: false
       rules:
         - name: unused-parameter
+        - name: unexported-naming
   exclusions:
     paths:
       - yacc/console/lex.go

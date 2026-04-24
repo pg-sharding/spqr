@@ -23,6 +23,6 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	return nil
 }
 
-func NewEtcdMetadataBootstrapper(QdbAddrs []string) RouterMetadataBootstrapper {
-	return &EtcdMetadataBootstrapper{QdbAddrs: QdbAddrs}
+func NewEtcdMetadataBootstrapper(qdbAddrs []string) RouterMetadataBootstrapper {
+	return &EtcdMetadataBootstrapper{QdbAddrs: qdbAddrs}
 }

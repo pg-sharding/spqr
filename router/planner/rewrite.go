@@ -354,11 +354,11 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 func InsertSequenceValue(ctx context.Context,
 	query string,
 	columns []string,
-	ColumnSequenceMapping map[string]string,
+	columnSequenceMapping map[string]string,
 	idCache IdentityRouterCache,
 ) (string, error) {
 
-	for colName, seqName := range ColumnSequenceMapping {
+	for colName, seqName := range columnSequenceMapping {
 		if slices.Contains(columns, colName) {
 			continue
 		}
@@ -407,12 +407,12 @@ func getMaxPrepStmtId(s lyx.Node) int {
 
 func InsertSequenceParamRef(_ context.Context,
 	query string,
-	ColumnSequenceMapping map[string]string,
+	columnSequenceMapping map[string]string,
 	stmt lyx.Node,
 	def *prepstatement.PreparedStatementDefinition,
 ) (string, error) {
 
-	for colName, seqName := range ColumnSequenceMapping {
+	for colName, seqName := range columnSequenceMapping {
 
 		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (string, error) {
 			// what param ref is max for given query?

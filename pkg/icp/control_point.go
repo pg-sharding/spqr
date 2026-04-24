@@ -57,16 +57,16 @@ var (
 	}
 )
 
-func getAction(name string, A *spqrparser.ICPointAction) func(ICPContextHolder) {
-	switch A.Act {
+func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) {
+	switch a.Act {
 	case "panic":
 		return defaultPanicAction
 	case "sleep":
-		if A.Timeout == time.Duration(0) {
+		if a.Timeout == time.Duration(0) {
 			return defaultSleepAction
 		}
 		return func(ICPContextHolder) {
-			time.Sleep(A.Timeout)
+			time.Sleep(a.Timeout)
 		}
 	case "wait":
 		return func(c ICPContextHolder) {
@@ -82,8 +82,8 @@ func getAction(name string, A *spqrparser.ICPointAction) func(ICPContextHolder) 
 	}
 }
 
-func getResetAction(A *spqrparser.ICPointAction) func(ICPContextHolder) {
-	switch A.Act {
+func getResetAction(a *spqrparser.ICPointAction) func(ICPContextHolder) {
+	switch a.Act {
 	case "wait":
 		return func(c ICPContextHolder) {
 			// nil is ok.
@@ -100,7 +100,7 @@ func getResetAction(A *spqrparser.ICPointAction) func(ICPContextHolder) {
 	}
 }
 
-func DefineICP(name string, A *spqrparser.ICPointAction) error {
+func DefineICP(name string, a *spqrparser.ICPointAction) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -117,8 +117,8 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 
 	/* OK */
 
-	cpsMp[name] = getAction(name, A)
-	cpsResetMp[name] = getResetAction(A)
+	cpsMp[name] = getAction(name, a)
+	cpsResetMp[name] = getResetAction(a)
 
 	return nil
 }
