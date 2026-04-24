@@ -85,7 +85,7 @@ func (rm *RoutingMetadataContext) IsRO() bool {
 }
 
 func NewRoutingMetadataContext(sph session.SessionParamsHolder,
-	ClientRule *config.FrontendRule,
+	clientRule *config.FrontendRule,
 	query string,
 	stmt lyx.Node,
 	csm connmgr.ConnectionMgr,
@@ -108,7 +108,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Query:                      query,
 		Stmt:                       stmt,
 		ro:                         false,
-		ClientRule:                 ClientRule,
+		ClientRule:                 clientRule,
 	}
 }
 
