@@ -1238,7 +1238,7 @@ func ProcMetadataCommand(ctx context.Context,
 				return nil, err
 			}
 
-			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
+			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToID, taskGroup.KridFrom, taskGroup.KridTo)
 		}
 
 		return tts, nil
@@ -1611,13 +1611,13 @@ func ProcessShowExtended(ctx context.Context,
 			if !ok {
 				return nil, fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
 			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -1642,13 +1642,13 @@ func ProcessShowExtended(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}

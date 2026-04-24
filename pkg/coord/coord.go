@@ -763,7 +763,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 		return nil
 	}
 	if cascade && taskGroup.Issuer != nil && taskGroup.Issuer.Type == tasks.IssuerRedistributeTask {
-		return lc.DropRedistributeTask(ctx, taskGroup.Issuer.Id, true)
+		return lc.DropRedistributeTask(ctx, taskGroup.Issuer.ID, true)
 	}
 	task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {

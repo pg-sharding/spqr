@@ -1414,9 +1414,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		taskGroup = &tasks.MoveTaskGroup{
 			ID:        tgID,
-			KrIdFrom:  req.KeyRangeID,
-			KrIdTo:    req.DestKeyRangeID,
-			ShardToId: req.ShardID,
+			KridFrom:  req.KeyRangeID,
+			KridTo:    req.DestKeyRangeID,
+			ShardToID: req.ShardID,
 			Type:      req.Type,
 			BoundRel:  biggestRelName,
 			Coeff:     coeff,
@@ -1427,14 +1427,14 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	} else {
 		taskGroup = &tasks.MoveTaskGroup{
 			ID:        tgID,
-			KrIdFrom:  req.KeyRangeID,
-			KrIdTo:    req.DestKeyRangeID,
-			ShardToId: req.ShardID,
+			KridFrom:  req.KeyRangeID,
+			KridTo:    req.DestKeyRangeID,
+			ShardToID: req.ShardID,
 			Type:      req.Type,
 			CurrentTask: &tasks.MoveTask{
 				ID:          uuid.NewString(),
 				TaskGroupID: tgID,
-				KrIdTemp:    req.DestKeyRangeID,
+				KridTemp:    req.DestKeyRangeID,
 				State:       tasks.TaskPlanned,
 				Bound:       nil,
 			},
@@ -1544,11 +1544,11 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 	}
 
 	spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Msg("generating new bounds batch")
-	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
+	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KridFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 		krFound = false
-		spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Str("key range", taskGroup.KrIdFrom).Msg("key range already moved")
+		spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Str("key range", taskGroup.KridFrom).Msg("key range already moved")
 	}
 	if krFound && err != nil {
 		return nil, err
@@ -1721,11 +1721,11 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 			spqrerror.SPQR_STOP_MOVE_TASK_GROUP,
 			"move task stopped by STOP MOVE TASK GROUP command")
 	}
-	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
+	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KridFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 		krFound = false
-		spqrlog.Zero.Debug().Str("key range", taskGroup.KrIdFrom).Msg("key range already moved")
+		spqrlog.Zero.Debug().Str("key range", taskGroup.KridFrom).Msg("key range already moved")
 	}
 	if krFound && err != nil {
 		return nil, err
@@ -1745,20 +1745,20 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 		// move whole key range
 		return &tasks.MoveTask{
 			ID: uuid.NewString(),
-			KrIdTemp: func() string {
+			KridTemp: func() string {
 				if taskGroup.TotalKeys > 0 {
-					return taskGroup.KrIdFrom
+					return taskGroup.KridFrom
 				}
-				return taskGroup.KrIdTo
+				return taskGroup.KridTo
 			}(),
 			State:       tasks.TaskPlanned,
 			Bound:       nil,
 			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
-	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
-		task.KrIdTemp = taskGroup.KrIdTo
+		task.KridTemp = taskGroup.KridTo
 	}
 	return task, nil
 }
@@ -1808,7 +1808,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	if taskGroup == nil {
 		return nil
 	}
-	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
+	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KridFrom)
 	if err != nil {
 		return err
 	}
@@ -1893,8 +1893,8 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		task := taskGroup.CurrentTask
 		switch task.State {
 		case tasks.TaskPlanned:
-			if task.Bound == nil && taskGroup.KrIdTo == task.KrIdTemp {
-				if err := qc.RenameKeyRange(ctx, taskGroup.KrIdFrom, task.KrIdTemp); err != nil {
+			if task.Bound == nil && taskGroup.KridTo == task.KridTemp {
+				if err := qc.RenameKeyRange(ctx, taskGroup.KridFrom, task.KridTemp); err != nil {
 					return err
 				}
 				if config.CoordinatorConfig().EnableICP {
@@ -1911,8 +1911,8 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if task.Bound != nil {
 				if err := qc.Split(ctx, &kr.SplitKeyRange{
 					Bound:      task.Bound,
-					SourceID:   taskGroup.KrIdFrom,
-					KeyRangeID: task.KrIdTemp,
+					SourceID:   taskGroup.KridFrom,
+					KeyRangeID: task.KridTemp,
 					SplitLeft: func() bool {
 						switch taskGroup.Type {
 						case tasks.SplitLeft:
@@ -1936,7 +1936,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				return err
 			}
 		case tasks.TaskSplit:
-			if err := qc.Move(ctx, &kr.MoveKeyRange{KeyRangeID: task.KrIdTemp, ShardID: taskGroup.ShardToId}); err != nil {
+			if err := qc.Move(ctx, &kr.MoveKeyRange{KeyRangeID: task.KridTemp, ShardID: taskGroup.ShardToID}); err != nil {
 				return err
 			}
 			if config.CoordinatorConfig().EnableICP {
@@ -1949,8 +1949,8 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				return err
 			}
 		case tasks.TaskMoved:
-			if task.KrIdTemp != taskGroup.KrIdTo {
-				if err := qc.Unite(ctx, &kr.UniteKeyRange{BaseKeyRangeID: taskGroup.KrIdTo, AppendageKeyRangeID: task.KrIdTemp}); err != nil {
+			if task.KridTemp != taskGroup.KridTo {
+				if err := qc.Unite(ctx, &kr.UniteKeyRange{BaseKeyRangeID: taskGroup.KridTo, AppendageKeyRangeID: task.KridTemp}); err != nil {
 					return err
 				}
 			}
@@ -2078,8 +2078,8 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return err
 	}
 	for _, ts := range tss {
-		if ts.KrIdFrom == req.KeyRangeID {
-			return fmt.Errorf("there is already a move task group \"%s\" for key range \"%s\"", ts.ID, ts.KrIdFrom)
+		if ts.KridFrom == req.KeyRangeID {
+			return fmt.Errorf("there is already a move task group \"%s\" for key range \"%s\"", ts.ID, ts.KridFrom)
 		}
 	}
 
@@ -2107,11 +2107,11 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 
 	return qc.internalExecRedistributeTaskWrapper(ctx, req, &tasks.RedistributeTask{
 		ID:          uuid.NewString(),
-		TaskGroupId: req.TaskGroupID,
-		KeyRangeId:  req.KeyRangeID,
-		ShardId:     req.ShardID,
+		TaskGroupID: req.TaskGroupID,
+		KeyRangeID:  req.KeyRangeID,
+		ShardID:     req.ShardID,
 		BatchSize:   req.BatchSize,
-		TempKrId:    uuid.NewString(),
+		TempKrID:    uuid.NewString(),
 		State:       tasks.RedistributeTaskPlanned,
 	}, false)
 }
@@ -2202,14 +2202,14 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				break
 			}
 			if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-				TaskGroupID:    task.TaskGroupId,
-				KeyRangeID:     task.KeyRangeId,
-				ShardID:        task.ShardId,
+				TaskGroupID:    task.TaskGroupID,
+				KeyRangeID:     task.KeyRangeID,
+				ShardID:        task.ShardID,
 				BatchSize:      task.BatchSize,
 				Limit:          -1,
-				DestKeyRangeID: task.TempKrId,
+				DestKeyRangeID: task.TempKrID,
 				Type:           tasks.SplitRight,
-			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, Id: task.ID}); err != nil {
+			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, ID: task.ID}); err != nil {
 				return err
 			}
 			task.State = tasks.RedistributeTaskMoved
@@ -2217,7 +2217,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				return err
 			}
 		case tasks.RedistributeTaskMoved:
-			if err := qc.RenameKeyRange(ctx, task.TempKrId, task.KeyRangeId); err != nil {
+			if err := qc.RenameKeyRange(ctx, task.TempKrID, task.KeyRangeID); err != nil {
 				return err
 			}
 			return qc.db.DropRedistributeTask(ctx, tasks.RedistributeTaskToDB(task))

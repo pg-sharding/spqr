@@ -594,10 +594,10 @@ func (b *BalancerImpl) getTask(shardFrom *ShardMetrics, krID string, shardToID s
 	id := uuid.New()
 
 	return &tasks.BalancerTask{
-		KrIdFrom:  krID,
-		KrIdTo:    krIDTo,
-		KrIdTemp:  id.String(),
-		ShardIdTo: shardToID,
+		KridFrom:  krID,
+		KridTo:    krIDTo,
+		KridTemp:  id.String(),
+		ShardIDTo: shardToID,
 		KeyCount:  min(int64(keyCount), int64(config.BalancerConfig().MaxMoveCount*config.BalancerConfig().KeysPerMove)),
 		Type:      join,
 		State:     tasks.BalancerTaskPlanned,
@@ -657,9 +657,9 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 		case tasks.BalancerTaskPlanned:
 			if _, err := keyRangeService.BatchMoveKeyRange(ctx, &protos.BatchMoveKeyRangeRequest{
 				TaskGroupId: "",
-				KeyRangeId:  task.KrIdFrom,
-				ToKrId:      task.KrIdTemp,
-				ToShardId:   task.ShardIdTo,
+				KeyRangeId:  task.KridFrom,
+				ToKrId:      task.KridTemp,
+				ToShardId:   task.ShardIDTo,
 				BatchSize:   int64(config.BalancerConfig().KeysPerMove),
 				Limit:       task.KeyCount,
 				LimitType:   protos.RedistributeLimitType_RedistributeKeysLimit,
@@ -700,8 +700,8 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 				fallthrough
 			case tasks.JoinRight:
 				_, err = keyRangeService.MergeKeyRange(ctx, &protos.MergeKeyRangeRequest{
-					BaseId:      task.KrIdTo,
-					AppendageId: task.KrIdTemp,
+					BaseId:      task.KridTo,
+					AppendageId: task.KridTemp,
 				})
 			case tasks.JoinNone:
 				break
