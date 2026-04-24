@@ -2330,7 +2330,7 @@ func TestGrant(t *testing.T) {
 				Privileges: []string{
 					"usage", "create",
 				},
-				Objtype: "DISTRIBUTION",
+				Objtype: "distribution",
 				Objects: []*rfqn.RelationFQN{
 					{
 						RelationName: "d",
@@ -2346,7 +2346,7 @@ func TestGrant(t *testing.T) {
 				Privileges: []string{
 					"usage", "create",
 				},
-				Objtype: "relation",
+				Objtype: "table",
 				Objects: []*rfqn.RelationFQN{
 					{
 						RelationName: "r1",

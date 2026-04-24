@@ -385,7 +385,6 @@ PGDATABASE
 pgdg
 pgexec
 PGHOST
-pgi
 pgoption
 PGPORT
 pgproto
@@ -394,7 +393,6 @@ pgsharding
 PGSSLMODE
 pgsync
 PGUSER
-pgx
 pgxconn
 pgxpool
 pgxv
@@ -408,7 +406,6 @@ poolview
 porro
 Postgre
 postgresql
-ppp
 pppp
 prepstatement
 privs
@@ -435,7 +432,7 @@ qstmt
 qtype
 querylog
 quisquam
-qury
+Objtype
 RAddr
 ragel
 randkey
@@ -459,6 +456,7 @@ retmsg
 retryable
 retst
 reuseport
+rebootstrap
 rfqn
 RFQNIs
 rgrpc
