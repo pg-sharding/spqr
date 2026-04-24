@@ -1467,5 +1467,9 @@ func (lc *Coordinator) LoadShardsConnectionData() (map[string]*config.ShardConne
 	}
 
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-	return conns.ShardsData, err
+	if err != nil {
+		return nil, err
+	}
+
+	return conns.ShardsData, nil
 }
