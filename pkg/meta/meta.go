@@ -688,7 +688,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
 				return nil, err
 			}
-		}
+		} // else rebootstrap
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter system"),
