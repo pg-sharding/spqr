@@ -6953,6 +6953,36 @@ func TestCopyFROMXproto(t *testing.T) {
 			},
 		},
 
+		/* same as above, but without Sync after Execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "COPY t(id) FROM STDIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.CopyDone{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CopyInResponse{
+					ColumnFormatCodes: []uint16{0},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COPY 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
 		/* XXX : make this work */
 
 		// /* same test, second time */
