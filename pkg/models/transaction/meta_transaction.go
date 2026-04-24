@@ -32,12 +32,12 @@ func NewMetaTransaction(qdbTransaction qdb.QdbTransaction) *MetaTransaction {
 	return &MetaTransaction{TransactionId: qdbTransaction.Id()}
 }
 
-func innerFromProto(TransactionId string, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
-	if tranId, err := uuid.Parse(TransactionId); err != nil {
+func innerFromProto(transactionId string, metaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
+	if tranId, err := uuid.Parse(transactionId); err != nil {
 		return nil, err
 	} else {
 		return &MetaTransaction{TransactionId: tranId,
-			Operations: NewMetaTransactionChunk(MetaCmdList),
+			Operations: NewMetaTransactionChunk(metaCmdList),
 		}, nil
 	}
 }

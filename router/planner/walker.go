@@ -271,9 +271,9 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 	return p, nil
 }
 
-func PlanWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr QueryPlanner, WithClause []*lyx.CommonTableExpr) (plan.Plan, error) {
+func PlanWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr QueryPlanner, withClause []*lyx.CommonTableExpr) (plan.Plan, error) {
 	var p plan.Plan
-	for _, cte := range WithClause {
+	for _, cte := range withClause {
 		if tmp, err := plr.PlanQueryTopLevel(ctx, rm, cte.SubQuery); err != nil {
 			return nil, err
 		} else {
