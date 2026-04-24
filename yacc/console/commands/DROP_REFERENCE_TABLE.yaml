@@ -1,0 +1,21 @@
+name: DROP REFERENCE TABLE
+snippet: reference_table_commands
+order: 2
+description: |
+  Removes a reference table from SPQR metadata. This does not drop the actual
+  table from the shards.
+
+syntax: |
+  DROP REFERENCE TABLE <table_name>
+
+parameters:
+  - name: table_name
+    description: Name of the reference table to drop
+
+examples:
+  - description: Drop a reference table
+    code: DROP REFERENCE TABLE tax_rates;
+
+related_commands:
+  - CREATE REFERENCE TABLE
+  - ALTER REFERENCE TABLE STORAGE

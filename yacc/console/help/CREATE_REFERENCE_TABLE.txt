@@ -1,0 +1,33 @@
+NAME
+    CREATE REFERENCE TABLE - Creates a reference table — a table replicated across all or specific shards.
+
+SYNTAX
+    CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column> [START <value>], ...] [ON <shard_id>, ...]
+
+DESCRIPTION
+    Creates a reference table — a table replicated across all or specific shards.
+
+    The optional AUTO INCREMENT clause creates a sequence for the specified columns.
+    If no shards are specified with ON, the table is created on all shards.
+
+PARAMETERS
+    <table_name> - Name of the reference table to create
+    <column> - Column name for auto-increment sequence
+    <value> - Initial value for the auto-increment sequence (default 0)
+    <shard_id> - Shard identifiers where the table will be replicated (default all shards)
+
+EXAMPLES
+    Create a reference table on all shards:
+        CREATE REFERENCE TABLE tax_rates;
+    Create on specific shards:
+        CREATE REFERENCE TABLE tax_rates ON sh1, sh2;
+    With auto-increment column:
+        CREATE REFERENCE TABLE orders AUTO INCREMENT id;
+    With auto-increment starting at a specific value:
+        CREATE REFERENCE TABLE orders AUTO INCREMENT id START 1000;
+
+RELATED COMMANDS
+    DROP REFERENCE TABLE
+    ALTER REFERENCE TABLE STORAGE
+    SYNC REFERENCE TABLE
+    DROP SEQUENCE

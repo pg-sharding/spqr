@@ -1283,6 +1283,11 @@ help_word:
 	| UNIQUE { $$ = "UNIQUE" }
 	| DEFAULT { $$ = "DEFAULT" }
 	| ALL { $$ = "ALL" }
+	| KILL { $$ = "KILL" }
+	| STORAGE { $$ = "STORAGE" }
+	| STALE { $$ = "STALE" }
+	| BACKENDS { $$ = "BACKENDS" }
+	| SCHEMA { $$ = "SCHEMA" }
 
 lock_stmt:
 	LOCK key_range_stmt

@@ -1,0 +1,22 @@
+name: KILL BACKEND
+snippet: admin_commands
+order: 2
+description: |
+  Cancels a backend (shard) connection by its numeric ID.
+
+  Use SHOW BACKEND_CONNECTIONS to find backend IDs.
+
+syntax: |
+  KILL BACKEND <backend_id>
+
+parameters:
+  - name: backend_id
+    description: Numeric identifier of the backend connection to cancel
+
+examples:
+  - description: Cancel a backend connection
+    code: KILL BACKEND 17;
+
+related_commands:
+  - KILL CLIENT
+  - SHOW

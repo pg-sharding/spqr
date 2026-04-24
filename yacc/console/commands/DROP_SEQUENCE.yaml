@@ -1,0 +1,24 @@
+name: DROP SEQUENCE
+snippet: reference_table_commands
+order: 4
+description: |
+  Drops a sequence used for auto-increment columns in reference tables.
+  The optional CASCADE keyword drops dependent objects as well.
+
+syntax: |
+  DROP SEQUENCE <sequence_name> [CASCADE]
+
+parameters:
+  - name: sequence_name
+    description: Name of the sequence to drop
+  - name: CASCADE
+    description: Optional keyword to also drop dependent objects
+
+examples:
+  - description: Drop a sequence
+    code: DROP SEQUENCE orders_id_seq;
+  - description: Drop a sequence and its dependents
+    code: DROP SEQUENCE orders_id_seq CASCADE;
+
+related_commands:
+  - CREATE REFERENCE TABLE
