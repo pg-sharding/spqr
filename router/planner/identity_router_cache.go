@@ -9,7 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-const DefaultIDRangeSize uint64 = 1
+const defaultIDRangeSize uint64 = 1
 
 type IdentityRouterCache interface {
 	NextVal(ctx context.Context, sequenceName string) (int64, error)
@@ -49,7 +49,7 @@ type IdentityRouterCacheImpl struct {
 }
 
 func NewIdentityRouterCache(defaultRangeSize uint64, mgr *sequences.SequenceMgr) *IdentityRouterCacheImpl {
-	var rngSize = DefaultIDRangeSize
+	var rngSize = defaultIDRangeSize
 	if defaultRangeSize > 0 {
 		rngSize = defaultRangeSize
 	}

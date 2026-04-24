@@ -767,7 +767,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	return nil
 }
 
-func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) ([]string, error) {
+func getTableColumns(ctx context.Context, db Queryable, relationFQN rfqn.RelationFQN) ([]string, error) {
 	cols := make([]string, 0)
 	colRows, err := db.Query(ctx, `
 	SELECT
@@ -775,9 +775,9 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 	FROM
 		information_schema.columns
 	WHERE table_schema = $1 AND table_name = $2`,
-		rfqn.GetSchema(), strings.ToLower(rfqn.RelationName))
+		relationFQN.GetSchema(), strings.ToLower(relationFQN.RelationName))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get columns of table \"%s\": %s", rfqn.String(), err)
+		return nil, fmt.Errorf("failed to get columns of table \"%s\": %s", relationFQN.String(), err)
 	}
 	for colRows.Next() {
 		colName := ""

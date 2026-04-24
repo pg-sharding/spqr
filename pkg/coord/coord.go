@@ -54,8 +54,8 @@ func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, 
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQN []*rfqn.RelationFQN, destShard string) error {
-	for _, qualName := range relationFQN {
+func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs []*rfqn.RelationFQN, destShard string) error {
+	for _, qualName := range relationFQNs {
 		rel, err := lc.GetReferenceRelation(ctx, qualName)
 		if err != nil {
 			return err

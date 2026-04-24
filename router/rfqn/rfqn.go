@@ -25,17 +25,17 @@ func RelationFQNFromFullName(schemaName string, tableName string) *RelationFQN {
 		SchemaName:   schemaName,
 	}
 }
-func RelationFQNToProto(rfqn *RelationFQN) *proto.QualifiedName {
+func RelationFQNToProto(relationFQN *RelationFQN) *proto.QualifiedName {
 	return &proto.QualifiedName{
-		RelationName: rfqn.RelationName,
-		SchemaName:   rfqn.SchemaName,
+		RelationName: relationFQN.RelationName,
+		SchemaName:   relationFQN.SchemaName,
 	}
 }
 
-func RelationFQNFromProto(rfqn *proto.QualifiedName) *RelationFQN {
+func RelationFQNFromProto(relationFQN *proto.QualifiedName) *RelationFQN {
 	return &RelationFQN{
-		RelationName: rfqn.RelationName,
-		SchemaName:   rfqn.SchemaName,
+		RelationName: relationFQN.RelationName,
+		SchemaName:   relationFQN.SchemaName,
 	}
 }
 

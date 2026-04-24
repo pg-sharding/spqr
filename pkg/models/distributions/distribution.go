@@ -508,11 +508,11 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 // Returns:
 //   - *Distribution: The created Distribution object.
 func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
-	idxsById := make(map[string]*UniqueIndex)
+	idxsByID := make(map[string]*UniqueIndex)
 	idxsByRel := make(map[string]map[string]*UniqueIndex)
 	for _, idxProto := range ds.UniqueIndexes {
 		idx := UniqueIndexFromProto(idxProto)
-		idxsById[idx.ID] = idx
+		idxsByID[idx.ID] = idx
 		if _, ok := idxsByRel[idx.RelationName.RelationName]; !ok {
 			idxsByRel[idx.RelationName.RelationName] = make(map[string]*UniqueIndex)
 		}
@@ -536,12 +536,12 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		}
 	}
 
-	fqn_rels := make(map[string]*DistributedRelation)
+	fqnRels := make(map[string]*DistributedRelation)
 	for _, rel := range ds.FqnRelations {
 
 		var err error
 
-		fqn_rels[rfqn.RelationFQNFromFullName(rel.SchemaName, rel.Name).MetadataKey()], err = DistributedRelationFromProto(rel, map[string]*UniqueIndex{})
+		fqnRels[rfqn.RelationFQNFromFullName(rel.SchemaName, rel.Name).MetadataKey()], err = DistributedRelationFromProto(rel, map[string]*UniqueIndex{})
 		if err != nil {
 			return nil, err
 		}
@@ -559,8 +559,8 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		Id:                ds.Id,
 		ColTypes:          ds.ColumnTypes,
 		Relations:         rels,
-		UniqueIndexesByID: idxsById,
-		FQNRelations:      fqn_rels,
+		UniqueIndexesByID: idxsByID,
+		FQNRelations:      fqnRels,
 
 		Version: ds.Version,
 
@@ -577,12 +577,12 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 //   - *proto.Distribution: The converted proto.Distribution object.
 func DistributionToProto(ds *Distribution) *proto.Distribution {
 	drels := make([]*proto.DistributedRelation, 0)
-	fqn_rels := make([]*proto.DistributedRelation, 0)
+	fqnRels := make([]*proto.DistributedRelation, 0)
 	for _, r := range ds.Relations {
 		drels = append(drels, DistributedRelationToProto(r))
 	}
 	for _, r := range ds.FQNRelations {
-		fqn_rels = append(fqn_rels, DistributedRelationToProto(r))
+		fqnRels = append(fqnRels, DistributedRelationToProto(r))
 	}
 	dsIdxs := make([]*proto.UniqueIndex, 0, len(ds.UniqueIndexesByID))
 	for _, idx := range ds.UniqueIndexesByID {
@@ -593,7 +593,7 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 		ColumnTypes:   ds.ColTypes,
 		Relations:     drels,
 		UniqueIndexes: dsIdxs,
-		FqnRelations:  fqn_rels,
+		FqnRelations:  fqnRels,
 
 		Version: ds.Version,
 		Acl:     acl.ACLTOProto(ds.ACL),

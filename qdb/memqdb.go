@@ -812,8 +812,8 @@ func (q *MemQDB) CreateReferenceRelation(_ context.Context, r *ReferenceRelation
 }
 
 // GetReferenceRelation implements XQDB.
-func (q *MemQDB) GetReferenceRelation(_ context.Context, rfqn *rfqn.RelationFQN) (*ReferenceRelation, error) {
-	tableName := rfqn.RelationName
+func (q *MemQDB) GetReferenceRelation(_ context.Context, relationFQN *rfqn.RelationFQN) (*ReferenceRelation, error) {
+	tableName := relationFQN.RelationName
 
 	spqrlog.Zero.Debug().Str("id", tableName).Msg("memqdb: get reference relation")
 	q.mu.RLock()
@@ -827,8 +827,8 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, rfqn *rfqn.RelationFQN)
 }
 
 // AlterReferenceRelationStorage implements XQDB.
-func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, rfqn *rfqn.RelationFQN, shs []string) error {
-	tableName := rfqn.RelationName
+func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
+	tableName := relationFQN.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, ok := q.ReferenceRelations[tableName]; !ok {
@@ -839,8 +839,8 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, rfqn *rfqn.Rel
 }
 
 // DropReferenceRelation implements XQDB.
-func (q *MemQDB) DropReferenceRelation(_ context.Context, rfqn *rfqn.RelationFQN) error {
-	tableName := rfqn.RelationName
+func (q *MemQDB) DropReferenceRelation(_ context.Context, relationFQN *rfqn.RelationFQN) error {
+	tableName := relationFQN.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, ok := q.ReferenceRelations[tableName]; !ok {
@@ -1596,29 +1596,29 @@ func (q *MemQDB) CheckSequence(_ context.Context, seqName string) (bool, error) 
 	return ok, nil
 }
 
-func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, rfqn *rfqn.RelationFQN, colName string) error {
+func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
-		Str("relation", rfqn.RelationName).
+		Str("relation", relationFQN.RelationName).
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
 	if _, ok := q.Sequences[seqName]; !ok {
 		return fmt.Errorf("sequence %s does not exist", seqName)
 	}
 
-	key := fmt.Sprintf("%s_%s", rfqn, colName)
+	key := fmt.Sprintf("%s_%s", relationFQN, colName)
 	q.ColumnSequence[key] = seqName
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ColumnSequence, key, seqName))
 }
 
-func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, rfqn *rfqn.RelationFQN) error {
+func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relationFQN *rfqn.RelationFQN) error {
 	spqrlog.Zero.Debug().
-		Str("relation", rfqn.RelationName).
+		Str("relation", relationFQN.RelationName).
 		Msg("memqdb: detach relation from sequence")
 
 	for col := range q.ColumnSequence {
 		rel := strings.Split(col, "_")[0]
-		if rel == rfqn.RelationName {
+		if rel == relationFQN.RelationName {
 			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.ColumnSequence, col)); err != nil {
 				return err
 			}
@@ -1658,9 +1658,9 @@ func (q *MemQDB) DropSequence(_ context.Context, seqName string, force bool) err
 		NewDeleteCommand(q.SequenceToValues, seqName))
 }
 
-func (q *MemQDB) GetRelationSequence(_ context.Context, rfqn *rfqn.RelationFQN) (map[string]string, error) {
+func (q *MemQDB) GetRelationSequence(_ context.Context, relationFQN *rfqn.RelationFQN) (map[string]string, error) {
 	spqrlog.Zero.Debug().
-		Str("relation", rfqn.RelationName).
+		Str("relation", relationFQN.RelationName).
 		Interface("mapping", q.ColumnSequence).Msg("memqdb: get relation sequence")
 
 	mapping := map[string]string{}
@@ -1669,7 +1669,7 @@ func (q *MemQDB) GetRelationSequence(_ context.Context, rfqn *rfqn.RelationFQN) 
 		seqRelName := data[0]
 		colName := data[1]
 
-		if seqRelName == rfqn.RelationName {
+		if seqRelName == relationFQN.RelationName {
 			mapping[colName] = seqName
 		}
 	}

@@ -957,7 +957,7 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - relationFQN (string): Relation Fully Qualified Name
+// - relationFQN (*rfqn.RelationFQN): The fully qualified relation name, including schema and relation name.
 //
 // Returns:
 // - *distributions.Distribution: The retrieved distribution related to the relation.
