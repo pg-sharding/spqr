@@ -227,8 +227,26 @@ type Kill struct {
 }
 
 type System struct {
-	Reload  bool
-	Restart bool
+	Reload      bool
+	Restart     bool
+	Rebootstrap bool
+}
+
+type GrantStmt struct {
+	IsGrant bool
+
+	Privileges []string
+	Objtype    string
+	Objects    []*rfqn.RelationFQN
+
+	Grantees []string
+}
+
+func (GrantStmt) iStatement() {}
+
+type PrivTarget struct {
+	Objtype string
+	Objs    []*rfqn.RelationFQN
 }
 
 type InvalidateCacheTarget string
