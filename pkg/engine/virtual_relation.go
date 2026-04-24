@@ -359,9 +359,9 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 	stats := rps.GetRPSStats()
 
 	tts.WriteDataRow(
-		fmt.Sprintf("%v", ci.TotalTcpCount()),
+		fmt.Sprintf("%v", ci.TotalTCPCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount()),
+		fmt.Sprintf("%v", ci.ActiveTCPCount()),
 		fmt.Sprintf("%d", stats.GetTotalRequests()),
 	)
 

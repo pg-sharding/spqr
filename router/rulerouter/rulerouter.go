@@ -120,8 +120,8 @@ func (r *RuleRouterImpl) ReleaseConnection() {
 	r.activeTcpCount.Add(-1)
 }
 
-// ActiveTcpCount implements RuleRouter.
-func (r *RuleRouterImpl) ActiveTcpCount() int64 {
+// ActiveTCPCount implements RuleRouter.
+func (r *RuleRouterImpl) ActiveTCPCount() int64 {
 	return r.activeTcpCount.Load()
 }
 
@@ -130,8 +130,8 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 	return r.cancelConnCount.Load()
 }
 
-// TotalTcpCount implements RuleRouter.
-func (r *RuleRouterImpl) TotalTcpCount() int64 {
+// TotalTCPCount implements RuleRouter.
+func (r *RuleRouterImpl) TotalTCPCount() int64 {
 	return r.tcpConnCount.Load()
 }
 
