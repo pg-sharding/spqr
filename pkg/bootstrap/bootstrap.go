@@ -16,7 +16,7 @@ import (
 	"github.com/sethvargo/go-retry"
 )
 
-func EtcdRebootstrap(ctx context.Context, mngr meta.EntityMgr, QdbAddrs []string) error {
+func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, QdbAddrs []string) error {
 
 	etcdConn, err := qdb.NewEtcdQDB(QdbAddrs, 0)
 	if err != nil {

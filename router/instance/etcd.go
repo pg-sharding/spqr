@@ -14,7 +14,7 @@ type EtcdMetadataBootstrapper struct {
 // TODO: pack TranEntityManager commands to batches
 func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
 
-	if err := bootstrap.EtcdRebootstrap(ctx, r.Console().Mgr(), e.QdbAddrs); err != nil {
+	if err := bootstrap.EtcdReBootstrap(ctx, r.Console().Mgr(), e.QdbAddrs); err != nil {
 		return err
 	}
 
