@@ -123,6 +123,10 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 		return err
 	}
 	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
+
+	// Remove any existing socket file from previous runs
+	_ = os.Remove(socketPath)
+
 	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
 	listener, err := net.ListenUnix("unix", lAddr)
 	if err != nil {
@@ -130,15 +134,21 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 	}
 	defer func(listener net.Listener) {
 		_ = listener.Close()
+		_ = os.Remove(socketPath)
 	}(listener)
 
 	spqrlog.Zero.Info().
 		Msg("SPQR Router is ready by unix socket")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		_ = app.spqr.Run(ctx, listener, port.UnixSocketPortType)
 	}()
 
 	<-ctx.Done()
+	wg.Wait()
 	return nil
 }
 

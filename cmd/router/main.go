@@ -14,6 +14,7 @@ import (
 	"runtime/pprof"
 	"sync"
 	"syscall"
+	"time"
 
 	coordApp "github.com/pg-sharding/spqr/coordinator/app"
 	coord "github.com/pg-sharding/spqr/coordinator/pkg"
@@ -405,9 +406,11 @@ var runCmd = &cobra.Command{
 		errCh := make(chan error)
 
 		go func() {
-			for {
-				<-errCh
-				os.Exit(1)
+			select {
+			case err := <-errCh:
+				spqrlog.Zero.Error().Err(err).Msg("critical error, initiating graceful shutdown")
+				cancelCtx()
+			case <-ctx.Done():
 			}
 		}()
 
@@ -474,8 +477,19 @@ var runCmd = &cobra.Command{
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 
-		wg.Wait()
+		done := make(chan struct{})
+		go func() {
+			wg.Wait()
+			close(done)
+		}()
 
+		select {
+		case <-done:
+			spqrlog.Zero.Info().Msg("router shut down gracefully")
+		case <-time.After(30 * time.Second):
+			spqrlog.Zero.Warn().Msg("shutdown timeout exceeded, forcing exit")
+			os.Exit(1)
+		}
 		return nil
 	},
 }
