@@ -1319,16 +1319,16 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	/* TODO: do not lose move data goroutine here,
 	* remember its id in structure similar to client pool. */
 
+	if invalidateTG && taskGroup != nil {
+		qc.invalidateTaskGroupCache(taskGroup.ID)
+	}
+
 	execCtx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	ch := make(chan error)
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
 	}()
-
-	if invalidateTG && taskGroup != nil {
-		qc.invalidateTaskGroupCache(taskGroup.ID)
-	}
 
 	for {
 		select {
@@ -1707,9 +1707,11 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	taskGroup *tasks.MoveTaskGroup,
 	rel *distributions.DistributedRelation,
 	ds *distributions.Distribution) (*tasks.MoveTask, error) {
+
 	if taskGroup.Limit > 0 && taskGroup.TotalKeys >= taskGroup.Limit {
 		return nil, nil
 	}
+
 	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
@@ -1733,10 +1735,26 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	if !krFound {
 		return nil, nil
 	}
+
 	bound, err := qc.getNextBound(ctx, conn, taskGroup, rel, ds)
 	if err != nil {
 		return nil, err
 	}
+
+	/* Getting next key range bound can be consly (seq scan) */
+	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
+	}
+
+	// TODO create special error type here, use it to stop redistribute/balancer tasks
+	if stop {
+		spqrlog.Zero.Info().Msg("received stop flag, gracefully stopping move task group")
+		return nil, spqrerror.Newf(
+			spqrerror.SPQR_STOP_MOVE_TASK_GROUP,
+			"move task stopped by STOP MOVE TASK GROUP command")
+	}
+
 	boundKR, err := kr.KeyRangeFromBytes(bound, keyRange.ColumnTypes)
 	if err != nil {
 		return nil, err
