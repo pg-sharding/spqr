@@ -616,12 +616,12 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
 			} else if len(shardList) == 0 && len(shards.ShardsData) > 0 {
-				shardIds := make([]string, 0, len(shards.ShardsData))
+				shardIDs := make([]string, 0, len(shards.ShardsData))
 				for id := range shards.ShardsData {
-					shardIds = append(shardIds, id)
+					shardIDs = append(shardIDs, id)
 				}
-				firstShardId := slices.Min(shardIds)
-				s := []string{firstShardId}
+				firstShardID := slices.Min(shardIDs)
+				s := []string{firstShardID}
 				if err := qc.db.SetTxMetaStorage(ctx, s); err != nil {
 					spqrlog.Zero.Error().Err(err).Strs("shard ids", s).Msg("failed to set two phase tx storage shards")
 				}
@@ -924,7 +924,7 @@ func (qc *ClusteredCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.M
 	return m.MoveId, nil
 }
 
-func (qc *ClusteredCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qdb.MoveKeyRange, error) {
+func (qc *ClusteredCoordinator) GetKeyRangeMove(ctx context.Context, krID string) (*qdb.MoveKeyRange, error) {
 	ls, err := qc.db.ListKeyRangeMoves(ctx)
 	if err != nil {
 		return nil, err
@@ -934,7 +934,7 @@ func (qc *ClusteredCoordinator) GetKeyRangeMove(ctx context.Context, krId string
 		// after the coordinator restarts, it will continue the move that was previously initiated.
 		// key range move already exist for this key range
 		// complete it first
-		if krm.KeyRangeID == krId {
+		if krm.KeyRangeID == krID {
 			return krm, nil
 		}
 	}
@@ -2044,23 +2044,23 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
 	}
 
-	taskId, err := qc.db.GetKeyRangeRedistributeTaskId(ctx, req.KrId)
+	taskID, err := qc.db.GetKeyRangeRedistributeTaskId(ctx, req.KrId)
 	if err != nil {
 		return err
 	}
-	if taskId != "" {
-		task, err := qc.db.GetRedistributeTask(ctx, taskId)
+	if taskID != "" {
+		task, err := qc.db.GetRedistributeTask(ctx, taskID)
 		if err != nil {
 			return nil
 		}
 		if task == nil {
-			return fmt.Errorf("failed to redistribute key range \"%s\": it's linked to redistribute task \"%s\" not present in qdb", req.KrId, taskId)
+			return fmt.Errorf("failed to redistribute key range \"%s\": it's linked to redistribute task \"%s\" not present in qdb", req.KrId, taskID)
 		}
-		taskGroupId, err := qc.db.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+		taskGroupID, err := qc.db.GetRedistributeTaskTaskGroupId(ctx, task.ID)
 		if err != nil {
 			return err
 		}
-		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId)
+		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupID)
 		if err != nil {
 			return err
 		}
@@ -2233,18 +2233,18 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 //
 // Parameters:
 //   - ctx (context.Context): The context for the request.
-//   - krId (string): The ID of the key range to be renamed.
+//   - krID (string): The ID of the key range to be renamed.
 //   - krIdNew (string): The new ID for the specified key range.
 //
 // Returns:
 // - error: An error if renaming key range was unsuccessful.
-func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
-	if err := qc.Coordinator.RenameKeyRange(ctx, krId, krIdNew); err != nil {
+func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
+	if err := qc.Coordinator.RenameKeyRange(ctx, krID, krIDNew); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
-		_, err := cl.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{KeyRangeId: krId, NewKeyRangeId: krIdNew})
+		_, err := cl.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{KeyRangeId: krID, NewKeyRangeId: krIDNew})
 
 		return err
 	})
@@ -2760,12 +2760,12 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 	return nil
 }
 
-func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId string, options []topology.GenericOption) error {
-	if err := qc.Coordinator.AlterShardOptions(ctx, shardId, options); err != nil {
+func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+	if err := qc.Coordinator.AlterShardOptions(ctx, shardID, options); err != nil {
 		return err
 	}
 
-	shard, err := qc.GetShard(ctx, shardId)
+	shard, err := qc.GetShard(ctx, shardID)
 	if err != nil {
 		return err
 	}
@@ -2773,7 +2773,7 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId s
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
-			Id:      shardId,
+			Id:      shardID,
 			Options: topology.GenericOptionsToProto(shard.Options()),
 		})
 		if err != nil {
@@ -2787,15 +2787,15 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardId s
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
-	if err := qc.db.DropShard(ctx, shardId); err != nil {
+func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardID string) error {
+	if err := qc.db.DropShard(ctx, shardID); err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.DropShard(ctx, &proto.DropShardRequest{
-			Id: shardId,
+			Id: shardID,
 		})
 		return err
 	})
@@ -3220,13 +3220,13 @@ func (qc *ClusteredCoordinator) GetTxnBatchSize() uint16 {
 	return qc.maxTxnBatch
 }
 
-func (qc *ClusteredCoordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
-	if err := qc.Coordinator.CreateUniqueIndex(ctx, dsId, idx); err != nil {
+func (qc *ClusteredCoordinator) CreateUniqueIndex(ctx context.Context, dsID string, idx *distributions.UniqueIndex) error {
+	if err := qc.Coordinator.CreateUniqueIndex(ctx, dsID, idx); err != nil {
 		return err
 	}
 
 	req := &proto.CreateUniqueIndexRequest{
-		DistributionId: dsId,
+		DistributionId: dsID,
 		Idx:            distributions.UniqueIndexToProto(idx),
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -3243,13 +3243,13 @@ func (qc *ClusteredCoordinator) CreateUniqueIndex(ctx context.Context, dsId stri
 	})
 }
 
-func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId string) error {
-	if err := qc.Coordinator.DropUniqueIndex(ctx, idxId); err != nil {
+func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxID string) error {
+	if err := qc.Coordinator.DropUniqueIndex(ctx, idxID); err != nil {
 		return err
 	}
 
 	req := &proto.DropUniqueIndexRequest{
-		IdxId: idxId,
+		IdxId: idxID,
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
