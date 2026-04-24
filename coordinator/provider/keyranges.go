@@ -63,10 +63,10 @@ func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	splitKR := &kr.SplitKeyRange{
-		Bound:     [][]byte{request.Bound}, // fix multidim case
-		Krid:      request.NewId,
-		SourceID:  request.SourceId,
-		SplitLeft: request.SplitLeft,
+		Bound:      [][]byte{request.Bound}, // fix multidim case
+		KeyRangeID: request.NewId,
+		SourceID:   request.SourceId,
+		SplitLeft:  request.SplitLeft,
 	}
 
 	if err := c.impl.Split(ctx, splitKR); err != nil {
@@ -138,8 +138,8 @@ func (c *CoordinatorService) ListKeyRangeLocks(ctx context.Context, _ *emptypb.E
 // TODO : unit tests
 func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
-		Krid:    request.Id,
-		ShardId: request.ToShardId,
+		KeyRangeID: request.Id,
+		ShardID:    request.ToShardId,
 	}); err != nil {
 		return nil, err
 	}
@@ -150,8 +150,8 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 // TODO : unit tests
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Unite(ctx, &kr.UniteKeyRange{
-		BaseKeyRangeId:      request.GetBaseId(),
-		AppendageKeyRangeId: request.GetAppendageId(),
+		BaseKeyRangeID:      request.GetBaseId(),
+		AppendageKeyRangeID: request.GetAppendageId(),
 	}); err != nil {
 		return nil, spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, err.Error())
 	}
@@ -162,10 +162,10 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 // TODO: unit tests
 func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-		TaskGroupId: request.TaskGroupId,
-		KeyRangeId:  request.KeyRangeId,
-		DestKrId:    request.ToKrId,
-		ShardId:     request.ToShardId,
+		TaskGroupID:    request.TaskGroupId,
+		KeyRangeID:     request.KeyRangeId,
+		DestKeyRangeID: request.ToKrId,
+		ShardID:        request.ToShardId,
 		Limit: func() int64 {
 			switch request.LimitType {
 			case protos.RedistributeLimitType_RedistributeAllKeys:
@@ -193,9 +193,9 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 // TODO: unit tests
 func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		TaskGroupId: request.TaskGroupId,
-		KrId:        request.Krid,
-		ShardId:     request.ShardId,
+		TaskGroupID: request.TaskGroupId,
+		KeyRangeID:  request.Krid,
+		ShardID:     request.ShardId,
 		BatchSize:   int(request.BatchSize),
 		Check:       request.Check,
 		Apply:       request.Apply,

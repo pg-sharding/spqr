@@ -131,11 +131,11 @@ func processDrop(ctx context.Context,
 		}
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
-		relName := &rfqn.RelationFQN{
+		relationFQN := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
 
-		seqs, err := mngr.ListRelationSequences(ctx, relName)
+		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +145,7 @@ func processDrop(ctx context.Context,
 			}
 		}
 
-		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
+		if err := mngr.DropReferenceRelation(ctx, relationFQN); err != nil {
 			return nil, err
 		}
 
@@ -850,19 +850,19 @@ func processAlterDistribution(ctx context.Context,
 // - astmt (spqrparser.Statement): The alter relation statement to be processed.
 // - mngr (EntityMgr): The entity manager for performing the operation.
 // - dsId (string): ID of the distribution, to which the relation belongs.
-// - relName (string): the name of the relation to alter.
+// - relationFQN (string): the name of the relation to alter.
 //
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
-func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationName *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationFQN *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
-		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationName, stmt.SchemaName); err != nil {
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationFQN, stmt.SchemaName); err != nil {
 			return nil, err
 		}
 
-		nRelationName := relationName
+		nRelationName := relationFQN
 		nRelationName.SchemaName = stmt.SchemaName
 
 		tts := &tupleslot.TupleTableSlot{
@@ -884,7 +884,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
 			return nil, err
 		}
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationFQN, newKey); err != nil {
 			return nil, err
 		}
 
@@ -896,7 +896,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationFQN.String()),
 				},
 			},
 		}
@@ -907,10 +907,10 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err != nil {
 			return nil, err
 		}
-		rel := ds.GetRelation(relationName)
+		rel := ds.GetRelation(relationFQN)
 		if rel == nil {
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
-				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
+				"relation \"%s\" is not attached to distribution \"%s\"", relationFQN.String(), dsId)
 		}
 		newKey, err := rel.RenameKeyColumn(stmt.OldName, stmt.NewName)
 		if err != nil {
@@ -919,7 +919,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
 			return nil, err
 		}
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationFQN, newKey); err != nil {
 			return nil, err
 		}
 
@@ -930,7 +930,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 					fmt.Appendf(nil, "distribution id -> %s", dsId),
 				},
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationFQN.String()),
 				},
 				{
 					fmt.Appendf(nil, "renamed column  -> %s to %s", stmt.OldName, stmt.NewName),
@@ -1065,8 +1065,8 @@ func ProcMetadataCommand(ctx context.Context,
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
-			ShardId: stmt.DestShardID,
-			Krid:    stmt.KeyRangeID,
+			ShardID:    stmt.DestShardID,
+			KeyRangeID: stmt.KeyRangeID,
 		}
 
 		if err := mgr.Move(ctx, move); err != nil {
@@ -1076,7 +1076,7 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("move key range"),
 			Raw: [][][]byte{
-				{fmt.Appendf(nil, "move key range %v to shard %v", move.Krid, move.ShardId)},
+				{fmt.Appendf(nil, "move key range %v to shard %v", move.KeyRangeID, move.ShardID)},
 				{[]byte("HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")},
 			},
 		}
@@ -1141,9 +1141,9 @@ func ProcMetadataCommand(ctx context.Context,
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
 		splitKeyRange := &kr.SplitKeyRange{
-			Bound:    stmt.Border.Pivots,
-			SourceID: stmt.KeyRangeFromID,
-			Krid:     stmt.KeyRangeID,
+			Bound:      stmt.Border.Pivots,
+			SourceID:   stmt.KeyRangeFromID,
+			KeyRangeID: stmt.KeyRangeID,
 		}
 		if err := mgr.Split(ctx, splitKeyRange); err != nil {
 			return nil, err
@@ -1152,14 +1152,14 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("split key range"),
 		}
-		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.Krid))
+		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.KeyRangeID))
 		tts.WriteDataRow(fmt.Sprintf("bound        -> %s", strings.ToLower(string(splitKeyRange.Bound[0]))))
 		return tts, nil
 
 	case *spqrparser.UniteKeyRange:
 		uniteKeyRange := &kr.UniteKeyRange{
-			BaseKeyRangeId:      stmt.KeyRangeIDL,
-			AppendageKeyRangeId: stmt.KeyRangeIDR,
+			BaseKeyRangeID:      stmt.KeyRangeIDL,
+			AppendageKeyRangeID: stmt.KeyRangeIDR,
 		}
 		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
 			return nil, err
@@ -1168,7 +1168,7 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("merge key ranges"),
 		}
-		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeId, uniteKeyRange.BaseKeyRangeId))
+		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeID, uniteKeyRange.BaseKeyRangeID))
 		return tts, nil
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr)
@@ -1238,7 +1238,7 @@ func ProcMetadataCommand(ctx context.Context,
 				return nil, err
 			}
 
-			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
+			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToID, taskGroup.KridFrom, taskGroup.KridTo)
 		}
 
 		return tts, nil
@@ -1611,13 +1611,13 @@ func ProcessShowExtended(ctx context.Context,
 			if !ok {
 				return nil, fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
 			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -1642,13 +1642,13 @@ func ProcessShowExtended(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -2136,9 +2136,9 @@ func processRedistribute(ctx context.Context,
 	}
 
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		TaskGroupId: stmt.Id,
-		KrId:        stmt.KeyRangeID,
-		ShardId:     stmt.DestShardID,
+		TaskGroupID: stmt.Id,
+		KeyRangeID:  stmt.KeyRangeID,
+		ShardID:     stmt.DestShardID,
 		BatchSize:   stmt.BatchSize,
 		Check:       stmt.Check,
 		Apply:       stmt.Apply,

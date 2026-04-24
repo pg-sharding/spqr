@@ -261,7 +261,7 @@ func ProcessInsertFromSelectOffsets(
 		Strs("insert columns", insertCols).
 		Msg("deparsed insert statement columns")
 
-	var curr_rfqn *rfqn.RelationFQN
+	var currRFQN *rfqn.RelationFQN
 
 	switch q := stmt.TableRef.(type) {
 	case *lyx.RangeVar:
@@ -271,14 +271,14 @@ func ProcessInsertFromSelectOffsets(
 			Str("schemaname", q.SchemaName).
 			Msg("deparsed insert statement table ref")
 
-		curr_rfqn = rfqn.RelationFQNFromRangeRangeVar(q)
+		currRFQN = rfqn.RelationFQNFromRangeRangeVar(q)
 
 		insertColsPos := map[string]int{}
 		for i, c := range insertCols {
 			insertColsPos[c] = i
 		}
 
-		return insertColsPos, curr_rfqn, nil
+		return insertColsPos, currRFQN, nil
 	default:
 		return nil, nil, rerrors.ErrComplexQuery
 	}

@@ -36,12 +36,12 @@ func UniqueIndexFromProto(idx *proto.UniqueIndex) *UniqueIndex {
 	}
 }
 
-func UniqueIndexToDB(dsId string, idx *UniqueIndex) *qdb.UniqueIndex {
+func UniqueIndexToDB(dsid string, idx *UniqueIndex) *qdb.UniqueIndex {
 	return &qdb.UniqueIndex{
 		ID:             idx.ID,
 		Relation:       idx.RelationName,
 		ColumnNames:    idx.Columns,
-		DistributionId: dsId,
+		DistributionId: dsid,
 		ColTypes:       idx.ColTypes,
 	}
 }

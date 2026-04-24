@@ -175,7 +175,7 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
-	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.Krid); err != nil {
+	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
 		return err
 	}
 
@@ -188,7 +188,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 	if err != nil {
 		return err
 	}
-	reqKr.ShardID = req.ShardId
+	reqKr.ShardID = req.ShardID
 
 	// TODO: move check to meta layer
 	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {

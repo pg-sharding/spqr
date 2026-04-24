@@ -223,8 +223,8 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
-	for _, relName := range request.GetRelNames() {
-		qualifiedName := &rfqn.RelationFQN{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
+	for _, relationFQN := range request.GetRelNames() {
+		qualifiedName := &rfqn.RelationFQN{RelationName: relationFQN.RelationName, SchemaName: relationFQN.SchemaName}
 		if err := l.mgr.AlterDistributionDetach(ctx, request.GetId(), qualifiedName); err != nil {
 			return nil, err
 		}
@@ -235,13 +235,13 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	rfqn := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
+	relationFQN := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
 
-	ds, err := l.mgr.GetRelationDistribution(ctx, rfqn)
+	ds, err := l.mgr.GetRelationDistribution(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.TryGetRelation(rfqn)
+	curRel, ok := ds.TryGetRelation(relationFQN)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
 	}
@@ -340,7 +340,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.Id, ShardId: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId})
 	if err != nil {
 		return nil, err
 	}
@@ -426,10 +426,10 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
-		Krid:      request.NewId,
-		SourceID:  request.SourceId,
-		Bound:     [][]byte{request.Bound}, // TODO: fix
-		SplitLeft: request.SplitLeft,
+		KeyRangeID: request.NewId,
+		SourceID:   request.SourceId,
+		Bound:      [][]byte{request.Bound}, // TODO: fix
+		SplitLeft:  request.SplitLeft,
 	}); err != nil {
 		return nil, err
 	}
@@ -440,8 +440,8 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
-		BaseKeyRangeId:      request.GetBaseId(),
-		AppendageKeyRangeId: request.GetAppendageId(),
+		BaseKeyRangeID:      request.GetBaseId(),
+		AppendageKeyRangeID: request.GetAppendageId(),
 	}); err != nil {
 		return nil, err
 	}

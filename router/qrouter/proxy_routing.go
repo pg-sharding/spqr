@@ -988,8 +988,8 @@ func (qr *ProxyQrouter) addSortToPlan(
 				}
 				/* We can sort by column reference only if we know type of column.
 				* For now, all we know in advance is type of distribution column. */
-				rfqn, err := rm.ResolveRelationByAlias(colRef.TableAlias, colRef.ColName)
-				if err != nil || rfqn == nil {
+				relationFQN, err := rm.ResolveRelationByAlias(colRef.TableAlias, colRef.ColName)
+				if err != nil || relationFQN == nil {
 					/* We can receive `complex query` error from ResolveRelationByAlias.
 					* log it and ignore */
 					spqrlog.Zero.
@@ -999,11 +999,11 @@ func (qr *ProxyQrouter) addSortToPlan(
 					return p, nil
 				}
 
-				d, err := rm.GetRelationDistribution(ctx, rfqn)
+				d, err := rm.GetRelationDistribution(ctx, relationFQN)
 				if err != nil {
 					return nil, err
 				}
-				r, ok := d.TryGetRelation(rfqn)
+				r, ok := d.TryGetRelation(relationFQN)
 				if !ok {
 					return p, nil
 				}
