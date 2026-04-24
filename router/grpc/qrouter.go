@@ -340,7 +340,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.Id, ShardId: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId})
 	if err != nil {
 		return nil, err
 	}
@@ -426,10 +426,10 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
-		Krid:      request.NewId,
-		SourceID:  request.SourceId,
-		Bound:     [][]byte{request.Bound}, // TODO: fix
-		SplitLeft: request.SplitLeft,
+		KeyRangeID: request.NewId,
+		SourceID:   request.SourceId,
+		Bound:      [][]byte{request.Bound}, // TODO: fix
+		SplitLeft:  request.SplitLeft,
 	}); err != nil {
 		return nil, err
 	}
@@ -440,8 +440,8 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
-		BaseKeyRangeId:      request.GetBaseId(),
-		AppendageKeyRangeId: request.GetAppendageId(),
+		BaseKeyRangeID:      request.GetBaseId(),
+		AppendageKeyRangeID: request.GetAppendageId(),
 	}); err != nil {
 		return nil, err
 	}

@@ -1065,8 +1065,8 @@ func ProcMetadataCommand(ctx context.Context,
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
-			ShardId: stmt.DestShardID,
-			Krid:    stmt.KeyRangeID,
+			ShardID:    stmt.DestShardID,
+			KeyRangeID: stmt.KeyRangeID,
 		}
 
 		if err := mgr.Move(ctx, move); err != nil {
@@ -1076,7 +1076,7 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("move key range"),
 			Raw: [][][]byte{
-				{fmt.Appendf(nil, "move key range %v to shard %v", move.Krid, move.ShardId)},
+				{fmt.Appendf(nil, "move key range %v to shard %v", move.KeyRangeID, move.ShardID)},
 				{[]byte("HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")},
 			},
 		}
@@ -1141,9 +1141,9 @@ func ProcMetadataCommand(ctx context.Context,
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
 		splitKeyRange := &kr.SplitKeyRange{
-			Bound:    stmt.Border.Pivots,
-			SourceID: stmt.KeyRangeFromID,
-			Krid:     stmt.KeyRangeID,
+			Bound:      stmt.Border.Pivots,
+			SourceID:   stmt.KeyRangeFromID,
+			KeyRangeID: stmt.KeyRangeID,
 		}
 		if err := mgr.Split(ctx, splitKeyRange); err != nil {
 			return nil, err
@@ -1152,14 +1152,14 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("split key range"),
 		}
-		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.Krid))
+		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.KeyRangeID))
 		tts.WriteDataRow(fmt.Sprintf("bound        -> %s", strings.ToLower(string(splitKeyRange.Bound[0]))))
 		return tts, nil
 
 	case *spqrparser.UniteKeyRange:
 		uniteKeyRange := &kr.UniteKeyRange{
-			BaseKeyRangeId:      stmt.KeyRangeIDL,
-			AppendageKeyRangeId: stmt.KeyRangeIDR,
+			BaseKeyRangeID:      stmt.KeyRangeIDL,
+			AppendageKeyRangeID: stmt.KeyRangeIDR,
 		}
 		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
 			return nil, err
@@ -1168,7 +1168,7 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("merge key ranges"),
 		}
-		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeId, uniteKeyRange.BaseKeyRangeId))
+		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeID, uniteKeyRange.BaseKeyRangeID))
 		return tts, nil
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr)
@@ -2136,9 +2136,9 @@ func processRedistribute(ctx context.Context,
 	}
 
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		TaskGroupId: stmt.Id,
-		KrId:        stmt.KeyRangeID,
-		ShardId:     stmt.DestShardID,
+		TaskGroupID: stmt.Id,
+		KeyRangeID:  stmt.KeyRangeID,
+		ShardID:     stmt.DestShardID,
 		BatchSize:   stmt.BatchSize,
 		Check:       stmt.Check,
 		Apply:       stmt.Apply,

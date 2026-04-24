@@ -372,19 +372,19 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 
 			nkr := keyRange.ToProto()
-			nkr.Krid = split.Krid
+			nkr.Krid = split.KeyRangeID
 
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
 				Bound:     split.Bound[0], // fix multidim case
 				SourceId:  split.SourceID,
-				NewId:     split.Krid,
+				NewId:     split.KeyRangeID,
 				SplitLeft: split.SplitLeft,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.Krid)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.KeyRangeID)
 }
 
 // TODO : unit tests
@@ -408,10 +408,10 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	// Check for in-between key ranges
 	for _, kr := range krs {
-		if kr.ID == unite.BaseKeyRangeId {
+		if kr.ID == unite.BaseKeyRangeID {
 			left = kr
 		}
-		if kr.ID == unite.AppendageKeyRangeId {
+		if kr.ID == unite.AppendageKeyRangeID {
 			right = kr
 		}
 	}
@@ -421,7 +421,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	}
 
 	for _, krCurr := range krs {
-		if krCurr.ID == unite.BaseKeyRangeId || krCurr.ID == unite.AppendageKeyRangeId {
+		if krCurr.ID == unite.BaseKeyRangeID || krCurr.ID == unite.AppendageKeyRangeID {
 			continue
 		}
 		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
@@ -435,8 +435,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
-		BaseId:      unite.BaseKeyRangeId,
-		AppendageId: unite.AppendageKeyRangeId,
+		BaseId:      unite.BaseKeyRangeID,
+		AppendageId: unite.AppendageKeyRangeID,
 	})
 	return spqrerror.CleanGrpcError(err)
 }
@@ -458,17 +458,17 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	}
 
 	for _, keyRange := range krs {
-		if keyRange.ID == move.Krid {
+		if keyRange.ID == move.KeyRangeID {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 				Id:        keyRange.ID,
-				ToShardId: move.ShardId,
+				ToShardId: move.ShardID,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.KeyRangeID)
 }
 
 // TODO : unit tests
@@ -492,10 +492,10 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
 	}
 	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
-		TaskGroupId: req.TaskGroupId,
-		KeyRangeId:  req.KeyRangeId,
-		ToShardId:   req.ShardId,
-		ToKrId:      req.DestKrId,
+		TaskGroupId: req.TaskGroupID,
+		KeyRangeId:  req.KeyRangeID,
+		ToShardId:   req.ShardID,
+		ToKrId:      req.DestKeyRangeID,
 		LimitType:   limitType,
 		Limit:       limit,
 		BatchSize:   int64(req.BatchSize),
@@ -526,9 +526,9 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
-		TaskGroupId: req.TaskGroupId,
-		Krid:        req.KrId,
-		ShardId:     req.ShardId,
+		TaskGroupId: req.TaskGroupID,
+		Krid:        req.KeyRangeID,
+		ShardId:     req.ShardID,
 		BatchSize:   int64(req.BatchSize),
 		Check:       req.Check,
 		Apply:       req.Apply,

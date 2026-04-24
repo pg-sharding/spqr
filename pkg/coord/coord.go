@@ -1076,8 +1076,8 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // Returns:
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeId).Str("appendage id", uniteKeyRange.AppendageKeyRangeId).Msg("unite key ranges")
-	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeId)
+	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeID).Str("appendage id", uniteKeyRange.AppendageKeyRangeID).Msg("unite key ranges")
+	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeID)
 	if err != nil {
 		return err
 	}
@@ -1085,7 +1085,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	defer func() {
 		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
 		// We'll just check existing lock at the start.
-		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
+		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Unite")
 		}
 	}()
@@ -1095,7 +1095,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 
-	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
+	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeID)
 	if err != nil {
 		return err
 	}
@@ -1167,12 +1167,12 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 // - error: an error if the split operation encounters any issues.
 func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	spqrlog.Zero.Debug().
-		Str("krid", req.Krid).
+		Str("krid", req.KeyRangeID).
 		Interface("bound", req.Bound).
 		Str("source-id", req.SourceID).
 		Msg("split request is")
 
-	if kRange, err := lc.GetKeyRange(ctx, req.Krid); err == nil {
+	if kRange, err := lc.GetKeyRange(ctx, req.KeyRangeID); err == nil {
 		ds, err := lc.qdb.GetDistribution(ctx, kRange.Distribution)
 		if err != nil {
 			return err
@@ -1201,7 +1201,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			// already split, so no-op
 			return nil
 		}
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.KeyRangeID)
 	}
 
 	krOld, err := lc.LockKeyRange(ctx, req.SourceID)
@@ -1266,7 +1266,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 
 	if req.SplitLeft {
 		krTemp.ID = req.SourceID
-		krOld.ID = req.Krid
+		krOld.ID = req.KeyRangeID
 		if krOld.IsLocked == nil {
 			return fmt.Errorf("unexpected nil isLocked value in Split")
 		}
@@ -1280,7 +1280,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			return fmt.Errorf("could not create new key range in left key range split: %s", err)
 		}
 	} else {
-		krTemp.ID = req.Krid
+		krTemp.ID = req.KeyRangeID
 		err = tranMngr.CreateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in right key range split: %s", err)

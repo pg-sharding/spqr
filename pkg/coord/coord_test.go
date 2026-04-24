@@ -78,10 +78,10 @@ func TestSplitKeyRange(t *testing.T) {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64(1))
 		splitData := &kr.SplitKeyRange{
-			Bound:     [][]byte{buf},
-			SourceID:  "kr1",
-			Krid:      "kr2",
-			SplitLeft: true,
+			Bound:      [][]byte{buf},
+			SourceID:   "kr1",
+			KeyRangeID: "kr2",
+			SplitLeft:  true,
 		}
 
 		err = mngr.Split(ctx, splitData)
@@ -115,10 +115,10 @@ func TestSplitKeyRange(t *testing.T) {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64(5))
 		splitData := &kr.SplitKeyRange{
-			Bound:     [][]byte{buf},
-			SourceID:  "kr1",
-			Krid:      "kr2",
-			SplitLeft: false,
+			Bound:      [][]byte{buf},
+			SourceID:   "kr1",
+			KeyRangeID: "kr2",
+			SplitLeft:  false,
 		}
 
 		err = mngr.Split(ctx, splitData)

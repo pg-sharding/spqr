@@ -228,8 +228,8 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	mmgr.EXPECT().
 		Move(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange) error {
-			assert.Equal(t, "krid3", move.Krid)
-			assert.Equal(t, "sh2", move.ShardId)
+			assert.Equal(t, "krid3", move.KeyRangeID)
+			assert.Equal(t, "sh2", move.ShardID)
 			return nil
 		})
 
