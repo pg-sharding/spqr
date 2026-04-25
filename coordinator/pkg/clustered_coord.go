@@ -310,11 +310,10 @@ type ClusteredCoordinator struct {
 	cache        *cache.SchemaCache
 	acquiredLock bool
 
-	bounds *sync.Map
-	index  *sync.Map
+	bounds sync.Map
+	index  sync.Map
 
-	routerConnCache map[string]*grpc.ClientConn
-	routerConnMutex sync.RWMutex
+	routerConnCache sync.Map
 
 	startupFinished bool
 	maxTxnBatch     uint16
@@ -336,20 +335,17 @@ var _ coordinator.Coordinator = &ClusteredCoordinator{}
 
 // getOrCreateRouterConn returns a cached connection or creates a new one.
 func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
-	qc.routerConnMutex.Lock()
-	defer qc.routerConnMutex.Unlock()
-
-	conn, exists := qc.routerConnCache[r.ID]
+	connRaw, exists := qc.routerConnCache.Load(r.ID)
 
 	if exists {
+		conn := connRaw.(*grpc.ClientConn)
 		// Check if connection is still valid
 		state := conn.GetState()
 		if state == connectivity.Ready || state == connectivity.Idle {
 			return conn, nil
 		}
 		// Connection is not healthy, close and remove it
-		_ = conn.Close()
-		delete(qc.routerConnCache, r.ID)
+		qc.closeRouterConn(r.ID)
 	}
 
 	// Create new connection
@@ -358,18 +354,19 @@ func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc
 		return nil, err
 	}
 
-	qc.routerConnCache[r.ID] = conn
+	qc.routerConnCache.Store(r.ID, conn)
 	return conn, nil
 }
 
 // closeRouterConn closes and removes a router connection from cache
 func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
-	qc.routerConnMutex.Lock()
-	defer qc.routerConnMutex.Unlock()
 
-	if conn, exists := qc.routerConnCache[routerID]; exists {
+	connRaw, exists := qc.routerConnCache.Load(routerID)
+
+	if exists {
+		conn := connRaw.(*grpc.ClientConn)
 		_ = conn.Close()
-		delete(qc.routerConnCache, routerID)
+		qc.routerConnCache.Delete(routerID)
 	}
 }
 
@@ -467,14 +464,14 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		}
 
 		// Clean up connections for routers that no longer exist
-		qc.routerConnMutex.RLock()
 		var staleConnIDs []string
-		for routerID := range qc.routerConnCache {
+		qc.routerConnCache.Range(func(k, v any) bool {
+			routerID := k.(string)
 			if !currentRouterIDs[routerID] {
 				staleConnIDs = append(staleConnIDs, routerID)
 			}
-		}
-		qc.routerConnMutex.RUnlock()
+			return true
+		})
 
 		for _, routerID := range staleConnIDs {
 			spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
@@ -487,17 +484,14 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:  coord.NewCoordinator(db, nil, maxTxnBatch),
-		db:           db,
-		tlsconfig:    tlsconfig,
-		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
-		acquiredLock: false,
-		// boundMutex:      sync.RWMutex{},
-		// bounds:          make(map[string][][][]byte, 0),
-		bounds: &sync.Map{},
-		index:  &sync.Map{},
-		// index:           make(map[string]int),
-		routerConnCache: make(map[string]*grpc.ClientConn),
+		Coordinator:     coord.NewCoordinator(db, nil, maxTxnBatch),
+		db:              db,
+		tlsconfig:       tlsconfig,
+		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock:    false,
+		bounds:          sync.Map{},
+		index:           sync.Map{},
+		routerConnCache: sync.Map{},
 		maxTxnBatch:     maxTxnBatch,
 	}, nil
 }
@@ -1531,15 +1525,13 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 }
 
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
-	if qc.bounds != nil {
-		if groupBoundsInt, ok := qc.bounds.Load(taskGroup.ID); ok {
-			indMap, _ := qc.index.Load(taskGroup.ID)
-			groupBounds, _ := groupBoundsInt.([][][]byte)
-			ind := indMap.(int)
-			if ind < len(groupBounds) {
-				qc.index.Store(taskGroup.ID, ind+1)
-				return groupBounds[ind], nil
-			}
+	if groupBoundsInt, ok := qc.bounds.Load(taskGroup.ID); ok {
+		indMap, _ := qc.index.Load(taskGroup.ID)
+		groupBounds, _ := groupBoundsInt.([][][]byte)
+		ind := indMap.(int)
+		if ind < len(groupBounds) {
+			qc.index.Store(taskGroup.ID, ind+1)
+			return groupBounds[ind], nil
 		}
 	}
 
@@ -1692,9 +1684,6 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 	} else if moveWhole {
 		// Avoid splitting key range by its own bound when moving the whole range
 		boundList[len(boundList)-1] = keyRange.Raw()
-	}
-	if qc.bounds == nil {
-		qc.bounds = &sync.Map{}
 	}
 	qc.bounds.Store(taskGroup.ID, boundList)
 	qc.index.Store(taskGroup.ID, 1)
@@ -2017,13 +2006,11 @@ func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string
 }
 
 func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, id string) ([][][]byte, int, error) {
-	if qc.bounds != nil {
-		if groupBoundsInt, ok := qc.bounds.Load(id); ok {
-			indMap, _ := qc.index.Load(id)
-			groupBounds, _ := groupBoundsInt.([][][]byte)
-			ind := indMap.(int)
-			return groupBounds, ind, nil
-		}
+	if groupBoundsInt, ok := qc.bounds.Load(id); ok {
+		indMap, _ := qc.index.Load(id)
+		groupBounds, _ := groupBoundsInt.([][][]byte)
+		ind := indMap.(int)
+		return groupBounds, ind, nil
 	}
 	return nil, 0, nil
 }
