@@ -1344,7 +1344,7 @@ func ProcessKill(_ context.Context,
 			Desc: engine.GetVPHeader("kill task"),
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("task id -> %d", stmt.TargetID))
+		tts.WriteDataRow(fmt.Sprintf("task id -> %м", stmt.TargetID))
 
 		return tts, nil
 	case spqrparser.BackendStr:

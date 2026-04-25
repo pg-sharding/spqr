@@ -4,7 +4,6 @@ package spqrparser
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"crypto/rand"
@@ -1644,7 +1643,10 @@ kill_stmt:
 		$$ = &Kill{Cmd: $2, Target: $3}
 	} |	KILL kill_statement_type IDENT
 	{
-		$$ = &Kill{Cmd: $2, TargetID: n}
+		$$ = &Kill{Cmd: $2, TargetID: $3}
+	} |	KILL kill_statement_type SCONST
+	{
+		$$ = &Kill{Cmd: $2, TargetID: $3}
 	}
 
 
