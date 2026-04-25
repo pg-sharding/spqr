@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -45,6 +46,12 @@ func (lc *Coordinator) StartupFinished() bool {
 
 func (lc *Coordinator) TaskWorkersID() []string {
 	return nil
+}
+
+func (a *Coordinator) TaskState(string) (*transferworker.TaskGroupWorkerState, error) {
+	return &transferworker.TaskGroupWorkerState{
+		Cancel: func() {},
+	}, nil
 }
 
 // AlterReferenceRelationStorage alters shards, on which reference relation is contained.

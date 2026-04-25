@@ -19,6 +19,7 @@ import (
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
+	transferworker "github.com/pg-sharding/spqr/pkg/transferworker"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	rfqn "github.com/pg-sharding/spqr/router/rfqn"
@@ -1205,6 +1206,21 @@ func (m *MockEntityMgr) SyncRouterMetadata(ctx context.Context, router *topology
 func (mr *MockEntityMgrMockRecorder) SyncRouterMetadata(ctx, router any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncRouterMetadata", reflect.TypeOf((*MockEntityMgr)(nil).SyncRouterMetadata), ctx, router)
+}
+
+// TaskState mocks base method.
+func (m *MockEntityMgr) TaskState(id string) (*transferworker.TaskGroupWorkerState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TaskState", id)
+	ret0, _ := ret[0].(*transferworker.TaskGroupWorkerState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TaskState indicates an expected call of TaskState.
+func (mr *MockEntityMgrMockRecorder) TaskState(id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TaskState", reflect.TypeOf((*MockEntityMgr)(nil).TaskState), id)
 }
 
 // TaskWorkersID mocks base method.

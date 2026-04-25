@@ -14,6 +14,7 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -67,6 +68,12 @@ func (a *Adapter) StartupFinished() bool {
 
 func (a *Adapter) TaskWorkersID() []string {
 	return nil
+}
+
+func (a *Adapter) TaskState(string) (*transferworker.TaskGroupWorkerState, error) {
+	return &transferworker.TaskGroupWorkerState{
+		Cancel: func() {},
+	}, nil
 }
 
 // TODO : unit tests

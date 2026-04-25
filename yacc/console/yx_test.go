@@ -2110,10 +2110,31 @@ func TestKill(t *testing.T) {
 		},
 
 		{
+			query: "kill task t1;",
+			exp: &spqrparser.Kill{
+				Cmd:      spqrparser.TaskStr,
+				Target:   0,
+				TargetID: "t1",
+			},
+			err: nil,
+		},
+
+		{
+			query: "	kill task 'f8e1b59c-0e4a-4059-92ed-2afedf7a9e2b'",
+			exp: &spqrparser.Kill{
+				Cmd:      spqrparser.TaskStr,
+				Target:   0,
+				TargetID: "f8e1b59c-0e4a-4059-92ed-2afedf7a9e2b",
+			},
+			err: nil,
+		},
+
+		{
 			query: `kill client "824636929312";`,
 			exp: &spqrparser.Kill{
-				Cmd:    spqrparser.ClientStr,
-				Target: 824636929312,
+				Cmd:      spqrparser.ClientStr,
+				Target:   0,
+				TargetID: "824636929312",
 			},
 			err: nil,
 		},

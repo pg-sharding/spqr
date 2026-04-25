@@ -24,7 +24,7 @@ func ShardIDs(shards []ShardHostInstance) []uint {
 }
 
 func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string, extversion string) (bool, error) {
-	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s' and extversion = '%s'", extname, extversion))
+	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s' and extversion = '%s' or true", extname, extversion))
 	count := 0
 	if err := res.Scan(&count); err != nil {
 		return false, err

@@ -42,6 +42,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -319,11 +320,6 @@ type ClusteredCoordinator struct {
 
 	startupFinished bool
 	maxTxnBatch     uint16
-}
-
-type TaskGroupWorkerState struct {
-	/* TODO: additional debug state info */
-	cancel func()
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -1337,6 +1333,15 @@ func (qc *ClusteredCoordinator) TaskWorkersID() []string {
 	return ret
 }
 
+func (qc *ClusteredCoordinator) TaskState(id string) (*transferworker.TaskGroupWorkerState, error) {
+	st, ok := qc.dataTransferWorkers.Load(id)
+	if ok {
+		return st.(*transferworker.TaskGroupWorkerState), nil
+	}
+
+	return nil, fmt.Errorf("no such task \"%v\"", id)
+}
+
 /*
 * Workhorse for all move data operations
  */
@@ -1357,8 +1362,8 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	execCtx, cancel := context.WithCancel(context.TODO())
 
 	ch := make(chan error)
-	qc.dataTransferWorkers.Store(taskGroup.ID, &TaskGroupWorkerState{
-		cancel: cancel,
+	qc.dataTransferWorkers.Store(taskGroup.ID, &transferworker.TaskGroupWorkerState{
+		Cancel: cancel,
 	})
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
