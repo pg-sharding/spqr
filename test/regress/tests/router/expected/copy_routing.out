@@ -262,6 +262,18 @@ NOTICE: send query to shard(s) : sh4
  2012021 |  14
 (1 row)
 
+COPY copy_test_mult TO STDOUT;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+1	14
+2	14
+16	14
+99	14
+101	14
+165	14
+199	14
+202	14
+203	14
+2012021	14
 COPY copy_test_mult (uid, id) FROM stdin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
