@@ -315,7 +315,7 @@ type ClusteredCoordinator struct {
 
 	routerConnCache sync.Map
 
-	dataTransferWrokers sync.Map
+	dataTransferWorkers sync.Map
 
 	startupFinished bool
 	maxTxnBatch     uint16
@@ -514,7 +514,7 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uin
 		bounds:              sync.Map{},
 		index:               sync.Map{},
 		routerConnCache:     sync.Map{},
-		dataTransferWrokers: sync.Map{},
+		dataTransferWorkers: sync.Map{},
 		maxTxnBatch:         maxTxnBatch,
 	}, nil
 }
@@ -1329,7 +1329,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 func (qc *ClusteredCoordinator) TaskWorkersID() []string {
 	ret := []string{}
 
-	qc.dataTransferWrokers.Range(func(k, _ any) bool {
+	qc.dataTransferWorkers.Range(func(k, _ any) bool {
 		ret = append(ret, k.(string))
 		return true
 	})
@@ -1357,12 +1357,12 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	execCtx, cancel := context.WithCancel(context.TODO())
 
 	ch := make(chan error)
-	qc.dataTransferWrokers.Store(taskGroup.ID, &TaskGroupWorkerState{
+	qc.dataTransferWorkers.Store(taskGroup.ID, &TaskGroupWorkerState{
 		cancel: cancel,
 	})
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
-		qc.dataTransferWrokers.Delete(taskGroup.ID)
+		qc.dataTransferWorkers.Delete(taskGroup.ID)
 	}()
 
 	if !nowait {
