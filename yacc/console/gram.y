@@ -731,7 +731,7 @@ show_statement_type:
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr:
+			FileSettingsStr, TaskGroupWorkersStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

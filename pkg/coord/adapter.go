@@ -65,6 +65,10 @@ func (a *Adapter) StartupFinished() bool {
 	return true
 }
 
+func (a *Adapter) TaskWorkersID() []string {
+	return nil
+}
+
 // TODO : unit tests
 // TODO : implement
 

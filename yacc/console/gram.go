@@ -1613,7 +1613,7 @@ yydefault:
 				MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 				TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 				ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-				FileSettingsStr:
+				FileSettingsStr, TaskGroupWorkersStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr

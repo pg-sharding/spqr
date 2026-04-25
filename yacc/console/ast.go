@@ -457,6 +457,7 @@ const (
 	TwoPhaseTXStr         = "two_phase_tx"
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
+	TaskGroupWorkersStr   = "task_group_workers"
 )
 
 // not SHOW target
