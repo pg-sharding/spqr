@@ -465,7 +465,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 		// Clean up connections for routers that no longer exist
 		var staleConnIDs []string
-		qc.routerConnCache.Range(func(k, v any) bool {
+		qc.routerConnCache.Range(func(k, _ any) bool {
 			routerID := k.(string)
 			if !currentRouterIDs[routerID] {
 				staleConnIDs = append(staleConnIDs, routerID)
