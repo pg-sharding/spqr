@@ -2260,6 +2260,11 @@ func TestCopySingleShard(t *testing.T) {
 			exp:   &plan.CopyPlan{},
 			err:   nil,
 		},
+		{
+			query: "COPY xx TO STDOUT",
+			exp:   &plan.CopyPlan{},
+			err:   nil,
+		},
 	} {
 		parserRes, _, err := lyx.Parse(tt.query)
 

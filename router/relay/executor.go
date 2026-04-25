@@ -762,6 +762,39 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 	}
 }
 
+func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool) error {
+	cntCopyDone := 0
+	for {
+
+		cpMsg, _, err := serv.Receive()
+		if err != nil {
+			return err
+		}
+
+		switch newMsg := cpMsg.(type) {
+		case *pgproto3.CopyData:
+			s.Client().Send(newMsg)
+		case *pgproto3.CopyDone:
+			cntCopyDone++
+			if cntCopyDone == len(serv.Datashards()) {
+				txt, err := s.ProcCopyComplete(newMsg, simple)
+				if err != nil {
+					return err
+				}
+
+				if txt != s.cl.Server().TxStatus() {
+					return rerrors.ErrExecutorSyncLost
+				}
+				s.SetTxStatus(txt)
+
+				return nil
+			}
+		default:
+			/* panic? */
+		}
+	}
+}
+
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan, _ bool) error {
 
@@ -935,39 +968,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return nil
 
 	case *plan.CopyPlan:
-
-		if serv == nil {
-			/* Malformed */
-			return errUnAttached
-		}
-
-		/* Now dispatch this toplevel slice */
-		if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
-			return err
-		}
-
-		msg, _, err := serv.Receive()
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Str("server", serv.Name()).
-			Type("msg-type", msg).
-			Msg("received message from server")
-
-		switch msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = s.Client().Send(msg)
-			if err != nil {
-				return err
-			}
-
-			return s.copyFromExecutor(qd.simple)
-		default:
-			return server.ErrMultiShardSyncBroken
-		}
+		return rerrors.ErrExecutorSyncLost
 	case *plan.ScatterPlan:
 		if q.OverwriteCC != nil {
 			overwriteCC = q.OverwriteCC
@@ -997,13 +998,21 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
+			// XXX: handle replyCl somehow
 			err = s.Client().Send(msg)
 			if err != nil {
 				return err
 			}
 
 			return s.copyFromExecutor(qd.simple)
+		case *pgproto3.CopyOutResponse:
+			// XXX: handle replyCl somehow
+			err = s.Client().Send(msg)
+			if err != nil {
+				return err
+			}
+
+			return s.copyToExecutor(serv, qd.simple)
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
