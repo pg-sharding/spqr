@@ -19,7 +19,7 @@ import (
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
-	"github.com/pg-sharding/spqr/pkg/transferworker"
+	transferworker "github.com/pg-sharding/spqr/pkg/transferworker"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	rfqn "github.com/pg-sharding/spqr/router/rfqn"
