@@ -92,6 +92,7 @@ datadir
 datarow
 datashard
 datatransfer
+transferworker
 datname
 dboptions
 dbpool
