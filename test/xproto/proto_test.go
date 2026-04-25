@@ -7119,7 +7119,7 @@ func TestCopyTOXproto(t *testing.T) {
 				},
 			},
 		},
-		}
+	}
 	XprotoTestRunner(t, frontend, tt)
 }
 

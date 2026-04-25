@@ -773,7 +773,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 
 		switch newMsg := cpMsg.(type) {
 		case *pgproto3.CopyData:
-			s.Client().Send(newMsg)
+			return s.Client().Send(newMsg)
 		case *pgproto3.CopyDone:
 			cntCopyDone++
 			if cntCopyDone == len(serv.Datashards()) {
