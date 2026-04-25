@@ -7051,6 +7051,76 @@ func TestCopyFROMXproto(t *testing.T) {
 	XprotoTestRunner(t, frontend, tt)
 }
 
+func TestCopyTOXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "COPY t TO STDOUT",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.CopyOutResponse{
+					ColumnFormatCodes: []uint16{uint16(xproto.FormatCodeText)},
+				},
+
+				&pgproto3.CopyDone{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COPY 0"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "COPY t TO STDIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.CopyDone{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CopyOutResponse{
+					ColumnFormatCodes: []uint16{uint16(xproto.FormatCodeText)},
+				},
+
+				&pgproto3.CopyDone{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COPY 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	XprotoTestRunner(t, frontend, tt)
+}
+
 func TestDiscardAllRemovesPstmts(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
