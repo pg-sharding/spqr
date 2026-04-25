@@ -1742,7 +1742,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	}
 
 	/* Getting next key range bound can be costly (seq scan) */
-	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
+	stop, err = qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
