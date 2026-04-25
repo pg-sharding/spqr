@@ -315,8 +315,15 @@ type ClusteredCoordinator struct {
 
 	routerConnCache sync.Map
 
+	dataTransferWrokers sync.Map
+
 	startupFinished bool
 	maxTxnBatch     uint16
+}
+
+type TaskGroupWorkerState struct {
+	/* TODO: additional debug state info */
+	cancel func()
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -499,15 +506,16 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:     coord.NewCoordinator(db, nil, maxTxnBatch),
-		db:              db,
-		tlsconfig:       tlsconfig,
-		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
-		acquiredLock:    false,
-		bounds:          sync.Map{},
-		index:           sync.Map{},
-		routerConnCache: sync.Map{},
-		maxTxnBatch:     maxTxnBatch,
+		Coordinator:         coord.NewCoordinator(db, nil, maxTxnBatch),
+		db:                  db,
+		tlsconfig:           tlsconfig,
+		rmgr:                rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock:        false,
+		bounds:              sync.Map{},
+		index:               sync.Map{},
+		routerConnCache:     sync.Map{},
+		dataTransferWrokers: sync.Map{},
+		maxTxnBatch:         maxTxnBatch,
 	}, nil
 }
 
@@ -1318,12 +1326,24 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	return nil
 }
 
+func (qc *ClusteredCoordinator) TaskWorkersID() []string {
+	ret := []string{}
+
+	qc.dataTransferWrokers.Range(func(k, _ any) bool {
+		ret = append(ret, k.(string))
+		return true
+	})
+
+	return ret
+}
+
 /*
 * Workhorse for all move data operations
  */
 func (qc *ClusteredCoordinator) executeMoveInternal(
 	ctx context.Context,
 	taskGroup *tasks.MoveTaskGroup,
+	nowait bool,
 	invalidateTG bool,
 ) error {
 
@@ -1335,24 +1355,32 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	}
 
 	execCtx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+
 	ch := make(chan error)
+	qc.dataTransferWrokers.Store(taskGroup.ID, &TaskGroupWorkerState{
+		cancel: cancel,
+	})
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
+		qc.dataTransferWrokers.Delete(taskGroup.ID)
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
-		case err := <-ch:
-			if err != nil {
-				_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
-				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+	if !nowait {
+		defer cancel()
+		for {
+			select {
+			case <-ctx.Done():
+				return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+			case err := <-ch:
+				if err != nil {
+					_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
+					_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+				}
+				return err
 			}
-			return err
 		}
 	}
+	return nil
 }
 
 // TODO : unit tests
@@ -1461,7 +1489,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 	}
 
-	return qc.executeMoveInternal(ctx, taskGroup, false /*actually, does not matter here*/)
+	return qc.executeMoveInternal(ctx, taskGroup, false /*actually, does not matter here*/, false /* `nowait`, no we want to wait*/)
 }
 
 // TODO : unit tests
@@ -2015,17 +2043,7 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
 
-	if nowait {
-		go func() {
-			if err := qc.executeMoveInternal(ctx, taskGroup, true); err != nil {
-				spqrlog.Zero.Err(err).Str("task group id", id).Msg("failed to retry move task group")
-			}
-		}()
-
-		return nil
-	}
-
-	return qc.executeMoveInternal(ctx, taskGroup, true)
+	return qc.executeMoveInternal(ctx, taskGroup, nowait, true)
 }
 
 // StopMoveTaskGroup gracefully stops the execution of current move task group.

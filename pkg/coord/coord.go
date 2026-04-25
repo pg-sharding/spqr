@@ -43,6 +43,10 @@ func (lc *Coordinator) StartupFinished() bool {
 	return true
 }
 
+func (lc *Coordinator) TaskWorkersID() []string {
+	return nil
+}
+
 // AlterReferenceRelationStorage alters shards, on which reference relation is contained.
 func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
 	return lc.qdb.AlterReferenceRelationStorage(ctx, relationFQN, shs)

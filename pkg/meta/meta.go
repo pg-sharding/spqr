@@ -65,6 +65,8 @@ type EntityMgr interface {
 	Cache() *cache.SchemaCache
 
 	StartupFinished() bool
+
+	TaskWorkersID() []string
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
@@ -2097,6 +2099,24 @@ func processShowInner(ctx context.Context,
 				},
 			},
 			Raw: [][][]byte{{{byte(res)}}},
+		}
+		return tts, nil
+
+	case spqrparser.TaskGroupWorkersStr:
+		ids := mngr.TaskWorkersID()
+		tts := &tupleslot.TupleTableSlot{
+			Desc: tupleslot.TupleDesc{
+				pgproto3.FieldDescription{
+					Name:         []byte("worker_id"),
+					DataTypeOID:  catalog.TEXTOID,
+					TypeModifier: -1,
+					DataTypeSize: 1,
+				},
+			},
+		}
+
+		for _, id := range ids {
+			tts.WriteDataRow(id)
 		}
 		return tts, nil
 	default:
