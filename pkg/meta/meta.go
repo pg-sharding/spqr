@@ -70,7 +70,7 @@ type EntityMgr interface {
 // RouterConnector is an optional interface that EntityMgr can implement
 // to provide gRPC connections to routers for querying their status.
 type RouterConnector interface {
-	GetRouterConn(r *topology.Router) (*grpc.ClientConn, error)
+	GetRouterConn(r *topology.Router) (*grpc.ClientConn, func(), error)
 }
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
@@ -1743,7 +1743,7 @@ type RouterVersionInfo struct {
 //
 // Returns:
 // - map[string]RouterVersionInfo: A map of router addresses to version information.
-func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, error)) map[string]RouterVersionInfo {
+func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, func(), error)) map[string]RouterVersionInfo {
 	versions := make(map[string]RouterVersionInfo)
 
 	for _, router := range routers {
@@ -1753,7 +1753,8 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 		}
 
 		if getConnFunc != nil {
-			conn, err := getConnFunc(router)
+			conn, cf, err := getConnFunc(router)
+			defer cf()
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to get router connection")
 				versionInfo.Error = err
