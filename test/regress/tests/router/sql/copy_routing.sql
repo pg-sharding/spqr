@@ -129,6 +129,8 @@ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
 
+COPY copy_test_mult TO STDOUT;
+
 COPY copy_test_mult (uid, id) FROM stdin;
 7	16
 7	116
