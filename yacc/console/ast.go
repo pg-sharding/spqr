@@ -222,8 +222,9 @@ type Listen struct {
 type Shutdown struct{}
 
 type Kill struct {
-	Cmd    string
-	Target uint
+	Cmd      string
+	Target   uint
+	TargetID string
 }
 
 type System struct {
@@ -464,6 +465,7 @@ const (
 const (
 	ClientStr  = "client"
 	BackendStr = "backend"
+	TaskStr    = "task"
 )
 
 const (

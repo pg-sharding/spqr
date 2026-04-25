@@ -750,6 +750,10 @@ kill_statement_type:
 	CLIENT 
 	{
 		$$ = string($1)
+	} | TASK
+	{
+
+		$$ = string("task")
 	}
 	| IDENT
 	{
@@ -1640,10 +1644,7 @@ kill_stmt:
 		$$ = &Kill{Cmd: $2, Target: $3}
 	} |	KILL kill_statement_type IDENT
 	{
-		n, err := strconv.ParseUint($3, 10, 64)
-		if err == nil {
-			$$ = &Kill{Cmd: $2, Target: uint(n)}
-		}
+		$$ = &Kill{Cmd: $2, TargetID: n}
 	}
 
 

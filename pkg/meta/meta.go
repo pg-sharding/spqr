@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -47,6 +48,11 @@ const (
 	defaultBatchSize = 500
 )
 
+type TaskGroupWorkerState struct {
+	/* TODO: additional debug state info */
+	Cancel func()
+}
+
 type EntityMgr interface {
 	kr.KeyRangeMgr
 	topology.RouterMgr
@@ -67,6 +73,7 @@ type EntityMgr interface {
 	StartupFinished() bool
 
 	TaskWorkersID() []string
+	TaskState(id string) (*TaskGroupWorkerState, error)
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
@@ -1294,29 +1301,64 @@ func ProcMetadataCommand(ctx context.Context,
 // - error: An error if the operation encounters any issues.
 func ProcessKill(_ context.Context,
 	stmt *spqrparser.Kill,
-	_ EntityMgr,
+	mgr EntityMgr,
 	ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := ci.Pop(stmt.Target)
+		trg := stmt.Target
+
+		if trg == 0 {
+			n, err := strconv.ParseUint(stmt.TargetID, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			trg = uint(n)
+		}
+
+		ok, err := ci.Pop(trg)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
-			return nil, fmt.Errorf("no such client %d", stmt.Target)
+			return nil, fmt.Errorf("no such client %d", trg)
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("kill client"),
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("client id -> %d", stmt.Target))
+		tts.WriteDataRow(fmt.Sprintf("client id -> %d", trg))
+
+		return tts, nil
+	case spqrparser.TaskStr:
+
+		ts, err := mgr.TaskState(stmt.TargetID)
+		if err != nil {
+			return nil, err
+		}
+
+		ts.Cancel()
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("kill task"),
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("task id -> %d", stmt.TargetID))
 
 		return tts, nil
 	case spqrparser.BackendStr:
 
 		ok := false
+
+		trg := stmt.Target
+		if trg == 0 {
+			n, err := strconv.ParseUint(stmt.TargetID, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			trg = uint(n)
+		}
 
 		var cancelErr error
 
@@ -1335,14 +1377,14 @@ func ProcessKill(_ context.Context,
 		}
 
 		if !ok {
-			return nil, fmt.Errorf("no such backend %d", stmt.Target)
+			return nil, fmt.Errorf("no such backend %d", trg)
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("kill backend"),
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", stmt.Target))
+		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", trg))
 
 		return tts, cancelErr
 	default:

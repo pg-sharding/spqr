@@ -321,11 +321,6 @@ type ClusteredCoordinator struct {
 	maxTxnBatch     uint16
 }
 
-type TaskGroupWorkerState struct {
-	/* TODO: additional debug state info */
-	cancel func()
-}
-
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
 	return qc.db
 }
@@ -1337,6 +1332,15 @@ func (qc *ClusteredCoordinator) TaskWorkersID() []string {
 	return ret
 }
 
+func (qc *ClusteredCoordinator) TaskState(id string) (*meta.TaskGroupWorkerState, error) {
+	st, ok := qc.dataTransferWorkers.Load(id)
+	if ok {
+		return st.(*meta.TaskGroupWorkerState), nil
+	}
+
+	return nil, fmt.Errorf("no such task \"%v\"", id)
+}
+
 /*
 * Workhorse for all move data operations
  */
@@ -1357,8 +1361,8 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	execCtx, cancel := context.WithCancel(context.TODO())
 
 	ch := make(chan error)
-	qc.dataTransferWorkers.Store(taskGroup.ID, &TaskGroupWorkerState{
-		cancel: cancel,
+	qc.dataTransferWorkers.Store(taskGroup.ID, &meta.TaskGroupWorkerState{
+		Cancel: cancel,
 	})
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)

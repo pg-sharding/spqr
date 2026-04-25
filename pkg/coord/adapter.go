@@ -69,6 +69,12 @@ func (a *Adapter) TaskWorkersID() []string {
 	return nil
 }
 
+func (a *Adapter) TaskState(string) (*meta.TaskGroupWorkerState, error) {
+	return &meta.TaskGroupWorkerState{
+		Cancel: func() {},
+	}, nil
+}
+
 // TODO : unit tests
 // TODO : implement
 

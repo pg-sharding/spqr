@@ -14,6 +14,7 @@ import (
 	net "net"
 	reflect "reflect"
 
+	meta "github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -1246,6 +1247,21 @@ func (m *MockCoordinator) SyncRouterMetadata(ctx context.Context, router *topolo
 func (mr *MockCoordinatorMockRecorder) SyncRouterMetadata(ctx, router any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncRouterMetadata", reflect.TypeOf((*MockCoordinator)(nil).SyncRouterMetadata), ctx, router)
+}
+
+// TaskState mocks base method.
+func (m *MockCoordinator) TaskState(id string) (*meta.TaskGroupWorkerState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TaskState", id)
+	ret0, _ := ret[0].(*meta.TaskGroupWorkerState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TaskState indicates an expected call of TaskState.
+func (mr *MockCoordinatorMockRecorder) TaskState(id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TaskState", reflect.TypeOf((*MockCoordinator)(nil).TaskState), id)
 }
 
 // TaskWorkersID mocks base method.
