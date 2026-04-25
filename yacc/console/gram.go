@@ -407,6 +407,7 @@ var yyToknames = [...]string{
 	"TSQOPENBR",
 	"TSQCLOSEBR",
 }
+
 var yyStatenames = [...]string{}
 
 const yyEofCode = 1
@@ -416,7 +417,7 @@ const yyInitialStackSize = 16
 //line gram.y:1870
 
 //line yacctab:1
-var yyExca = [...]int{
+var yyExca = [...]int16{
 	-1, 1,
 	1, -1,
 	-2, 0,
@@ -436,8 +437,7 @@ const yyPrivate = 57344
 
 const yyLast = 640
 
-var yyAct = [...]int{
-
+var yyAct = [...]int16{
 	398, 511, 259, 468, 309, 400, 211, 510, 454, 456,
 	443, 452, 431, 396, 397, 432, 324, 316, 436, 308,
 	370, 315, 189, 371, 185, 338, 196, 173, 405, 182,
@@ -503,8 +503,8 @@ var yyAct = [...]int{
 	88, 2, 520, 523, 467, 32, 33, 339, 344, 276,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 54,
 }
-var yyPact = [...]int{
 
+var yyPact = [...]int16{
 	517, -1000, 454, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
@@ -561,8 +561,8 @@ var yyPact = [...]int{
 	391, -1000, 473, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
 	132, -1000, -1000, -1000, 473, -1000,
 }
-var yyPgo = [...]int{
 
+var yyPgo = [...]int16{
 	0, 629, 628, 25, 627, 17, 21, 3, 624, 8,
 	0, 623, 622, 6, 621, 374, 377, 620, 619, 618,
 	617, 616, 194, 615, 612, 610, 609, 608, 607, 23,
@@ -575,8 +575,8 @@ var yyPgo = [...]int{
 	561, 560, 559, 551, 1, 7, 550, 544, 18, 543,
 	542, 541, 540, 539, 538, 24, 537, 536, 535, 363,
 }
-var yyR1 = [...]int{
 
+var yyR1 = [...]int8{
 	0, 103, 104, 104, 14, 14, 14, 14, 14, 14,
 	14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
 	14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
@@ -610,8 +610,8 @@ var yyR1 = [...]int{
 	57, 90, 91, 91, 96, 96, 98, 98, 97, 97,
 	109, 109, 102, 102, 101, 101, 101, 101, 54, 54,
 }
-var yyR2 = [...]int{
 
+var yyR2 = [...]int8{
 	0, 2, 0, 1, 0, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -645,8 +645,8 @@ var yyR2 = [...]int{
 	9, 5, 3, 3, 6, 6, 1, 0, 5, 5,
 	1, 0, 2, 0, 2, 1, 1, 0, 5, 4,
 }
-var yyChk = [...]int{
 
+var yyChk = [...]int16{
 	-1000, -103, -14, -25, -26, -27, -28, -24, -83, -82,
 	-19, -20, -23, -85, -84, -86, -87, -88, -89, -90,
 	-91, -50, -55, -96, -97, -56, -57, -51, -54, -99,
@@ -703,8 +703,8 @@ var yyChk = [...]int{
 	-95, -49, 13, 27, -68, -80, 133, 134, -7, 25,
 	-10, -43, 25, -94, 84, -10,
 }
-var yyDef = [...]int{
 
+var yyDef = [...]int16{
 	4, -2, 2, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -761,12 +761,12 @@ var yyDef = [...]int{
 	0, 260, 0, 144, 141, 183, 180, 181, 49, 300,
 	0, 269, 175, 143, 0, 161,
 }
-var yyTok1 = [...]int{
 
+var yyTok1 = [...]int8{
 	1,
 }
-var yyTok2 = [...]int{
 
+var yyTok2 = [...]uint8{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -782,7 +782,8 @@ var yyTok2 = [...]int{
 	122, 123, 124, 125, 126, 127, 128, 129, 130, 131,
 	132, 133, 134, 135, 136, 137, 138,
 }
-var yyTok3 = [...]int{
+
+var yyTok3 = [...]int8{
 	0,
 }
 
@@ -864,9 +865,9 @@ func yyErrorMessage(state, lookAhead int) string {
 	expected := make([]int, 0, 4)
 
 	// Look for shiftable tokens.
-	base := yyPact[state]
+	base := int(yyPact[state])
 	for tok := TOKSTART; tok-1 < len(yyToknames); tok++ {
-		if n := base + tok; n >= 0 && n < yyLast && yyChk[yyAct[n]] == tok {
+		if n := base + tok; n >= 0 && n < yyLast && int(yyChk[int(yyAct[n])]) == tok {
 			if len(expected) == cap(expected) {
 				return res
 			}
@@ -876,13 +877,13 @@ func yyErrorMessage(state, lookAhead int) string {
 
 	if yyDef[state] == -2 {
 		i := 0
-		for yyExca[i] != -1 || yyExca[i+1] != state {
+		for yyExca[i] != -1 || int(yyExca[i+1]) != state {
 			i += 2
 		}
 
 		// Look for tokens that we accept or reduce.
 		for i += 2; yyExca[i] >= 0; i += 2 {
-			tok := yyExca[i]
+			tok := int(yyExca[i])
 			if tok < TOKSTART || yyExca[i+1] == 0 {
 				continue
 			}
@@ -913,30 +914,30 @@ func yylex1(lex yyLexer, lval *yySymType) (char, token int) {
 	token = 0
 	char = lex.Lex(lval)
 	if char <= 0 {
-		token = yyTok1[0]
+		token = int(yyTok1[0])
 		goto out
 	}
 	if char < len(yyTok1) {
-		token = yyTok1[char]
+		token = int(yyTok1[char])
 		goto out
 	}
 	if char >= yyPrivate {
 		if char < yyPrivate+len(yyTok2) {
-			token = yyTok2[char-yyPrivate]
+			token = int(yyTok2[char-yyPrivate])
 			goto out
 		}
 	}
 	for i := 0; i < len(yyTok3); i += 2 {
-		token = yyTok3[i+0]
+		token = int(yyTok3[i+0])
 		if token == char {
-			token = yyTok3[i+1]
+			token = int(yyTok3[i+1])
 			goto out
 		}
 	}
 
 out:
 	if token == 0 {
-		token = yyTok2[1] /* unknown char */
+		token = int(yyTok2[1]) /* unknown char */
 	}
 	if yyDebug >= 3 {
 		__yyfmt__.Printf("lex %s(%d)\n", yyTokname(token), uint(char))
@@ -991,7 +992,7 @@ yystack:
 	yyS[yyp].yys = yystate
 
 yynewstate:
-	yyn = yyPact[yystate]
+	yyn = int(yyPact[yystate])
 	if yyn <= yyFlag {
 		goto yydefault /* simple state */
 	}
@@ -1002,8 +1003,8 @@ yynewstate:
 	if yyn < 0 || yyn >= yyLast {
 		goto yydefault
 	}
-	yyn = yyAct[yyn]
-	if yyChk[yyn] == yytoken { /* valid shift */
+	yyn = int(yyAct[yyn])
+	if int(yyChk[yyn]) == yytoken { /* valid shift */
 		yyrcvr.char = -1
 		yytoken = -1
 		yyVAL = yyrcvr.lval
@@ -1016,7 +1017,7 @@ yynewstate:
 
 yydefault:
 	/* default state action */
-	yyn = yyDef[yystate]
+	yyn = int(yyDef[yystate])
 	if yyn == -2 {
 		if yyrcvr.char < 0 {
 			yyrcvr.char, yytoken = yylex1(yylex, &yyrcvr.lval)
@@ -1025,18 +1026,18 @@ yydefault:
 		/* look through exception table */
 		xi := 0
 		for {
-			if yyExca[xi+0] == -1 && yyExca[xi+1] == yystate {
+			if yyExca[xi+0] == -1 && int(yyExca[xi+1]) == yystate {
 				break
 			}
 			xi += 2
 		}
 		for xi += 2; ; xi += 2 {
-			yyn = yyExca[xi+0]
+			yyn = int(yyExca[xi+0])
 			if yyn < 0 || yyn == yytoken {
 				break
 			}
 		}
-		yyn = yyExca[xi+1]
+		yyn = int(yyExca[xi+1])
 		if yyn < 0 {
 			goto ret0
 		}
@@ -1058,10 +1059,10 @@ yydefault:
 
 			/* find a state where "error" is a legal shift action */
 			for yyp >= 0 {
-				yyn = yyPact[yyS[yyp].yys] + yyErrCode
+				yyn = int(yyPact[yyS[yyp].yys]) + yyErrCode
 				if yyn >= 0 && yyn < yyLast {
-					yystate = yyAct[yyn] /* simulate a shift of "error" */
-					if yyChk[yystate] == yyErrCode {
+					yystate = int(yyAct[yyn]) /* simulate a shift of "error" */
+					if int(yyChk[yystate]) == yyErrCode {
 						goto yystack
 					}
 				}
@@ -1097,7 +1098,7 @@ yydefault:
 	yypt := yyp
 	_ = yypt // guard against "declared and not used"
 
-	yyp -= yyR2[yyn]
+	yyp -= int(yyR2[yyn])
 	// yyp is now the index of $0. Perform the default action. Iff the
 	// reduced production is ε, $1 is possibly out of range.
 	if yyp+1 >= len(yyS) {
@@ -1108,16 +1109,16 @@ yydefault:
 	yyVAL = yyS[yyp+1]
 
 	/* consult goto table to find next state */
-	yyn = yyR1[yyn]
-	yyg := yyPgo[yyn]
+	yyn = int(yyR1[yyn])
+	yyg := int(yyPgo[yyn])
 	yyj := yyg + yyS[yyp].yys + 1
 
 	if yyj >= yyLast {
-		yystate = yyAct[yyg]
+		yystate = int(yyAct[yyg])
 	} else {
-		yystate = yyAct[yyj]
-		if yyChk[yystate] != -yyn {
-			yystate = yyAct[yyg]
+		yystate = int(yyAct[yyj])
+		if int(yyChk[yystate]) != -yyn {
+			yystate = int(yyAct[yyg])
 		}
 	}
 	// dummy call; replaced with literal code

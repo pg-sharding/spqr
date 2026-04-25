@@ -32,6 +32,7 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -47,11 +48,6 @@ import (
 const (
 	defaultBatchSize = 500
 )
-
-type TaskGroupWorkerState struct {
-	/* TODO: additional debug state info */
-	Cancel func()
-}
 
 type EntityMgr interface {
 	kr.KeyRangeMgr
@@ -73,7 +69,7 @@ type EntityMgr interface {
 	StartupFinished() bool
 
 	TaskWorkersID() []string
-	TaskState(id string) (*TaskGroupWorkerState, error)
+	TaskState(id string) (*transferworker.TaskGroupWorkerState, error)
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
@@ -1344,7 +1340,7 @@ func ProcessKill(_ context.Context,
 			Desc: engine.GetVPHeader("kill task"),
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("task id -> %м", stmt.TargetID))
+		tts.WriteDataRow(fmt.Sprintf("task id -> %v", stmt.TargetID))
 
 		return tts, nil
 	case spqrparser.BackendStr:

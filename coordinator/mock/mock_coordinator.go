@@ -14,13 +14,13 @@ import (
 	net "net"
 	reflect "reflect"
 
-	meta "github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	port "github.com/pg-sharding/spqr/router/port"
@@ -1250,10 +1250,10 @@ func (mr *MockCoordinatorMockRecorder) SyncRouterMetadata(ctx, router any) *gomo
 }
 
 // TaskState mocks base method.
-func (m *MockCoordinator) TaskState(id string) (*meta.TaskGroupWorkerState, error) {
+func (m *MockCoordinator) TaskState(id string) (*transferworker.TaskGroupWorkerState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TaskState", id)
-	ret0, _ := ret[0].(*meta.TaskGroupWorkerState)
+	ret0, _ := ret[0].(*transferworker.TaskGroupWorkerState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
