@@ -161,7 +161,7 @@ func (qr *ProxyQrouter) registerMetrics() {
 		},
 		Value: 0,
 	}
-	qr.metricRegistry.RegisterDynamicGaude(totalConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicGauge(totalConnectionsMetric)
 }
 
 func NewProxyRouter(shardMapping map[string]*topology.DataShard,

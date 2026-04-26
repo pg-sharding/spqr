@@ -45,10 +45,10 @@ func (m *RouterMetricRegistry) GetRegistry() *prometheus.Registry {
 	return m.registry
 }
 
-func (m *RouterMetricRegistry) RegisterDynamicGaude(gaude *DynamicGauge) {
-	if _, ok := m.registeredDynamic[gaude.Name]; !ok {
-		m.registeredDynamic[gaude.Name] = struct{}{}
-		m.registry.MustRegister(gaude)
+func (m *RouterMetricRegistry) RegisterDynamicGauge(gauge *DynamicGauge) {
+	if _, ok := m.registeredDynamic[gauge.Name]; !ok {
+		m.registeredDynamic[gauge.Name] = struct{}{}
+		m.registry.MustRegister(gauge)
 	}
 }
 
