@@ -7726,3 +7726,38 @@ func TestFlush(t *testing.T) {
 
 	XprotoTestRunner(t, frontend, tt)
 }
+
+func TestCloseNonExistedNamedPstmt(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "non-existing-pstmt",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 42",
+					Name:  "pstmt",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	XprotoTestRunner(t, frontend, tt)
+}
