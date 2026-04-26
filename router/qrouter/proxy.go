@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -34,10 +35,11 @@ type ProxyQrouter struct {
 
 	cfg *config.QRouter
 
-	mgr          meta.EntityMgr
-	csm          connmgr.ConnectionMgr
-	schemaCache  *cache.SchemaCache
-	idRangeCache planner.IdentityRouterCache
+	mgr            meta.EntityMgr
+	csm            connmgr.ConnectionMgr
+	schemaCache    *cache.SchemaCache
+	idRangeCache   planner.IdentityRouterCache
+	metricRegistry *metrics.RouterMetricRegistry
 
 	initialized *atomic.Bool
 	ready       *atomic.Bool
@@ -103,6 +105,10 @@ func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
 	return qr.mgr
 }
 
+func (qr *ProxyQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
+	return qr.metricRegistry
+}
+
 func (qr *ProxyQrouter) CSM() connmgr.ConnectionMgr {
 	return qr.csm
 }
@@ -152,6 +158,7 @@ func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
+	metricRegistry *metrics.RouterMetricRegistry,
 ) (*ProxyQrouter, error) {
 
 	proxy := &ProxyQrouter{
@@ -163,6 +170,7 @@ func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 		csm:            csm,
 		schemaCache:    cache,
 		idRangeCache:   idRangeCache,
+		metricRegistry: metricRegistry,
 	}
 
 	ctx := context.TODO()

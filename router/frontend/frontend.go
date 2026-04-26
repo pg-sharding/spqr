@@ -61,7 +61,7 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
@@ -122,7 +122,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
-
+		qr.MetricRegistry().IncInboundQueries()
 		// copy interface
 		cpQ := *q
 		q = &cpQ
@@ -141,6 +141,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
+		qr.MetricRegistry().IncInboundQueries()
 		// copy interface
 		cpQ := *q
 		q = &cpQ
