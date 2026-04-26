@@ -1361,14 +1361,14 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 		qc.invalidateTaskGroupCache(taskGroup.ID)
 	}
 
-	execCtx, cancel := context.WithCancel(context.TODO())
+	execCtx, cancel := context.WithCancel(ctx)
 
 	ch := make(chan error)
 	qc.dataTransferWorkers.Store(taskGroup.ID, &transferworker.TaskGroupWorkerState{
 		Cancel: cancel,
 	})
 
-	qc.moveTaskWatcherInit.Do(qc.bootstrapWatcher(ctx))
+	qc.moveTaskWatcherInit.Do(qc.bootstrapWatcher(context.TODO()))
 
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
@@ -1408,10 +1408,10 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 					qc.dataTransferWorkers.Range(func(k, v any) bool {
 						id := k.(string)
 						st := v.(*transferworker.TaskGroupWorkerState)
+						spqrlog.Zero.Debug().Str("id", id).Msg("rechecking task aliveness")
 						stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
 						if err != nil {
 							spqrlog.Zero.Info().Err(err).Msg("failed to check for stop flag:")
-
 						}
 
 						// TODO create special error type here, use it to stop redistribute/balancer tasks
@@ -1427,7 +1427,6 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 
 						return true
 					})
-
 				case <-ctx.Done():
 					return
 				}
