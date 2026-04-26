@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -23,13 +22,9 @@ func NewMemPgQDB(backupPath string) (*MemPgQDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	shardsCfg, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-	if err != nil {
-		return nil, err
-	}
 	return &MemPgQDB{
 		MemQDB:      memQDB,
-		stateKeeper: NewPgQDB(shardsCfg),
+		stateKeeper: NewPgQDB(memQDB),
 	}, nil
 }
 

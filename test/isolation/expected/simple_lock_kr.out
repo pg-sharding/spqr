@@ -14,6 +14,11 @@ distribution id -> d
 
 add key range
 -------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
 bound -> 200 
 (1 row)
 
@@ -61,6 +66,11 @@ attach table
 relation name   -> r
 distribution id -> d
 (2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
 
 add key range
 -------------
@@ -126,6 +136,11 @@ distribution id -> d
 
 add key range
 -------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
 bound -> 200 
 (1 row)
 
@@ -181,6 +196,11 @@ attach table
 relation name   -> r
 distribution id -> d
 (2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
 
 add key range
 -------------

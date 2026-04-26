@@ -19,7 +19,6 @@ import (
 	coord "github.com/pg-sharding/spqr/coordinator/pkg"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -277,11 +276,6 @@ var runCmd = &cobra.Command{
 
 		app := app.NewApp(router)
 
-		if !config.RouterConfig().WithCoordinator && rcfgPath != "" {
-			if err := datatransfers.LoadConfig(rcfgPath); err != nil {
-				return err
-			}
-		}
 		if config.RouterConfig().WithCoordinator {
 			go func() {
 				if err := func() error {

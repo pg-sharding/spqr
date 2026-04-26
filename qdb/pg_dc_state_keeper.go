@@ -33,10 +33,11 @@ const (
 type PgDCStateKeeper struct {
 	mu sync.RWMutex
 
-	shards  *config.DatatransferConnections
 	storage []string
 	pooler  map[string]*pgxpool.Pool
 	locks   map[string]any
+
+	topologyKeeper TopologyKeeper
 }
 
 func (q *PgDCStateKeeper) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
@@ -76,7 +77,12 @@ func (q *PgDCStateKeeper) getStorageShardConnect() (*config.ShardConnect, error)
 	if len(q.storage) == 0 {
 		return nil, fmt.Errorf("could not lock transaction on shard: no shards found")
 	}
-	if cfg, ok := q.shards.ShardsData[q.storage[0]]; ok {
+	shards, err := LoadShardsConnectionData(q.topologyKeeper)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg, ok := shards[q.storage[0]]; ok {
 		return cfg, nil
 	} else {
 		return nil, fmt.Errorf("shard \"%s\" not found in config", q.storage[0])
@@ -160,10 +166,10 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string, shards []string) error {
 	spqrlog.Zero.Debug().Str("gid", txid).Strs("shards", shards).Msg("pg dc state keeper: record tx members")
 	tx, err := q.getTx(ctx, txid)
-	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	row := (*tx).QueryRow(ctx, "SELECT count(*) FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
 	count := 0
 	if err = row.Scan(&count); err != nil {
@@ -331,12 +337,13 @@ func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
 	return err
 }
 
-func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {
+func NewPgQDB(topologyKeeper TopologyKeeper) *PgDCStateKeeper {
 	return &PgDCStateKeeper{
 		mu:     sync.RWMutex{},
-		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
 		locks:  map[string]any{},
+
+		topologyKeeper: topologyKeeper,
 	}
 }
 

@@ -267,3 +267,49 @@ type DataTransferTransaction struct {
 	FromShardId string   `json:"from_shard"`
 	Status      TxStatus `json:"status"`
 }
+
+func LoadShardsConnectionData(qdb TopologyKeeper) (map[string]*config.ShardConnect, error) {
+	if config.CoordinatorConfig().ShardDataInQDB {
+		shards, err := qdb.ListShards(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+		m := map[string]*config.ShardConnect{}
+		for _, sh := range shards {
+			dbname := ""
+			user := ""
+			password := ""
+			hosts := []string{}
+
+			for _, opt := range sh.Options {
+				if opt.Name == "host" {
+					hosts = append(hosts, opt.Value)
+				}
+				if opt.Name == "dbname" {
+					dbname = opt.Value
+				}
+				if opt.Name == "user" {
+					user = opt.Value
+				}
+				if opt.Name == "password" {
+					password = opt.Value
+				}
+			}
+
+			m[sh.ID] = &config.ShardConnect{
+				Hosts:    hosts,
+				DB:       dbname,
+				User:     user,
+				Password: password,
+			}
+		}
+		return m, nil
+	}
+
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return conns.ShardsData, nil
+}

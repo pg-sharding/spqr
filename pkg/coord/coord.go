@@ -73,7 +73,7 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 			destShards = append(rel.ShardIds, destShard)
 		}
 
-		shards, err := lc.LoadShardsConnectionData()
+		shards, err := qdb.LoadShardsConnectionData(lc.qdb)
 		if err != nil {
 			return err
 		}
@@ -1430,46 +1430,4 @@ func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []s
 
 func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
 	return lc.qdb.GetTxMetaStorage(ctx)
-}
-
-func (lc *Coordinator) LoadShardsConnectionData() (map[string]*config.ShardConnect, error) {
-	if config.CoordinatorConfig().ShardDataInQDB {
-		shards, err := lc.qdb.ListShards(context.TODO())
-		if err != nil {
-			return nil, err
-		}
-		m := map[string]*config.ShardConnect{}
-		for _, sh := range shards {
-			dbname := ""
-			user := ""
-			password := ""
-
-			for _, opt := range sh.Options {
-				if opt.Name == "dbname" {
-					dbname = opt.Value
-				}
-				if opt.Name == "user" {
-					user = opt.Value
-				}
-				if opt.Name == "password" {
-					password = opt.Value
-				}
-			}
-
-			m[sh.ID] = &config.ShardConnect{
-				Hosts:    sh.RawHosts,
-				DB:       dbname,
-				User:     user,
-				Password: password,
-			}
-		}
-		return m, nil
-	}
-
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return conns.ShardsData, nil
 }

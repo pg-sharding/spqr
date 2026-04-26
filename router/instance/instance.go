@@ -150,6 +150,7 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceI
 	if err != nil {
 		return nil, err
 	}
+	spqrlog.Zero.Debug().Msg("here8")
 
 	r := &InstanceImpl{
 		RuleRouter: rr,

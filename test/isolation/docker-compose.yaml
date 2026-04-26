@@ -158,7 +158,7 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/test/isolation/conf/router2.yaml
             - ROUTER_LOG=/var/log/spqr-router.log
-            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+            - COORDINATOR_CONFIG=/spqr/test/isolation/conf/coordinator.yaml
         hostname: regress_router_2
         container_name: regress_router_2
         healthcheck:

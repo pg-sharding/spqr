@@ -74,6 +74,7 @@ func GetMemPgQDB() (*MemPgQDB, error) {
 }
 
 func GetStateKeeperQDB() (StateKeeperQDB, error) {
+	spqrlog.Zero.Debug().Bool("flag", config.RouterConfig().StoreTxDataPostgresql).Msg("here1.1")
 	if config.RouterConfig().StoreTxDataPostgresql {
 		return GetMemPgQDB()
 	} else {
