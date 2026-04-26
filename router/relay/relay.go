@@ -1032,16 +1032,9 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		case 'S':
 			/* Statement */
 
-			def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
-
-			if def == nil {
-				/* this prepared statement was not prepared by client */
-				return pstmtDoesNotExistsErr(currentMsg.Name)
-			} else {
-				rst.Client().ClosePreparedStatement(currentMsg.Name)
-				if err := rst.Client().ReplyCloseComplete(); err != nil {
-					return err
-				}
+			rst.Client().ClosePreparedStatement(currentMsg.Name)
+			if err := rst.Client().ReplyCloseComplete(); err != nil {
+				return err
 			}
 
 		default:

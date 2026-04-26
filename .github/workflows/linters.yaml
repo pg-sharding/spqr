@@ -42,7 +42,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: latest
-          args: --timeout=10m --color=always
+          args: --timeout=10m --color=always --build-tags=all
 
   goimports:
     runs-on: ubuntu-latest
