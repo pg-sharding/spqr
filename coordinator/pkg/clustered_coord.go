@@ -318,6 +318,8 @@ type ClusteredCoordinator struct {
 
 	dataTransferWorkers sync.Map
 
+	moveTaskWatcherInit sync.Once
+
 	startupFinished bool
 	maxTxnBatch     uint16
 }
@@ -1365,6 +1367,9 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	qc.dataTransferWorkers.Store(taskGroup.ID, &transferworker.TaskGroupWorkerState{
 		Cancel: cancel,
 	})
+
+	qc.moveTaskWatcherInit.Do(qc.bootstrapWatcher(ctx))
+
 	go func() {
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
 		qc.dataTransferWorkers.Delete(taskGroup.ID)
@@ -1386,6 +1391,46 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 		}
 	}
 	return nil
+}
+
+func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
+
+	return func() {
+		/* XXX: configure this? */
+		t := time.Tick(time.Second)
+
+		for {
+			select {
+			case <-t:
+
+				qc.dataTransferWorkers.Range(func(k, v any) bool {
+					id := k.(string)
+					st := v.(*transferworker.TaskGroupWorkerState)
+					stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
+					if err != nil {
+						spqrlog.Zero.Info().Err(err).Msg("failed to check for stop flag:")
+
+					}
+
+					// TODO create special error type here, use it to stop redistribute/balancer tasks
+					if stop {
+
+						/* Ideally, client should receive this error
+						 spqrerror.Newf(
+							spqrerror.SPQR_STOP_MOVE_TASK_GROUP,
+							"move task stopped by STOP MOVE TASK GROUP command") */
+
+						st.Cancel()
+					}
+
+					return true
+				})
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }
 
 // TODO : unit tests
