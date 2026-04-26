@@ -69,7 +69,7 @@ func Start(registry MetricRegistry, path string, port string) error {
 			dialCancel()
 
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				return nil
 			}
 		}
