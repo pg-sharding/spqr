@@ -157,7 +157,7 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Name: "router_client_connections_tcp_total",
 		Help: "Current number of client tcp connections",
 		Getter: func() float64 {
-			return float64(qr.csm.TotalCancelCount())
+			return float64(qr.csm.TotalTCPCount())
 		},
 		Value: 0,
 	}

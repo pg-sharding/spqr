@@ -12,8 +12,9 @@ const (
 type RouterMetricRegistry struct {
 	registry *prometheus.Registry
 
-	configReloads  prometheus.Counter
-	inboundQueries prometheus.Counter
+	configReloads     prometheus.Counter
+	inboundQueries    prometheus.Counter
+	registeredDynamic map[string]struct{}
 }
 
 func NewRouterMetricRegistry(registry *prometheus.Registry) *RouterMetricRegistry {
@@ -33,9 +34,10 @@ func NewRouterMetricRegistry(registry *prometheus.Registry) *RouterMetricRegistr
 	registry.MustRegister(inboundQueries)
 
 	return &RouterMetricRegistry{
-		registry:       registry,
-		configReloads:  configReloads,
-		inboundQueries: inboundQueries,
+		registry:          registry,
+		configReloads:     configReloads,
+		inboundQueries:    inboundQueries,
+		registeredDynamic: make(map[string]struct{}),
 	}
 }
 
@@ -44,7 +46,10 @@ func (m *RouterMetricRegistry) GetRegistry() *prometheus.Registry {
 }
 
 func (m *RouterMetricRegistry) RegisterDynamicGaude(gaude *DynamicGauge) {
-	m.registry.MustRegister(gaude)
+	if _, ok := m.registeredDynamic[gaude.Name]; !ok {
+		m.registeredDynamic[gaude.Name] = struct{}{}
+		m.registry.MustRegister(gaude)
+	}
 }
 
 func (m *RouterMetricRegistry) IncConfigReloads() {
