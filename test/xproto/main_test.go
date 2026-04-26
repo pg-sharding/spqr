@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -29,7 +30,8 @@ func thisIsSPQRSpecificTest(t *testing.T) {
 	}
 }
 
-func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGroup) {
+// note: this function breaks read deadline
+func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, conn net.Conn, tt []MessageGroup) {
 	for _, msgroup := range tt {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
@@ -78,6 +80,18 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", gr, ind))
 		}
 	}
+
+	/*
+	 * check that no extra messages existed in stream
+	 * XXX: do it in some better way?
+	 */
+	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	extra, err := frontend.Receive()
+	assert.Error(t, err, "expected no message but got %T", extra)
+	netErr, ok := err.(net.Error)
+	assert.True(t, ok && netErr.Timeout())
+
+	conn.SetReadDeadline(time.Time{})
 }
 
 func getC() (net.Conn, error) {

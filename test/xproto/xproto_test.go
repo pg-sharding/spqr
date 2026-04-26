@@ -2371,7 +2371,7 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestPrepStmt(t *testing.T) {
@@ -3002,7 +3002,7 @@ func TestPrepExtendedPipeline(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestPrepExtendedErrorParse(t *testing.T) {
@@ -3093,7 +3093,7 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDoubleDescribe(t *testing.T) {
@@ -3161,7 +3161,7 @@ func TestDoubleDescribe(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestMultiPortal(t *testing.T) {
@@ -3313,7 +3313,7 @@ func TestMultiPortal(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestUnknownBindStatementError(t *testing.T) {
@@ -3781,7 +3781,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestExtendedErrorImplicitTX(t *testing.T) {
@@ -3840,7 +3840,7 @@ func TestExtendedErrorImplicitTX(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestParseErrorThenReuseName(t *testing.T) {
@@ -4103,7 +4103,7 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestClose(t *testing.T) {
@@ -4295,7 +4295,7 @@ func TestCloseNonExistedNamedPstmt(t *testing.T) {
 		},
 	}
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestFlush(t *testing.T) {
@@ -4327,7 +4327,7 @@ func TestFlush(t *testing.T) {
 
 	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
 
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDiscardAllRemovesPstmts(t *testing.T) {
@@ -4393,7 +4393,7 @@ func TestDiscardAllRemovesPstmts(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDiscardAllRemovesPstmtsByXproto(t *testing.T) {
@@ -4467,7 +4467,7 @@ func TestDiscardAllRemovesPstmtsByXproto(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDeallocateRemovesPstmts(t *testing.T) {
@@ -4585,7 +4585,7 @@ func TestDeallocateRemovesPstmts(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDeallocateRemovesPstmtsByXproto(t *testing.T) {
@@ -4719,7 +4719,7 @@ func TestDeallocateRemovesPstmtsByXproto(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDeallocatePrepareRemovesPstmts(t *testing.T) {
@@ -4837,7 +4837,7 @@ func TestDeallocatePrepareRemovesPstmts(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDeallocatePrepareRemovesPstmtsByXproto(t *testing.T) {
@@ -4971,7 +4971,7 @@ func TestDeallocatePrepareRemovesPstmtsByXproto(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestDDL(t *testing.T) {
@@ -5424,7 +5424,7 @@ func TestRewriteInsertXproto(t *testing.T) {
 			},
 		},
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
 
 func TestSplitUpdateXproto(t *testing.T) {

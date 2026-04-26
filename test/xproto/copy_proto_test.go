@@ -167,5 +167,5 @@ func TestCopyFROMXproto(t *testing.T) {
 		// 	},
 		// },
 	}
-	protoTestRunner(t, frontend, tt)
+	protoTestRunner(t, frontend, conn, tt)
 }
