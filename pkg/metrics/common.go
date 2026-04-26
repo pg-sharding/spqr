@@ -75,3 +75,23 @@ func Start(registry MetricRegistry, path string, port string) error {
 		}
 	}
 }
+
+type DynamicGauge struct {
+	Name   string
+	Help   string
+	Getter func() float64
+	Value  float64
+}
+
+func (g *DynamicGauge) Desc() *prometheus.Desc {
+	return prometheus.NewDesc(g.Name, g.Help, nil, nil)
+}
+
+func (g *DynamicGauge) Collect(ch chan<- prometheus.Metric) {
+	value := g.Getter()
+	ch <- prometheus.MustNewConstMetric(g.Desc(), prometheus.GaugeValue, value)
+}
+
+func (g *DynamicGauge) Describe(ch chan<- *prometheus.Desc) {
+	ch <- g.Desc()
+}

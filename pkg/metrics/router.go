@@ -43,6 +43,10 @@ func (m *RouterMetricRegistry) GetRegistry() *prometheus.Registry {
 	return m.registry
 }
 
+func (m *RouterMetricRegistry) RegisterDynamicGaude(gaude *DynamicGauge) {
+	m.registry.MustRegister(gaude)
+}
+
 func (m *RouterMetricRegistry) IncConfigReloads() {
 	m.configReloads.Inc()
 }

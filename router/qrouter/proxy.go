@@ -152,6 +152,18 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 
 var _ planner.QueryPlanner = &ProxyQrouter{}
 
+func (qr *ProxyQrouter) registerMetrics() {
+	totalConnectionsMetric := &metrics.DynamicGauge{
+		Name: "router_client_connections_tcp_total",
+		Help: "Current number of client tcp connections",
+		Getter: func() float64 {
+			return float64(qr.csm.TotalCancelCount())
+		},
+		Value: 0,
+	}
+	qr.metricRegistry.RegisterDynamicGaude(totalConnectionsMetric)
+}
+
 func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
@@ -174,7 +186,7 @@ func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 	}
 
 	ctx := context.TODO()
-
+	proxy.registerMetrics()
 	/* XXX: since memqdb is persistent on disk, in some cases, we need to recreate the whole topology.
 	* TODO: get this information from the coordinator, not the config.
 	 */
