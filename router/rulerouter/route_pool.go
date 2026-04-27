@@ -137,7 +137,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	act, loaded := r.pool.LoadOrStore(key, nroute)
 
-	if !loaded {
+	if loaded {
 		// conflict, release goroutines
 		nroute.MultiShardPool().StopCacheWatchdog()
 		_ = nroute.ClientPool().Shutdown()
