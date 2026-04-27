@@ -343,7 +343,10 @@ func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc
 	connRaw, exists := qc.routerConnCache.LoadAndDelete(r.ID)
 
 	if exists {
-		conn := connRaw.(*grpc.ClientConn)
+		conn, ok := connRaw.(*grpc.ClientConn)
+		if !ok {
+			return nil, func() {}, fmt.Errorf("unexpected connection type %T for router %s", connRaw, r.ID)
+		}
 		// Check if connection is still valid
 		state := conn.GetState()
 		if state == connectivity.Ready || state == connectivity.Idle {
@@ -382,7 +385,10 @@ func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
 	connRaw, exists := qc.routerConnCache.Load(routerID)
 
 	if exists {
-		conn := connRaw.(*grpc.ClientConn)
+		conn, ok := connRaw.(*grpc.ClientConn)
+		if !ok {
+			return
+		}
 		_ = conn.Close()
 		qc.routerConnCache.Delete(routerID)
 	}
@@ -486,7 +492,10 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		// Clean up connections for routers that no longer exist
 		var staleConnIDs []string
 		qc.routerConnCache.Range(func(k, _ any) bool {
-			routerID := k.(string)
+			routerID, ok := k.(string)
+			if !ok {
+				return true
+			}
 			if !currentRouterIDs[routerID] {
 				staleConnIDs = append(staleConnIDs, routerID)
 			}
@@ -1338,7 +1347,11 @@ func (qc *ClusteredCoordinator) TaskWorkersID() []string {
 func (qc *ClusteredCoordinator) TaskState(id string) (*transferworker.TaskGroupWorkerState, error) {
 	st, ok := qc.dataTransferWorkers.Load(id)
 	if ok {
-		return st.(*transferworker.TaskGroupWorkerState), nil
+		state, ok := st.(*transferworker.TaskGroupWorkerState)
+		if !ok {
+			return nil, fmt.Errorf("unexpected state type %T for task %q", st, id)
+		}
+		return state, nil
 	}
 
 	return nil, fmt.Errorf("no such task \"%v\"", id)
@@ -1406,8 +1419,14 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 				case <-t:
 
 					qc.dataTransferWorkers.Range(func(k, v any) bool {
-						id := k.(string)
-						st := v.(*transferworker.TaskGroupWorkerState)
+						id, ok := k.(string)
+						if !ok {
+							return true
+						}
+						st, ok := v.(*transferworker.TaskGroupWorkerState)
+						if !ok {
+							return true
+						}
 						spqrlog.Zero.Debug().Str("id", id).Msg("rechecking task aliveness")
 						stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
 						if err != nil {
@@ -1624,8 +1643,14 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
 	if groupBoundsInt, ok := qc.bounds.Load(taskGroup.ID); ok {
 		indMap, _ := qc.index.Load(taskGroup.ID)
-		groupBounds, _ := groupBoundsInt.([][][]byte)
-		ind := indMap.(int)
+		groupBounds, ok := groupBoundsInt.([][][]byte)
+		if !ok {
+			return nil, fmt.Errorf("unexpected bounds type %T for task group %s", groupBoundsInt, taskGroup.ID)
+		}
+		ind, ok := indMap.(int)
+		if !ok {
+			return nil, fmt.Errorf("unexpected index type %T for task group %s", indMap, taskGroup.ID)
+		}
 		if ind < len(groupBounds) {
 			qc.index.Store(taskGroup.ID, ind+1)
 			return groupBounds[ind], nil
@@ -2113,8 +2138,14 @@ func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string
 func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, id string) ([][][]byte, int, error) {
 	if groupBoundsInt, ok := qc.bounds.Load(id); ok {
 		indMap, _ := qc.index.Load(id)
-		groupBounds, _ := groupBoundsInt.([][][]byte)
-		ind := indMap.(int)
+		groupBounds, ok := groupBoundsInt.([][][]byte)
+		if !ok {
+			return nil, 0, fmt.Errorf("unexpected bounds type %T for task %s", groupBoundsInt, id)
+		}
+		ind, ok := indMap.(int)
+		if !ok {
+			return nil, 0, fmt.Errorf("unexpected index type %T for task %s", indMap, id)
+		}
 		return groupBounds, ind, nil
 	}
 	return nil, 0, nil
