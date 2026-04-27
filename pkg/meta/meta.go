@@ -1147,7 +1147,8 @@ func ProcMetadataCommand(ctx context.Context,
 					if err := mgr.UnlockKeyRange(ctx, kr.ID); err != nil {
 						return nil, err
 					}
-					tts.WriteDataRow(kr.ID)
+					/* XXX: FIX */
+					// tts.WriteDataRow(kr.ID)
 				}
 			}
 

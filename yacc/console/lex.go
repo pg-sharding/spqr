@@ -9,7 +9,7 @@ import (
 
 
 
-//line lex.go:13
+//line lex.go:11
 const lexer_start int = 6
 const lexer_first_final int = 6
 const lexer_error int = 0
@@ -35,7 +35,7 @@ func NewLexer(data []byte) *Lexer {
         pe: len(data),
     }
     
-//line lex.go:39
+//line lex.go:35
 	{
 	 lex.cs = lexer_start
 	 lex.ts = 0
@@ -51,7 +51,7 @@ func ResetLexer(lex *Lexer, data []byte) {
     lex.pe = len(data)
     lex.data = data
     
-//line lex.go:55
+//line lex.go:49
 	{
 	 lex.cs = lexer_start
 	 lex.ts = 0
@@ -72,7 +72,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
     var tok int
 
     
-//line lex.go:76
+//line lex.go:68
 	{
 	if ( lex.p) == ( lex.pe) {
 		goto _test_eof
@@ -250,7 +250,7 @@ tr34:
 //line NONE:1
  lex.ts = ( lex.p)
 
-//line lex.go:254
+//line lex.go:246
 		switch  lex.data[( lex.p)] {
 		case 32:
 			goto st7
@@ -393,7 +393,7 @@ tr24:
 			goto _test_eof8
 		}
 	st_case_8:
-//line lex.go:397
+//line lex.go:389
 		switch  lex.data[( lex.p)] {
 		case 33:
 			goto tr10
@@ -578,7 +578,7 @@ tr8:
 			goto _test_eof12
 		}
 	st_case_12:
-//line lex.go:582
+//line lex.go:574
 		if  lex.data[( lex.p)] == 42 {
 			goto st5
 		}
