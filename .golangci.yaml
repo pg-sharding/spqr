@@ -10,6 +10,7 @@ linters:
          - name: unused-parameter
          - name: unexported-naming
          - name: unnecessary-if
+         - name: if-return
          - name: add-constant
            disabled: true
          - name: line-length-limit

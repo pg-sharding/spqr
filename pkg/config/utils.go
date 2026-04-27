@@ -51,11 +51,7 @@ func ParseCfg(cfgPath string, cfg any) error {
 		}
 	}(file)
 
-	if err := initConfig(file, cfgPath, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return initConfig(file, cfgPath, cfg)
 }
 
 func LoadConfig(path string, cfg Config) (string, error) {
@@ -67,11 +63,7 @@ func LoadConfig(path string, cfg Config) (string, error) {
 			return err
 		}
 
-		if err := cfg.PostProcess(); err != nil {
-			return err
-		}
-
-		return nil
+		return cfg.PostProcess()
 	}
 
 	err := load(cfg)

@@ -150,10 +150,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 	if err != nil {
 		return err
 	}
-	if err = (*tx).Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return (*tx).Commit(ctx)
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
@@ -177,10 +174,7 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 	if err != nil {
 		return err
 	}
-	if err = (*tx).Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return (*tx).Commit(ctx)
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].

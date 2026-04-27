@@ -469,10 +469,7 @@ func SetupFDW(
 			if _, err = tx.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %s INTO %s`, schema, serverName, schemaName)); err != nil {
 				return err
 			}
-			if err := tx.Commit(ctx); err != nil {
-				return err
-			}
-			return nil
+			return tx.Commit(ctx)
 		}(); err != nil {
 			return err
 		}

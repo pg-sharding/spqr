@@ -262,11 +262,7 @@ func (rst *RelayStateImpl) initExecutor(p plan.Plan) error {
 	}
 
 	/* if transaction is explicitly requested, deploy */
-	if err := rst.QueryExecutor().DeploySliceTransactionBlock(); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.QueryExecutor().DeploySliceTransactionBlock()
 }
 
 // TODO : unit tests
