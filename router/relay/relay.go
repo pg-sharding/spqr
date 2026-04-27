@@ -420,7 +420,11 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 }
 
 func (rst *RelayStateImpl) CompleteRelayClient() error {
-	return rst.Client().Send(rst.QueryExecutor().RFQ())
+	rfq := rst.QueryExecutor().RFQ()
+	if rfq == nil {
+		return nil
+	}
+	return rst.Client().Send(rfq)
 }
 
 func (rst *RelayStateImpl) CompleteRelay() error {
