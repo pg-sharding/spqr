@@ -1004,7 +1004,7 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relatio
 	}
 
 	ds.Version++
-	
+
 	if err := q.AlterSequenceDetachRelation(ctx, relationFQN); err != nil {
 		return err
 	}
