@@ -11,13 +11,15 @@ import (
 )
 
 func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.EtcdQDB) error {
-	swapDb := &qdb.MemQDB{}
+	swapDb, err := qdb.NewMemQDB("")
+	if err != nil {
+		return err
+	}
 
 	ds, err := etcdConn.ListDistributions(ctx)
 	if err != nil {
 		return err
 	}
-	ops := make([]qdb.QdbStatement, 0)
 	for _, d := range ds {
 		if d.ID == distributions.REPLICATED {
 			continue
@@ -27,7 +29,10 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
 			return err
 		}
-		ops = append(ops, dStmts...)
+
+		if err := swapDb.ExecNoTransaction(ctx, dStmts); err != nil {
+			return err
+		}
 
 		/* initialize key ranges within distribution */
 		krs, err := etcdConn.ListKeyRanges(ctx, d.ID)
@@ -40,6 +45,8 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 			r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
 			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
 		})
+
+		ops := make([]qdb.QdbStatement, 0)
 		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {
 			krStmts, err := swapDb.CreateKeyRange(ctx, ckr)
@@ -48,9 +55,9 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 			}
 			ops = append(ops, krStmts...)
 		}
-	}
-	if err := swapDb.ExecNoTransaction(ctx, ops); err != nil {
-		return err
+		if err := swapDb.ExecNoTransaction(ctx, ops); err != nil {
+			return err
+		}
 	}
 
 	ref_rels, err := etcdConn.ListReferenceRelations(ctx)
