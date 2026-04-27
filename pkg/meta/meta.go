@@ -1132,16 +1132,39 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Unlock:
-		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
-			return nil, err
-		}
+		if stmt.KeyRangeID == "*" {
+			krs, err := mgr.ListAllKeyRanges(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("unlock key range"),
-			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
-		}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("unlock key range"),
+			}
 
-		return tts, nil
+			for _, kr := range krs {
+				if kr.IsLocked != nil && *kr.IsLocked {
+					if err := mgr.UnlockKeyRange(ctx, kr.ID); err != nil {
+						return nil, err
+					}
+					/* XXX: FIX */
+					// tts.WriteDataRow(kr.ID)
+				}
+			}
+
+			return tts, nil
+		} else {
+			if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
+				return nil, err
+			}
+
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("unlock key range"),
+				Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
+			}
+
+			return tts, nil
+		}
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:

@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -439,7 +440,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				/* Still ongoing */
 				spqrlog.Zero.Info().Str("id", tg.ID).Str("status", string(st.State)).Msgf("move task still in-progress")
 
-				/* Assert status == RUNNING here? */
+				/* RUNNING or PLANNING here are ok */
+
+				if st.State == tasks.TaskGroupError {
+					break
+				}
 
 				/* Maybe notify client here */
 
