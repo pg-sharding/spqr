@@ -300,9 +300,22 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	var matchedKrkey *kr.KeyRange = nil
 
 	for _, krkey := range krs {
-		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
-			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
-			matchedKrkey = krkey
+		le, err := kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes)
+		if err != nil {
+			return kr.ShardKey{}, err
+		}
+		if le {
+			if matchedKrkey == nil {
+				matchedKrkey = krkey
+			} else {
+				le2, err := kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)
+				if err != nil {
+					return kr.ShardKey{}, err
+				}
+				if le2 {
+					matchedKrkey = krkey
+				}
+			}
 		}
 	}
 

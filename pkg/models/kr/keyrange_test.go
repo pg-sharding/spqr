@@ -231,7 +231,8 @@ func TestCmpRangesLess_UInteger(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			result, err := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expect, result)
 		})
 	}
@@ -263,7 +264,8 @@ func TestCmpRangesLess_Integer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			result, err := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expect, result)
 		})
 	}
@@ -295,7 +297,8 @@ func TestCmpRangesLess_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			result, err := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expect, result)
 		})
 	}
@@ -320,22 +323,18 @@ func TestCmpRangesLess_DeprecatedString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			result, err := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expect, result)
 		})
 	}
 }
 
-func TestCmpRangesLess_PanicOnTypeMismatch(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("Expected panic on type mismatch")
-		}
-	}()
-
+func TestCmpRangesLess_ErrorOnTypeMismatch(t *testing.T) {
 	bound := kr.KeyRangeBound{"not-a-number"}
 	key := kr.KeyRangeBound{uint64(10)}
 	types := []string{qdb.ColumnTypeUinteger}
 
-	kr.CmpRangesLess(bound, key, types)
+	_, err := kr.CmpRangesLess(bound, key, types)
+	assert.ErrorIs(t, err, kr.ErrMissTypedKeyRange)
 }

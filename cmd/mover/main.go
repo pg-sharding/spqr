@@ -206,9 +206,23 @@ func main() {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			os.Exit(1)
 		}
-		if kr.CmpRangesLess(keyRange.LowerBound, typedKr.LowerBound, ds.ColTypes) {
-			if nextKeyRange == nil || kr.CmpRangesLess(typedKr.LowerBound, nextKeyRange.LowerBound, ds.ColTypes) {
+		less, err := kr.CmpRangesLess(keyRange.LowerBound, typedKr.LowerBound, ds.ColTypes)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			os.Exit(1)
+		}
+		if less {
+			if nextKeyRange == nil {
 				nextKeyRange = typedKr
+			} else {
+				lessNext, err := kr.CmpRangesLess(typedKr.LowerBound, nextKeyRange.LowerBound, ds.ColTypes)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+					os.Exit(1)
+				}
+				if lessNext {
+					nextKeyRange = typedKr
+				}
 			}
 		}
 	}

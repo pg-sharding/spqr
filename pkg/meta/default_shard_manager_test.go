@@ -153,7 +153,8 @@ func TestCmpRangesLess_Default(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := kr.CmpRangesLess(test.leftBound, test.checkBound, test.types)
+		result, err := kr.CmpRangesLess(test.leftBound, test.checkBound, test.types)
+		assert.NoError(t, err)
 		assert.Equal(t, test.expect, result, test.testName)
 	}
 }

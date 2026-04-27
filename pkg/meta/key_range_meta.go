@@ -49,14 +49,32 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRan
 	var nearestKr *kr.KeyRange = nil
 	for _, v := range existsKrids {
 		// TODO: need remove lowlevel checks with qdbKr from QDB layer
-		if kr.CmpRangesLessEqual(v.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
-			if nearestKr == nil || kr.CmpRangesLess(nearestKr.LowerBound, v.LowerBound, nearestKr.ColumnTypes) {
+		le, err := kr.CmpRangesLessEqual(v.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes)
+		if err != nil {
+			return err
+		}
+		if le {
+			if nearestKr == nil {
 				nearestKr = v
+			} else {
+				less, err := kr.CmpRangesLess(nearestKr.LowerBound, v.LowerBound, nearestKr.ColumnTypes)
+				if err != nil {
+					return err
+				}
+				if less {
+					nearestKr = v
+				}
 			}
 		}
 	}
-	if nearestKr != nil && kr.CmpRangesEqual(nearestKr.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v equals key range %v in QDB", keyRange.ID, nearestKr.ID)
+	if nearestKr != nil {
+		eq, err := kr.CmpRangesEqual(nearestKr.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes)
+		if err != nil {
+			return err
+		}
+		if eq {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v equals key range %v in QDB", keyRange.ID, nearestKr.ID)
+		}
 	}
 	if nearestKr != nil && nearestKr.ShardID != keyRange.ShardID {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, nearestKr.ID)
@@ -105,7 +123,11 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 		if err != nil {
 			return err
 		}
-		if kr.CmpRangesEqual(keyRange.LowerBound, eph.LowerBound, keyRange.ColumnTypes) {
+		eq, err := kr.CmpRangesEqual(keyRange.LowerBound, eph.LowerBound, keyRange.ColumnTypes)
+		if err != nil {
+			return err
+		}
+		if eq {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, qdbKeyRange.KeyRangeID)
 		}
 	}

@@ -100,9 +100,21 @@ func KeyRangeVirtualRelationScanExtended(
 	}
 	for distID, distKrs := range distToKrs {
 		colTypes := distMap[distID].ColTypes
+		var sortErr error
 		sort.Slice(distKrs, func(i, j int) bool {
-			return kr.CmpRangesLess(distKrs[i].LowerBound, distKrs[j].LowerBound, colTypes)
+			if sortErr != nil {
+				return false
+			}
+			less, err := kr.CmpRangesLess(distKrs[i].LowerBound, distKrs[j].LowerBound, colTypes)
+			if err != nil {
+				sortErr = err
+				return false
+			}
+			return less
 		})
+		if sortErr != nil {
+			return nil, sortErr
+		}
 		distToKrs[distID] = distKrs
 	}
 

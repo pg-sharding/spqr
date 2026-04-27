@@ -1870,7 +1870,11 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	if err != nil {
 		return nil, err
 	}
-	if kr.CmpRangesEqual(boundKR.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
+	eqBound, err := kr.CmpRangesEqual(boundKR.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes)
+	if err != nil {
+		return nil, err
+	}
+	if eqBound {
 		// move whole key range
 		return &tasks.MoveTask{
 			ID: uuid.NewString(),
@@ -1909,9 +1913,21 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 	if err != nil {
 		return nil, err
 	}
+	var sortErr error
 	sort.Slice(krs, func(i, j int) bool {
-		return kr.CmpRangesLessEqual(krs[i].LowerBound, krs[j].LowerBound, keyRange.ColumnTypes)
+		if sortErr != nil {
+			return false
+		}
+		le, err := kr.CmpRangesLessEqual(krs[i].LowerBound, krs[j].LowerBound, keyRange.ColumnTypes)
+		if err != nil {
+			sortErr = err
+			return false
+		}
+		return le
 	})
+	if sortErr != nil {
+		return nil, sortErr
+	}
 
 	ind := slices.IndexFunc(krs, func(other *kr.KeyRange) bool {
 		return other.ID == keyRange.ID
@@ -2557,9 +2573,21 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 					return err
 				}
 			}
+			var sortErr error
 			sort.Slice(krsInt, func(i, j int) bool {
-				return !kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
+				if sortErr != nil {
+					return false
+				}
+				less, err := kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
+				if err != nil {
+					sortErr = err
+					return false
+				}
+				return !less
 			})
+			if sortErr != nil {
+				return sortErr
+			}
 			// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 			for _, kRange := range krsInt {
 				commands := []*proto.MetaTransactionGossipCommand{

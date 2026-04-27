@@ -1123,7 +1123,11 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
 	}
 	krLeft, krRight := krBase, krAppendage
-	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound, ds.ColTypes) {
+	swapNeeded, err := kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound, ds.ColTypes)
+	if err != nil {
+		return err
+	}
+	if swapNeeded {
 		krLeft, krRight = krRight, krLeft
 	}
 
@@ -1132,11 +1136,18 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 	for _, kRange := range krs {
-		if kRange.ID != krLeft.ID &&
-			kRange.ID != krRight.ID &&
-			kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound, ds.ColTypes) &&
-			kr.CmpRangesLessEqual(kRange.LowerBound, krRight.LowerBound, ds.ColTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
+		if kRange.ID != krLeft.ID && kRange.ID != krRight.ID {
+			leftLE, err := kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+			rightLE, err := kr.CmpRangesLessEqual(kRange.LowerBound, krRight.LowerBound, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+			if leftLE && rightLE {
+				return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
+			}
 		}
 	}
 
@@ -1208,7 +1219,11 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 				return err
 			}
 		}
-		if kr.CmpRangesEqual(cmpRange.LowerBound, reqRange.LowerBound, ds.ColTypes) {
+		eqSplit, err := kr.CmpRangesEqual(cmpRange.LowerBound, reqRange.LowerBound, ds.ColTypes)
+		if err != nil {
+			return err
+		}
+		if eqSplit {
 			// already split, so no-op
 			return nil
 		}
@@ -1237,11 +1252,19 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	if kr.CmpRangesEqual(krOld.LowerBound, eph.LowerBound, ds.ColTypes) {
+	eqOld, err := kr.CmpRangesEqual(krOld.LowerBound, eph.LowerBound, ds.ColTypes)
+	if err != nil {
+		return err
+	}
+	if eqOld {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower of the key range")
 	}
 
-	if kr.CmpRangesLess(eph.LowerBound, krOld.LowerBound, ds.ColTypes) {
+	lessOld, err := kr.CmpRangesLess(eph.LowerBound, krOld.LowerBound, ds.ColTypes)
+	if err != nil {
+		return err
+	}
+	if lessOld {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
 	}
 
@@ -1250,7 +1273,15 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 	for _, kRange := range krs {
-		if kr.CmpRangesLess(krOld.LowerBound, kRange.LowerBound, ds.ColTypes) && kr.CmpRangesLessEqual(kRange.LowerBound, eph.LowerBound, ds.ColTypes) {
+		lessKR, err := kr.CmpRangesLess(krOld.LowerBound, kRange.LowerBound, ds.ColTypes)
+		if err != nil {
+			return err
+		}
+		leKR, err := kr.CmpRangesLessEqual(kRange.LowerBound, eph.LowerBound, ds.ColTypes)
+		if err != nil {
+			return err
+		}
+		if lessKR && leKR {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound intersects with \"%s\" key range", kRange.ID)
 		}
 	}

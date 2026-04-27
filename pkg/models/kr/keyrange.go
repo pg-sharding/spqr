@@ -217,114 +217,163 @@ var ErrMissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
 //
 // Returns:
 //   - bool: True if kr is less than other, false otherwise.
-func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
-	// Here we panic if we failed to convert key range bound
-	// element to expected type. We consider panic as much better
-	// result that data corruption caused by erroneous routing logic.
-	// Big TODO here is to use and check specific error of types mismatch.
-
+func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) (bool, error) {
 	for i := range len(bound) {
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeUinteger:
-			i1 := bound[i].(uint64)
-			i2 := key[i].(uint64)
+			i1, ok := bound[i].(uint64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(uint64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else if i1 < i2 {
-				return true
+				return true, nil
 			} else {
-				return false
+				return false, nil
 			}
 		case qdb.ColumnTypeInteger:
-			i1 := bound[i].(int64)
-			i2 := key[i].(int64)
+			i1, ok := bound[i].(int64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(int64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else if i1 < i2 {
-				return true
+				return true, nil
 			} else {
-				return false
+				return false, nil
 			}
 		case qdb.ColumnTypeUUID:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else {
-				return i1 < i2
+				return i1 < i2, nil
 			}
 		case qdb.ColumnTypeVarcharDeprecated:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else {
-				return CmpRangesLessStringsDeprecated(i1, i2)
+				return CmpRangesLessStringsDeprecated(i1, i2), nil
 			}
 		default:
-			panic(ErrMissTypedKeyRange)
+			return false, ErrMissTypedKeyRange
 		}
 	}
 
 	// keys are actually equal. return false
-	return false
+	return false, nil
 }
 
-func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
+func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) (bool, error) {
 	for i := range len(bound) {
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeUinteger:
-			i1 := bound[i].(uint64)
-			i2 := key[i].(uint64)
+			i1, ok := bound[i].(uint64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(uint64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else {
-				return false
+				return false, nil
 			}
 		case qdb.ColumnTypeInteger:
-			i1 := bound[i].(int64)
-			i2 := key[i].(int64)
+			i1, ok := bound[i].(int64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(int64)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else {
-				return false
+				return false, nil
 			}
 		case qdb.ColumnTypeUUID:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
-
 			} else {
-				return false
+				return false, nil
 			}
 		case qdb.ColumnTypeVarcharDeprecated:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
+			i2, ok := key[i].(string)
+			if !ok {
+				return false, ErrMissTypedKeyRange
+			}
 			if i1 == i2 {
 				// continue
 			} else {
-				return false
+				return false, nil
 			}
 		default:
-			panic(ErrMissTypedKeyRange)
+			return false, ErrMissTypedKeyRange
 		}
 	}
 
 	// keys are actually equal.
-	return true
+	return true, nil
 }
 
-func CmpRangesLessEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
-	return CmpRangesEqual(bound, key, types) || CmpRangesLess(bound, key, types)
+func CmpRangesLessEqual(bound KeyRangeBound, key KeyRangeBound, types []string) (bool, error) {
+	eq, err := CmpRangesEqual(bound, key, types)
+	if err != nil {
+		return false, err
+	}
+	if eq {
+		return true, nil
+	}
+	return CmpRangesLess(bound, key, types)
 }
 
 // KeyRangeFromDB converts a qdb.KeyRange object to a KeyRange object.

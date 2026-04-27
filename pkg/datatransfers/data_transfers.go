@@ -397,8 +397,22 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) 
 	}
 	var bound kr.KeyRangeBound
 	for _, kRange := range krs {
-		if kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound, ds.ColTypes) && (bound == nil || kr.CmpRangesLess(kRange.LowerBound, bound, ds.ColTypes)) {
-			bound = kRange.LowerBound
+		less, err := kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
+		if less {
+			if bound == nil {
+				bound = kRange.LowerBound
+			} else {
+				lessBound, err := kr.CmpRangesLess(kRange.LowerBound, bound, ds.ColTypes)
+				if err != nil {
+					return nil, err
+				}
+				if lessBound {
+					bound = kRange.LowerBound
+				}
+			}
 		}
 	}
 	return bound, nil
