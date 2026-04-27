@@ -29,10 +29,7 @@ const (
 	MapSequenceToValues     = "SequenceToValues"
 )
 
-type MemQDB struct {
-	// TODO create more mutex per map if needed
-	mu sync.RWMutex
-
+type MemQDBState struct {
 	Locks                       map[string]*sync.RWMutex            `json:"locks"`
 	Freq                        map[string]bool                     `json:"freq"`
 	Krs                         map[string]*internalKeyRange        `json:"krs"`
@@ -61,6 +58,12 @@ type MemQDB struct {
 	UniqueIndexesByRel          map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
+}
+
+type MemQDB struct {
+	// TODO create more mutex per map if needed
+	mu    sync.RWMutex
+	State *MemQDBState
 
 	SequenceLock sync.RWMutex
 
@@ -74,29 +77,31 @@ var _ DCStateKeeper = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		Freq:                        map[string]bool{},
-		Krs:                         map[string]*internalKeyRange{},
-		KrVersions:                  map[string]int{},
-		Locks:                       map[string]*sync.RWMutex{},
-		Shards:                      map[string]*Shard{},
-		Distributions:               map[string]*Distribution{},
-		RelationDistribution:        map[string]string{},
-		Routers:                     map[string]*Router{},
-		Transactions:                map[string]*DataTransferTransaction{},
-		Sequences:                   map[string]bool{},
-		ColumnSequence:              map[string]string{},
-		SequenceToValues:            map[string]int64{},
-		ReferenceRelations:          map[string]*ReferenceRelation{},
-		MoveTaskGroups:              map[string]*MoveTaskGroup{},
-		RedistributeTasks:           map[string]*RedistributeTask{},
-		RedistributeTaskTaskGroupId: map[string]string{},
-		TaskGroupIDToStatus:         map[string]*TaskGroupStatus{},
-		StopMoveTaskGroup:           map[string]bool{},
-		TotalKeys:                   map[string]int64{},
-		MoveTasks:                   map[string]*MoveTask{},
-		TwoPhaseTx:                  map[string]*TwoPCInfo{},
-		UniqueIndexes:               map[string]*UniqueIndex{},
-		UniqueIndexesByRel:          map[string]map[string]*UniqueIndex{},
+		State: &MemQDBState{
+			Freq:                        map[string]bool{},
+			Krs:                         map[string]*internalKeyRange{},
+			KrVersions:                  map[string]int{},
+			Locks:                       map[string]*sync.RWMutex{},
+			Shards:                      map[string]*Shard{},
+			Distributions:               map[string]*Distribution{},
+			RelationDistribution:        map[string]string{},
+			Routers:                     map[string]*Router{},
+			Transactions:                map[string]*DataTransferTransaction{},
+			Sequences:                   map[string]bool{},
+			ColumnSequence:              map[string]string{},
+			SequenceToValues:            map[string]int64{},
+			ReferenceRelations:          map[string]*ReferenceRelation{},
+			MoveTaskGroups:              map[string]*MoveTaskGroup{},
+			RedistributeTasks:           map[string]*RedistributeTask{},
+			RedistributeTaskTaskGroupId: map[string]string{},
+			TaskGroupIDToStatus:         map[string]*TaskGroupStatus{},
+			StopMoveTaskGroup:           map[string]bool{},
+			TotalKeys:                   map[string]int64{},
+			MoveTasks:                   map[string]*MoveTask{},
+			TwoPhaseTx:                  map[string]*TwoPCInfo{},
+			UniqueIndexes:               map[string]*UniqueIndex{},
+			UniqueIndexesByRel:          map[string]map[string]*UniqueIndex{},
+		},
 
 		backupPath: backupPath,
 	}, nil
@@ -130,9 +135,9 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	}
 	err = json.Unmarshal(data, qdb)
 
-	for kr, locked := range qdb.Freq {
+	for kr, locked := range qdb.State.Freq {
 		if locked {
-			qdb.Locks[kr].Lock()
+			qdb.State.Locks[kr].Lock()
 		}
 	}
 
@@ -185,25 +190,32 @@ func (q *MemQDB) DumpState() error {
 	return nil
 }
 
+func (q *MemQDB) SwapState(state *MemQDBState) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.State = state
+}
+
 // ==============================================================================
 //                               MISC
 // ==============================================================================
 
 func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
 	return []Command{
-		NewDeleteCommand(q.Krs, krId),
-		NewDeleteCommand(q.Freq, krId),
-		NewDeleteCommand(q.Locks, krId),
-		NewDeleteCommand(q.KrVersions, krId),
+		NewDeleteCommand(q.State.Krs, krId),
+		NewDeleteCommand(q.State.Freq, krId),
+		NewDeleteCommand(q.State.Locks, krId),
+		NewDeleteCommand(q.State.KrVersions, krId),
 	}
 }
 
 func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
 	return []Command{
-		NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
-		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
-		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, keyRange.Locked),
-		NewUpdateCommand(q.KrVersions, keyRange.KeyRangeID, 1),
+		NewUpdateCommand(q.State.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
+		NewUpdateCommand(q.State.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
+		NewUpdateCommand(q.State.Freq, keyRange.KeyRangeID, keyRange.Locked),
+		NewUpdateCommand(q.State.KrVersions, keyRange.KeyRangeID, 1),
 	}
 }
 
@@ -306,7 +318,7 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSta
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
-		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
+		if _, ok := q.State.Distributions[keyRange.DistributionId]; !ok {
 			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
 		}
 	}
@@ -323,16 +335,16 @@ func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 }
 
 func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
-	kRangeInt, ok := q.Krs[id]
+	kRangeInt, ok := q.State.Krs[id]
 	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
 	}
 	isLocked := false
-	if v, ok := q.Freq[id]; ok {
+	if v, ok := q.State.Freq[id]; ok {
 		isLocked = v
 	}
 
-	return keyRangeFromInternal(kRangeInt, isLocked, q.KrVersions[id]), nil
+	return keyRangeFromInternal(kRangeInt, isLocked, q.State.KrVersions[id]), nil
 }
 
 // TODO : unit tests
@@ -349,12 +361,12 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, err
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	_, ok := q.Krs[id]
+	_, ok := q.State.Krs[id]
 	if !ok {
 		return q.dropKeyRangeQdbStatements(id)
 	}
 
-	lock, ok := q.Locks[id]
+	lock, ok := q.State.Locks[id]
 	if !ok {
 		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
@@ -378,7 +390,7 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 			l.Unlock()
 		}
 	}()
-	for krId, l := range q.Locks {
+	for krId, l := range q.State.Locks {
 		if !l.TryLock() {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", krId)
 		}
@@ -386,7 +398,7 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 	}
 	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
 
-	return ExecuteCommands(q.DumpState, NewDropCommand(q.Krs), NewDropCommand(q.Locks), NewDropCommand(q.KrVersions))
+	return ExecuteCommands(q.DumpState, NewDropCommand(q.State.Krs), NewDropCommand(q.State.Locks), NewDropCommand(q.State.KrVersions))
 }
 
 // TODO : unit tests
@@ -399,13 +411,13 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRa
 
 	var ret []*KeyRange
 
-	for _, el := range q.Krs {
+	for _, el := range q.State.Krs {
 		if el.DistributionId == distribution {
 			isLocked := false
-			if v, ok := q.Freq[el.KeyRangeID]; ok {
+			if v, ok := q.State.Freq[el.KeyRangeID]; ok {
 				isLocked = v
 			}
-			ret = append(ret, keyRangeFromInternal(el, isLocked, q.KrVersions[el.KeyRangeID]))
+			ret = append(ret, keyRangeFromInternal(el, isLocked, q.State.KrVersions[el.KeyRangeID]))
 		}
 	}
 
@@ -422,13 +434,13 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	ret := make([]*KeyRange, 0, len(q.Krs))
-	for _, el := range q.Krs {
+	ret := make([]*KeyRange, 0, len(q.State.Krs))
+	for _, el := range q.State.Krs {
 		isLocked := false
-		if v, ok := q.Freq[el.KeyRangeID]; ok {
+		if v, ok := q.State.Freq[el.KeyRangeID]; ok {
 			isLocked = v
 		}
-		ret = append(ret, keyRangeFromInternal(el, isLocked, q.KrVersions[el.KeyRangeID]))
+		ret = append(ret, keyRangeFromInternal(el, isLocked, q.State.KrVersions[el.KeyRangeID]))
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -450,7 +462,7 @@ func (q *MemQDB) tryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
 	}
 
-	if _, ok := q.Krs[id]; !ok {
+	if _, ok := q.State.Krs[id]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted after lock acquired", id)
 	}
 	return nil
@@ -463,19 +475,19 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	defer q.mu.Unlock()
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: lock key range")
 
-	krs, ok := q.Krs[id]
+	krs, ok := q.State.Krs[id]
 	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' does not exist", id)
 	}
 
-	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
+	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Freq, id, true),
 		NewCustomCommand(func() error {
-			if lock, ok := q.Locks[id]; ok {
+			if lock, ok := q.State.Locks[id]; ok {
 				return q.tryLockKeyRange(lock, id, false)
 			}
 			return nil
 		}, func() error {
-			if lock, ok := q.Locks[id]; ok {
+			if lock, ok := q.State.Locks[id]; ok {
 				lock.Unlock()
 			}
 			return nil
@@ -484,7 +496,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 		return nil, err
 	}
 
-	return keyRangeFromInternal(krs, true, q.KrVersions[id]), nil
+	return keyRangeFromInternal(krs, true, q.State.KrVersions[id]), nil
 }
 
 // TODO : unit tests
@@ -494,18 +506,18 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	defer q.mu.Unlock()
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
-	if !q.Freq[id] {
+	if !q.State.Freq[id] {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Freq, id, false),
 		NewCustomCommand(func() error {
-			if lock, ok := q.Locks[id]; ok {
+			if lock, ok := q.State.Locks[id]; ok {
 				lock.Unlock()
 			}
 			return nil
 		}, func() error {
-			if lock, ok := q.Locks[id]; ok {
+			if lock, ok := q.State.Locks[id]; ok {
 				return q.tryLockKeyRange(lock, id, false)
 			}
 			return nil
@@ -517,8 +529,8 @@ func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 		Msg("memqdb: get list locked key range")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	result := make([]string, 0, len(q.Locks))
-	for lk, v := range q.Freq {
+	result := make([]string, 0, len(q.State.Locks))
+	for lk, v := range q.State.Freq {
 		if v {
 			result = append(result, lk)
 		}
@@ -537,7 +549,7 @@ func (q *MemQDB) CheckLockedKeyRange(_ context.Context, id string) (*KeyRange, e
 		return nil, err
 	}
 
-	if !q.Freq[id] {
+	if !q.State.Freq[id] {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	}
 
@@ -551,7 +563,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	lock, ok := q.Locks[id]
+	lock, ok := q.State.Locks[id]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "no such key")
 	}
@@ -575,11 +587,11 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	kr, ok := q.Krs[krId]
+	kr, ok := q.State.Krs[krId]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krId))
 	}
-	if _, ok = q.Krs[krIdNew]; ok {
+	if _, ok = q.State.Krs[krIdNew]; ok {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
 	}
 
@@ -598,7 +610,7 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 func (q *MemQDB) RecordTransferTx(_ context.Context, key string, info *DataTransferTransaction) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Transactions, key, info))
 }
 
 // TODO : unit tests
@@ -606,7 +618,7 @@ func (q *MemQDB) GetTransferTx(_ context.Context, key string) (*DataTransferTran
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	ans, ok := q.Transactions[key]
+	ans, ok := q.State.Transactions[key]
 	if !ok {
 		return nil, nil
 	}
@@ -617,7 +629,7 @@ func (q *MemQDB) GetTransferTx(_ context.Context, key string) (*DataTransferTran
 func (q *MemQDB) RemoveTransferTx(_ context.Context, key string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Transactions, key))
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.Transactions, key))
 }
 
 // ==============================================================================
@@ -632,8 +644,8 @@ func (q *MemQDB) TryCoordinatorLock(_ context.Context, _ string) error {
 func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	changed := q.Coordinator != address
-	q.Coordinator = address
+	changed := q.State.Coordinator != address
+	q.State.Coordinator = address
 
 	if changed {
 		spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")
@@ -642,8 +654,8 @@ func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 }
 
 func (q *MemQDB) GetCoordinator(_ context.Context) (string, error) {
-	spqrlog.Zero.Debug().Str("address", q.Coordinator).Msg("memqdb: get coordinator address")
-	return q.Coordinator, nil
+	spqrlog.Zero.Debug().Str("address", q.State.Coordinator).Msg("memqdb: get coordinator address")
+	return q.State.Coordinator, nil
 }
 
 // ==============================================================================
@@ -656,7 +668,7 @@ func (q *MemQDB) AddRouter(_ context.Context, r *Router) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, r.ID, r))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Routers, r.ID, r))
 }
 
 // TODO : unit tests
@@ -665,7 +677,7 @@ func (q *MemQDB) DeleteRouter(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Routers, id))
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.Routers, id))
 }
 
 // TODO : unit tests
@@ -674,7 +686,7 @@ func (q *MemQDB) DeleteRouterAll(_ context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewDropCommand(q.Routers))
+	return ExecuteCommands(q.DumpState, NewDropCommand(q.State.Routers))
 }
 
 // TODO : unit tests
@@ -685,9 +697,9 @@ func (q *MemQDB) OpenRouter(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.Routers[id].State = OPENED
+	q.State.Routers[id].State = OPENED
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Routers, id, q.State.Routers[id]))
 }
 
 // TODO : unit tests
@@ -698,12 +710,12 @@ func (q *MemQDB) CloseRouter(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.Routers[id]; !ok {
+	if _, ok := q.State.Routers[id]; !ok {
 		return fmt.Errorf("failed to close router: router \"%s\" not found", id)
 	}
-	q.Routers[id].State = CLOSED
+	q.State.Routers[id].State = CLOSED
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Routers, id, q.State.Routers[id]))
 }
 
 // TODO : unit tests
@@ -713,7 +725,7 @@ func (q *MemQDB) ListRouters(_ context.Context) ([]*Router, error) {
 	defer q.mu.RUnlock()
 
 	var ret []*Router
-	for _, v := range q.Routers {
+	for _, v := range q.State.Routers {
 		// TODO replace with new
 		ret = append(ret, v)
 	}
@@ -735,11 +747,11 @@ func (q *MemQDB) AddShard(_ context.Context, shard *Shard) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.Shards[shard.ID]; ok {
+	if _, ok := q.State.Shards[shard.ID]; ok {
 		return fmt.Errorf("shard with id %s already exists", shard.ID)
 	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, shard.ID, shard))
 }
 
 // TODO : unit tests
@@ -749,7 +761,7 @@ func (q *MemQDB) ListShards(_ context.Context) ([]*Shard, error) {
 	defer q.mu.RUnlock()
 
 	var ret []*Shard
-	for _, v := range q.Shards {
+	for _, v := range q.State.Shards {
 		// TODO replace with new
 		ret = append(ret, v)
 	}
@@ -767,7 +779,7 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if shard, ok := q.Shards[id]; ok {
+	if shard, ok := q.State.Shards[id]; ok {
 		return shard, nil
 	}
 
@@ -779,14 +791,14 @@ func (q *MemQDB) AlterShard(_ context.Context, newShard *Shard) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	shard, ok := q.Shards[newShard.ID]
+	shard, ok := q.State.Shards[newShard.ID]
 	if !ok {
 		return fmt.Errorf("shard with id %s not found", shard.ID)
 	}
 
 	shard = newShard
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, newShard))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, shard.ID, newShard))
 }
 
 // TODO : unit tests
@@ -795,7 +807,7 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.Shards, id)
+	delete(q.State.Shards, id)
 	return nil
 }
 
@@ -807,7 +819,7 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 func (q *MemQDB) CreateReferenceRelation(_ context.Context, r *ReferenceRelation) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	q.ReferenceRelations[r.TableName] = r
+	q.State.ReferenceRelations[r.TableName] = r
 	return nil
 }
 
@@ -819,7 +831,7 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, relationFQN *rfqn.Relat
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if rr, ok := q.ReferenceRelations[tableName]; !ok {
+	if rr, ok := q.State.ReferenceRelations[tableName]; !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	} else {
 		return rr, nil
@@ -831,13 +843,13 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *r
 	tableName := relationFQN.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	rel, ok := q.ReferenceRelations[tableName]
+	rel, ok := q.State.ReferenceRelations[tableName]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	}
 	rel.ShardIds = shs
 	rel.Version++
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ReferenceRelations, tableName, rel))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.ReferenceRelations, tableName, rel))
 }
 
 // DropReferenceRelation implements XQDB.
@@ -845,10 +857,10 @@ func (q *MemQDB) DropReferenceRelation(_ context.Context, relationFQN *rfqn.Rela
 	tableName := relationFQN.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if _, ok := q.ReferenceRelations[tableName]; !ok {
+	if _, ok := q.State.ReferenceRelations[tableName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	}
-	delete(q.ReferenceRelations, tableName)
+	delete(q.State.ReferenceRelations, tableName)
 	return nil
 }
 
@@ -858,7 +870,7 @@ func (q *MemQDB) ListReferenceRelations(_ context.Context) ([]*ReferenceRelation
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	for _, r := range q.ReferenceRelations {
+	for _, r := range q.State.ReferenceRelations {
 		rrs = append(rrs, r)
 	}
 
@@ -876,7 +888,7 @@ func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distributio
 	defer q.mu.Unlock()
 	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
-		q.RelationDistribution[r.Name] = distribution.ID
+		q.State.RelationDistribution[r.Name] = distribution.ID
 		if cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution); err != nil {
 			return nil, err
 		} else {
@@ -902,7 +914,7 @@ func (q *MemQDB) ListDistributions(_ context.Context) ([]*Distribution, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*Distribution
-	for _, v := range q.Distributions {
+	for _, v := range q.State.Distributions {
 		ret = append(ret, v)
 	}
 
@@ -919,19 +931,19 @@ func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.Distributions[id]; !ok {
+	if _, ok := q.State.Distributions[id]; !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
 
-	for t, ds := range q.RelationDistribution {
+	for t, ds := range q.State.RelationDistribution {
 		if ds == id {
-			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, t)); err != nil {
+			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.RelationDistribution, t)); err != nil {
 				return err
 			}
 		}
 	}
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Distributions, id))
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.Distributions, id))
 }
 
 // TODO : unit tests
@@ -940,7 +952,7 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if ds, ok := q.Distributions[id]; !ok {
+	if ds, ok := q.State.Distributions[id]; !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	} else {
 
@@ -975,20 +987,20 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 						ds.FQNRelations[r.QualifiedName().String()] = r
 
 						/* Note we do not store relation distribution index here. */
-						return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+						return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds))
 					}
 				}
 			}
 
 			/* Now attach old-style. */
 			ds.Relations[r.Name] = r
-			q.RelationDistribution[r.Name] = id
-			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
+			q.State.RelationDistribution[r.Name] = id
+			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RelationDistribution, r.Name, id)); err != nil {
 				return err
 			}
 		}
 
-		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds))
 	}
 }
 
@@ -998,7 +1010,7 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relatio
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[id]
+	ds, ok := q.State.Distributions[id]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	}
@@ -1010,11 +1022,11 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relatio
 	}
 
 	delete(ds.Relations, relationFQN.RelationName)
-	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds)); err != nil {
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds)); err != nil {
 		return err
 	}
 
-	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relationFQN.RelationName))
+	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.RelationDistribution, relationFQN.RelationName))
 	return err
 }
 
@@ -1024,12 +1036,12 @@ func (q *MemQDB) AlterDistributedRelation(_ context.Context, id string, rel *Dis
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[id]
+	ds, ok := q.State.Distributions[id]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
 	ds.Version++
-	if dsID, ok := q.RelationDistribution[rel.Name]; !ok {
+	if dsID, ok := q.State.RelationDistribution[rel.Name]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
 	} else if dsID != id {
 		return spqrerror.Newf(
@@ -1041,7 +1053,7 @@ func (q *MemQDB) AlterDistributedRelation(_ context.Context, id string, rel *Dis
 	rel.Version = ds.Relations[rel.Name].Version + 1
 	ds.Relations[rel.Name] = rel
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.RelationDistribution, rel.Name, id))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds), NewUpdateCommand(q.State.RelationDistribution, rel.Name, id))
 }
 
 // TODO : unit tests
@@ -1051,12 +1063,12 @@ func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, re
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[id]
+	ds, ok := q.State.Distributions[id]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
 	ds.Version++
-	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
+	if dsID, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
 		return spqrerror.Newf(
@@ -1072,7 +1084,7 @@ func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, re
 	rel.SchemaName = schemaName
 	rel.Version++
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.RelationDistribution, relation.RelationName, id))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds), NewUpdateCommand(q.State.RelationDistribution, relation.RelationName, id))
 }
 
 // TODO : unit tests
@@ -1081,11 +1093,11 @@ func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, rel
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[id]
+	ds, ok := q.State.Distributions[id]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
-	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
+	if dsID, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
 		return spqrerror.Newf(
@@ -1094,7 +1106,7 @@ func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, rel
 			relation.String(), dsID, id)
 	}
 
-	rel, ok := q.ReferenceRelations[relation.RelationName]
+	rel, ok := q.State.ReferenceRelations[relation.RelationName]
 	if !ok {
 		return fmt.Errorf("reference relation \"%s\" not found", relation.String())
 	}
@@ -1108,7 +1120,7 @@ func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, rel
 	rel.SchemaName = schemaName
 	rel.Version++
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.ReferenceRelations, relation.RelationName, rel))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds), NewUpdateCommand(q.State.ReferenceRelations, relation.RelationName, rel))
 }
 
 // TODO : unit tests
@@ -1117,11 +1129,11 @@ func (q *MemQDB) AlterDistributedRelationDistributionKey(_ context.Context, id s
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[id]
+	ds, ok := q.State.Distributions[id]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
-	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
+	if dsID, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), dsID, id)
@@ -1134,11 +1146,8 @@ func (q *MemQDB) AlterDistributedRelationDistributionKey(_ context.Context, id s
 	ds.Version++
 	rel.DistributionKey = distributionKey
 	rel.Version++
-	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relation.RelationName, id)); err != nil {
-		return err
-	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds), NewUpdateCommand(q.State.RelationDistribution, relation.RelationName, id))
 }
 
 // TODO : unit tests
@@ -1147,7 +1156,7 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if ds, ok := q.Distributions[id]; !ok {
+	if ds, ok := q.State.Distributions[id]; !ok {
 		// DEPRECATE this
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	} else {
@@ -1161,17 +1170,17 @@ func (q *MemQDB) CheckDistribution(_ context.Context, id string) (bool, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	_, ok := q.Distributions[id]
+	_, ok := q.State.Distributions[id]
 	return ok, nil
 }
 
 func (q *MemQDB) relationDistributionInternal(relation *rfqn.RelationFQN) (*Distribution, error) {
-	if ds, ok := q.RelationDistribution[relation.RelationName]; !ok {
+	if ds, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relation)
 	} else {
 		// if there is no distr by key ds
 		// then we have corruption
-		return q.Distributions[ds].Copy(), nil
+		return q.State.Distributions[ds].Copy(), nil
 	}
 }
 
@@ -1192,7 +1201,7 @@ func (q *MemQDB) ListUniqueIndexes(_ context.Context) (map[string]*UniqueIndex, 
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.UniqueIndexes, nil
+	return q.State.UniqueIndexes, nil
 }
 
 func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
@@ -1201,13 +1210,13 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ds, ok := q.Distributions[idx.DistributionId]
+	ds, ok := q.State.Distributions[idx.DistributionId]
 	if !ok {
 		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
 	}
 	ds.UniqueIndexes[idx.ID] = idx
 
-	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
+	idxs, ok := q.State.UniqueIndexesByRel[idx.Relation.String()]
 	if !ok {
 		idxs = make(map[string]*UniqueIndex)
 	}
@@ -1215,8 +1224,8 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 		idxs[col] = idx
 	}
 
-	q.UniqueIndexes[idx.ID] = idx
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs))
+	q.State.UniqueIndexes[idx.ID] = idx
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, ds.ID, ds), NewUpdateCommand(q.State.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.State.UniqueIndexesByRel, idx.Relation.String(), idxs))
 }
 
 func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
@@ -1225,18 +1234,18 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	idx, ok := q.UniqueIndexes[id]
+	idx, ok := q.State.UniqueIndexes[id]
 	if !ok {
 		return fmt.Errorf("unique index \"%s\" not found", id)
 	}
 
-	ds, ok := q.Distributions[idx.DistributionId]
+	ds, ok := q.State.Distributions[idx.DistributionId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionId)
 	}
 	delete(ds.UniqueIndexes, idx.ID)
 
-	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
+	idxs, ok := q.State.UniqueIndexesByRel[idx.Relation.String()]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.String())
 	}
@@ -1244,7 +1253,7 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 		delete(idxs, col)
 	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, ds.ID, ds), NewUpdateCommand(q.State.UniqueIndexesByRel, idx.Relation.String(), idxs), NewDeleteCommand(q.State.UniqueIndexes, idx.ID))
 }
 
 func (q *MemQDB) ListRelationIndexes(_ context.Context, relationFQN *rfqn.RelationFQN) (map[string]*UniqueIndex, error) {
@@ -1252,7 +1261,7 @@ func (q *MemQDB) ListRelationIndexes(_ context.Context, relationFQN *rfqn.Relati
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return q.UniqueIndexesByRel[relationFQN.String()], nil
+	return q.State.UniqueIndexesByRel[relationFQN.String()], nil
 }
 
 // ==============================================================================
@@ -1265,7 +1274,7 @@ func (q *MemQDB) ListTaskGroups(_ context.Context) (map[string]*MoveTaskGroup, e
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.MoveTaskGroups, nil
+	return q.State.MoveTaskGroups, nil
 }
 
 // TODO: unit tests
@@ -1276,7 +1285,7 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context, id string) (*MoveTaskGroup,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	group, ok := q.MoveTaskGroups[id]
+	group, ok := q.State.MoveTaskGroups[id]
 	if !ok {
 		return nil, nil
 	}
@@ -1291,16 +1300,16 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.MoveTaskGroups[id]; ok {
+	if _, ok := q.State.MoveTaskGroups[id]; ok {
 		return fmt.Errorf("could not write move task group: task group with ID \"%s\" already exists", id)
 	}
 
-	q.MoveTaskGroups[id] = group
-	q.StopMoveTaskGroup[id] = false
+	q.State.MoveTaskGroups[id] = group
+	q.State.StopMoveTaskGroup[id] = false
 	if group.Issuer != nil && group.Issuer.Type == IssuerRedistributeTask {
-		q.RedistributeTaskTaskGroupId[group.Issuer.Id] = id
+		q.State.RedistributeTaskTaskGroupId[group.Issuer.Id] = id
 	}
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTaskGroups, id, group), NewUpdateCommand(q.StopMoveTaskGroup, id, false))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.MoveTaskGroups, id, group), NewUpdateCommand(q.State.StopMoveTaskGroup, id, false))
 }
 
 // TODO: unit tests
@@ -1311,8 +1320,8 @@ func (q *MemQDB) DropMoveTaskGroup(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.MoveTaskGroups, id)
-	delete(q.StopMoveTaskGroup, id)
+	delete(q.State.MoveTaskGroups, id)
+	delete(q.State.StopMoveTaskGroup, id)
 	return nil
 }
 
@@ -1324,7 +1333,7 @@ func (q *MemQDB) GetMoveTaskGroupTotalKeys(_ context.Context, id string) (int64,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	val, ok := q.TotalKeys[id]
+	val, ok := q.State.TotalKeys[id]
 	if !ok {
 		return 0, nil
 	}
@@ -1339,7 +1348,7 @@ func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, id string, tota
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TotalKeys[id] = totalKeys
+	q.State.TotalKeys[id] = totalKeys
 	return nil
 }
 
@@ -1351,7 +1360,7 @@ func (q *MemQDB) AddMoveTaskGroupStopFlag(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.StopMoveTaskGroup[id] = true
+	q.State.StopMoveTaskGroup[id] = true
 	return nil
 }
 
@@ -1363,7 +1372,7 @@ func (q *MemQDB) CheckMoveTaskGroupStopFlag(_ context.Context, id string) (bool,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	val, ok := q.StopMoveTaskGroup[id]
+	val, ok := q.State.StopMoveTaskGroup[id]
 	if !ok {
 		return false, nil
 	}
@@ -1378,11 +1387,11 @@ func (q *MemQDB) GetMoveTaskByGroup(_ context.Context, taskGroupID string) (*Mov
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	id, ok := q.TaskGroupMoveTaskID[taskGroupID]
+	id, ok := q.State.TaskGroupMoveTaskID[taskGroupID]
 	if !ok {
 		return nil, nil
 	}
-	task, ok := q.MoveTasks[id]
+	task, ok := q.State.MoveTasks[id]
 	if !ok {
 		return nil, fmt.Errorf("move task \"%s\" not found", id)
 	}
@@ -1395,7 +1404,7 @@ func (q *MemQDB) ListMoveTasks(_ context.Context) (map[string]*MoveTask, error) 
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.MoveTasks, nil
+	return q.State.MoveTasks, nil
 }
 
 // TODO: unit tests
@@ -1406,7 +1415,7 @@ func (q *MemQDB) GetMoveTask(_ context.Context, id string) (*MoveTask, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.MoveTasks[id], nil
+	return q.State.MoveTasks[id], nil
 }
 
 // TODO: unit tests
@@ -1417,11 +1426,11 @@ func (q *MemQDB) WriteMoveTask(_ context.Context, task *MoveTask) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.MoveTasks[task.ID]; ok {
+	if _, ok := q.State.MoveTasks[task.ID]; ok {
 		return fmt.Errorf("failed to write move task: another task already exists")
 	}
-	q.MoveTasks[task.ID] = task
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTasks, task.ID, task))
+	q.State.MoveTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.MoveTasks, task.ID, task))
 }
 
 // TODO: unit tests
@@ -1432,12 +1441,12 @@ func (q *MemQDB) UpdateMoveTask(_ context.Context, task *MoveTask) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.MoveTasks[task.ID]; !ok {
+	if _, ok := q.State.MoveTasks[task.ID]; !ok {
 		return fmt.Errorf("failed to update move task: IDs differ")
 	}
 
-	q.MoveTasks[task.ID] = task
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTasks, task.ID, task))
+	q.State.MoveTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.MoveTasks, task.ID, task))
 }
 
 // TODO: unit tests
@@ -1448,8 +1457,8 @@ func (q *MemQDB) DropMoveTask(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.MoveTasks, id)
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.MoveTasks, id))
+	delete(q.State.MoveTasks, id)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.MoveTasks, id))
 }
 
 // TODO: unit tests
@@ -1458,8 +1467,8 @@ func (q *MemQDB) ListRedistributeTasks(_ context.Context) ([]*RedistributeTask, 
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	res := make([]*RedistributeTask, 0, len(q.RedistributeTasks))
-	for _, task := range q.RedistributeTasks {
+	res := make([]*RedistributeTask, 0, len(q.State.RedistributeTasks))
+	for _, task := range q.State.RedistributeTasks {
 		res = append(res, task)
 	}
 	return res, nil
@@ -1471,7 +1480,7 @@ func (q *MemQDB) GetRedistributeTask(_ context.Context, id string) (*Redistribut
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.RedistributeTasks[id], nil
+	return q.State.RedistributeTasks[id], nil
 }
 
 // TODO: unit tests
@@ -1480,14 +1489,14 @@ func (q *MemQDB) CreateRedistributeTask(_ context.Context, task *RedistributeTas
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.RedistributeTasks[task.ID]; ok {
+	if _, ok := q.State.RedistributeTasks[task.ID]; ok {
 		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
 	}
-	if _, ok := q.KeyRangeRedistributeTasks[task.KeyRangeId]; ok {
+	if _, ok := q.State.KeyRangeRedistributeTasks[task.KeyRangeId]; ok {
 		return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
 	}
-	q.RedistributeTasks[task.ID] = task
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
+	q.State.RedistributeTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RedistributeTasks, task.ID, task))
 }
 
 // TODO: unit tests
@@ -1496,11 +1505,11 @@ func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTas
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.RedistributeTasks[task.ID]; !ok {
+	if _, ok := q.State.RedistributeTasks[task.ID]; !ok {
 		return fmt.Errorf("could not update redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
 	}
-	q.RedistributeTasks[task.ID] = task
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
+	q.State.RedistributeTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RedistributeTasks, task.ID, task))
 }
 
 // TODO: unit tests
@@ -1509,9 +1518,9 @@ func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.RedistributeTasks, task.ID)
-	delete(q.KeyRangeRedistributeTasks, task.KeyRangeId)
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeId))
+	delete(q.State.RedistributeTasks, task.ID)
+	delete(q.State.KeyRangeRedistributeTasks, task.KeyRangeId)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.RedistributeTasks, task.ID), NewDeleteCommand(q.State.KeyRangeRedistributeTasks, task.KeyRangeId))
 }
 
 func (q *MemQDB) GetRedistributeTaskTaskGroupId(_ context.Context, id string) (string, error) {
@@ -1519,7 +1528,7 @@ func (q *MemQDB) GetRedistributeTaskTaskGroupId(_ context.Context, id string) (s
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.RedistributeTaskTaskGroupId[id], nil
+	return q.State.RedistributeTaskTaskGroupId[id], nil
 }
 
 func (q *MemQDB) GetKeyRangeRedistributeTaskId(_ context.Context, _ string) (string, error) {
@@ -1532,7 +1541,7 @@ func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.BalancerTask, nil
+	return q.State.BalancerTask, nil
 }
 
 // TODO: unit tests
@@ -1541,7 +1550,7 @@ func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.BalancerTask = task
+	q.State.BalancerTask = task
 	return nil
 }
 
@@ -1551,7 +1560,7 @@ func (q *MemQDB) DropBalancerTask(_ context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.BalancerTask = nil
+	q.State.BalancerTask = nil
 	return nil
 }
 
@@ -1564,8 +1573,8 @@ func (q *MemQDB) WriteTaskGroupStatus(_ context.Context, id string, status *Task
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TaskGroupIDToStatus[id] = status
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TaskGroupIDToStatus, id, status))
+	q.State.TaskGroupIDToStatus[id] = status
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TaskGroupIDToStatus, id, status))
 }
 
 func (q *MemQDB) GetTaskGroupStatus(_ context.Context, id string) (*TaskGroupStatus, error) {
@@ -1575,7 +1584,7 @@ func (q *MemQDB) GetTaskGroupStatus(_ context.Context, id string) (*TaskGroupSta
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	status := q.TaskGroupIDToStatus[id]
+	status := q.State.TaskGroupIDToStatus[id]
 	return status, nil
 }
 
@@ -1585,7 +1594,7 @@ func (q *MemQDB) GetAllTaskGroupStatuses(_ context.Context) (map[string]*TaskGro
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.TaskGroupIDToStatus, nil
+	return q.State.TaskGroupIDToStatus, nil
 }
 
 // ==============================================================================
@@ -1613,7 +1622,7 @@ func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue 
 func (q *MemQDB) CheckSequence(_ context.Context, seqName string) (bool, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	_, ok := q.Sequences[seqName]
+	_, ok := q.State.Sequences[seqName]
 	return ok, nil
 }
 
@@ -1623,13 +1632,13 @@ func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relation
 		Str("relation", relationFQN.RelationName).
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
-	if _, ok := q.Sequences[seqName]; !ok {
+	if _, ok := q.State.Sequences[seqName]; !ok {
 		return fmt.Errorf("sequence %s does not exist", seqName)
 	}
 
 	key := fmt.Sprintf("%s_%s", relationFQN, colName)
-	q.ColumnSequence[key] = seqName
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ColumnSequence, key, seqName))
+	q.State.ColumnSequence[key] = seqName
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.ColumnSequence, key, seqName))
 }
 
 func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relationFQN *rfqn.RelationFQN) error {
@@ -1637,10 +1646,10 @@ func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relationFQN *rfq
 		Str("relation", relationFQN.RelationName).
 		Msg("memqdb: detach relation from sequence")
 
-	for col := range q.ColumnSequence {
+	for col := range q.State.ColumnSequence {
 		rel := strings.Split(col, "_")[0]
 		if rel == relationFQN.RelationName {
-			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.ColumnSequence, col)); err != nil {
+			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.ColumnSequence, col)); err != nil {
 				return err
 			}
 		}
@@ -1651,7 +1660,7 @@ func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relationFQN *rfq
 
 func (q *MemQDB) GetSequenceRelations(_ context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	rels := []*rfqn.RelationFQN{}
-	for col, seq := range q.ColumnSequence {
+	for col, seq := range q.State.ColumnSequence {
 		if seq == seqName {
 			s := strings.Split(col, "_")
 			relName := s[len(s)-2]
@@ -1662,7 +1671,7 @@ func (q *MemQDB) GetSequenceRelations(_ context.Context, seqName string) ([]*rfq
 }
 
 func (q *MemQDB) DropSequence(_ context.Context, seqName string, force bool) error {
-	for col, colSeq := range q.ColumnSequence {
+	for col, colSeq := range q.State.ColumnSequence {
 		if colSeq == seqName && !force {
 			data := strings.Split(col, "_")
 			relName := data[0]
@@ -1671,21 +1680,21 @@ func (q *MemQDB) DropSequence(_ context.Context, seqName string, force bool) err
 		}
 	}
 
-	if _, ok := q.Sequences[seqName]; !ok {
+	if _, ok := q.State.Sequences[seqName]; !ok {
 		return nil
 	}
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Sequences, seqName),
-		NewDeleteCommand(q.SequenceToValues, seqName))
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.Sequences, seqName),
+		NewDeleteCommand(q.State.SequenceToValues, seqName))
 }
 
 func (q *MemQDB) GetRelationSequence(_ context.Context, relationFQN *rfqn.RelationFQN) (map[string]string, error) {
 	spqrlog.Zero.Debug().
 		Str("relation", relationFQN.RelationName).
-		Interface("mapping", q.ColumnSequence).Msg("memqdb: get relation sequence")
+		Interface("mapping", q.State.ColumnSequence).Msg("memqdb: get relation sequence")
 
 	mapping := map[string]string{}
-	for key, seqName := range q.ColumnSequence {
+	for key, seqName := range q.State.ColumnSequence {
 		data := strings.Split(key, "_")
 		seqRelName := data[0]
 		colName := data[1]
@@ -1699,7 +1708,7 @@ func (q *MemQDB) GetRelationSequence(_ context.Context, relationFQN *rfqn.Relati
 
 func (q *MemQDB) ListSequences(_ context.Context) ([]string, error) {
 	seqNames := []string{}
-	for seqName := range q.Sequences {
+	for seqName := range q.State.Sequences {
 		seqNames = append(seqNames, seqName)
 	}
 	sort.Strings(seqNames)
@@ -1713,14 +1722,14 @@ func (q *MemQDB) NextRange(_ context.Context, seqName string, rangeSize uint64) 
 		Str("sequence", seqName).
 		Msg("memqdb: get next value for sequence")
 
-	nextval := q.SequenceToValues[seqName] + 1
+	nextval := q.State.SequenceToValues[seqName] + 1
 
 	if idRange, err := NewRangeBySize(nextval, rangeSize); err != nil {
 		return nil, fmt.Errorf("invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
 	} else {
 
-		q.SequenceToValues[seqName] = idRange.Right
-		if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.SequenceToValues, seqName, idRange.Right)); errDB != nil {
+		q.State.SequenceToValues[seqName] = idRange.Right
+		if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.SequenceToValues, seqName, idRange.Right)); errDB != nil {
 			return nil, errDB
 		}
 		return idRange, nil
@@ -1735,20 +1744,20 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 		Str("sequence", seqName).
 		Msg("memqdb: get next value for sequence")
 
-	next := q.SequenceToValues[seqName]
+	next := q.State.SequenceToValues[seqName]
 	return next, nil
 }
 
 func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
+		return NewDeleteCommand(q.State.RelationDistribution, stmt.Key), nil
 	case CMD_PUT:
 		val, ok := stmt.Value.(string)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
 		}
-		return NewUpdateCommand(q.RelationDistribution, stmt.Key, val), nil
+		return NewUpdateCommand(q.State.RelationDistribution, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memqdb cmd %d (relation distribution)", stmt.CmdType)
 	}
@@ -1756,7 +1765,7 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.Distributions, stmt.Key), nil
+		return NewDeleteCommand(q.State.Distributions, stmt.Key), nil
 	case CMD_PUT:
 		var distr Distribution
 		val, ok := stmt.Value.(string)
@@ -1766,7 +1775,7 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 		if err := json.Unmarshal([]byte(val), &distr); err != nil {
 			return nil, err
 		} else {
-			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
+			return NewUpdateCommand(q.State.Distributions, stmt.Key, &distr), nil
 		}
 	default:
 		return nil, fmt.Errorf("unsupported memqdb cmd %d (distributions)", stmt.CmdType)
@@ -1776,7 +1785,7 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.Krs, stmt.Key), nil
+		return NewDeleteCommand(q.State.Krs, stmt.Key), nil
 	case CMD_PUT:
 		val, ok := stmt.Value.(string)
 		if !ok {
@@ -1786,7 +1795,7 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 		if err := json.Unmarshal([]byte(val), &kr); err != nil {
 			return nil, err
 		}
-		return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
+		return NewUpdateCommand(q.State.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (key range)", stmt.CmdType)
 	}
@@ -1795,13 +1804,13 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.Freq, stmt.Key), nil
+		return NewDeleteCommand(q.State.Freq, stmt.Key), nil
 	case CMD_PUT:
 		valFreq := true
 		if stmt.Value == "false" {
 			valFreq = false
 		}
-		return NewUpdateCommand(q.Freq, stmt.Key, valFreq), nil
+		return NewUpdateCommand(q.State.Freq, stmt.Key, valFreq), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (freq)", stmt.CmdType)
 	}
@@ -1810,7 +1819,7 @@ func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.Locks, stmt.Key), nil
+		return NewDeleteCommand(q.State.Locks, stmt.Key), nil
 	case CMD_PUT:
 		val, ok := stmt.Value.(string)
 		if !ok {
@@ -1826,7 +1835,7 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 				return nil, fmt.Errorf("can't set lock memDB cmd %d", stmt.CmdType)
 			}
 		}
-		return NewUpdateCommand(q.Locks, stmt.Key, lock), nil
+		return NewUpdateCommand(q.State.Locks, stmt.Key, lock), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
 	}
@@ -1835,13 +1844,13 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.KrVersions, stmt.Key), nil
+		return NewDeleteCommand(q.State.KrVersions, stmt.Key), nil
 	case CMD_PUT:
 		val, ok := stmt.Value.(int)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapKrVersions, int is expected", stmt.Value)
 		}
-		return NewUpdateCommand(q.KrVersions, stmt.Key, val), nil
+		return NewUpdateCommand(q.State.KrVersions, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
 	}
@@ -1850,13 +1859,13 @@ func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.Sequences, stmt.Key), nil
+		return NewDeleteCommand(q.State.Sequences, stmt.Key), nil
 	case CMD_PUT:
 		val, ok := stmt.Value.(bool)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapSequences, bool is expected", stmt.Value)
 		}
-		return NewUpdateCommand(q.Sequences, stmt.Key, val), nil
+		return NewUpdateCommand(q.State.Sequences, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (Sequences)", stmt.CmdType)
 	}
@@ -1865,13 +1874,13 @@ func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
-		return NewDeleteCommand(q.SequenceToValues, stmt.Key), nil
+		return NewDeleteCommand(q.State.SequenceToValues, stmt.Key), nil
 	case CMD_PUT:
 		val, ok := stmt.Value.(int64)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapSequenceToValues, int64 is expected", stmt.Value)
 		}
-		return NewUpdateCommand(q.SequenceToValues, stmt.Key, val), nil
+		return NewUpdateCommand(q.State.SequenceToValues, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (SequenceToValues)", stmt.CmdType)
 	}
@@ -1961,17 +1970,17 @@ func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state TwoPhaseTxSt
 
 	/* XXX: validate state outer layers? */
 
-	info := q.TwoPhaseTx[id]
+	info := q.State.TwoPhaseTx[id]
 	info.State = state
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TwoPhaseTx, id, info))
 }
 
 func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if info, ok := q.TwoPhaseTx[id]; ok {
+	if info, ok := q.State.TwoPhaseTx[id]; ok {
 		if info.Locked {
 			return false, nil
 		}
@@ -1985,7 +1994,7 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 		Locked:    true,
 	}
 
-	q.TwoPhaseTx[id] = info
+	q.State.TwoPhaseTx[id] = info
 	return true, nil
 }
 
@@ -1994,7 +2003,7 @@ func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if info, ok := q.TwoPhaseTx[gid]; ok {
+	if info, ok := q.State.TwoPhaseTx[gid]; ok {
 		info.Locked = false
 	}
 	return nil
@@ -2014,9 +2023,9 @@ func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []st
 		Locked:    true,
 	}
 
-	q.TwoPhaseTx[id] = info
+	q.State.TwoPhaseTx[id] = info
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TwoPhaseTx, id, info))
 }
 
 // TXCohortShards implements DCStateKeeper.
@@ -2024,7 +2033,7 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if tx, ok := q.TwoPhaseTx[gid]; !ok {
+	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
 		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
 	} else {
 		return tx.SHardsIds, nil
@@ -2035,7 +2044,7 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 func (q *MemQDB) TXStatus(_ context.Context, gid string) (TwoPhaseTxState, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if tx, ok := q.TwoPhaseTx[gid]; !ok {
+	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
 		return "", fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
 	} else {
 		return tx.State, nil
@@ -2046,7 +2055,7 @@ func (q *MemQDB) TXStatus(_ context.Context, gid string) (TwoPhaseTxState, error
 func (q *MemQDB) ListTXNames(_ context.Context) ([]string, error) {
 	rt := []string{}
 
-	for _, tx := range q.TwoPhaseTx {
+	for _, tx := range q.State.TwoPhaseTx {
 		rt = append(rt, tx.Gid)
 	}
 	return rt, nil
@@ -2056,7 +2065,7 @@ func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.TwoPhaseTx, nil
+	return q.State.TwoPhaseTx, nil
 }
 
 func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {
@@ -2071,19 +2080,19 @@ func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.TwoPhaseTx, gid)
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.TwoPhaseTx, gid))
+	delete(q.State.TwoPhaseTx, gid)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.TwoPhaseTx, gid))
 }
 
 func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	commands := make([]Command, 0, len(q.TwoPhaseTx))
-	for gid := range q.TwoPhaseTx {
-		commands = append(commands, NewDeleteCommand(q.TwoPhaseTx, gid))
+	commands := make([]Command, 0, len(q.State.TwoPhaseTx))
+	for gid := range q.State.TwoPhaseTx {
+		commands = append(commands, NewDeleteCommand(q.State.TwoPhaseTx, gid))
 	}
-	q.TwoPhaseTx = map[string]*TwoPCInfo{}
+	q.State.TwoPhaseTx = map[string]*TwoPCInfo{}
 	return ExecuteCommands(q.DumpState, commands...)
 }
 

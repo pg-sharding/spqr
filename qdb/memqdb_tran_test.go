@@ -38,9 +38,9 @@ func TestPackMemqdbCommands(t *testing.T) {
 		actual, err := memqdb.packMemqdbCommands(commands)
 		is.NoError(err)
 		expected := []Command{
-			NewUpdateCommand(memqdb.Distributions, distribution1.ID, distribution1),
-			NewUpdateCommand(memqdb.RelationDistribution, relation.Name, distribution1.ID),
-			NewUpdateCommand(memqdb.Distributions, distribution2.ID, distribution2),
+			NewUpdateCommand(memqdb.State.Distributions, distribution1.ID, distribution1),
+			NewUpdateCommand(memqdb.State.RelationDistribution, relation.Name, distribution1.ID),
+			NewUpdateCommand(memqdb.State.Distributions, distribution2.ID, distribution2),
 		}
 		is.Equal(expected, actual)
 	})
