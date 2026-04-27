@@ -23,6 +23,10 @@ linters:
            disabled: true
          - name: unchecked-type-assertion
            disabled: false
+         - name: unused-parameter
+           disabled: false
+         - name: unexported-naming
+           disabled: false
 
   exclusions:
     paths:

@@ -208,15 +208,15 @@ func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]any, error) {
 
 var ErrMissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
 
-// CmpRangesLess compares two byte slices, kr and other, and returns true if kr is less than other.
-// The comparison is based on the length of the slices and the lexicographic order of their string representations.
+// CmpRangesLess compares two key range bounds and returns true if bound is less than key.
+// The comparison is performed element-by-element based on the column types provided.
 //
 // Parameters:
-//   - kr: The first byte slice to compare.
-//   - other: The second byte slice to compare.
+//   - bound: The first key range bound to compare.
+//   - key: The second key range bound to compare.
 //
 // Returns:
-//   - bool: True if kr is less than other, false otherwise.
+//   - bool: True if bound is less than key, false otherwise.
 func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
 	// Here we panic if we failed to convert key range bound
 	// element to expected type. We consider panic as much better

@@ -82,7 +82,7 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 		sort.Slice(krs, func(i, j int) bool {
 			l, _ := kr.KeyRangeFromDB(krs[i], d.ColTypes)
 			r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
-			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
+			return kr.CmpRangesLess(r.LowerBound, l.LowerBound, d.ColTypes)
 		})
 		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {

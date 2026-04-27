@@ -1855,7 +1855,7 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 		return nil, err
 	}
 	sort.Slice(krs, func(i, j int) bool {
-		return kr.CmpRangesLessEqual(krs[i].LowerBound, krs[j].LowerBound, keyRange.ColumnTypes)
+		return kr.CmpRangesLess(krs[i].LowerBound, krs[j].LowerBound, keyRange.ColumnTypes)
 	})
 
 	ind := slices.IndexFunc(krs, func(other *kr.KeyRange) bool {
@@ -2506,7 +2506,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 				}
 			}
 			sort.Slice(krsInt, func(i, j int) bool {
-				return !kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
+				return kr.CmpRangesLess(krsInt[j].LowerBound, krsInt[i].LowerBound, ds.ColTypes)
 			})
 			// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 			for _, kRange := range krsInt {

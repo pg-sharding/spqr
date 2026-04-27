@@ -410,7 +410,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 		}
 		o, ok := opt.(*lyx.Option)
 		if !ok {
-			continue
+			return nil, fmt.Errorf("unsupported COPY option node type %T", opt)
 		}
 		if strings.ToLower(o.Name) == "delimiter" {
 			arg, ok := o.Arg.(*lyx.AExprSConst)

@@ -62,6 +62,7 @@ cmpopts
 cnth
 codeql
 colname
+cyclomatic
 colocation
 colref
 coltypes

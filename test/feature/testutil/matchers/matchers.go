@@ -62,11 +62,11 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 	case reflect.Map:
 		em, ok := e.(map[string]any)
 		if !ok {
-			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 		}
 		am, ok := a.(map[string]any)
 		if !ok {
-			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 		}
 		for k, v1 := range em {
 			v2, ok := am[k]
@@ -81,11 +81,11 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 	case reflect.Slice:
 		es, ok := e.([]any)
 		if !ok {
-			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 		}
 		as, ok := a.([]any)
 		if !ok {
-			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 		}
 		j := 0
 		for i, v1 := range es {
@@ -103,11 +103,11 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 	case reflect.Bool:
 		ab, ok := a.(bool)
 		if !ok {
-			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 		}
 		eb, ok := e.(bool)
 		if !ok {
-			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 		}
 		if ab != eb {
 			return path
@@ -116,11 +116,11 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 		// assume int math
 		af, ok := a.(float64)
 		if !ok {
-			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 		}
 		ef, ok := e.(float64)
 		if !ok {
-			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 		}
 		if af != ef {
 			return path
@@ -129,13 +129,13 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 		if reStrCmp {
 			es, ok := e.(string)
 			if !ok {
-				panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+				panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 			}
 			switch av.Kind() {
 			case reflect.String:
 				as, ok := a.(string)
 				if !ok {
-					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 				}
 				if regexp.MustCompile(es).Find([]byte(as)) == nil {
 					return path
@@ -143,7 +143,7 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 			case reflect.Int:
 				ai, ok := a.(int)
 				if !ok {
-					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 				}
 				if regexp.MustCompile(es).Find(fmt.Appendf(nil, "%d", ai)) == nil {
 					return path
@@ -151,7 +151,7 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 			case reflect.Float32:
 				af32, ok := a.(float32)
 				if !ok {
-					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 				}
 				if regexp.MustCompile(es).Find(fmt.Appendf(nil, "%f", af32)) == nil {
 					return path
@@ -159,7 +159,7 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 			case reflect.Float64:
 				af64, ok := a.(float64)
 				if !ok {
-					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+					panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 				}
 				if regexp.MustCompile(es).Find(fmt.Appendf(nil, "%f", af64)) == nil {
 					return path
@@ -171,17 +171,17 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 		}
 		as, ok := a.(string)
 		if !ok {
-			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
+			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %v", reflect.TypeOf(a), path))
 		}
 		es, ok := e.(string)
 		if !ok {
-			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 		}
 		if as != es {
 			return path
 		}
 	default:
-		panic(fmt.Sprintf("unexpected JSON datatype %s at path %s", reflect.TypeOf(e), path))
+		panic(fmt.Sprintf("unexpected JSON datatype %s at path %v", reflect.TypeOf(e), path))
 	}
 	return nil
 }
