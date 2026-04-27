@@ -228,8 +228,14 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeUinteger:
-			i1 := bound[i].(uint64)
-			i2 := key[i].(uint64)
+			i1, ok := bound[i].(uint64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(uint64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else if i1 < i2 {
@@ -238,8 +244,14 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 				return false
 			}
 		case qdb.ColumnTypeInteger:
-			i1 := bound[i].(int64)
-			i2 := key[i].(int64)
+			i1, ok := bound[i].(int64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(int64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else if i1 < i2 {
@@ -250,16 +262,28 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 		case qdb.ColumnTypeUUID:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else {
 				return i1 < i2
 			}
 		case qdb.ColumnTypeVarcharDeprecated:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else {
@@ -280,16 +304,28 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeUinteger:
-			i1 := bound[i].(uint64)
-			i2 := key[i].(uint64)
+			i1, ok := bound[i].(uint64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(uint64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else {
 				return false
 			}
 		case qdb.ColumnTypeInteger:
-			i1 := bound[i].(int64)
-			i2 := key[i].(int64)
+			i1, ok := bound[i].(int64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(int64)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else {
@@ -298,8 +334,14 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 		case qdb.ColumnTypeUUID:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 
@@ -307,8 +349,14 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 				return false
 			}
 		case qdb.ColumnTypeVarcharDeprecated:
-			i1 := bound[i].(string)
-			i2 := key[i].(string)
+			i1, ok := bound[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
+			i2, ok := key[i].(string)
+		if !ok {
+			panic(ErrMissTypedKeyRange)
+		}
 			if i1 == i2 {
 				// continue
 			} else {

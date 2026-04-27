@@ -341,7 +341,10 @@ func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc
 	connRaw, exists := qc.routerConnCache.LoadAndDelete(r.ID)
 
 	if exists {
-		conn := connRaw.(*grpc.ClientConn)
+		conn, ok := connRaw.(*grpc.ClientConn)
+		if !ok {
+			return nil, func() {}, fmt.Errorf("invalid connection type in cache")
+		}
 		// Check if connection is still valid
 		state := conn.GetState()
 		if state == connectivity.Ready || state == connectivity.Idle {
@@ -380,9 +383,11 @@ func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
 	connRaw, exists := qc.routerConnCache.Load(routerID)
 
 	if exists {
-		conn := connRaw.(*grpc.ClientConn)
-		_ = conn.Close()
-		qc.routerConnCache.Delete(routerID)
+		conn, ok := connRaw.(*grpc.ClientConn)
+		if ok {
+			_ = conn.Close()
+			qc.routerConnCache.Delete(routerID)
+		}
 	}
 }
 
@@ -484,8 +489,8 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		// Clean up connections for routers that no longer exist
 		var staleConnIDs []string
 		qc.routerConnCache.Range(func(k, _ any) bool {
-			routerID := k.(string)
-			if !currentRouterIDs[routerID] {
+			routerID, ok := k.(string)
+			if ok && !currentRouterIDs[routerID] {
 				staleConnIDs = append(staleConnIDs, routerID)
 			}
 			return true
@@ -1336,7 +1341,10 @@ func (qc *ClusteredCoordinator) TaskWorkersID() []string {
 func (qc *ClusteredCoordinator) TaskState(id string) (*transferworker.TaskGroupWorkerState, error) {
 	st, ok := qc.dataTransferWorkers.Load(id)
 	if ok {
-		return st.(*transferworker.TaskGroupWorkerState), nil
+		taskState, ok := st.(*transferworker.TaskGroupWorkerState)
+		if ok {
+			return taskState, nil
+		}
 	}
 
 	return nil, fmt.Errorf("no such task \"%v\"", id)
@@ -1576,9 +1584,18 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
 	if groupBoundsInt, ok := qc.bounds.Load(taskGroup.ID); ok {
-		indMap, _ := qc.index.Load(taskGroup.ID)
-		groupBounds, _ := groupBoundsInt.([][][]byte)
-		ind := indMap.(int)
+		indMap, ok := qc.index.Load(taskGroup.ID)
+		if !ok {
+			return nil, fmt.Errorf("index not found for task group %s", taskGroup.ID)
+		}
+		groupBounds, ok := groupBoundsInt.([][][]byte)
+		if !ok {
+			return nil, fmt.Errorf("invalid bounds type for task group %s", taskGroup.ID)
+		}
+		ind, ok := indMap.(int)
+		if !ok {
+			return nil, fmt.Errorf("invalid index type for task group %s", taskGroup.ID)
+		}
 		if ind < len(groupBounds) {
 			qc.index.Store(taskGroup.ID, ind+1)
 			return groupBounds[ind], nil
@@ -2065,9 +2082,18 @@ func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string
 
 func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, id string) ([][][]byte, int, error) {
 	if groupBoundsInt, ok := qc.bounds.Load(id); ok {
-		indMap, _ := qc.index.Load(id)
-		groupBounds, _ := groupBoundsInt.([][][]byte)
-		ind := indMap.(int)
+		indMap, ok := qc.index.Load(id)
+		if !ok {
+			return nil, 0, fmt.Errorf("index not found for task group %s", id)
+		}
+		groupBounds, ok := groupBoundsInt.([][][]byte)
+		if !ok {
+			return nil, 0, fmt.Errorf("invalid bounds type for task group %s", id)
+		}
+		ind, ok := indMap.(int)
+		if !ok {
+			return nil, 0, fmt.Errorf("invalid index type for task group %s", id)
+		}
 		return groupBounds, ind, nil
 	}
 	return nil, 0, nil
