@@ -95,6 +95,28 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 			}
 			defer cf()
 		}
+	case *spqrparser.Alter:
+		distr := true
+		switch el := tstmt.Element.(type) {
+		case *spqrparser.System:
+			if el.Rebootstrap {
+				distr = false
+				break
+			}
+		}
+
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
+		if !distr {
+			break
+		}
+		mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+		if err != nil {
+			return err
+		}
+		defer cf()
+
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
