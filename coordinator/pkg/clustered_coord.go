@@ -2940,7 +2940,8 @@ func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address s
 	})
 }
 
-// CreateDistribution creates distribution in QDB
+// CreateReferenceRelation creates reference relation in QDB.
+// If enabled, CreateReferenceRelation also attempts to set up the relation in spqrguard extension.
 // TODO: unit tests
 func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 	r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
