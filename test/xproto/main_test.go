@@ -30,52 +30,54 @@ func thisIsSPQRSpecificTest(t *testing.T) {
 }
 
 func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGroup) {
-	for _, msgroup := range tt {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
+	for i := 0; i < 5; i++ {
+		for _, msgroup := range tt {
+			for _, msg := range msgroup.Request {
+				frontend.Send(msg)
+			}
 		}
-	}
-	_ = frontend.Flush()
-	for gr, msgroup := range tt {
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				/* do not compare this fields */
-				retMsgType.Line = 0
-				retMsgType.Routine = ""
-				retMsgType.Position = 0
-				retMsgType.Hint = ""
-				retMsgType.Detail = ""
-
-				retMsgType.SeverityUnlocalized = ""
-				retMsgType.File = ""
-				if msgroup.CheckCode {
-					retMsgType.Message = ""
-				} else {
-					retMsgType.Code = ""
-				}
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
+		_ = frontend.Flush()
+		for gr, msgroup := range tt {
+			backendFinished := false
+			for ind, msg := range msgroup.Response {
+				if backendFinished {
 					break
-				default:
-					backendFinished = true
 				}
-			default:
-				break
+				retMsg, err := frontend.Receive()
+				assert.NoError(t, err)
+				switch retMsgType := retMsg.(type) {
+				case *pgproto3.ErrorResponse:
+					/* do not compare this fields */
+					retMsgType.Line = 0
+					retMsgType.Routine = ""
+					retMsgType.Position = 0
+					retMsgType.Hint = ""
+					retMsgType.Detail = ""
+
+					retMsgType.SeverityUnlocalized = ""
+					retMsgType.File = ""
+					if msgroup.CheckCode {
+						retMsgType.Message = ""
+					} else {
+						retMsgType.Code = ""
+					}
+				case *pgproto3.RowDescription:
+					for i := range retMsgType.Fields {
+						// We don't want to check table OID
+						retMsgType.Fields[i].TableOID = 0
+					}
+				case *pgproto3.ReadyForQuery:
+					switch msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						break
+					default:
+						backendFinished = true
+					}
+				default:
+					break
+				}
+				assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", gr, ind))
 			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", gr, ind))
 		}
 	}
 }
