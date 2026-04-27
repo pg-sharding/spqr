@@ -101,12 +101,28 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 			}
 		}
 	case reflect.Bool:
-		if a.(bool) != e.(bool) {
+		ab, ok := a.(bool)
+		if !ok {
+			return path
+		}
+		eb, ok := e.(bool)
+		if !ok {
+			return path
+		}
+		if ab != eb {
 			return path
 		}
 	case reflect.Float64:
 		// assume int math
-		if a.(float64) != e.(float64) {
+		af, ok := a.(float64)
+		if !ok {
+			return path
+		}
+		ef, ok := e.(float64)
+		if !ok {
+			return path
+		}
+		if af != ef {
 			return path
 		}
 	case reflect.String:
@@ -133,7 +149,15 @@ func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 			}
 			break
 		}
-		if a.(string) != e.(string) {
+		as, ok := a.(string)
+		if !ok {
+			return path
+		}
+		es, ok := e.(string)
+		if !ok {
+			return path
+		}
+		if as != es {
 			return path
 		}
 	default:
