@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/caio/go-tdigest"
@@ -23,24 +24,26 @@ type StartTimes struct {
 }
 
 type Statistics struct {
-	RouterTime        map[uint]*tdigest.TDigest
-	ShardTime         map[uint]*tdigest.TDigest
-	RouterTimeTotal   *tdigest.TDigest
-	ShardTimeTotal    *tdigest.TDigest
-	TimeData          map[uint]*StartTimes
-	Quantiles         []float64
-	QuantilesStr      []string
-	NeedToCollectData bool
-	lock              sync.RWMutex
+	RouterTime                 map[uint]*tdigest.TDigest
+	ShardTime                  map[uint]*tdigest.TDigest
+	RouterTimeTotal            *tdigest.TDigest
+	ShardTimeTotal             *tdigest.TDigest
+	TimeData                   map[uint]*StartTimes
+	Quantiles                  []float64
+	QuantilesStr               []string
+	NeedToCollectData          bool
+	lock                       sync.RWMutex
+	InboundQueriesTotalCounter int64
 }
 
 var QueryStatistics = Statistics{
-	RouterTime:      make(map[uint]*tdigest.TDigest),
-	ShardTime:       make(map[uint]*tdigest.TDigest),
-	RouterTimeTotal: nil,
-	ShardTimeTotal:  nil,
-	TimeData:        make(map[uint]*StartTimes),
-	lock:            sync.RWMutex{},
+	RouterTime:                 make(map[uint]*tdigest.TDigest),
+	ShardTime:                  make(map[uint]*tdigest.TDigest),
+	RouterTimeTotal:            nil,
+	ShardTimeTotal:             nil,
+	TimeData:                   make(map[uint]*StartTimes),
+	lock:                       sync.RWMutex{},
+	InboundQueriesTotalCounter: 0,
 }
 
 func InitStatistics(q []float64) {
@@ -154,4 +157,8 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		}
 		clientST.ShardStart = time.Time{}
 	}
+}
+
+func IncInboundQueriesTotal() {
+	atomic.AddInt64(&QueryStatistics.InboundQueriesTotalCounter, 1)
 }

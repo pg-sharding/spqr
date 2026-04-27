@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 type ProxyQrouter struct {
@@ -154,14 +155,25 @@ var _ planner.QueryPlanner = &ProxyQrouter{}
 
 func (qr *ProxyQrouter) registerMetrics() {
 	totalConnectionsMetric := &metrics.DynamicGauge{
-		Name: metrics.MetricPrefix + "router_client_conn_tcp_total",
+		Name: metrics.ClientConnectionsTcpTotalName,
 		Help: "Current number of client tcp connections",
 		Getter: func() float64 {
 			return float64(qr.csm.TotalTCPCount())
 		},
 		Value: 0,
 	}
+
+	inboundQueriesTotalMetric := &metrics.DynamicGauge{
+		Name: metrics.InboundQueriesTotalName,
+		Help: "Number of incoming queries",
+		Getter: func() float64 {
+			return float64(statistics.QueryStatistics.InboundQueriesTotalCounter)
+		},
+		Value: 0,
+	}
+
 	qr.metricRegistry.RegisterDynamicGauge(totalConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicGauge(inboundQueriesTotalMetric)
 }
 
 func NewProxyRouter(shardMapping map[string]*topology.DataShard,

@@ -122,7 +122,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
-		qr.MetricRegistry().IncInboundQueries()
+		statistics.IncInboundQueriesTotal()
 		// copy interface
 		cpQ := *q
 		q = &cpQ
@@ -141,7 +141,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
-		qr.MetricRegistry().IncInboundQueries()
+		statistics.IncInboundQueriesTotal()
 		// copy interface
 		cpQ := *q
 		q = &cpQ
