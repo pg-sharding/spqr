@@ -137,7 +137,11 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 func (c *PoolImpl) Shutdown() error {
 
 	c.pool.Range(func(_, value any) bool {
-		cl := value.(Client)
+		cl, ok := value.(Client)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected client pool value type")
+			return true
+		}
 		go func(cl Client) {
 			if err := cl.Shutdown(); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
@@ -168,7 +172,11 @@ func (c *PoolImpl) Shutdown() error {
 func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
 	c.pool.Range(func(_, value any) bool {
-		cl := value.(Client)
+		cl, ok := value.(Client)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected client pool value type")
+			return true
+		}
 
 		if err := cb(ClientInfoImpl{Client: cl, rAddr: "local"}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")

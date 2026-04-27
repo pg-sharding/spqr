@@ -352,7 +352,10 @@ func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 // TODO : unit tests
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	if v, ok := r.clmp.Load(csm.ProcessID); ok {
-		cl := v.(rclient.RouterClient)
+		cl, ok := v.(rclient.RouterClient)
+		if !ok {
+			return fmt.Errorf("internal: unexpected client type %T for pid %d", v, csm.ProcessID)
+		}
 
 		if !bytes.Equal(cl.GetCancelKey(), csm.SecretKey) {
 			return fmt.Errorf("cancel secret does not match")

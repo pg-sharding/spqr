@@ -5,10 +5,25 @@ linters:
     - revive
   settings:
     revive:
-      enable-all-rules: false
-      rules:
-        - name: unused-parameter
-        - name: unexported-naming
+       enable-all-rules: false
+       rules:
+         - name: add-constant
+           disabled: true
+         - name: line-length-limit
+           disabled: true
+         - name: package-comments
+           disabled: true
+         - name: cognitive-complexity
+           disabled: true
+         - name: cyclomatic
+           disabled: true
+         - name: exported
+           disabled: true
+         - name: function-length
+           disabled: true
+         - name: unchecked-type-assertion
+           disabled: false
+
   exclusions:
     paths:
       - yacc/console/lex.go

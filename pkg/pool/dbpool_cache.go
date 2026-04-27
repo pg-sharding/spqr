@@ -125,7 +125,10 @@ func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalC
 		return LocalCheckResult{}, false
 	}
 
-	entry := value.(CachedEntry)
+	entry, ok := value.(CachedEntry)
+	if !ok {
+		return LocalCheckResult{}, false
+	}
 
 	// Check if entry is stale
 	if time.Since(entry.LastCheckTime) > c.cacheTTL {
