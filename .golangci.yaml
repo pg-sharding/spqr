@@ -9,6 +9,7 @@ linters:
        rules:
          - name: unused-parameter
          - name: unexported-naming
+         - name: unnecessary-if
          - name: add-constant
            disabled: true
          - name: line-length-limit
@@ -24,6 +25,10 @@ linters:
          - name: function-length
            disabled: true
          - name: unchecked-type-assertion
+           disabled: true
+         - name: unused-receiver
+           disabled: true
+         - name: empty-lines
            disabled: true
 
   exclusions:
