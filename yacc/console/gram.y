@@ -1624,6 +1624,10 @@ key_range_stmt:
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
+	| KEY RANGE ALL
+	{
+		$$ = &KeyRangeSelector{KeyRangeID: `*`}
+	}
 
 distribution_select_stmt:
 	DISTRIBUTION any_id

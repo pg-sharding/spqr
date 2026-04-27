@@ -59,14 +59,12 @@ step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges;'
 
 session s3
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}
-step s3_clean_lock          { /* TODO: fix */ select __spqr__console_execute('show key_ranges(key_range_id) where locked = ''true''') \gset}
-step s3_clean_lock2          { /* TODO: fix */ select 'unlock key range ':'key_range_id''' as ss \gset }
-step s3_clean_lock3          { /* TODO: fix */  select __spqr__console_execute(:'ss') }
+step s3_clean_lock        { /* TODO: fix */ select __spqr__console_execute('UNLOCK KEY RANGE ALL')}
 
 session s4
 step s4_cancel             { select __spqr__console_execute('STOP TASK GROUP zid') /*__spqr__preferred_engine: v2 */;}
 step s4_show_tg            { select __spqr__console_execute('SHOW task_groups(task_group_id, source_key_range_id, state, message);') /*__spqr__preferred_engine: v2 */; }
-step s4_await_planning       { SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; }
+step s4_await_planning     { SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; }
 
 
 # ok
@@ -84,7 +82,5 @@ permutation
     s1_commit
 
     s3_clean_lock
-    s3_clean_lock2
-    s3_clean_lock3
     s3_clean
 
