@@ -74,6 +74,7 @@ type Router struct {
 	UseCoordinatorInit        bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 	ManageShardsByCoordinator bool   `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
 	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
+	UseMetrics                bool   `json:"use_metrics" toml:"use_metrics" yaml:"use_metrics"`
 
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`

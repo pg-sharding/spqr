@@ -94,19 +94,22 @@ func getMaxTxnBatchSize(configRouter *config.Router, configCoord *config.Coordin
 	spqrlog.Zero.Info().Str("maxTxnBatchSize", fmt.Sprintf("%d", maxTxnBatchSize))
 	return maxTxnBatchSize
 }
+
 func setupMetrics() *metrics.RouterMetricRegistry {
 	promRegistry := prometheus.NewRegistry()
 	metricRegistry := metrics.NewRouterMetricRegistry(promRegistry)
-	metricPath := config.RouterConfig().MetricPath
-	metricPort := config.RouterConfig().MetricRouterPort
-	if metricPath == "" {
-		metricPath = metrics.DefaultMetricPath
-	}
+	if config.RouterConfig().UseMetrics {
+		metricPath := config.RouterConfig().MetricPath
+		metricPort := config.RouterConfig().MetricRouterPort
+		if metricPath == "" {
+			metricPath = metrics.DefaultMetricPath
+		}
 
-	if err := metrics.Start(metricRegistry, metricPath, metricPort); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("metric server is not started")
-	} else {
-		spqrlog.Zero.Info().Str("path", metricPath).Str("port", metricPort).Msg("Metrics available")
+		if err := metrics.Start(metricRegistry, metricPath, metricPort); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("metric server is not started")
+		} else {
+			spqrlog.Zero.Info().Str("path", metricPath).Str("port", metricPort).Msg("Metrics available")
+		}
 	}
 	return metricRegistry
 }
