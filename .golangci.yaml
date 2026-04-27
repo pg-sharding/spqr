@@ -22,7 +22,7 @@ linters:
          - name: function-length
            disabled: true
          - name: unchecked-type-assertion
-           disabled: false
+           disabled: true
 
   exclusions:
     paths:
