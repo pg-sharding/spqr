@@ -17,7 +17,6 @@ import (
 )
 
 func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string) error {
-
 	etcdConn, err := qdb.NewEtcdQDB(qdbAddrs, 0)
 	if err != nil {
 		return err
@@ -54,24 +53,129 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 		}
 	}
 
-	/* Initialize distributions */
+	db := mngr.QDB()
+	if memqdb, ok := db.(*qdb.MemQDB); ok {
+		if err := memQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			return err
+		}
+	} else {
+
+		/* Initialize distributions */
+		ds, err := etcdConn.ListDistributions(ctx)
+		if err != nil {
+			return err
+		}
+		for _, d := range ds {
+			if d.ID == distributions.REPLICATED {
+				continue
+			}
+			tranMngr := meta.NewTranEntityManager(mngr)
+			if err = tranMngr.CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
+				return err
+			}
+			if err = tranMngr.ExecNoTran(ctx); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
+				return err
+			}
+
+			/* initialize key ranges within distribution */
+			krs, err := etcdConn.ListKeyRanges(ctx, d.ID)
+			if err != nil {
+				return err
+			}
+
+			sort.Slice(krs, func(i, j int) bool {
+				l, _ := kr.KeyRangeFromDB(krs[i], d.ColTypes)
+				r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
+				return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
+			})
+			// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
+			for _, ckr := range krs {
+				kRange, err := kr.KeyRangeFromDB(ckr, d.ColTypes)
+				if err != nil {
+					return err
+				}
+				tranMngr := meta.NewTranEntityManager(mngr)
+				if err := tranMngr.CreateKeyRange(ctx, kRange, d.ColTypes); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+					return err
+				}
+				if err = tranMngr.ExecNoTran(ctx); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
+					return err
+				}
+			}
+		}
+
+		ref_rels, err := etcdConn.ListReferenceRelations(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, rr := range ref_rels {
+			entries := []*rrelation.AutoIncrementEntry{}
+
+			for c, seq := range rr.ColumnSequenceMapping {
+				n, err := etcdConn.CurrVal(ctx, seq)
+				if err != nil {
+					return err
+				}
+				entries = append(entries, &rrelation.AutoIncrementEntry{
+					Column: c,
+					Start:  uint64(n),
+				})
+			}
+
+			/* XXX: nil for auto inc entry is OK? */
+			if err := mngr.CreateReferenceRelation(ctx, rrelation.RefRelationFromDB(rr), entries); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+				return err
+			}
+		}
+
+		// TODO: initialize two-phase meta storage
+		storage, err := etcdConn.GetTxMetaStorage(ctx)
+		spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
+		if err != nil {
+			return err
+		}
+		if err := mngr.SetTwoPhaseTxMetaStorage(ctx, storage); err != nil {
+			return err
+		}
+	}
+
+	c, err := retry.DoValue(ctx, retry.WithMaxRetries(50, retry.NewConstant(time.Second)), func(ctx context.Context) (string, error) {
+		c, err := etcdConn.GetCoordinator(ctx)
+		if err != nil {
+			return "", retry.RetryableError(err)
+		}
+		return c, nil
+	})
+	if err != nil {
+		return err
+	}
+	return mngr.UpdateCoordinator(ctx, c)
+}
+
+func memQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.EtcdQDB) error {
+	swapDb := &qdb.MemQDB{}
+
 	ds, err := etcdConn.ListDistributions(ctx)
 	if err != nil {
 		return err
 	}
+	ops := make([]qdb.QdbStatement, 0)
 	for _, d := range ds {
 		if d.ID == distributions.REPLICATED {
 			continue
 		}
-		tranMngr := meta.NewTranEntityManager(mngr)
-		if err = tranMngr.CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
+		dStmts, err := swapDb.CreateDistribution(ctx, d)
+		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
 			return err
 		}
-		if err = tranMngr.ExecNoTran(ctx); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
-			return err
-		}
+		ops = append(ops, dStmts...)
 
 		/* initialize key ranges within distribution */
 		krs, err := etcdConn.ListKeyRanges(ctx, d.ID)
@@ -86,20 +190,15 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 		})
 		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {
-			kRange, err := kr.KeyRangeFromDB(ckr, d.ColTypes)
+			krStmts, err := swapDb.CreateKeyRange(ctx, ckr)
 			if err != nil {
 				return err
 			}
-			tranMngr := meta.NewTranEntityManager(mngr)
-			if err := tranMngr.CreateKeyRange(ctx, kRange, d.ColTypes); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
-				return err
-			}
-			if err = tranMngr.ExecNoTran(ctx); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
-				return err
-			}
+			ops = append(ops, krStmts...)
 		}
+	}
+	if err := swapDb.ExecNoTransaction(ctx, ops); err != nil {
+		return err
 	}
 
 	ref_rels, err := etcdConn.ListReferenceRelations(ctx)
@@ -108,21 +207,7 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 	}
 
 	for _, rr := range ref_rels {
-		entries := []*rrelation.AutoIncrementEntry{}
-
-		for c, seq := range rr.ColumnSequenceMapping {
-			n, err := etcdConn.CurrVal(ctx, seq)
-			if err != nil {
-				return err
-			}
-			entries = append(entries, &rrelation.AutoIncrementEntry{
-				Column: c,
-				Start:  uint64(n),
-			})
-		}
-
-		/* XXX: nil for auto inc entry is OK? */
-		if err := mngr.CreateReferenceRelation(ctx, rrelation.RefRelationFromDB(rr), entries); err != nil {
+		if err := swapDb.CreateReferenceRelation(ctx, rr); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 			return err
 		}
@@ -134,19 +219,10 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 	if err != nil {
 		return err
 	}
-	if err := mngr.SetTwoPhaseTxMetaStorage(ctx, storage); err != nil {
+	if err := swapDb.SetTxMetaStorage(ctx, storage); err != nil {
 		return err
 	}
 
-	c, err := retry.DoValue(ctx, retry.WithMaxRetries(50, retry.NewConstant(time.Second)), func(ctx context.Context) (string, error) {
-		c, err := etcdConn.GetCoordinator(ctx)
-		if err != nil {
-			return "", retry.RetryableError(err)
-		}
-		return c, nil
-	})
-	if err != nil {
-		return err
-	}
-	return mngr.UpdateCoordinator(ctx, c)
+	memqdb.SwapState(swapDb.State)
+	return nil
 }
