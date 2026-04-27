@@ -86,13 +86,13 @@ ctsa
 cupidatat
 currkr
 currroute
+cyclomatic
 Darth
 datacenter
 datadir
 datarow
 datashard
 datatransfer
-transferworker
 datname
 dboptions
 dbpool
@@ -352,6 +352,7 @@ nroute
 nsecs
 nspname
 nulla
+Objtype
 occaecat
 odit
 odssd
@@ -385,6 +386,7 @@ PGDATABASE
 pgdg
 pgexec
 PGHOST
+pgi
 pgoption
 PGPORT
 pgproto
@@ -393,6 +395,7 @@ pgsharding
 PGSSLMODE
 pgsync
 PGUSER
+pgx
 pgxconn
 pgxpool
 pgxv
@@ -406,6 +409,7 @@ poolview
 porro
 Postgre
 postgresql
+ppp
 pppp
 prepstatement
 privs
@@ -432,7 +436,7 @@ qstmt
 qtype
 querylog
 quisquam
-Objtype
+qury
 RAddr
 ragel
 randkey
@@ -442,6 +446,7 @@ rcfg
 rclient
 rconn
 rdistr
+rebootstrap
 regclass
 reloid
 relpersistence
@@ -456,7 +461,6 @@ retmsg
 retryable
 retst
 reuseport
-rebootstrap
 rfqn
 RFQNIs
 rgrpc
@@ -589,6 +593,7 @@ TOPENSQBR
 tpcc
 tracelog
 tran
+transferworker
 TRASCE
 truncatable
 tsa
