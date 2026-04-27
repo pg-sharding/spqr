@@ -1393,7 +1393,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	return nil
 }
 
-func (qc *ClusteredCoordinator) bootstrapWatcher(_ context.Context) func() {
+func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 
 	return func() {
 
@@ -1409,7 +1409,7 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(_ context.Context) func() {
 						id := k.(string)
 						st := v.(*transferworker.TaskGroupWorkerState)
 						spqrlog.Zero.Debug().Str("id", id).Msg("rechecking task aliveness")
-						stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(context.TODO(), id)
+						stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
 						if err != nil {
 							spqrlog.Zero.Info().Err(err).Msg("failed to check for stop flag:")
 						}
@@ -1427,8 +1427,8 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(_ context.Context) func() {
 
 						return true
 					})
-					// case <-ctx.Done():
-					// 	return
+				case <-ctx.Done():
+					return
 				}
 			}
 		}()
