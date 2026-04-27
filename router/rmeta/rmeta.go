@@ -161,20 +161,20 @@ func (rm *RoutingMetadataContext) ResolveTypedParamRef(paramResCodes []int16, in
 	return plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
 }
 
-func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
+func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
 	/* explicit assignment in query */
-	if vals, ok := rm.Exprs[*rfqn][col]; ok {
+	if vals, ok := rm.Exprs[*relationFQN][col]; ok {
 		return vals, nil
 	}
 
 	/* else get parameter from bind query */
 
-	inds, ok := rm.ParamRefs[*rfqn][col]
+	inds, ok := rm.ParamRefs[*relationFQN][col]
 	if !ok {
 		return nil, plan.ErrResolvingValue
 	}
 
-	off, tp := rm.GetDistributionKeyOffsetType(rfqn, col)
+	off, tp := rm.GetDistributionKeyOffsetType(relationFQN, col)
 	if off == -1 {
 		// column not from distr key
 		return nil, plan.ErrResolvingValue
@@ -338,11 +338,11 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 	hf := hashfunction.HashFunctionIdent
 
 	if dRel != "" {
-		relName, err := rfqn.ParseFQN(dRel)
+		relationFQN, err := rfqn.ParseFQN(dRel)
 		if err != nil {
 			return kr.ShardKey{}, err
 		}
-		r, ok := distrib.TryGetRelation(relName)
+		r, ok := distrib.TryGetRelation(relationFQN)
 		if ok {
 			hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
 			if err != nil {

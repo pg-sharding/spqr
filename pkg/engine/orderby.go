@@ -15,9 +15,8 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 		spqrlog.Zero.Debug().Str("data", string(r[0])).Msg("print row before")
 	}
 
-	switch order.(type) {
-	case *lyx.SortBy:
-		ord := order.(*lyx.SortBy)
+	ord, ok := order.(*lyx.SortBy)
+	if ok {
 		var asc_desc int
 
 		switch ord.SortbyDir {
@@ -35,9 +34,13 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 		if err != nil {
 			return nil, err
 		}
+		colRef, ok := ord.Node.(*lyx.ColumnRef)
+		if !ok {
+			return nil, fmt.Errorf("unsupported ORDER BY node type %T", ord.Node)
+		}
 		sortable := SortableWithContext{
 			Data:      data,
-			Col_index: colOrder[ord.Node.(*lyx.ColumnRef).ColName],
+			Col_index: colOrder[colRef.ColName],
 			Order:     asc_desc,
 			Op:        op,
 		}

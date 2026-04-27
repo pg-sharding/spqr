@@ -120,8 +120,8 @@ func (r *RuleRouterImpl) ReleaseConnection() {
 	r.activeTcpCount.Add(-1)
 }
 
-// ActiveTcpCount implements RuleRouter.
-func (r *RuleRouterImpl) ActiveTcpCount() int64 {
+// ActiveTCPCount implements RuleRouter.
+func (r *RuleRouterImpl) ActiveTCPCount() int64 {
 	return r.activeTcpCount.Load()
 }
 
@@ -130,8 +130,8 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 	return r.cancelConnCount.Load()
 }
 
-// TotalTcpCount implements RuleRouter.
-func (r *RuleRouterImpl) TotalTcpCount() int64 {
+// TotalTCPCount implements RuleRouter.
+func (r *RuleRouterImpl) TotalTCPCount() int64 {
 	return r.tcpConnCount.Load()
 }
 
@@ -352,7 +352,10 @@ func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 // TODO : unit tests
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	if v, ok := r.clmp.Load(csm.ProcessID); ok {
-		cl := v.(rclient.RouterClient)
+		cl, ok := v.(rclient.RouterClient)
+		if !ok {
+			return fmt.Errorf("internal: unexpected client type %T for pid %d", v, csm.ProcessID)
+		}
 
 		if !bytes.Equal(cl.GetCancelKey(), csm.SecretKey) {
 			return fmt.Errorf("cancel secret does not match")

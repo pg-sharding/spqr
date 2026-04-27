@@ -380,7 +380,7 @@ func InsertSequenceValue(ctx context.Context,
 }
 
 // XXX: Rewrite this using native plan.QueryVX/analyzeQueryVx
-func getMaxPrepStmtId(s lyx.Node) int {
+func getMaxPrepStmtID(s lyx.Node) int {
 	ret := 1
 
 	switch ins := s.(type) {
@@ -418,11 +418,11 @@ func InsertSequenceParamRef(_ context.Context,
 			// what param ref is max for given query?
 
 			// analyze lyx statement
-			maxId := getMaxPrepStmtId(stmt)
-			def.OverwriteRemoveParamIds = map[int]struct{}{maxId: {}}
+			maxID := getMaxPrepStmtID(stmt)
+			def.OverwriteRemoveParamIds = map[int]struct{}{maxID: {}}
 			def.SeqName = seqName
 
-			return fmt.Sprintf("$%d", maxId), nil
+			return fmt.Sprintf("$%d", maxID), nil
 		})
 		if err != nil {
 			return "", err

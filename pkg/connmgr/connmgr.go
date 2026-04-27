@@ -15,8 +15,8 @@ type ConnectionStatMgr interface {
 		- handshake counter
 		- unexpected eof error counter
 	*/
-	TotalTcpCount() int64
-	ActiveTcpCount() int64
+	TotalTCPCount() int64
+	ActiveTCPCount() int64
 	TotalCancelCount() int64
 }
 

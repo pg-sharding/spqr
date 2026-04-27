@@ -359,9 +359,9 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 	stats := rps.GetRPSStats()
 
 	tts.WriteDataRow(
-		fmt.Sprintf("%v", ci.TotalTcpCount()),
+		fmt.Sprintf("%v", ci.TotalTCPCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount()),
+		fmt.Sprintf("%v", ci.ActiveTCPCount()),
 		fmt.Sprintf("%d", stats.GetTotalRequests()),
 	)
 
@@ -595,7 +595,7 @@ func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statu
 		if group.CurrentTask != nil {
 			currTaskId = group.CurrentTask.ID
 		}
-		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message, group.CreatedAt.Format("02-01-2006 15:04:05"), status.UpdatedAt.Format("02-01-2006 15:04:05"))
+		tts.WriteDataRow(group.ID, group.ShardToID, group.KridFrom, group.KridTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message, group.CreatedAt.Format("02-01-2006 15:04:05"), status.UpdatedAt.Format("02-01-2006 15:04:05"))
 	}
 	return tts
 }
@@ -629,7 +629,7 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 		tts.WriteDataRow(
 			task.TaskGroupID,
 			task.ID,
-			task.KrIdTemp,
+			task.KridTemp,
 			strings.Join(krData, ";"),
 			tasks.TaskStateToStr(task.State),
 		)
@@ -691,8 +691,8 @@ func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tup
 		tts.WriteDataRow(
 			task.ID,
 			id,
-			task.KeyRangeId,
-			task.ShardId,
+			task.KeyRangeID,
+			task.ShardID,
 			strconv.FormatInt(int64(task.BatchSize), 10),
 		)
 	}

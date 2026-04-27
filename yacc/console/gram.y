@@ -4,7 +4,6 @@ package spqrparser
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"crypto/rand"
@@ -58,6 +57,7 @@ func randomHex(n int) (string, error) {
 	krbound                *KeyRangeBound
 
 	qname		   		   *rfqn.RelationFQN
+	qnameList		   	 []*rfqn.RelationFQN
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
@@ -92,6 +92,9 @@ func randomHex(n int) (string, error) {
 	icp						*InstanceControlPoint
 	icpAction				*ICPointAction
 	duration				time.Duration
+
+	grant					*GrantStmt
+	privilege_target		*PrivTarget
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -210,9 +213,11 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> SYSTEM RELOAD RESTART
+%token<str> SYSTEM RELOAD RESTART REBOOTSTRAP
 
 %token<str> SECONDS WAIT PANIC SLEEP
+
+%token<str> GRANT PRIVILEGES
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -242,9 +247,13 @@ func randomHex(n int) (string, error) {
 %type <stoptrace> stoptrace_stmt
 
 %type<qname> qualified_name
+%type<qnameList> qualified_name_list
 %type <ds> distribution_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
+
+%type<strlist> privileges grantee_list privilege_list
+%type<str> privilege grantee
 
 %type<dEntrieslist> distribution_key_argument_list
 %type<aiEntrieslist> opt_auto_increment
@@ -309,6 +318,9 @@ func randomHex(n int) (string, error) {
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
 %type <bool> opt_no_wait
+
+%type<grant> GrantStmt
+%type<privilege_target> privilege_target
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
@@ -444,6 +456,9 @@ command:
 	} | icp_stmt
 	{
 		setParseTree(yylex, $1)
+	} | GrantStmt
+	{
+		setParseTree(yylex, $1)
 	}
 
 any_uint:
@@ -501,6 +516,18 @@ shard_id: IDENT
 		$$ = string($1)
 	}
 
+/*****************************************************************************
+ *
+ *	Names and constants
+ *
+ *****************************************************************************/
+
+qualified_name_list:
+			qualified_name							{ $$ = []*rfqn.RelationFQN{$1}; }
+			| qualified_name_list TCOMMA qualified_name { $$ = append($1, $3); }
+		;
+
+
 qualified_name:
 	IDENT
 	{
@@ -514,6 +541,8 @@ qualified_name:
 	{
 		$$ = &rfqn.RelationFQN{RelationName: $3, SchemaName: $1}
 	}
+
+
 
 ColRef:
     any_id {
@@ -701,7 +730,7 @@ show_statement_type:
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr:
+			FileSettingsStr, TaskGroupWorkersStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -720,6 +749,10 @@ kill_statement_type:
 	CLIENT 
 	{
 		$$ = string($1)
+	} | TASK
+	{
+
+		$$ = string("task")
 	}
 	| IDENT
 	{
@@ -840,7 +873,118 @@ alter_sys_target:
 		$$ = &System{
 			Restart: true,
 		}
-	} 
+	}  | SYSTEM REBOOTSTRAP {
+		$$ = &System{
+			Rebootstrap: true,
+		}
+	}
+
+/*****************************************************************************
+ *
+ * GRANT and REVOKE statements
+ *
+ *****************************************************************************/
+
+/* XXX: do we need opt_grant_grant_option or opt_granted_by?  */
+GrantStmt:	GRANT privileges ON privilege_target TO grantee_list
+			 
+				{
+					n := &GrantStmt{};
+
+					n.IsGrant = true;
+					n.Privileges = $2;
+					n.Objtype = ($4).Objtype;
+					n.Objects = ($4).Objs;
+					n.Grantees = $6;
+					// n->grant_option = $7;
+					// n->grantor = $8;
+					$$ = n;
+				}
+		;
+
+
+
+/* Don't bother trying to fold the first two rules into one using
+ * opt_table.  You're going to get conflicts.
+ */
+privilege_target:
+			TABLE qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "table";
+					n.Objs = $2;
+					$$ = n;
+				}
+			| RELATION qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "table";
+					n.Objs = $2;
+					$$ = n;
+				}
+			| SEQUENCE qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "sequence";
+					n.Objs = $2;
+					$$ = n;
+				}
+			| DISTRIBUTION qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "distribution";
+					n.Objs = $2;
+					$$ = n;
+				}
+
+
+/*
+ * Privilege names are represented as strings; the validity of the privilege
+ * names gets checked at execution.  This is a bit annoying but we have little
+ * choice because of the syntactic conflict with lists of role names in
+ * GRANT/REVOKE.  What's more, we have to call out in the "privilege"
+ * production any reserved keywords that need to be usable as privilege names.
+ */
+
+/* either ALL [PRIVILEGES] or a list of individual privileges */
+privileges: privilege_list
+				{ $$ = $1; }
+			| ALL
+				{ $$ = nil; }
+			| ALL PRIVILEGES
+				{ $$ = nil; }
+
+		;
+
+privilege_list:	privilege							{ $$ = []string{$1}; }
+			| privilege_list TCOMMA privilege   	{ $$ = append($1, $3); }
+		;
+
+privilege:
+		CREATE
+		{
+			$$ = "create"
+		} | ALTER SYSTEM
+			{
+				$$ = "alter system";
+			}
+		| any_id
+			{
+				$$ = $1;
+			}
+		;
+
+
+grantee_list:
+			grantee									{ $$ = []string{$1}; }
+			| grantee_list TCOMMA grantee			{ $$ = append($1, $3); }
+		;
+
+grantee:
+			any_id								{ $$ = $1; }
+			// | GROUP_P RoleSpec						{ $$ = $2; }
+		;
+
 
 alter_stmt:
 	ALTER distribution_alter_stmt
@@ -1480,6 +1624,10 @@ key_range_stmt:
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
+	| KEY RANGE ALL
+	{
+		$$ = &KeyRangeSelector{KeyRangeID: `*`}
+	}
 
 distribution_select_stmt:
 	DISTRIBUTION any_id
@@ -1499,10 +1647,10 @@ kill_stmt:
 		$$ = &Kill{Cmd: $2, Target: $3}
 	} |	KILL kill_statement_type IDENT
 	{
-		n, err := strconv.ParseUint($3, 10, 64)
-		if err == nil {
-			$$ = &Kill{Cmd: $2, Target: uint(n)}
-		}
+		$$ = &Kill{Cmd: $2, TargetID: $3}
+	} |	KILL kill_statement_type SCONST
+	{
+		$$ = &Kill{Cmd: $2, TargetID: $3}
 	}
 
 

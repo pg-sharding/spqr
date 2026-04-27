@@ -408,7 +408,10 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 			/* ???? */
 			continue
 		}
-		o := opt.(*lyx.Option)
+		o, ok := opt.(*lyx.Option)
+		if !ok {
+			return nil, fmt.Errorf("unexpected COPY option type %T, expected *lyx.Option", opt)
+		}
 		if strings.ToLower(o.Name) == "delimiter" {
 			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
 		}

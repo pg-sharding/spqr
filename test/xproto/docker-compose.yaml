@@ -13,8 +13,10 @@ services:
         environment: &shard-env-common
             POSTGRES_USER: regress
             POSTGRES_DB: regress
-        ports:
-            - "7432:6432"
+        # ports:
+        #     - "7432:6432"
+        networks:
+            xproto_test_net:
         hostname: spqr_shard_1
         container_name: spqr_shard_1
     shard1-replica:
@@ -22,16 +24,20 @@ services:
         environment:
             <<: *shard-env-common
             PG_MASTER: spqr_shard_1
-        ports:
-            - "7532:6432"
+        # ports:
+        #     - "7532:6432"
+        networks:
+            xproto_test_net:
         hostname: spqr_shard_1_replica
         container_name: spqr_shard_1_replica
     shard2:
         <<: *shard-common
         environment:
             <<: *shard-env-common
-        ports:
-            - "7433:6432"
+        # ports:
+        #     - "7433:6432"
+        networks:
+            xproto_test_net:
         hostname: spqr_shard_2
         container_name: spqr_shard_2
     shard2-replica:
@@ -39,16 +45,20 @@ services:
         environment:
             <<: *shard-env-common
             PG_MASTER: spqr_shard_2
-        ports:
-            - "7533:6432"
+        # ports:
+        #     - "7533:6432"
+        networks:
+            xproto_test_net:
         hostname: spqr_shard_2_replica
         container_name: spqr_shard_2_replica
     router:
         build:
             dockerfile: ./test/xproto/router/Dockerfile
             context: ../../
-        ports:
-            - "6432:6432"
+        # ports:
+        #     - "6432:6432"
+        networks:
+            xproto_test_net:
         environment:
             - ROUTER_CONFIG=/spqr/test/xproto/conf/router.yaml
         hostname: regress_router
@@ -67,9 +77,11 @@ services:
         build:
             dockerfile: ./docker/coordinator/Dockerfile
             context: ../../
-        ports:
-            - "7002:7002"
-            - "7003:7003"
+        # ports:
+        #     - "7002:7002"
+        #     - "7003:7003"
+        networks:
+            xproto_test_net:
         environment:
             - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
         hostname: regress_coordinator
@@ -85,8 +97,10 @@ services:
         environment:
             ALLOW_NONE_AUTHENTICATION: "yes"
             ETCD_LOG_LEVEL: "debug"
-        ports:
-            - "2379:2379"
+        # ports:
+        #     - "2379:2379"
+        networks:
+            xproto_test_net:
         entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
 
     regress:
@@ -95,6 +109,8 @@ services:
             context: ../..
         hostname: xproto_tests
         container_name: xproto_tests
+        networks:
+            xproto_test_net:
         environment:
             POSTGRES_HOST: regress_router
             POSTGRES_DB: regress
@@ -103,3 +119,7 @@ services:
         depends_on:
             - router
             - qdb01
+
+networks:
+    xproto_test_net:
+        driver: bridge

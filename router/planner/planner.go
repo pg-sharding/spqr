@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -57,7 +58,7 @@ func (p *PlannerV2) Ready() bool {
 }
 
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (*plan.ScatterPlan, error) {
-	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
+	if distributionID := rm.SPH.AutoDistribution(); distributionID != "" {
 
 		switch q := v.TableRv.(type) {
 		case *lyx.RangeVar:
@@ -65,16 +66,16 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			/* pre-attach relation to its distribution
 			 * sic! this is not transactional nor abortable
 			 */
-			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionId).Msg("attaching relation")
+			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionID).Msg("attaching relation")
 
-			if distributionId == distributions.REPLICATED {
+			if distributionID == distributions.REPLICATED {
 				err := console.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}
 			} else {
 				if v.IfNotExists {
-					if d, err := rm.Mgr.GetDistribution(ctx, distributionId); err != nil {
+					if d, err := rm.Mgr.GetDistribution(ctx, distributionID); err != nil {
 						// ok
 						return nil, err
 					} else {
@@ -82,14 +83,14 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
 							/* ok */
 						} else {
-							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
 							if err != nil {
 								return nil, err
 							}
 						}
 					}
 				} else {
-					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
 					if err != nil {
 						return nil, err
 					}
@@ -439,7 +440,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				/* Still ongoing */
 				spqrlog.Zero.Info().Str("id", tg.ID).Str("status", string(st.State)).Msgf("move task still in-progress")
 
-				/* Assert status == RUNNING here? */
+				/* RUNNING or PLANNING here are ok */
+
+				if st.State == tasks.TaskGroupError {
+					break
+				}
 
 				/* Maybe notify client here */
 
@@ -598,8 +603,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				return nil, err
 			}
 
-			/* Assert here? */
-			val := sVal.(string)
+			val, ok := sVal.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string param, got %T", sVal)
+			}
 
 			target = val
 		case *lyx.AExprSConst:

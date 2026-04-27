@@ -222,13 +222,32 @@ type Listen struct {
 type Shutdown struct{}
 
 type Kill struct {
-	Cmd    string
-	Target uint
+	Cmd      string
+	Target   uint
+	TargetID string
 }
 
 type System struct {
-	Reload  bool
-	Restart bool
+	Reload      bool
+	Restart     bool
+	Rebootstrap bool
+}
+
+type GrantStmt struct {
+	IsGrant bool
+
+	Privileges []string
+	Objtype    string
+	Objects    []*rfqn.RelationFQN
+
+	Grantees []string
+}
+
+func (GrantStmt) iStatement() {}
+
+type PrivTarget struct {
+	Objtype string
+	Objs    []*rfqn.RelationFQN
 }
 
 type InvalidateCacheTarget string
@@ -439,12 +458,14 @@ const (
 	TwoPhaseTXStr         = "two_phase_tx"
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
+	TaskGroupWorkersStr   = "task_group_workers"
 )
 
 // not SHOW target
 const (
 	ClientStr  = "client"
 	BackendStr = "backend"
+	TaskStr    = "task"
 )
 
 const (

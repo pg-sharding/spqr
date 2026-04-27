@@ -920,6 +920,24 @@ func TestAlter(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "ALTER SYSTEM RESTART",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					Restart: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM REBOOTSTRAP",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					Rebootstrap: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
@@ -2107,10 +2125,31 @@ func TestKill(t *testing.T) {
 		},
 
 		{
+			query: "kill task t1;",
+			exp: &spqrparser.Kill{
+				Cmd:      spqrparser.TaskStr,
+				Target:   0,
+				TargetID: "t1",
+			},
+			err: nil,
+		},
+
+		{
+			query: "	kill task 'f8e1b59c-0e4a-4059-92ed-2afedf7a9e2b'",
+			exp: &spqrparser.Kill{
+				Cmd:      spqrparser.TaskStr,
+				Target:   0,
+				TargetID: "f8e1b59c-0e4a-4059-92ed-2afedf7a9e2b",
+			},
+			err: nil,
+		},
+
+		{
 			query: `kill client "824636929312";`,
 			exp: &spqrparser.Kill{
-				Cmd:    spqrparser.ClientStr,
-				Target: 824636929312,
+				Cmd:      spqrparser.ClientStr,
+				Target:   0,
+				TargetID: "824636929312",
 			},
 			err: nil,
 		},
@@ -2297,6 +2336,61 @@ func TestRedistributeTasks(t *testing.T) {
 				Element: &spqrparser.RedistributeTaskSelector{
 					ID: "rt1",
 				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestGrant(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "GRANT usage, create on distribution d to user1",
+			exp: &spqrparser.GrantStmt{
+				IsGrant: true,
+				Privileges: []string{
+					"usage", "create",
+				},
+				Objtype: "distribution",
+				Objects: []*rfqn.RelationFQN{
+					{
+						RelationName: "d",
+					}},
+				Grantees: []string{"user1"},
+			},
+			err: nil,
+		},
+		{
+			query: "GRANT usage, create on relation r1, r2 to user1, user2",
+			exp: &spqrparser.GrantStmt{
+				IsGrant: true,
+				Privileges: []string{
+					"usage", "create",
+				},
+				Objtype: "table",
+				Objects: []*rfqn.RelationFQN{
+					{
+						RelationName: "r1",
+					},
+					{
+						RelationName: "r2",
+					}},
+				Grantees: []string{"user1", "user2"},
 			},
 			err: nil,
 		},

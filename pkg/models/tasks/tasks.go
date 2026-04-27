@@ -12,7 +12,7 @@ type MoveTask struct {
 	TaskGroupID string    `json:"task_group_id"`
 	ID          string    `json:"id"`
 	Bound       [][]byte  `json:"bound"`
-	KrIdTemp    string    `json:"kr_id_temp"`
+	KridTemp    string    `json:"kr_id_temp"`
 	State       TaskState `json:"state"`
 }
 
@@ -49,14 +49,14 @@ const (
 
 type MoveTaskGroupIssuer struct {
 	Type MoveTaskGroupIssuerType `json:"type"`
-	Id   string                  `json:"id"`
+	ID   string                  `json:"id"`
 }
 
 type MoveTaskGroup struct {
 	ID          string               `json:"id"`
-	ShardToId   string               `json:"shard_to_id"`
-	KrIdFrom    string               `json:"kr_id_from"`
-	KrIdTo      string               `json:"kr_id_to"`
+	ShardToID   string               `json:"shard_to_id"`
+	KridFrom    string               `json:"kr_id_from"`
+	KridTo      string               `json:"kr_id_to"`
 	Type        SplitType            `json:"type"`
 	BoundRel    string               `json:"bound_rel"`
 	Coeff       float64              `json:"coeff"`
@@ -91,11 +91,11 @@ const (
 
 type RedistributeTask struct {
 	ID          string
-	TaskGroupId string
-	KeyRangeId  string
-	ShardId     string
+	TaskGroupID string
+	KeyRangeID  string
+	ShardID     string
 	BatchSize   int
-	TempKrId    string
+	TempKrID    string
 	State       RedistributeTaskState
 	TaskGroup   *MoveTaskGroup
 }
@@ -115,7 +115,7 @@ func TaskGroupIssuerToProto(issuer *MoveTaskGroupIssuer) *protos.MoveTaskGroupIs
 				return protos.MoveTaskGroupIssuerType_IssuerUnknown
 			}
 		}(),
-		Id: issuer.Id,
+		Id: issuer.ID,
 	}
 }
 
@@ -134,7 +134,7 @@ func TaskGroupIssuerFromProto(issuer *protos.MoveTaskGroupIssuer) *MoveTaskGroup
 				return IssuerTypeUnknown
 			}
 		}(),
-		Id: issuer.Id,
+		ID: issuer.Id,
 	}
 }
 
@@ -144,7 +144,7 @@ func TaskGroupIssuerToDB(issuer *MoveTaskGroupIssuer) *qdb.MoveTaskGroupIssuer {
 	}
 	return &qdb.MoveTaskGroupIssuer{
 		Type: int(issuer.Type),
-		Id:   issuer.Id,
+		Id:   issuer.ID,
 	}
 }
 
@@ -163,7 +163,7 @@ func TaskGroupIssuerFromDB(issuer *qdb.MoveTaskGroupIssuer) *MoveTaskGroupIssuer
 				return IssuerTypeUnknown
 			}
 		}(),
-		Id: issuer.Id,
+		ID: issuer.Id,
 	}
 }
 
@@ -183,9 +183,9 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		ID:             group.ID,
 		CurrentTask:    MoveTaskToProto(group.CurrentTask),
 		Type:           SplitTypeToProto(group.Type),
-		ShardIdTo:      group.ShardToId,
-		KeyRangeIdFrom: group.KrIdFrom,
-		KeyRangeIdTo:   group.KrIdTo,
+		ShardIdTo:      group.ShardToID,
+		KeyRangeIdFrom: group.KridFrom,
+		KeyRangeIdTo:   group.KridTo,
 		Coeff:          group.Coeff,
 		Limit:          group.Limit,
 		TotalKeys:      group.TotalKeys,
@@ -209,7 +209,7 @@ func MoveTaskToProto(task *MoveTask) *protos.MoveTask {
 	}
 	return &protos.MoveTask{
 		ID:             task.ID,
-		KeyRangeIdTemp: task.KrIdTemp,
+		KeyRangeIdTemp: task.KridTemp,
 		Bound:          task.Bound,
 		Status:         TaskStateToProto(task.State),
 		TaskGroupID:    task.TaskGroupID,
@@ -318,9 +318,9 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		ID:          group.ID,
 		CurrentTask: MoveTaskFromProto(group.CurrentTask),
 		Type:        SplitTypeFromProto(group.Type),
-		ShardToId:   group.ShardIdTo,
-		KrIdFrom:    group.KeyRangeIdFrom,
-		KrIdTo:      group.KeyRangeIdTo,
+		ShardToID:   group.ShardIdTo,
+		KridFrom:    group.KeyRangeIdFrom,
+		KridTo:      group.KeyRangeIdTo,
 		Coeff:       group.Coeff,
 		Limit:       group.Limit,
 		TotalKeys:   group.TotalKeys,
@@ -344,7 +344,7 @@ func MoveTaskFromProto(task *protos.MoveTask) *MoveTask {
 	}
 	return &MoveTask{
 		ID:          task.ID,
-		KrIdTemp:    task.KeyRangeIdTemp,
+		KridTemp:    task.KeyRangeIdTemp,
 		Bound:       task.Bound,
 		State:       TaskStateFromProto(task.Status),
 		TaskGroupID: task.TaskGroupID,
@@ -432,9 +432,9 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 	}
 	return &qdb.MoveTaskGroup{
 		Type:      int(group.Type),
-		ShardToId: group.ShardToId,
-		KrIdFrom:  group.KrIdFrom,
-		KrIdTo:    group.KrIdTo,
+		ShardToId: group.ShardToID,
+		KrIdFrom:  group.KridFrom,
+		KrIdTo:    group.KridTo,
 		BoundRel:  group.BoundRel,
 		Coeff:     group.Coeff,
 		BatchSize: group.BatchSize,
@@ -459,7 +459,7 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 	}
 	return &qdb.MoveTask{
 		ID:          task.ID,
-		KrIdTemp:    task.KrIdTemp,
+		KrIdTemp:    task.KridTemp,
 		Bound:       task.Bound,
 		State:       int(task.State),
 		TaskGroupID: task.TaskGroupID,
@@ -484,9 +484,9 @@ func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask
 	return &MoveTaskGroup{
 		ID:          id,
 		Type:        SplitType(group.Type),
-		ShardToId:   group.ShardToId,
-		KrIdFrom:    group.KrIdFrom,
-		KrIdTo:      group.KrIdTo,
+		ShardToID:   group.ShardToId,
+		KridFrom:    group.KrIdFrom,
+		KridTo:      group.KrIdTo,
 		BoundRel:    group.BoundRel,
 		Coeff:       group.Coeff,
 		BatchSize:   group.BatchSize,
@@ -513,7 +513,7 @@ func TaskFromDb(task *qdb.MoveTask) *MoveTask {
 	}
 	return &MoveTask{
 		ID:          task.ID,
-		KrIdTemp:    task.KrIdTemp,
+		KridTemp:    task.KrIdTemp,
 		Bound:       task.Bound,
 		State:       TaskState(task.State),
 		TaskGroupID: task.TaskGroupID,
@@ -529,10 +529,10 @@ const (
 
 type BalancerTask struct {
 	Type      JoinType
-	KrIdFrom  string
-	KrIdTo    string
-	KrIdTemp  string
-	ShardIdTo string
+	KridFrom  string
+	KridTo    string
+	KridTemp  string
+	ShardIDTo string
 	KeyCount  int64
 	State     BalancerTaskState
 }
@@ -543,10 +543,10 @@ func BalancerTaskFromProto(task *protos.BalancerTask) *BalancerTask {
 	}
 	return &BalancerTask{
 		State:     BalancerTaskStateFromProto(task.State),
-		KrIdFrom:  task.KeyRangeIdFrom,
-		KrIdTo:    task.KeyRangeIdTo,
-		KrIdTemp:  task.KeyRangeIdTemp,
-		ShardIdTo: task.ShardIdTo,
+		KridFrom:  task.KeyRangeIdFrom,
+		KridTo:    task.KeyRangeIdTo,
+		KridTemp:  task.KeyRangeIdTemp,
+		ShardIDTo: task.ShardIdTo,
 		KeyCount:  task.KeyCount,
 		Type:      JoinTypeFromProto(task.Type),
 	}
@@ -558,10 +558,10 @@ func BalancerTaskToProto(task *BalancerTask) *protos.BalancerTask {
 	}
 	return &protos.BalancerTask{
 		State:          BalancerTaskStateToProto(task.State),
-		KeyRangeIdFrom: task.KrIdFrom,
-		KeyRangeIdTo:   task.KrIdTo,
-		KeyRangeIdTemp: task.KrIdTemp,
-		ShardIdTo:      task.ShardIdTo,
+		KeyRangeIdFrom: task.KridFrom,
+		KeyRangeIdTo:   task.KridTo,
+		KeyRangeIdTemp: task.KridTemp,
+		ShardIdTo:      task.ShardIDTo,
 		KeyCount:       task.KeyCount,
 		Type:           JoinTypeToProto(task.Type),
 	}
@@ -595,10 +595,10 @@ func BalancerTaskToDb(task *BalancerTask) *qdb.BalancerTask {
 	}
 	return &qdb.BalancerTask{
 		Type:      int(task.Type),
-		KrIdFrom:  task.KrIdFrom,
-		KrIdTo:    task.KrIdTo,
-		KrIdTemp:  task.KrIdTemp,
-		ShardIdTo: task.ShardIdTo,
+		KrIdFrom:  task.KridFrom,
+		KrIdTo:    task.KridTo,
+		KrIdTemp:  task.KridTemp,
+		ShardIdTo: task.ShardIDTo,
 		KeyCount:  task.KeyCount,
 		State:     int(task.State),
 	}
@@ -621,10 +621,10 @@ func BalancerTaskFromDb(task *qdb.BalancerTask) *BalancerTask {
 				panic(fmt.Sprintf("incorrect join type: \"%d\"", task.Type))
 			}
 		}(),
-		KrIdFrom:  task.KrIdFrom,
-		KrIdTo:    task.KrIdTo,
-		KrIdTemp:  task.KrIdTemp,
-		ShardIdTo: task.ShardIdTo,
+		KridFrom:  task.KrIdFrom,
+		KridTo:    task.KrIdTo,
+		KridTemp:  task.KrIdTemp,
+		ShardIDTo: task.ShardIdTo,
 		KeyCount:  task.KeyCount,
 		State: func() BalancerTaskState {
 			switch task.State {
@@ -645,9 +645,9 @@ func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
 	}
 	return &protos.RedistributeTask{
 		Id:          task.ID,
-		TaskGroupId: task.TaskGroupId,
-		KeyRangeId:  task.KeyRangeId,
-		ShardId:     task.ShardId,
+		TaskGroupId: task.TaskGroupID,
+		KeyRangeId:  task.KeyRangeID,
+		ShardId:     task.ShardID,
 		BatchSize:   int64(task.BatchSize),
 		State:       RedistributeTaskStateToProto(task.State),
 		TaskGroup:   TaskGroupToProto(task.TaskGroup),
@@ -660,9 +660,9 @@ func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask 
 	}
 	return &RedistributeTask{
 		ID:          task.Id,
-		TaskGroupId: task.TaskGroupId,
-		KeyRangeId:  task.KeyRangeId,
-		ShardId:     task.ShardId,
+		TaskGroupID: task.TaskGroupId,
+		KeyRangeID:  task.KeyRangeId,
+		ShardID:     task.ShardId,
 		BatchSize:   int(task.BatchSize),
 		State:       RedistributeTaskStateFromProto(task.State),
 		TaskGroup:   TaskGroupFromProto(task.TaskGroup),
@@ -675,12 +675,12 @@ func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 	}
 	return &qdb.RedistributeTask{
 		ID:          task.ID,
-		TaskGroupId: task.TaskGroupId,
-		KeyRangeId:  task.KeyRangeId,
-		ShardId:     task.ShardId,
+		TaskGroupId: task.TaskGroupID,
+		KeyRangeId:  task.KeyRangeID,
+		ShardId:     task.ShardID,
 		BatchSize:   task.BatchSize,
 		State:       int(task.State),
-		TempKrId:    task.TempKrId,
+		TempKrId:    task.TempKrID,
 	}
 }
 
@@ -690,11 +690,11 @@ func RedistributeTaskFromDB(task *qdb.RedistributeTask, taskGroup *MoveTaskGroup
 	}
 	return &RedistributeTask{
 		ID:          task.ID,
-		TaskGroupId: task.TaskGroupId,
-		KeyRangeId:  task.KeyRangeId,
-		ShardId:     task.ShardId,
+		TaskGroupID: task.TaskGroupId,
+		KeyRangeID:  task.KeyRangeId,
+		ShardID:     task.ShardId,
 		BatchSize:   task.BatchSize,
-		TempKrId:    task.TempKrId,
+		TempKrID:    task.TempKrId,
 		State: func() RedistributeTaskState {
 			switch task.State {
 			case RedistributeTaskPlanned:

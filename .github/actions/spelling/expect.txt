@@ -1,17 +1,16 @@
-Dzz
 aaaa
 aboba
 abortable
 abracadabras
 abracadabrav
 accusantium
+ACLTO
+ACLTODB
 addgroup
 addprinc
 adipiscing
 adminpassword
 AExpr
-ACLTO
-ACLTODB
 afe
 aliasname
 aliqua
@@ -87,6 +86,7 @@ ctsa
 cupidatat
 currkr
 currroute
+cyclomatic
 Darth
 datacenter
 datadir
@@ -122,11 +122,13 @@ DOUBLEOID
 drb
 drel
 dserr
+dsid
 Dsn
 dssd
 dstmt
 Duis
 dumbo
+Dzz
 ebff
 eda
 edabaf
@@ -140,7 +142,6 @@ enim
 epn
 errcounter
 errdefs
-errhint
 errtype
 eshkere
 etcdctl
@@ -256,7 +257,6 @@ keytabfile
 killall
 kinit
 Kirill
-Klepov
 kpass
 krb
 krdb
@@ -352,6 +352,7 @@ nroute
 nsecs
 nspname
 nulla
+Objtype
 occaecat
 odit
 odssd
@@ -445,6 +446,7 @@ rcfg
 rclient
 rconn
 rdistr
+rebootstrap
 regclass
 reloid
 relpersistence
@@ -584,9 +586,6 @@ tlt
 TMINUS
 tmpfs
 tmpnum
-typarray
-typname
-typnamespace
 Toidxs
 topbar
 TOPENBR
@@ -594,6 +593,7 @@ TOPENSQBR
 tpcc
 tracelog
 tran
+transferworker
 TRASCE
 truncatable
 tsa
@@ -613,6 +613,9 @@ txidle
 txs
 txstatus
 txtstatus
+typarray
+typname
+typnamespace
 uber
 uinteger
 Uints

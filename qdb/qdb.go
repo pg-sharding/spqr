@@ -92,14 +92,14 @@ type QDB interface {
 
 	// Reference relations
 	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
-	GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*ReferenceRelation, error)
-	AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error
+	GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*ReferenceRelation, error)
+	AlterReferenceRelationStorage(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error
 	ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error)
-	DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error
+	DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error
 
 	// Update distribution
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
-	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
+	AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 	AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error
@@ -109,7 +109,7 @@ type QDB interface {
 	CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	DropUniqueIndex(ctx context.Context, id string) error
 	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
-	ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, error)
+	ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*UniqueIndex, error)
 
 	// Task group
 	ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
@@ -155,8 +155,8 @@ type QDB interface {
 	CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error)
 	CheckSequence(ctx context.Context, seqName string) (bool, error)
 	ListSequences(ctx context.Context) ([]string, error)
-	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
-	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)
+	AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error
+	GetRelationSequence(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]string, error)
 	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error

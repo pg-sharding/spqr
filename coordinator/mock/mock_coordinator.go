@@ -20,6 +20,7 @@ import (
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
+	transferworker "github.com/pg-sharding/spqr/pkg/transferworker"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	port "github.com/pg-sharding/spqr/router/port"
@@ -94,31 +95,31 @@ func (mr *MockCoordinatorMockRecorder) AlterDistributedRelation(ctx, id, rel any
 }
 
 // AlterDistributedRelationDistributionKey mocks base method.
-func (m *MockCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+func (m *MockCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relationName, distributionKey)
+	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relationFQN, distributionKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributedRelationDistributionKey indicates an expected call of AlterDistributedRelationDistributionKey.
-func (mr *MockCoordinatorMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relationName, distributionKey any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relationFQN, distributionKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelationDistributionKey), ctx, id, relationName, distributionKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelationDistributionKey), ctx, id, relationFQN, distributionKey)
 }
 
 // AlterDistributedRelationSchema mocks base method.
-func (m *MockCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
+func (m *MockCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, schemaName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relationName, schemaName)
+	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relationFQN, schemaName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributedRelationSchema indicates an expected call of AlterDistributedRelationSchema.
-func (mr *MockCoordinatorMockRecorder) AlterDistributedRelationSchema(ctx, id, relationName, schemaName any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AlterDistributedRelationSchema(ctx, id, relationFQN, schemaName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelationSchema), ctx, id, relationName, schemaName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelationSchema), ctx, id, relationFQN, schemaName)
 }
 
 // AlterDistributionAttach mocks base method.
@@ -136,45 +137,45 @@ func (mr *MockCoordinatorMockRecorder) AlterDistributionAttach(ctx, id, rels any
 }
 
 // AlterDistributionDetach mocks base method.
-func (m *MockCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+func (m *MockCoordinator) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributionDetach", ctx, id, relName)
+	ret := m.ctrl.Call(m, "AlterDistributionDetach", ctx, id, relationFQN)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributionDetach indicates an expected call of AlterDistributionDetach.
-func (mr *MockCoordinatorMockRecorder) AlterDistributionDetach(ctx, id, relName any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AlterDistributionDetach(ctx, id, relationFQN any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributionDetach", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributionDetach), ctx, id, relName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributionDetach", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributionDetach), ctx, id, relationFQN)
 }
 
 // AlterReferenceRelationStorage mocks base method.
-func (m *MockCoordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (m *MockCoordinator) AlterReferenceRelationStorage(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterReferenceRelationStorage", ctx, relName, shs)
+	ret := m.ctrl.Call(m, "AlterReferenceRelationStorage", ctx, relationFQN, shs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterReferenceRelationStorage indicates an expected call of AlterReferenceRelationStorage.
-func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relationFQN, shs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorage), ctx, relationFQN, shs)
 }
 
 // AlterReferenceRelationStorageAdvanced mocks base method.
-func (m *MockCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (m *MockCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterReferenceRelationStorageAdvanced", ctx, relName, shs)
+	ret := m.ctrl.Call(m, "AlterReferenceRelationStorageAdvanced", ctx, relationFQN, shs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterReferenceRelationStorageAdvanced indicates an expected call of AlterReferenceRelationStorageAdvanced.
-func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorageAdvanced(ctx, relName, shs any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorageAdvanced(ctx, relationFQN, shs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorageAdvanced", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorageAdvanced), ctx, relName, shs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorageAdvanced", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorageAdvanced), ctx, relationFQN, shs)
 }
 
 // AlterSequenceDetachRelation mocks base method.
@@ -449,17 +450,17 @@ func (mr *MockCoordinatorMockRecorder) DropRedistributeTask(ctx, id, cascade any
 }
 
 // DropReferenceRelation mocks base method.
-func (m *MockCoordinator) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+func (m *MockCoordinator) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, relName)
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, relationFQN)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropReferenceRelation indicates an expected call of DropReferenceRelation.
-func (mr *MockCoordinatorMockRecorder) DropReferenceRelation(ctx, relName any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) DropReferenceRelation(ctx, relationFQN any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockCoordinator)(nil).DropReferenceRelation), ctx, relName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockCoordinator)(nil).DropReferenceRelation), ctx, relationFQN)
 }
 
 // DropSequence mocks base method.
@@ -579,18 +580,18 @@ func (mr *MockCoordinatorMockRecorder) GetDistribution(ctx, id any) *gomock.Call
 }
 
 // GetKeyRange mocks base method.
-func (m *MockCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+func (m *MockCoordinator) GetKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetKeyRange", ctx, krId)
+	ret := m.ctrl.Call(m, "GetKeyRange", ctx, krid)
 	ret0, _ := ret[0].(*kr.KeyRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetKeyRange indicates an expected call of GetKeyRange.
-func (mr *MockCoordinatorMockRecorder) GetKeyRange(ctx, krId any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) GetKeyRange(ctx, krid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockCoordinator)(nil).GetKeyRange), ctx, krId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockCoordinator)(nil).GetKeyRange), ctx, krid)
 }
 
 // GetMoveTask mocks base method.
@@ -640,33 +641,33 @@ func (mr *MockCoordinatorMockRecorder) GetMoveTaskGroupBoundsCache(ctx, id any) 
 }
 
 // GetReferenceRelation mocks base method.
-func (m *MockCoordinator) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+func (m *MockCoordinator) GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, relName)
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, relationFQN)
 	ret0, _ := ret[0].(*rrelation.ReferenceRelation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetReferenceRelation indicates an expected call of GetReferenceRelation.
-func (mr *MockCoordinatorMockRecorder) GetReferenceRelation(ctx, relName any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) GetReferenceRelation(ctx, relationFQN any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockCoordinator)(nil).GetReferenceRelation), ctx, relName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockCoordinator)(nil).GetReferenceRelation), ctx, relationFQN)
 }
 
 // GetRelationDistribution mocks base method.
-func (m *MockCoordinator) GetRelationDistribution(ctx context.Context, relation_name *rfqn.RelationFQN) (*distributions.Distribution, error) {
+func (m *MockCoordinator) GetRelationDistribution(ctx context.Context, relationFQN *rfqn.RelationFQN) (*distributions.Distribution, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRelationDistribution", ctx, relation_name)
+	ret := m.ctrl.Call(m, "GetRelationDistribution", ctx, relationFQN)
 	ret0, _ := ret[0].(*distributions.Distribution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRelationDistribution indicates an expected call of GetRelationDistribution.
-func (mr *MockCoordinatorMockRecorder) GetRelationDistribution(ctx, relation_name any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) GetRelationDistribution(ctx, relationFQN any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockCoordinator)(nil).GetRelationDistribution), ctx, relation_name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockCoordinator)(nil).GetRelationDistribution), ctx, relationFQN)
 }
 
 // GetSequenceRelations mocks base method.
@@ -893,18 +894,18 @@ func (mr *MockCoordinatorMockRecorder) ListReferenceRelations(ctx any) *gomock.C
 }
 
 // ListRelationIndexes mocks base method.
-func (m *MockCoordinator) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+func (m *MockCoordinator) ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
+	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relationFQN)
 	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRelationIndexes indicates an expected call of ListRelationIndexes.
-func (mr *MockCoordinatorMockRecorder) ListRelationIndexes(ctx, relName any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) ListRelationIndexes(ctx, relationFQN any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelationIndexes", reflect.TypeOf((*MockCoordinator)(nil).ListRelationIndexes), ctx, relName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelationIndexes", reflect.TypeOf((*MockCoordinator)(nil).ListRelationIndexes), ctx, relationFQN)
 }
 
 // ListRelationSequences mocks base method.
@@ -1083,17 +1084,17 @@ func (mr *MockCoordinatorMockRecorder) RegisterRouter(ctx, r any) *gomock.Call {
 }
 
 // RenameKeyRange mocks base method.
-func (m *MockCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+func (m *MockCoordinator) RenameKeyRange(ctx context.Context, krid, kridNew string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RenameKeyRange", ctx, krId, krIdNew)
+	ret := m.ctrl.Call(m, "RenameKeyRange", ctx, krid, kridNew)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RenameKeyRange indicates an expected call of RenameKeyRange.
-func (mr *MockCoordinatorMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RenameKeyRange(ctx, krid, kridNew any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RenameKeyRange), ctx, krId, krIdNew)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RenameKeyRange), ctx, krid, kridNew)
 }
 
 // RetryMoveTaskGroup mocks base method.
@@ -1246,6 +1247,35 @@ func (m *MockCoordinator) SyncRouterMetadata(ctx context.Context, router *topolo
 func (mr *MockCoordinatorMockRecorder) SyncRouterMetadata(ctx, router any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncRouterMetadata", reflect.TypeOf((*MockCoordinator)(nil).SyncRouterMetadata), ctx, router)
+}
+
+// TaskState mocks base method.
+func (m *MockCoordinator) TaskState(id string) (*transferworker.TaskGroupWorkerState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TaskState", id)
+	ret0, _ := ret[0].(*transferworker.TaskGroupWorkerState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TaskState indicates an expected call of TaskState.
+func (mr *MockCoordinatorMockRecorder) TaskState(id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TaskState", reflect.TypeOf((*MockCoordinator)(nil).TaskState), id)
+}
+
+// TaskWorkersID mocks base method.
+func (m *MockCoordinator) TaskWorkersID() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TaskWorkersID")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// TaskWorkersID indicates an expected call of TaskWorkersID.
+func (mr *MockCoordinatorMockRecorder) TaskWorkersID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TaskWorkersID", reflect.TypeOf((*MockCoordinator)(nil).TaskWorkersID))
 }
 
 // Unite mocks base method.
