@@ -189,7 +189,7 @@ func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error
 	if err := mngr.DropKeyRange(ctx, id); err != nil {
 		return err
 	}
-	
+
 	return mngr.CommitTran(ctx)
 }
 
