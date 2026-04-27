@@ -753,6 +753,14 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 				return err
 			}
 
+			if !simple {
+				/* XXX: has to be a sync message */
+				_, err := s.Client().Receive()
+				if err != nil {
+					return err
+				}
+			}
+
 			if txt != s.cl.Server().TxStatus() {
 				return rerrors.ErrExecutorSyncLost
 			}
