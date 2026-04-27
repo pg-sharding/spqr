@@ -458,10 +458,7 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 	if _, err := lc.GetKeyRange(ctx, krIdNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
 	}
-	if err := lc.qdb.RenameKeyRange(ctx, krId, krIdNew); err != nil {
-		return err
-	}
-	return nil
+	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.

@@ -115,11 +115,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 		return err
 	}
 
-	if err := srv.pool.Put(*v); err != nil {
-		return err
-	}
-
-	return nil
+	return srv.pool.Put(*v)
 }
 
 // TODO : unit tests

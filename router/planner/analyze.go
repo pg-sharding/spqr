@@ -373,11 +373,7 @@ func AnalyzeQueryV1(
 			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		if err := analyzeFromNode(ctx, tr, routable, rm); err != nil {
-			return err
-		}
-
-		return nil
+		return analyzeFromNode(ctx, tr, routable, rm)
 	}
 
 	switch stmt := qstmt.(type) {

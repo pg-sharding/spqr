@@ -550,10 +550,7 @@ func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRout
 			return err
 		}
 		coordAddr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
-		if err := qc.UpdateCoordinator(ctx, coordAddr); err != nil {
-			return err
-		}
-		return nil
+		return qc.UpdateCoordinator(ctx, coordAddr)
 	}
 
 	lock := func(ctx context.Context) error {
@@ -909,7 +906,7 @@ func (qc *ClusteredCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.Uni
 		return err
 	}
 
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
 			BaseId:      uniteKeyRange.BaseKeyRangeID,
@@ -920,11 +917,7 @@ func (qc *ClusteredCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.Uni
 			Interface("response", resp).
 			Msg("merge key range response")
 		return err
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 // TODO : unit tests
