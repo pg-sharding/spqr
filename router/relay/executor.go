@@ -753,6 +753,8 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 				return err
 			}
 
+			s.es.skipRFQ = true
+
 			if txt != s.cl.Server().TxStatus() {
 				return rerrors.ErrExecutorSyncLost
 			}
@@ -1164,6 +1166,9 @@ func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
 }
 
 func (s *QueryStateExecutorImpl) RFQ() *pgproto3.ReadyForQuery {
+	if s.es.skipRFQ {
+		return nil
+	}
 	s.cacheRFQ.TxStatus = byte(s.TxStatus())
 	return &s.cacheRFQ
 }
@@ -1180,6 +1185,7 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.eMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
+	s.es.skipRFQ = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
