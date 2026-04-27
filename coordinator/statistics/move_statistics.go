@@ -55,8 +55,14 @@ func RecordMoveFinish(t time.Time) error {
 	defer moveStatistics.totalTimesMu.Unlock()
 	moveStatistics.MoveInProgress = false
 	moveStatistics.CurrentExecTimes.Range(func(key, value any) bool {
-		stat := key.(string)
-		duration := value.(time.Duration)
+		stat, ok := key.(string)
+		if !ok {
+			return true
+		}
+		duration, ok := value.(time.Duration)
+		if !ok {
+			return true
+		}
 		if _, ok := moveStatistics.TotalTimes[stat]; !ok {
 			moveStatistics.TotalTimes[stat] = &MoveStatisticsElem{}
 		}

@@ -603,8 +603,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				return nil, err
 			}
 
-			/* Assert here? */
-			val := sVal.(string)
+			val, ok := sVal.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string param, got %T", sVal)
+			}
 
 			target = val
 		case *lyx.AExprSConst:

@@ -90,7 +90,11 @@ func LoadConfig(path string, cfg Config) (string, error) {
 	}{
 		cfg: cfg,
 		reload: func() (any, error) {
-			newCfg := reflect.New(reflect.TypeOf(cfg).Elem()).Interface().(Config)
+			newCfgInterface := reflect.New(reflect.TypeOf(cfg).Elem()).Interface()
+			newCfg, ok := newCfgInterface.(Config)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert config type: expected Config, got %T", newCfgInterface)
+			}
 			err := load(newCfg)
 			return newCfg, err
 		},
