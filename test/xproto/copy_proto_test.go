@@ -10,8 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCopyFROMXproto(t *testing.T) {
-
+func TestCopySimple(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
 
@@ -29,7 +28,6 @@ func TestCopyFROMXproto(t *testing.T) {
 				&pgproto3.CopyDone{},
 			},
 			Response: []pgproto3.BackendMessage{
-
 				&pgproto3.CopyInResponse{
 					ColumnFormatCodes: []uint16{0},
 				},
@@ -41,6 +39,20 @@ func TestCopyFROMXproto(t *testing.T) {
 				},
 			},
 		},
+	}
+
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestCopyExtendedExecuteSyncCopyDoneSync(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -71,8 +83,20 @@ func TestCopyFROMXproto(t *testing.T) {
 				},
 			},
 		},
+	}
 
-		/* same as above, but without Sync after Execute */
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestCopyExtendedExecuteCopyDoneSync(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -101,8 +125,20 @@ func TestCopyFROMXproto(t *testing.T) {
 				},
 			},
 		},
+	}
 
-		/* same as above, but with Flush after Execute */
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestCopyExtendedExecuteFlushCopyDoneSync(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -132,40 +168,7 @@ func TestCopyFROMXproto(t *testing.T) {
 				},
 			},
 		},
-
-		/* XXX : make this work */
-
-		// /* same test, second time */
-		// {
-		// 	Request: []pgproto3.FrontendMessage{
-		// 		&pgproto3.Parse{
-		// 			Name:  "",
-		// 			Query: "COPY t(id) FROM STDIN",
-		// 		},
-		// 		&pgproto3.Bind{
-		// 			PreparedStatement: "",
-		// 		},
-		// 		&pgproto3.Execute{},
-		// 		&pgproto3.Sync{},
-
-		// 		&pgproto3.CopyDone{},
-		// 		&pgproto3.Sync{},
-		// 	},
-		// 	Response: []pgproto3.BackendMessage{
-
-		// 		&pgproto3.ParseComplete{},
-		// 		&pgproto3.BindComplete{},
-		// 		&pgproto3.CopyInResponse{
-		// 			ColumnFormatCodes: []uint16{0},
-		// 		},
-		// 		&pgproto3.CommandComplete{
-		// 			CommandTag: []byte("COPY 0"),
-		// 		},
-		// 		&pgproto3.ReadyForQuery{
-		// 			TxStatus: byte(txstatus.TXIDLE),
-		// 		},
-		// 	},
-		// },
 	}
+
 	protoTestRunner(t, frontend, tt)
 }
