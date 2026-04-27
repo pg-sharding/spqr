@@ -52,7 +52,7 @@ step s1_commit         { COMMIT; }
 
 
 session s2
-step s2_redistribute_sh2_nw     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid NO WAIT') /*__spqr__preferred_engine: v2 */; }
+step s2_redistribute_sh2_nw     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid NOWAIT') /*__spqr__preferred_engine: v2 */; }
 step s2_await_task           { SELECT __spqr__await_task('zid') /* __spqr__preferred_engine: v2 */; }
 step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */; }
 
