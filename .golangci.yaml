@@ -7,6 +7,8 @@ linters:
     revive:
        enable-all-rules: false
        rules:
+         - name: unused-parameter
+         - name: unexported-naming
          - name: add-constant
            disabled: true
          - name: line-length-limit
