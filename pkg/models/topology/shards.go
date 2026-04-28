@@ -297,11 +297,13 @@ func OptionsFromSQL(options []spqrparser.GenericOption) ([]GenericOption, error)
 
 func genericOptionActionFromSQL(action spqrparser.OptionAction) (GenericOptionAction, error) {
 	switch action {
-	case spqrparser.ADD:
+	case spqrparser.OptionActionUnspecified:
+		return GenericOptionActionUnspecified, nil
+	case spqrparser.OptionActionAdd:
 		return GenericOptionActionAdd, nil
-	case spqrparser.DROP:
+	case spqrparser.OptionActionDrop:
 		return GenericOptionActionDrop, nil
-	case spqrparser.SET:
+	case spqrparser.OptionActionSet:
 		return GenericOptionActionSet, nil
 	default:
 		return -1, fmt.Errorf("unknown generic option action %d", action)
