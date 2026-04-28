@@ -352,9 +352,7 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 			"total_cancel_requests",
 			"active_tcp_connections",
 			"total_requests",
-			"current_rps",
-			"avg_rps",
-			"peak_rps")}
+		)}
 
 	stats := rps.GetRPSStats()
 
