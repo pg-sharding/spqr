@@ -245,15 +245,15 @@ func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.Relatio
 	return nil
 }
 
-func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
-	routingMeta.Rels[*resolvedRelation] = struct{}{}
-	if _, ok := routingMeta.ParamRefs[*resolvedRelation]; !ok {
-		routingMeta.ParamRefs[*resolvedRelation] = map[string][]int{}
+func (rm *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
+	rm.Rels[*resolvedRelation] = struct{}{}
+	if _, ok := rm.ParamRefs[*resolvedRelation]; !ok {
+		rm.ParamRefs[*resolvedRelation] = map[string][]int{}
 	}
-	if _, ok := routingMeta.ParamRefs[*resolvedRelation][colname]; !ok {
-		routingMeta.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
+	if _, ok := rm.ParamRefs[*resolvedRelation][colname]; !ok {
+		rm.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
 	}
-	routingMeta.ParamRefs[*resolvedRelation][colname] = append(routingMeta.ParamRefs[*resolvedRelation][colname], ind)
+	rm.ParamRefs[*resolvedRelation][colname] = append(rm.ParamRefs[*resolvedRelation][colname], ind)
 	return nil
 }
 

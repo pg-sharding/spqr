@@ -190,32 +190,32 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 }
 
 // StartBackgroundHealthCheck starts background health checking for disconnected clients
-func (s *PoolImpl) StartBackgroundHealthCheck() {
-	if s.deadCheckInterval <= 0 {
+func (c *PoolImpl) StartBackgroundHealthCheck() {
+	if c.deadCheckInterval <= 0 {
 		return // Disabled
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	s.healthCheckCancel = cancel
-	s.healthCheckCtx = ctx
+	c.healthCheckCancel = cancel
+	c.healthCheckCtx = ctx
 
-	go s.backgroundHealthCheckLoop()
+	go c.backgroundHealthCheckLoop()
 }
 
 // backgroundHealthCheckLoop runs the background health checking
-func (s *PoolImpl) backgroundHealthCheckLoop() {
+func (c *PoolImpl) backgroundHealthCheckLoop() {
 	spqrlog.Zero.Info().Msg("PoolImpl client background health check started")
 
-	ticker := time.NewTicker(s.deadCheckInterval)
+	ticker := time.NewTicker(c.deadCheckInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.healthCheckCtx.Done():
+		case <-c.healthCheckCtx.Done():
 			spqrlog.Zero.Info().Msg("PoolImpl client background health check stopped")
 			return
 		case <-ticker.C:
-			_ = s.ClientPoolForeach(func(cl ClientInfo) error {
+			_ = c.ClientPoolForeach(func(cl ClientInfo) error {
 
 				if !netutil.TCP_CheckAliveness(cl.Conn()) {
 

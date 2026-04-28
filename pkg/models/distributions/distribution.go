@@ -643,9 +643,9 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 // Returns:
 //   - []string: Columns with optional hash function.
 //   - error: An error if any occurred
-func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
-	res := make([]string, len(rel.DistributionKey))
-	for i, col := range rel.DistributionKey {
+func (r *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
+	res := make([]string, len(r.DistributionKey))
+	for i, col := range r.DistributionKey {
 		hashedCol, err := GetHashedColumn(col.Column, col.HashFunction)
 		if err != nil {
 			return nil, err
@@ -661,14 +661,14 @@ func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 // Returns:
 //   - string: Column type.
 //   - bool: flag indicating fact of success.
-func (rel *DistributedRelation) GetDistributionKeyColumnType(
+func (r *DistributedRelation) GetDistributionKeyColumnType(
 	d *Distribution,
 	col string) (string, bool) {
 
-	if _, idx := rel.GetColumn(col); idx >= 0 {
+	if _, idx := r.GetColumn(col); idx >= 0 {
 		return d.ColTypes[idx], true
 	}
-	for _, colEntry := range rel.DistributionKey {
+	for _, colEntry := range r.DistributionKey {
 		for _, tcr := range colEntry.Expr.ColRefs {
 			if tcr.ColName == col {
 				return tcr.ColType, true
@@ -683,9 +683,9 @@ func (rel *DistributedRelation) GetDistributionKeyColumnType(
 // Returns:
 //   - []string: Columns with optional hash function.
 //   - error: An error if any occurred
-func (rel *DistributedRelation) GetDistributionKeyColumnNames() []string {
+func (r *DistributedRelation) GetDistributionKeyColumnNames() []string {
 	var res []string
-	for _, col := range rel.DistributionKey {
+	for _, col := range r.DistributionKey {
 		if col.Column != "" {
 			res = append(res, col.Column)
 		} else {

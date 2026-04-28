@@ -368,16 +368,16 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
-	return rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+func (r *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+	return r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		return true, route.NotifyClients(cb)
 	})
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
+func (r *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
-	err := rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+	err := r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		ok, nestedErr := route.ReleaseClient(clientID)
 		popped = popped || ok
 		return !popped, nestedErr
@@ -386,7 +386,7 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	return popped, err
 }
 
-func (rr *RuleRouterImpl) Put(_ client.Client) error {
+func (r *RuleRouterImpl) Put(_ client.Client) error {
 	return nil
 }
 

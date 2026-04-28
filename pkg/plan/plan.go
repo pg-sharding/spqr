@@ -70,32 +70,32 @@ func (sp *ScatterPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
-	if msg, ok := s.OverwriteQuery[sh.Name]; ok {
+func (sp *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
+	if msg, ok := sp.OverwriteQuery[sh.Name]; ok {
 		return msg
 	}
 	return ""
 }
 
-func (s *ScatterPlan) Subplan() Plan {
-	return s.SubSlice
+func (sp *ScatterPlan) Subplan() Plan {
+	return sp.SubSlice
 }
 
-func (s *ScatterPlan) PrepareRunSlice(_ server.Server) error {
-	if s.PrepareRunF != nil {
+func (sp *ScatterPlan) PrepareRunSlice(_ server.Server) error {
+	if sp.PrepareRunF != nil {
 		/* prepare our slice */
-		if err := s.PrepareRunF(); err != nil {
+		if err := sp.PrepareRunF(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *ScatterPlan) RunSlice(serv server.Server) error {
-	if s.RunF == nil {
+func (sp *ScatterPlan) RunSlice(serv server.Server) error {
+	if sp.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return s.RunF(serv)
+	return sp.RunF(serv)
 }
 
 var _ Plan = &ScatterPlan{}
@@ -110,27 +110,27 @@ func (mt *ModifyTable) ExecutionTargets() []kr.ShardKey {
 	return mt.ExecTargets
 }
 
-func (sp *ModifyTable) Stmt() lyx.Node {
-	return sp.stmt
+func (mt *ModifyTable) Stmt() lyx.Node {
+	return mt.stmt
 }
 
-func (sp *ModifyTable) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (mt *ModifyTable) SetStmt(n lyx.Node) {
+	mt.stmt = n
 }
 
-func (s *ModifyTable) GetGangMemberMsg(kr.ShardKey) string {
+func (mt *ModifyTable) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *ModifyTable) Subplan() Plan {
+func (mt *ModifyTable) Subplan() Plan {
 	return nil
 }
 
-func (s *ModifyTable) RunSlice(server.Server) error {
+func (mt *ModifyTable) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *ModifyTable) PrepareRunSlice(server.Server) error {
+func (mt *ModifyTable) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -153,31 +153,31 @@ func (sms *ShardDispatchPlan) ExecutionTargets() []kr.ShardKey {
 	return []kr.ShardKey{sms.ExecTarget}
 }
 
-func (sp *ShardDispatchPlan) Stmt() lyx.Node {
-	return sp.PStmt
+func (sms *ShardDispatchPlan) Stmt() lyx.Node {
+	return sms.PStmt
 }
 
-func (sp *ShardDispatchPlan) SetStmt(n lyx.Node) {
-	sp.PStmt = n
+func (sms *ShardDispatchPlan) SetStmt(n lyx.Node) {
+	sms.PStmt = n
 }
 
-func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (sms *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *ShardDispatchPlan) Subplan() Plan {
-	return s.SP
+func (sms *ShardDispatchPlan) Subplan() Plan {
+	return sms.SP
 }
 
-func (s *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
+func (sms *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
 	return nil
 }
 
-func (s *ShardDispatchPlan) RunSlice(serv server.Server) error {
-	if s.runF == nil {
+func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
+	if sms.runF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return s.runF(serv)
+	return sms.runF(serv)
 }
 
 var _ Plan = &ShardDispatchPlan{}
@@ -193,27 +193,27 @@ func (rdp *RandomDispatchPlan) ExecutionTargets() []kr.ShardKey {
 	return rdp.ExecTargets
 }
 
-func (sp *RandomDispatchPlan) Stmt() lyx.Node {
-	return sp.stmt
+func (rdp *RandomDispatchPlan) Stmt() lyx.Node {
+	return rdp.stmt
 }
 
-func (sp *RandomDispatchPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (rdp *RandomDispatchPlan) SetStmt(n lyx.Node) {
+	rdp.stmt = n
 }
 
-func (s *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (rdp *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *RandomDispatchPlan) Subplan() Plan {
+func (rdp *RandomDispatchPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *RandomDispatchPlan) RunSlice(server.Server) error {
+func (rdp *RandomDispatchPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
+func (rdp *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -236,27 +236,27 @@ func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {
 	return vp.SubPlan.ExecutionTargets()
 }
 
-func (sp *VirtualPlan) Stmt() lyx.Node {
-	return sp.stmt
+func (vp *VirtualPlan) Stmt() lyx.Node {
+	return vp.stmt
 }
 
-func (sp *VirtualPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (vp *VirtualPlan) SetStmt(n lyx.Node) {
+	vp.stmt = n
 }
 
-func (s *VirtualPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (vp *VirtualPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *VirtualPlan) Subplan() Plan {
-	return s.SubPlan
+func (vp *VirtualPlan) Subplan() Plan {
+	return vp.SubPlan
 }
 
-func (s *VirtualPlan) RunSlice(server.Server) error {
+func (vp *VirtualPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *VirtualPlan) PrepareRunSlice(server.Server) error {
+func (vp *VirtualPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -274,31 +274,31 @@ func (rf *DataRowFilter) ExecutionTargets() []kr.ShardKey {
 	return rf.SubPlan.ExecutionTargets()
 }
 
-func (sp *DataRowFilter) Stmt() lyx.Node {
-	return sp.stmt
+func (rf *DataRowFilter) Stmt() lyx.Node {
+	return rf.stmt
 }
 
-func (sp *DataRowFilter) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (rf *DataRowFilter) SetStmt(n lyx.Node) {
+	rf.stmt = n
 }
 
-func (s *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
-	if s.SubPlan == nil {
+func (rf *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
+	if rf.SubPlan == nil {
 		return ""
 	}
-	return s.SubPlan.GetGangMemberMsg(sh)
+	return rf.SubPlan.GetGangMemberMsg(sh)
 }
 
-func (s *DataRowFilter) Subplan() Plan {
-	return s.SubPlan.Subplan()
+func (rf *DataRowFilter) Subplan() Plan {
+	return rf.SubPlan.Subplan()
 }
 
-func (s *DataRowFilter) RunSlice(serv server.Server) error {
-	return s.SubPlan.RunSlice(serv)
+func (rf *DataRowFilter) RunSlice(serv server.Server) error {
+	return rf.SubPlan.RunSlice(serv)
 }
 
-func (s *DataRowFilter) PrepareRunSlice(serv server.Server) error {
-	return s.SubPlan.PrepareRunSlice(serv)
+func (rf *DataRowFilter) PrepareRunSlice(serv server.Server) error {
+	return rf.SubPlan.PrepareRunSlice(serv)
 }
 
 var _ Plan = &DataRowFilter{}
@@ -314,27 +314,27 @@ func (cs *CopyPlan) ExecutionTargets() []kr.ShardKey {
 	return cs.ExecTargets
 }
 
-func (sp *CopyPlan) Stmt() lyx.Node {
-	return sp.stmt
+func (cs *CopyPlan) Stmt() lyx.Node {
+	return cs.stmt
 }
 
-func (sp *CopyPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (cs *CopyPlan) SetStmt(n lyx.Node) {
+	cs.stmt = n
 }
 
-func (s *CopyPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (cs *CopyPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *CopyPlan) Subplan() Plan {
+func (cs *CopyPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *CopyPlan) RunSlice(server.Server) error {
+func (cs *CopyPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *CopyPlan) PrepareRunSlice(server.Server) error {
+func (cs *CopyPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 

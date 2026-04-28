@@ -116,7 +116,7 @@ func (s *SessConnManager) TXEndCB(_ GangMgr) error {
 }
 
 // TODO : unit tests
-func (t *SessConnManager) ConnectionActive(rst GangMgr) bool {
+func (s *SessConnManager) ConnectionActive(rst GangMgr) bool {
 	return rst.ActiveShards() != nil
 }
 

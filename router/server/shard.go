@@ -159,7 +159,7 @@ func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.Shard
 	return srv.Send(query)
 }
 
-func (m *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
+func (srv *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
 	return nil
 }
 
