@@ -172,8 +172,8 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 //
 // Returns:
 //   - string: The formatted error message.
-func (er *SpqrError) Error() string {
-	return er.Err.Error()
+func (e *SpqrError) Error() string {
+	return e.Err.Error()
 }
 
 // Try convert grpc error to error without "rpc error: code..."

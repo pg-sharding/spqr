@@ -48,7 +48,7 @@ func (lc *Coordinator) TaskWorkersID() []string {
 	return nil
 }
 
-func (a *Coordinator) TaskState(string) (*transferworker.TaskGroupWorkerState, error) {
+func (lc *Coordinator) TaskState(string) (*transferworker.TaskGroupWorkerState, error) {
 	return &transferworker.TaskGroupWorkerState{
 		Cancel: func() {},
 	}, nil

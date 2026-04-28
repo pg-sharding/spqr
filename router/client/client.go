@@ -111,76 +111,76 @@ type PsqlClient struct {
 var _ RouterClient = &PsqlClient{}
 
 // Wait implements [RouterClient].
-func (r *PsqlClient) Wait() {
-	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waiting with client")
-	<-r.icpChan
+func (cl *PsqlClient) Wait() {
+	spqrlog.Zero.Debug().Uint("id", cl.ID()).Msg("waiting with client")
+	<-cl.icpChan
 }
 
 // Wake implements [RouterClient].
-func (r *PsqlClient) Wake() {
-	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waking up client")
-	r.icpChan <- struct{}{}
+func (cl *PsqlClient) Wake() {
+	spqrlog.Zero.Debug().Uint("id", cl.ID()).Msg("waking up client")
+	cl.icpChan <- struct{}{}
 }
 
 // Add implements statistics.StatHolder.
-func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
+func (cl *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
 	switch st {
 	case statistics.StatisticsTypeRouter:
-		return r.RouterTime.Add(value)
+		return cl.RouterTime.Add(value)
 	case statistics.StatisticsTypeShard:
-		return r.ShardTime.Add(value)
+		return cl.ShardTime.Add(value)
 	default:
 		// panic?
 		return nil
 	}
 }
 
-func (r *PsqlClient) SetErrCounter(ec errcounter.ErrCounter) {
-	r.ec = ec
+func (cl *PsqlClient) SetErrCounter(ec errcounter.ErrCounter) {
+	cl.ec = ec
 }
 
 // Conn implements RouterClient.
-func (r *PsqlClient) Conn() net.Conn {
-	return r.tcpconn
+func (cl *PsqlClient) Conn() net.Conn {
+	return cl.tcpconn
 }
 
 // GetTimeData implements statistics.StatHolder.
-func (r *PsqlClient) GetTimeData() *statistics.StartTimes {
-	return r.TimeData
+func (cl *PsqlClient) GetTimeData() *statistics.StartTimes {
+	return cl.TimeData
 }
 
 // GetTimeQuantile implements statistics.StatHolder.
-func (r *PsqlClient) GetTimeQuantile(statType statistics.StatisticsType, q float64) float64 {
+func (cl *PsqlClient) GetTimeQuantile(statType statistics.StatisticsType, q float64) float64 {
 
 	switch statType {
 	case statistics.StatisticsTypeRouter:
-		if r.RouterTime.Count() == 0 {
+		if cl.RouterTime.Count() == 0 {
 			return 0
 		}
 
-		return r.RouterTime.Quantile(q)
+		return cl.RouterTime.Quantile(q)
 	case statistics.StatisticsTypeShard:
-		if r.ShardTime.Count() == 0 {
+		if cl.ShardTime.Count() == 0 {
 			return 0
 		}
 
-		return r.ShardTime.Quantile(q)
+		return cl.ShardTime.Quantile(q)
 	default:
 		return 0
 	}
 }
 
 // RecordStartTime implements statistics.StatHolder.
-func (r *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time.Time) {
-	if r.TimeData == nil {
-		r.TimeData = &statistics.StartTimes{}
+func (cl *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time.Time) {
+	if cl.TimeData == nil {
+		cl.TimeData = &statistics.StartTimes{}
 	}
 
 	switch statType {
 	case statistics.StatisticsTypeRouter:
-		r.TimeData.RouterStart = t
+		cl.TimeData.RouterStart = t
 	case statistics.StatisticsTypeShard:
-		r.TimeData.ShardStart = t
+		cl.TimeData.ShardStart = t
 	}
 }
 

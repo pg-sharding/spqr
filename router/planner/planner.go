@@ -924,7 +924,7 @@ func RetrieveTuples(
 	return nil, nil
 }
 
-func (plr *PlannerV2) PlanDistributedQuery(
+func (p *PlannerV2) PlanDistributedQuery(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
@@ -936,9 +936,9 @@ func (plr *PlannerV2) PlanDistributedQuery(
 			IsDDL: true,
 		}, nil
 	case *lyx.ExplainStmt:
-		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+		return p.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
 	case *lyx.SubLink:
-		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
+		return p.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
@@ -949,7 +949,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := RetrieveTuples(ctx, rm, plr, v.TargetList[0])
+				tts, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
@@ -966,7 +966,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 			if len(v.FromClause) == 0 && (v.LArg == nil || v.RArg == nil) && v.WithClause == nil {
-				p, err := PlanTargetList(ctx, rm, plr, v)
+				p, err := PlanTargetList(ctx, rm, p, v)
 				if err != nil {
 					return nil, err
 				}
@@ -986,7 +986,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				tts, err := RetrieveTuples(
 					ctx,
 					rm,
-					plr, q.Arg)
+					p, q.Arg)
 				if err != nil {
 					return nil, err
 				}
@@ -1084,7 +1084,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}
 			}
 
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
+			return p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -1108,7 +1108,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}, nil
 			}
 
-			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
 					SubPlan:     p,
@@ -1140,7 +1140,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}, nil
 			}
 
-			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
 					SubPlan:     p,
