@@ -304,7 +304,7 @@ func genericOptionActionFromSQL(action spqrparser.OptionAction) (GenericOptionAc
 	case spqrparser.SET:
 		return GenericOptionActionSet, nil
 	default:
-		return -1, fmt.Errorf("unknown generic option action %q", action)
+		return -1, fmt.Errorf("unknown generic option action %d", action)
 	}
 }
 

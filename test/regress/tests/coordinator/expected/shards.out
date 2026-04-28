@@ -33,11 +33,11 @@ SHOW SHARDS;
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (4 rows)
 
-ALTER SHARD sh1 OPTIONS (SSLMODE 'require');
+ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD user 'test_user');
           alter shard          
 -------------------------------
  shard id -> sh1
- options  -> {sslmode=require}
+ options  -> {sslmode=require,user=test_user}
 (2 rows)
 
 SHOW SHARDS;
