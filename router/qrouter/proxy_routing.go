@@ -1231,6 +1231,37 @@ func (qr *ProxyQrouter) plannerV1(
 
 	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
+	// if sc, ok := p.(*plan.ScatterPlan); ok {
+	// 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
+	// 		var firstCTEkey rmeta.AuxValuesKey
+	// 		for k := range rm.UsedAuxCTE {
+	// 			firstCTEkey = k
+	// 		}
+	// 		/* simple WITH .. AS (VALUES()) SELECT .. JOIN .. on ..  */
+
+	// 		var shs []kr.ShardKey
+
+	// 		cte := rm.CteNames[firstCTEkey.CTEName]
+
+	// 		if values, ok := cte.SubQuery.(*lyx.ValueClause); ok {
+
+	// 			cte.NameList
+
+	// 			shs, err = planner.TuplePlansByDistributionEntry(ctx, values.Values, rm)
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
+	// 		} else {
+	// 			return nil, rerrors.ErrComplexQuery
+	// 		}
+
+	// 		p, err = planner.RewriteDistributedRelWithValues(rm.Query, firstCTEkey.CTEName, shs)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 	}
+	// }
+
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
