@@ -740,6 +740,13 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 		}
 
 		switch newMsg := cpMsg.(type) {
+		case *pgproto3.Flush, *pgproto3.Sync:
+			/*
+			 * Ignore Flush/Sync for the convenience of client
+			 * libraries (such as libpq) that may send those
+			 * without noticing that the command they just
+			 * sent was COPY.
+			 */
 		case *pgproto3.CopyData:
 			leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
 
