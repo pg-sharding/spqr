@@ -17,7 +17,6 @@ func (a SortableWithContext) Swap(i, j int) { a.Data[i], a.Data[j] = a.Data[j], 
 func (a SortableWithContext) Less(i, j int) bool {
 	if a.Order == ASC {
 		return a.Op.Less(a.Data[i][a.Col_index], a.Data[j][a.Col_index])
-	} else {
-		return !a.Op.Less(a.Data[i][a.Col_index], a.Data[j][a.Col_index])
 	}
+	return !a.Op.Less(a.Data[i][a.Col_index], a.Data[j][a.Col_index])
 }

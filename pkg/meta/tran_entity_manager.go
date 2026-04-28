@@ -212,11 +212,11 @@ func (t *TranEntityManager) GetDistribution(ctx context.Context, id string) (*di
 		return savedDs, nil
 	}
 
-	if distribution, err := t.EntityMgr.GetDistribution(ctx, id); err != nil {
+	distribution, err := t.EntityMgr.GetDistribution(ctx, id)
+	if err != nil {
 		return nil, err
-	} else {
-		return distribution, nil
 	}
+	return distribution, nil
 }
 
 // GetKeyRange implements [EntityMgr].
@@ -227,11 +227,12 @@ func (t *TranEntityManager) GetKeyRange(ctx context.Context, krId string) (*kr.K
 	if savedKr, ok := t.keyRanges.Items()[krId]; ok {
 		return savedKr, nil
 	}
-	if keyRangeFromQdb, err := t.EntityMgr.GetKeyRange(ctx, krId); err != nil {
+
+	keyRangeFromQdb, err := t.EntityMgr.GetKeyRange(ctx, krId)
+	if err != nil {
 		return nil, err
-	} else {
-		return keyRangeFromQdb, nil
 	}
+	return keyRangeFromQdb, nil
 }
 
 // GetShard implements [EntityMgr].
@@ -242,24 +243,24 @@ func (t *TranEntityManager) GetShard(ctx context.Context, shardID string) (*topo
 
 // ListDistributions implements [EntityMgr].
 func (t *TranEntityManager) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
-	if list, err := t.EntityMgr.ListDistributions(ctx); err != nil {
+	list, err := t.EntityMgr.ListDistributions(ctx)
+	if err != nil {
 		return nil, err
-	} else {
-		result := make([]*distributions.Distribution, 0, len(list)+len(t.distributions.Items()))
-		for _, distribution := range t.distributions.Items() {
-			result = append(result, distribution)
-		}
-		for _, distribution := range list {
-			if _, ok := t.distributions.DeletedItems()[distribution.Id]; ok {
-				continue
-			}
-			if _, ok := t.distributions.Items()[distribution.Id]; ok {
-				continue
-			}
-			result = append(result, distribution)
-		}
-		return result, nil
 	}
+	result := make([]*distributions.Distribution, 0, len(list)+len(t.distributions.Items()))
+	for _, distribution := range t.distributions.Items() {
+		result = append(result, distribution)
+	}
+	for _, distribution := range list {
+		if _, ok := t.distributions.DeletedItems()[distribution.Id]; ok {
+			continue
+		}
+		if _, ok := t.distributions.Items()[distribution.Id]; ok {
+			continue
+		}
+		result = append(result, distribution)
+	}
+	return result, nil
 }
 
 // ListKeyRanges implements [EntityMgr].

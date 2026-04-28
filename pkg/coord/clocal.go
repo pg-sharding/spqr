@@ -318,32 +318,32 @@ func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId strin
 // - []*kr.KeyRange: a slice of KeyRange objects representing all key ranges.
 // - error: an error if the retrieval encounters any issues.
 func (lc *LocalInstanceMetadataMgr) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	if krs, err := lc.qdb.ListAllKeyRanges(ctx); err != nil {
+	krs, err := lc.qdb.ListAllKeyRanges(ctx)
+	if err != nil {
 		return nil, err
-	} else {
-		var ret []*kr.KeyRange
-		cache := map[string]*qdb.Distribution{}
+	}
+	var ret []*kr.KeyRange
+	cache := map[string]*qdb.Distribution{}
 
-		for _, keyRange := range krs {
-			var ds *qdb.Distribution
-			var err error
-			var ok bool
-			if ds, ok = cache[keyRange.DistributionId]; !ok {
-				ds, err = lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
-				if err != nil {
-					return nil, err
-				}
-				cache[keyRange.DistributionId] = ds
-			}
-
-			kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+	for _, keyRange := range krs {
+		var ds *qdb.Distribution
+		var err error
+		var ok bool
+		if ds, ok = cache[keyRange.DistributionId]; !ok {
+			ds, err = lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
 			if err != nil {
 				return nil, err
 			}
-			ret = append(ret, kRange)
+			cache[keyRange.DistributionId] = ds
 		}
-		return ret, nil
+
+		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, kRange)
 	}
+	return ret, nil
 }
 
 func listRoutersInner(host string, port string) *topology.Router {

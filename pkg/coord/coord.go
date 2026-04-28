@@ -1334,14 +1334,14 @@ func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTr
 }
 
 func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
-	if qdbTran, err := qdb.NewTransaction(); err != nil {
+	qdbTran, err := qdb.NewTransaction()
+	if err != nil {
 		return nil, err
-	} else {
-		if err := lc.qdb.BeginTransaction(ctx, qdbTran); err != nil {
-			return nil, err
-		}
-		return mtran.NewMetaTransaction(*qdbTran), nil
 	}
+	if err := lc.qdb.BeginTransaction(ctx, qdbTran); err != nil {
+		return nil, err
+	}
+	return mtran.NewMetaTransaction(*qdbTran), nil
 }
 
 func (lc *Coordinator) GetTxnBatchSize() uint16 {

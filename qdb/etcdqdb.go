@@ -502,42 +502,41 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 			Str("id", keyRangeId).
 			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
 		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeId))
-	} else {
-		if len(resp.Responses) != 3 {
-			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
-				keyRangeId, len(resp.Responses))
-		} else {
-			rng := resp.Responses[1].GetResponseRange()
-			if len(rng.Kvs) != 1 {
-				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
-					keyRangeId, len(rng.Kvs))
-			}
-			if rng.Kvs[0] == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
-					keyRangeId)
-			}
-			kv := rng.Kvs[0].Value
-			if kv == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
-					keyRangeId)
-			}
-
-			rng = resp.Responses[2].GetResponseRange()
-			ver := 0
-			if rng.Count > 0 {
-				var meta *KeyRangeMeta
-				if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
-					return nil, err
-				}
-				ver = meta.Version
-			}
-			keyRange := &internalKeyRange{}
-			if err := json.Unmarshal(kv, &keyRange); err != nil {
-				return nil, err
-			}
-			return keyRangeFromInternal(keyRange, true, ver), nil
-		}
 	}
+
+	if len(resp.Responses) != 3 {
+		return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
+			keyRangeId, len(resp.Responses))
+	}
+	rng := resp.Responses[1].GetResponseRange()
+	if len(rng.Kvs) != 1 {
+		return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
+			keyRangeId, len(rng.Kvs))
+	}
+	if rng.Kvs[0] == nil {
+		return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
+			keyRangeId)
+	}
+	kv := rng.Kvs[0].Value
+	if kv == nil {
+		return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
+			keyRangeId)
+	}
+
+	rng = resp.Responses[2].GetResponseRange()
+	ver := 0
+	if rng.Count > 0 {
+		var meta *KeyRangeMeta
+		if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
+			return nil, err
+		}
+		ver = meta.Version
+	}
+	keyRange := &internalKeyRange{}
+	if err := json.Unmarshal(kv, &keyRange); err != nil {
+		return nil, err
+	}
+	return keyRangeFromInternal(keyRange, true, ver), nil
 }
 
 // TODO : unit tests
@@ -1345,14 +1344,14 @@ func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distributi
 	if err != nil {
 		return nil, err
 	}
-	if resp, err := NewQdbStatement(CMD_PUT, distributionNodePath(distribution.ID), string(distrJson)); err != nil {
+	resp, err := NewQdbStatement(CMD_PUT, distributionNodePath(distribution.ID), string(distrJson))
+	if err != nil {
 		return nil, err
-	} else {
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("etcdqdb: add distribution")
-		return []QdbStatement{*resp}, nil
 	}
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: add distribution")
+	return []QdbStatement{*resp}, nil
 }
 
 // TODO : unit tests
@@ -1468,11 +1467,10 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 			if r, ok := ds.GetRelation(qname); ok {
 				if r.SchemaName == rel.SchemaName {
 					return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
-				} else {
-					/* Ok, store this to FQN relations. */
-
-					distribution.FQNRelations[rel.QualifiedName().MetadataKey()] = rel
 				}
+				/* Ok, store this to FQN relations. */
+
+				distribution.FQNRelations[rel.QualifiedName().MetadataKey()] = rel
 			} else {
 				return spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
 			}
@@ -1487,11 +1485,11 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		}
 	}
 
-	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+	operations, err := q.CreateDistribution(ctx, distribution)
+	if err != nil {
 		return err
-	} else {
-		return q.ExecNoTransaction(ctx, operations)
 	}
+	return q.ExecNoTransaction(ctx, operations)
 }
 
 // TODO: unit tests
@@ -1535,11 +1533,11 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 	}
 	distribution.Version++
 
-	if dsRel, ok := distribution.Relations[rel.Name]; !ok {
+	dsRel, ok := distribution.Relations[rel.Name]
+	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
-	} else {
-		rel.Version = dsRel.Version + 1
 	}
+	rel.Version = dsRel.Version + 1
 	distribution.Relations[rel.Name] = rel
 	qname := rel.QualifiedName()
 	if ds, err := q.GetRelationDistribution(ctx, qname); err != nil {
@@ -1548,11 +1546,12 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)
 	}
 
-	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+	operations, err := q.CreateDistribution(ctx, distribution)
+	if err != nil {
 		return err
-	} else {
-		return q.ExecNoTransaction(ctx, operations)
 	}
+	return q.ExecNoTransaction(ctx, operations)
+
 }
 
 // TODO : unit tests
@@ -1580,11 +1579,11 @@ func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string,
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relationFQN.String(), ds.ID, id)
 	}
 
-	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+	operations, err := q.CreateDistribution(ctx, distribution)
+	if err != nil {
 		return err
-	} else {
-		return q.ExecNoTransaction(ctx, operations)
 	}
+	return q.ExecNoTransaction(ctx, operations)
 }
 
 // TODO : unit tests
@@ -1660,11 +1659,11 @@ func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, i
 			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relationFQN, ds.ID, id)
 	}
 
-	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+	operations, err := q.CreateDistribution(ctx, distribution)
+	if err != nil {
 		return err
-	} else {
-		return q.ExecNoTransaction(ctx, operations)
 	}
+	return q.ExecNoTransaction(ctx, operations)
 }
 
 // TODO : unit tests
@@ -2795,12 +2794,12 @@ func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint6
 
 	nextval++
 
-	if idRange, err := NewRangeBySize(nextval, rangeSize); err != nil {
+	idRange, err := NewRangeBySize(nextval, rangeSize)
+	if err != nil {
 		return nil, fmt.Errorf("invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
-	} else {
-		_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", idRange.Right))
-		return idRange, err
 	}
+	_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", idRange.Right))
+	return idRange, err
 }
 
 func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {

@@ -601,12 +601,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
-		} else {
-			// process like regular query
-			err := rst.queryProc(comment, binderQ)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-			return nil, err
 		}
+		// process like regular query
+		err := rst.queryProc(comment, binderQ)
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+		return nil, err
 	case *lyx.ExecuteStmt:
 		if AdvancedPoolModeNeeded(rst) {
 
@@ -645,12 +644,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
-		} else {
-			// process like regular query
-			err := rst.queryProc(comment, binderQ)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-			return nil, err
 		}
+		// process like regular query
+		err := rst.queryProc(comment, binderQ)
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+		return nil, err
 	default:
 		err := rst.queryProc(comment, binderQ)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))

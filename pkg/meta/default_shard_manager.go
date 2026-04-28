@@ -52,27 +52,26 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 }
 
 func (manager *DefaultShardManager) keyRangeDefault(defaultShardId string) (*kr.KeyRange, error) {
-	if lowerBound, err := DefaultRangeLowerBound(manager.distribution.ColTypes); err == nil {
-		keyRange := &kr.KeyRange{
-			ShardID:      defaultShardId,
-			ID:           DefaultKeyRangeId(manager.distribution),
-			Distribution: manager.distribution.Id,
-			ColumnTypes:  manager.distribution.ColTypes,
-			LowerBound:   lowerBound,
-		}
-
-		return keyRange, nil
-	} else {
+	lowerBound, err := DefaultRangeLowerBound(manager.distribution.ColTypes)
+	if err != nil {
 		return nil, err
 	}
+
+	return &kr.KeyRange{
+		ShardID:      defaultShardId,
+		ID:           DefaultKeyRangeId(manager.distribution),
+		Distribution: manager.distribution.Id,
+		ColumnTypes:  manager.distribution.ColTypes,
+		LowerBound:   lowerBound,
+	}, nil
 }
 
 func (manager *DefaultShardManager) CreateDefaultShard(ctx context.Context, defaultShardId string) error {
-	if defaultShard, err := manager.mngr.GetShard(ctx, defaultShardId); err != nil {
+	defaultShard, err := manager.mngr.GetShard(ctx, defaultShardId)
+	if err != nil {
 		return fmt.Errorf("shard '%s' does not exist", defaultShardId)
-	} else {
-		return manager.CreateDefaultShardNoCheck(ctx, defaultShard)
 	}
+	return manager.CreateDefaultShardNoCheck(ctx, defaultShard)
 }
 
 func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Context,
@@ -96,15 +95,15 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 }
 
 func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (string, error) {
-	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, DefaultKeyRangeId(manager.distribution)); err != nil {
+	defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, DefaultKeyRangeId(manager.distribution))
+	if err != nil {
 		return "", fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
-	} else {
-		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
-		tranMngr := NewTranEntityManager(manager.mngr)
-		err := dropKeyRange(ctx, tranMngr, defaultKeyRange.ID)
-		if err != nil {
-			return defaultKeyRange.ShardID, err
-		}
-		return defaultKeyRange.ShardID, nil
 	}
+	spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
+	tranMngr := NewTranEntityManager(manager.mngr)
+
+	if err := dropKeyRange(ctx, tranMngr, defaultKeyRange.ID); err != nil {
+		return defaultKeyRange.ShardID, err
+	}
+	return defaultKeyRange.ShardID, nil
 }

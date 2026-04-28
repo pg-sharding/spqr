@@ -197,13 +197,12 @@ func TestDbPoolRaces(t *testing.T) {
 									{'o', 'n'},
 								},
 							}, nil
-						} else {
-							return &pgproto3.DataRow{
-								Values: [][]byte{
-									{'o', 'f', 'f'},
-								},
-							}, nil
 						}
+						return &pgproto3.DataRow{
+							Values: [][]byte{
+								{'o', 'f', 'f'},
+							},
+						}, nil
 					}
 					counter = 0
 					return &pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil

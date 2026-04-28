@@ -29,12 +29,12 @@ func NewQdbStatement(cmdType int32, key string, value any) (*QdbStatement, error
 }
 
 func NewQdbStatementExt(cmdType int32, key string, value any, extension string) (*QdbStatement, error) {
-	if stmt, err := NewQdbStatement(cmdType, key, value); err != nil {
+	stmt, err := NewQdbStatement(cmdType, key, value)
+	if err != nil {
 		return nil, err
-	} else {
-		stmt.Extension = extension
-		return stmt, nil
 	}
+	stmt.Extension = extension
+	return stmt, nil
 }
 
 type QdbTransaction struct {

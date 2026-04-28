@@ -77,15 +77,14 @@ func (irc *IdentityRouterCacheImpl) NextVal(ctx context.Context, sequenceName st
 	defer rng.mu.Unlock()
 	if nextVal, ok := rng.nextVal(); ok {
 		return nextVal, nil
-	} else {
-		if newRange, err := (*irc.mngr).NextRange(ctx, sequenceName, irc.defaultRangeSize); err != nil {
-			return 0, err
-		} else {
-			rng.idRange = newRange
-			if nextVal, ok := rng.nextVal(); ok {
-				return nextVal, nil
-			}
-			return 0, fmt.Errorf("can't get next value from fresh id range! sequence='%s'", sequenceName)
-		}
 	}
+	newRange, err := (*irc.mngr).NextRange(ctx, sequenceName, irc.defaultRangeSize)
+	if err != nil {
+		return 0, err
+	}
+	rng.idRange = newRange
+	if nextVal, ok := rng.nextVal(); ok {
+		return nextVal, nil
+	}
+	return 0, fmt.Errorf("can't get next value from fresh id range! sequence='%s'", sequenceName)
 }

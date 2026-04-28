@@ -106,35 +106,34 @@ func processDrop(ctx context.Context,
 			}
 			if err := mngr.DropKeyRangeAll(ctx); err != nil {
 				return nil, err
-			} else {
-				tts := &tupleslot.TupleTableSlot{}
-
-				tts.Desc = engine.GetVPHeader("key_range_id")
-
-				for _, k := range krs {
-					tts.Raw = append(tts.Raw, [][]byte{
-						[]byte(k.ID),
-					})
-				}
-
-				return tts, err
 			}
-		} else {
-			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
-			tranMngr := NewTranEntityManager(mngr)
-			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
-			if err != nil {
-				return nil, err
-			}
-
 			tts := &tupleslot.TupleTableSlot{}
+
 			tts.Desc = engine.GetVPHeader("key_range_id")
-			tts.Raw = append(tts.Raw, [][]byte{
-				[]byte(stmt.KeyRangeID),
-			})
+
+			for _, k := range krs {
+				tts.Raw = append(tts.Raw, [][]byte{
+					[]byte(k.ID),
+				})
+			}
 
 			return tts, err
 		}
+		spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
+		tranMngr := NewTranEntityManager(mngr)
+		err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{}
+		tts.Desc = engine.GetVPHeader("key_range_id")
+		tts.Raw = append(tts.Raw, [][]byte{
+			[]byte(stmt.KeyRangeID),
+		})
+
+		return tts, err
+
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relationFQN := &rfqn.RelationFQN{
@@ -427,9 +426,8 @@ func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distrib
 			return nil, err
 		}
 		return distribution, nil
-	} else {
-		return nil, fmt.Errorf("REPLICATED distribution already exist")
 	}
+	return nil, fmt.Errorf("REPLICATED distribution already exist")
 }
 
 // TODO : unit tests
@@ -455,11 +453,11 @@ func createNonReplicatedDistribution(ctx context.Context,
 	}
 	var defaultShard *topology.DataShard
 	if stmt.DefaultShard != "" {
-		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
+		ds, err := mngr.GetShard(ctx, stmt.DefaultShard)
+		if err != nil {
 			return nil, fmt.Errorf("shard '%s' does not exist", stmt.DefaultShard)
-		} else {
-			defaultShard = ds
 		}
+		defaultShard = ds
 	}
 
 	for _, ds := range dds {
@@ -548,38 +546,35 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
 		if stmt.Replicated {
-			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
+			distribution, err := createReplicatedDistribution(ctx, mngr)
+			if err != nil {
 				return nil, err
-			} else {
-				tts := &tupleslot.TupleTableSlot{
-					Desc: engine.GetVPHeader("add distribution"),
-					Raw: [][][]byte{
-						{
-							fmt.Appendf(nil, "distribution id -> %s", distribution.ID()),
-						},
-					},
-				}
-
-				return tts, nil
 			}
-		} else {
-			distribution, createError := createNonReplicatedDistribution(ctx, *stmt, mngr)
-			if createError != nil {
-				return nil, createError
-			} else {
-
-				tts := &tupleslot.TupleTableSlot{
-					Desc: engine.GetVPHeader("add distribution"),
-					Raw: [][][]byte{
-						{
-							fmt.Appendf(nil, "distribution id -> %s", distribution.ID()),
-						},
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("add distribution"),
+				Raw: [][][]byte{
+					{
+						fmt.Appendf(nil, "distribution id -> %s", distribution.ID()),
 					},
-				}
-
-				return tts, nil
+				},
 			}
+
+			return tts, nil
 		}
+		distribution, createError := createNonReplicatedDistribution(ctx, *stmt, mngr)
+		if createError != nil {
+			return nil, createError
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("add distribution"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "distribution id -> %s", distribution.ID()),
+				},
+			},
+		}
+
+		return tts, nil
 	case *spqrparser.KeyRangeDefinition:
 		tranMngr := NewTranEntityManager(mngr)
 		createdKr, err := createKeyRange(ctx, tranMngr, stmt)
@@ -825,42 +820,41 @@ func processAlterDistribution(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.DropDefaultShard:
-		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
+		distribution, err := mngr.GetDistribution(ctx, dsId)
+		if err != nil {
 			return nil, err
-		} else {
-			manager := NewDefaultShardManager(distribution, mngr)
-			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
-				return nil, err
-			} else {
-
-				tts := &tupleslot.TupleTableSlot{
-					Desc: engine.GetVPHeader("drop default shard"),
-				}
-
-				tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "distribution id", manager.distribution.Id))
-				tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "shard id", defaultShard))
-
-				return tts, nil
-			}
 		}
+		manager := NewDefaultShardManager(distribution, mngr)
+		defaultShard, err := manager.DropDefaultShard(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop default shard"),
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "distribution id", manager.distribution.Id))
+		tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "shard id", defaultShard))
+
+		return tts, nil
 	case *spqrparser.AlterDefaultShard:
-		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
+		distribution, err := mngr.GetDistribution(ctx, dsId)
+		if err != nil {
 			return nil, err
-		} else {
-			manager := NewDefaultShardManager(distribution, mngr)
-			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
-				return nil, err
-			}
-
-			tts := &tupleslot.TupleTableSlot{
-				Desc: engine.GetVPHeader("create default shard"),
-			}
-
-			tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "distribution id", manager.distribution.Id))
-			tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "shard id", stmt.Shard))
-
-			return tts, nil
 		}
+		manager := NewDefaultShardManager(distribution, mngr)
+		if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("create default shard"),
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "distribution id", manager.distribution.Id))
+		tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "shard id", stmt.Shard))
+
+		return tts, nil
 	case *spqrparser.AlterRelationV2:
 		tts, err := processAlterRelation(ctx, stmt.Element, mngr, dsId, stmt.RelationName)
 		if err != nil {
@@ -1177,18 +1171,17 @@ func ProcMetadataCommand(ctx context.Context,
 			}
 
 			return tts, nil
-		} else {
-			if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
-				return nil, err
-			}
-
-			tts := &tupleslot.TupleTableSlot{
-				Desc: engine.GetVPHeader("unlock key range"),
-				Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
-			}
-
-			return tts, nil
 		}
+		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("unlock key range"),
+			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
+		}
+
+		return tts, nil
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:

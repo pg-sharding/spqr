@@ -56,28 +56,28 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 		return nil, err
 	}
 	d1 := &distributions.Distribution{Id: "ds1", ColTypes: []string{"integer"}}
-	if chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d1)); err != nil {
+	chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d1))
+	if err != nil {
 		return nil, err
-	} else {
-		if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
-			return nil, err
-		}
+	}
+	if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
+		return nil, err
 	}
 	d2 := &distributions.Distribution{Id: "ds_hashed", ColTypes: []string{"uinteger"}}
-	if chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d2)); err != nil {
+	chunk1, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d2))
+	if err != nil {
 		return nil, err
-	} else {
-		if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
-			return nil, err
-		}
+	}
+	if err = memqdb.ExecNoTransaction(ctx, chunk1); err != nil {
+		return nil, err
 	}
 	d3 := &distributions.Distribution{Id: "ds_2keys", ColTypes: []string{"integer", "varchar"}}
-	if chunk, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d3)); err != nil {
+	chunk2, err := memqdb.CreateDistribution(ctx, distributions.DistributionToDB(d3))
+	if err != nil {
 		return nil, err
-	} else {
-		if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
-			return nil, err
-		}
+	}
+	if err = memqdb.ExecNoTransaction(ctx, chunk2); err != nil {
+		return nil, err
 	}
 	if err = memqdb.AddShard(ctx, mockShard1); err != nil {
 		return nil, err

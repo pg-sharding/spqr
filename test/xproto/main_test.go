@@ -99,13 +99,13 @@ func getC() (net.Conn, error) {
 
 func waitRFQ(fr *pgproto3.Frontend) error {
 	for {
-		if msg, err := fr.Receive(); err != nil {
+		msg, err := fr.Receive()
+		if err != nil {
 			return err
-		} else {
-			switch msg.(type) {
-			case *pgproto3.ReadyForQuery:
-				return nil
-			}
+		}
+		switch msg.(type) {
+		case *pgproto3.ReadyForQuery:
+			return nil
 		}
 	}
 }

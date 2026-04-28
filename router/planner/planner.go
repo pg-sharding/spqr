@@ -75,18 +75,18 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 				}
 			} else {
 				if v.IfNotExists {
-					if d, err := rm.Mgr.GetDistribution(ctx, distributionID); err != nil {
+					d, err := rm.Mgr.GetDistribution(ctx, distributionID)
+					if err != nil {
 						// ok
 						return nil, err
+					}
+					/* Attached */
+					if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
+						/* ok */
 					} else {
-						/* Attached */
-						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
-							/* ok */
-						} else {
-							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
-							if err != nil {
-								return nil, err
-							}
+						err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
+						if err != nil {
+							return nil, err
 						}
 					}
 				} else {

@@ -365,12 +365,12 @@ func (cl *PsqlClient) ReplyNotice(message string) error {
 }
 
 func (cl *PsqlClient) ReplyDebugNotice(msg string) error {
-	if v, ok := cl.Params()["client_min_messages"]; !ok {
+	v, ok := cl.Params()["client_min_messages"]
+	if !ok {
 		return nil
-	} else {
-		if v != "notice" {
-			return nil
-		}
+	}
+	if v != "notice" {
+		return nil
 	}
 
 	return cl.Send(&pgproto3.NoticeResponse{

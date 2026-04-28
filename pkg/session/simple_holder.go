@@ -457,16 +457,15 @@ func (cl *SimpleSessionParamHandler) SetStartupParams(m map[string]string) {
 func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual bool) ParamVisibility {
 	if h, ok := cl.params[name]; ok {
 		return h
-	} else {
-		var h ParamVisibility
-		if isVirtual {
-			h = &VirtualParamVisibility{globalMap: cl.activeParamSet, name: name}
-		} else {
-			h = &SimpleParamVisibility{globalMap: cl.activeParamSet, name: name}
-		}
-		cl.params[name] = h
-		return h
 	}
+	var h ParamVisibility
+	if isVirtual {
+		h = &VirtualParamVisibility{globalMap: cl.activeParamSet, name: name}
+	} else {
+		h = &SimpleParamVisibility{globalMap: cl.activeParamSet, name: name}
+	}
+	cl.params[name] = h
+	return h
 }
 
 var boolGUCs []BoolGUCimpl = []BoolGUCimpl{

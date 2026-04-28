@@ -126,12 +126,11 @@ func (srv *ShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa
 			"server does not support more than 1 datashard connection simultaneously")
 	}
 
-	if val, err := srv.pool.ConnectionWithTSA(clid, shkey, tsa); err != nil {
+	val, err := srv.pool.ConnectionWithTSA(clid, shkey, tsa)
+	if err != nil {
 		return err
-	} else {
-		srv.shard.Store(&val)
 	}
-
+	srv.shard.Store(&val)
 	return nil
 }
 

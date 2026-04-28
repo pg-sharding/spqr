@@ -33,13 +33,13 @@ func NewMetaTransaction(qdbTransaction qdb.QdbTransaction) *MetaTransaction {
 }
 
 func innerFromProto(transactionId string, metaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
-	if tranId, err := uuid.Parse(transactionId); err != nil {
+	tranId, err := uuid.Parse(transactionId)
+	if err != nil {
 		return nil, err
-	} else {
-		return &MetaTransaction{TransactionId: tranId,
-			Operations: NewMetaTransactionChunk(metaCmdList),
-		}, nil
 	}
+	return &MetaTransaction{TransactionId: tranId,
+		Operations: NewMetaTransactionChunk(metaCmdList),
+	}, nil
 }
 
 func BeginTranFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
@@ -96,14 +96,14 @@ func (tc *MetaTransactionChunk) Append(gossipRequests []*proto.MetaTransactionGo
 }
 
 func NewTransaction() (*MetaTransaction, error) {
-	if qdbTran, err := qdb.NewTransaction(); err != nil {
+	qdbTran, err := qdb.NewTransaction()
+	if err != nil {
 		return nil, err
-	} else {
-		return &MetaTransaction{
-			TransactionId: qdbTran.Id(),
-			Operations:    &MetaTransactionChunk{},
-		}, nil
 	}
+	return &MetaTransaction{
+		TransactionId: qdbTran.Id(),
+		Operations:    &MetaTransactionChunk{},
+	}, nil
 }
 
 func checkCommandPart(part googleProto.Message, current int, target int) int {
@@ -117,9 +117,8 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 	if v.Kind() == reflect.Ptr && !v.IsNil() {
 		if current != GR_UNKNOWN {
 			return GR_ERROR
-		} else {
-			return target
 		}
+		return target
 	}
 	return current
 }

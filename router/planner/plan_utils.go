@@ -364,12 +364,11 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 		if len(entry.Column) == 0 {
 			if len(entry.Expr.ColRefs) == 0 {
 				return fmt.Errorf("invalid routing expression for relation")
-			} else {
-				for _, cf := range entry.Expr.ColRefs {
-					if _, ok = entries[cf.ColName]; !ok {
-						check = false
-						break
-					}
+			}
+			for _, cf := range entry.Expr.ColRefs {
+				if _, ok = entries[cf.ColName]; !ok {
+					check = false
+					break
 				}
 			}
 		} else {

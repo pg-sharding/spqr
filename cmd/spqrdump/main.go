@@ -44,20 +44,20 @@ var insecureSkipVerify bool
 // TODO : unit tests
 func waitRFQ(fr *pgproto3.Frontend) error {
 	for {
-		if msg, err := fr.Receive(); err != nil {
+		msg, err := fr.Receive()
+		if err != nil {
 			return err
-		} else {
-			spqrlog.Zero.Debug().
-				Interface("message", msg).
-				Msg("received message")
-			switch v := msg.(type) {
-			case *pgproto3.ErrorResponse:
-				if v.Severity == "ERROR" {
-					return fmt.Errorf("failed to wait for RQF: %s", v.Message)
-				}
-			case *pgproto3.ReadyForQuery:
-				return nil
+		}
+		spqrlog.Zero.Debug().
+			Interface("message", msg).
+			Msg("received message")
+		switch v := msg.(type) {
+		case *pgproto3.ErrorResponse:
+			if v.Severity == "ERROR" {
+				return fmt.Errorf("failed to wait for RQF: %s", v.Message)
 			}
+		case *pgproto3.ReadyForQuery:
+			return nil
 		}
 	}
 }
@@ -146,25 +146,25 @@ func dumpPsql(query string, rowToStr func(v *pgproto3.DataRow) (string, error)) 
 	}
 
 	for {
-		if msg, err := frontend.Receive(); err != nil {
+		msg, err := frontend.Receive()
+		if err != nil {
 			return err
-		} else {
-			spqrlog.Zero.Debug().
-				Interface("message", msg).
-				Msg("received message")
+		}
+		spqrlog.Zero.Debug().
+			Interface("message", msg).
+			Msg("received message")
 
-			switch v := msg.(type) {
-			case *pgproto3.DataRow:
-				s, err := rowToStr(v)
-				if err != nil {
-					return err
-				}
-				fmt.Println(s)
-			case *pgproto3.ErrorResponse:
-				return fmt.Errorf("failed to wait for RQF: %s", v.Message)
-			case *pgproto3.ReadyForQuery:
-				return nil
+		switch v := msg.(type) {
+		case *pgproto3.DataRow:
+			s, err := rowToStr(v)
+			if err != nil {
+				return err
 			}
+			fmt.Println(s)
+		case *pgproto3.ErrorResponse:
+			return fmt.Errorf("failed to wait for RQF: %s", v.Message)
+		case *pgproto3.ReadyForQuery:
+			return nil
 		}
 	}
 }

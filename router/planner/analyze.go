@@ -498,25 +498,25 @@ func AnalyzeQueryV1(
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
 			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
-			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+			d, err := rm.GetRelationDistribution(ctx, rqdn)
+			if err != nil {
 				return err
-			} else {
-				r, ok := d.TryGetRelation(rqdn)
-				/* Not all distribution guarantee that
-				* get relation will actually return meaningful
-				* `relation`. CatalogDistribution is one example. */
-				if ok {
-					cols := r.GetDistributionKeyColumnNames()
+			}
+			r, ok := d.TryGetRelation(rqdn)
+			/* Not all distribution guarantee that
+			* get relation will actually return meaningful
+			* `relation`. CatalogDistribution is one example. */
+			if ok {
+				cols := r.GetDistributionKeyColumnNames()
 
-					for _, c := range stmt.SetClause {
-						switch cc := c.(type) {
-						case *lyx.ResTarget:
-							if slices.Contains(cols, cc.Name) {
-								rm.IsSplitUpdate = true
-							}
-						default:
-							return rerrors.ErrComplexQuery
+				for _, c := range stmt.SetClause {
+					switch cc := c.(type) {
+					case *lyx.ResTarget:
+						if slices.Contains(cols, cc.Name) {
+							rm.IsSplitUpdate = true
 						}
+					default:
+						return rerrors.ErrComplexQuery
 					}
 				}
 			}

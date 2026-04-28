@@ -147,40 +147,38 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 			})
-		} else {
-
-			var msgs []pgproto3.BackendMessage
-			if sendDesc {
-				msgs = []pgproto3.BackendMessage{
-					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-						{
-							Name:                 []byte("worldmock"),
-							TableOID:             0,
-							TableAttributeNumber: 0,
-							DataTypeOID:          25,
-							DataTypeSize:         -1,
-							TypeModifier:         -1,
-							Format:               0,
-						},
-					}},
-					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
-					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-				}
-			} else {
-				msgs = []pgproto3.BackendMessage{
-					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
-					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-				}
-			}
-
-			if completeRelay {
-				msgs = append(msgs, &pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				})
-			}
-
-			return flusher(msgs)
 		}
+		var msgs []pgproto3.BackendMessage
+		if sendDesc {
+			msgs = []pgproto3.BackendMessage{
+				&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+					{
+						Name:                 []byte("worldmock"),
+						TableOID:             0,
+						TableAttributeNumber: 0,
+						DataTypeOID:          25,
+						DataTypeSize:         -1,
+						TypeModifier:         -1,
+						Format:               0,
+					},
+				}},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+			}
+		} else {
+			msgs = []pgproto3.BackendMessage{
+				&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+			}
+		}
+
+		if completeRelay {
+			msgs = append(msgs, &pgproto3.ReadyForQuery{
+				TxStatus: byte(txstatus.TXIDLE),
+			})
+		}
+
+		return flusher(msgs)
 	}
 
 	lastQuery := ""

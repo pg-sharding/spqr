@@ -204,16 +204,15 @@ func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error
 // - error: An error if the locking any issues.
 func LockKeyRange(ctx context.Context, mngr EntityMgr, keyRangeID string) (*kr.KeyRange, error) {
 	t := time.Now()
-	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
+	kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
 		retry.NewFibonacci(LockRetryStep)),
 		func(ctx context.Context) (*kr.KeyRange, error) {
 			return mngr.LockKeyRange(ctx, keyRangeID)
-		}); err != nil {
+		})
+	if err != nil {
 		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
 		return nil, err
-	} else {
-		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-		return kr, nil
 	}
-
+	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+	return kr, nil
 }

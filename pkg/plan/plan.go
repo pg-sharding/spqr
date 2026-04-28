@@ -434,10 +434,9 @@ func Combine(p1, p2 Plan) Plan {
 		case *ShardDispatchPlan:
 			if shq2.ExecTarget.Name == shq1.ExecTarget.Name {
 				return p1
-			} else {
-				return &ScatterPlan{
-					ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
-				}
+			}
+			return &ScatterPlan{
+				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 			}
 		}
 	}

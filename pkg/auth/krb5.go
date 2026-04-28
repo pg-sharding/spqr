@@ -119,9 +119,8 @@ func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err
 			return nil, fmt.Errorf("context credential is not of type *credentials.Credentials")
 		}
 		return id, nil
-	} else {
-		errText := "Kerberos authentication failed"
-		log.Print(errText)
-		return nil, fmt.Errorf("%s", errText)
 	}
+	errText := "Kerberos authentication failed"
+	log.Print(errText)
+	return nil, fmt.Errorf("%s", errText)
 }

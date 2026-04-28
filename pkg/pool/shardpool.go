@@ -437,9 +437,8 @@ func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host
 func (c *cPool) Put(sh shard.ShardHostInstance) error {
 	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
 		return val.(Pool).Put(sh)
-	} else {
-		panic(fmt.Sprintf("cPool.Put failed, hostname %s not found", sh.Instance().Hostname()))
 	}
+	panic(fmt.Sprintf("cPool.Put failed, hostname %s not found", sh.Instance().Hostname()))
 }
 
 // Discard removes a shard from the pool.
@@ -456,9 +455,8 @@ func (c *cPool) Put(sh shard.ShardHostInstance) error {
 func (c *cPool) Discard(sh shard.ShardHostInstance) error {
 	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
 		return val.(Pool).Discard(sh)
-	} else {
-		panic(fmt.Sprintf("cPool.Discard failed, hostname %s not found", sh.Instance().Hostname()))
 	}
+	panic(fmt.Sprintf("cPool.Discard failed, hostname %s not found", sh.Instance().Hostname()))
 }
 
 // SetRule initializes the backend rule for the cPool.

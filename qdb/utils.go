@@ -76,7 +76,6 @@ func GetMemPgQDB() (*MemPgQDB, error) {
 func GetStateKeeperQDB() (StateKeeperQDB, error) {
 	if config.RouterConfig().StoreTxDataPostgresql {
 		return GetMemPgQDB()
-	} else {
-		return GetMemQDB()
 	}
+	return GetMemQDB()
 }

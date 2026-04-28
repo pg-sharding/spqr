@@ -2680,18 +2680,18 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 			return err
 		}
 
-		if resp, err := rCl.OpenRouter(ctx, nil); err != nil {
+		resp, err := rCl.OpenRouter(ctx, nil)
+		if err != nil {
 			if st, ok := status.FromError(err); ok {
 				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
 					return retry.RetryableError(err)
 				}
 			}
 			return err
-		} else {
-			spqrlog.Zero.Debug().
-				Interface("response", resp).
-				Msg("open router response")
 		}
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("open router response")
 
 		return nil
 	})
@@ -3309,11 +3309,10 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
 		return err
-	} else {
-		return qc.traverseRouters(ctx,
-			gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
-		)
 	}
+	return qc.traverseRouters(ctx,
+		gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
+	)
 }
 
 func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {

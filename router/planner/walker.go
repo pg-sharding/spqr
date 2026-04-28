@@ -186,19 +186,19 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 			for _, innerExp := range e.Args {
 				switch iE := innerExp.(type) {
 				case *lyx.Select:
-					if tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE); err != nil {
+					tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE)
+					if err != nil {
 						return nil, err
-					} else {
-						p = plan.Combine(p, tmp)
-						deduced = true
 					}
+					p = plan.Combine(p, tmp)
+					deduced = true
 				case *lyx.SubLink:
-					if tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE.SubSelect); err != nil {
+					tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE.SubSelect)
+					if err != nil {
 						return nil, err
-					} else {
-						p = plan.Combine(p, tmp)
-						deduced = true
 					}
+					p = plan.Combine(p, tmp)
+					deduced = true
 				}
 			}
 			if !deduced {
@@ -246,17 +246,17 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 				p = plan.Combine(p, &plan.RandomDispatchPlan{})
 			}
 		case *lyx.Select:
-			if tmp, err := plr.PlanQueryTopLevel(ctx, rm, e); err != nil {
+			tmp, err := plr.PlanQueryTopLevel(ctx, rm, e)
+			if err != nil {
 				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
 			}
+			p = plan.Combine(p, tmp)
 		case *lyx.SubLink:
-			if tmp, err := plr.PlanQueryTopLevel(ctx, rm, e.SubSelect); err != nil {
+			tmp, err := plr.PlanQueryTopLevel(ctx, rm, e.SubSelect)
+			if err != nil {
 				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
 			}
+			p = plan.Combine(p, tmp)
 		}
 	}
 
@@ -274,11 +274,11 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 func PlanWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr QueryPlanner, withClause []*lyx.CommonTableExpr) (plan.Plan, error) {
 	var p plan.Plan
 	for _, cte := range withClause {
-		if tmp, err := plr.PlanQueryTopLevel(ctx, rm, cte.SubQuery); err != nil {
+		tmp, err := plr.PlanQueryTopLevel(ctx, rm, cte.SubQuery)
+		if err != nil {
 			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
 		}
+		p = plan.Combine(p, tmp)
 	}
 
 	return p, nil

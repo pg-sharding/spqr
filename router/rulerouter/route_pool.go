@@ -60,14 +60,14 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) 
 			return true
 		}
 
-		if cont, err := cb(rt); err != nil {
+		cont, err := cb(rt)
+		if err != nil {
 			spqrlog.Zero.Info().
 				Err(err).
 				Msg("error while notifying route")
 			return false
-		} else {
-			return cont
 		}
+		return cont
 	})
 
 	return err

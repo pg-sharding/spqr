@@ -10,8 +10,10 @@ linters:
          - name: unused-parameter
          - name: unexported-naming
          - name: unnecessary-if
+         - name: unnecessary-format
          - name: receiver-naming
          - name: if-return
+         - name: indent-error-flow 
          - name: add-constant
            disabled: true
          - name: line-length-limit
@@ -28,10 +30,17 @@ linters:
            disabled: true
          - name: unchecked-type-assertion
            disabled: true
+         - name: unnecessary-stmt
+           disabled: true
+         - name: use-errors-new
+           disabled: true
+         - name: unnecessary-format
+           disabled: true
          - name: unused-receiver
            disabled: true
          - name: empty-lines
            disabled: true
+
 
   exclusions:
     paths:

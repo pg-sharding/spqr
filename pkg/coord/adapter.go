@@ -1385,15 +1385,15 @@ func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransac
 
 func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
-	if transactionProto, err := conn.BeginTran(ctx, nil); err != nil {
+	transactionProto, err := conn.BeginTran(ctx, nil)
+	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
-	} else {
-		if transactionMeta, err := mtran.TransactionFromProto(transactionProto); err != nil {
-			return nil, err
-		} else {
-			return transactionMeta, nil
-		}
 	}
+	transactionMeta, err := mtran.TransactionFromProto(transactionProto)
+	if err != nil {
+		return nil, err
+	}
+	return transactionMeta, nil
 }
 
 func (a *Adapter) GetTxnBatchSize() uint16 {

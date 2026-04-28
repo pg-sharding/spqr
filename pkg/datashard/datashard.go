@@ -515,22 +515,22 @@ func (sh *Conn) fire(q string) error {
 	}
 
 	for {
-		if msg, err := sh.Receive(); err != nil {
+		msg, err := sh.Receive()
+		if err != nil {
 			return err
-		} else {
-			spqrlog.Zero.Debug().
-				Str("shard", sh.id).
-				Type("type", msg).
-				Msg("shard rollback response")
+		}
+		spqrlog.Zero.Debug().
+			Str("shard", sh.id).
+			Type("type", msg).
+			Msg("shard rollback response")
 
-			switch v := msg.(type) {
-			case *pgproto3.ReadyForQuery:
-				if v.TxStatus == byte(txstatus.TXIDLE) {
-					sh.SetTxStatus(txstatus.TXStatus(v.TxStatus))
-					return nil
-				}
-				return fmt.Errorf("unexpected tx status with rollback: %d", v.TxStatus)
+		switch v := msg.(type) {
+		case *pgproto3.ReadyForQuery:
+			if v.TxStatus == byte(txstatus.TXIDLE) {
+				sh.SetTxStatus(txstatus.TXStatus(v.TxStatus))
+				return nil
 			}
+			return fmt.Errorf("unexpected tx status with rollback: %d", v.TxStatus)
 		}
 	}
 }

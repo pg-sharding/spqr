@@ -47,16 +47,16 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetad
 		/* XXX: nothing, everything checked during analyze stage */
 
 	case *lyx.JoinExpr:
-		if tmp, err := qr.planFromNode(ctx, rm, q.Rarg); err != nil {
+		tmp1, err := qr.planFromNode(ctx, rm, q.Rarg)
+		if err != nil {
 			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
 		}
-		if tmp, err := qr.planFromNode(ctx, rm, q.Larg); err != nil {
+		p = plan.Combine(p, tmp1)
+		tmp2, err := qr.planFromNode(ctx, rm, q.Larg)
+		if err != nil {
 			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
 		}
+		p = plan.Combine(p, tmp2)
 
 	case *lyx.SubSelect:
 		return qr.planQueryV1(ctx, rm, q.Arg)
@@ -225,30 +225,28 @@ func (qr *ProxyQrouter) planInsertV1(
 				}
 			}
 			return nil, rerrors.ErrComplexQuery
-		} else {
-
-			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
-			if err != nil {
-				return nil, err
-			}
-
-			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
-			if err != nil {
-				return nil, err
-			}
-			for _, sh := range shs {
-				if sh.Name != shs[0].Name {
-					return nil, rerrors.ErrComplexQuery
-				}
-			}
-			if len(shs) > 0 {
-				p = plan.Combine(p, &plan.ShardDispatchPlan{
-					ExecTarget:         shs[0],
-					TargetSessionAttrs: config.TargetSessionAttrsRW,
-				})
-			}
-			return p, nil
 		}
+		insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+		if err != nil {
+			return nil, err
+		}
+
+		shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
+		if err != nil {
+			return nil, err
+		}
+		for _, sh := range shs {
+			if sh.Name != shs[0].Name {
+				return nil, rerrors.ErrComplexQuery
+			}
+		}
+		if len(shs) > 0 {
+			p = plan.Combine(p, &plan.ShardDispatchPlan{
+				ExecTarget:         shs[0],
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			})
+		}
+		return p, nil
 
 	case *lyx.ValueClause:
 		/* record all values from values scan */
@@ -270,36 +268,35 @@ func (qr *ProxyQrouter) planInsertV1(
 				}, nil
 			}
 			return p, nil
-		} else {
-			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
-			if err != nil {
-				return nil, err
-			}
-
-			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
-			if err != nil {
-				return nil, err
-			}
-			/* XXX: give change for engine v2 to rewrite queries */
-			for _, sh := range shs {
-				if sh.Name != shs[0].Name {
-					/* try to rewrite,
-					* but only for simple protocol or unparametrized xproto */
-					if len(rm.ParamRefs) == 0 {
-						return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
-					}
-					return nil, rerrors.ErrComplexQuery
-				}
-			}
-
-			if len(shs) > 0 {
-				p = plan.Combine(p, &plan.ShardDispatchPlan{
-					ExecTarget:         shs[0],
-					TargetSessionAttrs: config.TargetSessionAttrsRW,
-				})
-			}
-			return p, nil
 		}
+		insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+		if err != nil {
+			return nil, err
+		}
+
+		shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
+		if err != nil {
+			return nil, err
+		}
+		/* XXX: give change for engine v2 to rewrite queries */
+		for _, sh := range shs {
+			if sh.Name != shs[0].Name {
+				/* try to rewrite,
+				* but only for simple protocol or unparametrized xproto */
+				if len(rm.ParamRefs) == 0 {
+					return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
+				}
+				return nil, rerrors.ErrComplexQuery
+			}
+		}
+
+		if len(shs) > 0 {
+			p = plan.Combine(p, &plan.ShardDispatchPlan{
+				ExecTarget:         shs[0],
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			})
+		}
+		return p, nil
 
 	default:
 		return p, nil
@@ -335,32 +332,32 @@ func (qr *ProxyQrouter) planQueryV1(
 		 * Then try to route  both branches
 		 */
 
-		if tmp, err := qr.planQueryV1(ctx, rm, stmt.LArg); err != nil {
+		tmp1, err := qr.planQueryV1(ctx, rm, stmt.LArg)
+		if err != nil {
 			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
 		}
+		p = plan.Combine(p, tmp1)
 
-		if tmp, err := qr.planQueryV1(ctx, rm, stmt.RArg); err != nil {
+		tmp2, err := qr.planQueryV1(ctx, rm, stmt.RArg)
+		if err != nil {
 			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
 		}
+		p = plan.Combine(p, tmp2)
 
-		tmp, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
+		tmp3, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 		if err != nil {
 			return nil, err
 		}
 
-		p = plan.Combine(p, tmp)
+		p = plan.Combine(p, tmp3)
 
 		// collect table alias names, if any
 		// for single-table queries, process as usual
-		if tmp, err := qr.planFromClauseList(ctx, rm, stmt.FromClause); err != nil {
+		tmp4, err := qr.planFromClauseList(ctx, rm, stmt.FromClause)
+		if err != nil {
 			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
 		}
+		p = plan.Combine(p, tmp4)
 
 		return p, nil
 
@@ -895,10 +892,9 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	case *plan.RandomDispatchPlan:
 		if v.ExecTargets == nil {
 			return planner.SelectRandomDispatchPlan(qr.DataShardsRoutes())
-		} else {
-			/* reference relation case */
-			return planner.SelectRandomDispatchPlan(v.ExecTargets)
 		}
+		/* reference relation case */
+		return planner.SelectRandomDispatchPlan(v.ExecTargets)
 
 	case *plan.CopyPlan:
 		/* temporary */

@@ -249,27 +249,28 @@ func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string) error {
 
 func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
 	commands := make([]QdbStatement, 4)
-	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
+	keyRangeJSON, err := json.Marshal(*keyRange)
+	if err != nil {
 		return nil, err
-	} else {
-		cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
-		if err != nil {
-			return nil, err
-		}
-		commands[0] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
-			return nil, err
-		}
-		commands[1] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
-			return nil, err
-		}
-		commands[2] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
-			return nil, err
-		}
-		commands[3] = *cmd
 	}
+	cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
+	if err != nil {
+		return nil, err
+	}
+	commands[0] = *cmd
+	if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
+		return nil, err
+	}
+	commands[1] = *cmd
+	if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
+		return nil, err
+	}
+	commands[2] = *cmd
+	if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
+		return nil, err
+	}
+	commands[3] = *cmd
+
 	return commands, nil
 }
 
@@ -296,20 +297,20 @@ func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, e
 
 func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
 	commands := make([]QdbStatement, 2)
-	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
+	keyRangeJSON, err := json.Marshal(*keyRange)
+	if err != nil {
 		return nil, err
-	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
-			return nil, err
-		} else {
-			commands[0] = *cmd
-		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
-			return nil, err
-		} else {
-			commands[1] = *cmd
-		}
 	}
+	cmd1, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
+	if err != nil {
+		return nil, err
+	}
+	commands[0] = *cmd1
+	cmd2, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions)
+	if err != nil {
+		return nil, err
+	}
+	commands[1] = *cmd2
 	return commands, nil
 }
 
@@ -831,11 +832,11 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, relationFQN *rfqn.Relat
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if rr, ok := q.State.ReferenceRelations[tableName]; !ok {
+	rr, ok := q.State.ReferenceRelations[tableName]
+	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
-	} else {
-		return rr, nil
 	}
+	return rr, nil
 }
 
 // AlterReferenceRelationStorage implements XQDB.
@@ -890,23 +891,23 @@ func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distributio
 	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
 		q.State.RelationDistribution[r.Name] = distribution.ID
-		if cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution); err != nil {
+		cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution)
+		if err != nil {
 			return nil, err
-		} else {
-			commands = append(commands, *cmd)
 		}
+		commands = append(commands, *cmd)
 	}
 
-	if distributionJSON, err := json.Marshal(*distribution); err != nil {
+	distributionJSON, err := json.Marshal(*distribution)
+	if err != nil {
 		return nil, err
-	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
-			return nil, err
-		} else {
-			commands = append(commands, *cmd)
-			return commands, nil
-		}
 	}
+	cmd, err := NewQdbStatementExt(CMD_PUT, distribution.ID, string(distributionJSON), MapDistributions)
+	if err != nil {
+		return nil, err
+	}
+	commands = append(commands, *cmd)
+	return commands, nil
 }
 
 // TODO : unit tests
@@ -953,56 +954,53 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if ds, ok := q.State.Distributions[id]; !ok {
+	ds, ok := q.State.Distributions[id]
+	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
-	} else {
-
-		if ds.FQNRelations == nil {
-			/* Initialize metadata from previous db version. */
-			ds.FQNRelations = map[string]*DistributedRelation{}
-		}
-
-		ds.Version++
-
-		for _, r := range rels {
-			/* Do not use public iface function, because we already got lock. */
-			if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
-				/* Well, okay. We already have distribution for relation with
-				* this exact relname. What about schema?
-				* If schema matches, throw error. Otherwise, try to simple place this
-				* relation to fqn_relations. TODO: remove this nonsense after complete
-				* SPQR 3.0.0 transition. */
-				if dr := ds.Relations[r.QualifiedName().RelationName]; dr.SchemaName == r.SchemaName {
-					return spqrerror.Newf(
-						spqrerror.SPQR_INVALID_REQUEST,
-						"relation \"%s\" is already attached", r.QualifiedName().String())
-				} else {
-					_, ok := ds.FQNRelations[r.QualifiedName().String()]
-					if ok {
-						/* error */
-						return spqrerror.Newf(
-							spqrerror.SPQR_INVALID_REQUEST,
-							"relation \"%s\" is already attached", r.QualifiedName().String())
-
-					} else {
-						ds.FQNRelations[r.QualifiedName().String()] = r
-
-						/* Note we do not store relation distribution index here. */
-						return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds))
-					}
-				}
-			}
-
-			/* Now attach old-style. */
-			ds.Relations[r.Name] = r
-			q.State.RelationDistribution[r.Name] = id
-			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RelationDistribution, r.Name, id)); err != nil {
-				return err
-			}
-		}
-
-		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds))
 	}
+	if ds.FQNRelations == nil {
+		/* Initialize metadata from previous db version. */
+		ds.FQNRelations = map[string]*DistributedRelation{}
+	}
+
+	ds.Version++
+
+	for _, r := range rels {
+		/* Do not use public iface function, because we already got lock. */
+		if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
+			/* Well, okay. We already have distribution for relation with
+			* this exact relname. What about schema?
+			* If schema matches, throw error. Otherwise, try to simple place this
+			* relation to fqn_relations. TODO: remove this nonsense after complete
+			* SPQR 3.0.0 transition. */
+			if dr := ds.Relations[r.QualifiedName().RelationName]; dr.SchemaName == r.SchemaName {
+				return spqrerror.Newf(
+					spqrerror.SPQR_INVALID_REQUEST,
+					"relation \"%s\" is already attached", r.QualifiedName().String())
+			}
+			_, ok := ds.FQNRelations[r.QualifiedName().String()]
+			if ok {
+				/* error */
+				return spqrerror.Newf(
+					spqrerror.SPQR_INVALID_REQUEST,
+					"relation \"%s\" is already attached", r.QualifiedName().String())
+
+			}
+			ds.FQNRelations[r.QualifiedName().String()] = r
+
+			/* Note we do not store relation distribution index here. */
+			return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds))
+		}
+
+		/* Now attach old-style. */
+		ds.Relations[r.Name] = r
+		q.State.RelationDistribution[r.Name] = id
+		if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RelationDistribution, r.Name, id)); err != nil {
+			return err
+		}
+	}
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Distributions, id, ds))
 }
 
 // TODO: unit tests
@@ -1157,12 +1155,12 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if ds, ok := q.State.Distributions[id]; !ok {
+	ds, ok := q.State.Distributions[id]
+	if !ok {
 		// DEPRECATE this
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
-	} else {
-		return ds.Copy(), nil
 	}
+	return ds.Copy(), nil
 }
 
 // TODO : unit tests
@@ -1176,13 +1174,13 @@ func (q *MemQDB) CheckDistribution(_ context.Context, id string) (bool, error) {
 }
 
 func (q *MemQDB) relationDistributionInternal(relation *rfqn.RelationFQN) (*Distribution, error) {
-	if ds, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
+	ds, ok := q.State.RelationDistribution[relation.RelationName]
+	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relation)
-	} else {
-		// if there is no distr by key ds
-		// then we have corruption
-		return q.State.Distributions[ds].Copy(), nil
 	}
+	// if there is no distr by key ds
+	// then we have corruption
+	return q.State.Distributions[ds].Copy(), nil
 }
 
 func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.RelationFQN) (*Distribution, error) {
@@ -1725,17 +1723,15 @@ func (q *MemQDB) NextRange(_ context.Context, seqName string, rangeSize uint64) 
 
 	nextval := q.State.SequenceToValues[seqName] + 1
 
-	if idRange, err := NewRangeBySize(nextval, rangeSize); err != nil {
+	idRange, err := NewRangeBySize(nextval, rangeSize)
+	if err != nil {
 		return nil, fmt.Errorf("invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
-	} else {
-
-		q.State.SequenceToValues[seqName] = idRange.Right
-		if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.SequenceToValues, seqName, idRange.Right)); errDB != nil {
-			return nil, errDB
-		}
-		return idRange, nil
 	}
-
+	q.State.SequenceToValues[seqName] = idRange.Right
+	if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.SequenceToValues, seqName, idRange.Right)); errDB != nil {
+		return nil, errDB
+	}
+	return idRange, nil
 }
 
 func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
@@ -1775,9 +1771,8 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 		}
 		if err := json.Unmarshal([]byte(val), &distr); err != nil {
 			return nil, err
-		} else {
-			return NewUpdateCommand(q.State.Distributions, stmt.Key, &distr), nil
 		}
+		return NewUpdateCommand(q.State.Distributions, stmt.Key, &distr), nil
 	default:
 		return nil, fmt.Errorf("unsupported memqdb cmd %d (distributions)", stmt.CmdType)
 	}
@@ -1924,11 +1919,12 @@ func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement)
 	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if memOperations, err := q.packMemqdbCommands(operations); err != nil {
+
+	memOperations, err := q.packMemqdbCommands(operations)
+	if err != nil {
 		return err
-	} else {
-		return ExecuteCommands(q.DumpState, memOperations...)
 	}
+	return ExecuteCommands(q.DumpState, memOperations...)
 }
 
 func (q *MemQDB) CommitTransaction(_ context.Context, transaction *QdbTransaction) error {
@@ -1945,11 +1941,11 @@ func (q *MemQDB) CommitTransaction(_ context.Context, transaction *QdbTransactio
 	if transaction.Id() != q.activeTransaction {
 		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
 	}
-	if memOperations, err := q.packMemqdbCommands(transaction.commands); err != nil {
+	memOperations, err := q.packMemqdbCommands(transaction.commands)
+	if err != nil {
 		return err
-	} else {
-		return ExecuteCommands(q.DumpState, memOperations...)
 	}
+	return ExecuteCommands(q.DumpState, memOperations...)
 }
 
 func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction) error {
@@ -2034,22 +2030,23 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
+	tx, ok := q.State.TwoPhaseTx[gid]
+	if !ok {
 		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
-	} else {
-		return tx.SHardsIds, nil
 	}
+	return tx.SHardsIds, nil
 }
 
 // TXStatus implements DCStateKeeper.
 func (q *MemQDB) TXStatus(_ context.Context, gid string) (TwoPhaseTxState, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
+
+	tx, ok := q.State.TwoPhaseTx[gid]
+	if !ok {
 		return "", fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
-	} else {
-		return tx.State, nil
 	}
+	return tx.State, nil
 }
 
 // ListTXNames implements [DCStateKeeper].

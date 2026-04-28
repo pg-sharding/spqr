@@ -37,9 +37,9 @@ func (mts *MetaTransactionServer) CommitTran(ctx context.Context, request *proto
 }
 
 func (mts *MetaTransactionServer) BeginTran(ctx context.Context, _ *emptypb.Empty) (*proto.MetaTransactionReply, error) {
-	if tran, err := mts.impl.BeginTran(ctx); err != nil {
+	tran, err := mts.impl.BeginTran(ctx)
+	if err != nil {
 		return nil, err
-	} else {
-		return &proto.MetaTransactionReply{TransactionId: tran.TransactionId.String()}, nil
 	}
+	return &proto.MetaTransactionReply{TransactionId: tran.TransactionId.String()}, nil
 }

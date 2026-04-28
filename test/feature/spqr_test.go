@@ -471,36 +471,37 @@ func (tctx *testContext) closePreparedPostgresql() {
 }
 
 func (tctx *testContext) doPrepQueryPostgresql(host, query string, args []any) ([]map[string]any, error) {
-	if stmts, ok := tctx.preparedQueries[host]; !ok {
+	stmts, ok := tctx.preparedQueries[host]
+	if !ok {
 		return nil, fmt.Errorf("Query '%s' is not prepared", query)
-	} else {
-		if stmt, ok := stmts[query]; !ok {
-			return nil, fmt.Errorf("Query '%s' is not prepared", query)
-		} else {
-			rows, err := stmt.Query(args...)
-			if err != nil {
-				log.Printf("query error %#v\n", err)
-				return nil, err
-			}
-			defer func() {
-				_ = rows.Close()
-			}()
-			result := make([]map[string]any, 0)
-			for rows.Next() {
-				rowmap, err := testutil.CurrenRowToMap(rows)
-				if err != nil {
-					return nil, err
-				}
-				for k, v := range rowmap {
-					if v2, ok := v.([]byte); ok {
-						rowmap[k] = string(v2)
-					}
-				}
-				result = append(result, rowmap)
-			}
-			return result, nil
-		}
 	}
+
+	stmt, ok := stmts[query]
+	if !ok {
+		return nil, fmt.Errorf("Query '%s' is not prepared", query)
+	}
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		log.Printf("query error %#v\n", err)
+		return nil, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+	result := make([]map[string]any, 0)
+	for rows.Next() {
+		rowmap, err := testutil.CurrenRowToMap(rows)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range rowmap {
+			if v2, ok := v.([]byte); ok {
+				rowmap[k] = string(v2)
+			}
+		}
+		result = append(result, rowmap)
+	}
+	return result, nil
 }
 
 func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
@@ -732,11 +733,11 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 
 	//wait for the container to change state from "running".  stop operation and changing state is async
 	checkNotRunningService := func() bool {
-		if state, err := tctx.composer.ContainerState(service); err != nil {
+		state, err := tctx.composer.ContainerState(service)
+		if err != nil {
 			return false
-		} else {
-			return state != SERVICE_STATE_RUNNING
 		}
+		return state != SERVICE_STATE_RUNNING
 	}
 	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
 	if !retryStop {
@@ -1218,12 +1219,12 @@ func (tctx *testContext) checkCoordinatorInQDBFunc(expected string) func() bool 
 			return false
 		}
 		port := strings.Split(addr, ":")[1]
-		if mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port); err != nil {
+		mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port)
+		if err != nil {
 			log.Printf("cant't get real port: %s\n", err.Error())
 			return false
-		} else {
-			addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
 		}
+		addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
 
 		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {

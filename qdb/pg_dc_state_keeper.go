@@ -78,9 +78,8 @@ func (q *PgDCStateKeeper) getStorageShardConnect() (*config.ShardConnect, error)
 	}
 	if cfg, ok := q.shards.ShardsData[q.storage[0]]; ok {
 		return cfg, nil
-	} else {
-		return nil, fmt.Errorf("shard \"%s\" not found in config", q.storage[0])
 	}
+	return nil, fmt.Errorf("shard \"%s\" not found in config", q.storage[0])
 }
 
 func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
