@@ -1233,12 +1233,12 @@ func (qr *ProxyQrouter) plannerV1(
 
 	if sc, ok := p.(*plan.ScatterPlan); ok {
 		if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
-			var firstCTEkey rmeta.AuxValuesKey
+			var firstKey rmeta.AuxValuesKey
 			var ds *distributions.Distribution
 			var hf string
 
 			for k, v := range rm.UsedAuxCTE {
-				firstCTEkey = k
+				firstKey = k
 
 				for _, r := range v {
 					if rm.RFQNIsCTE(r) {
@@ -1262,7 +1262,7 @@ func (qr *ProxyQrouter) plannerV1(
 						hf = dRel.DistributionKey[0].HashFunction
 
 					} else if ds.Id != dsTmp.Id {
-						return nil, fmt.Errorf("query with non-collcatted joins")
+						return nil, fmt.Errorf("query with non-collocated joins")
 					}
 
 				}
@@ -1271,9 +1271,9 @@ func (qr *ProxyQrouter) plannerV1(
 
 			var shs []kr.ShardKey
 
-			cte, ok := rm.CteNames[firstCTEkey.CTEName]
+			cte, ok := rm.CteNames[firstKey.CTEName]
 			if !ok {
-				return nil, fmt.Errorf("failed to resolve CTE by name %v", firstCTEkey.CTEName)
+				return nil, fmt.Errorf("failed to resolve CTE by name %v", firstKey.CTEName)
 			}
 
 			if values, ok := cte.SubQuery.(*lyx.ValueClause); ok {
@@ -1287,7 +1287,7 @@ func (qr *ProxyQrouter) plannerV1(
 
 				dke := []distributions.DistributionKeyEntry{
 					{
-						Column:       firstCTEkey.ColRefName,
+						Column:       firstKey.ColRefName,
 						HashFunction: hf,
 					},
 				}
@@ -1300,7 +1300,7 @@ func (qr *ProxyQrouter) plannerV1(
 				return nil, rerrors.ErrComplexQuery
 			}
 
-			p, err = planner.RewriteDistributedRelWithValues(rm.Query, firstCTEkey.CTEName, shs)
+			p, err = planner.RewriteDistributedRelWithValues(rm.Query, firstKey.CTEName, shs)
 			if err != nil {
 				return nil, err
 			}
