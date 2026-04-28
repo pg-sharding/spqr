@@ -23,8 +23,8 @@ import (
 )
 
 type AuxValuesKey struct {
-	CTEName   string
-	ValueName string
+	CTEName    string
+	ColRefName string
 }
 
 type RoutingMetadataContext struct {
@@ -139,8 +139,8 @@ func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, qualN
 
 func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
 	k := AuxValuesKey{
-		CTEName:   name,
-		ValueName: value,
+		CTEName:    name,
+		ColRefName: value,
 	}
 	vals := rm.AuxValues[k]
 	vals = append(vals, v)
@@ -195,8 +195,8 @@ func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) AuxValues
 	}
 
 	return AuxValuesKey{
-		CTEName:   searchKey,
-		ValueName: cf.ColName,
+		CTEName:    searchKey,
+		ColRefName: cf.ColName,
 	}
 }
 
@@ -234,7 +234,6 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 
 // TODO : unit tests
 func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
-	spqrlog.Zero.Debug().Str("qname", resolvedRelation.String()).Str("col", colname).Msgf("!J!JHU!J!UH!U RECORD %+v", expr)
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
 		rm.Exprs[*resolvedRelation] = map[string][]any{}

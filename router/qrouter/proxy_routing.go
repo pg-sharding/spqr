@@ -143,8 +143,8 @@ func (qr *ProxyQrouter) planInsertV1(
 						}
 
 						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
-							CTEName:   sRv.RelationName,
-							ValueName: cc.ColName,
+							CTEName:    sRv.RelationName,
+							ColRefName: cc.ColName,
 						}]; ok {
 
 							rList := [][]lyx.Node{}
@@ -1231,36 +1231,81 @@ func (qr *ProxyQrouter) plannerV1(
 
 	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
-	// if sc, ok := p.(*plan.ScatterPlan); ok {
-	// 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
-	// 		var firstCTEkey rmeta.AuxValuesKey
-	// 		for k := range rm.UsedAuxCTE {
-	// 			firstCTEkey = k
-	// 		}
-	// 		/* simple WITH .. AS (VALUES()) SELECT .. JOIN .. on ..  */
+	if sc, ok := p.(*plan.ScatterPlan); ok {
+		if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
+			var firstCTEkey rmeta.AuxValuesKey
+			var ds *distributions.Distribution
+			var hf string
 
-	// 		var shs []kr.ShardKey
+			for k, v := range rm.UsedAuxCTE {
+				firstCTEkey = k
 
-	// 		cte := rm.CteNames[firstCTEkey.CTEName]
+				for _, r := range v {
+					if rm.RFQNIsCTE(r) {
+						continue
+					}
+					dsTmp, err := rm.GetRelationDistribution(ctx, r)
+					if err != nil {
+						return nil, err
+					}
 
-	// 		if values, ok := cte.SubQuery.(*lyx.ValueClause); ok {
+					if dsTmp.Id == distributions.REPLICATED {
+						// skip
+						continue
+					}
 
-	// 			cte.NameList
+					dRel := dsTmp.GetRelation(r)
 
-	// 			shs, err = planner.TuplePlansByDistributionEntry(ctx, values.Values, rm)
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
-	// 		} else {
-	// 			return nil, rerrors.ErrComplexQuery
-	// 		}
+					if ds == nil {
+						ds = dsTmp
+						/* XXX: support multicolumn here? */
+						hf = dRel.DistributionKey[0].HashFunction
 
-	// 		p, err = planner.RewriteDistributedRelWithValues(rm.Query, firstCTEkey.CTEName, shs)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 	}
-	// }
+					} else if ds.Id != dsTmp.Id {
+						return nil, fmt.Errorf("query with non-collcatted joins")
+					}
+
+				}
+			}
+			/* simple WITH .. AS (VALUES()) SELECT .. JOIN .. on ..  */
+
+			var shs []kr.ShardKey
+
+			cte, ok := rm.CteNames[firstCTEkey.CTEName]
+			if !ok {
+				return nil, fmt.Errorf("failed to resolve CTE by name %v", firstCTEkey.CTEName)
+			}
+
+			if values, ok := cte.SubQuery.(*lyx.ValueClause); ok {
+
+				routingListPos := map[string]int{}
+				for i, v := range cte.NameList {
+					routingListPos[v] = i
+				}
+
+				/* XXX: todo - support routing expression? */
+
+				dke := []distributions.DistributionKeyEntry{
+					{
+						Column:       firstCTEkey.ColRefName,
+						HashFunction: hf,
+					},
+				}
+
+				shs, err = planner.TuplePlansByDistributionEntry(ctx, values.Values, ds, rm, routingListPos, dke)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, rerrors.ErrComplexQuery
+			}
+
+			p, err = planner.RewriteDistributedRelWithValues(rm.Query, firstCTEkey.CTEName, shs)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
