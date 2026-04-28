@@ -1,11 +1,11 @@
 
 \c spqr-console
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
+CREATE DISTRIBUTION ds1 (integer HASH);
+CREATE KEY RANGE kridi2 from 2147483648 route to sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
-CREATE RELATION xjoin (id);
-CREATE RELATION yjoin (w_id);
-CREATE RELATION zjoin (a);
+CREATE RELATION xjoin (id HASH murmur);
+CREATE RELATION yjoin (w_id HASH murmur);
+CREATE RELATION zjoin (a HASH murmur);
 
 \c regress
 
@@ -44,8 +44,10 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id /* __spqr__engine_v2: fals
 SELECT FROM xjoin a JOIN xjoin b ON true;
 
 -- routable self join
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 12;
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 13;
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 14;
 SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 15;
-SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 11;
 
 SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE;
 
@@ -60,9 +62,9 @@ SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE WHERE b = 1;
 with v (i) as (values(10), (20), (25)) select * from v join xjoin t on v.i = t.id;
 
 -- no multishard/rewrite
-with v (j, i) as (values(1, 10), (1, 9), (1, 8)) select * from v join xjoin t on v.i = t.id;
-with v (j, i) as (values(1, 10), (1, 9), (1, 8)), v2 (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;
-with v (j, i) as (values(1, 10), (1, 9), (1, 8)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
+with v (j, i) as (values(1, 12), (1, 13), (1, 15)) select * from v join xjoin t on v.i = t.id;
+with v (j, i) as (values(1, 12), (1, 13), (1, 15)), v2 (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;
+with v (j, i) as (values(1, 12), (1, 13), (1, 15)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
 
 -- with multishard/rewrite
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;

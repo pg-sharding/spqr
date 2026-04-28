@@ -180,7 +180,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
 
-			alias, colname := lft.TableAlias, lft.ColName
+			leftAlias, leftColname := lft.TableAlias, lft.ColName
 
 			/* simple key-value pair */
 			switch right := texpr.Right.(type) {
@@ -189,20 +189,29 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
-				if _, err := rm.ProcessConstExpr(alias, colname, right); err != nil {
+				if _, err := rm.ProcessConstExpr(leftAlias, leftColname, right); err != nil {
 					return err
 				}
 
 			case *lyx.ColumnRef:
+
+				resolvedRelation, err := rm.ResolveRelationByAlias(leftAlias, leftColname)
+
+				if err != nil {
+					// failed to resolve relation, skip column
+					return err
+				}
+
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(right) {
 
-					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+					if ok, err := rm.ProcessConstExpr(leftAlias, leftColname, v); err != nil {
 						return err
 					} else if ok {
-
-						searchKey := rm.SearchKeyByColRef(right)
-						rm.UsedAuxCTE[searchKey] = struct{}{}
+						if resolvedRelation != nil {
+							searchKey := rm.SearchKeyByColRef(right)
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelation)
+						}
 					}
 				}
 
@@ -212,14 +221,17 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
 						return err
 					} else if ok {
-						searchKey := rm.SearchKeyByColRef(right)
-						rm.UsedAuxCTE[searchKey] = struct{}{}
+						if resolvedRelation != nil {
+							searchKey := rm.SearchKeyByColRef(right)
+
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelation)
+						}
 					}
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
-					if _, err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+					if _, err := rm.ProcessConstExpr(leftAlias, leftColname, expr); err != nil {
 						return err
 					}
 				}
@@ -309,7 +321,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, withClause []*lyx.CommonTableExpr) error {
 	for _, cte := range withClause {
-		rm.CteNames[cte.Name] = struct{}{}
+		rm.CteNames[cte.Name] = cte
 		switch qq := cte.SubQuery.(type) {
 		case *lyx.ValueClause:
 			/* special case */
