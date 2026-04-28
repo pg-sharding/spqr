@@ -697,11 +697,11 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 		} else /* REBOOTSTRAP */ {
 			memqdb, ok := mngr.QDB().(*qdb.MemQDB)
 			if !ok {
-				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "re-bootstraping is only allowed for MemQDB and MemPGQDB")
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
 			}
 
 			if !config.RouterConfig().UseCoordinatorInit {
-				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "re-bootstraping is only allowed for coordinator-managed routers")
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
 			}
 
 			etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
