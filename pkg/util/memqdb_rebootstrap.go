@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -21,9 +20,6 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		return err
 	}
 	for _, d := range ds {
-		if d.ID == distributions.REPLICATED {
-			continue
-		}
 		dStmts, err := swapDb.CreateDistribution(ctx, d)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")

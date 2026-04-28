@@ -854,6 +854,7 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *r
 
 // DropReferenceRelation implements XQDB.
 func (q *MemQDB) DropReferenceRelation(_ context.Context, relationFQN *rfqn.RelationFQN) error {
+	spqrlog.Zero.Debug().Str("rfqn", relationFQN.String()).Msg("memqdb: drop reference table")
 	tableName := relationFQN.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1006,7 +1007,7 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 
 // TODO: unit tests
 func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
-	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: detach table from distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
