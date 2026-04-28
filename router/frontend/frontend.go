@@ -173,7 +173,40 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q = &cpQ
 
 		rst.AddExtendedProtocMessage(q)
-		return nil
+
+		err := rst.ProcessExtendedBuffer(context.Background())
+
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Msg("client connection flushed")
+
+		switch err {
+		case nil:
+			/* ok */
+
+			return nil
+		case io.ErrUnexpectedEOF:
+			fallthrough
+		case io.EOF:
+			return err
+			// ok
+		default:
+			spqrlog.Zero.Error().
+				Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+				Msg("client iteration done with error")
+
+			/* try to report error to user  */
+			if rerr := rst.Reset(); rerr != nil {
+				return rerr
+			}
+
+			if err := rst.Client().ReplyErrMsgPure(err); err != nil {
+				return err
+			}
+
+			return rst.Client().Flush()
+		}
+
 	case *pgproto3.Bind:
 		// copy interface
 		cpQ := *q
