@@ -124,7 +124,7 @@ func randomHex(n int) (string, error) {
 	routingExpr				[]TypedColRef
 
 	alter_relation          *AlterRelationV2
-	alter_shard             *AlterShard
+	alter_shard 		    *AlterShard
 	option				   	GenericOption
 	options				   	[]GenericOption
 }

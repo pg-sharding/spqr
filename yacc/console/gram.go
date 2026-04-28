@@ -87,6 +87,7 @@ type yySymType struct {
 
 	alter                *Alter
 	alter_distribution   *AlterDistribution
+	alter_shard          *AlterShard
 	distributed_relation *DistributedRelation
 	alter_default_shard  *AlterDefaultShard
 
@@ -126,7 +127,6 @@ type yySymType struct {
 	routingExpr []TypedColRef
 
 	alter_relation *AlterRelationV2
-	alter_shard    *AlterShard
 	option         GenericOption
 	options        []GenericOption
 }

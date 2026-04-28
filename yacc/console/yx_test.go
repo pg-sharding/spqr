@@ -1734,6 +1734,21 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: `ALTER SHARD sh1 OPTIONS (user user1, dbname db1);`,
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterShard{
+					Shard: &spqrparser.ShardSelector{ID: "sh1"},
+					Element: &spqrparser.AlterShardOptions{
+						Options: []spqrparser.GenericOption{
+							{Name: "user", Arg: "user1"},
+							{Name: "dbname", Arg: "db1"},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "DROP SHARD sh1;",
 			exp: &spqrparser.Drop{
 				Element: &spqrparser.ShardSelector{

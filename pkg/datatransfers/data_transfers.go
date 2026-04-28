@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
@@ -60,59 +58,6 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 	return p.w.Write(bt)
 }
 
-var shards *config.DatatransferConnections
-var lock sync.RWMutex
-
-var localConfigDir = "/../../cmd/mover/shard_data.yaml"
-
-// createConnString generates a connection string for the specified shard ID.
-//
-// Parameters:
-// - shardID (string): The ID of the shard for which the connection string is generated.
-//
-// Returns:
-// - string: The generated connection string. If the shard ID is not found or if there are no hosts for the shard, an empty string is returned.
-func createConnString(shardID string) string {
-	lock.Lock()
-	defer lock.Unlock()
-
-	sd, ok := shards.ShardsData[shardID]
-	if !ok {
-		return ""
-	}
-	if len(sd.Hosts) == 0 {
-		return ""
-	}
-	// TODO find_master
-	host := strings.Split(sd.Hosts[0], ":")[0]
-	port := strings.Split(sd.Hosts[0], ":")[1]
-	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
-}
-
-// LoadConfig loads the configuration from the specified path or the localConfigDir directory.
-//
-// Parameters:
-// - path (string): the path to the configuration file.
-//
-// Returns:
-// - error: an error if the configuration cannot be loaded.
-func LoadConfig(path string) error {
-	spqrlog.Zero.Debug().Msg("called LoadConfig")
-	var err error
-	lock.Lock()
-	defer lock.Unlock()
-
-	shards, err = config.LoadShardDataCfg(path)
-	if err != nil {
-		p, _ := os.Getwd()
-		shards, err = config.LoadShardDataCfg(p + localConfigDir)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 /*
 MoveKeys performs physical key-range move from one datashard to another.
 It is assumed that passed key range is already locked on every online spqr-router.
@@ -142,7 +87,7 @@ Steps:
 //
 // Returns:
 //   - error: an error if the move fails.
-func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string) error {
+func MoveKeys(ctx context.Context, fromId, toId string, shardsData map[string]*config.ShardConnect, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string) error {
 	if toId == fromId {
 		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
 	}
@@ -161,13 +106,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			return err
 		}
 	}
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-	fromCfg, ok := shards.ShardsData[fromId]
+	fromCfg, ok := shardsData[fromId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
@@ -179,7 +118,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	defer func() {
 		_ = from.Close(ctx)
 	}()
-	toCfg, ok := shards.ShardsData[toId]
+	toCfg, ok := shardsData[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}
@@ -214,7 +153,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		case qdb.Locked:
 			t := time.Now()
 			// copy data of key range to receiving shard
-			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
+			if err = copyData(ctx, from, to, shardsData, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
 			}
 			if config.CoordinatorConfig().EnableICP {
@@ -287,7 +226,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
-func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
+func SyncReferenceRelation(ctx context.Context, fromId, toId string, shards map[string]*config.ShardConnect, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
 	tx, err := db.GetTransferTx(ctx, rel.RelationName.String())
 	if err != nil {
 		return err
@@ -306,13 +245,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 			return err
 		}
 	}
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-	fromCfg, ok := shards.ShardsData[fromId]
+	fromCfg, ok := shards[fromId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
@@ -324,7 +257,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	defer func() {
 		_ = from.Close(ctx)
 	}()
-	toCfg, ok := shards.ShardsData[toId]
+	toCfg, ok := shards[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}
@@ -341,7 +274,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		switch tx.Status {
 		case qdb.Planned:
 			// lock reference relation on its current shards
-			if err = lockReferenceRelation(ctx, rel); err != nil {
+			if err = lockReferenceRelation(ctx, rel, shards); err != nil {
 				return err
 			}
 			tx.Status = qdb.Locked
@@ -351,7 +284,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 			}
 		case qdb.Locked:
 			// copy data of key range to receiving shard
-			if err = copyReferenceRelationData(ctx, from, to, fromId, toId, rel); err != nil {
+			if err = copyReferenceRelationData(ctx, from, to, shards, fromId, toId, rel); err != nil {
 				return err
 			}
 			tx.Status = qdb.DataCopied
@@ -361,7 +294,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 			}
 		case qdb.DataCopied:
 			// unlock reference relation
-			if err = unlockReferenceRelation(ctx, rel); err != nil {
+			if err = unlockReferenceRelation(ctx, rel, shards); err != nil {
 				return err
 			}
 			if err = db.RemoveTransferTx(ctx, transferKey); err != nil {
@@ -407,18 +340,12 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) 
 func SetupFDW(
 	ctx context.Context,
 	to *pgx.Conn,
+	shards map[string]*config.ShardConnect,
 	fromShardId, toShardId string,
 	schemas map[string]struct{}) error {
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-			return err
-		}
-	}
 
-	fromShard := shards.ShardsData[fromShardId]
-	toShard := shards.ShardsData[toShardId]
+	fromShard := shards[fromShardId]
+	toShard := shards[toShardId]
 	dbName := fromShard.DB
 	fromHost, err := GetMasterHost(ctx, fromShard)
 	if err != nil {
@@ -477,9 +404,9 @@ func SetupFDW(
 	return err
 }
 
-func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
+func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation, shards map[string]*config.ShardConnect) error {
 	for _, shard := range relation.ShardIds {
-		connInfo, ok := shards.ShardsData[shard]
+		connInfo, ok := shards[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
 		}
@@ -523,9 +450,9 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	return tx.Commit(ctx)
 }
 
-func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
+func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation, shards map[string]*config.ShardConnect) error {
 	for _, shard := range relation.ShardIds {
-		connInfo, ok := shards.ShardsData[shard]
+		connInfo, ok := shards[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
 		}
@@ -574,17 +501,17 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 //
 // Returns:
 // - error: an error if the move fails.
-func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+func copyData(ctx context.Context, from, to *pgx.Conn, shards map[string]*config.ShardConnect, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.ListRelations() {
 		schemas[rel.Relation.GetSchema()] = struct{}{}
 	}
-	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, shards, fromShardId, toShardId, schemas); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
 		return err
 	}
-	fromShard := shards.ShardsData[fromShardId]
-	toShard := shards.ShardsData[toShardId]
+	fromShard := shards[fromShardId]
+	toShard := shards[toShardId]
 	dbName := fromShard.DB
 	fromHost, err := GetMasterHost(ctx, fromShard)
 	if err != nil {
@@ -677,17 +604,17 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	return nil
 }
 
-func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, rel *rrelation.ReferenceRelation) error {
+func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, shards map[string]*config.ShardConnect, fromId, toId string, rel *rrelation.ReferenceRelation) error {
 
 	schemas := make(map[string]struct{})
 	schemas[rel.QualifiedName().GetSchema()] = struct{}{}
 
-	if err := SetupFDW(ctx, to, fromId, toId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, shards, fromId, toId, schemas); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
 		return err
 	}
-	fromShard := shards.ShardsData[fromId]
-	toShard := shards.ShardsData[toId]
+	fromShard := shards[fromId]
+	toShard := shards[toId]
 	dbName := fromShard.DB
 	fromHost, err := GetMasterHost(ctx, fromShard)
 	if err != nil {
@@ -911,14 +838,8 @@ func getEntriesCount(ctx context.Context, conn Queryable, relName string, condit
 	return count, nil
 }
 
-func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.Conn) error) error {
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-	for id, shard := range shards.ShardsData {
+func TraverseShards(ctx context.Context, shards map[string]*config.ShardConnect, cb func(ctx context.Context, conn *pgx.Conn) error) error {
+	for id, shard := range shards {
 		conn, err := retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*pgx.Conn, error) {
 			return GetMasterConnection(ctx, shard, "traverse_shards")
 		})

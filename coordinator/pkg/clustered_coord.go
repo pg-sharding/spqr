@@ -610,47 +610,46 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 	}
 
 	// sync shards
-	if config.CoordinatorConfig().ShardDataCfg != "" {
-		shards, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().
-				Err(err).
-				Msg("failed to load shard data config")
-		}
+	conns, err := qdb.LoadShardsConnectionData(qc.db)
+	if err != nil {
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("failed to load shard data config")
+	}
 
-		if shards != nil {
-			topologyMap := topology.DataShardMapFromShardConnectConfig(shards.ShardsData)
-			for id, shard := range topologyMap {
-				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
-					spqrlog.Zero.Debug().
-						Str("shard", id).
-						Msg("already exists. creating shard skipped")
-					continue
-				}
-				if err := qc.AddDataShard(context.TODO(), shard); err != nil {
-					spqrlog.Zero.Error().
-						Err(err).
-						Msg("failed to add shard")
-				}
+	if config.CoordinatorConfig().ShardDataCfg != "" || config.CoordinatorConfig().ShardDataInQDB {
+		for id, shard := range conns {
+			if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
+				spqrlog.Zero.Debug().
+					Str("shard", id).
+					Msg("already exists. creating shard skipped")
+				continue
 			}
-			shardList, err := qc.db.GetTxMetaStorage(ctx)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
-			} else if len(shardList) == 0 && len(shards.ShardsData) > 0 {
-				shardIDs := make([]string, 0, len(shards.ShardsData))
-				for id := range shards.ShardsData {
-					shardIDs = append(shardIDs, id)
-				}
-				firstShardID := slices.Min(shardIDs)
-				s := []string{firstShardID}
-				if err := qc.db.SetTxMetaStorage(ctx, s); err != nil {
-					spqrlog.Zero.Error().Err(err).Strs("shard ids", s).Msg("failed to set two phase tx storage shards")
-				}
+			datashard := topology.DataShardFromShardConnectConfig(id, shard)
+			if err := qc.AddDataShard(context.TODO(), datashard); err != nil {
+				spqrlog.Zero.Error().
+					Err(err).
+					Msg("failed to add shard")
 			}
 		}
-		if err := qc.setUpSPQRGuard(ctx); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")
+	}
+
+	shardList, err := qc.db.GetTxMetaStorage(ctx)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
+	} else if len(shardList) == 0 && len(conns) > 0 {
+		shardIds := make([]string, 0, len(conns))
+		for id := range conns {
+			shardIds = append(shardIds, id)
 		}
+		firstShardId := slices.Min(shardIds)
+		s := []string{firstShardId}
+		if err := qc.db.SetTxMetaStorage(ctx, s); err != nil {
+			spqrlog.Zero.Error().Err(err).Strs("shard ids", s).Msg("failed to set two phase tx storage shards")
+		}
+	}
+	if err := qc.setUpSPQRGuard(ctx); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")
 	}
 
 	go qc.watchTaskGroups(context.TODO())
@@ -714,6 +713,10 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	shards, err := qdb.LoadShardsConnectionData(qc.db)
+	if err != nil {
+		return err
+	}
 	relsSet := make(map[string]struct{})
 	for _, ds := range dss {
 		if ds.Id == distributions.REPLICATED {
@@ -741,7 +744,7 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 		}
 	}
 
-	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(distributedRelations, referenceRelations))
+	return datatransfers.TraverseShards(ctx, shards, datatransfers.SetUpSPQRGuard(distributedRelations, referenceRelations))
 }
 
 // TODO : unit tests
@@ -1028,7 +1031,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 
 			if keyRange.ShardID != req.ShardID {
-				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
+				shardsData, err := qdb.LoadShardsConnectionData(qc.db)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to load shards connection data")
+					return err
+				}
+
+				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, shardsData, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 					return err
@@ -1073,7 +1082,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 
-			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
+			shardsData, err := qdb.LoadShardsConnectionData(qc.db)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to load shards connection data")
+				return err
+			}
+			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, shardsData, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
@@ -1178,11 +1192,11 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if _, err = qc.GetKeyRange(ctx, req.DestKeyRangeID); err == nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range \"%s\" already exists", req.DestKeyRangeID)
 	}
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	conns, err := qdb.LoadShardsConnectionData(qc.db)
 	if err != nil {
 		return err
 	}
-	destShardConn, ok := conns.ShardsData[req.ShardID]
+	destShardConn, ok := conns[req.ShardID]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("destination shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
@@ -1194,7 +1208,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		_ = destConn.Close(ctx)
 	}()
 
-	sourceShardConn, ok := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn, ok := conns[keyRange.ShardID]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
@@ -1319,7 +1333,11 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
 	}
 
-	if err := datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardID, schemas); err != nil {
+	shards, err := qdb.LoadShardsConnectionData(qc.db)
+	if err != nil {
+		return err
+	}
+	if err := datatransfers.SetupFDW(ctx, destConn, shards, keyRange.ShardID, req.ShardID, schemas); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
 		return err
 	}
@@ -1485,14 +1503,14 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	}
 
 	// Get connection to source shard's master
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	conns, err := qdb.LoadShardsConnectionData(qc.db)
 	if err != nil {
 		return err
 	}
-	if _, ok := conns.ShardsData[keyRange.ShardID]; !ok {
+	if _, ok := conns[keyRange.ShardID]; !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
-	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn := conns[keyRange.ShardID]
 	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "get_key_stats")
 	if err != nil {
 		return err
@@ -1935,14 +1953,14 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		return err
 	}
 	// Get connection to source shard's master
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	conns, err := qdb.LoadShardsConnectionData(qc.db)
 	if err != nil {
 		return err
 	}
-	if _, ok := conns.ShardsData[keyRange.ShardID]; !ok {
+	if _, ok := conns[keyRange.ShardID]; !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
-	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn := conns[keyRange.ShardID]
 	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "move_task_group_service_conn")
 	if err != nil {
 		return err
@@ -2853,7 +2871,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 }
 
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.db.AddShard(ctx, topology.DataShardToDB(shard)); err != nil {
+	if err := qc.Coordinator.AddDataShard(ctx, shard); err != nil {
 		return err
 	}
 
@@ -2950,7 +2968,12 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 
 	relationFQNs := []*rfqn.RelationFQN{r.RelationName}
 	go func() {
-		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard([]*rfqn.RelationFQN{}, relationFQNs)); err != nil {
+		shards, err := qdb.LoadShardsConnectionData(qc.db)
+		if err != nil {
+			spqrlog.Zero.Err(err).Msg("failed to load shards connection data")
+			return
+		}
+		if err := datatransfers.TraverseShards(ctx, shards, datatransfers.SetUpSPQRGuard([]*rfqn.RelationFQN{}, relationFQNs)); err != nil {
 			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
 		}
 	}()
@@ -3118,7 +3141,12 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 		relationFQNs[i] = rel.Relation
 	}
 	go func() {
-		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(relationFQNs, []*rfqn.RelationFQN{})); err != nil {
+		shards, err := qdb.LoadShardsConnectionData(qc.db)
+		if err != nil {
+			spqrlog.Zero.Err(err).Msg("failed to load shards connection data")
+			return
+		}
+		if err := datatransfers.TraverseShards(ctx, shards, datatransfers.SetUpSPQRGuard(relationFQNs, []*rfqn.RelationFQN{})); err != nil {
 			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
 		}
 	}()

@@ -63,7 +63,7 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		}
 		_ = conn.Close(ctx)
 	}
-	return nil, retry.RetryableError(spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master"))
+	return nil, retry.RetryableError(spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, fmt.Sprintf("unable to find master %#v", *s)))
 }
 
 func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) {
@@ -88,7 +88,7 @@ func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) 
 			return parts[0], nil
 		}
 	}
-	return "", spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
+	return "", spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, fmt.Sprintf("unable to find master %#v", *s))
 }
 
 func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {

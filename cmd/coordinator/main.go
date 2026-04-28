@@ -70,6 +70,10 @@ var rootCmd = &cobra.Command{
 			log.Println("Running roles config:", rolesCfgStr)
 		}
 
+		if config.CoordinatorConfig().ShardDataCfg != "" && config.CoordinatorConfig().ShardDataInQDB {
+			return fmt.Errorf("cannot use shard data from file and qdb simultaneously")
+		}
+
 		if logLevel != "" {
 			config.CoordinatorConfig().LogLevel = logLevel
 		}

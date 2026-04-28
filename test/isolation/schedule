@@ -6,4 +6,7 @@ test: move_schema_qualify
 test: move_fqn_relations
 test: 2pc
 test: 2pc_recover
+<<<<<<< HEAD
+=======
 test: move_cancel
+>>>>>>> master
