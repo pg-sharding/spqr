@@ -61,9 +61,9 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 	}
 	err = json.Unmarshal(data, qdb)
 
-	for kr, locked := range qdb.Freq {
+	for kr, locked := range qdb.State.Freq {
 		if locked {
-			qdb.Locks[kr].Lock()
+			qdb.State.Locks[kr].Lock()
 		}
 	}
 

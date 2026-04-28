@@ -37,6 +37,7 @@ Benro
 berule
 BOOLOID
 Bootstrapper
+bootstraping
 buildpackage
 cachedchecker
 caio
@@ -390,6 +391,7 @@ pgi
 pgoption
 PGPORT
 pgproto
+PGQDB
 pgquery
 pgsharding
 PGSSLMODE
@@ -422,6 +424,7 @@ pstmt
 PYTHONUNBUFFERED
 qcfg
 qdb
+QDBRe
 QDBKR
 QDBTx
 Qdocker

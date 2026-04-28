@@ -34,6 +34,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
+	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -693,7 +694,30 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
 				return nil, err
 			}
-		} // else re-bootstrap
+		} else /* REBOOTSTRAP */ {
+			memqdb, ok := mngr.QDB().(*qdb.MemQDB)
+			if !ok {
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
+			}
+
+			if !config.RouterConfig().UseCoordinatorInit {
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+			}
+
+			etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				if err := etcdConn.Client().Close(); err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+				}
+			}()
+
+			if err := util.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+				return nil, err
+			}
+		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter system"),
