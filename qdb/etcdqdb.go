@@ -1439,6 +1439,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	if err != nil {
 		return err
 	}
+	distribution.Version++
 
 	if distribution.FQNRelations == nil {
 		distribution.FQNRelations = map[string]*DistributedRelation{}
@@ -1504,6 +1505,7 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relati
 	if err != nil {
 		return err
 	}
+	distribution.Version++
 
 	if err := q.AlterSequenceDetachRelation(ctx, relation); err != nil {
 		return err
@@ -1531,9 +1533,12 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 	if err != nil {
 		return err
 	}
+	distribution.Version++
 
-	if _, ok := distribution.Relations[rel.Name]; !ok {
+	if dsRel, ok := distribution.Relations[rel.Name]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+	} else {
+		rel.Version = dsRel.Version + 1
 	}
 	distribution.Relations[rel.Name] = rel
 	qname := rel.QualifiedName()
@@ -1562,11 +1567,13 @@ func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string,
 	if err != nil {
 		return err
 	}
-
-	if _, ok := distribution.Relations[relationFQN.RelationName]; !ok {
+	distribution.Version++
+	dsRel, ok := distribution.Relations[relationFQN.RelationName]
+	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relationFQN.String())
 	}
-	distribution.Relations[relationFQN.RelationName].SchemaName = schemaName
+	dsRel.SchemaName = schemaName
+	dsRel.Version++
 	if ds, err := q.GetRelationDistribution(ctx, relationFQN); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relationFQN.String())
 	} else if ds.ID != id {
@@ -1591,11 +1598,14 @@ func (q *EtcdQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string
 	if err != nil {
 		return err
 	}
+	distribution.Version++
 
-	if _, ok := distribution.Relations[relationFQN.RelationName]; !ok {
+	dsRel, ok := distribution.Relations[relationFQN.RelationName]
+	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relationFQN.String())
 	}
-	distribution.Relations[relationFQN.RelationName].SchemaName = schemaName
+	dsRel.SchemaName = schemaName
+	dsRel.Version++
 	if ds, err := q.GetRelationDistribution(ctx, relationFQN); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relationFQN.String())
 	} else if ds.ID != dsID {
@@ -1606,6 +1616,7 @@ func (q *EtcdQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string
 		return fmt.Errorf("failed to get reference table: %s", err)
 	}
 	rel.SchemaName = schemaName
+	rel.Version++
 	relJson, err := json.Marshal(rel)
 	if err != nil {
 		return fmt.Errorf("failed to marshal reference table: %s", err)
@@ -1633,11 +1644,14 @@ func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, i
 	if err != nil {
 		return err
 	}
+	distribution.Version++
 
-	if _, ok := distribution.Relations[relationFQN.RelationName]; !ok {
+	rel, ok := distribution.Relations[relationFQN.RelationName]
+	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relationFQN.String())
 	}
-	distribution.Relations[relationFQN.RelationName].DistributionKey = distributionKey
+	rel.DistributionKey = distributionKey
+	rel.Version++
 	if ds, err := q.GetRelationDistribution(ctx, relationFQN); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relationFQN.String())
 	} else if ds.ID != id {

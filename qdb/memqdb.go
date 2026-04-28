@@ -831,11 +831,13 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *r
 	tableName := relationFQN.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if _, ok := q.ReferenceRelations[tableName]; !ok {
+	rel, ok := q.ReferenceRelations[tableName]
+	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	}
-	q.ReferenceRelations[tableName].ShardIds = shs
-	return nil
+	rel.ShardIds = shs
+	rel.Version++
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ReferenceRelations, tableName, rel))
 }
 
 // DropReferenceRelation implements XQDB.
@@ -947,6 +949,8 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 			ds.FQNRelations = map[string]*DistributedRelation{}
 		}
 
+		ds.Version++
+
 		for _, r := range rels {
 			/* Do not use public iface function, because we already got lock. */
 			if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
@@ -999,6 +1003,8 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relatio
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	}
 
+	ds.Version++
+
 	if err := q.AlterSequenceDetachRelation(ctx, relationFQN); err != nil {
 		return err
 	}
@@ -1022,6 +1028,7 @@ func (q *MemQDB) AlterDistributedRelation(_ context.Context, id string, rel *Dis
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
+	ds.Version++
 	if dsID, ok := q.RelationDistribution[rel.Name]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
 	} else if dsID != id {
@@ -1031,15 +1038,14 @@ func (q *MemQDB) AlterDistributedRelation(_ context.Context, id string, rel *Dis
 			rel.QualifiedName().String(), dsID, id)
 	}
 
+	rel.Version = ds.Relations[rel.Name].Version + 1
 	ds.Relations[rel.Name] = rel
-	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, rel.Name, id)); err != nil {
-		return err
-	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.RelationDistribution, rel.Name, id))
 }
 
 // TODO : unit tests
+// TODO: explicitly pass version
 func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation schema")
 	q.mu.Lock()
@@ -1049,6 +1055,7 @@ func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, re
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
+	ds.Version++
 	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
@@ -1058,12 +1065,14 @@ func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, re
 			relation.String(), dsID, id)
 	}
 
-	ds.Relations[relation.RelationName].SchemaName = schemaName
-	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relation.RelationName, id)); err != nil {
-		return err
+	rel, ok := ds.Relations[relation.RelationName]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" is attached to distribution \"%s\", but distribution does not contain it", relation.String(), ds.ID)
 	}
+	rel.SchemaName = schemaName
+	rel.Version++
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.RelationDistribution, relation.RelationName, id))
 }
 
 // TODO : unit tests
@@ -1090,8 +1099,14 @@ func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, rel
 		return fmt.Errorf("reference relation \"%s\" not found", relation.String())
 	}
 
-	ds.Relations[relation.RelationName].SchemaName = schemaName
+	dsRel, ok := ds.Relations[relation.RelationName]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" is attached to distribution \"%s\", but distribution does not contain it", relation.String(), ds.ID)
+	}
+	dsRel.SchemaName = schemaName
+	dsRel.Version++
 	rel.SchemaName = schemaName
+	rel.Version++
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.ReferenceRelations, relation.RelationName, rel))
 }
@@ -1111,8 +1126,14 @@ func (q *MemQDB) AlterDistributedRelationDistributionKey(_ context.Context, id s
 	} else if dsID != id {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), dsID, id)
 	}
+	rel, ok := ds.Relations[relation.RelationName]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" is attached to distribution \"%s\", but distribution does not contain it", relation.String(), ds.ID)
+	}
 
-	ds.Relations[relation.RelationName].DistributionKey = distributionKey
+	ds.Version++
+	rel.DistributionKey = distributionKey
+	rel.Version++
 	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relation.RelationName, id)); err != nil {
 		return err
 	}
