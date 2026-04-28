@@ -221,6 +221,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 
 	rm.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
+
 	for _, e := range r.GetDistributionKeyColumnNames() {
 		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
 	}
@@ -261,6 +262,9 @@ func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *
 func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) (*rfqn.RelationFQN, error) {
 	if _, ok := rm.Rels[rfqn.RelationFQN{RelationName: alias}]; ok {
 		return &rfqn.RelationFQN{RelationName: alias}, nil
+	}
+	if _, ok := rm.CTEAliases[alias]; ok {
+		return nil, nil
 	}
 	if resolvedRelation, ok := rm.TableAliases[alias]; ok {
 		// TBD: postpone routing from here to root of parsing tree

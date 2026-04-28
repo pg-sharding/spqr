@@ -4,16 +4,22 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
 CREATE RELATION xjoin (id);
+CREATE RELATION xjoin2 (id);
 CREATE RELATION yjoin (w_id);
 CREATE RELATION zjoin (a);
+
+CREATE REFERENCE RELATION rf;
 
 \c regress
 
 SET __spqr__engine_v2 TO on;
 
 CREATE TABLE xjoin(id int);
+CREATE TABLE xjoin2(id int);
 CREATE TABLE yjoin(w_id int);
 CREATE TABLE zjoin(a int, b int);
+
+CREATE TABLE rf(rid INT);
 
 INSERT INTO xjoin (id) values(1);
 INSERT INTO xjoin (id) values(10);
@@ -76,9 +82,14 @@ with v (i) as (values(10), (20), (25)) select * from v join xjoin t on t.id = v.
 
 with v (i) as (values(10), (20), (25)), z as (select * from v join xjoin t on v.i = t.id) SELECT * FROM z;
 
+with v(j, a) as (values(1,10)), v_j_d as (select * from v join rf on id=rid) , c as (select xx.id from xjoin xx join v_j_d  vv on vv.id=xx.id) select * from xjoin2 yy join c zz on zz.id=yy.id;
+
 DROP TABLE xjoin;
+DROP TABLE xjoin2;
 DROP TABLE yjoin;
 DROP TABLE zjoin;
+
+DROP TABLE rf;
 
 RESET __spqr__engine_v2;
 
