@@ -2288,6 +2288,10 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 				&pgproto3.Query{String: "begin"},
 				&pgproto3.Query{String: "insert into t (id) values(1022)"},
 
+				&pgproto3.Close{
+					Name:       "stmtcache_ft_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_ft_1",
 					Query: "SELECT * FROM t where id = $1;",
@@ -2326,6 +2330,7 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -2702,6 +2707,10 @@ func TestPrepExtendedPipeline(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "sssssdss",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "sssssdss",
 					Query: "SELECT 13",
@@ -2715,6 +2724,7 @@ func TestPrepExtendedPipeline(t *testing.T) {
 			},
 
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ReadyForQuery{
@@ -2740,6 +2750,10 @@ func TestPrepExtendedPipeline(t *testing.T) {
 		},
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "jodwjdewo",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "jodwjdewo",
 					Query: "SELECT 14",
@@ -2755,6 +2769,7 @@ func TestPrepExtendedPipeline(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ReadyForQuery{
@@ -2793,6 +2808,10 @@ func TestPrepExtendedPipeline(t *testing.T) {
 		},
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "n1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "n1",
 					Query: "SELECT 15",
@@ -2807,6 +2826,7 @@ func TestPrepExtendedPipeline(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{
 					ParameterOIDs: []uint32{},
@@ -2840,12 +2860,20 @@ func TestPrepExtendedPipeline(t *testing.T) {
 		},
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "nn1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "nn1",
 					Query: "SELECT 16",
 				},
 				&pgproto3.Bind{PreparedStatement: "nn1"},
 				&pgproto3.Execute{},
+				&pgproto3.Close{
+					Name:       "nn2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "nn2",
 					Query: "SELECT 2",
@@ -2855,6 +2883,7 @@ func TestPrepExtendedPipeline(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
@@ -2866,6 +2895,7 @@ func TestPrepExtendedPipeline(t *testing.T) {
 					CommandTag: []byte("SELECT 1"),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
@@ -2884,13 +2914,25 @@ func TestPrepExtendedPipeline(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "ppl1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "ppl1",
 					Query: "BEGIN",
 				},
+				&pgproto3.Close{
+					Name:       "ppl2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "ppl2",
 					Query: "ROLLBACK",
+				},
+				&pgproto3.Close{
+					Name:       "ppl3",
+					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
 					Name:  "ppl3",
@@ -2908,8 +2950,11 @@ func TestPrepExtendedPipeline(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.BindComplete{},
@@ -3032,6 +3077,10 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "sssssdss",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "sssssdss",
 					Query: "SELECT lol", /* should not compile */
@@ -3054,6 +3103,7 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 			},
 
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 					Message:  "column \"lol\" does not exist",
@@ -3108,6 +3158,10 @@ func TestDoubleDescribe(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "dd-1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "dd-1",
 					Query: "SELECT 1;",
@@ -3124,6 +3178,7 @@ func TestDoubleDescribe(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{
 					ParameterOIDs: []uint32{},
@@ -3686,6 +3741,10 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 		{
 			CheckCode: true,
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "err_test_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "err_test_1",
 					Query: "SELECT 1",
@@ -3711,6 +3770,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
@@ -3735,6 +3795,10 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 		{
 			CheckCode: true,
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "err_test_2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "err_test_2",
 					Query: "SELECT 1",
@@ -3768,6 +3832,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
@@ -3797,6 +3862,10 @@ func TestExtendedErrorImplicitTX(t *testing.T) {
 		{
 			CheckCode: true,
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "err_test_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "err_test_1",
 					Query: "SELECT 1",
@@ -3818,6 +3887,7 @@ func TestExtendedErrorImplicitTX(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
@@ -3958,6 +4028,10 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "P0",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "P0",
 					Query: "select 1",
@@ -3979,6 +4053,7 @@ func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
@@ -4118,6 +4193,10 @@ func TestClose(t *testing.T) {
 	for gr, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "p1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name: "p1",
 				},
@@ -4132,6 +4211,7 @@ func TestClose(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.CloseComplete{},
 				&pgproto3.ReadyForQuery{
@@ -4146,6 +4226,10 @@ func TestClose(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "p3",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name: "p3",
 				},
@@ -4160,6 +4244,7 @@ func TestClose(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.CloseComplete{},
 				&pgproto3.ReadyForQuery{
@@ -4178,6 +4263,10 @@ func TestClose(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "p2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name: "p2",
 				},
@@ -4192,6 +4281,7 @@ func TestClose(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.CloseComplete{},
@@ -4203,6 +4293,10 @@ func TestClose(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "p-zz1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name: "p-zz1",
 				},
@@ -4213,6 +4307,7 @@ func TestClose(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
@@ -4279,6 +4374,10 @@ func TestCloseNonExistedNamedPstmt(t *testing.T) {
 					ObjectType: 'S',
 					Name:       "non-existing-pstmt",
 				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "pstmt",
+				},
 				&pgproto3.Parse{
 					Query: "SELECT 42",
 					Name:  "pstmt",
@@ -4286,6 +4385,7 @@ func TestCloseNonExistedNamedPstmt(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
@@ -4309,6 +4409,10 @@ func TestFlush(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
 					Query: "select 42",
@@ -4319,6 +4423,7 @@ func TestFlush(t *testing.T) {
 				&pgproto3.Flush{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 			},
@@ -4343,6 +4448,10 @@ func TestDiscardAllRemovesPstmts(t *testing.T) {
 		/* by simple query */
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
 					Query: "select 42",
@@ -4364,6 +4473,7 @@ func TestDiscardAllRemovesPstmts(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
@@ -4601,6 +4711,10 @@ func TestDeallocateRemovesPstmtsByXproto(t *testing.T) {
 		/* by Execute(DEALLOCATE ALL) */
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "remover",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "remover",
 					Query: "DEALLOCATE ALL",
@@ -4628,6 +4742,7 @@ func TestDeallocateRemovesPstmtsByXproto(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
@@ -4853,6 +4968,10 @@ func TestDeallocatePrepareRemovesPstmtsByXproto(t *testing.T) {
 		/* by Execute(DEALLOCATE ALL) */
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "remover",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "remover",
 					Query: "DEALLOCATE PREPARE ALL",
@@ -4880,6 +4999,7 @@ func TestDeallocatePrepareRemovesPstmtsByXproto(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
