@@ -83,6 +83,73 @@ func TestCopyExtendedExecuteSyncCopyDoneSync(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "COPY t(id) FROM STDIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Sync{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Sync{},
+				&pgproto3.Sync{},
+
+				&pgproto3.CopyDone{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CopyInResponse{
+					ColumnFormatCodes: []uint16{0},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COPY 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "COPY t(id) FROM STDIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.CopyFail{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CopyInResponse{
+					ColumnFormatCodes: []uint16{0},
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "COPY from stdin failed: ",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 
 	protoTestRunner(t, frontend, tt)
@@ -119,6 +186,36 @@ func TestCopyExtendedExecuteCopyDoneSync(t *testing.T) {
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("COPY 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "COPY t(id) FROM STDIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.CopyFail{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CopyInResponse{
+					ColumnFormatCodes: []uint16{0},
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "COPY from stdin failed: ",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -162,6 +259,38 @@ func TestCopyExtendedExecuteFlushCopyDoneSync(t *testing.T) {
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("COPY 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "COPY t(id) FROM STDIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Flush{},
+
+				&pgproto3.CopyFail{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CopyInResponse{
+					ColumnFormatCodes: []uint16{0},
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "COPY from stdin failed: ",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

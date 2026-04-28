@@ -56,6 +56,7 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 
 					retMsgType.SeverityUnlocalized = ""
 					retMsgType.File = ""
+					retMsgType.Where = ""
 					if msgroup.CheckCode {
 						retMsgType.Message = ""
 					} else {
