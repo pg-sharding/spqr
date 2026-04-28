@@ -157,7 +157,7 @@ func (qr *ProxyQrouter) planInsertV1(
 								rList = append(rList, inner)
 							}
 
-							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, insertColsPos, qualName)
+							shs, err := planner.PlanDistributedRelationForKeys(ctx, rList, rm, insertColsPos, qualName)
 							if err != nil {
 								return nil, err
 							}
@@ -232,7 +232,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
+			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +276,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
+			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}

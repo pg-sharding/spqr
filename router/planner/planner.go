@@ -201,7 +201,6 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 
 func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
-	_ *distributions.DistributedRelation,
 	tp string,
 	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 
@@ -232,24 +231,12 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
-func PlanDistributedRelationInsert(
+func TuplePlansByDistributionEntry(
 	ctx context.Context,
 	routingList [][]lyx.Node,
+	ds *distributions.Distribution,
 	rm *rmeta.RoutingMetadataContext,
-	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
-
-	var ds *distributions.Distribution
-	var err error
-
-	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
-		return nil, err
-	}
-
-	/* Omit distributed relations */
-	if ds.Id == distributions.REPLICATED {
-		/* should not happen */
-		return nil, rerrors.ErrComplexQuery
-	}
+	insertColsPos map[string]int, distribKey []distributions.DistributionKeyEntry) ([]kr.ShardKey, error) {
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -257,12 +244,8 @@ func PlanDistributedRelationInsert(
 	}
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
-	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation, ok := ds.TryGetRelation(qualName)
-	if !ok {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
-	}
 
+	tupleShards := make([]kr.ShardKey, len(routingList))
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
 
@@ -275,21 +258,21 @@ func PlanDistributedRelationInsert(
 			* we have no insert cols specified, but still able to route on select
 			 */
 
-			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
+			hf, err := hashfunction.HashFunctionByName(distribKey[j].HashFunction)
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 				return nil, err
 			}
 
-			if len(relation.DistributionKey[j].Column) == 0 {
+			if len(distribKey[j].Column) == 0 {
 
-				if len(relation.DistributionKey[j].Expr.ColRefs) == 0 {
+				if len(distribKey[j].Expr.ColRefs) == 0 {
 					return nil, rerrors.ErrComplexQuery
 				}
 
 				acc := []byte{}
 
-				for _, cr := range relation.DistributionKey[j].Expr.ColRefs {
+				for _, cr := range distribKey[j].Expr.ColRefs {
 
 					val, ok := insertColsPos[cr.ColName]
 
@@ -309,7 +292,7 @@ func PlanDistributedRelationInsert(
 
 					/* this is always non-ident hash function */
 					itemVal, err := CalculateRoutingListTupleItemValue(rm,
-						relation, cr.ColType,
+						cr.ColType,
 						routingList[i][val],
 						queryParamsFormatCodes)
 
@@ -332,12 +315,11 @@ func PlanDistributedRelationInsert(
 				tup[j], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 
 			} else {
-				val, ok := insertColsPos[relation.DistributionKey[j].Column]
+				val, ok := insertColsPos[distribKey[j].Column]
 
 				if !ok {
 					return nil, nil
@@ -354,19 +336,17 @@ func PlanDistributedRelationInsert(
 				}
 
 				itemVal, err := CalculateRoutingListTupleItemValue(rm,
-					relation, tp,
+					tp,
 					routingList[i][val],
 					queryParamsFormatCodes)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 
 				tup[j], err = hashfunction.ApplyHashFunction(itemVal, ds.ColTypes[j], hf)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 			}
@@ -386,6 +366,32 @@ func PlanDistributedRelationInsert(
 		tupleShards[i] = tupleShard
 	}
 	return tupleShards, nil
+}
+
+func PlanDistributedRelationForKeys(
+	ctx context.Context,
+	routingList [][]lyx.Node,
+	rm *rmeta.RoutingMetadataContext,
+	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
+
+	var ds *distributions.Distribution
+	var err error
+
+	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
+		return nil, err
+	}
+
+	/* Omit distributed relations */
+	if ds.Id == distributions.REPLICATED {
+		/* should not happen */
+		return nil, rerrors.ErrComplexQuery
+	}
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+
+	return TuplePlansByDistributionEntry(ctx, routingList, ds, rm, insertColsPos, relation.DistributionKey)
 }
 
 func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
@@ -1049,7 +1055,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 						return nil, err
 					}
 
-					shs, err := PlanDistributedRelationInsert(ctx, q.Values, rm, insertColsPos, qualName)
+					shs, err := PlanDistributedRelationForKeys(ctx, q.Values, rm, insertColsPos, qualName)
 					if err != nil {
 						return nil, err
 					}

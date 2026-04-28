@@ -1,14 +1,14 @@
 \c spqr-console
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE DISTRIBUTION ds1 (integer HASH);
     add distribution    
 ------------------------
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 11
+CREATE KEY RANGE kridi2 from 2147483648 route to sh2 FOR DISTRIBUTION ds1;
+    add key range    
+---------------------
+ bound -> 2147483648
 (1 row)
 
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
@@ -17,21 +17,21 @@ CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
  bound -> 0
 (1 row)
 
-CREATE RELATION xjoin (id);
+CREATE RELATION xjoin (id HASH murmur);
        attach table       
 --------------------------
  relation name   -> xjoin
  distribution id -> ds1
 (2 rows)
 
-CREATE RELATION yjoin (w_id);
+CREATE RELATION yjoin (w_id HASH murmur);
        attach table       
 --------------------------
  relation name   -> yjoin
  distribution id -> ds1
 (2 rows)
 
-CREATE RELATION zjoin (a);
+CREATE RELATION zjoin (a HASH murmur);
        attach table       
 --------------------------
  relation name   -> zjoin
@@ -52,44 +52,44 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xjoin (id) values(1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xjoin (id) values(10);
-NOTICE: send query to shard(s) : sh1
-INSERT INTO xjoin (id) values(15);
 NOTICE: send query to shard(s) : sh2
+INSERT INTO xjoin (id) values(15);
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xjoin (id) values(25);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO yjoin (w_id) values(10);
-NOTICE: send query to shard(s) : sh1
-INSERT INTO yjoin (w_id) values(15);
 NOTICE: send query to shard(s) : sh2
+INSERT INTO yjoin (w_id) values(15);
+NOTICE: send query to shard(s) : sh1
 INSERT INTO yjoin (w_id) values(25);
 NOTICE: send query to shard(s) : sh2
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
  id | w_id 
 ----+------
  15 |   15
 (1 row)
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 and xjoin.id = 15  ORDER BY id;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
  id | w_id 
 ----+------
  15 |   15
 (1 row)
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 and xjoin.id = 1  ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1
  id | w_id 
 ----+------
 (0 rows)
 
 -- XXX: this used to work by miracle. We should re-support this in engine v2
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id /* __spqr__engine_v2: false */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
  id | w_id 
 ----+------
  15 |   15
@@ -101,8 +101,8 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | w_id 
 ----+------
   1 |    1
- 10 |   10
  15 |   15
+ 10 |   10
  25 |   25
 (4 rows)
 
@@ -113,15 +113,25 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (8 rows)
 
 -- routable self join
-SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 15;
-NOTICE: send query to shard(s) : sh2
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 12;
+NOTICE: send query to shard(s) : sh1
 --
-(2 rows)
+(0 rows)
 
-SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 11;
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 13;
+NOTICE: send query to shard(s) : sh1
+--
+(0 rows)
+
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 14;
 NOTICE: send query to shard(s) : sh2
 --
 (0 rows)
+
+SELECT FROM xjoin a JOIN xjoin b ON true WHERE a.id = 15;
+NOTICE: send query to shard(s) : sh1
+--
+(2 rows)
 
 SELECT FROM xjoin JOIN yjoin ON TRUE JOIN zjoin ON TRUE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -146,25 +156,25 @@ NOTICE: send query to shard(s) : sh1,sh2
 (2 rows)
 
 -- no multishard/rewrite
-with v (j, i) as (values(1, 10), (1, 9), (1, 8)) select * from v join xjoin t on v.i = t.id;
+with v (j, i) as (values(1, 12), (1, 13), (1, 15)) select * from v join xjoin t on v.i = t.id;
 NOTICE: send query to shard(s) : sh1
  j | i  | id 
 ---+----+----
- 1 | 10 | 10
+ 1 | 15 | 15
 (1 row)
 
-with v (j, i) as (values(1, 10), (1, 9), (1, 8)), v2 (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;
+with v (j, i) as (values(1, 12), (1, 13), (1, 15)), v2 (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;
 NOTICE: send query to shard(s) : sh1
  j | i  | id 
 ---+----+----
- 1 | 10 | 10
+ 1 | 15 | 15
 (1 row)
 
-with v (j, i) as (values(1, 10), (1, 9), (1, 8)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
+with v (j, i) as (values(1, 12), (1, 13), (1, 15)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
 NOTICE: send query to shard(s) : sh1
  j | i  | id 
 ---+----+----
- 1 | 10 | 10
+ 1 | 15 | 15
 (1 row)
 
 -- with multishard/rewrite

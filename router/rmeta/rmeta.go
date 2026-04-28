@@ -43,7 +43,7 @@ type RoutingMetadataContext struct {
 	ParamRefs    map[rfqn.RelationFQN]map[string][]int
 
 	// cached CTE names
-	CteNames map[string]struct{}
+	CteNames map[string]*lyx.CommonTableExpr
 
 	// needed to parse
 	// SELECT * FROM t1 a where a.i = 1
@@ -59,8 +59,9 @@ type RoutingMetadataContext struct {
 	Query string
 	Stmt  lyx.Node
 
-	AuxValues  map[AuxValuesKey][]lyx.Node
-	UsedAuxCTE map[string]struct{}
+	AuxValues map[AuxValuesKey][]lyx.Node
+	// CTE -> which distributed relations join on it.
+	UsedAuxCTE map[AuxValuesKey][]*rfqn.RelationFQN
 
 	/* Is query proven to be read-only? */
 	ro bool
@@ -93,7 +94,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	return &RoutingMetadataContext{
 		Rels:                       map[rfqn.RelationFQN]struct{}{},
 		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
-		CteNames:                   map[string]struct{}{},
+		CteNames:                   map[string]*lyx.CommonTableExpr{},
 		TableAliases:               map[string]rfqn.RelationFQN{},
 		CTEAliases:                 map[string]string{},
 		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
@@ -101,7 +102,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
-		UsedAuxCTE:                 map[string]struct{}{},
+		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
 		SPH:                        sph,
 		CSM:                        csm,
 		Mgr:                        mgr,
@@ -187,24 +188,20 @@ func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, co
 	return []any{singleVal}, err
 }
 
-func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) string {
+func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) AuxValuesKey {
 	searchKey := cf.TableAlias
 	if fullName, ok := rm.CTEAliases[cf.TableAlias]; ok {
 		searchKey = fullName
 	}
 
-	return searchKey
-}
-
-func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
-
-	searchKey := rm.SearchKeyByColRef(cf)
-
-	k := AuxValuesKey{
+	return AuxValuesKey{
 		CTEName:   searchKey,
 		ValueName: cf.ColName,
 	}
-	return rm.AuxValues[k]
+}
+
+func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+	return rm.AuxValues[rm.SearchKeyByColRef(cf)]
 }
 
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
