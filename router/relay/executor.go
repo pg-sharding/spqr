@@ -945,39 +945,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return nil
 
 	case *plan.CopyPlan:
-
-		if serv == nil {
-			/* Malformed */
-			return errUnAttached
-		}
-
-		/* Now dispatch this toplevel slice */
-		if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
-			return err
-		}
-
-		msg, _, err := serv.Receive()
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Str("server", serv.Name()).
-			Type("msg-type", msg).
-			Msg("received message from server")
-
-		switch msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = s.Client().Send(msg)
-			if err != nil {
-				return err
-			}
-
-			return s.copyFromExecutor(qd.simple)
-		default:
-			return server.ErrMultiShardSyncBroken
-		}
+		return rerrors.ErrExecutorSyncLost
 	case *plan.ScatterPlan:
 		if q.OverwriteCC != nil {
 			overwriteCC = q.OverwriteCC
