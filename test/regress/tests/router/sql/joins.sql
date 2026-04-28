@@ -70,8 +70,8 @@ with v (j, i) as (values(1, 10), (1, 20), (1, 25)), v2 (j, i) as (values(1, 10),
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
 
 
---with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
---with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on t.id = v.i;
+with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
+with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on t.id = v.i;
 with v (i) as (values(10), (20), (25)) select * from v join xjoin t on t.id = v.i;
 
 with v (i) as (values(10), (20), (25)), z as (select * from v join xjoin t on v.i = t.id) SELECT * FROM z;

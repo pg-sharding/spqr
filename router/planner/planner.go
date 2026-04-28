@@ -236,7 +236,7 @@ func TuplePlansByDistributionEntry(
 	routingList [][]lyx.Node,
 	ds *distributions.Distribution,
 	rm *rmeta.RoutingMetadataContext,
-	insertColsPos map[string]int, distribKey []distributions.DistributionKeyEntry) ([]kr.ShardKey, error) {
+	routingListPos map[string]int, distribKey []distributions.DistributionKeyEntry) ([]kr.ShardKey, error) {
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -274,7 +274,7 @@ func TuplePlansByDistributionEntry(
 
 				for _, cr := range distribKey[j].Expr.ColRefs {
 
-					val, ok := insertColsPos[cr.ColName]
+					val, ok := routingListPos[cr.ColName]
 
 					if !ok {
 						return nil, nil
@@ -319,7 +319,7 @@ func TuplePlansByDistributionEntry(
 				}
 
 			} else {
-				val, ok := insertColsPos[distribKey[j].Column]
+				val, ok := routingListPos[distribKey[j].Column]
 
 				if !ok {
 					return nil, nil

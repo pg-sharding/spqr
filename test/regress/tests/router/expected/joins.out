@@ -192,8 +192,25 @@ NOTICE: send query to shard(s) : sh1,sh2
  1 | 25 | 25
 (2 rows)
 
---with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
---with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on t.id = v.i;
+with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
+NOTICE: send query to shard(s) : sh1,sh2
+ i  | id 
+----+----
+ 10 | 10
+ 25 | 25
+ 20 |   
+(3 rows)
+
+with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on t.id = v.i;
+NOTICE: send query to shard(s) : sh1,sh2
+ i  | id 
+----+----
+    |  1
+ 10 | 10
+    | 15
+ 25 | 25
+(4 rows)
+
 with v (i) as (values(10), (20), (25)) select * from v join xjoin t on t.id = v.i;
 NOTICE: send query to shard(s) : sh1,sh2
  i  | id 

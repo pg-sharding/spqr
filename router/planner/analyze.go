@@ -195,7 +195,16 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 			case *lyx.ColumnRef:
 
-				resolvedRelation, err := rm.ResolveRelationByAlias(leftAlias, leftColname)
+				resolvedRelationLeft, err := rm.ResolveRelationByAlias(leftAlias, leftColname)
+
+				if err != nil {
+					// failed to resolve relation, skip column
+					return err
+				}
+
+				rightAlias, rightColname := right.TableAlias, right.ColName
+
+				resolvedRelationRight, err := rm.ResolveRelationByAlias(rightAlias, rightColname)
 
 				if err != nil {
 					// failed to resolve relation, skip column
@@ -208,23 +217,22 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					if ok, err := rm.ProcessConstExpr(leftAlias, leftColname, v); err != nil {
 						return err
 					} else if ok {
-						if resolvedRelation != nil {
+						if resolvedRelationRight != nil {
 							searchKey := rm.SearchKeyByColRef(right)
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelation)
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
 						}
 					}
 				}
 
-				alias, colname := right.TableAlias, right.ColName
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(lft) {
-					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+					if ok, err := rm.ProcessConstExpr(rightAlias, rightColname, v); err != nil {
 						return err
 					} else if ok {
-						if resolvedRelation != nil {
-							searchKey := rm.SearchKeyByColRef(right)
+						if resolvedRelationLeft != nil {
+							searchKey := rm.SearchKeyByColRef(lft)
 
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelation)
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
 						}
 					}
 				}
@@ -343,8 +351,8 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 						for auxValKey, val := range rm.AuxValues {
 							if auxValKey.CTEName == rv.RelationName {
 								rm.AuxValues[rmeta.AuxValuesKey{
-									CTEName:   cte.Name,
-									ValueName: auxValKey.ValueName,
+									CTEName:    cte.Name,
+									ColRefName: auxValKey.ColRefName,
 								}] = val
 							}
 						}
