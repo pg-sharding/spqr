@@ -276,18 +276,36 @@ type GenericOption struct {
 	Action GenericOptionAction
 }
 
-func OptionsFromSQL(options []spqrparser.GenericOption) []GenericOption {
+func OptionsFromSQL(options []spqrparser.GenericOption) ([]GenericOption, error) {
 	m := make([]GenericOption, 0, len(options))
 
 	for _, opt := range options {
+		action, err := genericOptionActionFromSQL(opt.Action)
+		if err != nil {
+			return nil, err
+		}
+
 		m = append(m, GenericOption{
 			Name:   opt.Name,
 			Arg:    opt.Arg,
-			Action: GenericOptionAction(opt.Action),
+			Action: action,
 		})
 	}
 
-	return m
+	return m, nil
+}
+
+func genericOptionActionFromSQL(action spqrparser.OptionAction) (GenericOptionAction, error) {
+	switch action {
+	case spqrparser.ADD:
+		return GenericOptionActionAdd, nil
+	case spqrparser.DROP:
+		return GenericOptionActionDrop, nil
+	case spqrparser.SET:
+		return GenericOptionActionSet, nil
+	default:
+		return -1, fmt.Errorf("unknown generic option action %q", action)
+	}
 }
 
 func TLSConfigFromOptions(options []GenericOption) *config.TLSConfig {
