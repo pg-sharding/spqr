@@ -461,7 +461,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 						return err
 					}
 
-					/* Mark router as opened in qdb */
+					/* Mark router as closed in qdb */
 					err := qc.db.CloseRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
@@ -479,6 +479,54 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					err := qc.db.OpenRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
+					}
+
+					if config.CoordinatorConfig().AutomaticRoutersRebootstrap {
+						dsCl := proto.NewDistributionServiceClient(cc)
+
+						dssProto, err := dsCl.ListDistributions(ctx, nil)
+						if err != nil {
+							return err
+						}
+
+						localDss, err := qc.ListDistributions(ctx)
+						if err != nil {
+							return err
+						}
+
+						localIDToDs := map[string]*distributions.Distribution{}
+						for _, ds := range localDss {
+							localIDToDs[ds.Id] = ds
+						}
+
+						// TODO: check key ranges
+						if func() bool {
+							if len(localDss) != len(dssProto.Distributions) {
+								return true
+							}
+							for _, dsProto := range dssProto.Distributions {
+								localDs, ok := localIDToDs[dsProto.Id]
+								if !ok {
+									return true
+								}
+								if localDs.Version > dsProto.Version {
+									return true
+								}
+							}
+							return false
+						}() {
+							return func() error {
+								qc.routerOpsMutex.Lock()
+								defer qc.routerOpsMutex.Unlock()
+
+								// re-bootstrap router
+								opsCl := proto.NewRouterOpsServiceClient(cc)
+								if _, err := opsCl.ReBootstrapRouter(ctx, nil); err != nil {
+									return err
+								}
+								return nil
+							}()
+						}
 					}
 				}
 				return nil
