@@ -68,6 +68,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE rf(rid INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xjoin (id) values(1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xjoin (id) values(10);
