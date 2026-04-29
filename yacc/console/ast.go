@@ -79,7 +79,7 @@ type DistributionDefinition struct {
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
-	ShardIds             []string
+	ShardIDs             []string
 }
 
 type UniqueIndexDefinition struct {
@@ -468,10 +468,7 @@ const (
 	TaskStr    = "task"
 )
 
-const (
-	//key range for default shard
-	DEFAULT_KEY_RANGE_SUFFIX = "DEFAULT"
-)
+const DefaultKeyRangeSuffix = "DEFAULT"
 
 // Statement represents a statement.
 type Statement interface {

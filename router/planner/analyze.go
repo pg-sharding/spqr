@@ -418,7 +418,7 @@ func AnalyzeQueryV1(
 			case *lyx.FuncApplication:
 				if e.Name == virtual.VirtualCTID {
 					/* we only support this if query is simple select */
-					rm.Is_SPQR_CTID = true
+					rm.IsSPQRCTID = true
 				}
 				for _, innerExp := range e.Args {
 					switch iE := innerExp.(type) {

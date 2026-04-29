@@ -161,7 +161,7 @@ type ReferenceRelation struct {
 	SchemaName            string            `json:"schema_name"`
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
-	ShardIds              []string          `json:"shard_ids"`
+	ShardIDs              []string          `json:"shard_ids"`
 
 	Version uint64    `json:"version,omitempty"`
 	ACL     []ACLItem `json:"acl,omitempty"`
@@ -299,7 +299,7 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 
 type TwoPCInfo struct {
 	Gid       string   `json:"gid"`
-	SHardsIds []string `json:"shard_ids"`
+	ShardsIDs []string `json:"shard_ids"`
 
 	State TwoPhaseTxState `json:"state"`
 

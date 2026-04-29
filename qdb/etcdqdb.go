@@ -83,7 +83,7 @@ const (
 	uniqueIndexesByRelationNamespace     = "/relation_unique_indexes"
 	twoPhaseTxMetaStoragePath            = "/2pc_meta_storage"
 
-	CoordKeepAliveTtl  = 3
+	CoordKeepAliveTTL  = 3
 	coordLockKey       = "coordinator_exists"
 	sequenceSpace      = "sequence_space"
 	transactionRequest = "transaction_request"
@@ -226,7 +226,7 @@ func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 		return nil, err
 	}
 	respKR := make([]QdbStatement, 2, 3)
-	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	resp, err := NewQdbStatement(CmdPut, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
 	}
@@ -236,14 +236,14 @@ func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key range: failed to marshal metadata: %s", err)
 	}
-	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	resp, err = NewQdbStatement(CmdPut, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
 	if err != nil {
 		return nil, err
 	}
 	respKR[1] = *resp
 
 	if keyRange.Locked {
-		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
+		resp, err := NewQdbStatement(CmdPut, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
 		if err != nil {
 			return nil, err
 		}
@@ -330,12 +330,12 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 		return nil, fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
 	respKR := make([]QdbStatement, 2)
-	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	resp, err := NewQdbStatement(CmdPut, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
 	}
 	respKR[0] = *resp
-	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	resp, err = NewQdbStatement(CmdPut, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
 	if err != nil {
 		return nil, err
 	}
@@ -369,13 +369,13 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		Msg("etcdqdb: drop key range")
 
 	resp := make([]QdbStatement, 2)
-	statement, err := NewQdbStatement(CMD_DELETE, keyRangeNodePath(id), "")
+	statement, err := NewQdbStatement(CmdDelete, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
 	}
 	resp[0] = *statement
 	// TODO: update to INT_MAX instead of deleting
-	statement, err = NewQdbStatement(CMD_DELETE, keyRangeMetaNodePath(id), "")
+	statement, err = NewQdbStatement(CmdDelete, keyRangeMetaNodePath(id), "")
 	if err != nil {
 		return nil, err
 	}
@@ -725,7 +725,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 		Str("address", addr).
 		Msg("etcdqdb: try coordinator lock")
 
-	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTtl)
+	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTTL)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
 		return err
@@ -1241,7 +1241,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
 			return err
 		}
-		rrs.ShardIds = shs
+		rrs.ShardIDs = shs
 
 		rrJson, err := json.Marshal(rrs)
 		if err != nil {
@@ -1345,7 +1345,7 @@ func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distributi
 	if err != nil {
 		return nil, err
 	}
-	if resp, err := NewQdbStatement(CMD_PUT, distributionNodePath(distribution.ID), string(distrJson)); err != nil {
+	if resp, err := NewQdbStatement(CmdPut, distributionNodePath(distribution.ID), string(distrJson)); err != nil {
 		return nil, err
 	} else {
 		spqrlog.Zero.Debug().
@@ -1805,12 +1805,12 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err = tx.Append(dsCommand); err != nil {
 		return err
 	}
-	idxCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexNodePath(idx.ID), string(idxJson))
+	idxCommand, err := NewQdbStatement(CmdPut, uniqueIndexNodePath(idx.ID), string(idxJson))
 	if err != nil {
 		return err
 	}
 
-	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJson))
+	idxByRelCommand, err := NewQdbStatement(CmdPut, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJson))
 	if err != nil {
 		return err
 	}
@@ -1874,12 +1874,12 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	if err = tx.Append(dsCommand); err != nil {
 		return err
 	}
-	idxCommand, err := NewQdbStatement(CMD_DELETE, uniqueIndexNodePath(idx.ID), "")
+	idxCommand, err := NewQdbStatement(CmdDelete, uniqueIndexNodePath(idx.ID), "")
 	if err != nil {
 		return err
 	}
 
-	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJson))
+	idxByRelCommand, err := NewQdbStatement(CmdPut, uniqueIndexesByRelationNodePath(idx.Relation), string(idxsByRelJson))
 	if err != nil {
 		return err
 	}
@@ -2704,7 +2704,7 @@ func (q *EtcdQDB) CreateSequence(_ context.Context, seqName string, initialValue
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")
 	key := sequenceNodePath(seqName)
-	statement, err := NewQdbStatement(CMD_PUT, key, fmt.Sprintf("%d", initialValue))
+	statement, err := NewQdbStatement(CmdPut, key, fmt.Sprintf("%d", initialValue))
 	if err != nil {
 		return nil, err
 	}
@@ -2836,13 +2836,13 @@ func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
 	writeOperations := make([]clientv3.Op, 0)
 	for _, v := range operations {
 		switch v.CmdType {
-		case CMD_PUT:
+		case CmdPut:
 			val, ok := v.Value.(string)
 			if !ok {
 				return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", v.Value)
 			}
 			writeOperations = append(writeOperations, clientv3.OpPut(v.Key, val))
-		case CMD_DELETE:
+		case CmdDelete:
 			writeOperations = append(writeOperations, clientv3.OpDelete(v.Key))
 		default:
 			return nil, fmt.Errorf("not found operation type: %d", v.CmdType)

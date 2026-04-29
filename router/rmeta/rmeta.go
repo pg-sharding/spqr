@@ -70,7 +70,7 @@ type RoutingMetadataContext struct {
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
-	Is_SPQR_CTID  bool
+	IsSPQRCTID    bool
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 

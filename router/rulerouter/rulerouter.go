@@ -63,8 +63,8 @@ type RuleRouterImpl struct {
 
 	initSem semaphore.Weighted
 
-	tcpConnCount    atomic.Int64
-	activeTcpCount  atomic.Int64
+	totalTCPCount   atomic.Int64
+	activeTCPCount  atomic.Int64
 	cancelConnCount atomic.Int64
 }
 
@@ -117,12 +117,12 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 
 // ReleaseConnection implements RuleRouter.
 func (r *RuleRouterImpl) ReleaseConnection() {
-	r.activeTcpCount.Add(-1)
+	r.activeTCPCount.Add(-1)
 }
 
 // ActiveTCPCount implements RuleRouter.
 func (r *RuleRouterImpl) ActiveTCPCount() int64 {
-	return r.activeTcpCount.Load()
+	return r.activeTCPCount.Load()
 }
 
 // TotalCancelCount implements RuleRouter.
@@ -132,7 +132,7 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 
 // TotalTCPCount implements RuleRouter.
 func (r *RuleRouterImpl) TotalTCPCount() int64 {
-	return r.tcpConnCount.Load()
+	return r.totalTCPCount.Load()
 }
 
 // TODO : unit tests
@@ -199,8 +199,8 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 
 // TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	r.tcpConnCount.Add(1)
-	r.activeTcpCount.Add(1)
+	r.totalTCPCount.Add(1)
+	r.activeTCPCount.Add(1)
 
 	cl := rclient.NewPsqlClient(conn,
 		pt,

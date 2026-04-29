@@ -2350,7 +2350,7 @@ yydefault:
 				Element: &ReferenceRelationDefinition{
 					TableName:            yyDollar[4].qname,
 					AutoIncrementEntries: yyDollar[5].aiEntrieslist,
-					ShardIds:             yyDollar[6].strlist,
+					ShardIDs:             yyDollar[6].strlist,
 				},
 			}
 		}

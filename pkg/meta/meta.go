@@ -492,17 +492,17 @@ func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrpars
 	r := &rrelation.ReferenceRelation{
 		RelationName:  stmt.TableName,
 		SchemaVersion: 1,
-		ShardIds:      stmt.ShardIds,
+		ShardIDs:      stmt.ShardIDs,
 	}
 
-	if len(stmt.ShardIds) == 0 {
+	if len(stmt.ShardIDs) == 0 {
 		// default is all shards
 		shs, err := mngr.ListShards(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for _, sh := range shs {
-			r.ShardIds = append(r.ShardIds, sh.ID)
+			r.ShardIDs = append(r.ShardIDs, sh.ID)
 		}
 	}
 
@@ -518,7 +518,7 @@ func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrpars
 				fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
 			},
 			{
-				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
+				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIDs, ",")),
 			},
 		},
 	}
@@ -1241,7 +1241,7 @@ func ProcMetadataCommand(ctx context.Context,
 			mgr.Cache().Reset()
 		case spqrparser.StaleClientsInvalidateTarget:
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+				if !netutil.TCPCheckAliveness(cl.Conn()) {
 					tts.WriteDataRow(fmt.Sprintf("signaled %d", cl.ID()))
 					return cl.Cancel()
 				}
@@ -1532,7 +1532,7 @@ func ProcessShowExtended(ctx context.Context,
 			resp = append(resp, client)
 			/* XXX: should we do this un-conditionally  or under separate setting? */
 			/*  When this is executed by coordinator, c is (validly) nil*/
-			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+			if c := client.Conn(); c != nil && !netutil.TCPCheckAliveness(c) {
 				if err := client.Cancel(); err != nil {
 					return err
 				}
@@ -2168,7 +2168,7 @@ func processShowInner(ctx context.Context,
 				fmt.Sprintf("%d", berule.ConnectionRetries),
 				berule.ConnectionTimeout.String(),
 				berule.KeepAlive.String(),
-				berule.TcpUserTimeout.String(),
+				berule.TCPUserTimeout.String(),
 			)
 		}
 		return tts, nil

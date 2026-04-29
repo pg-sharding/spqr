@@ -72,16 +72,16 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 			return err
 		}
 
-		if len(rel.ShardIds) == 0 {
+		if len(rel.ShardIDs) == 0 {
 			// XXX: should we error-our here?
 			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
 		}
-		fromShard := rel.ShardIds[0]
+		fromShard := rel.ShardIDs[0]
 
 		// XXX: should we ignore the command/error here?
-		destShards := rel.ShardIds
-		if !slices.Contains(rel.ShardIds, destShard) {
-			destShards = append(rel.ShardIds, destShard)
+		destShards := rel.ShardIDs
+		if !slices.Contains(rel.ShardIDs, destShard) {
+			destShards = append(rel.ShardIDs, destShard)
 		}
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {

@@ -1329,7 +1329,7 @@ func (qr *ProxyQrouter) plannerV1(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) planSPQR_CTID(
+func (qr *ProxyQrouter) planSPQRCTID(
 	_ context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
@@ -1771,8 +1771,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	/* TODO: support more cases */
-	if rm.Is_SPQR_CTID {
-		return qr.planSPQR_CTID(ctx, rm)
+	if rm.IsSPQRCTID {
+		return qr.planSPQRCTID(ctx, rm)
 	}
 
 	if rm.IsSplitUpdate {

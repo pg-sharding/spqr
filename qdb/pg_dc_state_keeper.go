@@ -261,10 +261,10 @@ func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, er
 	}
 	txInfoSlice, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*TwoPCInfo, error) {
 		info := &TwoPCInfo{
-			SHardsIds: []string{},
+			ShardsIDs: []string{},
 		}
 		status := ""
-		if err := row.Scan(&info.Gid, &status, &info.SHardsIds, &info.UpdatedAt); err != nil {
+		if err := row.Scan(&info.Gid, &status, &info.ShardsIDs, &info.UpdatedAt); err != nil {
 			return nil, err
 		}
 		state, err := TwoPhaseTXStateFromString(status)

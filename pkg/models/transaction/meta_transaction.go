@@ -68,11 +68,11 @@ type MetaTransactionChunk struct {
 const (
 	GR_ERROR = iota - 1
 	GR_UNKNOWN
-	GR_CreateDistributionRequest
-	GR_CreateKeyRange
-	GR_DropKeyRange
-	GR_UpdateKeyRange
-	GR_CreateSequence
+	GRCreateDistributionRequest
+	GRCreateKeyRange
+	GRDropKeyRange
+	GRUpdateKeyRange
+	GRCreateSequence
 )
 
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
@@ -136,11 +136,11 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, bool) {
 	result := GR_UNKNOWN
 	if request.CreateDistribution != nil {
-		result = GR_CreateDistributionRequest
+		result = GRCreateDistributionRequest
 	}
-	result = checkCommandPart(request.CreateKeyRange, result, GR_CreateKeyRange)
-	result = checkCommandPart(request.DropKeyRange, result, GR_DropKeyRange)
-	result = checkCommandPart(request.UpdateKeyRange, result, GR_UpdateKeyRange)
-	result = checkCommandPart(request.CreateSequence, result, GR_CreateSequence)
+	result = checkCommandPart(request.CreateKeyRange, result, GRCreateKeyRange)
+	result = checkCommandPart(request.DropKeyRange, result, GRDropKeyRange)
+	result = checkCommandPart(request.UpdateKeyRange, result, GRUpdateKeyRange)
+	result = checkCommandPart(request.CreateSequence, result, GRCreateSequence)
 	return result, result != GR_UNKNOWN && result != GR_ERROR
 }

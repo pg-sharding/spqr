@@ -109,12 +109,12 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 			}
 		}
 
-		ref_rels, err := etcdConn.ListReferenceRelations(ctx)
+		refRels, err := etcdConn.ListReferenceRelations(ctx)
 		if err != nil {
 			return err
 		}
 
-		for _, rr := range ref_rels {
+		for _, rr := range refRels {
 			entries := []*rrelation.AutoIncrementEntry{}
 
 			for c, seq := range rr.ColumnSequenceMapping {

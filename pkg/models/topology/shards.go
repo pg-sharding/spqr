@@ -312,26 +312,26 @@ func genericOptionActionFromSQL(action spqrparser.OptionAction) (GenericOptionAc
 
 func TLSConfigFromOptions(options []GenericOption) *config.TLSConfig {
 	tls := &config.TLSConfig{}
-	hasTlsOption := false
+	hasTLSOption := false
 
 	for _, opt := range options {
 		switch opt.Name {
 		case "sslmode":
 			tls.SslMode = opt.Arg
-			hasTlsOption = true
+			hasTLSOption = true
 		case "key_file":
 			tls.KeyFile = opt.Arg
-			hasTlsOption = true
+			hasTLSOption = true
 		case "root_cert_file":
 			tls.RootCertFile = opt.Arg
-			hasTlsOption = true
+			hasTLSOption = true
 		case "cert_file":
 			tls.CertFile = opt.Arg
-			hasTlsOption = true
+			hasTLSOption = true
 		}
 	}
 
-	if !hasTlsOption {
+	if !hasTLSOption {
 		return nil
 	}
 	return tls

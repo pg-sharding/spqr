@@ -1289,7 +1289,7 @@ create_stmt:
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
-				ShardIds: $6,
+				ShardIDs: $6,
 			},
 		}
 	}

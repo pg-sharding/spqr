@@ -29,7 +29,7 @@ func NewDefaultShardManager(distribution *distributions.Distribution,
 }
 
 func DefaultKeyRangeId(distrib *distributions.Distribution) string {
-	return distrib.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
+	return distrib.Id + "." + spqrparser.DefaultKeyRangeSuffix
 }
 
 func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {

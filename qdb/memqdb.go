@@ -252,20 +252,20 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
+		cmd, err := NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
 		if err != nil {
 			return nil, err
 		}
 		commands[0] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
+		if cmd, err = NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
 			return nil, err
 		}
 		commands[1] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
+		if cmd, err = NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
 			return nil, err
 		}
 		commands[2] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
+		if cmd, err = NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
 			return nil, err
 		}
 		commands[3] = *cmd
@@ -276,17 +276,17 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
 	commands := make([]QdbStatement, 3)
 
-	cmd, err := NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapKrs)
+	cmd, err := NewQdbStatementExt(CmdDelete, keyRangeId, "", MapKrs)
 	if err != nil {
 		return nil, err
 	}
 	commands[0] = *cmd
-	cmd, err = NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapLocks)
+	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeId, "", MapLocks)
 	if err != nil {
 		return nil, err
 	}
 	commands[1] = *cmd
-	cmd, err = NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapFreq)
+	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeId, "", MapFreq)
 	if err != nil {
 		return nil, err
 	}
@@ -299,12 +299,12 @@ func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
 			return nil, err
 		} else {
 			commands[0] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
 			return nil, err
 		} else {
 			commands[1] = *cmd
@@ -847,7 +847,7 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *r
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	}
-	rel.ShardIds = shs
+	rel.ShardIDs = shs
 	rel.Version++
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.ReferenceRelations, tableName, rel))
 }
@@ -890,7 +890,7 @@ func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distributio
 	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
 		q.State.RelationDistribution[r.Name] = distribution.ID
-		if cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, r.Name, distribution.ID, MapRelationDistribution); err != nil {
 			return nil, err
 		} else {
 			commands = append(commands, *cmd)
@@ -900,7 +900,7 @@ func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distributio
 	if distributionJSON, err := json.Marshal(*distribution); err != nil {
 		return nil, err
 	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
+		if cmd, err := NewQdbStatementExt(CmdPut, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
 			return nil, err
 		} else {
 			commands = append(commands, *cmd)
@@ -1603,11 +1603,11 @@ func (q *MemQDB) GetAllTaskGroupStatuses(_ context.Context) (map[string]*TaskGro
 // ==============================================================================
 
 func (q *MemQDB) createSequenceQdbStatements(seqName string, initialValue int64) ([]QdbStatement, error) {
-	cmd1, err := NewQdbStatementExt(CMD_PUT, seqName, true, MapSequences)
+	cmd1, err := NewQdbStatementExt(CmdPut, seqName, true, MapSequences)
 	if err != nil {
 		return nil, err
 	}
-	cmd2, err := NewQdbStatementExt(CMD_PUT, seqName, initialValue, MapSequenceToValues)
+	cmd2, err := NewQdbStatementExt(CmdPut, seqName, initialValue, MapSequenceToValues)
 	if err != nil {
 		return nil, err
 	}
@@ -1751,9 +1751,9 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 
 func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.RelationDistribution, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(string)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
@@ -1765,9 +1765,9 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 }
 func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.Distributions, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		var distr Distribution
 		val, ok := stmt.Value.(string)
 		if !ok {
@@ -1785,9 +1785,9 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.Krs, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(string)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
@@ -1804,9 +1804,9 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.Freq, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		valFreq := true
 		if stmt.Value == "false" {
 			valFreq = false
@@ -1819,9 +1819,9 @@ func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.Locks, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(string)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
@@ -1844,9 +1844,9 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.KrVersions, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(int)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapKrVersions, int is expected", stmt.Value)
@@ -1859,9 +1859,9 @@ func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.Sequences, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(bool)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapSequences, bool is expected", stmt.Value)
@@ -1874,9 +1874,9 @@ func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
 
 func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
-	case CMD_DELETE:
+	case CmdDelete:
 		return NewDeleteCommand(q.State.SequenceToValues, stmt.Key), nil
-	case CMD_PUT:
+	case CmdPut:
 		val, ok := stmt.Value.(int64)
 		if !ok {
 			return nil, fmt.Errorf("incorrect value type %T for MapSequenceToValues, int64 is expected", stmt.Value)
@@ -1990,7 +1990,7 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 	}
 	info := &TwoPCInfo{
 		Gid:       id,
-		SHardsIds: nil,
+		ShardsIDs: nil,
 		State:     TwoPhaseInitState,
 		Locked:    true,
 	}
@@ -2019,7 +2019,7 @@ func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []st
 
 	info := &TwoPCInfo{
 		Gid:       id,
-		SHardsIds: shards,
+		ShardsIDs: shards,
 		State:     TwoPhaseInitState,
 		Locked:    true,
 	}
@@ -2037,7 +2037,7 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
 		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
 	} else {
-		return tx.SHardsIds, nil
+		return tx.ShardsIDs, nil
 	}
 }
 

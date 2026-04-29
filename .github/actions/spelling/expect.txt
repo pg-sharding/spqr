@@ -36,8 +36,8 @@ benchbase
 Benro
 berule
 BOOLOID
-Bootstrapper
 bootstraping
+Bootstrapper
 buildpackage
 cachedchecker
 caio
@@ -424,8 +424,8 @@ pstmt
 PYTHONUNBUFFERED
 qcfg
 qdb
-QDBRe
 QDBKR
+QDBRe
 QDBTx
 Qdocker
 qlogger
@@ -518,6 +518,7 @@ spqr
 SPQRA
 SPQRB
 SPQRC
+SPQRCTID
 SPQRD
 spqrdump
 SPQRE
@@ -544,6 +545,7 @@ SPQRX
 SPQRZ
 SQLF
 sqlfile
+SQLIn
 SQLOn
 sqlx
 sshjt

@@ -56,12 +56,12 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		}
 	}
 
-	ref_rels, err := etcdConn.ListReferenceRelations(ctx)
+	refRels, err := etcdConn.ListReferenceRelations(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, rr := range ref_rels {
+	for _, rr := range refRels {
 		if err := swapDb.CreateReferenceRelation(ctx, rr); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 			return err

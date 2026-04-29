@@ -89,7 +89,7 @@ type SimpleSessionParamHandler struct {
 	paramCodes []int16
 
 	showNoticeMessages bool
-	maintain_params    bool
+	maintainParams     bool
 }
 
 func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
@@ -211,12 +211,12 @@ func (cl *SimpleSessionParamHandler) DistributionKey() string {
 
 // MaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) MaintainParams() bool {
-	return cl.maintain_params
+	return cl.maintainParams
 }
 
 // SetMaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
-	cl.maintain_params = val
+	cl.maintainParams = val
 }
 
 // SetShowNoticeMsg implements client.Client.
@@ -503,7 +503,7 @@ func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
+func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
 
@@ -514,7 +514,7 @@ func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehavio
 			SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
 		defaultTsa:            t,
-		showNoticeMessages:    show_notice,
+		showNoticeMessages:    showNotice,
 		defaultCommitStrategy: ds,
 	}
 }
