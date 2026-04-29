@@ -469,7 +469,7 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 	}
 }
 
-var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
+var boolGUCs = []BoolGUCimpl{
 	{
 		n:         SPQR_ALLOW_SPLIT_UPDATE,
 		shortName: "allow split update",

@@ -297,7 +297,7 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	var matchedKrkey *kr.KeyRange = nil
+	var matchedKrkey *kr.KeyRange
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&

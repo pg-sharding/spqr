@@ -23,8 +23,8 @@ func closeSession(sess *concurrency.Session) {
 }
 
 var (
-	local   *MemQDB   = nil
-	localPg *MemPgQDB = nil
+	local   *MemQDB
+	localPg *MemPgQDB
 )
 
 func GetMemQDB() (*MemQDB, error) {

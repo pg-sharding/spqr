@@ -39,7 +39,7 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetad
 		Type("node-type", node).
 		Msg("planning from node")
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	switch q := node.(type) {
 	case *lyx.RangeVar:
@@ -71,7 +71,7 @@ func (qr *ProxyQrouter) planFromClauseList(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext, clause []lyx.FromClauseNode) (plan.Plan, error) {
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	for _, node := range clause {
 		tmp, err := qr.planFromNode(ctx, rm, node)
