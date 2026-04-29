@@ -133,6 +133,8 @@ const (
 	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
 )
 
+//revive:enable:var-naming
+
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */

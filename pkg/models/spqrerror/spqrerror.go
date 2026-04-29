@@ -42,6 +42,8 @@ const (
 	PG_SYNTAX_ERROR            = "42601"
 )
 
+//revive:enable:var-naming
+
 var ExistingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:         "failed to match any datashard",
 	SPQR_SKIP:                 "skip executing this query, wait for next",
