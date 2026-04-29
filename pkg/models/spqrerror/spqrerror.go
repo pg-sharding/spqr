@@ -86,15 +86,21 @@ var _ error = &SpqrError{}
 type SpqrError struct {
 	Err error
 
-	ErrorCode  string
-	Position   int32
-	ErrHint    string
-	ErrDetail  string
-	ErrContext string
+	ErrorCode     string
+	Position      int32
+	InternalQuery string
+	ErrHint       string
+	ErrDetail     string
+	ErrContext    string
 }
 
 func (e *SpqrError) Hint(h string) *SpqrError {
 	e.ErrHint = h
+	return e
+}
+
+func (e *SpqrError) Query(q string) *SpqrError {
+	e.InternalQuery = q
 	return e
 }
 
