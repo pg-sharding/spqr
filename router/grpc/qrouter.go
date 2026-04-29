@@ -11,12 +11,16 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/util"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -41,6 +45,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedReferenceRelationsServiceServer
 	protos.UnimplementedMetaTransactionGossipServiceServer
 	protos.UnimplementedTwoPhaseTxMetaServiceServer
+	protos.UnimplementedRouterOpsServiceServer
 
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
@@ -822,6 +827,33 @@ func (l *LocalQrouterServer) SetTwoPhaseTxMetaStorage(ctx context.Context, req *
 	return nil, l.mgr.SetTwoPhaseTxMetaStorage(ctx, req.Storage)
 }
 
+// ReBootstrapRouter implements [proto.RouterOpsServiceServer].
+func (l *LocalQrouterServer) ReBootstrapRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	memqdb, ok := l.mgr.QDB().(*qdb.MemQDB)
+	if !ok {
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
+	}
+
+	if !config.RouterConfig().UseCoordinatorInit {
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+	}
+
+	etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := etcdConn.Client().Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+		}
+	}()
+
+	if err := util.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -845,6 +877,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterMetaTransactionGossipServiceServer(server, lqr)
 	protos.RegisterShardServiceServer(server, lqr)
 	protos.RegisterTwoPhaseTxMetaServiceServer(server, lqr)
+	protos.RegisterRouterOpsServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -860,3 +893,4 @@ var _ protos.ShardServiceServer = &LocalQrouterServer{}
 var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}
 var _ protos.MetaTransactionGossipServiceServer = &LocalQrouterServer{}
 var _ protos.TwoPhaseTxMetaServiceServer = &LocalQrouterServer{}
+var _ protos.RouterOpsServiceServer = &LocalQrouterServer{}
