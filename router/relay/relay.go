@@ -998,6 +998,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 	case *pgproto3.Sync:
 		/* XXX: dont do it in flush case */
 		rst.PipelineCleanup()
+		return nil
 	case *pgproto3.Flush:
 		return rst.Client().Flush()
 	case *pgproto3.Parse:
