@@ -880,10 +880,10 @@ func (rst *RelayStateImpl) BindPrepared(
 			return fmt.Errorf("extended xproto state out of sync")
 		}
 
-		f := func(maxrows uint32) error {
+		f := func(maxRows uint32) error {
 
 			if rst.QueryExecutor().PortalSuspendedPending() {
-				return BindExecAndReadSliceResult(rst, false, nil, destinationPortal, maxrows)
+				return BindExecAndReadSliceResult(rst, false, nil, destinationPortal, maxRows)
 			}
 
 			p := rst.bindQueryPlan
@@ -920,7 +920,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				}
 			}
 
-			return BindExecAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, maxrows)
+			return BindExecAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, maxRows)
 		}
 
 		/* only populate map for non-empty portal */
@@ -947,7 +947,7 @@ func (rst *RelayStateImpl) BindPrepared(
 	return nil
 }
 
-func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
+func (rst *RelayStateImpl) ExecutePortal(portal string, maxRows uint32) error {
 	startTime := time.Now()
 	q := rst.plainQ
 	spqrlog.Zero.Debug().
@@ -967,7 +967,7 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 		if rst.execute == nil {
 			return rerrors.ErrRelaySyncLost
 		}
-		err = rst.execute(maxrows)
+		err = rst.execute(maxRows)
 		if err != nil {
 			rst.execute = nil
 			rst.bindQueryPlan = nil
@@ -976,7 +976,7 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 		if rst.executeMp[portal] == nil {
 			return rerrors.ErrRelaySyncLost
 		}
-		err = rst.executeMp[portal](maxrows)
+		err = rst.executeMp[portal](maxRows)
 
 		if err != nil {
 			/* Note we do not delete from executeMP, this is intentional */
