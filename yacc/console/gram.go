@@ -2421,7 +2421,7 @@ yydefault:
 		{
 			yyVAL.order_clause = &lyx.SortBy{
 				Node:      yyDollar[3].colref,
-				SortbyDir: yyDollar[4].opt_asc_desc,
+				SortbyDir: int64(yyDollar[4].opt_asc_desc),
 			}
 		}
 	case 184:

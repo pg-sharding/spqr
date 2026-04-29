@@ -443,7 +443,7 @@ type ParamRef struct {
 func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 	switch right := expr.(type) {
 	case *lyx.ParamRef:
-		return ParamRef{Indx: right.Number - 1}, nil
+		return ParamRef{Indx: int(right.Number - 1)}, nil
 	case *lyx.AExprSConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:
