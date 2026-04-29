@@ -62,7 +62,7 @@ func (l *LocalQrouterServer) CreateReferenceRelations(ctx context.Context, reque
 // CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 
-	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIDs); err != nil {
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, 
 // CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 
-	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIDs); err != nil {
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
 		return nil, err
 	}
 

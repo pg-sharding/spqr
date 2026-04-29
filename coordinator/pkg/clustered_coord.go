@@ -2993,7 +2993,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, rela
 			resp, err := cl.AlterReferenceRelationStorage(ctx,
 				&proto.AlterReferenceRelationStorageRequest{
 					Relation: rfqn.RelationFQNToProto(relationFQN),
-					ShardIDs: rel.ShardIDs,
+					ShardIds: rel.ShardIDs,
 				})
 			if err != nil {
 				return err
@@ -3038,7 +3038,7 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 			c := proto.NewReferenceRelationsServiceClient(cc)
 			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
 				Relation: rfqn.RelationFQNToProto(relationFQN),
-				ShardIDs: shardsIntersect,
+				ShardIds: shardsIntersect,
 			})
 			return err
 		}); err != nil {

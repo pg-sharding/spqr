@@ -83,7 +83,7 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 		RelationName:          rfqn.RelationFQNFromProto(p.RelName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
-		ShardIDs:              p.ShardIDs,
+		ShardIDs:              p.ShardIds,
 
 		Version: p.Version,
 		ACL:     acl.ACLFromProto(p.Acl),
@@ -95,7 +95,7 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 		RelName:         rfqn.RelationFQNToProto(p.RelationName),
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
-		ShardIDs:        p.ShardIDs,
+		ShardIds:        p.ShardIDs,
 
 		Version: p.Version,
 		Acl:     acl.ACLTOProto(p.ACL),
