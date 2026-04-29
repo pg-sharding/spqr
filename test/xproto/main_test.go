@@ -77,7 +77,9 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 				default:
 					break
 				}
-				assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", gr, ind))
+				if !assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", gr, ind)) {
+					t.FailNow()
+				}
 			}
 		}
 	}
