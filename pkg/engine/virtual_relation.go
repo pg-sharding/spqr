@@ -74,7 +74,7 @@ func KeyRangeVirtualRelationScanExtended(
 	locks []string,
 	dists []*distributions.Distribution) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "next_lower_bound", "coverage", "locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "nextLowerBound", "coverage", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -128,13 +128,13 @@ func KeyRangeVirtualRelationScanExtended(
 			}
 		}
 
-		next_lower_bound := "+inf"
+		nextLowerBound := "+inf"
 
 		var maxValue any
 		if nextKr != nil {
 			maxValue = nextKr.LowerBound[0]
 
-			next_lower_bound = strings.Join(nextKr.SendRaw(), ",")
+			nextLowerBound = strings.Join(nextKr.SendRaw(), ",")
 		} else {
 			// Last key range - calculate coverage to max value
 
@@ -168,7 +168,7 @@ func KeyRangeVirtualRelationScanExtended(
 			keyRange.ShardID,
 			keyRange.Distribution,
 			strings.Join(keyRange.SendRaw(), ","),
-			next_lower_bound,
+			nextLowerBound,
 			coverage,
 			isLocked,
 		)
@@ -524,7 +524,7 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 			[]byte(cl.DB()),
 			[]byte(hostname),
 			[]byte(rAddr),
-			fmt.Appendf(nil, "%v", netutil.TCP_CheckAliveness(cl.Conn()))}
+			fmt.Appendf(nil, "%v", netutil.TCPCheckAliveness(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",

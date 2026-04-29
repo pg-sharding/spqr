@@ -120,7 +120,7 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 		cfg.AdminConsolePort = strconv.FormatInt(int64(*ov.AdminPort), 10)
 	}
 	if ov.GrpcPort != nil && *ov.GrpcPort != 0 {
-		cfg.GrpcApiPort = strconv.FormatInt(int64(*ov.GrpcPort), 10)
+		cfg.GrpcAPIPort = strconv.FormatInt(int64(*ov.GrpcPort), 10)
 	}
 
 	if ov.DefaultRouteBehaviour != nil && *ov.DefaultRouteBehaviour != "" {

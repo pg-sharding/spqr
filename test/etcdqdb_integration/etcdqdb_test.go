@@ -195,9 +195,9 @@ func TestTransactions(t *testing.T) {
 		is.NoError(err)
 		t.Run("happy path", func(_ *testing.T) {
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
-				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
-				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test2", Value: "val2"},
+				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
 			err := db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
@@ -215,7 +215,7 @@ func TestTransactions(t *testing.T) {
 		t.Run("2 sequential runs", func(_ *testing.T) {
 			//run1
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test3", Value: "val3"},
+				{CmdType: qdb.CmdPut, Key: "test3", Value: "val3"},
 			}
 			err := db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
@@ -225,8 +225,8 @@ func TestTransactions(t *testing.T) {
 			is.Equal("val3", string(result.Kvs[0].Value))
 			//run2
 			statements = []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
-				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
 			err = db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
@@ -250,9 +250,9 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
-				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
-				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test2", Value: "val2"},
+				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
 			err = tran.Append(statements)
 			is.NoError(err)
@@ -275,7 +275,7 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 			}
 			err = tran1.Append(statements)
 			is.NoError(err)
@@ -293,7 +293,7 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 			}
 			err = tran1.Append(statements)
 			is.NoError(err)

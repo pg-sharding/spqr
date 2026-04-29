@@ -17,15 +17,15 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 
 	ord, ok := order.(*lyx.SortBy)
 	if ok {
-		var asc_desc int
+		var ascDesc int
 
 		switch ord.SortbyDir {
 		case lyx.SORTBY_ASC:
-			asc_desc = ASC
+			ascDesc = ASC
 		case lyx.SORTBY_DESC:
-			asc_desc = DESC
+			ascDesc = DESC
 		case lyx.SORTBY_DEFAULT:
-			asc_desc = ASC
+			ascDesc = ASC
 		default:
 			return nil, fmt.Errorf("wrong sorting option (asc/desc)")
 		}
@@ -39,9 +39,9 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 			return nil, fmt.Errorf("unsupported ORDER BY node type %T", ord.Node)
 		}
 		sortable := SortableWithContext{
-			Data:      data,
-			Col_index: colOrder[colRef.ColName],
-			Order:     asc_desc,
+			Data:     data,
+			ColIndex: colOrder[colRef.ColName],
+			Order:    ascDesc,
 			Op:        op,
 		}
 		sort.Sort(sortable)

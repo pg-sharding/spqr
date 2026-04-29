@@ -621,7 +621,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 	if objType == xproto.ObjectTypePortal {
 
 		if !rst.unnamedPortalExists {
-			return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
+			return spqrerror.New(spqrerror.PGPORTAlDOESNOTEXISTS, "portal \"\" does not exist")
 		}
 
 		spqrlog.Zero.Debug().
@@ -648,7 +648,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			if name != "" {
 				if _, ok := rst.executeMp[name]; !ok {
 					return spqrerror.New(
-						spqrerror.PG_PORTAl_DOES_NOT_EXISTS,
+						spqrerror.PGPORTAlDOESNOTEXISTS,
 						fmt.Sprintf("portal \"%s\" does not exists", name))
 				}
 				p = rst.bindQueryPlanMP[name]
@@ -747,7 +747,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 		if desc != nil {
 			// if we did overwrite something - remove our
 			// columns from output
-			for ind := range def.OverwriteRemoveParamIds {
+			for ind := range def.OverwriteRemoveParamIDs {
 				// NB: ind are zero - indexed
 				desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
 			}
@@ -805,7 +805,7 @@ func (rst *RelayStateImpl) BindPrepared(
 		return pstmtDoesNotExistsErr(preparedStatement)
 	}
 
-	if def.OverwriteRemoveParamIds != nil {
+	if def.OverwriteRemoveParamIDs != nil {
 		// we did query overwrite for sole reason -
 		// to insert next sequence value.
 		// XXX: this needs a massive refactor later

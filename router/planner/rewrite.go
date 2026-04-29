@@ -419,7 +419,7 @@ func InsertSequenceParamRef(_ context.Context,
 
 			// analyze lyx statement
 			maxID := getMaxPrepStmtID(stmt)
-			def.OverwriteRemoveParamIds = map[int]struct{}{maxID: {}}
+			def.OverwriteRemoveParamIDs = map[int]struct{}{maxID: {}}
 			def.SeqName = seqName
 
 			return fmt.Sprintf("$%d", maxID), nil

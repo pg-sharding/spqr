@@ -30,14 +30,14 @@ const (
 	tcpClosing     = 11
 )
 
-// TCP_CheckAliveness checks if a TCP connection is still alive by querying
+// TCPCheckAliveness checks if a TCP connection is still alive by querying
 // the kernel's TCP state via getsockopt(TCP_INFO).
 //
 // This is more reliable than peek-based checks because it directly queries
 // the TCP state machine and can detect half-closed (CLOSE_WAIT) connections.
 //
 // Returns true if the connection is in ESTABLISHED state, false otherwise.
-func TCP_CheckAliveness(conn net.Conn) bool {
+func TCPCheckAliveness(conn net.Conn) bool {
 	if conn == nil {
 		return false
 	}

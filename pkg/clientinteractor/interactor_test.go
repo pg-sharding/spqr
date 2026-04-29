@@ -199,18 +199,18 @@ func TestGetColumnsMap(t *testing.T) {
 
 func TestSortableWithContext(t *testing.T) {
 	data := [][][]byte{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("a")}}
-	rev_data := [][][]byte{{[]byte("b"), []byte("a")}, {[]byte("a"), []byte("b")}}
+	revData := [][][]byte{{[]byte("b"), []byte("a")}, {[]byte("a"), []byte("b")}}
 	/*XXX: very hacky*/
 	op, err := engine.SearchSysCacheOperator(catalog.TEXTOID)
 	assert.NoError(t, err)
 
 	sortable := engine.SortableWithContext{
 		Data:      data,
-		Col_index: 0,
+		ColIndex: 0,
 		Order:     engine.DESC,
 		Op:        op}
 	sort.Sort(sortable)
-	assert.Equal(t, data, rev_data)
+	assert.Equal(t, data, revData)
 }
 
 func TestClientsOrderBy(t *testing.T) {

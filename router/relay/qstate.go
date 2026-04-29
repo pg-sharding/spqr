@@ -201,11 +201,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
 					switch val {
-					case twopc.COMMIT_STRATEGY_2PC:
+					case twopc.CommitStrategy2pc:
 						fallthrough
-					case twopc.COMMIT_STRATEGY_1PC:
+					case twopc.CommitStrategy1pc:
 						fallthrough
-					case twopc.COMMIT_STRATEGY_BEST_EFFORT:
+					case twopc.CommitStrategyBestEffort:
 						rst.Client().SetCommitStrategy(val)
 					default:
 						/*should error-out*/

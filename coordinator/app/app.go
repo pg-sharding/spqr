@@ -72,7 +72,7 @@ func (app *App) Run(withPsql bool) error {
 
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
-		if err := app.ServeGrpcApi(wg); err != nil {
+		if err := app.ServeGrpcAPI(wg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
@@ -135,7 +135,7 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 	}
 }
 
-func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
+func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	for app.coordinator.IsReadOnly() {
@@ -164,7 +164,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
 
-	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)
+	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		spqrlog.Zero.Error().

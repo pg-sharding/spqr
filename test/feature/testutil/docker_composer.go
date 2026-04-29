@@ -25,8 +25,8 @@ import (
 const defaultDockerTimeout = 30 * time.Second
 const defaultDockerComposeTimeout = 90 * time.Second
 const defaultContainerStopTimeout = 30 * time.Second
+const featureTestNetwork = "feature_test_network"
 const shell = "/bin/bash"
-const FEATURE_TEST_NETWORK = "feature_test_network"
 
 // Composer manipulate images/vm's during integration tests
 type Composer interface {
@@ -235,7 +235,7 @@ func (dc *DockerComposer) GetMappedPort(testHost string, internalPort string) (u
 		return 0, apiErr
 	}
 	for _, cnt := range containers {
-		if _, ok := cnt.NetworkSettings.Networks[FEATURE_TEST_NETWORK]; !ok {
+		if _, ok := cnt.NetworkSettings.Networks[featureTestNetwork]; !ok {
 			continue
 		}
 		cntName := strings.Replace(cnt.Names[0], "/", "", 1)

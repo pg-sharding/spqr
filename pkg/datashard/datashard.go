@@ -26,11 +26,11 @@ type Conn struct {
 	name               string
 	dedicated          conn.DBInstance
 	ps                 shard.ParameterSet
-	backend_key_pid    uint32
-	backend_key_secret []byte
+	backendKeyPid    uint32
+	backendKeySecret []byte
 
-	sync_in  int64
-	sync_out int64
+	syncIn  int64
+	syncOut int64
 
 	stale atomic.Bool
 
@@ -38,7 +38,7 @@ type Conn struct {
 
 	dataPending bool
 
-	tx_served int64
+	txServed int64
 
 	id string
 
@@ -108,7 +108,7 @@ func (sh *Conn) Instance() conn.DBInstance {
 // - int64: The difference between sync_out and sync_in.
 // All callers are just comparing this to zero, except for SHOW utilities
 func (sh *Conn) Sync() int64 {
-	return sh.sync_out - sh.sync_in
+	return sh.syncOut - sh.syncIn
 }
 
 func (sh *Conn) DataPending() bool {
@@ -123,7 +123,7 @@ func (sh *Conn) DataPending() bool {
 // Returns:
 // - int64: The number of transactions served.
 func (sh *Conn) TxServed() int64 {
-	return sh.tx_served
+	return sh.txServed
 }
 
 // TODO : unit tests
@@ -155,8 +155,8 @@ func (sh *Conn) Cancel() error {
 	}()
 
 	msg := &pgproto3.CancelRequest{
-		ProcessID: sh.backend_key_pid,
-		SecretKey: sh.backend_key_secret,
+		ProcessID: sh.backendKeyPid,
+		SecretKey: sh.backendKeySecret,
 	}
 
 	spqrlog.Zero.Debug().
@@ -171,7 +171,7 @@ func (sh *Conn) Cancel() error {
 // shard connection cancel ID.
 func (sh *Conn) CancellableIDs() []uint32 {
 
-	return []uint32{sh.backend_key_pid}
+	return []uint32{sh.backendKeyPid}
 }
 
 // TODO : unit tests
@@ -190,16 +190,16 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 
 	switch query.(type) {
 	case *pgproto3.Query:
-		sh.sync_in++
+		sh.syncIn++
 	case *pgproto3.Sync:
-		sh.sync_in++
+		sh.syncIn++
 	default:
 	}
 
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
 		Interface("query", query).
-		Int64("sync-in", sh.sync_in).
+		Int64("sync-in", sh.syncIn).
 		Msg("shard connection send message")
 	return sh.dedicated.Send(query)
 }
@@ -222,17 +222,17 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	switch v := msg.(type) {
 	case *pgproto3.ReadyForQuery:
 		sh.dataPending = false
-		sh.sync_out++
+		sh.syncOut++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 		if sh.status == txstatus.TXIDLE {
-			sh.tx_served++
+			sh.txServed++
 		}
 	}
 
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
 		Interface("msg", msg).
-		Int64("sync-out", sh.sync_out).
+		Int64("sync-out", sh.syncOut).
 		Msg("shard connection received message")
 	return msg, nil
 }
@@ -289,7 +289,7 @@ func (sh *Conn) CreatedAt() time.Time {
 }
 
 func (sh *Conn) Pid() uint32 {
-	return sh.backend_key_pid
+	return sh.backendKeyPid
 }
 
 // ShardKeyName returns the name of the shard key.
@@ -395,8 +395,8 @@ func NewShardHostInstance(
 		name:      key.Name,
 		beRule:    beRule,
 		ps:        shard.ParameterSet{},
-		sync_in:   1, /* +1 for startup message */
-		sync_out:  0,
+		syncIn:   1, /* +1 for startup message */
+		syncOut:  0,
 		stale:     atomic.Bool{},
 		stmtDef:   map[uint64]*prepstatement.PreparedStatementDefinition{},
 		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},
@@ -481,8 +481,8 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 					Msg("parameter status")
 			}
 		case *pgproto3.BackendKeyData:
-			sh.backend_key_pid = v.ProcessID
-			sh.backend_key_secret = v.SecretKey
+			sh.backendKeyPid = v.ProcessID
+			sh.backendKeySecret = v.SecretKey
 			spqrlog.Zero.Debug().
 				Uint32("process-id", v.ProcessID).
 				Bytes("secret-key", v.SecretKey).

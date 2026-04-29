@@ -538,7 +538,7 @@ func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRout
 		}
 		router := &topology.Router{
 			ID:      uuid.NewString(),
-			Address: net.JoinHostPort(routerHost, config.RouterConfig().GrpcApiPort),
+			Address: net.JoinHostPort(routerHost, config.RouterConfig().GrpcAPIPort),
 			State:   qdb.OPENED,
 		}
 		if err := qc.RegisterRouter(ctx, router); err != nil {
@@ -549,7 +549,7 @@ func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRout
 		if err != nil {
 			return err
 		}
-		coordAddr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+		coordAddr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort)
 		return qc.UpdateCoordinator(ctx, coordAddr)
 	}
 
@@ -559,7 +559,7 @@ func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRout
 		if err != nil {
 			return err
 		}
-		addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+		addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort)
 		if currentCoord == addr {
 			return nil
 		}
@@ -1970,7 +1970,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	if err != nil {
 		return err
 	}
-	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort)
 	if err := qc.db.TryTaskGroupLock(ctx, taskGroup.ID, addr); err != nil {
 		return fmt.Errorf("failed to acquire lock on task group \"%s\": %s", taskGroup.ID, err)
 	}
@@ -2240,7 +2240,7 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 	if err != nil {
 		return err
 	}
-	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort)
 
 	execCtx, cancel := context.WithCancel(context.TODO())
 	if err := qc.db.LockRedistributeTask(execCtx, task.ID, addr); err != nil {
@@ -2617,7 +2617,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 		rCl := proto.NewTopologyServiceClient(cc)
 		if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
-			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort),
+			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort),
 		}); err != nil {
 			if st, ok := status.FromError(err); ok {
 				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2670,7 +2670,7 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 		}
 		rCl := proto.NewTopologyServiceClient(cc)
 		if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
-			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort),
+			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort),
 		}); err != nil {
 			if st, ok := status.FromError(err); ok {
 				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {

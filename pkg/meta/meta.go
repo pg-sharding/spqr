@@ -1237,7 +1237,7 @@ func ProcMetadataCommand(ctx context.Context,
 			mgr.Cache().Reset()
 		case spqrparser.StaleClientsInvalidateTarget:
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+				if !netutil.TCPCheckAliveness(cl.Conn()) {
 					tts.WriteDataRow(fmt.Sprintf("signaled %d", cl.ID()))
 					return cl.Cancel()
 				}
@@ -1528,7 +1528,7 @@ func ProcessShowExtended(ctx context.Context,
 			resp = append(resp, client)
 			/* XXX: should we do this un-conditionally  or under separate setting? */
 			/*  When this is executed by coordinator, c is (validly) nil*/
-			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+			if c := client.Conn(); c != nil && !netutil.TCPCheckAliveness(c) {
 				if err := client.Cancel(); err != nil {
 					return err
 				}
@@ -2164,7 +2164,7 @@ func processShowInner(ctx context.Context,
 				fmt.Sprintf("%d", berule.ConnectionRetries),
 				berule.ConnectionTimeout.String(),
 				berule.KeepAlive.String(),
-				berule.TcpUserTimeout.String(),
+				berule.TCPUserTimeout.String(),
 			)
 		}
 		return tts, nil

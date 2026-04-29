@@ -71,8 +71,8 @@ type PsqlClient struct {
 	/* cancel */
 	csm *pgproto3.CancelRequest
 
-	cancel_pid uint32
-	cancel_key []byte
+	cancelPid uint32
+	cancelKey []byte
 
 	ReplyClientId bool
 
@@ -185,19 +185,19 @@ func (cl *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
-	var target_session_attrs string
+	var targetSessionAttrs string
 	if instanceDefaultTsa != "" {
-		target_session_attrs = instanceDefaultTsa
+		targetSessionAttrs = instanceDefaultTsa
 	} else {
-		target_session_attrs = config.TargetSessionAttrsRW
+		targetSessionAttrs = config.TargetSessionAttrsRW
 	}
 
 	// enforce default port behaviour
 	if pt == port.RORouterPortType {
-		target_session_attrs = config.TargetSessionAttrsPS
+		targetSessionAttrs = config.TargetSessionAttrsPS
 	}
 
-	sh := session.NewSimpleHandler(target_session_attrs, showNoticeMessages, twopc.COMMIT_STRATEGY_1PC, defaultRouteBehaviour)
+	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, twopc.CommitStrategy1pc, defaultRouteBehaviour)
 
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,
@@ -212,7 +212,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		serverP: atomic.Pointer[server.Server]{},
 	}
 
-	cl.SetCommitStrategy(twopc.COMMIT_STRATEGY_BEST_EFFORT)
+	cl.SetCommitStrategy(twopc.CommitStrategyBestEffort)
 
 	cl.id = spqrlog.GetPointer(cl)
 
@@ -225,11 +225,11 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
-	return cl.cancel_pid
+	return cl.cancelPid
 }
 
 func (cl *PsqlClient) GetCancelKey() []byte {
-	return cl.cancel_key
+	return cl.cancelKey
 }
 
 func (cl *PsqlClient) SetAuthType(t uint32) error {
@@ -590,13 +590,13 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		key := rand.Uint32()
 		buf := make([]byte, 4)
 		binary.BigEndian.PutUint32(buf, key)
-		cl.cancel_key = buf
-		cl.cancel_pid = uint32(rand.Int31())
+		cl.cancelKey = buf
+		cl.cancelPid = uint32(rand.Int31())
 
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
-			Bytes("cancel_key", cl.cancel_key).
-			Uint32("cancel_pid", cl.cancel_pid)
+			Bytes("cancelKey", cl.cancelKey).
+			Uint32("cancelPid", cl.cancelPid)
 
 		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
 			return nil
@@ -671,8 +671,8 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 	}
 
 	if err := cl.Send(&pgproto3.BackendKeyData{
-		ProcessID: cl.cancel_pid,
-		SecretKey: cl.cancel_key,
+		ProcessID: cl.cancelPid,
+		SecretKey: cl.cancelKey,
 	}); err != nil {
 		return err
 	}
@@ -938,7 +938,7 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 }
 
 func (cl *PsqlClient) CancelPID() uint32 {
-	return cl.cancel_pid
+	return cl.cancelPid
 }
 
 var _ RouterClient = &PsqlClient{}
