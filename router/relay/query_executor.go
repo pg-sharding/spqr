@@ -30,6 +30,8 @@ type ExecutorState struct {
 	cc         *pgproto3.CommandComplete
 	eMsg       *pgproto3.ErrorResponse
 
+	portalSuspendedPending bool
+
 	replyEmptyQuery bool
 
 	/* misc for Copy */
@@ -79,6 +81,8 @@ type QueryStateExecutor interface {
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 
 	ExpandRoutes(routes []kr.ShardKey) error
+
+	PortalSuspendedPending() bool
 
 	Reset()
 }

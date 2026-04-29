@@ -151,12 +151,12 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.ShardKey) error {
+func (srv *ShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.ShardKey) error {
 	localKey := (*srv.shard.Load()).SHKey().Name
 	if localKey != shkey.Name {
 		return spqrerror.Newf(spqrerror.SPQR_CROSS_SHARD_QUERY, "mismatched single-shard destination: %s vs %s", localKey, shkey.Name)
 	}
-	return srv.Send(query)
+	return srv.Send(msg)
 }
 
 func (srv *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {

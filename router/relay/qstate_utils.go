@@ -34,9 +34,12 @@ func DispatchSlice(qd *QueryDesc,
 			}
 		} else {
 
-			/* this message is actually bind */
-			if err := serv.Send(qd.Msg); err != nil {
-				return err
+			/* this message is actually bind
+			* In case of portal re-execution, there will be no bind */
+			if qd.Msg != nil {
+				if err := serv.Send(qd.Msg); err != nil {
+					return err
+				}
 			}
 
 			if err := serv.Send(qd.exec); err != nil {
@@ -59,9 +62,12 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			} else {
 
-				/* this message is actually bind */
-				if err := serv.Send(qd.Msg); err != nil {
-					return err
+				/* this message is actually bind
+				* In case of portal re-execution, there will be no bind */
+				if qd.Msg != nil {
+					if err := serv.Send(qd.Msg); err != nil {
+						return err
+					}
 				}
 
 				if err := serv.Send(qd.exec); err != nil {
@@ -112,9 +118,12 @@ func DispatchSlice(qd *QueryDesc,
 					}
 
 				} else {
-					/* this message is actually bind */
-					if err := serv.SendShard(qd.Msg, targ); err != nil {
-						return err
+					/* this message is actually bind
+					* In case of portal re-execution, there will be no bind */
+					if qd.Msg != nil {
+						if err := serv.SendShard(qd.Msg, targ); err != nil {
+							return err
+						}
 					}
 
 					if err := serv.SendShard(qd.exec, targ); err != nil {
