@@ -1002,8 +1002,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.ReadyForQuery:
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return nil
+		case *pgproto3.PortalSuspended:
+			s.es.portalSuspendedPending = true
 		case *pgproto3.ErrorResponse:
 			if replyCl {
+				/* XXX: Use copy message here */
 				s.es.eMsg = v
 			}
 		// never expect these msgs
@@ -1124,14 +1127,26 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	* For single slice execution plans, we have two valid completion messages:
 	* ErrorMessage and Command complete. If our output gang did not return either of them,
 	* we are in big trouble */
+
 	if s.es.cc == nil && s.es.eMsg == nil {
-		return fmt.Errorf("failed to derive command complete for query")
+		if !s.es.portalSuspendedPending {
+			return fmt.Errorf("failed to derive command complete for query")
+		} else {
+			return s.Client().Send(&pgproto3.PortalSuspended{})
+		}
 	}
+
 	if s.es.cc != nil {
 		return s.Client().Send(s.es.cc)
 	}
+	if s.es.eMsg != nil {
+		return s.Client().Send(s.es.eMsg)
+	}
+	return nil
+}
 
-	return s.Client().Send(s.es.eMsg)
+func (s *QueryStateExecutorImpl) PortalSuspendedPending() bool {
+	return s.es.portalSuspendedPending
 }
 
 func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
@@ -1155,6 +1170,7 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.eMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
+	s.es.portalSuspendedPending = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
