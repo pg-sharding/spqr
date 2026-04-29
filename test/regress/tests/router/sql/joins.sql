@@ -82,7 +82,7 @@ with v (i) as (values(10), (20), (25)) select * from v join xjoin t on t.id = v.
 
 with v (i) as (values(10), (20), (25)), z as (select * from v join xjoin t on v.i = t.id) SELECT * FROM z;
 
-with v(j, a) as (values(1,10)), v_j_d as (select * from v join rf on id=rid) , c as (select xx.id from xjoin xx join v_j_d  vv on vv.id=xx.id) select * from xjoin2 yy join c zz on zz.id=yy.id;
+with v(j, id) as (values(1,10)), v_j_d as (select * from v vz join rf on vz.id=rid) , c as (select xx.id from xjoin xx join v_j_d  vv on vv.id=xx.id) select * from xjoin2 yy join c zz on zz.id=yy.id;
 
 DROP TABLE xjoin;
 DROP TABLE xjoin2;
