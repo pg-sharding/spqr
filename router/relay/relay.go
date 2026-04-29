@@ -64,7 +64,7 @@ type RelayStateMgr interface {
 
 	ProcessExtendedBuffer(ctx context.Context, msg pgproto3.FrontendMessage) error
 
-	ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage)
+	ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
 
