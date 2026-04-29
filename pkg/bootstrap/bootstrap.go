@@ -12,7 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/util"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/sethvargo/go-retry"
 )
@@ -56,7 +56,7 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 
 	db := mngr.QDB()
 	if memqdb, ok := db.(*qdb.MemQDB); ok {
-		if err := util.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+		if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
 			return err
 		}
 	} else {

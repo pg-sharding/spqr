@@ -13,7 +13,6 @@ linters:
          - name: receiver-naming
          - name: if-return
          - name: var-naming
-           disabled: true
            arguments:
              - ["ID", "JSON"]
          - name: add-constant
