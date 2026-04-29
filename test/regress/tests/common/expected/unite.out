@@ -60,7 +60,7 @@ LOCK KEY RANGE krid1;
 (1 row)
 
 UNITE KEY RANGE krid1 WITH krid3;
-ERROR:  key range krid1 is locked
+ERROR:  key range is locked
 UNLOCK KEY RANGE krid1;
    unlock key range    
 -----------------------

@@ -371,7 +371,7 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, err
 		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
 	if !lock.TryLock() {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", id))
 	}
 	defer lock.Unlock()
 	return q.dropKeyRangeQdbStatements(id)
@@ -392,7 +392,7 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 	}()
 	for krId, l := range q.State.Locks {
 		if !l.TryLock() {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", krId)
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", krId))
 		}
 		locks = append(locks, l)
 	}
@@ -459,7 +459,7 @@ func (q *MemQDB) tryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 		res = lock.TryLock()
 	}
 	if !res {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", id))
 	}
 
 	if _, ok := q.State.Krs[id]; !ok {
