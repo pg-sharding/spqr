@@ -1,4 +1,4 @@
-package meta_transaction
+package transaction
 
 import (
 	"testing"

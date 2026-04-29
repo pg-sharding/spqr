@@ -30,11 +30,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
-	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -718,7 +718,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 				}
 			}()
 
-			if err := util.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
 				return nil, err
 			}
 		}

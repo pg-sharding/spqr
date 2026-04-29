@@ -444,6 +444,7 @@ RAddr
 ragel
 randkey
 randomhex
+randutil
 rarg
 rcfg
 rclient
