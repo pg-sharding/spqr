@@ -760,7 +760,11 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error)
 	}
 	var ds []*topology.DataShard
 	for _, shard := range resp.Shards {
-		ds = append(ds, topology.DataShardFromProto(shard))
+		grpcShard, err := topology.DataShardFromProto(shard)
+		if err != nil {
+			return nil, err
+		}
+		ds = append(ds, grpcShard)
 	}
 	return ds, err
 }
@@ -782,7 +786,7 @@ func (a *Adapter) GetShard(ctx context.Context, shardID string) (*topology.DataS
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	return topology.DataShardFromProto(resp.Shard), nil
+	return topology.DataShardFromProto(resp.Shard)
 }
 
 // TODO : unit tests

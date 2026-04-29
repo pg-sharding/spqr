@@ -135,7 +135,10 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 		return nil, status.Error(codes.InvalidArgument, "shard field is required")
 	}
 
-	shard := topology.DataShardFromProto(request.GetShard())
+	shard, err := topology.DataShardFromProto(request.GetShard())
+	if err != nil {
+		return nil, err
+	}
 	if err := l.mgr.AddDataShard(ctx, shard); err != nil {
 		return nil, err
 	}
@@ -143,7 +146,11 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 }
 
 func (l *LocalQrouterServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
-	if err := l.mgr.SetShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions())); err != nil {
+	options, err := topology.GenericOptionsFromProto(request.GetOptions())
+	if err != nil {
+		return nil, err
+	}
+	if err := l.mgr.SetShardOptions(ctx, request.GetId(), options); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

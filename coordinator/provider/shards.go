@@ -31,7 +31,11 @@ var _ protos.ShardServiceServer = &ShardServer{}
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
 	newShard := request.GetShard()
 
-	if err := s.impl.AddDataShard(ctx, topology.DataShardFromProto(newShard)); err != nil {
+	shard, err := topology.DataShardFromProto(newShard)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.impl.AddDataShard(ctx, shard); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +43,11 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 }
 
 func (s *ShardServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
-	err := s.impl.AlterShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions()))
+	options, err := topology.GenericOptionsFromProto(request.GetOptions())
+	if err != nil {
+		return nil, err
+	}
+	err = s.impl.AlterShardOptions(ctx, request.GetId(), options)
 	return &emptypb.Empty{}, err
 }
 

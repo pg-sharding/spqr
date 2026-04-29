@@ -2397,7 +2397,11 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 		routerShards := make([]*topology.DataShard, 0, len(shardResp.Shards))
 		for _, sh := range shardResp.Shards {
-			routerShards = append(routerShards, topology.DataShardFromProto(sh))
+			shard, err := topology.DataShardFromProto(sh)
+			if err != nil {
+				return err
+			}
+			routerShards = append(routerShards, shard)
 		}
 		needToAdd, needToDelete, needToUpdate := qc.shardsDiff(routerShards, coordShards)
 
