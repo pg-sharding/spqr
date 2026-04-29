@@ -5951,7 +5951,7 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10)",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt",
@@ -6007,7 +6007,7 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10)",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt",
@@ -6101,7 +6101,7 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10)",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt",
@@ -6203,7 +6203,7 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10)",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt",
@@ -6270,7 +6270,7 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
-					Query: "select * from generate_series(1, 3)",
+					Query: "select * from generate_series(1, 3) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt",
