@@ -103,7 +103,7 @@ Feature: Proxy console
         """
         Then SQL error on host "router2" should match regexp
         """
-        key range .* is locked
+        key range is locked
         """
 
         When I run SQL on host "router-admin"
