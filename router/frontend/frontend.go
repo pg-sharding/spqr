@@ -67,7 +67,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Flush:
-		err := rst.ProcessExtendedBuffer(context.Background())
+		err := rst.ProcessExtendedBuffer(context.Background(), q)
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
@@ -77,7 +77,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		case nil:
 			/* ok */
 
-			return rst.Client().Flush()
+			return nil
 		case io.ErrUnexpectedEOF:
 			fallthrough
 		case io.EOF:
@@ -102,10 +102,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Sync:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
-		err := rst.ProcessExtendedBuffer(context.Background())
-
-		/* XXX: dont do it in flush case */
-		rst.PipelineCleanup()
+		err := rst.ProcessExtendedBuffer(context.Background(), q)
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
@@ -117,8 +114,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		cpQ := *q
 		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return rst.ProcessExtendedBuffer(context.Background(), q)
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
@@ -146,15 +142,13 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q = &cpQ
 		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return rst.ProcessExtendedBuffer(context.Background(), q)
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return rst.ProcessExtendedBuffer(context.Background(), q)
 	case *pgproto3.FunctionCall:
 		// copy interface
 		cpQ := *q
@@ -165,16 +159,13 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			Uint("client", rst.Client().ID()).
 			Msg("client function call: simply fire parse stmt to connection")
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return rst.ProcessExtendedBuffer(context.Background(), q)
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-
-		err := rst.ProcessExtendedBuffer(context.Background())
+		err := rst.ProcessExtendedBuffer(context.Background(), q)
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
@@ -215,8 +206,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q.ResultFormatCodes = slices.Clone(q.ResultFormatCodes)
 		q.ParameterFormatCodes = slices.Clone(q.ParameterFormatCodes)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return rst.ProcessExtendedBuffer(context.Background(), q)
 
 	default:
 		return nil

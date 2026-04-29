@@ -62,8 +62,9 @@ type RelayStateMgr interface {
 	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
-	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
-	ProcessExtendedBuffer(ctx context.Context) error
+	ProcessExtendedBuffer(ctx context.Context, msg pgproto3.FrontendMessage) error
+
+	ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage)
 
 	PipelineCleanup()
 
@@ -985,7 +986,20 @@ func (rst *RelayStateImpl) PipelineCleanup() {
 
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
 
+	if rst.WaitSync {
+		return nil
+	}
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+		return errAbortedTx
+	}
+
 	switch currentMsg := msg.(type) {
+	case *pgproto3.Sync:
+		/* XXX: dont do it in flush case */
+		rst.PipelineCleanup()
+	case *pgproto3.Flush:
+		return rst.Client().Flush()
 	case *pgproto3.Parse:
 		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
 			return err
@@ -1048,32 +1062,10 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 // TODO : unit tests
 // If we enter this function, then we need to process whole messages buffer
 // in current statement pipeline bounds.
-func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Int("xBuf", len(rst.xBuf)).
-		Bool("wait sync", rst.WaitSync).
-		Msg("process extended buffer")
-
-	defer func() {
-		// cleanup
-		rst.xBuf = nil
-	}()
-
-	if rst.WaitSync {
-		return nil
-	}
-
-	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-		return errAbortedTx
-	}
-
-	for _, msg := range rst.xBuf {
-		if err := rst.ProcessOneMsg(ctx, msg); err != nil {
-			rst.WaitSync = true
-			return err
-		}
+func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context, msg pgproto3.FrontendMessage) error {
+	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.WaitSync = true
+		return err
 	}
 
 	return nil
