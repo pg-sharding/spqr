@@ -6261,6 +6261,52 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt",
+					Query: "select * from generate_series(1, 3)",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Execute{
+					MaxRows: 0,
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("3"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 3"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 
 	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
