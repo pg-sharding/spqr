@@ -322,6 +322,7 @@ type ClusteredCoordinator struct {
 
 	startupFinished bool
 	maxTxnBatch     uint16
+	routerOpsMutex  sync.RWMutex
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -523,6 +524,7 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uin
 		routerConnCache:     sync.Map{},
 		dataTransferWorkers: sync.Map{},
 		maxTxnBatch:         maxTxnBatch,
+		routerOpsMutex:      sync.RWMutex{},
 	}, nil
 }
 
@@ -749,6 +751,8 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 // cb receives grpc connection to router`s admin console
 func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
 	spqrlog.Zero.Debug().Msg("qdb coordinator traverse")
+	qc.routerOpsMutex.Lock()
+	defer qc.routerOpsMutex.Unlock()
 	t := time.Now()
 
 	routers, err := qc.db.ListRouters(ctx)
@@ -2373,6 +2377,8 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		Msg("qdb coordinator: sync router metadata")
 
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		qc.routerOpsMutex.Lock()
+		defer qc.routerOpsMutex.Unlock()
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
 			return err
@@ -2470,6 +2476,8 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}
 
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		qc.routerOpsMutex.Lock()
+		defer qc.routerOpsMutex.Unlock()
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
 			return err
@@ -2584,6 +2592,8 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}
 
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewConstant(time.Second)), func(ctx context.Context) error {
+		qc.routerOpsMutex.Lock()
+		defer qc.routerOpsMutex.Unlock()
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
 			return err
@@ -2605,6 +2615,8 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}
 
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		qc.routerOpsMutex.Lock()
+		defer qc.routerOpsMutex.Unlock()
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
 			return err
@@ -2655,6 +2667,8 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 		Msg("qdb coordinator: sync coordinator address")
 
 	return retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		qc.routerOpsMutex.Lock()
+		defer qc.routerOpsMutex.Unlock()
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
 			return err
