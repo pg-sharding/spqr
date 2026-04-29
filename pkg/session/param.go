@@ -104,6 +104,7 @@ const (
 	VirtualParamLevelTxBlock   = "txBlock"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_DISTRIBUTION            = "__spqr__distribution"
 	SPQR_DISTRIBUTED_RELATION    = "__spqr__distributed_relation"

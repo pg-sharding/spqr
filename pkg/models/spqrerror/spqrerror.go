@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_UNEXPECTED           = "SPQRU"
 	SPQR_NO_DATASHARD         = "SPQRD"
