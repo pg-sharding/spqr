@@ -38,13 +38,9 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ShardServer) UpdateShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
-	if request.GetOptions() != nil {
-		if err := s.impl.SetShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions())); err != nil {
-			return nil, err
-		}
-	}
-	return &emptypb.Empty{}, nil
+func (s *ShardServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
+	err := s.impl.AlterShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions()))
+	return &emptypb.Empty{}, err
 }
 
 func (s *ShardServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
@@ -65,7 +61,7 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos
 	protoShards := make([]*protos.Shard, 0, len(shardList))
 
 	for _, sh := range shardList {
-		protoShards = append(protoShards, topology.DataShardToProto(sh))
+		protoShards = append(protoShards, topology.DataShardToProto(sh, false))
 	}
 
 	return &protos.ListShardsReply{
@@ -81,7 +77,7 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 	}
 
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh),
+		Shard: topology.DataShardToProto(sh, false),
 	}, nil
 }
 

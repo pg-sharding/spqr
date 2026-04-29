@@ -31,10 +31,10 @@ var someShards = []*topology.DataShard{
 var someProtoShards = []*proto.Shard{
 	topology.DataShardToProto(topology.DataShardFromConfig("id-first", &config.Shard{
 		RawHosts: []string{"aboba:1337", "eshkere:228"},
-	})),
+	}), false),
 	topology.DataShardToProto(topology.DataShardFromConfig("id-second", &config.Shard{
 		RawHosts: []string{"goooal:1488"},
-	})),
+	}), false),
 }
 
 func TestListShards(t *testing.T) {

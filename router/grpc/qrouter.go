@@ -123,7 +123,7 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 		Shards: func() []*protos.Shard {
 			res := make([]*protos.Shard, len(shards))
 			for i, sh := range shards {
-				res[i] = topology.DataShardToProto(sh)
+				res[i] = topology.DataShardToProto(sh, false)
 			}
 			return res
 		}(),
@@ -163,7 +163,7 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 		return nil, err
 	}
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh),
+		Shard: topology.DataShardToProto(sh, false),
 	}, nil
 }
 

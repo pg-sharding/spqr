@@ -146,7 +146,7 @@ var addShardCmd = &cobra.Command{
 		shard := topology.DataShardToProto(topology.DataShardFromConfig(shardID, &config.Shard{
 			Type:     config.DataShard,
 			RawHosts: shardHosts,
-		}))
+		}), false)
 		if _, err := rCl.AddDataShard(context.Background(), &protos.AddShardRequest{
 			Shard: shard,
 		}); err == nil {
