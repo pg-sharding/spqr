@@ -56,11 +56,15 @@ CREATE REFERENCE RELATION rf;
 SET __spqr__engine_v2 TO on;
 CREATE TABLE xjoin(id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xjoin2(id int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE yjoin(w_id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE zjoin(a int, b int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE rf(rid INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -242,7 +246,7 @@ NOTICE: send query to shard(s) : sh1,sh2
  25 | 25
 (2 rows)
 
-with v(j, id) as (values(1,10)), v_j_d as (select * from v join rf on id=rid) , c as (select xx.id from xjoin xx join v_j_d  vv on vv.id=xx.id) select * from xjoin2 yy join c zz on zz.id=yy.id;
+with v(j, id) as (values(1,10)), v_j_d as (select * from v vz join rf on vz.id=rid) , c as (select xx.id from xjoin xx join v_j_d  vv on vv.id=xx.id) select * from xjoin2 yy join c zz on zz.id=yy.id;
 NOTICE: send query to shard(s) : sh1
  id | id 
 ----+----
