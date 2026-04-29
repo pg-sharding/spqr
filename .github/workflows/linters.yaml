@@ -39,7 +39,7 @@ jobs:
           go-version: '1.26.0'
           cache: true
       - name: check proto generated code
-        run: make generate && git diff && exit 1
+        run: make generate && git diff --exit-code
 
   golangci:
     name: golangci-lint
