@@ -3616,7 +3616,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.BindComplete{},
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
-					Code:     spqrerror.PGPORTAlDOESNOTEXISTS,
+					Code:     spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

@@ -22,11 +22,13 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
-const defaultDockerTimeout = 30 * time.Second
-const defaultDockerComposeTimeout = 90 * time.Second
-const defaultContainerStopTimeout = 30 * time.Second
-const featureTestNetwork = "feature_test_network"
-const shell = "/bin/bash"
+const (
+	defaultDockerTimeout        = 30 * time.Second
+	defaultDockerComposeTimeout = 90 * time.Second
+	defaultContainerStopTimeout = 30 * time.Second
+	featureTestNetwork          = "feature_test_network"
+	shell                       = "/bin/bash"
+)
 
 // Composer manipulate images/vm's during integration tests
 type Composer interface {

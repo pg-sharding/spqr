@@ -258,7 +258,7 @@ func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	}
 
 	/* PG errors, which are still very interesting for us.*/
-	pl.counters[spqrerror.PGPORTAlDOESNOTEXISTS] = &atomic.Uint64{}
+	pl.counters[spqrerror.PG_PORTAL_DOES_NOT_EXISTS] = &atomic.Uint64{}
 	pl.counters[spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS] = &atomic.Uint64{}
 
 	pl.StartBackgroundHealthCheck()

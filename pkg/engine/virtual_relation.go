@@ -74,7 +74,7 @@ func KeyRangeVirtualRelationScanExtended(
 	locks []string,
 	dists []*distributions.Distribution) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "nextLowerBound", "coverage", "locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "next_lower_bound", "coverage", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))

@@ -621,7 +621,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 	if objType == xproto.ObjectTypePortal {
 
 		if !rst.unnamedPortalExists {
-			return spqrerror.New(spqrerror.PGPORTAlDOESNOTEXISTS, "portal \"\" does not exist")
+			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
 		}
 
 		spqrlog.Zero.Debug().
@@ -648,7 +648,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			if name != "" {
 				if _, ok := rst.executeMp[name]; !ok {
 					return spqrerror.New(
-						spqrerror.PGPORTAlDOESNOTEXISTS,
+						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
 						fmt.Sprintf("portal \"%s\" does not exists", name))
 				}
 				p = rst.bindQueryPlanMP[name]
