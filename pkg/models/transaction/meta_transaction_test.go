@@ -51,41 +51,41 @@ func TestTransactionFromProto(t *testing.T) {
 func TestCheckCommandPart(t *testing.T) {
 	t.Run("pass through ERROR", func(t *testing.T) {
 		is := assert.New(t)
-		actual := checkCommandPart(nil, GR_ERROR, GRCreateKeyRange)
-		is.Equal(actual, GR_ERROR)
+		actual := checkCommandPart(nil, GRError, GRCreateKeyRange)
+		is.Equal(actual, GRError)
 		data := &proto.CreateDistributionGossip{}
-		actual = checkCommandPart(data, GR_ERROR, GR_UNKNOWN)
-		is.Equal(actual, GR_ERROR)
+		actual = checkCommandPart(data, GRError, GRUnknown)
+		is.Equal(actual, GRError)
 		var data1 *proto.CreateDistributionGossip
-		actual = checkCommandPart(data1, GR_ERROR, GRCreateKeyRange)
-		is.Equal(actual, GR_ERROR)
+		actual = checkCommandPart(data1, GRError, GRCreateKeyRange)
+		is.Equal(actual, GRError)
 	})
 	t.Run("nil passed no changes", func(t *testing.T) {
 		is := assert.New(t)
 		actual := checkCommandPart(nil, GRCreateKeyRange, GRCreateKeyRange)
 		is.Equal(actual, GRCreateKeyRange)
-		actual = checkCommandPart(nil, GR_UNKNOWN, GR_UNKNOWN)
-		is.Equal(actual, GR_UNKNOWN)
+		actual = checkCommandPart(nil, GRUnknown, GRUnknown)
+		is.Equal(actual, GRUnknown)
 	})
 	t.Run("empty data passed no changes", func(t *testing.T) {
 		is := assert.New(t)
 		var data *proto.CreateDistributionGossip
 		actual := checkCommandPart(data, GRCreateDistributionRequest, GRCreateDistributionRequest)
 		is.Equal(actual, GRCreateDistributionRequest)
-		actual = checkCommandPart(data, GR_UNKNOWN, GR_UNKNOWN)
-		is.Equal(actual, GR_UNKNOWN)
+		actual = checkCommandPart(data, GRUnknown, GRUnknown)
+		is.Equal(actual, GRUnknown)
 	})
-	t.Run("NO EMPTY data passed GR_UNKNOWN current", func(t *testing.T) {
+	t.Run("NO EMPTY data passed GRUnknown current", func(t *testing.T) {
 		is := assert.New(t)
 		data := &proto.CreateDistributionGossip{}
-		actual := checkCommandPart(data, GR_UNKNOWN, GRCreateDistributionRequest)
+		actual := checkCommandPart(data, GRUnknown, GRCreateDistributionRequest)
 		is.Equal(actual, GRCreateDistributionRequest)
 	})
-	t.Run("NO EMPTY data passed current IS NOT GR_UNKNOWN", func(t *testing.T) {
+	t.Run("NO EMPTY data passed current IS NOT GRUnknown", func(t *testing.T) {
 		is := assert.New(t)
 		data := &proto.CreateDistributionGossip{}
 		actual := checkCommandPart(data, GRDropKeyRange, GRCreateDistributionRequest)
-		is.Equal(actual, GR_ERROR)
+		is.Equal(actual, GRError)
 	})
 }
 
@@ -115,7 +115,7 @@ func TestGetGossipRequestType(t *testing.T) {
 		}
 		actual, ok := GetGossipRequestType(cmd)
 		is.False(ok)
-		is.Equal(GR_ERROR, actual)
+		is.Equal(GRError, actual)
 	})
 
 	t.Run("happy path proto.DropKeyRangeGossip", func(_ *testing.T) {
@@ -133,13 +133,13 @@ func TestGetGossipRequestType(t *testing.T) {
 		}
 		actual, ok := GetGossipRequestType(cmd)
 		is.False(ok)
-		is.Equal(GR_ERROR, actual)
+		is.Equal(GRError, actual)
 	})
 	t.Run("failed algebraic type parsing, case 2", func(_ *testing.T) {
 		cmd := &proto.MetaTransactionGossipCommand{}
 		actual, ok := GetGossipRequestType(cmd)
 		is.False(ok)
-		is.Equal(GR_UNKNOWN, actual)
+		is.Equal(GRUnknown, actual)
 	})
 	t.Run("failed algebraic type parsing, case: NOT NILL, NIL, NOT NILL", func(_ *testing.T) {
 		cmd := &proto.MetaTransactionGossipCommand{
@@ -148,7 +148,7 @@ func TestGetGossipRequestType(t *testing.T) {
 		}
 		actual, ok := GetGossipRequestType(cmd)
 		is.False(ok)
-		is.Equal(GR_ERROR, actual)
+		is.Equal(GRError, actual)
 	})
 
 	t.Run("happy path proto.CreateSequenceGossip", func(_ *testing.T) {
@@ -166,6 +166,6 @@ func TestGetGossipRequestType(t *testing.T) {
 		}
 		actual, ok := GetGossipRequestType(cmd)
 		is.False(ok)
-		is.Equal(GR_ERROR, actual)
+		is.Equal(GRError, actual)
 	})
 }

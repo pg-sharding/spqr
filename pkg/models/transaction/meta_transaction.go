@@ -66,8 +66,8 @@ type MetaTransactionChunk struct {
 
 // Any change in this enum must change GetGossipRequestType function
 const (
-	GR_ERROR = iota - 1
-	GR_UNKNOWN
+	GRError = iota - 1
+	GRUnknown
 	GRCreateDistributionRequest
 	GRCreateKeyRange
 	GRDropKeyRange
@@ -107,7 +107,7 @@ func NewTransaction() (*MetaTransaction, error) {
 }
 
 func checkCommandPart(part googleProto.Message, current int, target int) int {
-	if current == GR_ERROR {
+	if current == GRError {
 		return current
 	}
 	if part == nil {
@@ -115,8 +115,8 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 	}
 	v := reflect.ValueOf(part)
 	if v.Kind() == reflect.Ptr && !v.IsNil() {
-		if current != GR_UNKNOWN {
-			return GR_ERROR
+		if current != GRUnknown {
+			return GRError
 		} else {
 			return target
 		}
@@ -125,7 +125,7 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 }
 
 // Checks algebraic type MetaTransactionGossipCommand and returns the command type
-// or GR_UNKNOWN, GR_ERROR if check failed
+// or GRUnknown, GRError if check failed
 //
 // Parameters:
 // - (request *proto.MetaTransactionGossipCommand): generic command
@@ -134,7 +134,7 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 // - type of command
 // - type is recognized
 func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, bool) {
-	result := GR_UNKNOWN
+	result := GRUnknown
 	if request.CreateDistribution != nil {
 		result = GRCreateDistributionRequest
 	}
@@ -142,5 +142,5 @@ func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, boo
 	result = checkCommandPart(request.DropKeyRange, result, GRDropKeyRange)
 	result = checkCommandPart(request.UpdateKeyRange, result, GRUpdateKeyRange)
 	result = checkCommandPart(request.CreateSequence, result, GRCreateSequence)
-	return result, result != GR_UNKNOWN && result != GR_ERROR
+	return result, result != GRUnknown && result != GRError
 }
