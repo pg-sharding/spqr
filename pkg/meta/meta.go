@@ -612,7 +612,11 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 
-		dataShard := topology.NewDataShard(stmt.Id, config.DataShard, topology.OptionsFromSQL(stmt.Options))
+		options, err := topology.OptionsFromSQL(stmt.Options)
+		if err != nil {
+			return nil, err
+		}
+		dataShard := topology.NewDataShard(stmt.Id, config.DataShard, options)
 		if err := topology.ValidateDataShardHosts(ctx, dataShard); err != nil {
 			return nil, err
 		}
@@ -2302,7 +2306,10 @@ func processAlterShard(ctx context.Context,
 	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterShardOptions:
-		optionsMap := topology.OptionsFromSQL(stmt.Options)
+		optionsMap, err := topology.OptionsFromSQL(stmt.Options)
+		if err != nil {
+			return nil, err
+		}
 		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
 			return nil, err
 		}
