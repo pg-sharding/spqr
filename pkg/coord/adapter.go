@@ -129,7 +129,7 @@ func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, rel
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
 		Relation: rfqn.RelationFQNToProto(relationFQN),
-		ShardIds: shs,
+		ShardIDs: shs,
 	})
 	return err
 }

@@ -847,7 +847,7 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *r
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	}
-	rel.ShardIds = shs
+	rel.ShardIDs = shs
 	rel.Version++
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.ReferenceRelations, tableName, rel))
 }
@@ -1990,7 +1990,7 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 	}
 	info := &TwoPCInfo{
 		Gid:       id,
-		SHardsIds: nil,
+		ShardsIDs: nil,
 		State:     TwoPhaseInitState,
 		Locked:    true,
 	}
@@ -2019,7 +2019,7 @@ func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []st
 
 	info := &TwoPCInfo{
 		Gid:       id,
-		SHardsIds: shards,
+		ShardsIDs: shards,
 		State:     TwoPhaseInitState,
 		Locked:    true,
 	}
@@ -2037,7 +2037,7 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
 		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
 	} else {
-		return tx.SHardsIds, nil
+		return tx.ShardsIDs, nil
 	}
 }
 

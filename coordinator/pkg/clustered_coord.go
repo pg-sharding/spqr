@@ -2993,7 +2993,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, rela
 			resp, err := cl.AlterReferenceRelationStorage(ctx,
 				&proto.AlterReferenceRelationStorageRequest{
 					Relation: rfqn.RelationFQNToProto(relationFQN),
-					ShardIds: rel.ShardIds,
+					ShardIDs: rel.ShardIDs,
 				})
 			if err != nil {
 				return err
@@ -3001,7 +3001,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, rela
 
 			spqrlog.Zero.Debug().
 				Interface("response", resp).
-				Strs("shards", rel.ShardIds).
+				Strs("shards", rel.ShardIDs).
 				Msg("sync reference relation response")
 		}
 
@@ -3018,7 +3018,7 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 	shardsExSet := make(map[string]struct{})
 	shardsToAdd := make([]string, 0)
 	shardsIntersect := make([]string, 0)
-	for _, sh := range rel.ShardIds {
+	for _, sh := range rel.ShardIDs {
 		shardsExSet[sh] = struct{}{}
 	}
 	for _, sh := range shs {
@@ -3029,7 +3029,7 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 		}
 	}
 
-	if len(shardsIntersect) < len(rel.ShardIds) {
+	if len(shardsIntersect) < len(rel.ShardIDs) {
 		// We need to drop shards
 		if err := qc.db.AlterReferenceRelationStorage(ctx, relationFQN, shardsIntersect); err != nil {
 			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
@@ -3038,7 +3038,7 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 			c := proto.NewReferenceRelationsServiceClient(cc)
 			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
 				Relation: rfqn.RelationFQNToProto(relationFQN),
-				ShardIds: shardsIntersect,
+				ShardIDs: shardsIntersect,
 			})
 			return err
 		}); err != nil {

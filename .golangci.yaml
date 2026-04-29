@@ -12,6 +12,9 @@ linters:
          - name: unnecessary-if
          - name: receiver-naming
          - name: if-return
+         - name: var-naming
+           arguments:
+             - ["ID", "JSON"]
          - name: add-constant
            disabled: true
          - name: line-length-limit
@@ -32,6 +35,11 @@ linters:
            disabled: true
          - name: empty-lines
            disabled: true
+         - name: indent-error-flow
+           disabled: true
+         - name: unnecessary-format
+           disabled: true
+
 
   exclusions:
     paths:

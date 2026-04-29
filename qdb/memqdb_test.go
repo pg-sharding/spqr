@@ -253,7 +253,7 @@ func TestDropReferenceRelation(t *testing.T) {
 		TableName:             "test2",
 		SchemaVersion:         1,
 		ColumnSequenceMapping: map[string]string{"id": "test2_id"},
-		ShardIds:              []string{"sh1", "sh2"},
+		ShardIDs:              []string{"sh1", "sh2"},
 	}
 	err = memqdb.CreateReferenceRelation(ctx, referenceRelation)
 	assert.NoError(err)
@@ -892,12 +892,12 @@ func TestDropReferenceRelation_PrefixNameBug(t *testing.T) {
 	rrPrefixName := &qdb.ReferenceRelation{
 		TableName:     "zz",
 		SchemaVersion: 1,
-		ShardIds:      []string{},
+		ShardIDs:      []string{},
 	}
 	rrWithPrefixName := &qdb.ReferenceRelation{
 		TableName:     "zzx",
 		SchemaVersion: 1,
-		ShardIds:      []string{},
+		ShardIDs:      []string{},
 	}
 
 	assert.NoError(memqdb.CreateReferenceRelation(ctx, rrPrefixName))
@@ -933,7 +933,7 @@ func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
 
 		for _, name := range []string{"a", "ab", "abc"} {
 			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
-				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+				TableName: name, SchemaVersion: 1, ShardIDs: []string{},
 			}))
 		}
 
@@ -954,7 +954,7 @@ func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
 
 		for _, name := range []string{"a", "ab", "abc"} {
 			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
-				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+				TableName: name, SchemaVersion: 1, ShardIDs: []string{},
 			}))
 		}
 

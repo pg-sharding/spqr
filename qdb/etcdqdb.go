@@ -1241,7 +1241,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
 			return err
 		}
-		rrs.ShardIds = shs
+		rrs.ShardIDs = shs
 
 		rrJson, err := json.Marshal(rrs)
 		if err != nil {

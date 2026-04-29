@@ -79,7 +79,7 @@ type DistributionDefinition struct {
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
-	ShardIds             []string
+	ShardIDs             []string
 }
 
 type UniqueIndexDefinition struct {

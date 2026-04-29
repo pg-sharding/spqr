@@ -312,7 +312,7 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
-			fmt.Appendf(nil, "%+v", r.ShardIds),
+			fmt.Appendf(nil, "%+v", r.ShardIDs),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
 		})
 	}

@@ -291,7 +291,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh1", "sh2"},
+			ShardIDs:              []string{"sh1", "sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
 			ACL:                   []acl.ACLItem{},
@@ -310,7 +310,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 			TableName: &rfqn.RelationFQN{
 				RelationName: "xtab",
 			},
-			ShardIds: []string{"sh2"},
+			ShardIDs: []string{"sh2"},
 		}
 		tupleslotExpected := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
@@ -329,7 +329,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh2"},
+			ShardIDs:              []string{"sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
 			ACL:                   []acl.ACLItem{},
