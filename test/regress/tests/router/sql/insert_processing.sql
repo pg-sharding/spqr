@@ -18,6 +18,8 @@ INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5) /*__spqr__e
 INSERT INTO xx_insert_rel (a, b, c) VALUES(100,2,3),(201,3,4), (301,4,5) ON CONFLICT DO NOTHING /*__spqr__engine_v2: false */;
 INSERT INTO xx_insert_rel (a, b, c) VALUES(200,2,3),(201,3,4), (301,4,5) RETURNING * /*__spqr__engine_v2: false */;
 
+SELECT a FROM xx_insert_rel WHERE a IN (100, 301, 304);
+
 SELECT __spqr__ctid('xx_insert_rel');
 
 TRUNCATE xx_insert_rel;
