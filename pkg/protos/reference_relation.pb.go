@@ -27,7 +27,7 @@ type ReferenceRelation struct {
 	RelName         *QualifiedName         `protobuf:"bytes,1,opt,name=relName,proto3" json:"relName,omitempty"`
 	SequenceColumns map[string]string      `protobuf:"bytes,2,rep,name=sequenceColumns,proto3" json:"sequenceColumns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	SchemaVersion   uint64                 `protobuf:"varint,3,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
-	ShardIDs        []string               `protobuf:"bytes,4,rep,name=shardIds,proto3" json:"shardIds,omitempty"`
+	ShardIds        []string               `protobuf:"bytes,4,rep,name=shardIds,proto3" json:"shardIds,omitempty"`
 	Version         uint64                 `protobuf:"varint,5,opt,name=version,proto3" json:"version,omitempty"`
 	Acl             []*ACL                 `protobuf:"bytes,6,rep,name=acl,proto3" json:"acl,omitempty"`
 	unknownFields   protoimpl.UnknownFields
@@ -87,7 +87,7 @@ func (x *ReferenceRelation) GetSchemaVersion() uint64 {
 
 func (x *ReferenceRelation) GetShardIds() []string {
 	if x != nil {
-		return x.ShardIDs
+		return x.ShardIds
 	}
 	return nil
 }
@@ -353,7 +353,7 @@ func (x *SyncReferenceRelationsRequest) GetRelations() []*QualifiedName {
 type AlterReferenceRelationStorageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Relation      *QualifiedName         `protobuf:"bytes,1,opt,name=relation,proto3" json:"relation,omitempty"`
-	ShardIDs      []string               `protobuf:"bytes,2,rep,name=shard_ids,json=shardIds,proto3" json:"shard_ids,omitempty"`
+	ShardIds      []string               `protobuf:"bytes,2,rep,name=shard_ids,json=shardIds,proto3" json:"shard_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -397,7 +397,7 @@ func (x *AlterReferenceRelationStorageRequest) GetRelation() *QualifiedName {
 
 func (x *AlterReferenceRelationStorageRequest) GetShardIds() []string {
 	if x != nil {
-		return x.ShardIDs
+		return x.ShardIds
 	}
 	return nil
 }
