@@ -131,6 +131,7 @@
                             ]
                         },
                         "sharding/bulk",
+                        "sharding/resharding",
                         "sharding/default_shard"
                     ]
                 },

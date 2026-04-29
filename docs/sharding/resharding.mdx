@@ -1,0 +1,238 @@
+---
+title: 'Manual resharding'
+description: 'Move data between shards online using the coordinator console'
+---
+
+To perform online resharding, split key ranges on a source shard and gradually
+redistribute them to a destination shard while the application keeps serving
+traffic.
+
+If the goal is continuous, workload-driven rebalancing rather than a planned
+data movement, use the [balancer](/features/data_balancing) instead — it picks
+the source key range, the destination shard and the move size automatically
+based on shard load.
+
+## When to use it
+
+Use this flow when you need explicit control over what moves and when — for
+example, when adding a new empty shard, draining a shard for decommission, or
+reacting to a hotspot before the balancer would pick it up.
+
+## Prerequisites
+
+Before starting, make sure that:
+
+- The destination shard is registered in the cluster and visible via `SHOW shards`.
+  See [Deployment overview](/deployment/overview) and
+  [Coordinator](/sharding/cluster_components/coordinator) for how shards are added.
+- The schema and required PostgreSQL extensions are present on the destination
+  shard (for example, `postgres_fdw` and any sharding-specific extensions used by
+  your distribution).
+- The application can tolerate a brief per-batch pause on the part of the key
+  range that is currently being moved.
+
+## 1. Connect to the coordinator
+
+Resharding commands are executed against the coordinator's administrative
+console, not the router. Use `psql` over the PostgreSQL protocol as described in
+[How to connect](/sharding/console/how_to_connect).
+
+In high-availability setups, SPQR runs multiple coordinator instances, but only
+one of them is active at a time (see
+[Coordinator configuration](/configuration/coordinator)). Always connect to the
+**active (leader) coordinator** — commands sent to a standby will fail or be
+ignored.
+
+## 2. Inspect the current topology
+
+Check the shards and the current key range layout:
+
+```sql
+SHOW shards;
+           shard
+---------------------------
+ sh1
+ sh2
+ sh3
+(3 rows)
+```
+
+```sql
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 0           | false
+ krid2        | sh2      | ds1             | 335000      | false
+ krid3        | sh3      | ds1             | 670000      | false
+```
+
+Identify the source key range (the one currently on the overloaded or
+to-be-decommissioned shard) and the destination shard.
+
+## 3. Plan the splits
+
+Moving an entire key range at once is rarely a good idea: the whole range is
+unavailable for writes for the duration of the move and the destination shard
+absorbs the full write load in one burst. Instead, split the source key range
+into several smaller ranges first and move them one by one.
+
+A reasonable starting point is to split the range into pieces small enough that
+a single redistribute finishes within minutes at your chosen batch size. When
+in doubt, prefer smaller pieces — you can always [unite](#post-resharding-cleanup)
+them later.
+
+## 4. Split the source key range
+
+Use [`SPLIT KEY RANGE`](/sharding/console/sql_commands#split-key-range). The
+command takes the upper portion of the source range and assigns it to a new
+key range.
+
+<Note>
+`SPLIT KEY RANGE <new> FROM <source> BY <bound>` turns `<source>` (lower..upper)
+into `<source>` (lower..bound) and `<new>` (bound..upper). Both new ranges stay
+on the same shard until you redistribute them.
+</Note>
+
+Example — splitting `krid1` (covering `0..335000` on `sh1`) into four pieces:
+
+```sql
+SPLIT KEY RANGE krid1_b FROM krid1   BY 100000;
+-- krid1   = 0..100000,      krid1_b = 100000..335000
+
+SPLIT KEY RANGE krid1_c FROM krid1_b BY 200000;
+-- krid1_b = 100000..200000, krid1_c = 200000..335000
+
+SPLIT KEY RANGE krid1_d FROM krid1_c BY 300000;
+-- krid1_c = 200000..300000, krid1_d = 300000..335000
+```
+
+Verify with `SHOW key_ranges`.
+
+## 5. Redistribute key ranges to the destination shard
+
+Move the new key ranges with
+[`REDISTRIBUTE KEY RANGE`](/sharding/console/sql_commands#redistribute-key-range)
+— unlike `MOVE KEY RANGE`, it migrates both the metadata and the actual data.
+Internally the coordinator splits the source key range into batches of
+`BATCH SIZE` rows and moves them one by one as separate *move tasks*, all
+tracked under a single *task group*. While a batch is in flight, the rows it
+covers are briefly unavailable for writes.
+
+```sql
+REDISTRIBUTE KEY RANGE krid1_b TO sh2 BATCH SIZE 1000 NOWAIT;
+REDISTRIBUTE KEY RANGE krid1_c TO sh2 BATCH SIZE 1000 NOWAIT;
+REDISTRIBUTE KEY RANGE krid1_d TO sh2 BATCH SIZE 1000 NOWAIT;
+```
+
+`NOWAIT` returns control immediately and lets you observe the task group
+asynchronously; without it, the session blocks until the task group finishes.
+Use the `CHECK` modifier if you want to validate the operation without
+performing the move.
+
+<Tip>
+Run the redistribute on a single key range first and wait for it to complete
+before launching the rest. This validates the path end-to-end at production
+load before you commit to moving everything.
+</Tip>
+
+### Choosing a batch size
+
+`BATCH SIZE` controls how many rows each move task transfers at a time. It is
+a tradeoff:
+
+- **Smaller batches** — shorter per-batch unavailability, smoother impact on
+  the application, more total batches and therefore longer total wall-clock
+  time.
+- **Larger batches** — fewer round trips and faster overall, but each batch
+  locks a larger slice of the key range for longer.
+
+Adjust based on what you observe in monitoring (see the next section).
+
+## 6. Monitor the move
+
+While a redistribute is running, watch:
+
+- **`SHOW task_group`** on the coordinator — current state of every task group
+  and its move tasks. Possible values for `state` are `PLANNED`, `RUNNING` and
+  `ERROR`; a task group disappears from the listing once it has finished
+  successfully.
+- **Application error rate and latency** — in particular client-visible 5xx
+  errors and write latency on the affected key range.
+- **Shard load** — CPU, disk and replication lag on both source and destination
+  shards.
+
+```sql
+SHOW task_group;
+```
+
+You can also probe the destination shard directly using a routing hint to
+confirm that data is arriving where you expect:
+
+```sql
+SELECT count(*) FROM mytable
+  WHERE shard_key < 200000
+  /* __spqr__execute_on: sh2 */;
+```
+
+See [Routing hints](/routing/hints) for the full list of supported hints.
+
+## 7. React to problems
+
+If something goes wrong during the redistribute, you have several options.
+
+**Stop a single task group.** If one redistribute starts misbehaving (for
+example, errors against a specific key range or unexpected lag on the
+destination shard), stop just that task group and leave the others running:
+
+```sql
+STOP TASK GROUP <task_group_id>;
+```
+
+**Retry a failed task group.** If a task group ended up in an error state due
+to a transient issue (network blip, restarted shard, etc.), retry it:
+
+```sql
+RETRY TASK GROUP <task_group_id>;
+-- or, asynchronously
+RETRY TASK GROUP <task_group_id> NOWAIT;
+```
+
+`RETRY MOVE TASK GROUP` is accepted as a synonym.
+
+**Stop the application.** If the overall application error rate is climbing
+and the cause is clearly the resharding (for example, errors are concentrated
+on the key ranges currently being moved), the safest action is to stop the
+client traffic to the affected key ranges — or the application as a whole —
+before continuing. Resume traffic only after the in-flight task groups have
+finished or have been stopped and the cluster state has been verified with
+`SHOW task_group` and `SHOW key_ranges`.
+
+<Warning>
+A task group that is stopped or fails mid-flight leaves the source key range
+split into temporary pieces that may already live on different shards.
+Recovering from that requires inspecting `SHOW task_group` and
+`SHOW key_ranges` and either retrying the task group or moving the remaining
+pieces by hand.
+</Warning>
+
+## 8. Post-resharding cleanup
+
+After all redistributes for a given source range have completed:
+
+1. Verify the new layout with `SHOW key_ranges` — the moved key ranges should
+   now point to the destination shard.
+2. Spot-check data placement with `__spqr__execute_on` hints on both the source
+   and destination shards.
+3. Optionally merge adjacent key ranges that ended up on the same shard back
+   into a single range with
+   [`UNITE KEY RANGE`](/sharding/console/sql_commands#unite-key-range):
+
+   ```sql
+   UNITE KEY RANGE krid1_b WITH krid1_c;
+   ```
+
+   Two key ranges can be united only if they are adjacent and route to the
+   same shard.
+
+At this point the resharding step is complete. Repeat the procedure for the
+next source range as needed.
