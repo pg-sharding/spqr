@@ -205,10 +205,10 @@ func TestSortableWithContext(t *testing.T) {
 	assert.NoError(t, err)
 
 	sortable := engine.SortableWithContext{
-		Data:      data,
+		Data:     data,
 		ColIndex: 0,
-		Order:     engine.DESC,
-		Op:        op}
+		Order:    engine.DESC,
+		Op:       op}
 	sort.Sort(sortable)
 	assert.Equal(t, data, revData)
 }

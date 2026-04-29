@@ -21,11 +21,11 @@ import (
 )
 
 type Conn struct {
-	beRule             *config.BackendRule
-	cfg                *topology.DataShard
-	name               string
-	dedicated          conn.DBInstance
-	ps                 shard.ParameterSet
+	beRule           *config.BackendRule
+	cfg              *topology.DataShard
+	name             string
+	dedicated        conn.DBInstance
+	ps               shard.ParameterSet
 	backendKeyPid    uint32
 	backendKeySecret []byte
 
@@ -395,8 +395,8 @@ func NewShardHostInstance(
 		name:      key.Name,
 		beRule:    beRule,
 		ps:        shard.ParameterSet{},
-		syncIn:   1, /* +1 for startup message */
-		syncOut:  0,
+		syncIn:    1, /* +1 for startup message */
+		syncOut:   0,
 		stale:     atomic.Bool{},
 		stmtDef:   map[uint64]*prepstatement.PreparedStatementDefinition{},
 		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},

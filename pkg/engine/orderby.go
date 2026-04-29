@@ -42,7 +42,7 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 			Data:     data,
 			ColIndex: colOrder[colRef.ColName],
 			Order:    ascDesc,
-			Op:        op,
+			Op:       op,
 		}
 		sort.Sort(sortable)
 	}

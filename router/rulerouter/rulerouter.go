@@ -63,7 +63,7 @@ type RuleRouterImpl struct {
 
 	initSem semaphore.Weighted
 
-	totalTCPCount    atomic.Int64
+	totalTCPCount   atomic.Int64
 	activeTCPCount  atomic.Int64
 	cancelConnCount atomic.Int64
 }

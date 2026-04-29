@@ -89,7 +89,7 @@ type SimpleSessionParamHandler struct {
 	paramCodes []int16
 
 	showNoticeMessages bool
-	maintainParams    bool
+	maintainParams     bool
 }
 
 func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
