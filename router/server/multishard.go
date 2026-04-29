@@ -304,11 +304,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		m.dataRowCnt = 0
 
 		m.copyBuf = nil
-		var saveRd *pgproto3.RowDescription = nil
-		var saveCC *pgproto3.CommandComplete = nil
-		var saveBC *pgproto3.BindComplete = nil
-		var saveRFQ *pgproto3.ReadyForQuery = nil
-		var saveCIn *pgproto3.CopyInResponse = nil
+		var saveRd *pgproto3.RowDescription
+		var saveCC *pgproto3.CommandComplete
+		var saveBC *pgproto3.BindComplete
+		var saveRFQ *pgproto3.ReadyForQuery
+		var saveCIn *pgproto3.CopyInResponse
 		/* Step one: ensure all shard backend are started */
 
 		for i := range m.activeShards {

@@ -12,6 +12,7 @@ linters:
          - name: unnecessary-if
          - name: receiver-naming
          - name: if-return
+         - name: var-declaration
          - name: var-naming
            arguments:
              - ["ID", "JSON"]

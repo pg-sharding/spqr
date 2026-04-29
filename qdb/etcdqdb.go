@@ -2783,7 +2783,7 @@ func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint6
 		return nil, err
 	}
 
-	var nextval int64 = 0
+	var nextval int64
 	switch resp.Count {
 	case 1:
 		var err error
@@ -2819,7 +2819,7 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 		return -1, err
 	}
 
-	var nextval int64 = 0
+	var nextval int64
 	switch resp.Count {
 	case 1:
 		var err error

@@ -526,7 +526,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		return nil, nil
 	}
 
-	var leftoverMsgData []byte = nil
+	var leftoverMsgData []byte
 
 	rowsMp := map[string][]byte{}
 
@@ -668,8 +668,8 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		}
 	}
 
-	var ccmsg *pgproto3.CommandComplete = nil
-	var errmsg *pgproto3.ErrorResponse = nil
+	var ccmsg *pgproto3.CommandComplete
+	var errmsg *pgproto3.ErrorResponse
 
 	txt := txstatus.TXIDLE
 
