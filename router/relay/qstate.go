@@ -18,7 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/twopc"
 	"github.com/pg-sharding/spqr/router/xproto"
@@ -146,7 +146,7 @@ l:
 }
 
 func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error {
-	mp, err := parser.ParseComment(comment)
+	mp, err := qparser.ParseComment(comment)
 
 	if err == nil {
 		if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
@@ -197,7 +197,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
-			if mp, err := parser.ParseComment(comment); err == nil {
+			if mp, err := qparser.ParseComment(comment); err == nil {
 
 				if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
 					switch val {

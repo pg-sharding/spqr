@@ -1,4 +1,4 @@
-package parser
+package qparser
 
 import (
 	"github.com/pg-sharding/lyx/lyx"

@@ -22,7 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -86,7 +86,7 @@ type RelayStateImpl struct {
 
 	Qr      qrouter.QueryRouter
 	qse     QueryStateExecutor
-	qp      parser.QParser
+	qp      qparser.QParser
 	plainQ  string
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
