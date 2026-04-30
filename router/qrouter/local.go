@@ -118,15 +118,11 @@ func (qr *LocalQrouter) Mgr() meta.EntityMgr {
 	return nil
 }
 
-<<<<<<< HEAD
-func (l *LocalQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
-	return l.metricRegistry
+func (qr *LocalQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
+	return qr.metricRegistry
 }
 
-func (l *LocalQrouter) CSM() connmgr.ConnectionMgr {
-=======
 func (qr *LocalQrouter) CSM() connmgr.ConnectionMgr {
->>>>>>> master
 	return nil
 }
 
