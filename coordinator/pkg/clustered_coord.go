@@ -2397,7 +2397,11 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 		routerShards := make([]*topology.DataShard, 0, len(shardResp.Shards))
 		for _, sh := range shardResp.Shards {
-			routerShards = append(routerShards, topology.DataShardFromProto(sh))
+			shard, err := topology.DataShardFromProto(sh)
+			if err != nil {
+				return err
+			}
+			routerShards = append(routerShards, shard)
 		}
 		needToAdd, needToDelete, needToUpdate := qc.shardsDiff(routerShards, coordShards)
 
@@ -2408,7 +2412,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		var shardErrs []error
 
 		for _, sh := range needToAdd {
-			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh)})
+			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh, false)})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2425,7 +2429,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		for _, sh := range needToUpdate {
 			_, err = shCl.AlterShard(ctx, &proto.AlterShardRequest{
 				Id:      sh.ID,
-				Options: topology.GenericOptionsToProto(sh.Options()),
+				Options: topology.GenericOptionsToProto(sh.Options(), false),
 			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
@@ -2860,7 +2864,7 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
-			Shard: topology.DataShardToProto(shard),
+			Shard: topology.DataShardToProto(shard, false),
 		})
 		return err
 	}); err != nil {
@@ -2897,7 +2901,7 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardID s
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
 			Id:      shardID,
-			Options: topology.GenericOptionsToProto(shard.Options()),
+			Options: topology.GenericOptionsToProto(shard.Options(), false),
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {

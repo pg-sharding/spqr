@@ -12,8 +12,15 @@ message Shard {
 }
 
 message GenericOption {
+  enum Action {
+    ADD = 0;
+    SET = 1;
+    DROP = 2;
+  }
+
   string name = 1;
   string value = 2;
+  Action action = 3;
 }
 
 message ShardInfo {

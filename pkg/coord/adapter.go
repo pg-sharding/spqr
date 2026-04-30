@@ -692,14 +692,19 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 // - error: An error if the data shard addition fails, otherwise nil.
 func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard)})
+	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard, false)})
 	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
 // TODO : implement
-func (a *Adapter) AlterShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardOptions not implemented")
+func (a *Adapter) AlterShardOptions(ctx context.Context, shardID string, optionChanges []topology.GenericOption) error {
+	client := proto.NewShardServiceClient(a.conn)
+	_, err := client.AlterShard(ctx, &proto.AlterShardRequest{
+		Id:      shardID,
+		Options: topology.GenericOptionsToProto(optionChanges, true),
+	})
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -755,7 +760,11 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error)
 	}
 	var ds []*topology.DataShard
 	for _, shard := range resp.Shards {
-		ds = append(ds, topology.DataShardFromProto(shard))
+		grpcShard, err := topology.DataShardFromProto(shard)
+		if err != nil {
+			return nil, err
+		}
+		ds = append(ds, grpcShard)
 	}
 	return ds, err
 }
@@ -777,7 +786,7 @@ func (a *Adapter) GetShard(ctx context.Context, shardID string) (*topology.DataS
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	return topology.DataShardFromProto(resp.Shard), nil
+	return topology.DataShardFromProto(resp.Shard)
 }
 
 // TODO : unit tests

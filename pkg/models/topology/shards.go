@@ -125,17 +125,17 @@ func NewDataShard(name string, t config.ShardType, options []GenericOption) *Dat
 //
 // Returns:
 //   - *proto.Shard: The converted proto.Shard object.
-func DataShardToProto(shard *DataShard) *proto.Shard {
+func DataShardToProto(shard *DataShard, hostsWithAZ bool) *proto.Shard {
 	return &proto.Shard{
 		Id:      shard.ID,
-		Options: GenericOptionsToProto(shard.options),
+		Options: GenericOptionsToProto(shard.options, hostsWithAZ),
 	}
 }
 
-func GenericOptionsToProto(options []GenericOption) []*proto.GenericOption {
+func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) []*proto.GenericOption {
 	protoOptions := make([]*proto.GenericOption, 0, len(options))
 	for _, opt := range options {
-		if opt.Name == "host" {
+		if !hostsWithAZ && opt.Name == "host" {
 			continue
 		}
 
@@ -145,26 +145,46 @@ func GenericOptionsToProto(options []GenericOption) []*proto.GenericOption {
 		})
 	}
 
-	_, addresses := retrieveHostsFromOptions(options)
-	for _, addr := range addresses {
-		protoOptions = append(protoOptions, &proto.GenericOption{
-			Name:  "host",
-			Value: addr,
-		})
+	if !hostsWithAZ {
+		_, addresses := retrieveHostsFromOptions(options)
+		for _, addr := range addresses {
+			protoOptions = append(protoOptions, &proto.GenericOption{
+				Name:  "host",
+				Value: addr,
+			})
+		}
 	}
 
 	return protoOptions
 }
 
-func GenericOptionsFromProto(protoOptions []*proto.GenericOption) []GenericOption {
+func GenericOptionsFromProto(protoOptions []*proto.GenericOption) ([]GenericOption, error) {
 	options := make([]GenericOption, 0, len(protoOptions))
 	for _, opt := range protoOptions {
+		action, err := GenericOptionActionFromProto(opt.Action)
+		if err != nil {
+			return nil, err
+		}
 		options = append(options, GenericOption{
-			Name: strings.ToLower(opt.Name),
-			Arg:  opt.Value,
+			Name:   strings.ToLower(opt.Name),
+			Arg:    opt.Value,
+			Action: action,
 		})
 	}
-	return options
+	return options, nil
+}
+
+func GenericOptionActionFromProto(action proto.GenericOption_Action) (GenericOptionAction, error) {
+	switch action {
+	case proto.GenericOption_ADD:
+		return GenericOptionActionAdd, nil
+	case proto.GenericOption_SET:
+		return GenericOptionActionSet, nil
+	case proto.GenericOption_DROP:
+		return GenericOptionActionDrop, nil
+	default:
+		return -1, fmt.Errorf("unknown action %s", action.String())
+	}
 }
 
 // DataShardFromProto creates a new DataShard instance from the given proto.Shard.
@@ -176,8 +196,12 @@ func GenericOptionsFromProto(protoOptions []*proto.GenericOption) []GenericOptio
 //
 // Returns:
 //   - *DataShard: The created DataShard instance.
-func DataShardFromProto(shard *proto.Shard) *DataShard {
-	return NewDataShard(shard.Id, config.DataShard, GenericOptionsFromProto(shard.Options))
+func DataShardFromProto(shard *proto.Shard) (*DataShard, error) {
+	options, err := GenericOptionsFromProto(shard.Options)
+	if err != nil {
+		return nil, err
+	}
+	return NewDataShard(shard.Id, config.DataShard, options), nil
 }
 
 // DataShardFromDB creates a new DataShard instance from the given qdb.Shard.

@@ -146,7 +146,7 @@ var addShardCmd = &cobra.Command{
 		shard := topology.DataShardToProto(topology.DataShardFromConfig(shardID, &config.Shard{
 			Type:     config.DataShard,
 			RawHosts: shardHosts,
-		}))
+		}), false)
 		if _, err := rCl.AddDataShard(context.Background(), &protos.AddShardRequest{
 			Shard: shard,
 		}); err == nil {
@@ -183,7 +183,10 @@ var listShardCmd = &cobra.Command{
 			fmt.Printf("%d shards found\n", len(resp.Shards))
 
 			for _, shard := range resp.Shards {
-				ds := topology.DataShardFromProto(shard)
+				ds, err := topology.DataShardFromProto(shard)
+				if err != nil {
+					return err
+				}
 				fmt.Printf("router %s serving on host group %+v\n", shard.Id, ds.Hosts())
 			}
 

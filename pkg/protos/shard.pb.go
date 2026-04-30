@@ -22,6 +22,55 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GenericOption_Action int32
+
+const (
+	GenericOption_ADD  GenericOption_Action = 0
+	GenericOption_SET  GenericOption_Action = 1
+	GenericOption_DROP GenericOption_Action = 2
+)
+
+// Enum value maps for GenericOption_Action.
+var (
+	GenericOption_Action_name = map[int32]string{
+		0: "ADD",
+		1: "SET",
+		2: "DROP",
+	}
+	GenericOption_Action_value = map[string]int32{
+		"ADD":  0,
+		"SET":  1,
+		"DROP": 2,
+	}
+)
+
+func (x GenericOption_Action) Enum() *GenericOption_Action {
+	p := new(GenericOption_Action)
+	*p = x
+	return p
+}
+
+func (x GenericOption_Action) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GenericOption_Action) Descriptor() protoreflect.EnumDescriptor {
+	return file_protos_shard_proto_enumTypes[0].Descriptor()
+}
+
+func (GenericOption_Action) Type() protoreflect.EnumType {
+	return &file_protos_shard_proto_enumTypes[0]
+}
+
+func (x GenericOption_Action) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GenericOption_Action.Descriptor instead.
+func (GenericOption_Action) EnumDescriptor() ([]byte, []int) {
+	return file_protos_shard_proto_rawDescGZIP(), []int{1, 0}
+}
+
 type Shard struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -78,6 +127,7 @@ type GenericOption struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Action        GenericOption_Action   `protobuf:"varint,3,opt,name=action,proto3,enum=spqr.GenericOption_Action" json:"action,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -124,6 +174,13 @@ func (x *GenericOption) GetValue() string {
 		return x.Value
 	}
 	return ""
+}
+
+func (x *GenericOption) GetAction() GenericOption_Action {
+	if x != nil {
+		return x.Action
+	}
+	return GenericOption_ADD
 }
 
 type ShardInfo struct {
@@ -501,10 +558,15 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"F\n" +
 	"\x05Shard\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
-	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"9\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"\x93\x01\n" +
 	"\rGenericOption\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"J\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x122\n" +
+	"\x06action\x18\x03 \x01(\x0e2\x1a.spqr.GenericOption.ActionR\x06action\"$\n" +
+	"\x06Action\x12\a\n" +
+	"\x03ADD\x10\x00\x12\a\n" +
+	"\x03SET\x10\x01\x12\b\n" +
+	"\x04DROP\x10\x02\"J\n" +
 	"\tShardInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
 	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"/\n" +
@@ -547,45 +609,48 @@ func file_protos_shard_proto_rawDescGZIP() []byte {
 	return file_protos_shard_proto_rawDescData
 }
 
+var file_protos_shard_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_protos_shard_proto_goTypes = []any{
-	(*Shard)(nil),                // 0: spqr.Shard
-	(*GenericOption)(nil),        // 1: spqr.GenericOption
-	(*ShardInfo)(nil),            // 2: spqr.ShardInfo
-	(*ShardReply)(nil),           // 3: spqr.ShardReply
-	(*ShardRequest)(nil),         // 4: spqr.ShardRequest
-	(*ListShardsReply)(nil),      // 5: spqr.ListShardsReply
-	(*AddShardRequest)(nil),      // 6: spqr.AddShardRequest
-	(*AlterShardRequest)(nil),    // 7: spqr.AlterShardRequest
-	(*AddWorldShardRequest)(nil), // 8: spqr.AddWorldShardRequest
-	(*DropShardRequest)(nil),     // 9: spqr.DropShardRequest
-	(*emptypb.Empty)(nil),        // 10: google.protobuf.Empty
+	(GenericOption_Action)(0),    // 0: spqr.GenericOption.Action
+	(*Shard)(nil),                // 1: spqr.Shard
+	(*GenericOption)(nil),        // 2: spqr.GenericOption
+	(*ShardInfo)(nil),            // 3: spqr.ShardInfo
+	(*ShardReply)(nil),           // 4: spqr.ShardReply
+	(*ShardRequest)(nil),         // 5: spqr.ShardRequest
+	(*ListShardsReply)(nil),      // 6: spqr.ListShardsReply
+	(*AddShardRequest)(nil),      // 7: spqr.AddShardRequest
+	(*AlterShardRequest)(nil),    // 8: spqr.AlterShardRequest
+	(*AddWorldShardRequest)(nil), // 9: spqr.AddWorldShardRequest
+	(*DropShardRequest)(nil),     // 10: spqr.DropShardRequest
+	(*emptypb.Empty)(nil),        // 11: google.protobuf.Empty
 }
 var file_protos_shard_proto_depIdxs = []int32{
-	1,  // 0: spqr.Shard.options:type_name -> spqr.GenericOption
-	1,  // 1: spqr.ShardInfo.options:type_name -> spqr.GenericOption
-	0,  // 2: spqr.ShardReply.shard:type_name -> spqr.Shard
-	0,  // 3: spqr.ListShardsReply.shards:type_name -> spqr.Shard
-	0,  // 4: spqr.AddShardRequest.shard:type_name -> spqr.Shard
-	1,  // 5: spqr.AlterShardRequest.options:type_name -> spqr.GenericOption
-	0,  // 6: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
-	10, // 7: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
-	6,  // 8: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
-	7,  // 9: spqr.ShardService.AlterShard:input_type -> spqr.AlterShardRequest
-	9,  // 10: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
-	8,  // 11: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
-	4,  // 12: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
-	5,  // 13: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
-	10, // 14: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
-	10, // 15: spqr.ShardService.AlterShard:output_type -> google.protobuf.Empty
-	10, // 16: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
-	10, // 17: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
-	3,  // 18: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	2,  // 0: spqr.Shard.options:type_name -> spqr.GenericOption
+	0,  // 1: spqr.GenericOption.action:type_name -> spqr.GenericOption.Action
+	2,  // 2: spqr.ShardInfo.options:type_name -> spqr.GenericOption
+	1,  // 3: spqr.ShardReply.shard:type_name -> spqr.Shard
+	1,  // 4: spqr.ListShardsReply.shards:type_name -> spqr.Shard
+	1,  // 5: spqr.AddShardRequest.shard:type_name -> spqr.Shard
+	2,  // 6: spqr.AlterShardRequest.options:type_name -> spqr.GenericOption
+	1,  // 7: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
+	11, // 8: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
+	7,  // 9: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
+	8,  // 10: spqr.ShardService.AlterShard:input_type -> spqr.AlterShardRequest
+	10, // 11: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
+	9,  // 12: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
+	5,  // 13: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
+	6,  // 14: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
+	11, // 15: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
+	11, // 16: spqr.ShardService.AlterShard:output_type -> google.protobuf.Empty
+	11, // 17: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
+	11, // 18: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
+	4,  // 19: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
+	14, // [14:20] is the sub-list for method output_type
+	8,  // [8:14] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_protos_shard_proto_init() }
@@ -598,13 +663,14 @@ func file_protos_shard_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_shard_proto_rawDesc), len(file_protos_shard_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_protos_shard_proto_goTypes,
 		DependencyIndexes: file_protos_shard_proto_depIdxs,
+		EnumInfos:         file_protos_shard_proto_enumTypes,
 		MessageInfos:      file_protos_shard_proto_msgTypes,
 	}.Build()
 	File_protos_shard_proto = out.File

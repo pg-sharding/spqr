@@ -327,7 +327,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
 		if err != nil {
-			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
 		}
 
 		/* XXX: fix this. This behaviour break regression tests */
@@ -1106,7 +1106,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, stri
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName))
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
-						return stmts, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
+						return stmts, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", schemaErr)
 					}
 				}
 			}
