@@ -1338,7 +1338,7 @@ order_clause:
 	{
 		$$ = &lyx.SortBy{
 			Node: $3,
-			SortbyDir: $4,
+			SortbyDir: int64($4),
 		}
 	} 
 	| /* empty */    {$$ = nil}

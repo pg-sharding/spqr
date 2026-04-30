@@ -1121,7 +1121,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 			return p, nil
 		}
 
-		limitVal := 0
+		limitVal := int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -1179,7 +1179,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 						errmsg = v
 					case *pgproto3.DataRow:
 
-						if len(retSlice.TTS.Raw) < limitVal {
+						if len(retSlice.TTS.Raw) < int(limitVal) {
 							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
@@ -1374,7 +1374,7 @@ func (qr *ProxyQrouter) planSPQRCTID(
 			case *lyx.ParamRef:
 				queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 				if err != nil {
 					return nil, err
 				}
