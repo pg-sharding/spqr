@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
@@ -219,4 +220,66 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	is.NoError(err)
 
 	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1Double))
+}
+
+func TestValidateKeyRangeForCreate_unknownShardReturnsHint(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := prepareDbTestValidate(ctx)
+	is.NoError(err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+
+	reqKr := &kr.KeyRange{
+		ID:           "kr_missing",
+		ShardID:      "nonexistentshard",
+		Distribution: "ds1",
+		LowerBound:   []any{int64(100)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}
+
+	err = meta.ValidateKeyRangeForCreate(ctx, mngr, reqKr)
+	is.Error(err)
+
+	spErr, ok := err.(*spqrerror.SpqrError)
+	is.True(ok)
+	is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+	is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
+	is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+}
+
+func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := prepareDbTestValidate(ctx)
+	is.NoError(err)
+
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	tranMngr := meta.NewTranEntityManager(mngr)
+
+	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
+	is.NoError(err)
+
+	_, err = mngr.LockKeyRange(ctx, kr1.ID)
+	is.NoError(err)
+
+	reqKr := &kr.KeyRange{
+		ID:           kr1.ID,
+		ShardID:      "nonexistentshard",
+		Distribution: kr1.Distribution,
+		LowerBound:   kr1.LowerBound,
+		ColumnTypes:  kr1.ColumnTypes,
+	}
+
+	err = meta.ValidateKeyRangeForModify(ctx, mngr, reqKr)
+	is.Error(err)
+
+	spErr, ok := err.(*spqrerror.SpqrError)
+	is.True(ok)
+	is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+	is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
+	is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
 }
