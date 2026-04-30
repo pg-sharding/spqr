@@ -709,7 +709,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		ColumnSequenceMapping: map[string]string{
 			"id1": "s1",
 		},
-		ShardIds: []string{
+		ShardIDs: []string{
 			"sh1", "sh2",
 		},
 	})
@@ -801,7 +801,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
-		ShardIds:  []string{"sh1", "sh2"},
+		ShardIDs:  []string{"sh1", "sh2"},
 	})
 
 	shardMapping := map[string]*topology.DataShard{

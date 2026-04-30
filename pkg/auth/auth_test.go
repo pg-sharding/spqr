@@ -93,36 +93,36 @@ func TestDifferentPasswordsForDifferentShards(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBackendRule()
-	message_md5 := &pgproto3.AuthenticationMD5Password{}
+	brMd5 := MockBackendRule()
+	messageMd5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBackendRule()
-	message_clear := &pgproto3.AuthenticationCleartextPassword{}
+	brClear := MockBackendRule()
+	messageClear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard1 := MockShard(shardName1)
 	shard2 := MockShard(shardName2)
 
 	//check md5
-	err := auth.AuthBackend(shard1, br_md5, message_md5)
+	err := auth.AuthBackend(shard1, brMd5, messageMd5)
 	assert.NoError(err)
 
 	md1 := buf.String()
 	buf.Reset()
 
-	err = auth.AuthBackend(shard2, br_md5, message_md5)
+	err = auth.AuthBackend(shard2, brMd5, messageMd5)
 
 	assert.NoError(err)
 	assert.NotEqual(md1, buf.String(), "Passwords` hashes must be different")
 	buf.Reset()
 
 	//check clear text
-	err = auth.AuthBackend(shard1, br_clear, message_clear)
+	err = auth.AuthBackend(shard1, brClear, messageClear)
 	assert.NoError(err)
 
 	md1 = buf.String()
 	buf.Reset()
 
-	err = auth.AuthBackend(shard2, br_clear, message_clear)
+	err = auth.AuthBackend(shard2, brClear, messageClear)
 
 	assert.NoError(err)
 	assert.NotEqual(md1, buf.String(), "Passwords must be different")
@@ -154,35 +154,35 @@ func TestSamePasswordForOneShard(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBackendRule()
-	message_md5 := &pgproto3.AuthenticationMD5Password{}
+	brMd5 := MockBackendRule()
+	messageMd5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBackendRule()
-	message_clear := &pgproto3.AuthenticationCleartextPassword{}
+	brClear := MockBackendRule()
+	messageClear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard1 := MockShard(shardName1)
 
 	//check md5
-	err := auth.AuthBackend(shard1, br_md5, message_md5)
+	err := auth.AuthBackend(shard1, brMd5, messageMd5)
 	assert.NoError(err)
 
 	md1 := buf.String()
 	buf.Reset()
 
-	err = auth.AuthBackend(shard1, br_md5, message_md5)
+	err = auth.AuthBackend(shard1, brMd5, messageMd5)
 
 	assert.NoError(err)
 	assert.Equal(md1, buf.String(), "Passwords` hashes must match")
 	buf.Reset()
 
 	//check clear text
-	err = auth.AuthBackend(shard1, br_clear, message_clear)
+	err = auth.AuthBackend(shard1, brClear, messageClear)
 	assert.NoError(err)
 
 	md1 = buf.String()
 	buf.Reset()
 
-	err = auth.AuthBackend(shard1, br_clear, message_clear)
+	err = auth.AuthBackend(shard1, brClear, messageClear)
 
 	assert.NoError(err)
 	assert.Equal(md1, buf.String(), "Passwords must match")
@@ -208,20 +208,20 @@ func TestErrorWhenNoPasswordForShard(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBackendRule()
-	message_md5 := &pgproto3.AuthenticationMD5Password{}
+	brMd5 := MockBackendRule()
+	messageMd5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBackendRule()
-	message_clear := &pgproto3.AuthenticationCleartextPassword{}
+	brClear := MockBackendRule()
+	messageClear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard := MockShard("unexisting")
 
 	//check md5
-	err := auth.AuthBackend(shard, br_md5, message_md5)
+	err := auth.AuthBackend(shard, brMd5, messageMd5)
 	assert.Error(err, "Can`t connect to the shard without password")
 
 	//check clear text
-	err = auth.AuthBackend(shard, br_clear, message_clear)
+	err = auth.AuthBackend(shard, brClear, messageClear)
 	assert.Error(err, "Can`t connect to the shard without password")
 
 	//clean test data
@@ -242,40 +242,40 @@ func TestErrorWhenNoPasswordForShard(t *testing.T) {
 // - None.
 func TestCanConnectWithDefaultRule(t *testing.T) {
 	//init test data
-	authRule_md5 := &config.AuthBackendCfg{
+	authRuleMd5 := &config.AuthBackendCfg{
 		Password: "12345",
 	}
 
-	br_md5 := &config.BackendRule{
+	brMd5 := &config.BackendRule{
 		Usr:             "vasya",
 		DB:              "random",
-		DefaultAuthRule: authRule_md5,
+		DefaultAuthRule: authRuleMd5,
 		ConnectionLimit: 42,
 	}
-	message_md5 := &pgproto3.AuthenticationMD5Password{}
+	messageMd5 := &pgproto3.AuthenticationMD5Password{}
 
-	authRule_clear := &config.AuthBackendCfg{
+	authRuleClear := &config.AuthBackendCfg{
 		Password: "12345",
 	}
 
-	br_clear := &config.BackendRule{
+	brClear := &config.BackendRule{
 		Usr:             "vasya",
 		DB:              "random",
-		DefaultAuthRule: authRule_clear,
+		DefaultAuthRule: authRuleClear,
 		ConnectionLimit: 42,
 	}
-	message_clear := &pgproto3.AuthenticationCleartextPassword{}
+	messageClear := &pgproto3.AuthenticationCleartextPassword{}
 
 	assert := assert.New(t)
 
 	shard := MockShard("unexisting")
 
 	//check md5
-	err := auth.AuthBackend(shard, br_md5, message_md5)
+	err := auth.AuthBackend(shard, brMd5, messageMd5)
 	assert.NoError(err, "Couldn`t connect to the shard with default rule")
 
 	//check clear text
-	err = auth.AuthBackend(shard, br_clear, message_clear)
+	err = auth.AuthBackend(shard, brClear, messageClear)
 	assert.NoError(err, "Couldn`t connect to the shard with default rule")
 
 	//clean test data
@@ -299,17 +299,17 @@ func TestCanConnectWithDefaultRule(t *testing.T) {
 // - None.
 func TestDifferentPasswordsForRuleAndDefault(t *testing.T) {
 	//init test data
-	br_md5 := MockBackendRule()
-	br_md5.DefaultAuthRule = &config.AuthBackendCfg{
+	brMd5 := MockBackendRule()
+	brMd5.DefaultAuthRule = &config.AuthBackendCfg{
 		Password: "12345",
 	}
-	message_md5 := &pgproto3.AuthenticationMD5Password{}
+	messageMd5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBackendRule()
-	br_clear.DefaultAuthRule = &config.AuthBackendCfg{
+	brClear := MockBackendRule()
+	brClear.DefaultAuthRule = &config.AuthBackendCfg{
 		Password: "12345",
 	}
-	message_clear := &pgproto3.AuthenticationCleartextPassword{}
+	messageClear := &pgproto3.AuthenticationCleartextPassword{}
 
 	assert := assert.New(t)
 
@@ -317,26 +317,26 @@ func TestDifferentPasswordsForRuleAndDefault(t *testing.T) {
 	shard2 := MockShard("unexisting")
 
 	//check md5
-	err := auth.AuthBackend(shard1, br_md5, message_md5)
+	err := auth.AuthBackend(shard1, brMd5, messageMd5)
 
 	assert.NoError(err)
 	md1 := buf.String()
 	buf.Reset()
 
-	err = auth.AuthBackend(shard2, br_md5, message_md5)
+	err = auth.AuthBackend(shard2, brMd5, messageMd5)
 
 	assert.NoError(err)
 	assert.NotEqual(md1, buf.String(), "Passwords` hashes must be different")
 	buf.Reset()
 
 	//check clear text
-	err = auth.AuthBackend(shard1, br_clear, message_clear)
+	err = auth.AuthBackend(shard1, brClear, messageClear)
 
 	assert.NoError(err)
 	md1 = buf.String()
 	buf.Reset()
 
-	err = auth.AuthBackend(shard2, br_clear, message_clear)
+	err = auth.AuthBackend(shard2, brClear, messageClear)
 
 	assert.NoError(err)
 	assert.NotEqual(md1, buf.String(), "Passwords must be different")

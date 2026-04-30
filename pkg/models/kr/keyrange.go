@@ -230,31 +230,21 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 		case qdb.ColumnTypeUinteger:
 			i1 := bound[i].(uint64)
 			i2 := key[i].(uint64)
-			if i1 == i2 {
-				// continue
-			} else if i1 < i2 {
-				return true
-			} else {
-				return false
+			if i1 != i2 {
+				return i1 < i2
 			}
 		case qdb.ColumnTypeInteger:
 			i1 := bound[i].(int64)
 			i2 := key[i].(int64)
-			if i1 == i2 {
-				// continue
-			} else if i1 < i2 {
-				return true
-			} else {
-				return false
+			if i1 != i2 {
+				return i1 < i2
 			}
 		case qdb.ColumnTypeUUID:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
 			i1 := bound[i].(string)
 			i2 := key[i].(string)
-			if i1 == i2 {
-				// continue
-			} else {
+			if i1 != i2 {
 				return i1 < i2
 			}
 		case qdb.ColumnTypeVarcharDeprecated:

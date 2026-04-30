@@ -66,12 +66,7 @@ func InitStatisticsStr(q []string) error {
 }
 
 func initStatsCommon() {
-	if len(QueryStatistics.Quantiles) > 0 { // also not nil
-		QueryStatistics.NeedToCollectData = true
-	} else {
-		QueryStatistics.NeedToCollectData = false
-	}
-
+	QueryStatistics.NeedToCollectData = len(QueryStatistics.Quantiles) > 0
 	QueryStatistics.RouterTimeTotal, _ = tdigest.New()
 	QueryStatistics.ShardTimeTotal, _ = tdigest.New()
 }

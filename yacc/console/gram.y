@@ -1289,7 +1289,7 @@ create_stmt:
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
-				ShardIds: $6,
+				ShardIDs: $6,
 			},
 		}
 	}
@@ -1338,7 +1338,7 @@ order_clause:
 	{
 		$$ = &lyx.SortBy{
 			Node: $3,
-			SortbyDir: $4,
+			SortbyDir: int64($4),
 		}
 	} 
 	| /* empty */    {$$ = nil}
@@ -1623,6 +1623,10 @@ key_range_stmt:
 	KEY RANGE any_id
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
+	}
+	| KEY RANGE ALL
+	{
+		$$ = &KeyRangeSelector{KeyRangeID: `*`}
 	}
 
 distribution_select_stmt:

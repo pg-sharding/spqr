@@ -810,7 +810,7 @@ Feature: Redistribution retries test
 #     Then command return code should be "1"
 #     And SQL error on host "coordinator2" should match regexp
 #     """
-#     key range .* is locked
+#     key range is locked
 #     """
 
 # Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKeyRangeLocked in QDB 

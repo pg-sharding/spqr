@@ -22,9 +22,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
+	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -86,7 +86,7 @@ type RelayStateImpl struct {
 
 	Qr      qrouter.QueryRouter
 	qse     QueryStateExecutor
-	qp      parser.QParser
+	qp      qparser.QParser
 	plainQ  string
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
@@ -262,11 +262,7 @@ func (rst *RelayStateImpl) initExecutor(p plan.Plan) error {
 	}
 
 	/* if transaction is explicitly requested, deploy */
-	if err := rst.QueryExecutor().DeploySliceTransactionBlock(); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.QueryExecutor().DeploySliceTransactionBlock()
 }
 
 // TODO : unit tests
@@ -625,7 +621,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 	if objType == xproto.ObjectTypePortal {
 
 		if !rst.unnamedPortalExists {
-			return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
+			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
 		}
 
 		spqrlog.Zero.Debug().
@@ -652,7 +648,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			if name != "" {
 				if _, ok := rst.executeMp[name]; !ok {
 					return spqrerror.New(
-						spqrerror.PG_PORTAl_DOES_NOT_EXISTS,
+						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
 						fmt.Sprintf("portal \"%s\" does not exists", name))
 				}
 				p = rst.bindQueryPlanMP[name]
@@ -751,7 +747,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 		if desc != nil {
 			// if we did overwrite something - remove our
 			// columns from output
-			for ind := range def.OverwriteRemoveParamIds {
+			for ind := range def.OverwriteRemoveParamIDs {
 				// NB: ind are zero - indexed
 				desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
 			}
@@ -809,7 +805,7 @@ func (rst *RelayStateImpl) BindPrepared(
 		return pstmtDoesNotExistsErr(preparedStatement)
 	}
 
-	if def.OverwriteRemoveParamIds != nil {
+	if def.OverwriteRemoveParamIDs != nil {
 		// we did query overwrite for sole reason -
 		// to insert next sequence value.
 		// XXX: this needs a massive refactor later
@@ -1032,16 +1028,9 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		case 'S':
 			/* Statement */
 
-			def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
-
-			if def == nil {
-				/* this prepared statement was not prepared by client */
-				return pstmtDoesNotExistsErr(currentMsg.Name)
-			} else {
-				rst.Client().ClosePreparedStatement(currentMsg.Name)
-				if err := rst.Client().ReplyCloseComplete(); err != nil {
-					return err
-				}
+			rst.Client().ClosePreparedStatement(currentMsg.Name)
+			if err := rst.Client().ReplyCloseComplete(); err != nil {
+				return err
 			}
 
 		default:

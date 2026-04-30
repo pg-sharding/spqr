@@ -36,7 +36,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	}
 
 	var rec func(lvl int) error
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	compositeKey := make([]any, len(relation.DistributionKey))
 

@@ -274,7 +274,7 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 
 	serv := s.cl.Server()
 
-	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
+	if s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
@@ -408,7 +408,10 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 			/* ???? */
 			continue
 		}
-		o := opt.(*lyx.Option)
+		o, ok := opt.(*lyx.Option)
+		if !ok {
+			return nil, fmt.Errorf("unexpected COPY option type %T, expected *lyx.Option", opt)
+		}
 		if strings.ToLower(o.Name) == "delimiter" {
 			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
 		}
@@ -523,7 +526,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		return nil, nil
 	}
 
-	var leftoverMsgData []byte = nil
+	var leftoverMsgData []byte
 
 	rowsMp := map[string][]byte{}
 
@@ -665,8 +668,8 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		}
 	}
 
-	var ccmsg *pgproto3.CommandComplete = nil
-	var errmsg *pgproto3.ErrorResponse = nil
+	var ccmsg *pgproto3.CommandComplete
+	var errmsg *pgproto3.ErrorResponse
 
 	txt := txstatus.TXIDLE
 
@@ -737,6 +740,13 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 		}
 
 		switch newMsg := cpMsg.(type) {
+		case *pgproto3.Flush, *pgproto3.Sync:
+			/*
+			 * Ignore Flush/Sync for the convenience of client
+			 * libraries (such as libpq) that may send those
+			 * without noticing that the command they just
+			 * sent was COPY.
+			 */
 		case *pgproto3.CopyData:
 			leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
 
@@ -935,39 +945,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return nil
 
 	case *plan.CopyPlan:
-
-		if serv == nil {
-			/* Malformed */
-			return errUnAttached
-		}
-
-		/* Now dispatch this toplevel slice */
-		if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
-			return err
-		}
-
-		msg, _, err := serv.Receive()
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Str("server", serv.Name()).
-			Type("msg-type", msg).
-			Msg("received message from server")
-
-		switch msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = s.Client().Send(msg)
-			if err != nil {
-				return err
-			}
-
-			return s.copyFromExecutor(qd.simple)
-		default:
-			return server.ErrMultiShardSyncBroken
-		}
+		return rerrors.ErrExecutorSyncLost
 	case *plan.ScatterPlan:
 		if q.OverwriteCC != nil {
 			overwriteCC = q.OverwriteCC

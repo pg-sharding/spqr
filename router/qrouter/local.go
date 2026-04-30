@@ -50,7 +50,7 @@ func (qr *LocalQrouter) SetReady(ready bool) {
 }
 
 // WorldShardsRoutes implements QueryRouter.
-func (l *LocalQrouter) WorldShardsRoutes() []kr.ShardKey {
+func (qr *LocalQrouter) WorldShardsRoutes() []kr.ShardKey {
 	return []kr.ShardKey{}
 }
 
@@ -76,55 +76,59 @@ func NewLocalQrouter(shardMapping map[string]*topology.DataShard, metricRegistry
 	return l, nil
 }
 
-func (l *LocalQrouter) Initialize() bool {
+func (qr *LocalQrouter) Initialize() bool {
 	return true
 }
 
-func (l *LocalQrouter) Initialized() bool {
+func (qr *LocalQrouter) Initialized() bool {
 	return true
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) error {
+func (qr *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Debug().Str("shard", ds.ID).Msg("adding data shard")
-	l.ds = ds
+	qr.ds = ds
 	return nil
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) PlanQuery(_ context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+func (qr *LocalQrouter) PlanQuery(_ context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	return &plan.ShardDispatchPlan{
 		PStmt: rm.Stmt,
 		ExecTarget: kr.ShardKey{
-			Name: l.ds.ID,
+			Name: qr.ds.ID,
 		},
 	}, nil
 }
 
-func (l *LocalQrouter) SchemaCache() *cache.SchemaCache {
+func (qr *LocalQrouter) SchemaCache() *cache.SchemaCache {
 	return nil
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) DataShardsRoutes() []kr.ShardKey {
+func (qr *LocalQrouter) DataShardsRoutes() []kr.ShardKey {
 	return []kr.ShardKey{
 		{
-			Name: l.ds.ID,
+			Name: qr.ds.ID,
 		},
 	}
 }
 
-func (l *LocalQrouter) Mgr() meta.EntityMgr {
+func (qr *LocalQrouter) Mgr() meta.EntityMgr {
 	return nil
 }
 
+<<<<<<< HEAD
 func (l *LocalQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
 	return l.metricRegistry
 }
 
 func (l *LocalQrouter) CSM() connmgr.ConnectionMgr {
+=======
+func (qr *LocalQrouter) CSM() connmgr.ConnectionMgr {
+>>>>>>> master
 	return nil
 }
 
-func (l *LocalQrouter) SetQuery(_ *string) {}
-func (l *LocalQrouter) Query() *string     { return nil }
+func (qr *LocalQrouter) SetQuery(_ *string) {}
+func (qr *LocalQrouter) Query() *string     { return nil }

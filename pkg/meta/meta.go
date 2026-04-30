@@ -30,6 +30,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
@@ -491,17 +492,17 @@ func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrpars
 	r := &rrelation.ReferenceRelation{
 		RelationName:  stmt.TableName,
 		SchemaVersion: 1,
-		ShardIds:      stmt.ShardIds,
+		ShardIDs:      stmt.ShardIDs,
 	}
 
-	if len(stmt.ShardIds) == 0 {
+	if len(stmt.ShardIDs) == 0 {
 		// default is all shards
 		shs, err := mngr.ListShards(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for _, sh := range shs {
-			r.ShardIds = append(r.ShardIds, sh.ID)
+			r.ShardIDs = append(r.ShardIDs, sh.ID)
 		}
 	}
 
@@ -517,7 +518,7 @@ func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrpars
 				fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
 			},
 			{
-				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
+				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIDs, ",")),
 			},
 		},
 	}
@@ -611,7 +612,11 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 
-		dataShard := topology.NewDataShard(stmt.Id, config.DataShard, topology.OptionsFromSQL(stmt.Options))
+		options, err := topology.OptionsFromSQL(stmt.Options)
+		if err != nil {
+			return nil, err
+		}
+		dataShard := topology.NewDataShard(stmt.Id, config.DataShard, options)
 		if err := topology.ValidateDataShardHosts(ctx, dataShard); err != nil {
 			return nil, err
 		}
@@ -693,7 +698,30 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
 				return nil, err
 			}
-		} // else re-bootstrap
+		} else /* REBOOTSTRAP */ {
+			memqdb, ok := mngr.QDB().(*qdb.MemQDB)
+			if !ok {
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
+			}
+
+			if !config.RouterConfig().UseCoordinatorInit {
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+			}
+
+			etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				if err := etcdConn.Client().Close(); err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+				}
+			}()
+
+			if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+				return nil, err
+			}
+		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter system"),
@@ -1132,16 +1160,39 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Unlock:
-		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
-			return nil, err
-		}
+		if stmt.KeyRangeID == "*" {
+			krs, err := mgr.ListAllKeyRanges(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("unlock key range"),
-			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
-		}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("unlock key range"),
+			}
 
-		return tts, nil
+			for _, kr := range krs {
+				if kr.IsLocked != nil && *kr.IsLocked {
+					if err := mgr.UnlockKeyRange(ctx, kr.ID); err != nil {
+						return nil, err
+					}
+					/* XXX: FIX */
+					// tts.WriteDataRow(kr.ID)
+				}
+			}
+
+			return tts, nil
+		} else {
+			if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
+				return nil, err
+			}
+
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("unlock key range"),
+				Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
+			}
+
+			return tts, nil
+		}
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
@@ -1190,7 +1241,7 @@ func ProcMetadataCommand(ctx context.Context,
 			mgr.Cache().Reset()
 		case spqrparser.StaleClientsInvalidateTarget:
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+				if !netutil.TCPCheckAliveness(cl.Conn()) {
 					tts.WriteDataRow(fmt.Sprintf("signaled %d", cl.ID()))
 					return cl.Cancel()
 				}
@@ -1481,7 +1532,7 @@ func ProcessShowExtended(ctx context.Context,
 			resp = append(resp, client)
 			/* XXX: should we do this un-conditionally  or under separate setting? */
 			/*  When this is executed by coordinator, c is (validly) nil*/
-			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+			if c := client.Conn(); c != nil && !netutil.TCPCheckAliveness(c) {
 				if err := client.Cancel(); err != nil {
 					return err
 				}
@@ -2117,7 +2168,7 @@ func processShowInner(ctx context.Context,
 				fmt.Sprintf("%d", berule.ConnectionRetries),
 				berule.ConnectionTimeout.String(),
 				berule.KeepAlive.String(),
-				berule.TcpUserTimeout.String(),
+				berule.TCPUserTimeout.String(),
 			)
 		}
 		return tts, nil
@@ -2255,7 +2306,10 @@ func processAlterShard(ctx context.Context,
 	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterShardOptions:
-		optionsMap := topology.OptionsFromSQL(stmt.Options)
+		optionsMap, err := topology.OptionsFromSQL(stmt.Options)
+		if err != nil {
+			return nil, err
+		}
 		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
 			return nil, err
 		}

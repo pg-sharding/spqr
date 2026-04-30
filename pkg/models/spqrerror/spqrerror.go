@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_UNEXPECTED           = "SPQRU"
 	SPQR_NO_DATASHARD         = "SPQRD"
@@ -35,11 +36,13 @@ const (
 
 	PG_ERRCODE_PROTOCOL_VIOLATION         = "08P01"
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
-	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
+	PG_PORTAL_DOES_NOT_EXISTS             = "34000"
 
 	PG_ERRCODE_UNDEFINED_TABLE = "42P01"
 	PG_SYNTAX_ERROR            = "42601"
 )
+
+//revive:enable:var-naming
 
 var ExistingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:         "failed to match any datashard",
@@ -172,8 +175,8 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 //
 // Returns:
 //   - string: The formatted error message.
-func (er *SpqrError) Error() string {
-	return er.Err.Error()
+func (e *SpqrError) Error() string {
+	return e.Err.Error()
 }
 
 // Try convert grpc error to error without "rpc error: code..."

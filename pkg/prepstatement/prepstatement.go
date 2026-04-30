@@ -13,7 +13,7 @@ type PreparedStatementDefinition struct {
 	// store here some state to make client see what it actually wants
 
 	// XXX: Currently always one last column
-	OverwriteRemoveParamIds map[int]struct{}
+	OverwriteRemoveParamIDs map[int]struct{}
 	SeqName                 string
 }
 

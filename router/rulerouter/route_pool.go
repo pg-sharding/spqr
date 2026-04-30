@@ -1,6 +1,7 @@
 package rulerouter
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -53,7 +54,11 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) 
 	var err error
 
 	r.pool.Range(func(_, value any) bool {
-		rt := value.(*route.Route)
+		rt, ok := value.(*route.Route)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected route pool value type")
+			return true
+		}
 
 		if cont, err := cb(rt); err != nil {
 			spqrlog.Zero.Info().
@@ -72,7 +77,11 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) 
 func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 	ret, ok := r.pool.LoadAndDelete(key)
 	if ok {
-		return ret.(*route.Route)
+		rt, ok := ret.(*route.Route)
+		if !ok {
+			return nil
+		}
+		return rt
 	}
 
 	return nil
@@ -82,7 +91,11 @@ func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 func (r *RoutePoolImpl) Shutdown() error {
 
 	r.pool.Range(func(_, v any) bool {
-		rt := v.(*route.Route)
+		rt, ok := v.(*route.Route)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected route pool value type")
+			return true
+		}
 		go func() {
 			_ = rt.NotifyClients(func(cl client.ClientInfo) error {
 				return cl.Shutdown()
@@ -104,7 +117,11 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 			Str("user", key.Usr()).
 			Str("db", key.DB()).
 			Msg("match route")
-		return nroute.(*route.Route), nil
+		rt, ok := nroute.(*route.Route)
+		if !ok {
+			return nil, fmt.Errorf("internal: unexpected route type %T", nroute)
+		}
+		return rt, nil
 	}
 
 	spqrlog.Zero.Debug().
@@ -120,19 +137,27 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	act, loaded := r.pool.LoadOrStore(key, nroute)
 
-	if !loaded {
+	if loaded {
 		// conflict, release goroutines
 		nroute.MultiShardPool().StopCacheWatchdog()
 		_ = nroute.ClientPool().Shutdown()
 	}
-	return act.(*route.Route), nil
+	rt, ok := act.(*route.Route)
+	if !ok {
+		return nil, fmt.Errorf("internal: unexpected route type %T", act)
+	}
+	return rt, nil
 }
 
 // TODO : unit tests
 func (r *RoutePoolImpl) ForEachPool(cb func(pool.Pool) error) error {
 
 	r.pool.Range(func(_, v any) bool {
-		route := v.(*route.Route)
+		route, ok := v.(*route.Route)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected route pool value type")
+			return true
+		}
 		_ = route.ForEachPool(cb)
 		return true
 	})

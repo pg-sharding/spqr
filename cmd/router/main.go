@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
@@ -245,12 +246,12 @@ var runCmd = &cobra.Command{
 		ctx, cancelCtx := context.WithCancel(context.Background())
 		defer cancelCtx()
 
-		var pprofCpuFile *os.File
+		var pprofCPUFile *os.File
 		var pprofMemFile *os.File
 
 		if cpuProfile {
 			spqrlog.Zero.Info().Msg("starting cpu profile")
-			pprofCpuFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
+			pprofCPUFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
 
 			if err != nil {
 				spqrlog.Zero.Info().
@@ -259,7 +260,7 @@ var runCmd = &cobra.Command{
 				return err
 			}
 
-			if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
+			if err := pprof.StartCPUProfile(pprofCPUFile); err != nil {
 				spqrlog.Zero.Info().
 					Err(err).
 					Msg("got an error while starting cpu profile")
@@ -277,6 +278,8 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		}
+
+		rps.InitRPSStats()
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
@@ -344,9 +347,9 @@ var runCmd = &cobra.Command{
 					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
-						spqrlog.Zero.Info().Str("fname", pprofCpuFile.Name()).Msg("writing cpu prof")
+						spqrlog.Zero.Info().Str("fname", pprofCPUFile.Name()).Msg("writing cpu prof")
 
-						if err := pprofCpuFile.Close(); err != nil {
+						if err := pprofCPUFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
@@ -387,7 +390,7 @@ var runCmd = &cobra.Command{
 						pprof.StopCPUProfile()
 
 						spqrlog.Zero.Info().Msg("writing cpu prof")
-						if err := pprofCpuFile.Close(); err != nil {
+						if err := pprofCPUFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
@@ -449,7 +452,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServeGrpcApi(ctx)
+			err := app.ServeGrpcAPI(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
 				errCh <- err

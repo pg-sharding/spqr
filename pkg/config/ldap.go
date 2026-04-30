@@ -65,7 +65,7 @@ func (l *LDAPCfg) ServerConn() (*ldap.Conn, error) {
 	switch l.ConnConfig.ConnMode {
 	case UnencryptedMode, SchemeMode, StartTLSMode:
 		for _, server := range l.Servers {
-			conn, err := ldap.DialURL(l.ldapUrl(server))
+			conn, err := ldap.DialURL(l.ldapURL(server))
 			if err != nil {
 				continue
 			}
@@ -212,7 +212,7 @@ func (l *LDAPCfg) loadCaCertPool() (*x509.CertPool, error) {
 	return caCertPool, nil
 }
 
-func (l *LDAPCfg) ldapUrl(server string) string {
+func (l *LDAPCfg) ldapURL(server string) string {
 	return fmt.Sprintf("%s://%s:%s", l.ConnConfig.Scheme, server, l.ConnConfig.Port)
 }
 

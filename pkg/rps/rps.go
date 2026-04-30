@@ -1,7 +1,6 @@
 package rps
 
 import (
-	"sync"
 	"sync/atomic"
 )
 
@@ -14,7 +13,6 @@ type RPSStats struct {
 
 // Global RPS tracker
 var globalRPS *RPSStats
-var rpsOnce sync.Once
 
 // NewRPSStats creates a new RPS tracker with a 1-second sliding window
 // divided into 10 buckets (100ms each) for smooth measurements.
@@ -31,38 +29,18 @@ func (r *RPSStats) OnRequest() {
 
 // InitRPSStats initializes the global RPS tracker.
 func InitRPSStats() {
-	rpsOnce.Do(func() {
-		globalRPS = NewRPSStats()
-	})
-}
-
-// InitRPSStatsWithClock initializes the global RPS tracker with a custom clock (for testing).
-// Resets the tracker if already initialized.
-func InitRPSStatsWithClock() {
-	rpsOnce = sync.Once{}
-	rpsOnce.Do(func() {
-		globalRPS = NewRPSStats()
-	})
+	globalRPS = NewRPSStats()
 }
 
 // OnRequest records a request to the global RPS tracker.
 // Auto-initializes on first call.
 func OnRequest() {
-	rpsOnce.Do(func() {
-		globalRPS = NewRPSStats()
-	})
 	globalRPS.OnRequest()
 }
 
 // GetRPSStats returns the global RPS stats instance.
 func GetRPSStats() *RPSStats {
 	return globalRPS
-}
-
-// ResetRPSStats resets the global RPS tracker (for testing).
-func ResetRPSStats() {
-	rpsOnce = sync.Once{}
-	globalRPS = nil
 }
 
 // GetTotalRequests returns the lifetime request count (thread-safe).

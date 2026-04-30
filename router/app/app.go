@@ -97,8 +97,8 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 	return app.spqr.RunAdm(ctx, listener)
 }
 
-func (app *App) ServeGrpcApi(ctx context.Context) error {
-	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort)
+func (app *App) ServeGrpcAPI(ctx context.Context) error {
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err

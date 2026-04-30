@@ -408,9 +408,17 @@ func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host
 		pool = NewShardHostPool(c.alloc, host, c.beRule)
 		v, _ := c.pools.LoadOrStore(host.Address, pool)
 
-		pool = v.(Pool)
+		p, ok := v.(Pool)
+		if !ok {
+			return nil, fmt.Errorf("unexpected pool type %T for host %s", v, host.Address)
+		}
+		pool = p
 	} else {
-		pool = val.(Pool)
+		p, ok := val.(Pool)
+		if !ok {
+			return nil, fmt.Errorf("unexpected pool type %T for host %s", val, host.Address)
+		}
+		pool = p
 	}
 	return pool.Connection(clid, shardKey)
 }

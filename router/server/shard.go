@@ -115,11 +115,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 		return err
 	}
 
-	if err := srv.pool.Put(*v); err != nil {
-		return err
-	}
-
-	return nil
+	return srv.pool.Put(*v)
 }
 
 // TODO : unit tests
@@ -163,7 +159,7 @@ func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.Shard
 	return srv.Send(query)
 }
 
-func (m *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
+func (srv *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
 	return nil
 }
 
@@ -241,7 +237,7 @@ func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 
 // TODO : unit tests
 func (srv *ShardServer) Datashards() []shard.ShardHostInstance {
-	var rv []shard.ShardHostInstance = nil
+	var rv []shard.ShardHostInstance
 	v := srv.shard.Load()
 
 	if v != nil {

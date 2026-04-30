@@ -380,7 +380,10 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 				keyTabFileProperty: rule.AuthRule.GssConfig.KrbKeyTabFile,
 			},
 		}
-		kerb := NewKerberosModule(b)
+		kerb, err := NewKerberosModule(b)
+		if err != nil {
+			return err
+		}
 		cred, err := kerb.Process(cl)
 		if err != nil {
 			return err

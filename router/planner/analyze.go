@@ -180,7 +180,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
 
-			alias, colname := lft.TableAlias, lft.ColName
+			leftAlias, leftColname := lft.TableAlias, lft.ColName
 
 			/* simple key-value pair */
 			switch right := texpr.Right.(type) {
@@ -189,37 +189,57 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
-				if _, err := rm.ProcessConstExpr(alias, colname, right); err != nil {
+				if _, err := rm.ProcessConstExpr(leftAlias, leftColname, right); err != nil {
 					return err
 				}
 
 			case *lyx.ColumnRef:
+
+				resolvedRelationLeft, err := rm.ResolveRelationByAlias(leftAlias, leftColname)
+
+				if err != nil {
+					// failed to resolve relation, skip column
+					return err
+				}
+
+				rightAlias, rightColname := right.TableAlias, right.ColName
+
+				resolvedRelationRight, err := rm.ResolveRelationByAlias(rightAlias, rightColname)
+
+				if err != nil {
+					// failed to resolve relation, skip column
+					return err
+				}
+
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(right) {
 
-					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+					if ok, err := rm.ProcessConstExpr(leftAlias, leftColname, v); err != nil {
 						return err
 					} else if ok {
-
-						searchKey := rm.SearchKeyByColRef(right)
-						rm.UsedAuxCTE[searchKey] = struct{}{}
+						if resolvedRelationRight != nil {
+							searchKey := rm.SearchKeyByColRef(right)
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
+						}
 					}
 				}
 
-				alias, colname := right.TableAlias, right.ColName
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(lft) {
-					if ok, err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+					if ok, err := rm.ProcessConstExpr(rightAlias, rightColname, v); err != nil {
 						return err
 					} else if ok {
-						searchKey := rm.SearchKeyByColRef(right)
-						rm.UsedAuxCTE[searchKey] = struct{}{}
+						if resolvedRelationLeft != nil {
+							searchKey := rm.SearchKeyByColRef(lft)
+
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
+						}
 					}
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
-					if _, err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+					if _, err := rm.ProcessConstExpr(leftAlias, leftColname, expr); err != nil {
 						return err
 					}
 				}
@@ -309,7 +329,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, withClause []*lyx.CommonTableExpr) error {
 	for _, cte := range withClause {
-		rm.CteNames[cte.Name] = struct{}{}
+		rm.CteNames[cte.Name] = cte
 		switch qq := cte.SubQuery.(type) {
 		case *lyx.ValueClause:
 			/* special case */
@@ -331,8 +351,8 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 						for auxValKey, val := range rm.AuxValues {
 							if auxValKey.CTEName == rv.RelationName {
 								rm.AuxValues[rmeta.AuxValuesKey{
-									CTEName:   cte.Name,
-									ValueName: auxValKey.ValueName,
+									CTEName:    cte.Name,
+									ColRefName: auxValKey.ColRefName,
 								}] = val
 							}
 						}
@@ -373,11 +393,7 @@ func AnalyzeQueryV1(
 			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		if err := analyzeFromNode(ctx, tr, routable, rm); err != nil {
-			return err
-		}
-
-		return nil
+		return analyzeFromNode(ctx, tr, routable, rm)
 	}
 
 	switch stmt := qstmt.(type) {
@@ -402,7 +418,7 @@ func AnalyzeQueryV1(
 			case *lyx.FuncApplication:
 				if e.Name == virtual.VirtualCTID {
 					/* we only support this if query is simple select */
-					rm.Is_SPQR_CTID = true
+					rm.IsSPQRCTID = true
 				}
 				for _, innerExp := range e.Args {
 					switch iE := innerExp.(type) {

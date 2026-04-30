@@ -36,6 +36,7 @@ benchbase
 Benro
 berule
 BOOLOID
+bootstraping
 Bootstrapper
 buildpackage
 cachedchecker
@@ -86,13 +87,13 @@ ctsa
 cupidatat
 currkr
 currroute
+cyclomatic
 Darth
 datacenter
 datadir
 datarow
 datashard
 datatransfer
-transferworker
 datname
 dboptions
 dbpool
@@ -352,6 +353,7 @@ nroute
 nsecs
 nspname
 nulla
+Objtype
 occaecat
 odit
 odssd
@@ -385,14 +387,17 @@ PGDATABASE
 pgdg
 pgexec
 PGHOST
+pgi
 pgoption
 PGPORT
 pgproto
+PGQDB
 pgquery
 pgsharding
 PGSSLMODE
 pgsync
 PGUSER
+pgx
 pgxconn
 pgxpool
 pgxv
@@ -406,6 +411,7 @@ poolview
 porro
 Postgre
 postgresql
+ppp
 pppp
 prepstatement
 privs
@@ -420,6 +426,7 @@ PYTHONUNBUFFERED
 qcfg
 qdb
 QDBKR
+QDBRe
 QDBTx
 Qdocker
 qlogger
@@ -433,16 +440,18 @@ qstmt
 qtype
 querylog
 quisquam
-Objtype
+qury
 RAddr
 ragel
 randkey
 randomhex
+randutil
 rarg
 rcfg
 rclient
 rconn
 rdistr
+rebootstrap
 regclass
 reloid
 relpersistence
@@ -457,7 +466,6 @@ retmsg
 retryable
 retst
 reuseport
-rebootstrap
 rfqn
 RFQNIs
 rgrpc
@@ -512,6 +520,7 @@ spqr
 SPQRA
 SPQRB
 SPQRC
+SPQRCTID
 SPQRD
 spqrdump
 SPQRE
@@ -538,6 +547,7 @@ SPQRX
 SPQRZ
 SQLF
 sqlfile
+SQLIn
 SQLOn
 sqlx
 sshjt
@@ -590,6 +600,7 @@ TOPENSQBR
 tpcc
 tracelog
 tran
+transferworker
 TRASCE
 truncatable
 tsa

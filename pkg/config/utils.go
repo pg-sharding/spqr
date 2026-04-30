@@ -51,11 +51,7 @@ func ParseCfg(cfgPath string, cfg any) error {
 		}
 	}(file)
 
-	if err := initConfig(file, cfgPath, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return initConfig(file, cfgPath, cfg)
 }
 
 func LoadConfig(path string, cfg Config) (string, error) {
@@ -67,11 +63,7 @@ func LoadConfig(path string, cfg Config) (string, error) {
 			return err
 		}
 
-		if err := cfg.PostProcess(); err != nil {
-			return err
-		}
-
-		return nil
+		return cfg.PostProcess()
 	}
 
 	err := load(cfg)
@@ -90,7 +82,11 @@ func LoadConfig(path string, cfg Config) (string, error) {
 	}{
 		cfg: cfg,
 		reload: func() (any, error) {
-			newCfg := reflect.New(reflect.TypeOf(cfg).Elem()).Interface().(Config)
+			newCfgInterface := reflect.New(reflect.TypeOf(cfg).Elem()).Interface()
+			newCfg, ok := newCfgInterface.(Config)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert config type: expected Config, got %T", newCfgInterface)
+			}
 			err := load(newCfg)
 			return newCfg, err
 		},

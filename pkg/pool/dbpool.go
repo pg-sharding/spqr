@@ -291,7 +291,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 			}
 
 			/* recheck connection */
-			if netutil.TCP_CheckAliveness(sh.Instance().Conn()) {
+			if netutil.TCPCheckAliveness(sh.Instance().Conn()) {
 				break
 			} else {
 				spqrlog.Zero.Error().
@@ -444,11 +444,11 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-		total_msg := make([]string, 0)
+		totalMsg := make([]string, 0)
 		for _, host := range hostOrder {
 			shard, err := s.pool.ConnectionHost(clid, key, host)
 			if err != nil {
-				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
+				totalMsg = append(totalMsg, fmt.Sprintf("host %s: %s", host, err.Error()))
 
 				s.cache.MarkUnmatched(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
 
@@ -465,7 +465,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(total_msg, ", "))
+		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(totalMsg, ", "))
 	case config.TargetSessionAttrsRO:
 		return s.selectReadOnlyShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 	case config.TargetSessionAttrsPS:
@@ -667,7 +667,7 @@ func NewDBPool(mapping map[string]*topology.DataShard, startupParams *startup.St
 
 		connTimeout := config.ValueOrDefaultDuration(rule.ConnectionTimeout, defaultInstanceConnectionTimeout)
 		keepAlive := config.ValueOrDefaultDuration(rule.KeepAlive, defaultKeepAlive)
-		tcpUserTimeout := config.ValueOrDefaultDuration(rule.TcpUserTimeout, defaultTcpUserTimeout)
+		tcpUserTimeout := config.ValueOrDefaultDuration(rule.TCPUserTimeout, defaultTCPUserTimeout)
 
 		pgi, err := conn.NewInstanceConn(host.Address, host.AZ, shardKey.Name, tlsconfig, connTimeout, keepAlive, tcpUserTimeout)
 		if err != nil {

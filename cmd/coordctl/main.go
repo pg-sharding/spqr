@@ -7,8 +7,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/randutil"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -55,7 +55,7 @@ var addRouterCmd = &cobra.Command{
 		}
 
 		if routerID == "" {
-			routerID, err = util.RandomHex(6)
+			routerID, err = randutil.RandomHex(6)
 
 			if err != nil {
 				return err
@@ -135,7 +135,7 @@ var addShardCmd = &cobra.Command{
 		}
 
 		if shardID == "" {
-			shardID, err = util.RandomHex(6)
+			shardID, err = randutil.RandomHex(6)
 
 			if err != nil {
 				return err

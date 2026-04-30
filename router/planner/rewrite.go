@@ -392,8 +392,9 @@ func getMaxPrepStmtID(s lyx.Node) int {
 					for _, el := range v {
 						switch val := el.(type) {
 						case *lyx.ParamRef:
-							if val.Number+1 > ret {
-								ret = val.Number + 1
+							lft := int(val.Number + 1)
+							if lft > ret {
+								ret = lft
 							}
 						}
 					}
@@ -419,7 +420,7 @@ func InsertSequenceParamRef(_ context.Context,
 
 			// analyze lyx statement
 			maxID := getMaxPrepStmtID(stmt)
-			def.OverwriteRemoveParamIds = map[int]struct{}{maxID: {}}
+			def.OverwriteRemoveParamIDs = map[int]struct{}{maxID: {}}
 			def.SeqName = seqName
 
 			return fmt.Sprintf("$%d", maxID), nil

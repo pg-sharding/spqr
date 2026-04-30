@@ -63,8 +63,8 @@ type RuleRouterImpl struct {
 
 	initSem semaphore.Weighted
 
-	tcpConnCount    atomic.Int64
-	activeTcpCount  atomic.Int64
+	totalTCPCount   atomic.Int64
+	activeTCPCount  atomic.Int64
 	cancelConnCount atomic.Int64
 }
 
@@ -117,12 +117,12 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 
 // ReleaseConnection implements RuleRouter.
 func (r *RuleRouterImpl) ReleaseConnection() {
-	r.activeTcpCount.Add(-1)
+	r.activeTCPCount.Add(-1)
 }
 
 // ActiveTCPCount implements RuleRouter.
 func (r *RuleRouterImpl) ActiveTCPCount() int64 {
-	return r.activeTcpCount.Load()
+	return r.activeTCPCount.Load()
 }
 
 // TotalCancelCount implements RuleRouter.
@@ -132,7 +132,7 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 
 // TotalTCPCount implements RuleRouter.
 func (r *RuleRouterImpl) TotalTCPCount() int64 {
-	return r.tcpConnCount.Load()
+	return r.totalTCPCount.Load()
 }
 
 // TODO : unit tests
@@ -199,8 +199,8 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 
 // TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	r.tcpConnCount.Add(1)
-	r.activeTcpCount.Add(1)
+	r.totalTCPCount.Add(1)
+	r.activeTCPCount.Add(1)
 
 	cl := rclient.NewPsqlClient(conn,
 		pt,
@@ -352,7 +352,10 @@ func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 // TODO : unit tests
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	if v, ok := r.clmp.Load(csm.ProcessID); ok {
-		cl := v.(rclient.RouterClient)
+		cl, ok := v.(rclient.RouterClient)
+		if !ok {
+			return fmt.Errorf("internal: unexpected client type %T for pid %d", v, csm.ProcessID)
+		}
 
 		if !bytes.Equal(cl.GetCancelKey(), csm.SecretKey) {
 			return fmt.Errorf("cancel secret does not match")
@@ -365,16 +368,16 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
-	return rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+func (r *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+	return r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		return true, route.NotifyClients(cb)
 	})
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
+func (r *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
-	err := rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+	err := r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		ok, nestedErr := route.ReleaseClient(clientID)
 		popped = popped || ok
 		return !popped, nestedErr
@@ -383,7 +386,7 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	return popped, err
 }
 
-func (rr *RuleRouterImpl) Put(_ client.Client) error {
+func (r *RuleRouterImpl) Put(_ client.Client) error {
 	return nil
 }
 

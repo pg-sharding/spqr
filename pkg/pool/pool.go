@@ -15,7 +15,7 @@ const (
 	defaultInstanceConnectionRetries = 10
 	defaultInstanceConnectionTimeout = time.Second
 	defaultKeepAlive                 = time.Second
-	defaultTcpUserTimeout            = time.Millisecond * 9500
+	defaultTCPUserTimeout            = time.Millisecond * 9500
 )
 
 type ConnectionKeeper interface {

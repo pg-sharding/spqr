@@ -727,7 +727,7 @@ Feature: MemQDB with PG dc state keeper test
     Then command return code should be "0"
     When I run SQL on host "router"
     """
-    SELECT __spqr__clean_outdated_2pc_data();
+    SELECT __spqr__clean_outdated_2pc_data() ORDER BY gid;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -743,29 +743,29 @@ Feature: MemQDB with PG dc state keeper test
     """
     When I run SQL on host "shard1"
     """
-    SELECT id FROM spqr_metadata.spqr_tx_status;
+    SELECT id FROM spqr_metadata.spqr_tx_status ORDER BY id;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-        "id": "done_not_outdated"
-      },
-      {
-        "id": "rejected_not_outdated"
-      },
-      {
-        "id": "planned_outdated"
-      },
-      {
-        "id": "planned_not_outdated"
+        "id": "committing_not_outdated"
       },
       {
         "id": "committing_outdated"
       },
       {
-        "id": "committing_not_outdated"
+        "id": "done_not_outdated"
+      },
+      {
+        "id": "planned_not_outdated"
+      },
+      {
+        "id": "planned_outdated"
+      },
+      {
+        "id": "rejected_not_outdated"
       }
     ]
     """

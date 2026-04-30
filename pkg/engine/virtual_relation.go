@@ -128,13 +128,13 @@ func KeyRangeVirtualRelationScanExtended(
 			}
 		}
 
-		next_lower_bound := "+inf"
+		nextLowerBound := "+inf"
 
 		var maxValue any
 		if nextKr != nil {
 			maxValue = nextKr.LowerBound[0]
 
-			next_lower_bound = strings.Join(nextKr.SendRaw(), ",")
+			nextLowerBound = strings.Join(nextKr.SendRaw(), ",")
 		} else {
 			// Last key range - calculate coverage to max value
 
@@ -168,7 +168,7 @@ func KeyRangeVirtualRelationScanExtended(
 			keyRange.ShardID,
 			keyRange.Distribution,
 			strings.Join(keyRange.SendRaw(), ","),
-			next_lower_bound,
+			nextLowerBound,
 			coverage,
 			isLocked,
 		)
@@ -312,7 +312,7 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
-			fmt.Appendf(nil, "%+v", r.ShardIds),
+			fmt.Appendf(nil, "%+v", r.ShardIDs),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
 		})
 	}
@@ -352,9 +352,7 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 			"total_cancel_requests",
 			"active_tcp_connections",
 			"total_requests",
-			"current_rps",
-			"avg_rps",
-			"peak_rps")}
+		)}
 
 	stats := rps.GetRPSStats()
 
@@ -526,7 +524,7 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 			[]byte(cl.DB()),
 			[]byte(hostname),
 			[]byte(rAddr),
-			fmt.Appendf(nil, "%v", netutil.TCP_CheckAliveness(cl.Conn()))}
+			fmt.Appendf(nil, "%v", netutil.TCPCheckAliveness(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",

@@ -39,7 +39,7 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetad
 		Type("node-type", node).
 		Msg("planning from node")
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	switch q := node.(type) {
 	case *lyx.RangeVar:
@@ -71,7 +71,7 @@ func (qr *ProxyQrouter) planFromClauseList(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext, clause []lyx.FromClauseNode) (plan.Plan, error) {
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	for _, node := range clause {
 		tmp, err := qr.planFromNode(ctx, rm, node)
@@ -143,8 +143,8 @@ func (qr *ProxyQrouter) planInsertV1(
 						}
 
 						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
-							CTEName:   sRv.RelationName,
-							ValueName: cc.ColName,
+							CTEName:    sRv.RelationName,
+							ColRefName: cc.ColName,
 						}]; ok {
 
 							rList := [][]lyx.Node{}
@@ -157,7 +157,7 @@ func (qr *ProxyQrouter) planInsertV1(
 								rList = append(rList, inner)
 							}
 
-							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, insertColsPos, qualName)
+							shs, err := planner.PlanDistributedRelationForKeys(ctx, rList, rm, insertColsPos, qualName)
 							if err != nil {
 								return nil, err
 							}
@@ -232,7 +232,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
+			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +276,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
+			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -1121,7 +1121,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 			return p, nil
 		}
 
-		limitVal := 0
+		limitVal := int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -1179,7 +1179,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 						errmsg = v
 					case *pgproto3.DataRow:
 
-						if len(retSlice.TTS.Raw) < limitVal {
+						if len(retSlice.TTS.Raw) < int(limitVal) {
 							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
@@ -1231,6 +1231,82 @@ func (qr *ProxyQrouter) plannerV1(
 
 	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
+	if sc, ok := p.(*plan.ScatterPlan); ok {
+		if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
+			var firstKey rmeta.AuxValuesKey
+			var ds *distributions.Distribution
+			var hf string
+
+			for k, v := range rm.UsedAuxCTE {
+				firstKey = k
+
+				for _, r := range v {
+					if rm.RFQNIsCTE(r) {
+						continue
+					}
+					dsTmp, err := rm.GetRelationDistribution(ctx, r)
+					if err != nil {
+						return nil, err
+					}
+
+					if dsTmp.Id == distributions.REPLICATED {
+						// skip
+						continue
+					}
+
+					dRel := dsTmp.GetRelation(r)
+
+					if ds == nil {
+						ds = dsTmp
+						/* XXX: support multicolumn here? */
+						hf = dRel.DistributionKey[0].HashFunction
+
+					} else if ds.Id != dsTmp.Id {
+						return nil, fmt.Errorf("query with non-collocated joins")
+					}
+
+				}
+			}
+			/* simple WITH .. AS (VALUES()) SELECT .. JOIN .. on ..  */
+
+			var shs []kr.ShardKey
+
+			cte, ok := rm.CteNames[firstKey.CTEName]
+			if !ok {
+				return nil, fmt.Errorf("failed to resolve CTE by name %v", firstKey.CTEName)
+			}
+
+			if values, ok := cte.SubQuery.(*lyx.ValueClause); ok {
+
+				routingListPos := map[string]int{}
+				for i, v := range cte.NameList {
+					routingListPos[v] = i
+				}
+
+				/* XXX: todo - support routing expression? */
+
+				dke := []distributions.DistributionKeyEntry{
+					{
+						Column:       firstKey.ColRefName,
+						HashFunction: hf,
+					},
+				}
+
+				shs, err = planner.TuplePlansByDistributionEntry(ctx, values.Values, ds, rm, routingListPos, dke)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, rerrors.ErrComplexQuery
+			}
+
+			p, err = planner.RewriteDistributedRelWithValues(rm.Query, firstKey.CTEName, shs)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
@@ -1253,7 +1329,7 @@ func (qr *ProxyQrouter) plannerV1(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) planSPQR_CTID(
+func (qr *ProxyQrouter) planSPQRCTID(
 	_ context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
@@ -1298,13 +1374,16 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 			case *lyx.ParamRef:
 				queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 				if err != nil {
 					return nil, err
 				}
 
-				/* Assert here? */
-				relation = sVal.(string)
+				val, ok := sVal.(string)
+				if !ok {
+					return nil, rerrors.ErrComplexQuery
+				}
+				relation = val
 
 			case *lyx.AExprSConst:
 				relation = v.Value
@@ -1692,8 +1771,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	/* TODO: support more cases */
-	if rm.Is_SPQR_CTID {
-		return qr.planSPQR_CTID(ctx, rm)
+	if rm.IsSPQRCTID {
+		return qr.planSPQRCTID(ctx, rm)
 	}
 
 	if rm.IsSplitUpdate {

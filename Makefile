@@ -31,6 +31,7 @@ generate_help:
 
 codename ?= jammy
 POSTGRES_VERSION ?= 15
+PROTO_TEST_TAG ?= all
 
 build_balancer:
 	go build -pgo=auto -o spqr-balancer $(LDFLAGS) $(GCFLAGS) ./cmd/balancer
@@ -145,7 +146,8 @@ gorm_regress: build_images
 	docker compose -f test/drivers/gorm-regress/docker-compose.yaml down && docker compose -f test/drivers/gorm-regress/docker-compose.yaml run --remove-orphans --build regress
 
 xproto_regress: build_images
-	docker compose -f test/xproto/docker-compose.yaml down && docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build regress
+	docker compose -f test/xproto/docker-compose.yaml down && \
+	docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build -e TEST_TAG=$(PROTO_TEST_TAG) regress
 
 isolation_regress: build_images
 	docker compose -f test/isolation/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/isolation/docker-compose.yaml build && docker compose -f test/isolation/docker-compose.yaml run --remove-orphans regress
@@ -191,7 +193,7 @@ fmtcheck:
 	@sh -c "'$(CURDIR)/script/gofmtcheck.sh'"
 
 lint:
-	golangci-lint run --color=always
+	golangci-lint run --color=always --build-tags=all
 
 ####################### GENERATE #######################
 

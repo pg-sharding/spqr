@@ -15,7 +15,7 @@ import (
 
 const MemQDBPath = ""
 
-var boolFalse bool = false
+var boolFalse = false
 
 var mockShard1 = &qdb.Shard{
 	ID:       "sh1",
@@ -85,7 +85,7 @@ func TestSplitKeyRange(t *testing.T) {
 		}
 
 		err = mngr.Split(ctx, splitData)
-		is.EqualError(err, "key range kr1 is locked")
+		is.EqualError(err, "key range is locked")
 	})
 	t.Run("split happy path", func(t *testing.T) {
 		is := assert.New(t)

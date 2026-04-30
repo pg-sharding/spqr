@@ -469,10 +469,7 @@ func SetupFDW(
 			if _, err = tx.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %s INTO %s`, schema, serverName, schemaName)); err != nil {
 				return err
 			}
-			if err := tx.Commit(ctx); err != nil {
-				return err
-			}
-			return nil
+			return tx.Commit(ctx)
 		}(); err != nil {
 			return err
 		}
@@ -481,7 +478,7 @@ func SetupFDW(
 }
 
 func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
-	for _, shard := range relation.ShardIds {
+	for _, shard := range relation.ShardIDs {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
@@ -527,7 +524,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 }
 
 func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
-	for _, shard := range relation.ShardIds {
+	for _, shard := range relation.ShardIDs {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())

@@ -163,16 +163,32 @@ jobs:
       - name: Run tests
         run: make jdbc_regress
 
-  xproto-regress:
-    name: xproto
+  proto-regress-simple:
+    name: proto-simple
     runs-on: ubuntu-latest
     steps:
-
       - name: Check out code
         uses: actions/checkout@v6
+      - name: Simple proto
+        run: PROTO_TEST_TAG=simple make xproto_regress
 
-      - name: Run tests
-        run: make xproto_regress
+  proto-regress-xproto:
+    name: proto-extended
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Extended proto
+        run: PROTO_TEST_TAG=xproto make xproto_regress
+
+  proto-regress-copy:
+    name: proto-copy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Copy proto
+        run: PROTO_TEST_TAG=copy make xproto_regress
 
   feature_prepare:
     name: feature_prepare

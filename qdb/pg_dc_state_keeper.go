@@ -150,10 +150,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 	if err != nil {
 		return err
 	}
-	if err = (*tx).Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return (*tx).Commit(ctx)
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
@@ -177,10 +174,7 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 	if err != nil {
 		return err
 	}
-	if err = (*tx).Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return (*tx).Commit(ctx)
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
@@ -267,10 +261,10 @@ func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, er
 	}
 	txInfoSlice, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*TwoPCInfo, error) {
 		info := &TwoPCInfo{
-			SHardsIds: []string{},
+			ShardsIDs: []string{},
 		}
 		status := ""
-		if err := row.Scan(&info.Gid, &status, &info.SHardsIds, &info.UpdatedAt); err != nil {
+		if err := row.Scan(&info.Gid, &status, &info.ShardsIDs, &info.UpdatedAt); err != nil {
 			return nil, err
 		}
 		state, err := TwoPhaseTXStateFromString(status)

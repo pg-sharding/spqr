@@ -377,7 +377,7 @@ func listRoutersInner(host string, port string) *topology.Router {
 // - error: an error if the retrieval encounters any issues.
 func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.Router, error) {
 	host := config.RouterConfig().Host
-	port := config.RouterConfig().GrpcApiPort
+	port := config.RouterConfig().GrpcAPIPort
 	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 

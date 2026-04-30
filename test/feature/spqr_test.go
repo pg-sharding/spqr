@@ -55,11 +55,9 @@ const (
 	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
 	qdbQueriesTimeout               = 30 * time.Second
-
-	spqrQdbHost             = "qdb01"
-	checkCoordinatorTimeout = 15 * time.Second
-
-	SERVICE_STATE_RUNNING = "running"
+	spqrQdbHost                     = "qdb01"
+	checkCoordinatorTimeout         = 15 * time.Second
+	serviceStateRunning             = "running"
 )
 
 type testContext struct {
@@ -554,7 +552,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, body *godog.DocString) error {
+func (tctx *testContext) stepIExecuteSQLInParallel(host string, timeout int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
@@ -735,7 +733,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		if state, err := tctx.composer.ContainerState(service); err != nil {
 			return false
 		} else {
-			return state != SERVICE_STATE_RUNNING
+			return state != serviceStateRunning
 		}
 	}
 	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
@@ -754,7 +752,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			if err != nil {
 				return err
 			}
-			if state == SERVICE_STATE_RUNNING {
+			if state == serviceStateRunning {
 				anyCoord = true
 				break
 			}
@@ -1006,7 +1004,7 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 	return m(string(res), strings.TrimSpace(body.Content))
 }
 
-func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
+func (tctx *testContext) stepIExecuteSQL(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
 	err := tctx.executePostgresql(host, query)
@@ -1510,7 +1508,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)
-	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
+	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSQL)
 	s.Step(`^I prepare SQL on host "([^"]*)"$`, tctx.stepIPrepareSQLOnHost)
 	s.Step(`^I run prepared SQL on host "([^"]*)"$`, tctx.stepIRunPreparedSQLOnHost)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
@@ -1520,7 +1518,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 		return nil
 	})
-	s.Step(`^I run SQL on host "([^"]*)" in parallel with timeout "(\d+)" seconds$`, tctx.stepIExecuteSqlInParallel)
+	s.Step(`^I run SQL on host "([^"]*)" in parallel with timeout "(\d+)" seconds$`, tctx.stepIExecuteSQLInParallel)
 
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)

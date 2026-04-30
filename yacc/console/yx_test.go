@@ -1575,7 +1575,7 @@ func TestReferenceRelation(t *testing.T) {
 					TableName: &rfqn.RelationFQN{
 						RelationName: "xtab",
 					},
-					ShardIds: []string{"sh1", "sh2", "sh3"},
+					ShardIDs: []string{"sh1", "sh2", "sh3"},
 				},
 			},
 			err: nil,
@@ -1587,7 +1587,7 @@ func TestReferenceRelation(t *testing.T) {
 					TableName: &rfqn.RelationFQN{
 						RelationName: "xtab",
 					},
-					ShardIds: []string{"sh1", "sh2", "sh3"},
+					ShardIDs: []string{"sh1", "sh2", "sh3"},
 				},
 			},
 			err: nil,
