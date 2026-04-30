@@ -38,15 +38,18 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	clId := uint(1)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
-		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
-			RawHosts: []string{
-				"h1:6432",
-				"h2:6432",
-				"h3:6432",
-			},
-		}),
-	}, &startup.StartupParams{}, underlyingPool, time.Hour)
+	dbpool := pool.NewDBPoolFromMultiPool(
+
+		topology.TopMgrFromMap(
+			map[string]*topology.DataShard{
+				key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
+					RawHosts: []string{
+						"h1:6432",
+						"h2:6432",
+						"h3:6432",
+					},
+				}),
+			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
@@ -226,7 +229,7 @@ func TestDbPoolRaces(t *testing.T) {
 		})
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
+	dbpool := pool.NewDBPoolWithAllocator(topology.TopMgrFromMap(cfg), &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -277,15 +280,18 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	clId := uint(1)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
-		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
-			RawHosts: []string{
-				"h1:6432",
-				"h2:6432",
-				"h3:6432",
-			},
-		}),
-	}, &startup.StartupParams{}, underlyingPool, time.Hour)
+	dbpool := pool.NewDBPoolFromMultiPool(
+
+		topology.TopMgrFromMap(map[string]*topology.DataShard{
+
+			key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
+				RawHosts: []string{
+					"h1:6432",
+					"h2:6432",
+					"h3:6432",
+				},
+			}),
+		}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
@@ -415,7 +421,7 @@ func TestBuildHostOrder(t *testing.T) {
 		Name: "sh1",
 	}
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+	shMp := map[string]*topology.DataShard{
 		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"sas-123.db.yandex.net:6432:sas",
@@ -426,7 +432,10 @@ func TestBuildHostOrder(t *testing.T) {
 				"klg-234.db.yandex.net:6432:klg",
 			},
 		}),
-	}, &startup.StartupParams{}, underlyingPool, time.Hour)
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(
+		topology.TopMgrFromMap(shMp), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	tests := []struct {
 		name               string
@@ -514,7 +523,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 		Name: "sh1",
 	}
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+	shMp := map[string]*topology.DataShard{
 		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"h1:6432:sas",
@@ -524,7 +533,9 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				"h5:6432:klg",
 			},
 		}),
-	}, &startup.StartupParams{}, underlyingPool, time.Hour)
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(topology.TopMgrFromMap(shMp), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	tests := []struct {
 		name          string
@@ -722,11 +733,14 @@ func TestBuildHostOrderNonExistentShard(t *testing.T) {
 
 	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
-		"existing_shard": topology.DataShardFromConfig("existing_shard", &config.Shard{
-			RawHosts: []string{"h1:6432:sas"},
-		}),
-	}, &startup.StartupParams{}, underlyingPool, time.Hour)
+	dbpool := pool.NewDBPoolFromMultiPool(
+
+		topology.TopMgrFromMap(
+			map[string]*topology.DataShard{
+				"existing_shard": topology.DataShardFromConfig("existing_shard", &config.Shard{
+					RawHosts: []string{"h1:6432:sas"},
+				}),
+			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	key := kr.ShardKey{
 		Name: "non_existent_shard",

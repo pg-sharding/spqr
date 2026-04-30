@@ -11,6 +11,7 @@ import (
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	"github.com/pg-sharding/spqr/router/instance"
@@ -144,7 +145,7 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 
 func (app *App) ServeWD(ctx context.Context) error {
 
-	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 
 	if err != nil {
 		return err

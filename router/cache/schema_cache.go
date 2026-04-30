@@ -13,18 +13,18 @@ import (
 
 type SchemaCache struct {
 	tableColumnsCache sync.Map
-	shardMapping      map[string]*topology.DataShard
+	tmgr              topology.TopologyMgr
 	be                *config.BackendRule
 
 	pool *pool.MultiDBPool
 }
 
-func NewSchemaCache(shardMapping map[string]*topology.DataShard, be *config.BackendRule) *SchemaCache {
+func NewSchemaCache(tmgr topology.TopologyMgr, be *config.BackendRule) *SchemaCache {
 	poolSize := config.ValueOrDefaultInt(config.RouterConfig().MultiDBPoolSize, 5)
-	p := pool.NewMultiDBPool(shardMapping, be, poolSize)
+	p := pool.NewMultiDBPool(tmgr, be, poolSize)
 
 	return &SchemaCache{
-		shardMapping:      shardMapping,
+		tmgr:              tmgr,
 		pool:              p,
 		be:                be,
 		tableColumnsCache: sync.Map{},

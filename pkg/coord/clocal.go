@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -27,9 +26,9 @@ type LocalInstanceMetadataMgr struct {
 
 	cache *cache.SchemaCache
 
-	updateShardsMapping bool
-	shardMapping        map[string]*topology.DataShard
-	shardMappingMutex   sync.Mutex
+	updateTopology bool
+
+	tmgr topology.TopologyMgr
 
 	poolShardHosts shard.ShardHostIterator
 	maxTxnBatch    uint16
@@ -229,10 +228,8 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
 
-	if lc.updateShardsMapping {
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds
-		lc.shardMappingMutex.Unlock()
+	if lc.updateTopology {
+		lc.tmgr.AddShard(ds)
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
@@ -242,15 +239,13 @@ func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID
 		return err
 	}
 
-	if lc.updateShardsMapping {
+	if lc.updateTopology {
 		shard, err := lc.GetShard(ctx, shardID)
 		if err != nil {
 			return err
 		}
 
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[shardID].SetOptions(shard.Options())
-		lc.shardMappingMutex.Unlock()
+		lc.tmgr.SetOptions(shardID, shard.Options())
 	}
 
 	return lc.invalidatePoolsForShard(shardID)
@@ -261,15 +256,13 @@ func (lc *LocalInstanceMetadataMgr) AlterShardOptions(ctx context.Context, shard
 		return err
 	}
 
-	if lc.updateShardsMapping {
+	if lc.updateTopology {
 		shard, err := lc.GetShard(ctx, shardID)
 		if err != nil {
 			return err
 		}
 
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[shardID].SetOptions(shard.Options())
-		lc.shardMappingMutex.Unlock()
+		lc.tmgr.SetOptions(shardID, shard.Options())
 	}
 
 	return lc.invalidatePoolsForShard(shardID)
@@ -299,10 +292,8 @@ func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId strin
 		Str("node", shardId).
 		Msg("dropping datashard node in local coordinator")
 
-	if lc.updateShardsMapping {
-		lc.shardMappingMutex.Lock()
-		delete(lc.shardMapping, shardId)
-		lc.shardMappingMutex.Unlock()
+	if lc.updateTopology {
+		lc.tmgr.DropShard(shardId)
 	}
 	return lc.qdb.DropShard(ctx, shardId)
 }
@@ -531,15 +522,15 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ 
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
-	shardMapping map[string]*topology.DataShard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator, maxTxnBatch uint16) meta.EntityMgr {
+	tmgr topology.TopologyMgr, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator, maxTxnBatch uint16) meta.EntityMgr {
 
 	lc := &LocalInstanceMetadataMgr{
-		Coordinator:         NewCoordinator(db, d, maxTxnBatch),
-		cache:               cache,
-		shardMapping:        shardMapping,
-		updateShardsMapping: updateShardsMapping,
-		poolShardHosts:      poolShardHosts,
-		maxTxnBatch:         maxTxnBatch,
+		Coordinator:    NewCoordinator(db, d, maxTxnBatch),
+		cache:          cache,
+		tmgr:           tmgr,
+		updateTopology: updateShardsMapping,
+		poolShardHosts: poolShardHosts,
+		maxTxnBatch:    maxTxnBatch,
 	}
 
 	return lc

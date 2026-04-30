@@ -139,9 +139,9 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, nil).Times(1)
 
-	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*topology.DataShard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, topology.TopMgrFromMap(map[string]*topology.DataShard{
 		"sh1": {},
-	}, time.Duration(0) /* never do healthcheck */)
+	}), time.Duration(0) /* never do healthcheck */)
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
 
@@ -256,9 +256,12 @@ func TestFrontendXProto(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*topology.DataShard{
-		"sh1": {},
-	}, time.Duration(0) /* never do healthcheck */)
+	route := route.NewRoute(&config.BackendRule{}, frrule,
+
+		topology.TopMgrFromMap(
+			map[string]*topology.DataShard{
+				"sh1": {},
+			}), time.Duration(0) /* never do healthcheck */)
 
 	// route to any route
 	cl.EXPECT().Route().AnyTimes().Return(route)

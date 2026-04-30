@@ -605,6 +605,7 @@ truncatable
 tsa
 TSEMICOLON
 tstmt
+tmgr
 tupleslot
 tupletableslot
 twopc

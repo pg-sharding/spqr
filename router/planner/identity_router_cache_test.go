@@ -28,7 +28,7 @@ func TestStepOne(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(1, &seqMngr)
 	actualNext, err := identityMgr.NextVal(ctx, "testSeq")
@@ -58,7 +58,7 @@ func TestStepFive(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(5, &seqMngr)
 	actualNext, err := identityMgr.NextVal(ctx, "testSeq")
@@ -107,7 +107,7 @@ func TestStepOne_concurrent(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(1, &seqMngr)
 
@@ -149,7 +149,7 @@ func TestStepFive_concurrent(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(5, &seqMngr)
 

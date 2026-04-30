@@ -2,8 +2,7 @@ package qrouter
 
 import (
 	"context"
-	"math/rand"
-	"sync"
+	"sort"
 
 	"sync/atomic"
 
@@ -23,14 +22,12 @@ import (
 type ProxyQrouter struct {
 	planner.QueryPlanner
 
-	mu sync.Mutex
-
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}
 
+	tmgr topology.TopologyMgr
+
 	// shards
-	DataShardCfgs  map[string]*config.Shard
-	WorldShardCfgs map[string]*config.Shard
 
 	cfg *config.QRouter
 
@@ -113,40 +110,24 @@ func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
 
 // TODO : unit tests
 func (qr *ProxyQrouter) DataShardsRoutes() []kr.ShardKey {
-	rc, _ := qr.mgr.ListShards(context.TODO())
-	rv := make([]kr.ShardKey, 0, len(rc))
-	for _, el := range rc {
+
+	rv := make([]kr.ShardKey, 0)
+
+	for _, el := range qr.tmgr.Snap() {
 		rv = append(rv, kr.ShardKey{
 			Name: el.ID,
 		})
 	}
-	return rv
-}
 
-// TODO : unit tests
-func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	var ret []kr.ShardKey
-
-	for name := range qr.WorldShardCfgs {
-		ret = append(ret, kr.ShardKey{
-			Name: name,
-		})
-	}
-
-	// a sort of round robin
-
-	rand.Shuffle(len(ret), func(i, j int) {
-		ret[i], ret[j] = ret[j], ret[i]
+	sort.Slice(rv, func(i, j int) bool {
+		return rv[i].Name < rv[j].Name
 	})
-	return ret
+	return rv
 }
 
 var _ planner.QueryPlanner = &ProxyQrouter{}
 
-func NewProxyRouter(shardMapping map[string]*topology.DataShard,
+func NewProxyRouter(tmgr topology.TopologyMgr,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
@@ -155,42 +136,38 @@ func NewProxyRouter(shardMapping map[string]*topology.DataShard,
 ) (*ProxyQrouter, error) {
 
 	proxy := &ProxyQrouter{
-		WorldShardCfgs: map[string]*config.Shard{},
-		initialized:    &atomic.Bool{},
-		ready:          &atomic.Bool{},
-		cfg:            qcfg,
-		mgr:            mgr,
-		csm:            csm,
-		schemaCache:    cache,
-		idRangeCache:   idRangeCache,
+		initialized:  &atomic.Bool{},
+		ready:        &atomic.Bool{},
+		cfg:          qcfg,
+		mgr:          mgr,
+		tmgr:         tmgr,
+		csm:          csm,
+		schemaCache:  cache,
+		idRangeCache: idRangeCache,
 	}
 
 	ctx := context.TODO()
-
 	/* XXX: since memqdb is persistent on disk, in some cases, we need to recreate the whole topology.
 	* TODO: get this information from the coordinator, not the config.
 	 */
-	sds, err := mgr.ListShards(ctx)
+
+	exists, err := mgr.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, ds := range sds {
-		err := mgr.DropShard(ctx, ds.ID)
-		if err != nil {
-			return nil, err
-		}
+	skipMp := map[string]struct{}{}
+	for _, k := range exists {
+		skipMp[k.ID] = struct{}{}
 	}
 
-	for _, datashard := range shardMapping {
-		switch datashard.Type {
-		case config.WorldShard:
-		case config.DataShard:
-			fallthrough // default is datashard
-		default:
-			if err := mgr.AddDataShard(ctx, datashard); err != nil {
+	/* XXX: fix this */
+	for k, v := range tmgr.Snap() {
+		if _, ok := skipMp[k]; !ok {
+			if err := mgr.AddDataShard(ctx, v); err != nil {
 				return nil, err
 			}
 		}
 	}
+
 	return proxy, nil
 }
