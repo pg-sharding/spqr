@@ -40,7 +40,7 @@ ATTACH CONTROL POINT
 (1 row)
 
 step s1_ddl: select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=regress', 'SET __spqr__engine_v2 TO on; SET __spqr__commit_strategy TO 2pc; BEGIN; ALTER TABLE r_2pc_aux ADD COLUMN z INT; COMMIT') /*__spqr__preferred_engine: v2 */;
-ERROR:  error processing query 'select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=regress', 'SET __spqr__engine_v2 TO on; SET __spqr__commit_strategy TO 2pc; BEGIN; ALTER TABLE r_2pc_aux ADD COLUMN z INT; COMMIT') /*__spqr__preferred_engine: v2 */;': timeout: context deadline exceeded
+ERROR:  timeout: context deadline exceeded
 step s2_show_2pc_tx: select __spqr__console_execute('SHOW two_phase_tx(status);');
 status     
 -----------
@@ -112,7 +112,7 @@ ATTACH CONTROL POINT
 (1 row)
 
 step s1_ddl: select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=regress', 'SET __spqr__engine_v2 TO on; SET __spqr__commit_strategy TO 2pc; BEGIN; ALTER TABLE r_2pc_aux ADD COLUMN z INT; COMMIT') /*__spqr__preferred_engine: v2 */;
-ERROR:  error processing query 'select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=regress', 'SET __spqr__engine_v2 TO on; SET __spqr__commit_strategy TO 2pc; BEGIN; ALTER TABLE r_2pc_aux ADD COLUMN z INT; COMMIT') /*__spqr__preferred_engine: v2 */;': timeout: context deadline exceeded
+ERROR:  timeout: context deadline exceeded
 step s2_show_2pc_tx: select __spqr__console_execute('SHOW two_phase_tx(status);');
 status     
 -----------
