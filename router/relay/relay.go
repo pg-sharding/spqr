@@ -327,7 +327,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
 		if err != nil {
-			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, err.Error()).Query(rst.plainQ)
+			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
 		}
 
 		/* XXX: fix this. This behaviour break regression tests */
