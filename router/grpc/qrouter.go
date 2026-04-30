@@ -123,7 +123,7 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 		Shards: func() []*protos.Shard {
 			res := make([]*protos.Shard, len(shards))
 			for i, sh := range shards {
-				res[i] = topology.DataShardToProto(sh)
+				res[i] = topology.DataShardToProto(sh, false)
 			}
 			return res
 		}(),
@@ -135,7 +135,10 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 		return nil, status.Error(codes.InvalidArgument, "shard field is required")
 	}
 
-	shard := topology.DataShardFromProto(request.GetShard())
+	shard, err := topology.DataShardFromProto(request.GetShard())
+	if err != nil {
+		return nil, err
+	}
 	if err := l.mgr.AddDataShard(ctx, shard); err != nil {
 		return nil, err
 	}
@@ -143,7 +146,11 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 }
 
 func (l *LocalQrouterServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
-	if err := l.mgr.SetShardOptions(ctx, request.GetId(), topology.GenericOptionsFromProto(request.GetOptions())); err != nil {
+	options, err := topology.GenericOptionsFromProto(request.GetOptions())
+	if err != nil {
+		return nil, err
+	}
+	if err := l.mgr.SetShardOptions(ctx, request.GetId(), options); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -163,7 +170,7 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 		return nil, err
 	}
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh),
+		Shard: topology.DataShardToProto(sh, false),
 	}, nil
 }
 
