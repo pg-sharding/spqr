@@ -14,7 +14,8 @@ CREATE KEY RANGE FROM 0 ROUTE TO sh1;
 \c regress
 -- should fail
 CREATE TABLE zz(i int, j int, k int);
-ERROR:  error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found
+ERROR:  distribution for relation "zz" not found
+QUERY:  CREATE TABLE zz(i int, j int, k int);
 CREATE TABLE zz(i int, j int, k int) /* __spqr__auto_distribution: REPLICATED */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -93,14 +94,16 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 -- should fail
 CREATE TABLE d_zz (i int, j int);
-ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found
+ERROR:  distribution for relation "d_zz" not found
+QUERY:  CREATE TABLE d_zz (i int, j int);
 -- should succeed.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
-ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;': relation "d_zz" is already attached
+ERROR:  relation "d_zz" is already attached
+QUERY:  CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 -- should succeed.
 CREATE TABLE IF NOT EXISTS d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
