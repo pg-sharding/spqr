@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -21,6 +22,7 @@ import (
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -28,6 +30,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
+
+var metricRegistry = metrics.NewRouterMetricRegistry(prometheus.NewRegistry())
 
 func TestFrontendSimpleEOF(t *testing.T) {
 
@@ -80,7 +84,7 @@ func TestFrontendSimple(t *testing.T) {
 	_ = statistics.InitStatisticsStr(nil)
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-
+	qr.EXPECT().MetricRegistry().Return(metricRegistry).AnyTimes()
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 
 	srv.EXPECT().TxStatus().AnyTimes()
@@ -201,6 +205,7 @@ func TestFrontendXProto(t *testing.T) {
 	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+	qr.EXPECT().MetricRegistry().Return(metricRegistry).AnyTimes()
 	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()

@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -36,6 +37,7 @@ type QueryRouter interface {
 	Mgr() meta.EntityMgr
 	CSM() connmgr.ConnectionMgr
 	SchemaCache() *cache.SchemaCache
+	MetricRegistry() *metrics.RouterMetricRegistry
 }
 
 func NewQrouter(qtype config.RouterMode,
@@ -45,12 +47,13 @@ func NewQrouter(qtype config.RouterMode,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
+	metricRegistry *metrics.RouterMetricRegistry,
 ) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalMode:
-		return NewLocalQrouter(shardMapping)
+		return NewLocalQrouter(shardMapping, metricRegistry)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping, mgr, csm, qcfg, cache, idRangeCache)
+		return NewProxyRouter(shardMapping, mgr, csm, qcfg, cache, idRangeCache, metricRegistry)
 	default:
 		return nil, fmt.Errorf("unknown qrouter type: %v", qtype)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -24,7 +25,8 @@ type LocalQrouter struct {
 	ds    *topology.DataShard
 	ready *atomic.Bool
 
-	rm *rmeta.RoutingMetadataContext
+	rm             *rmeta.RoutingMetadataContext
+	metricRegistry *metrics.RouterMetricRegistry
 }
 
 // AnalyzeQuery implements QueryRouter.
@@ -54,7 +56,7 @@ func (qr *LocalQrouter) WorldShardsRoutes() []kr.ShardKey {
 
 var _ QueryRouter = &LocalQrouter{}
 
-func NewLocalQrouter(shardMapping map[string]*topology.DataShard) (*LocalQrouter, error) {
+func NewLocalQrouter(shardMapping map[string]*topology.DataShard, metricRegistry *metrics.RouterMetricRegistry) (*LocalQrouter, error) {
 	if len(shardMapping) != 1 {
 		err := fmt.Errorf("local router support only single-datashard routing")
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -62,8 +64,9 @@ func NewLocalQrouter(shardMapping map[string]*topology.DataShard) (*LocalQrouter
 	}
 
 	l := &LocalQrouter{
-		ready: &atomic.Bool{},
-		rm:    &rmeta.RoutingMetadataContext{},
+		ready:          &atomic.Bool{},
+		rm:             &rmeta.RoutingMetadataContext{},
+		metricRegistry: metricRegistry,
 	}
 
 	for k, v := range shardMapping {
@@ -113,6 +116,10 @@ func (qr *LocalQrouter) DataShardsRoutes() []kr.ShardKey {
 
 func (qr *LocalQrouter) Mgr() meta.EntityMgr {
 	return nil
+}
+
+func (qr *LocalQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
+	return qr.metricRegistry
 }
 
 func (qr *LocalQrouter) CSM() connmgr.ConnectionMgr {
