@@ -6313,3 +6313,53 @@ func TestExecuteMaxRows(t *testing.T) {
 
 	protoTestRunner(t, frontend, tt)
 }
+
+func TestSimpleInTheMiddleOfExtended(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt",
+					Query: "select 42",
+				},
+
+				&pgproto3.Query{
+					String: ";",
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
