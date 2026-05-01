@@ -57,7 +57,35 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
 		return err
 	}
+}
 
+func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
+	switch err {
+	case nil:
+		/* ok */
+
+		return nil
+	case io.ErrUnexpectedEOF:
+		fallthrough
+	case io.EOF:
+		return err
+		// ok
+	default:
+		spqrlog.Zero.Error().
+			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+			Msg("client iteration done with error")
+
+		/* try to report error to user  */
+		if rerr := rst.Reset(); rerr != nil {
+			return rerr
+		}
+
+		if err := rst.Client().ReplyErrMsgPure(err); err != nil {
+			return err
+		}
+
+		return nil
+	}
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
@@ -119,7 +147,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			return err
 		}
 
-		return rst.ProcessOneMsgCarefully(context.Background(), q)
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
@@ -152,7 +180,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			return err
 		}
 
-		return rst.ProcessOneMsgCarefully(context.Background(), q)
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
