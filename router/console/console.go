@@ -85,7 +85,8 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
-		if tstmt.Kind == spqrparser.SHOW_KIND_UNSPEC {
+		switch tstmt.Kind {
+		case spqrparser.SHOW_KIND_UNSPEC:
 			switch tstmt.Cmd {
 			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
 				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
@@ -96,7 +97,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 				}
 				defer cf()
 			}
-		} else if tstmt.Kind == spqrparser.SHOW_KIND_GLOBAL {
+		case spqrparser.SHOW_KIND_GLOBAL:
 			mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 			if err != nil {
 				return err
