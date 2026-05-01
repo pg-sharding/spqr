@@ -64,6 +64,7 @@ type RelayStateMgr interface {
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(ctx context.Context) error
+	ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
 
@@ -985,6 +986,14 @@ func (rst *RelayStateImpl) PipelineCleanup() {
 
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
 
+	if rst.WaitSync {
+		return nil
+	}
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+		return errAbortedTx
+	}
+
 	switch currentMsg := msg.(type) {
 	case *pgproto3.Parse:
 		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
@@ -1060,14 +1069,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		// cleanup
 		rst.xBuf = nil
 	}()
-
-	if rst.WaitSync {
-		return nil
-	}
-
-	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-		return errAbortedTx
-	}
 
 	for _, msg := range rst.xBuf {
 		if err := rst.ProcessOneMsg(ctx, msg); err != nil {

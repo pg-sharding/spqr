@@ -113,12 +113,13 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		return teardownPipeline(rst, err)
 	case *pgproto3.Close:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return rst.ProcessOneMsg(context.Background(), q)
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
@@ -146,8 +147,12 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q = &cpQ
 		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return rst.ProcessOneMsg(context.Background(), q)
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
