@@ -226,6 +226,7 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
+		Bool("updateTopology", lc.updateTopology).
 		Msg("adding datashard node in local coordinator")
 
 	if lc.updateTopology {
@@ -522,13 +523,13 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ 
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
-	tmgr topology.TopologyMgr, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator, maxTxnBatch uint16) meta.EntityMgr {
+	tmgr topology.TopologyMgr, updateTopology bool, poolShardHosts shard.ShardHostIterator, maxTxnBatch uint16) meta.EntityMgr {
 
 	lc := &LocalInstanceMetadataMgr{
 		Coordinator:    NewCoordinator(db, d, maxTxnBatch),
 		cache:          cache,
 		tmgr:           tmgr,
-		updateTopology: updateShardsMapping,
+		updateTopology: updateTopology,
 		poolShardHosts: poolShardHosts,
 		maxTxnBatch:    maxTxnBatch,
 	}

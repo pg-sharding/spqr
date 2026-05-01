@@ -68,6 +68,7 @@ func (t *TopologyMgrImpl) ShardById(id string) (*DataShard, error) {
 }
 
 func (t *TopologyMgrImpl) AddShard(sh *DataShard) {
+	sh.SetOptions(sh.options)
 	_, _ = t.shardMapping.LoadOrStore(sh.ID, sh)
 }
 
