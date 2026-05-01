@@ -155,7 +155,7 @@ var _ planner.QueryPlanner = &ProxyQrouter{}
 
 func (qr *ProxyQrouter) registerMetrics() {
 	totalConnectionsMetric := &metrics.DynamicGauge{
-		Name: metrics.ClientConnectionsTcpTotalName,
+		Name: metrics.ClientConnectionsTCPTotalName,
 		Help: "Current number of client tcp connections",
 		Getter: func() float64 {
 			return float64(qr.csm.TotalTCPCount())

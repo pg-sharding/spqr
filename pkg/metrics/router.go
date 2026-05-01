@@ -7,7 +7,7 @@ import (
 const (
 	ConfigReloadsTotalName        = MetricPrefix + "reloads_total"
 	InboundQueriesTotalName       = MetricPrefix + "inbound_queries_total"
-	ClientConnectionsTcpTotalName = MetricPrefix + "router_client_conn_tcp_total"
+	ClientConnectionsTCPTotalName = MetricPrefix + "router_client_conn_tcp_total"
 )
 
 type RouterMetricRegistry struct {
