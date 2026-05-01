@@ -85,16 +85,25 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
-		switch tstmt.Cmd {
-		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
-			spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
-			spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+		switch tstmt.Kind {
+		case spqrparser.SHOW_KIND_UNSPEC:
+			switch tstmt.Cmd {
+			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
+				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
+				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+				if err != nil {
+					return err
+				}
+				defer cf()
+			}
+		case spqrparser.SHOW_KIND_GLOBAL:
 			mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 			if err != nil {
 				return err
 			}
 			defer cf()
-		}
+		} // else local
 	case *spqrparser.Alter:
 		distr := true
 		switch el := tstmt.Element.(type) {
