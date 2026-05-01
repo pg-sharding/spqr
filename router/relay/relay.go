@@ -64,7 +64,7 @@ type RelayStateMgr interface {
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(ctx context.Context) error
-	ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error
+	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
 
@@ -1054,6 +1054,14 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 	}
 }
 
+func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error {
+	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.WaitSync = true
+		return err
+	}
+	return nil
+}
+
 // TODO : unit tests
 // If we enter this function, then we need to process whole messages buffer
 // in current statement pipeline bounds.
@@ -1071,8 +1079,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 	}()
 
 	for _, msg := range rst.xBuf {
-		if err := rst.ProcessOneMsg(ctx, msg); err != nil {
-			rst.WaitSync = true
+		if err := rst.ProcessOneMsgCarefully(ctx, msg); err != nil {
 			return err
 		}
 	}

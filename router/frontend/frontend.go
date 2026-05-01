@@ -119,7 +119,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			return err
 		}
 
-		return rst.ProcessOneMsg(context.Background(), q)
+		return rst.ProcessOneMsgCarefully(context.Background(), q)
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
@@ -152,7 +152,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			return err
 		}
 
-		return rst.ProcessOneMsg(context.Background(), q)
+		return rst.ProcessOneMsgCarefully(context.Background(), q)
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
