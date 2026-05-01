@@ -15,6 +15,8 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		return err
 	}
 
+	swapDb.State.Shards = memqdb.State.Shards
+
 	ds, err := etcdConn.ListDistributions(ctx)
 	if err != nil {
 		return err
