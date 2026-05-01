@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
@@ -64,6 +65,7 @@ type RelayStateMgr interface {
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(ctx context.Context) error
+	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
 
@@ -957,6 +959,9 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 		* Named portals must be explicitly closed before
 		* they can be redefined by another Bind message,
 		* but this is not required for the unnamed portal. */
+		if rst.execute == nil {
+			return rerrors.ErrRelaySyncLost
+		}
 		err = rst.execute()
 		rst.execute = nil
 		rst.bindQueryPlan = nil
@@ -984,6 +989,14 @@ func (rst *RelayStateImpl) PipelineCleanup() {
 }
 
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
+
+	if rst.WaitSync {
+		return nil
+	}
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+		return errAbortedTx
+	}
 
 	switch currentMsg := msg.(type) {
 	case *pgproto3.Parse:
@@ -1045,6 +1058,14 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 	}
 }
 
+func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error {
+	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.WaitSync = true
+		return err
+	}
+	return nil
+}
+
 // TODO : unit tests
 // If we enter this function, then we need to process whole messages buffer
 // in current statement pipeline bounds.
@@ -1061,17 +1082,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		rst.xBuf = nil
 	}()
 
-	if rst.WaitSync {
-		return nil
-	}
-
-	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-		return errAbortedTx
-	}
-
 	for _, msg := range rst.xBuf {
-		if err := rst.ProcessOneMsg(ctx, msg); err != nil {
-			rst.WaitSync = true
+		if err := rst.ProcessOneMsgCarefully(ctx, msg); err != nil {
 			return err
 		}
 	}
