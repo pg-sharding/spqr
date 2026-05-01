@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
@@ -958,6 +959,9 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 		* Named portals must be explicitly closed before
 		* they can be redefined by another Bind message,
 		* but this is not required for the unnamed portal. */
+		if rst.execute == nil {
+			return rerrors.ErrRelaySyncLost
+		}
 		err = rst.execute()
 		rst.execute = nil
 		rst.bindQueryPlan = nil
