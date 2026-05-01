@@ -183,23 +183,24 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Describe:
 		// copy interface
-		cpQ := *q
-		q = &cpQ
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.FunctionCall:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 		q.Arguments = xproto.CopyByteSlices(q.Arguments)
 
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msg("client function call: simply fire parse stmt to connection")
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
