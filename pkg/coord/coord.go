@@ -101,38 +101,64 @@ func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataSha
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
-func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, changes []topology.GenericOption) error {
 	shard, err := lc.GetShard(ctx, shardID)
 	if err != nil {
 		return err
 	}
 
-	newOptions := shard.Options()
-	for _, opt := range options {
-		optionInd := slices.IndexFunc(shard.Options(), func(el topology.GenericOption) bool { return el.Name == opt.Name })
+	newOptions := slices.Clone(shard.Options())
 
-		switch opt.Action {
+	for _, change := range changes {
+
+		optionNameCount := 0
+		optionValueCount := 0
+		for _, o := range newOptions {
+			if o.Name == change.Name {
+				optionNameCount++
+				if o.Arg == change.Arg {
+					optionValueCount++
+				}
+			}
+		}
+
+		switch change.Action {
 		case topology.GenericOptionActionUnspecified:
 			fallthrough
 		case topology.GenericOptionActionAdd:
-			if optionInd != -1 {
-				return fmt.Errorf("option \"%s\" was specified more than once", opt.Name)
+			if optionValueCount > 0 {
+				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" provided more than once", change.Name, change.Arg))
 			}
-			newOptions = append(newOptions, topology.GenericOption{Name: opt.Name, Arg: opt.Arg})
+			newOptions = append(newOptions, topology.GenericOption{Name: change.Name, Arg: change.Arg})
 		case topology.GenericOptionActionSet:
-			if optionInd == -1 {
-				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			if optionNameCount == 0 {
+				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 			}
-			newOptions[optionInd].Arg = opt.Arg
-		case topology.GenericOptionActionDrop:
-			if optionInd == -1 {
-				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			if optionNameCount > 1 {
+				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" has multiple values provided", change.Name))
 			}
 
-			for i := len(newOptions) - 1; i >= 0; i-- {
-				if opt.Name == newOptions[i].Name && (opt.Arg == "" || opt.Arg == newOptions[i].Arg) {
-					newOptions = slices.Delete(newOptions, i, i+1)
+			ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name })
+			newOptions[ind].Arg = change.Arg
+		case topology.GenericOptionActionDrop:
+			// Drop all
+			if change.Arg == "" {
+				if optionNameCount == 0 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 				}
+
+				for i := len(newOptions) - 1; i >= 0; i-- {
+					if change.Name == newOptions[i].Name {
+						newOptions = slices.Delete(newOptions, i, i+1)
+					}
+				}
+			} else { // Drop option with specific value
+				if optionValueCount == 0 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
+				}
+
+				ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name && o.Arg == change.Arg })
+				newOptions = slices.Delete(newOptions, ind, ind+1)
 			}
 		}
 	}
