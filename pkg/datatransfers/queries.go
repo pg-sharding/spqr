@@ -40,6 +40,12 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 ORDER BY (%s) %s;
 `
 
+const (
+	// key_range_id TEXT PRIMARY KEY
+	InsertKeyRangeMeta = "INSERT INTO spqr_metadata.spqr_local_key_ranges (key_range_id) VALUES ($1) ON CONFLICT (key_range_id) DO NOTHING;"
+	DeleteKeyRangeMeta = "DELETE FROM spqr_metadata.spqr_local_key_ranges WHERE key_range_id = $1;"
+)
+
 func getAwaitPIDsQuery() string {
 	return fmt.Sprintf(`
 do $$

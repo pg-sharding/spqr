@@ -266,6 +266,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 					return fmt.Errorf("could not delete data: error executing DELETE FROM: %s", err)
 				}
 			}
+			if _, err := ftx.Exec(ctx, DeleteKeyRangeMeta, krg.ID); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not update key range metadata on shard: %s", err)
+			}
 			if err = ftx.Commit(ctx); err != nil {
 				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
 			}
@@ -670,6 +673,9 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
 		}
+	}
+	if _, err := tx.Exec(ctx, InsertKeyRangeMeta, krg.ID); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not update key range metadata on shard: %s", err)
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not execute transaction: %s", err)
