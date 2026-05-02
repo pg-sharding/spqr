@@ -3521,9 +3521,12 @@ func (qc *ClusteredCoordinator) updateKeyRangeMetaOnShard(ctx context.Context, s
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
 
-	//"INSERT INTO spqr_metadata.spqr_local_key_ranges (key_range_id) VALUES ($1) ON CONFLICT DO NOTHING;", keyRangeId
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	
+	/* "INSERT INTO spqr_metadata.spqr_local_key_ranges (key_range_id) VALUES ($1) ON CONFLICT DO NOTHING;", keyRangeId */
 	if _, err := tx.Exec(ctx, query, args...); err != nil {
 		return err
 	}
