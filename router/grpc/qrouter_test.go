@@ -113,7 +113,7 @@ func TestListBackendConnections_Empty(t *testing.T) {
 
 	mockRR.EXPECT().
 		ForEach(gomock.Any()).
-		DoAndReturn(func(fn func(shard.ShardHostCtl) error) error {
+		DoAndReturn(func(_ func(shard.ShardHostCtl) error) error {
 			return nil
 		}).
 		Times(1)
@@ -195,7 +195,7 @@ func TestListClients_Empty(t *testing.T) {
 
 	mockRR.EXPECT().
 		ClientPoolForeach(gomock.Any()).
-		DoAndReturn(func(fn func(client.ClientInfo) error) error {
+		DoAndReturn(func(_ func(client.ClientInfo) error) error {
 			return nil
 		}).
 		Times(1)
@@ -266,7 +266,7 @@ func TestListPools_Empty(t *testing.T) {
 
 	mockRR.EXPECT().
 		ForEachPool(gomock.Any()).
-		DoAndReturn(func(fn func(pool.Pool) error) error {
+		DoAndReturn(func(_ func(pool.Pool) error) error {
 			return nil
 		}).
 		Times(1)
