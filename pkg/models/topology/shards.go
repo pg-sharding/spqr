@@ -132,8 +132,9 @@ func (ds *DataShard) Options() []GenericOption {
 
 func (ds *DataShard) SetOptions(options []GenericOption) {
 	ds.options = options
-	ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(options)
-	ds.tls = TLSConfigFromOptions(ds.options)
+	ds.parsedAddresses = nil
+	ds.parsedHosts = nil
+	ds.tls = nil
 }
 
 // parseHosts parses the raw hosts into a slice of Hosts.
@@ -161,10 +162,16 @@ func parseHosts(rawHosts []string) (parsedHosts []config.Host, parsedAddresses [
 }
 
 func (ds *DataShard) Hosts() []string {
+	if ds.parsedAddresses == nil {
+		ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(ds.options)
+	}
 	return ds.parsedAddresses
 }
 
 func (ds *DataShard) HostsAZ() []config.Host {
+	if ds.parsedHosts == nil {
+		ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(ds.options)
+	}
 	return ds.parsedHosts
 }
 
@@ -184,6 +191,9 @@ func retrieveRawHostsFromOptions(options []GenericOption) []string {
 }
 
 func (ds *DataShard) TLS() *config.TLSConfig {
+	if ds.tls == nil {
+		ds.tls = TLSConfigFromOptions(ds.options)
+	}
 	return ds.tls
 }
 

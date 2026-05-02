@@ -3,6 +3,8 @@ REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 DROP SHARD sh1;
 SHOW SHARDS;
 
+\set VERBOSITY verbose
+
 CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
 SHOW SHARDS;
 
