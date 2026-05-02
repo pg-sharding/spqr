@@ -22,7 +22,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockXQDB(ctrl)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	krs := []*qdb.KeyRange{
 		{

@@ -35,9 +35,9 @@ type LocalCheckResult struct {
 }
 
 type DBPool struct {
-	pool         ShardHostsPool
-	shardMapping map[string]*topology.DataShard
-	checker      *tsa.CachedTSAChecker
+	pool    ShardHostsPool
+	tmgr    topology.TopologyMgr
+	checker *tsa.CachedTSAChecker
 
 	cache        *DbpoolCache
 	ShuffleHosts bool
@@ -110,7 +110,7 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 	var targetShard *topology.DataShard
 	var shardName string
 
-	for name, shard := range s.shardMapping {
+	for name, shard := range s.tmgr.Snap() {
 		for _, host := range shard.HostsAZ() {
 			if host.Address == tsaKey.Host && host.AZ == tsaKey.AZ {
 				targetShard = shard
@@ -142,12 +142,12 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 		return
 	}
 	defer func() {
-		if err := s.pool.Discard(shardInstance); err != nil {
+		if err := s.pool.Put(shardInstance); err != nil {
 			spqrlog.Zero.Warn().
 				Str("host", tsaKey.Host).
 				Str("az", tsaKey.AZ).
 				Err(err).
-				Msg("failed to discard shard instance during cleanup")
+				Msg("failed to return connection during cleanup")
 		}
 	}()
 
@@ -448,7 +448,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 		for _, host := range hostOrder {
 			shard, err := s.pool.ConnectionHost(clid, key, host)
 			if err != nil {
-				totalMsg = append(totalMsg, fmt.Sprintf("host %s: %s", host, err.Error()))
+				totalMsg = append(totalMsg, fmt.Sprintf("host %s: %s", host.Address, err.Error()))
 
 				s.cache.MarkUnmatched(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
 
@@ -496,11 +496,12 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 	var negCache []config.Host
 	var deadCache []config.Host
 
-	if _, ok := s.shardMapping[key.Name]; !ok {
-		return nil, fmt.Errorf("shard with name %q not found", key.Name)
+	sh, err := s.tmgr.ShardById(key.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, host := range s.shardMapping[key.Name].HostsAZ() {
+	for _, host := range sh.HostsAZ() {
 		cr, ok := s.cache.Match(targetSessionAttrs, host.Address, host.AZ)
 		if ok {
 			if !cr.Alive {
@@ -564,8 +565,8 @@ func (s *DBPool) SetRule(rule *config.BackendRule) {
 //
 // Returns:
 //   - map[string]*config.Shard: The shard mapping of the instance pool.
-func (s *DBPool) ShardMapping() map[string]*topology.DataShard {
-	return s.shardMapping
+func (s *DBPool) ShardMapping() topology.TopologyMgr {
+	return s.tmgr
 }
 
 // ForEach iterates over each shard in the instance pool and calls the provided callback function.
@@ -656,9 +657,13 @@ func (s *DBPool) StopCacheWatchdog() {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*topology.DataShard, startupParams *startup.StartupParams, preferAZ string, hostCheckTTL time.Duration, hostCheckInterval time.Duration) MultiShardTSAPool {
+func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, preferAZ string, hostCheckTTL time.Duration, hostCheckInterval time.Duration) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
-		shardConfig := mapping[shardKey.Name]
+		shardConfig, err := tmgr.ShardById(shardKey.Name)
+		if err != nil {
+			return nil, err
+		}
+
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
 		tlsconfig, err := shardConfig.TLS().Init(hostname)
 		if err != nil {
@@ -674,12 +679,12 @@ func NewDBPool(mapping map[string]*topology.DataShard, startupParams *startup.St
 			return nil, err
 		}
 
-		return datashard.NewShardHostInstance(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
+		return datashard.NewShardHostInstance(shardKey, pgi, shardConfig, rule, startupParams)
 	}
 
 	dbPool := &DBPool{
 		pool:              NewPool(allocator),
-		shardMapping:      mapping,
+		tmgr:              tmgr,
 		ShuffleHosts:      true,
 		PreferAZ:          preferAZ,
 		AcquireRetryCount: config.ValueOrDefaultInt(config.RouterConfig().DbpoolAcquireRetryCount, DefaultAcquireRetryCount),
@@ -707,6 +712,6 @@ func NewDBPool(mapping map[string]*topology.DataShard, startupParams *startup.St
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPoolWithDisabledFeatures(mapping map[string]*topology.DataShard) MultiShardTSAPool {
-	return NewDBPool(mapping, &startup.StartupParams{}, "", time.Duration(0), time.Duration(0))
+func NewDBPoolWithDisabledFeatures(tmgr topology.TopologyMgr) MultiShardTSAPool {
+	return NewDBPool(tmgr, &startup.StartupParams{}, "", time.Duration(0), time.Duration(0))
 }

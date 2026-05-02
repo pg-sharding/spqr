@@ -700,8 +700,8 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
 				rst.Client().SetScatterQuery(hintVal != "")
 			case session.SPQR_EXECUTE_ON:
-				if _, ok := topology.ShardMapping[hintVal]; !ok {
-					return fmt.Errorf("no such shard: %v", hintVal)
+				if _, err := topology.TopMgr.ShardById(hintVal); err != nil {
+					return errAbortedTx
 				}
 				rst.Client().SetExecuteOn(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION:

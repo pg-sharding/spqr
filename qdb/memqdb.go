@@ -791,14 +791,9 @@ func (q *MemQDB) AlterShard(_ context.Context, newShard *Shard) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	shard, ok := q.State.Shards[newShard.ID]
-	if !ok {
-		return fmt.Errorf("shard with id %s not found", shard.ID)
-	}
+	q.State.Shards[newShard.ID] = newShard
 
-	shard = newShard
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, shard.ID, newShard))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, newShard.ID, newShard))
 }
 
 // TODO : unit tests

@@ -29,16 +29,16 @@ type RoutePool interface {
 
 type RoutePoolImpl struct {
 	/*  route.Key -> *route.Route */
-	pool         sync.Map
-	shardMapping map[string]*topology.DataShard
+	pool sync.Map
+	tmgr topology.TopologyMgr
 }
 
 var _ RoutePool = &RoutePoolImpl{}
 
-func NewRouterPoolImpl(shardMapping map[string]*topology.DataShard) *RoutePoolImpl {
+func NewRouterPoolImpl(tmgr topology.TopologyMgr) *RoutePoolImpl {
 	return &RoutePoolImpl{
-		shardMapping: shardMapping,
-		pool:         sync.Map{},
+		tmgr: tmgr,
+		pool: sync.Map{},
 	}
 }
 
@@ -132,7 +132,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	nroute := route.NewRoute(
 		beRule,
 		frRule,
-		r.shardMapping,
+		r.tmgr,
 		client.DefaultClientDeadCheckInterval)
 
 	act, loaded := r.pool.LoadOrStore(key, nroute)

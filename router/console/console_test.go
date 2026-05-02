@@ -118,7 +118,9 @@ func TestAlterDistributionAttach(t *testing.T) {
 	} {
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil,
+			topology.TopMgrFromMap(map[string]*topology.DataShard{}),
+			false, nil, qdb.DefaultMaxTxnSize)
 		err = innerAlterDistributionAttach(ctx, mngr, &testData.rel, testData.dsId, testData.keyColumn)
 		if testData.err != nil {
 			is.EqualError(err, testData.err.Error())

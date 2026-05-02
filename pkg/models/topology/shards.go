@@ -6,17 +6,104 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-var ShardMapping map[string]*DataShard
+type TopologyMgr interface {
+	ShardById(string) (*DataShard, error)
+
+	AddShard(*DataShard)
+
+	DropShard(string)
+
+	SetOptions(string, []GenericOption)
+
+	Snap() map[string]*DataShard
+}
+
+type TopologyMgrImpl struct {
+	shardMapping sync.Map
+}
+
+func (t *TopologyMgrImpl) Snap() map[string]*DataShard {
+
+	/* NB: this is not exactly `snapshot` */
+	rt := map[string]*DataShard{}
+
+	t.shardMapping.Range(func(k, v any) bool {
+		id, ok := k.(string)
+		if !ok {
+			return true
+		}
+
+		cnf, ok := v.(*DataShard)
+		if !ok {
+			return true
+		}
+		rt[id] = cnf
+		return true
+	})
+
+	return rt
+}
+
+func (t *TopologyMgrImpl) ShardById(id string) (*DataShard, error) {
+
+	shRaw, ok := t.shardMapping.Load(id)
+	if !ok {
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard with name %q not found", id)
+	}
+
+	sh, ok := shRaw.(*DataShard)
+	if !ok {
+		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "topology map corrupted for id").Detail(fmt.Sprintf("shard id is %s", id))
+	}
+	return sh, nil
+}
+
+func (t *TopologyMgrImpl) AddShard(sh *DataShard) {
+	sh.SetOptions(sh.options)
+	_, _ = t.shardMapping.LoadOrStore(sh.ID, sh)
+}
+
+func (t *TopologyMgrImpl) DropShard(id string) {
+	t.shardMapping.Delete(id)
+}
+
+func (t *TopologyMgrImpl) SetOptions(id string, opt []GenericOption) {
+	shRaw, ok := t.shardMapping.Load(id)
+	if !ok {
+		/* TODO: proper error report */
+		return
+	}
+
+	sh := shRaw.(*DataShard)
+
+	shCopy := *sh
+	/* TODO: better copy */
+	shCopy.SetOptions(opt)
+
+	t.shardMapping.Store(id, &shCopy)
+}
+
+var TopMgr TopologyMgr
+
+func TopMgrFromMap(shardMapping map[string]*DataShard) TopologyMgr {
+	t := &TopologyMgrImpl{}
+	for k, v := range shardMapping {
+		t.shardMapping.Store(k, v)
+	}
+	return t
+}
 
 func InitShardMapping(shardMapping map[string]*DataShard) {
-	ShardMapping = shardMapping
+	TopMgr = TopMgrFromMap(shardMapping)
 }
 
 type DataShard struct {

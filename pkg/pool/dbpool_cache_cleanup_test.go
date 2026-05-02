@@ -20,7 +20,7 @@ func TestDBPool_CacheCleanupBasic(t *testing.T) {
 	}
 
 	// Create DBPool with short cache age for testing
-	dbPool := NewDBPoolFromMultiPool(mapping, nil, &emptyMultiShardPool{}, time.Hour)
+	dbPool := NewDBPoolFromMultiPool(topology.TopMgrFromMap(mapping), nil, &emptyMultiShardPool{}, time.Hour)
 	defer dbPool.StopCacheWatchdog()
 
 	// Create a cache with a short max age for testing
@@ -60,7 +60,7 @@ func TestDBPool_CacheCleanupGoroutine(t *testing.T) {
 		}),
 	}
 
-	dbPool := NewDBPoolFromMultiPool(mapping, nil, &emptyMultiShardPool{}, time.Hour)
+	dbPool := NewDBPoolFromMultiPool(topology.TopMgrFromMap(mapping), nil, &emptyMultiShardPool{}, time.Hour)
 
 	// Verify cache has cleanup functionality
 	if dbPool.cache == nil {

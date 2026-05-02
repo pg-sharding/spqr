@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -841,7 +842,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
 		}
 
-		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 		if err != nil {
 			return nil, err
 		}
@@ -887,7 +888,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		if len(args) > 0 {
 			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualCleanOutdated2PCData)
 		}
-		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 		if err != nil {
 			return nil, err
 		}

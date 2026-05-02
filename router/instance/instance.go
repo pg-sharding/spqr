@@ -80,7 +80,7 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceI
 		return nil, err
 	}
 
-	cache := cache.NewSchemaCache(topology.ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
+	cache := cache.NewSchemaCache(topology.TopMgr, config.RouterConfig().SchemaCacheBackendRule)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -117,12 +117,12 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceI
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	rr := rulerouter.NewRouter(topology.TopMgr, frTLS, config.RouterConfig(), notifier)
 	lc := coord.NewLocalInstanceMetadataMgr(
 		db,
 		db,
 		cache,
-		topology.ShardMapping,
+		topology.TopMgr,
 		config.RouterConfig().ManageShardsByCoordinator,
 		rr,
 		maxTxnBatchSize,
@@ -140,7 +140,7 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceI
 	}
 
 	qr, err := qrouter.NewQrouter(qtype,
-		topology.ShardMapping,
+		topology.TopMgr, /* TODO: fix */
 		lc,
 		rr,
 		&config.RouterConfig().Qr,

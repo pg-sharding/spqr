@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -1468,9 +1469,18 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ShardsStr:
-		shards, err := mngr.ListShards(ctx)
-		if err != nil {
-			return nil, err
+
+		var shards []*topology.DataShard
+
+		if stmt.Kind == spqrparser.SHOW_KIND_LOCAL {
+			for _, k := range topology.TopMgr.Snap() {
+				shards = append(shards, k)
+			}
+		} else {
+			shards, err = mngr.ListShards(ctx)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		tts = &tupleslot.TupleTableSlot{
@@ -2335,6 +2345,9 @@ func processAlterShard(ctx context.Context,
 
 func optionsToTuple(opts []topology.GenericOption) string {
 	t := []string{}
+	sort.Slice(opts, func(i, j int) bool {
+		return opts[i].Name < opts[j].Name
+	})
 	for _, v := range opts {
 		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
 	}
