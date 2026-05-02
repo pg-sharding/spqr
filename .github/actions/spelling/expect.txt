@@ -444,6 +444,7 @@ RAddr
 ragel
 randkey
 randomhex
+randutil
 rarg
 rcfg
 rclient
@@ -604,6 +605,7 @@ truncatable
 tsa
 TSEMICOLON
 tstmt
+tmgr
 tupleslot
 tupletableslot
 twopc

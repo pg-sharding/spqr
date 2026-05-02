@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -512,7 +513,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				defer cf()
 			}
 
-			return retry.DoValue(ctx, retry.WithMaxRetries(2, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+			return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
 				tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
 				if err != nil {
 					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -541,7 +542,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeUinteger)
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeUinteger)
 			if err != nil {
 				return nil, err
 			}
@@ -604,7 +605,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 			if err != nil {
 				return nil, err
 			}
@@ -841,7 +842,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
 		}
 
-		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 		if err != nil {
 			return nil, err
 		}
@@ -887,7 +888,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		if len(args) > 0 {
 			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualCleanOutdated2PCData)
 		}
-		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 		if err != nil {
 			return nil, err
 		}

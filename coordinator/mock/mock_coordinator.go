@@ -19,7 +19,7 @@ import (
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
-	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
+	transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	transferworker "github.com/pg-sharding/spqr/pkg/transferworker"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
@@ -221,10 +221,10 @@ func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer any) *
 }
 
 // BeginTran mocks base method.
-func (m *MockCoordinator) BeginTran(ctx context.Context) (*meta_transaction.MetaTransaction, error) {
+func (m *MockCoordinator) BeginTran(ctx context.Context) (*transaction.MetaTransaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BeginTran", ctx)
-	ret0, _ := ret[0].(*meta_transaction.MetaTransaction)
+	ret0, _ := ret[0].(*transaction.MetaTransaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -250,17 +250,17 @@ func (mr *MockCoordinatorMockRecorder) Cache() *gomock.Call {
 }
 
 // CommitTran mocks base method.
-func (m *MockCoordinator) CommitTran(ctx context.Context, transaction *meta_transaction.MetaTransaction) error {
+func (m *MockCoordinator) CommitTran(ctx context.Context, arg1 *transaction.MetaTransaction) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CommitTran", ctx, transaction)
+	ret := m.ctrl.Call(m, "CommitTran", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CommitTran indicates an expected call of CommitTran.
-func (mr *MockCoordinatorMockRecorder) CommitTran(ctx, transaction any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) CommitTran(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitTran", reflect.TypeOf((*MockCoordinator)(nil).CommitTran), ctx, transaction)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitTran", reflect.TypeOf((*MockCoordinator)(nil).CommitTran), ctx, arg1)
 }
 
 // CreateDistribution mocks base method.
@@ -506,7 +506,7 @@ func (mr *MockCoordinatorMockRecorder) DropUniqueIndex(ctx, idxID any) *gomock.C
 }
 
 // ExecNoTran mocks base method.
-func (m *MockCoordinator) ExecNoTran(ctx context.Context, chunk *meta_transaction.MetaTransactionChunk) error {
+func (m *MockCoordinator) ExecNoTran(ctx context.Context, chunk *transaction.MetaTransactionChunk) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecNoTran", ctx, chunk)
 	ret0, _ := ret[0].(error)

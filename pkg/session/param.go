@@ -104,6 +104,7 @@ const (
 	VirtualParamLevelTxBlock   = "txBlock"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_DISTRIBUTION            = "__spqr__distribution"
 	SPQR_DISTRIBUTED_RELATION    = "__spqr__distributed_relation"
@@ -131,6 +132,8 @@ const (
 
 	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
 )
+
+//revive:enable:var-naming
 
 func ParamIsBoolean(n string) bool {
 	switch n {

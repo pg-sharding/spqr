@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -39,7 +38,7 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetad
 		Type("node-type", node).
 		Msg("planning from node")
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	switch q := node.(type) {
 	case *lyx.RangeVar:
@@ -71,7 +70,7 @@ func (qr *ProxyQrouter) planFromClauseList(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext, clause []lyx.FromClauseNode) (plan.Plan, error) {
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	for _, node := range clause {
 		tmp, err := qr.planFromNode(ctx, rm, node)
@@ -1121,7 +1120,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 			return p, nil
 		}
 
-		limitVal := 0
+		limitVal := int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -1179,7 +1178,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 						errmsg = v
 					case *pgproto3.DataRow:
 
-						if len(retSlice.TTS.Raw) < limitVal {
+						if len(retSlice.TTS.Raw) < int(limitVal) {
 							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
@@ -1374,7 +1373,7 @@ func (qr *ProxyQrouter) planSPQRCTID(
 			case *lyx.ParamRef:
 				queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 				if err != nil {
 					return nil, err
 				}
@@ -1815,9 +1814,10 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(topology.ShardMapping) == 1 {
+		mp := qr.tmgr.Snap()
+		if len(mp) == 1 {
 			firstShard := ""
-			for s := range topology.ShardMapping {
+			for s := range mp {
 				firstShard = s
 			}
 

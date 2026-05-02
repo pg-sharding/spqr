@@ -249,12 +249,14 @@ Feature: TLS connections to shards via coordinator
     Then command return code should be "0"
 
     # Re-register — SyncRouterMetadata should detect the config drift
-    # and call UpdateShard on the router for both shards
+    # and call AlterShard on the router for both shards
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS "[regress_router]:7000"
     """
     Then command return code should be "0"
+
+    When we wait for "2" seconds
 
     When I run SQL on host "router"
     """

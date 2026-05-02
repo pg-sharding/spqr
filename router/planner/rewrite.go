@@ -392,8 +392,9 @@ func getMaxPrepStmtID(s lyx.Node) int {
 					for _, el := range v {
 						switch val := el.(type) {
 						case *lyx.ParamRef:
-							if val.Number+1 > ret {
-								ret = val.Number + 1
+							lft := int(val.Number + 1)
+							if lft > ret {
+								ret = lft
 							}
 						}
 					}

@@ -20,7 +20,7 @@ func TestDBPool_BackgroundHealthCheck(_ *testing.T) {
 	// Create DBPool with background health checking enabled (short interval for test)
 	dbPool := &DBPool{
 		pool:              &emptyMultiShardPool{},
-		shardMapping:      mapping,
+		tmgr:              topology.TopMgrFromMap(mapping),
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: 50 * time.Millisecond, // Very short for testing
 	}
@@ -53,7 +53,7 @@ func TestDBPool_BackgroundHealthCheckDisabled(_ *testing.T) {
 	// Create DBPool with background health checking disabled
 	dbPool := &DBPool{
 		pool:              &emptyMultiShardPool{},
-		shardMapping:      mapping,
+		tmgr:              topology.TopMgrFromMap(mapping),
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: 0, // Disabled
 	}

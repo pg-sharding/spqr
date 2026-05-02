@@ -237,7 +237,7 @@ func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 
 // TODO : unit tests
 func (srv *ShardServer) Datashards() []shard.ShardHostInstance {
-	var rv []shard.ShardHostInstance = nil
+	var rv []shard.ShardHostInstance
 	v := srv.shard.Load()
 
 	if v != nil {

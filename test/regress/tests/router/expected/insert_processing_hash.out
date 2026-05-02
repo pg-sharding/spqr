@@ -56,6 +56,15 @@ NOTICE: send query to shard(s) : sh2,sh4
  301 | 4 | 5
 (3 rows)
 
+SELECT a FROM xx_insert_rel_hash WHERE a IN (100, 301, 304);
+NOTICE: send query to shard(s) : sh1,sh4
+  a  
+-----
+ 100
+ 301
+ 301
+(3 rows)
+
 SELECT __spqr__ctid('xx_insert_rel_hash');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid |  a  | b | c 

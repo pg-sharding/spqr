@@ -501,7 +501,8 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 		spqrlog.Zero.Debug().
 			Str("id", keyRangeId).
 			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
-		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeId))
+		return nil, retry.RetryableError(
+			spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", keyRangeId)))
 	} else {
 		if len(resp.Responses) != 3 {
 			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
@@ -2782,7 +2783,7 @@ func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint6
 		return nil, err
 	}
 
-	var nextval int64 = 0
+	var nextval int64
 	switch resp.Count {
 	case 1:
 		var err error
@@ -2818,7 +2819,7 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 		return -1, err
 	}
 
-	var nextval int64 = 0
+	var nextval int64
 	switch resp.Count {
 	case 1:
 		var err error

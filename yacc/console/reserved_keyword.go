@@ -107,4 +107,6 @@ var reservedWords = map[string]int{
 	"options":      OPTIONS,
 	"rebootstrap":  REBOOTSTRAP,
 	"grant":        GRANT,
+	"local":        LOCAL,
+	"global":       GLOBAL,
 }

@@ -15,7 +15,7 @@ import (
 
 const MemQDBPath = ""
 
-var boolFalse bool = false
+var boolFalse = false
 
 var mockShard1 = &qdb.Shard{
 	ID:       "sh1",
@@ -54,7 +54,10 @@ func TestSplitKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
-		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := NewLocalInstanceMetadataMgr(memqdb,
+			nil,
+			nil,
+			topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -85,14 +88,17 @@ func TestSplitKeyRange(t *testing.T) {
 		}
 
 		err = mngr.Split(ctx, splitData)
-		is.EqualError(err, "key range kr1 is locked")
+		is.EqualError(err, "key range is locked")
 	})
 	t.Run("split happy path", func(t *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
-		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := NewLocalInstanceMetadataMgr(memqdb,
+			nil,
+			nil,
+			topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -150,7 +156,10 @@ func TestAlterOptions(t *testing.T) {
 	ctx := context.Background()
 	memqdb, err := prepareDB(ctx)
 	is.NoError(err)
-	mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+	mngr := NewLocalInstanceMetadataMgr(memqdb,
+		nil,
+		nil,
+		topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	err = mngr.SetShardOptions(ctx, "sh1", []topology.GenericOption{
 		{Name: "host", Arg: "localhost:6432"},

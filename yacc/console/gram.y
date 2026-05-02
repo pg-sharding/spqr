@@ -184,6 +184,9 @@ func randomHex(n int) (string, error) {
 %type<colref> ColRef
 %type<colreflist> ColRef_list
 
+
+%type<integer> opt_show_kind
+
 %type<str> any_val any_id shard_id opt_any_id
 
 %type<uinteger> any_uint
@@ -218,6 +221,8 @@ func randomHex(n int) (string, error) {
 %token<str> SECONDS WAIT PANIC SLEEP
 
 %token<str> GRANT PRIVILEGES
+
+%token<str> LOCAL GLOBAL
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -1338,7 +1343,7 @@ order_clause:
 	{
 		$$ = &lyx.SortBy{
 			Node: $3,
-			SortbyDir: $4,
+			SortbyDir: int64($4),
 		}
 	} 
 	| /* empty */    {$$ = nil}
@@ -1359,10 +1364,15 @@ opt_show_columns:
 	/* Empty */ { $$ = nil } | 
 	TOPENBR show_columns_list TCLOSEBR {$$ = $2}
 
+opt_show_kind:
+	/* Empty */ { $$ = SHOW_KIND_UNSPEC } | 
+	LOCAL { $$ = SHOW_KIND_LOCAL } | 
+	GLOBAL {$$ = SHOW_KIND_GLOBAL}
+
 show_stmt:
-	SHOW show_statement_type opt_show_columns where_clause group_clause order_clause
+	SHOW opt_show_kind show_statement_type opt_show_columns where_clause group_clause order_clause
 	{
-		$$ = &Show{Cmd: $2, Columns: $3, Where: $4, GroupBy: $5, Order: $6}
+		$$ = &Show{Kind: $2, Cmd: $3, Columns: $4, Where: $5, GroupBy: $6, Order: $7}
 	}
 
 help_stmt:

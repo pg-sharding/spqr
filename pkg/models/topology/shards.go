@@ -6,17 +6,104 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-var ShardMapping map[string]*DataShard
+type TopologyMgr interface {
+	ShardById(string) (*DataShard, error)
+
+	AddShard(*DataShard)
+
+	DropShard(string)
+
+	SetOptions(string, []GenericOption)
+
+	Snap() map[string]*DataShard
+}
+
+type TopologyMgrImpl struct {
+	shardMapping sync.Map
+}
+
+func (t *TopologyMgrImpl) Snap() map[string]*DataShard {
+
+	/* NB: this is not exactly `snapshot` */
+	rt := map[string]*DataShard{}
+
+	t.shardMapping.Range(func(k, v any) bool {
+		id, ok := k.(string)
+		if !ok {
+			return true
+		}
+
+		cnf, ok := v.(*DataShard)
+		if !ok {
+			return true
+		}
+		rt[id] = cnf
+		return true
+	})
+
+	return rt
+}
+
+func (t *TopologyMgrImpl) ShardById(id string) (*DataShard, error) {
+
+	shRaw, ok := t.shardMapping.Load(id)
+	if !ok {
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard with name %q not found", id)
+	}
+
+	sh, ok := shRaw.(*DataShard)
+	if !ok {
+		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "topology map corrupted for id").Detail(fmt.Sprintf("shard id is %s", id))
+	}
+	return sh, nil
+}
+
+func (t *TopologyMgrImpl) AddShard(sh *DataShard) {
+	sh.SetOptions(sh.options)
+	_, _ = t.shardMapping.LoadOrStore(sh.ID, sh)
+}
+
+func (t *TopologyMgrImpl) DropShard(id string) {
+	t.shardMapping.Delete(id)
+}
+
+func (t *TopologyMgrImpl) SetOptions(id string, opt []GenericOption) {
+	shRaw, ok := t.shardMapping.Load(id)
+	if !ok {
+		/* TODO: proper error report */
+		return
+	}
+
+	sh := shRaw.(*DataShard)
+
+	shCopy := *sh
+	/* TODO: better copy */
+	shCopy.SetOptions(opt)
+
+	t.shardMapping.Store(id, &shCopy)
+}
+
+var TopMgr TopologyMgr
+
+func TopMgrFromMap(shardMapping map[string]*DataShard) TopologyMgr {
+	t := &TopologyMgrImpl{}
+	for k, v := range shardMapping {
+		t.shardMapping.Store(k, v)
+	}
+	return t
+}
 
 func InitShardMapping(shardMapping map[string]*DataShard) {
-	ShardMapping = shardMapping
+	TopMgr = TopMgrFromMap(shardMapping)
 }
 
 type DataShard struct {
@@ -125,17 +212,17 @@ func NewDataShard(name string, t config.ShardType, options []GenericOption) *Dat
 //
 // Returns:
 //   - *proto.Shard: The converted proto.Shard object.
-func DataShardToProto(shard *DataShard) *proto.Shard {
+func DataShardToProto(shard *DataShard, hostsWithAZ bool) *proto.Shard {
 	return &proto.Shard{
 		Id:      shard.ID,
-		Options: GenericOptionsToProto(shard.options),
+		Options: GenericOptionsToProto(shard.options, hostsWithAZ),
 	}
 }
 
-func GenericOptionsToProto(options []GenericOption) []*proto.GenericOption {
+func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) []*proto.GenericOption {
 	protoOptions := make([]*proto.GenericOption, 0, len(options))
 	for _, opt := range options {
-		if opt.Name == "host" {
+		if !hostsWithAZ && opt.Name == "host" {
 			continue
 		}
 
@@ -145,26 +232,46 @@ func GenericOptionsToProto(options []GenericOption) []*proto.GenericOption {
 		})
 	}
 
-	_, addresses := retrieveHostsFromOptions(options)
-	for _, addr := range addresses {
-		protoOptions = append(protoOptions, &proto.GenericOption{
-			Name:  "host",
-			Value: addr,
-		})
+	if !hostsWithAZ {
+		_, addresses := retrieveHostsFromOptions(options)
+		for _, addr := range addresses {
+			protoOptions = append(protoOptions, &proto.GenericOption{
+				Name:  "host",
+				Value: addr,
+			})
+		}
 	}
 
 	return protoOptions
 }
 
-func GenericOptionsFromProto(protoOptions []*proto.GenericOption) []GenericOption {
+func GenericOptionsFromProto(protoOptions []*proto.GenericOption) ([]GenericOption, error) {
 	options := make([]GenericOption, 0, len(protoOptions))
 	for _, opt := range protoOptions {
+		action, err := GenericOptionActionFromProto(opt.Action)
+		if err != nil {
+			return nil, err
+		}
 		options = append(options, GenericOption{
-			Name: strings.ToLower(opt.Name),
-			Arg:  opt.Value,
+			Name:   strings.ToLower(opt.Name),
+			Arg:    opt.Value,
+			Action: action,
 		})
 	}
-	return options
+	return options, nil
+}
+
+func GenericOptionActionFromProto(action proto.GenericOption_Action) (GenericOptionAction, error) {
+	switch action {
+	case proto.GenericOption_ADD:
+		return GenericOptionActionAdd, nil
+	case proto.GenericOption_SET:
+		return GenericOptionActionSet, nil
+	case proto.GenericOption_DROP:
+		return GenericOptionActionDrop, nil
+	default:
+		return -1, fmt.Errorf("unknown action %s", action.String())
+	}
 }
 
 // DataShardFromProto creates a new DataShard instance from the given proto.Shard.
@@ -176,8 +283,12 @@ func GenericOptionsFromProto(protoOptions []*proto.GenericOption) []GenericOptio
 //
 // Returns:
 //   - *DataShard: The created DataShard instance.
-func DataShardFromProto(shard *proto.Shard) *DataShard {
-	return NewDataShard(shard.Id, config.DataShard, GenericOptionsFromProto(shard.Options))
+func DataShardFromProto(shard *proto.Shard) (*DataShard, error) {
+	options, err := GenericOptionsFromProto(shard.Options)
+	if err != nil {
+		return nil, err
+	}
+	return NewDataShard(shard.Id, config.DataShard, options), nil
 }
 
 // DataShardFromDB creates a new DataShard instance from the given qdb.Shard.

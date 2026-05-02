@@ -177,14 +177,18 @@ NOTICE: send query to shard(s) : sh3
 ERROR:  failed to run inner slice, tx status error: duplicate key value violates unique constraint "ui_j_idx"
 WITH s AS (select 1)
 INSERT INTO r (i, j, k) VALUES(10, 2, 30);
-ERROR:  error processing query 'WITH s AS (select 1)
-INSERT INTO r (i, j, k) VALUES(10, 2, 30);': too complex query to route
+ERROR:  too complex query to route
+QUERY:  WITH s AS (select 1)
+INSERT INTO r (i, j, k) VALUES(10, 2, 30);
 INSERT INTO r (i, j, k) VALUES(7, 8, 9) RETURNING *;
-ERROR:  error processing query 'INSERT INTO r (i, j, k) VALUES(7, 8, 9) RETURNING *;': too complex query to route
+ERROR:  too complex query to route
+QUERY:  INSERT INTO r (i, j, k) VALUES(7, 8, 9) RETURNING *;
 DELETE FROM r WHERE i = 7;
-ERROR:  error processing query 'DELETE FROM r WHERE i = 7;': Not implemented
+ERROR:  Not implemented
+QUERY:  DELETE FROM r WHERE i = 7;
 UPDATE r SET k = k + 1 WHERE i = 7;
-ERROR:  error processing query 'UPDATE r SET k = k + 1 WHERE i = 7;': Not implemented
+ERROR:  Not implemented
+QUERY:  UPDATE r SET k = k + 1 WHERE i = 7;
 -- test with tx block
 BEGIN;
 INSERT INTO r (i, j, k) VALUES(7, 8, 9);
@@ -385,6 +389,9 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE r3;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ui3;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- XXX: fix
+DROP TABLE ch3;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

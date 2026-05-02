@@ -844,13 +844,14 @@ func (cl *PsqlClient) replySpqrErr(
 	}
 
 	return cl.Send(&pgproto3.ErrorResponse{
-		Message:  clErrMsg,
-		Severity: "ERROR",
-		Hint:     e.ErrHint,
-		Detail:   e.ErrDetail,
-		Code:     e.ErrorCode,
-		Position: e.Position,
-		Where:    e.ErrContext,
+		Message:       clErrMsg,
+		Severity:      "ERROR",
+		Hint:          e.ErrHint,
+		Detail:        e.ErrDetail,
+		InternalQuery: e.InternalQuery,
+		Code:          e.ErrorCode,
+		Position:      e.Position,
+		Where:         e.ErrContext,
 	})
 }
 

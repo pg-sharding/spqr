@@ -196,8 +196,9 @@ type Shard struct {
 }
 
 type Host struct {
-	Address string // format host:port
-	AZ      string // Availability zone
+	Address  string // format host:port
+	AZ       string // Availability zone
+	Priority int    // connection acquire priority
 }
 
 func ValueOrDefaultInt(value int, def int) int {

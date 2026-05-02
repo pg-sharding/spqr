@@ -56,7 +56,7 @@ type Route struct {
 
 func NewRoute(beRule *config.BackendRule,
 	frRule *config.FrontendRule,
-	mapping map[string]*topology.DataShard,
+	tmgr topology.TopologyMgr,
 	clientDeadCheckInterval time.Duration,
 ) *Route {
 	sp := &startup.StartupParams{}
@@ -81,7 +81,7 @@ func NewRoute(beRule *config.BackendRule,
 		hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
 		hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
 
-		route.mShardPool = pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval)
+		route.mShardPool = pool.NewDBPool(tmgr, sp, preferAZ, hostCheckTTL, hostCheckInterval)
 
 		route.mShardPool.SetRule(beRule)
 	}
@@ -106,7 +106,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	}
 
 	var anyK kr.ShardKey
-	for k := range r.mShardPool.ShardMapping() {
+	for k := range r.mShardPool.ShardMapping().Snap() {
 		anyK.Name = k
 		break
 	}

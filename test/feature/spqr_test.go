@@ -55,11 +55,9 @@ const (
 	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
 	qdbQueriesTimeout               = 30 * time.Second
-
-	spqrQdbHost             = "qdb01"
-	checkCoordinatorTimeout = 15 * time.Second
-
-	SERVICE_STATE_RUNNING = "running"
+	spqrQdbHost                     = "qdb01"
+	checkCoordinatorTimeout         = 15 * time.Second
+	serviceStateRunning             = "running"
 )
 
 type testContext struct {
@@ -735,7 +733,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		if state, err := tctx.composer.ContainerState(service); err != nil {
 			return false
 		} else {
-			return state != SERVICE_STATE_RUNNING
+			return state != serviceStateRunning
 		}
 	}
 	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
@@ -754,7 +752,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			if err != nil {
 				return err
 			}
-			if state == SERVICE_STATE_RUNNING {
+			if state == serviceStateRunning {
 				anyCoord = true
 				break
 			}

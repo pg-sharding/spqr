@@ -57,7 +57,35 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
 		return err
 	}
+}
 
+func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
+	switch err {
+	case nil:
+		/* ok */
+
+		return nil
+	case io.ErrUnexpectedEOF:
+		fallthrough
+	case io.EOF:
+		return err
+		// ok
+	default:
+		spqrlog.Zero.Error().
+			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+			Msg("client iteration done with error")
+
+		/* try to report error to user  */
+		if rerr := rst.Reset(); rerr != nil {
+			return rerr
+		}
+
+		if err := rst.Client().ReplyErrMsgPure(err); err != nil {
+			return err
+		}
+
+		return nil
+	}
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
@@ -113,12 +141,13 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		return teardownPipeline(rst, err)
 	case *pgproto3.Close:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
 		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
@@ -146,66 +175,38 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q = &cpQ
 		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
-	case *pgproto3.Describe:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
+	case *pgproto3.Describe:
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.FunctionCall:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 		q.Arguments = xproto.CopyByteSlices(q.Arguments)
 
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msg("client function call: simply fire parse stmt to connection")
-
-		rst.AddExtendedProtocMessage(q)
-		return nil
-	case *pgproto3.Execute:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
-
-		rst.AddExtendedProtocMessage(q)
-
-		err := rst.ProcessExtendedBuffer(context.Background())
-
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msg("client connection flushed")
-
-		switch err {
-		case nil:
-			/* ok */
-
-			return nil
-		case io.ErrUnexpectedEOF:
-			fallthrough
-		case io.EOF:
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
 			return err
-			// ok
-		default:
-			spqrlog.Zero.Error().
-				Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-				Msg("client iteration done with error")
-
-			/* try to report error to user  */
-			if rerr := rst.Reset(); rerr != nil {
-				return rerr
-			}
-
-			if err := rst.Client().ReplyErrMsgPure(err); err != nil {
-				return err
-			}
-
-			return rst.Client().Flush()
 		}
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
+	case *pgproto3.Execute:
+
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 
 	case *pgproto3.Bind:
 		// copy interface
@@ -215,8 +216,12 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q.ResultFormatCodes = slices.Clone(q.ResultFormatCodes)
 		q.ParameterFormatCodes = slices.Clone(q.ParameterFormatCodes)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 
 	default:
 		return nil

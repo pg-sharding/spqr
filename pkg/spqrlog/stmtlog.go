@@ -11,7 +11,7 @@ const (
 	StmtTypeExec  = "EXECUTE"
 )
 
-var SLogger *StmtLogger = NewStmtLogger(-1)
+var SLogger = NewStmtLogger(-1)
 
 type StmtLogger struct {
 	logMinDurationStatement time.Duration

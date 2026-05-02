@@ -297,7 +297,7 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	var matchedKrkey *kr.KeyRange = nil
+	var matchedKrkey *kr.KeyRange
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
@@ -443,7 +443,7 @@ type ParamRef struct {
 func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 	switch right := expr.(type) {
 	case *lyx.ParamRef:
-		return ParamRef{Indx: right.Number - 1}, nil
+		return ParamRef{Indx: int(right.Number - 1)}, nil
 	case *lyx.AExprSConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:

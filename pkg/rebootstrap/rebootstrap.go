@@ -1,4 +1,4 @@
-package util
+package rebootstrap
 
 import (
 	"context"
@@ -14,6 +14,8 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 	if err != nil {
 		return err
 	}
+
+	swapDb.State.Shards = memqdb.State.Shards
 
 	ds, err := etcdConn.ListDistributions(ctx)
 	if err != nil {

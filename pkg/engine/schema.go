@@ -5,8 +5,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 )
 
-// TODO : unit tests
-
 // TextOidFD generates a pgproto3.FieldDescription object with the provided statement text.
 //
 // Parameters:

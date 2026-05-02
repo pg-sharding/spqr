@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_UNEXPECTED           = "SPQRU"
 	SPQR_NO_DATASHARD         = "SPQRD"
@@ -40,6 +41,8 @@ const (
 	PG_ERRCODE_UNDEFINED_TABLE = "42P01"
 	PG_SYNTAX_ERROR            = "42601"
 )
+
+//revive:enable:var-naming
 
 var ExistingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:         "failed to match any datashard",
@@ -83,15 +86,21 @@ var _ error = &SpqrError{}
 type SpqrError struct {
 	Err error
 
-	ErrorCode  string
-	Position   int32
-	ErrHint    string
-	ErrDetail  string
-	ErrContext string
+	ErrorCode     string
+	Position      int32
+	InternalQuery string
+	ErrHint       string
+	ErrDetail     string
+	ErrContext    string
 }
 
 func (e *SpqrError) Hint(h string) *SpqrError {
 	e.ErrHint = h
+	return e
+}
+
+func (e *SpqrError) Query(q string) *SpqrError {
+	e.InternalQuery = q
 	return e
 }
 

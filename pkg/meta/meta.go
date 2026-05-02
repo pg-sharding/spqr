@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -30,11 +31,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
-	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -718,7 +719,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 				}
 			}()
 
-			if err := util.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
 				return nil, err
 			}
 		}
@@ -1468,9 +1469,18 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ShardsStr:
-		shards, err := mngr.ListShards(ctx)
-		if err != nil {
-			return nil, err
+
+		var shards []*topology.DataShard
+
+		if stmt.Kind == spqrparser.SHOW_KIND_LOCAL {
+			for _, k := range topology.TopMgr.Snap() {
+				shards = append(shards, k)
+			}
+		} else {
+			shards, err = mngr.ListShards(ctx)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		tts = &tupleslot.TupleTableSlot{
@@ -2335,6 +2345,9 @@ func processAlterShard(ctx context.Context,
 
 func optionsToTuple(opts []topology.GenericOption) string {
 	t := []string{}
+	sort.Slice(opts, func(i, j int) bool {
+		return opts[i].Name < opts[j].Name
+	})
 	for _, v := range opts {
 		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
 	}
