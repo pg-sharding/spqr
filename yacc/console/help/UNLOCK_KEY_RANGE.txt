@@ -13,7 +13,7 @@ PARAMETERS
 
 TIPS
     - Always unlock key ranges after completing maintenance operations
-    - Forgetting to unlock will block queries routed to the key range
+    - Forgetting to unlock will cause queries routed to the key range to fail with an error
 
 RELATED COMMANDS
     LOCK KEY RANGE
