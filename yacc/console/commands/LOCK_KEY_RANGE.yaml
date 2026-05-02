@@ -5,8 +5,8 @@ description: |
   used before performing operations like SPLIT or UNITE that require
   exclusive access to the key range.
 
-  While a key range is locked, queries routed to it will wait until the
-  lock is released.
+  While a key range is locked, queries routed to it will receive a
+  `key range is locked` error.
 
 syntax: |
   LOCK KEY RANGE <keyRangeID>
@@ -16,7 +16,7 @@ parameters:
     description: Identifier of the key range to lock
 
 tips:
-  - Always pair LOCK with UNLOCK to avoid blocking queries indefinitely
+  - Always pair LOCK with UNLOCK to avoid failing queries indefinitely
   - Use SHOW key_ranges to check the current lock status
 
 related_commands:
