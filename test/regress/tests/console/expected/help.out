@@ -101,14 +101,14 @@ HELP LOCK KEY RANGE;
      used before performing operations like SPLIT or UNITE that require                       +
      exclusive access to the key range.                                                       +
                                                                                               +
-     While a key range is locked, queries routed to it will wait until the                    +
-     lock is released.                                                                        +
+     While a key range is locked, queries routed to it will receive a                         +
+     `key range is locked` error.                                                             +
                                                                                               +
  PARAMETERS                                                                                   +
      <keyRangeID> - Identifier of the key range to lock                                       +
                                                                                               +
  TIPS                                                                                         +
-     - Always pair LOCK with UNLOCK to avoid blocking queries indefinitely                    +
+     - Always pair LOCK with UNLOCK to avoid failing queries indefinitely                     +
      - Use SHOW key_ranges to check the current lock status                                   +
                                                                                               +
  RELATED COMMANDS                                                                             +
@@ -136,7 +136,7 @@ HELP UNLOCK KEY RANGE;
                                                                                                         +
  TIPS                                                                                                   +
      - Always unlock key ranges after completing maintenance operations                                 +
-     - Forgetting to unlock will block queries routed to the key range                                  +
+     - Forgetting to unlock will cause queries routed to the key range to fail with an error            +
                                                                                                         +
  RELATED COMMANDS                                                                                       +
      LOCK KEY RANGE                                                                                     +
