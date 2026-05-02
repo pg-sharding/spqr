@@ -4,49 +4,35 @@ description: 'Move data between shards online using the coordinator console'
 ---
 
 <Warning>
-This guide covers **manual** rebalancing — useful when you need full control
-over which key ranges move and when. For automated redistribution of
-UUID-based distributions, see [redmon](https://github.com/pg-sharding/redmon).
-Built-in auto-rebalancing is tracked in
-[#1960](https://github.com/pg-sharding/spqr/issues/1960).
+This guide covers manual rebalancing. It may be useful when you need full control
+over which key ranges move and when.
+
+For automated redistribution of UUID-based distributions, you may take a look at [redmon](https://github.com/pg-sharding/redmon). Built-in auto-rebalancing is tracked in [#1960](https://github.com/pg-sharding/spqr/issues/1960).
 </Warning>
-
-To perform online rebalancing, split key ranges on a source shard and gradually
-redistribute them to a destination shard while the application keeps serving
-traffic.
-
-If the goal is continuous, workload-driven rebalancing rather than a planned
-data movement, use the [balancer](/features/data_balancing) instead — it picks
-the source key range, the destination shard and the move size automatically
-based on shard load.
 
 ## When to use it
 
 Use this flow when you need explicit control over what moves and when:
 
-- **Adding a new empty shard** to the cluster and populating it with data from
-  existing shards.
-- **Decommissioning (draining) a shard** — moving all its key ranges elsewhere
-  before removing it.
-- **Reacting to a hotspot** on a specific key range before the balancer would
-  pick it up.
-- **Moving a specific tenant's data** to a dedicated shard.
+- Add a new empty shard and fill it with data from existing shards.
+- Remove a shard — first move all its data elsewhere, then delete it.
+- Quickly fix a hotspot (overloaded data range) without waiting for the balancer.
+- Move a specific tenant’s data to a separate shard.
 
 ## Prerequisites
 
 Before starting, make sure that:
 
+- The cluster is deployed with a **coordinator** (or via
+  [spqrinfra](/deployment/spqrinfra)). Data rebalancing is not available in
+  [bare-router](/deployment/bare_router) deployments that run without a
+  coordinator.
 - The destination shard is registered in the cluster and visible via `SHOW shards`.
   See [Deployment overview](/deployment/overview) and
   [Coordinator](/sharding/cluster_components/coordinator) for how shards are added.
-- The [`spqrguard`](https://github.com/pg-sharding/spqrguard) extension is
-  installed on both source and destination shards — it is required for
-  `REDISTRIBUTE KEY RANGE` to work correctly.
-- The schema and required PostgreSQL extensions are present on the destination
-  shard (for example, `postgres_fdw` and any sharding-specific extensions used by
-  your distribution).
-- The application can tolerate a brief per-batch pause on the part of the key
-  range that is currently being moved.
+- Both [`spqrguard`](https://github.com/pg-sharding/spqrguard) and `postgres_fdw`
+  extensions are installed on the source and destination shards 
+- `spqrguard` is added to `shared_preload_libraries` in `postgresql.conf`.
 
 ## 1. Connect to the coordinator
 
@@ -56,9 +42,7 @@ console, not the router. Use `psql` over the PostgreSQL protocol as described in
 
 In high-availability setups, SPQR runs multiple coordinator instances, but only
 one of them is active at a time (see
-[Coordinator configuration](/configuration/coordinator)). Always connect to the
-**active (leader) coordinator** — commands sent to a standby will fail or be
-ignored.
+[Coordinator configuration](/configuration/coordinator)).
 
 ## 2. Inspect the current topology
 
@@ -66,15 +50,13 @@ Check the shards and the current key range layout:
 
 ```sql
 SHOW shards;
-           shard
----------------------------
- sh1
- sh2
- sh3
-(3 rows)
-```
+ shard |                         options                         
+-------+---------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+(4 rows)
 
-```sql
 SHOW key_ranges;
  key_range_id | shard_id | distribution_id | lower_bound | locked
 --------------+----------+-----------------+-------------+--------
@@ -83,32 +65,23 @@ SHOW key_ranges;
  krid3        | sh3      | ds1             | 670000      | false
 ```
 
-Identify the source key range (the one currently on the overloaded or
-to-be-decommissioned shard) and the destination shard.
-
 ## 3. Plan the splits
 
-Moving an entire key range at once is rarely a good idea: the whole range is
-unavailable for writes for the duration of the move and the destination shard
-absorbs the full write load in one burst. Instead, split the source key range
-into several smaller ranges first and move them one by one.
+You can redistribute an entire key range in one go — there is no technical
+limitation preventing it. In practice, however, it is common to split the
+source key range into several smaller pieces first and move them one by one.
+This gives you more control: you can monitor each piece independently, stop
+at any point, and limit the impact on the running application.
 
-A reasonable starting point is to split the range into pieces small enough that
-a single redistribute finishes within minutes at your chosen batch size. When
-in doubt, prefer smaller pieces — you can always [unite](#post-rebalancing-cleanup)
-them later.
+When in doubt, prefer smaller pieces — you can always
+[UNITE](/sharding/console/sql_commands#unite-key-range) them later.
 
 ## 4. Split the source key range
 
-Use [`SPLIT KEY RANGE`](/sharding/console/sql_commands#split-key-range). The
-command takes the upper portion of the source range and assigns it to a new
-key range.
-
-<Note>
-`SPLIT KEY RANGE <new> FROM <source> BY <bound>` turns `<source>` (lower..upper)
-into `<source>` (lower..bound) and `<new>` (bound..upper). Both new ranges stay
-on the same shard until you redistribute them.
-</Note>
+[`SPLIT KEY RANGE`](/sharding/console/sql_commands#split-key-range) turns one
+key range into two, splitting it at the given bound. Both resulting ranges
+continue to point to the same shard until you explicitly redistribute one of
+them.
 
 Example — splitting `krid1` (covering `0..335000` on `sh1`) into four pieces:
 
@@ -163,10 +136,13 @@ a tradeoff:
 - **Larger batches** — fewer round trips and faster overall, but each batch
   locks a larger slice of the key range for longer.
 
-A reasonable starting point for OLTP workloads is `BATCH SIZE 500`–`1000`.
-For analytical workloads with fewer concurrent writes, larger batches
-(`5000`–`10000`) may be acceptable. Adjust based on what you observe in
-monitoring (see the next section).
+<Tip>
+There is no universal formula — the right batch size can only be found
+empirically. Start with `500`–`1000` and adjust from there; depending on your
+workload and data, you may end up anywhere up to `1000000`. Monitor the
+impact on the application (see the next section) and increase the batch size
+as long as it remains acceptable.
+</Tip>
 
 ## 6. Monitor the move
 
@@ -181,46 +157,25 @@ While a redistribute is running, watch:
 - **Shard load** — CPU, disk and replication lag on both source and destination
   shards.
 
-```sql
-SHOW task_group;
-```
-
-You can also probe the destination shard directly using a routing hint to
-confirm that data is arriving where you expect:
-
-```sql
-SELECT count(*) FROM mytable
-  WHERE shard_key < 200000
-  /* __spqr__execute_on: sh2 */;
-```
-
-See [Routing hints](/routing/hints) for the full list of supported hints.
-
 ## 7. React to problems
 
 If something goes wrong during the rebalancing, follow this escalation order.
 
 ### Stop the problematic task group
 
-If one redistribute starts misbehaving (for example, errors against a specific
-key range or unexpected lag on the destination shard), stop just that task group
-and leave the others running:
+If one redistribute starts misbehaving (for example, replication lag on the
+destination shard is growing), stop just that task group and leave the others
+running:
 
 ```sql
 STOP TASK GROUP <task_group_id>;
 ```
 
-### Assess the state
-
-After stopping a task group, check what happened:
+To stop all task groups at once:
 
 ```sql
-SHOW task_group;
-SHOW key_ranges;
+STOP TASK GROUP ALL;
 ```
-
-Determine which tasks completed, which are still in flight, and whether any key
-ranges have already moved to the destination shard.
 
 ### Retry if the issue was transient
 
@@ -233,57 +188,32 @@ RETRY TASK GROUP <task_group_id>;
 RETRY TASK GROUP <task_group_id> NOWAIT;
 ```
 
-`RETRY MOVE TASK GROUP` is accepted as a synonym.
-
-### Last resort: stop traffic
-
-If the overall application error rate is climbing and the cause is clearly the
-rebalancing (for example, errors are concentrated on the key ranges currently
-being moved), stop the client traffic to the affected key ranges — or the
-application as a whole — before continuing. Resume traffic only after the
-in-flight task groups have finished or have been stopped and the cluster state
-has been verified with `SHOW task_group` and `SHOW key_ranges`.
-
 ### Recovering from partial failure
 
-A task group that is stopped or fails mid-flight leaves the source key range
-split into temporary pieces that may already live on different shards. To
-recover:
-
-1. Run `SHOW task_group` to identify which tasks completed and which did not.
-2. Run `SHOW key_ranges` to determine which pieces already live on the
-   destination shard.
-3. `RETRY TASK GROUP` for incomplete task groups, or
-4. Manually `REDISTRIBUTE KEY RANGE` the remaining pieces.
-5. If a full rollback is needed, redistribute the already-transferred pieces
-   back to the source shard and `UNITE KEY RANGE` to merge fragments.
-
 <Warning>
-Do not leave the cluster in a partially-moved state for extended periods.
-Either complete the move or roll it back — split key ranges that span two
-shards can cause routing inconsistencies.
+A failed task group can leave affected key ranges in a **locked** state.
+While a key range is locked, any application query that touches it will
+receive a `key range is locked` error. **Do not manually unlock key ranges** —
+this is unsafe and can lead to data loss.
 </Warning>
+
+If a task group fails mid-flight:
+
+1. Run `SHOW task_group` to identify the failed task group and its error.
+2. Run `SHOW key_ranges` to see which key ranges are locked and where the
+   data currently lives.
+3. Investigate **why** the task failed (check coordinator and shard logs).
+4. Fix the underlying issue and `RETRY TASK GROUP` to let it finish — this
+   is the safest way to unlock the affected key ranges.
+
+Every partial failure is different. There is no universal recovery recipe —
+you need to understand the specific error and determine where the most
+recent data resides before taking action.
 
 ## 8. Post-rebalancing cleanup
 
-After all redistributes for a given source range have completed:
-
-1. Verify the new layout with `SHOW key_ranges` — the moved key ranges should
-   now point to the destination shard.
-2. Spot-check data placement with `__spqr__execute_on` hints on both the source
-   and destination shards.
-3. Verify that the moved rows have been deleted from the source shard (i.e. data
-   is not duplicated across shards).
-4. Optionally merge adjacent key ranges that ended up on the same shard back
-   into a single range with
-   [`UNITE KEY RANGE`](/sharding/console/sql_commands#unite-key-range):
-
-   ```sql
-   UNITE KEY RANGE krid1_b WITH krid1_c;
-   ```
-
-   Two key ranges can be united only if they are adjacent and route to the
-   same shard.
-
-At this point the rebalancing step is complete. Repeat the procedure for the
-next source range as needed.
+Once all redistributes have finished, verify with `SHOW key_ranges` that the
+layout matches what you expect and spot-check that data actually lives on the
+right shards. If two adjacent key ranges now point to the same shard, you can
+merge them with
+[`UNITE KEY RANGE`](/sharding/console/sql_commands#unite-key-range).
