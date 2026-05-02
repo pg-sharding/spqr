@@ -4,7 +4,9 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
+
 import "protos/tasks.proto";
 
 service KeyRangeService {
@@ -42,28 +44,28 @@ message KeyRangeInfo {
 }
 
 message ListKeyRangeRequest {
-  string distribution = 1;
+  string distribution = 1 [(buf.validate.field).required = true];
 }
 
 message CreateKeyRangeRequest {
-  KeyRangeInfo key_range_info = 1;
+  KeyRangeInfo key_range_info = 1 [(buf.validate.field).required = true];
 }
 
 message SplitKeyRangeRequest {
-  string new_id = 1;
-  bytes bound = 2;
-  string source_id = 3;
+  string new_id = 1 [(buf.validate.field).required = true];
+  bytes bound = 2 [(buf.validate.field).required = true];
+  string source_id = 3 [(buf.validate.field).required = true];
   bool split_left = 4;
 }
 
 message MergeKeyRangeRequest {
-  string base_id = 1;
-  string appendage_id = 2;
+  string base_id = 1 [(buf.validate.field).required = true];
+  string appendage_id = 2 [(buf.validate.field).required = true];
 }
 
 message MoveKeyRangeRequest {
-  string id = 1;
-  string toShardId = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  string toShardId = 2 [(buf.validate.field).required = true];
 }
 
 message DropKeyRangeRequest {
@@ -95,7 +97,7 @@ message ModifyReply {
 }
 
 message ResolveKeyRangeRequest {
-  string bound = 1;
+  string bound = 1 [(buf.validate.field).required = true];
 }
 
 message ResolveKeyRangeReply {
@@ -112,9 +114,9 @@ enum RedistributeLimitType {
 }
 
 message BatchMoveKeyRangeRequest {
-  string keyRangeId = 1;
-  string toShardId = 2;
-  string toKrId = 3;
+  string keyRangeId = 1 [(buf.validate.field).required = true];
+  string toShardId = 2 [(buf.validate.field).required = true];
+  string toKrId = 3 [(buf.validate.field).required = true];
   RedistributeLimitType limitType = 4;
   int64 limit = 5;
   int64 batchSize = 6;
@@ -124,8 +126,8 @@ message BatchMoveKeyRangeRequest {
 }
 
 message RedistributeKeyRangeRequest {
-  string krid = 1;
-  string shardId = 2;
+  string krid = 1 [(buf.validate.field).required = true];
+  string shardId = 2 [(buf.validate.field).required = true];
   int64 batchSize = 3;
   bool check = 4;
   bool apply = 5;
@@ -134,6 +136,6 @@ message RedistributeKeyRangeRequest {
 }
 
 message RenameKeyRangeRequest{
-  string keyRangeId = 1;
-  string newKeyRangeId = 2;
+  string keyRangeId = 1 [(buf.validate.field).required = true];
+  string newKeyRangeId = 2 [(buf.validate.field).required = true];
 }

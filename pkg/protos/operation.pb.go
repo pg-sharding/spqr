@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -214,12 +215,12 @@ var File_protos_operation_proto protoreflect.FileDescriptor
 
 const file_protos_operation_proto_rawDesc = "" +
 	"\n" +
-	"\x16protos/operation.proto\x12\x04spqr\"J\n" +
+	"\x16protos/operation.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\"J\n" +
 	"\tOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
-	"\x06status\x18\x02 \x01(\x0e2\x15.spqr.OperationStatusR\x06status\"8\n" +
-	"\x13GetOperationRequest\x12!\n" +
-	"\foperation_id\x18\x01 \x01(\tR\voperationId\"B\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x15.spqr.OperationStatusR\x06status\"@\n" +
+	"\x13GetOperationRequest\x12)\n" +
+	"\foperation_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\voperationId\"B\n" +
 	"\x11GetOperationReply\x12-\n" +
 	"\toperation\x18\x01 \x01(\v2\x0f.spqr.OperationR\toperation*5\n" +
 	"\x0fOperationStatus\x12\v\n" +

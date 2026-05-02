@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -465,7 +466,7 @@ var File_protos_distribution_entities_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\n" +
-	"\"protos/distribution_entities.proto\x12\x04spqr\x1a\x1bprotos/qualified_name.proto\x1a\x10protos/acl.proto\"M\n" +
+	"\"protos/distribution_entities.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bprotos/qualified_name.proto\x1a\x10protos/acl.proto\"M\n" +
 	"\vTypedColRef\x12\x1e\n" +
 	"\n" +
 	"columnName\x18\x01 \x01(\tR\n" +
@@ -498,10 +499,10 @@ const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\runiqueIndexes\x18\x04 \x03(\v2\x11.spqr.UniqueIndexR\runiqueIndexes\x12>\n" +
 	"\rfqn_relations\x18\x05 \x03(\v2\x19.spqr.DistributedRelationR\ffqnRelations\x12\x18\n" +
 	"\aversion\x18\x06 \x01(\x04R\aversion\x12\x1b\n" +
-	"\x03acl\x18\a \x03(\v2\t.spqr.ACLR\x03acl\"\xf1\x01\n" +
-	"\vUniqueIndex\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
-	"\ttableName\x18\x02 \x01(\v2\x13.spqr.QualifiedNameR\ttableName\x12\x18\n" +
+	"\x03acl\x18\a \x03(\v2\t.spqr.ACLR\x03acl\"\x81\x02\n" +
+	"\vUniqueIndex\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x129\n" +
+	"\ttableName\x18\x02 \x01(\v2\x13.spqr.QualifiedNameB\x06\xbaH\x03\xc8\x01\x01R\ttableName\x12\x18\n" +
 	"\acolName\x18\x03 \x01(\tR\acolName\x12\x18\n" +
 	"\acolType\x18\x04 \x01(\tR\acolType\x12\x18\n" +
 	"\acolumns\x18\x05 \x03(\tR\acolumns\x12\x1a\n" +

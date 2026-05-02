@@ -4,6 +4,7 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
 message KeyRangeBound {
@@ -25,7 +26,7 @@ message MoveTask {
 }
 
 message MoveTaskSelector {
-  string ID = 1;
+  string ID = 1 [(buf.validate.field).required = true];
 }
 
 message MoveTaskReply {
@@ -59,11 +60,11 @@ message MoveTaskGroupIssuer {
 }
 
 message MoveTaskGroup {
-  string ID = 13;
+  string ID = 13 [(buf.validate.field).required = true];
   SplitType type = 2;
-  string shardIdTo = 4;
-  string keyRangeIdFrom = 5;
-  string keyRangeIdTo = 6;
+  string shardIdTo = 4 [(buf.validate.field).required = true];
+  string keyRangeIdFrom = 5 [(buf.validate.field).required = true];
+  string keyRangeIdTo = 6 [(buf.validate.field).required = true];
   MoveTask currentTask = 7;
   string boundRel = 8;
   double coeff = 9;
@@ -82,16 +83,16 @@ message ListMoveTaskGroupsReply {
 }
 
 message WriteMoveTaskGroupRequest{
-  MoveTaskGroup taskGroup = 1;
+  MoveTaskGroup taskGroup = 1 [(buf.validate.field).required = true];
 }
 
 message MoveTaskGroupSelector {
-  string ID = 1;
+  string ID = 1 [(buf.validate.field).required = true];
   bool Immediate = 2;
 }
 
 message DropMoveTaskGroupRequest {
-  string ID = 1;
+  string ID = 1 [(buf.validate.field).required = true];
   bool cascade = 2;
 }
 
@@ -143,10 +144,10 @@ enum BalancerTaskStatus {
 
 message BalancerTask {
   JoinType type = 1;
-  string keyRangeIdFrom = 2;
-  string keyRangeIdTo = 3;
+  string keyRangeIdFrom = 2 [(buf.validate.field).required = true];
+  string keyRangeIdTo = 3 [(buf.validate.field).required = true];
   string keyRangeIdTemp = 4;
-  string shardIdTo = 5;
+  string shardIdTo = 5 [(buf.validate.field).required = true];
   int64 keyCount = 6;
   BalancerTaskStatus state = 7;
 }
@@ -156,7 +157,7 @@ message GetBalancerTaskReply{
 }
 
 message WriteBalancerTaskRequest {
-  BalancerTask task = 1;
+  BalancerTask task = 1 [(buf.validate.field).required = true];
 }
 
 service BalancerTaskService {
@@ -184,7 +185,7 @@ message RedistributeTask {
 }
 
 message RedistributeTaskSelector {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message ListRedistributeTasksReply {
@@ -192,12 +193,12 @@ message ListRedistributeTasksReply {
 }
 
 message DropRedistributeTaskRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
   bool cascade = 2;
 }
 
 message RetryMoveTaskGroupRequest {
-  RedistributeTaskSelector selector = 1;
+  RedistributeTaskSelector selector = 1 [(buf.validate.field).required = true];
   bool noWait = 2;
 }
 

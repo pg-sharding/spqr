@@ -29,7 +29,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.6.10
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.50.0
-	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6
 	golang.org/x/sync v0.20.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	google.golang.org/grpc v1.80.0
@@ -39,6 +39,12 @@ require (
 )
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
+	buf.build/go/protovalidate v1.2.0 // indirect
+	cel.dev/expr v0.25.1 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/google/cel-go v0.28.0 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect

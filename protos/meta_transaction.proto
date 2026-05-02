@@ -3,7 +3,10 @@ syntax = "proto3";
 package spqr;
 
 option go_package = "spqr/proto";
+
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
+
 import "protos/distribution_entities.proto";
 import "protos/key_range.proto";
 
@@ -54,7 +57,7 @@ message MetaTransactionReply {
 }
 
 message MetaTransactionRequest {
-    string transactionId = 1;
+    string transactionId = 1 [(buf.validate.field).required = true];
     repeated MetaTransactionGossipCommand metaCmdList = 2;
 }
 
