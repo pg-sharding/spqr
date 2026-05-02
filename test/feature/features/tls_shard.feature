@@ -256,6 +256,8 @@ Feature: TLS connections to shards via coordinator
     """
     Then command return code should be "0"
 
+    When we wait for "2" seconds
+
     When I run SQL on host "router"
     """
     CREATE TABLE test_sync (id INT PRIMARY KEY, data TEXT);
