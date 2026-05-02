@@ -146,7 +146,7 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 
 	validator, err := protovalidate.New()
 	if err != nil {
-		panic(err) // only for example purposes
+		return err
 	}
 
 	serv := grpc.NewServer(
