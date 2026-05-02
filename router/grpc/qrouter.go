@@ -511,7 +511,6 @@ func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 	return poolInfo
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
@@ -522,7 +521,6 @@ func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*prot
 	return reply, err
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Empty) (*protos.ListBackendConnectionsReply, error) {
 	reply := &protos.ListBackendConnectionsReply{}
 
@@ -533,7 +531,6 @@ func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Em
 	return reply, err
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListPools(context.Context, *emptypb.Empty) (*protos.ListPoolsResponse, error) {
 	reply := &protos.ListPoolsResponse{}
 
