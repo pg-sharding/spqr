@@ -31,8 +31,13 @@ Before starting, make sure that:
   See [Deployment overview](/deployment/overview) and
   [Coordinator](/sharding/cluster_components/coordinator) for how shards are added.
 - Both [`spqrguard`](https://github.com/pg-sharding/spqrguard) and `postgres_fdw`
-  extensions are installed on the source and destination shards 
+  extensions are installed on the source and destination shards.
 - `spqrguard` is added to `shared_preload_libraries` in `postgresql.conf`.
+
+<Note>
+`spqrguard` is optional but strongly recommended. It prevents direct inserts
+into shards that bypass SPQR, protecting against data corruption.
+</Note>
 
 ## 1. Connect to the coordinator
 
@@ -55,7 +60,7 @@ SHOW shards;
  sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
-(4 rows)
+(3 rows)
 
 SHOW key_ranges;
  key_range_id | shard_id | distribution_id | lower_bound | locked
