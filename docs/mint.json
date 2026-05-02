@@ -119,7 +119,8 @@
                             "group": "Balancing",
                             "pages": [
                                 "sharding/balancing/overview",
-                                "sharding/balancing/details"
+                                "sharding/balancing/details",
+                                "sharding/manual_rebalancing"
                             ]
                         },
                         {
@@ -131,7 +132,6 @@
                             ]
                         },
                         "sharding/bulk",
-                        "sharding/resharding",
                         "sharding/default_shard"
                     ]
                 },

@@ -1,9 +1,17 @@
 ---
-title: 'Manual resharding'
+title: 'Manual shard rebalancing'
 description: 'Move data between shards online using the coordinator console'
 ---
 
-To perform online resharding, split key ranges on a source shard and gradually
+<Info>
+This guide covers **manual** rebalancing — useful when you need full control
+over which key ranges move and when. For automated redistribution of
+UUID-based distributions, see [redmon](https://github.com/pg-sharding/redmon).
+Built-in auto-rebalancing is tracked in
+[#1960](https://github.com/pg-sharding/spqr/issues/1960).
+</Info>
+
+To perform online rebalancing, split key ranges on a source shard and gradually
 redistribute them to a destination shard while the application keeps serving
 traffic.
 
@@ -14,9 +22,15 @@ based on shard load.
 
 ## When to use it
 
-Use this flow when you need explicit control over what moves and when — for
-example, when adding a new empty shard, draining a shard for decommission, or
-reacting to a hotspot before the balancer would pick it up.
+Use this flow when you need explicit control over what moves and when:
+
+- **Adding a new empty shard** to the cluster and populating it with data from
+  existing shards.
+- **Decommissioning (draining) a shard** — moving all its key ranges elsewhere
+  before removing it.
+- **Reacting to a hotspot** on a specific key range before the balancer would
+  pick it up.
+- **Moving a specific tenant's data** to a dedicated shard.
 
 ## Prerequisites
 
@@ -33,7 +47,7 @@ Before starting, make sure that:
 
 ## 1. Connect to the coordinator
 
-Resharding commands are executed against the coordinator's administrative
+Rebalancing commands are executed against the coordinator's administrative
 console, not the router. Use `psql` over the PostgreSQL protocol as described in
 [How to connect](/sharding/console/how_to_connect).
 
@@ -78,7 +92,7 @@ into several smaller ranges first and move them one by one.
 
 A reasonable starting point is to split the range into pieces small enough that
 a single redistribute finishes within minutes at your chosen batch size. When
-in doubt, prefer smaller pieces — you can always [unite](#post-resharding-cleanup)
+in doubt, prefer smaller pieces — you can always [unite](#post-rebalancing-cleanup)
 them later.
 
 ## 4. Split the source key range
@@ -146,7 +160,10 @@ a tradeoff:
 - **Larger batches** — fewer round trips and faster overall, but each batch
   locks a larger slice of the key range for longer.
 
-Adjust based on what you observe in monitoring (see the next section).
+A reasonable starting point for OLTP workloads is `BATCH SIZE 500`–`1000`.
+For analytical workloads with fewer concurrent writes, larger batches
+(`5000`–`10000`) may be acceptable. Adjust based on what you observe in
+monitoring (see the next section).
 
 ## 6. Monitor the move
 
@@ -178,18 +195,34 @@ See [Routing hints](/routing/hints) for the full list of supported hints.
 
 ## 7. React to problems
 
-If something goes wrong during the redistribute, you have several options.
+If something goes wrong during the rebalancing, follow this escalation order.
 
-**Stop a single task group.** If one redistribute starts misbehaving (for
-example, errors against a specific key range or unexpected lag on the
-destination shard), stop just that task group and leave the others running:
+### Stop the problematic task group
+
+If one redistribute starts misbehaving (for example, errors against a specific
+key range or unexpected lag on the destination shard), stop just that task group
+and leave the others running:
 
 ```sql
 STOP TASK GROUP <task_group_id>;
 ```
 
-**Retry a failed task group.** If a task group ended up in an error state due
-to a transient issue (network blip, restarted shard, etc.), retry it:
+### Assess the state
+
+After stopping a task group, check what happened:
+
+```sql
+SHOW task_group;
+SHOW key_ranges;
+```
+
+Determine which tasks completed, which are still in flight, and whether any key
+ranges have already moved to the destination shard.
+
+### Retry if the issue was transient
+
+If a task group ended up in an error state due to a transient issue (network
+blip, restarted shard, etc.), retry it:
 
 ```sql
 RETRY TASK GROUP <task_group_id>;
@@ -199,23 +232,36 @@ RETRY TASK GROUP <task_group_id> NOWAIT;
 
 `RETRY MOVE TASK GROUP` is accepted as a synonym.
 
-**Stop the application.** If the overall application error rate is climbing
-and the cause is clearly the resharding (for example, errors are concentrated
-on the key ranges currently being moved), the safest action is to stop the
-client traffic to the affected key ranges — or the application as a whole —
-before continuing. Resume traffic only after the in-flight task groups have
-finished or have been stopped and the cluster state has been verified with
-`SHOW task_group` and `SHOW key_ranges`.
+### Last resort: stop traffic
+
+If the overall application error rate is climbing and the cause is clearly the
+rebalancing (for example, errors are concentrated on the key ranges currently
+being moved), stop the client traffic to the affected key ranges — or the
+application as a whole — before continuing. Resume traffic only after the
+in-flight task groups have finished or have been stopped and the cluster state
+has been verified with `SHOW task_group` and `SHOW key_ranges`.
+
+### Recovering from partial failure
+
+A task group that is stopped or fails mid-flight leaves the source key range
+split into temporary pieces that may already live on different shards. To
+recover:
+
+1. Run `SHOW task_group` to identify which tasks completed and which did not.
+2. Run `SHOW key_ranges` to determine which pieces already live on the
+   destination shard.
+3. `RETRY TASK GROUP` for incomplete task groups, or
+4. Manually `REDISTRIBUTE` / `MOVE KEY RANGE` the remaining pieces.
+5. If a full rollback is needed, move the already-transferred pieces back to
+   the source shard and `UNITE KEY RANGE` to merge fragments.
 
 <Warning>
-A task group that is stopped or fails mid-flight leaves the source key range
-split into temporary pieces that may already live on different shards.
-Recovering from that requires inspecting `SHOW task_group` and
-`SHOW key_ranges` and either retrying the task group or moving the remaining
-pieces by hand.
+Do not leave the cluster in a partially-moved state for extended periods.
+Either complete the move or roll it back — split key ranges that span two
+shards can cause routing inconsistencies.
 </Warning>
 
-## 8. Post-resharding cleanup
+## 8. Post-rebalancing cleanup
 
 After all redistributes for a given source range have completed:
 
@@ -223,7 +269,9 @@ After all redistributes for a given source range have completed:
    now point to the destination shard.
 2. Spot-check data placement with `__spqr__execute_on` hints on both the source
    and destination shards.
-3. Optionally merge adjacent key ranges that ended up on the same shard back
+3. Verify that the moved rows have been deleted from the source shard (i.e. data
+   is not duplicated across shards).
+4. Optionally merge adjacent key ranges that ended up on the same shard back
    into a single range with
    [`UNITE KEY RANGE`](/sharding/console/sql_commands#unite-key-range):
 
@@ -234,5 +282,5 @@ After all redistributes for a given source range have completed:
    Two key ranges can be united only if they are adjacent and route to the
    same shard.
 
-At this point the resharding step is complete. Repeat the procedure for the
+At this point the rebalancing step is complete. Repeat the procedure for the
 next source range as needed.
