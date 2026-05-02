@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -47,7 +48,8 @@ import (
 )
 
 const (
-	defaultBatchSize = 500
+	defaultBatchSize  = 500
+	pingRouterTimeout = 2 * time.Second
 )
 
 type EntityMgr interface {
@@ -1837,6 +1839,7 @@ type RouterVersionInfo struct {
 func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, func(), error)) map[string]RouterVersionInfo {
 	versions := make(map[string]RouterVersionInfo)
 
+	// TODO: make pooling routers parallel in goroutines with common deadline
 	for _, router := range routers {
 		versionInfo := RouterVersionInfo{
 			Version:         "N/A",
@@ -1851,7 +1854,9 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 				versionInfo.Error = err
 			} else {
 				client := protos.NewTopologyServiceClient(conn)
-				resp, err := client.GetRouterStatus(ctx, &emptypb.Empty{})
+				pingRouterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(pingRouterTimeout))
+				defer cancel()
+				resp, err := client.GetRouterStatus(pingRouterCtx, &emptypb.Empty{})
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to query router status")
 					versionInfo.Error = err
