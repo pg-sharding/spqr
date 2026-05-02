@@ -203,7 +203,7 @@ helpgen
 Highload
 hostnossl
 hostssl
-hotspots
+hotspot
 hst
 HTAP
 iana
@@ -451,6 +451,7 @@ rclient
 rconn
 rdistr
 rebootstrap
+redmon
 regclass
 reloid
 relpersistence
