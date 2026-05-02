@@ -3,13 +3,13 @@ title: 'Manual shard rebalancing'
 description: 'Move data between shards online using the coordinator console'
 ---
 
-<Info>
+<Warning>
 This guide covers **manual** rebalancing — useful when you need full control
 over which key ranges move and when. For automated redistribution of
 UUID-based distributions, see [redmon](https://github.com/pg-sharding/redmon).
 Built-in auto-rebalancing is tracked in
 [#1960](https://github.com/pg-sharding/spqr/issues/1960).
-</Info>
+</Warning>
 
 To perform online rebalancing, split key ranges on a source shard and gradually
 redistribute them to a destination shard while the application keeps serving
@@ -39,6 +39,9 @@ Before starting, make sure that:
 - The destination shard is registered in the cluster and visible via `SHOW shards`.
   See [Deployment overview](/deployment/overview) and
   [Coordinator](/sharding/cluster_components/coordinator) for how shards are added.
+- The [`spqrguard`](https://github.com/pg-sharding/spqrguard) extension is
+  installed on both source and destination shards — it is required for
+  `REDISTRIBUTE KEY RANGE` to work correctly.
 - The schema and required PostgreSQL extensions are present on the destination
   shard (for example, `postgres_fdw` and any sharding-specific extensions used by
   your distribution).
@@ -125,8 +128,8 @@ Verify with `SHOW key_ranges`.
 ## 5. Redistribute key ranges to the destination shard
 
 Move the new key ranges with
-[`REDISTRIBUTE KEY RANGE`](/sharding/console/sql_commands#redistribute-key-range)
-— unlike `MOVE KEY RANGE`, it migrates both the metadata and the actual data.
+[`REDISTRIBUTE KEY RANGE`](/sharding/console/sql_commands#redistribute-key-range).
+It migrates both the metadata and the actual data.
 Internally the coordinator splits the source key range into batches of
 `BATCH SIZE` rows and moves them one by one as separate *move tasks*, all
 tracked under a single *task group*. While a batch is in flight, the rows it
@@ -251,9 +254,9 @@ recover:
 2. Run `SHOW key_ranges` to determine which pieces already live on the
    destination shard.
 3. `RETRY TASK GROUP` for incomplete task groups, or
-4. Manually `REDISTRIBUTE` / `MOVE KEY RANGE` the remaining pieces.
-5. If a full rollback is needed, move the already-transferred pieces back to
-   the source shard and `UNITE KEY RANGE` to merge fragments.
+4. Manually `REDISTRIBUTE KEY RANGE` the remaining pieces.
+5. If a full rollback is needed, redistribute the already-transferred pieces
+   back to the source shard and `UNITE KEY RANGE` to merge fragments.
 
 <Warning>
 Do not leave the cluster in a partially-moved state for extended periods.
