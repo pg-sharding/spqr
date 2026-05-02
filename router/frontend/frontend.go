@@ -216,8 +216,12 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q.ResultFormatCodes = slices.Clone(q.ResultFormatCodes)
 		q.ParameterFormatCodes = slices.Clone(q.ParameterFormatCodes)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		/* Flush pending, if any */
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
+			return err
+		}
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 
 	default:
 		return nil
