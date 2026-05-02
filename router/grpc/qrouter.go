@@ -500,7 +500,6 @@ func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*prot
 	return reply, err
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Empty) (*protos.ListBackendConnectionsReply, error) {
 	reply := &protos.ListBackendConnectionsReply{}
 
