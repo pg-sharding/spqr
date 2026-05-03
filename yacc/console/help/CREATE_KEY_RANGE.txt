@@ -1,5 +1,6 @@
 NAME
-    CREATE KEY RANGE - This command is used to create a new key range. Since the key space is an ordered set,
+    CREATE KEY RANGE - This command is used to create a new key range. Since the key space is an
+    ordered set,
 
 SYNTAX
     CREATE KEY RANGE [ <keyRangeID> ]
@@ -11,15 +12,16 @@ SYNTAX
     (e.g., "100, 'value'" for a two-column key)
 
 DESCRIPTION
-    This command is used to create a new key range. Since the key space is an ordered set, 
+    This command is used to create a new key range. Since the key space is an ordered set,
     it is enough to specify only one end of the range.
 
-    For composite sharding keys, specify multiple values separated by commas that correspond 
+    For composite sharding keys, specify multiple values separated by commas that correspond
     to each column in the distribution.
 
 PARAMETERS
     <keyRangeID> - Unique identifier for the key range (optional, auto-generated if omitted)
-    <lowerBound> - Lower boundary value (inclusive). Can be integer, string, or comma-separated values for composite keys
+    <lowerBound> - Lower boundary value (inclusive). Can be integer, string, or comma-separated
+        values for composite keys
     <shardID> - Target shard ID where data in this range is stored
     <distributionID> - Distribution ID this key range belongs to
 

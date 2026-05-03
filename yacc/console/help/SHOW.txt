@@ -22,7 +22,8 @@ DESCRIPTION
 PARAMETERS
     <target> - The metadata category to display (e.g., databases, shards, key_ranges, distributions)
     <columns> - Optional column projection to display only specific fields (e.g., "(id, status)")
-    <WHERE condition> - Optional filter to restrict rows by column values (e.g., WHERE id = 'shard1')
+    <WHERE condition> - Optional filter to restrict rows by column values (e.g., WHERE id =
+        'shard1')
     <GROUP BY column> - Optional grouping by a column
     <ORDER BY column> - Optional sorting by a column, with optional ASC or DESC direction
 

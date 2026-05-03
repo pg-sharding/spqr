@@ -17,7 +17,8 @@ WARNINGS
     - This command is not available for installations without SPQR coordinator.
 
 PARAMETERS
-    <routerID> - The unique identifier of the router to unregister, or ALL to unregister every router
+    <routerID> - The unique identifier of the router to unregister, or ALL to unregister every
+        router
 
 EXAMPLES
     Unregister a specific router:

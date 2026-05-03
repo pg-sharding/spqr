@@ -18,9 +18,12 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
+
+const maxLineWidth = 100
 
 // Command represents a console command from YAML source
 type Command struct {
@@ -60,25 +63,25 @@ type Example struct {
 }
 
 const helpTemplate = `NAME
-    {{.Name}} - {{firstLine .Description}}
+{{wrap (printf "%s - %s" .Name (firstLine .Description)) 4 4}}
 
 SYNTAX
 {{indent .Syntax 4}}
 
 DESCRIPTION
-{{indent .Description 4}}
+{{wrapIndent .Description 4}}
 {{- if .Warnings}}
 
 WARNINGS
 {{- range .Warnings}}
-    - {{.}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 {{- if .Parameters}}
 
 PARAMETERS
 {{- range .Parameters}}
-    <{{.Name}}> - {{.Description}}
+{{wrap (printf "<%s> - %s" .Name .Description) 4 8}}
 {{- end}}
 {{- end}}
 {{- if .Examples}}
@@ -104,7 +107,7 @@ SUBCOMMANDS
 
 TIPS
 {{- range .Tips}}
-    - {{.}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 {{- if .RelatedCommands}}
@@ -117,18 +120,18 @@ RELATED COMMANDS
 `
 
 const subcommandHelpTemplate = `NAME
-    {{.Name}} - {{firstLine .Description}}
+{{wrap (printf "%s - %s" .Name (firstLine .Description)) 4 4}}
 
 SYNTAX
 {{indent .Syntax 4}}
 
 DESCRIPTION
-{{indent .Description 4}}
+{{wrapIndent .Description 4}}
 {{- if .Warnings}}
 
 WARNINGS
 {{- range .Warnings}}
-    - {{.}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 {{- if .Examples}}
@@ -147,7 +150,7 @@ EXAMPLES
 
 NOTES
 {{- range .Notes}}
-    - {{.}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 `
@@ -219,6 +222,31 @@ const mdxSubcommandTemplate = `### {{.Name}}
 {{- end}}
 
 `
+
+// wrapLine word-wraps a single line of text to fit within maxLineWidth.
+// firstPrefix is used for the first output line, contPrefix for continuation lines.
+func wrapLine(text string, firstPrefix, contPrefix string) string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return firstPrefix
+	}
+
+	var lines []string
+	currentLine := firstPrefix + words[0]
+
+	for _, word := range words[1:] {
+		candidate := currentLine + " " + word
+		if utf8.RuneCountInString(candidate) <= maxLineWidth {
+			currentLine = candidate
+		} else {
+			lines = append(lines, currentLine)
+			currentLine = contPrefix + word
+		}
+	}
+	lines = append(lines, currentLine)
+
+	return strings.Join(lines, "\n")
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -345,6 +373,25 @@ func generateHelpFiles(commands []*Command, dir string) error {
 				}
 			}
 			return strings.Join(lines, "\n")
+		},
+		"wrap": func(text string, firstIndent, contIndent int) string {
+			firstPrefix := strings.Repeat(" ", firstIndent)
+			contPrefix := strings.Repeat(" ", contIndent)
+			return wrapLine(strings.TrimSpace(text), firstPrefix, contPrefix)
+		},
+		"wrapIndent": func(s string, spaces int) string {
+			prefix := strings.Repeat(" ", spaces)
+			lines := strings.Split(strings.TrimSpace(s), "\n")
+			var result []string
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if trimmed == "" {
+					result = append(result, "")
+				} else {
+					result = append(result, wrapLine(trimmed, prefix, prefix))
+				}
+			}
+			return strings.Join(result, "\n")
 		},
 	}
 

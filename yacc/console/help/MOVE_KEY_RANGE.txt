@@ -10,7 +10,8 @@ DESCRIPTION
     migrate the actual data between shards.
 
 WARNINGS
-    - MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.
+    - MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY
+      RANGE instead.
 
 PARAMETERS
     <keyRangeID> - Identifier of the key range to move

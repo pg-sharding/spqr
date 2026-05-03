@@ -83,7 +83,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
 -- Composite sharding key with two columns
 ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
 -- Composite key with hash function
-ALTER DISTRIBUTION ds3 ATTACH RELATION events DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+ALTER DISTRIBUTION ds3 ATTACH RELATION events
+    DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+
 ```
 
 ### CREATE RELATION
@@ -100,7 +102,8 @@ There are two syntax forms for specifying distribution keys:
 
 
 ```sql
-CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
+CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>)
+    [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
 ```
 
 **Examples:**
@@ -161,7 +164,9 @@ ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
 -- Replace with a composite key
 ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
 -- Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
-ALTER DISTRIBUTION ds1 ALTER RELATION tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
+ALTER DISTRIBUTION ds1 ALTER RELATION tr
+    DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
+
 ```
 
 ### ALTER DISTRIBUTION ALTER RELATION SCHEMA

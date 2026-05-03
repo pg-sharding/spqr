@@ -1,5 +1,6 @@
 NAME
-    ALTER DISTRIBUTION ADD DEFAULT SHARD - Adds a default shard to an existing distribution. Records that do not match any key range will be routed to this shard.
+    ALTER DISTRIBUTION ADD DEFAULT SHARD - Adds a default shard to an existing distribution. Records
+    that do not match any key range will be routed to this shard.
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>
@@ -7,4 +8,5 @@ SYNTAX
     where <shardID> is a default shard identifier. The <shardID> must exist.
 
 DESCRIPTION
-    Adds a default shard to an existing distribution. Records that do not match any key range will be routed to this shard.
+    Adds a default shard to an existing distribution. Records that do not match any key range will
+    be routed to this shard.

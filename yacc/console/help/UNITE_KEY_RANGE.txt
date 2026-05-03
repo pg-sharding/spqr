@@ -1,5 +1,6 @@
 NAME
-    UNITE KEY RANGE - Merges two adjacent key ranges into a single key range. The left key range absorbs
+    UNITE KEY RANGE - Merges two adjacent key ranges into a single key range. The left key range
+    absorbs
 
 SYNTAX
     UNITE KEY RANGE <leftKeyRangeID> WITH <rightKeyRangeID>

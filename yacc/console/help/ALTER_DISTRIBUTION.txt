@@ -68,7 +68,8 @@ EXAMPLES
     Attach relation with single distribution key:
         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
     Attach relation with composite key and hash function:
-        ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
+        ALTER DISTRIBUTION ds2 ATTACH RELATION users
+            DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
     Detach relation:
         ALTER DISTRIBUTION ds1 DETACH RELATION orders;
     Replace relation distribution key:

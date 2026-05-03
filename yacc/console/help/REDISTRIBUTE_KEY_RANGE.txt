@@ -1,5 +1,6 @@
 NAME
-    REDISTRIBUTE KEY RANGE - Moves a key range to a different shard, including the actual data migration.
+    REDISTRIBUTE KEY RANGE - Moves a key range to a different shard, including the actual data
+    migration.
 
 SYNTAX
     REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID>

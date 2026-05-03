@@ -1,5 +1,6 @@
 NAME
-    SPLIT KEY RANGE - Splits an existing key range into two key ranges at the specified boundary value.
+    SPLIT KEY RANGE - Splits an existing key range into two key ranges at the specified boundary
+    value.
 
 SYNTAX
     SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
@@ -17,7 +18,8 @@ DESCRIPTION
 PARAMETERS
     <newKeyRangeID> - Identifier for the newly created key range (upper portion)
     <sourceKeyRangeID> - Identifier of the existing key range to split
-    <splitBound> - Boundary value where the split occurs. Can be integer, string, or comma-separated values for composite keys
+    <splitBound> - Boundary value where the split occurs. Can be integer, string, or comma-separated
+        values for composite keys
 
 EXAMPLES
     Split a key range at integer boundary:

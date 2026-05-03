@@ -1,16 +1,22 @@
 NAME
-    CREATE RELATION - This command is a shorthand for [ALTER DISTRIBUTION ATTACH RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a distribution in a single statement.
+    CREATE RELATION - This command is a shorthand for [ALTER DISTRIBUTION ATTACH
+    RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a
+    distribution in a single statement.
 
 SYNTAX
-    CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
+    CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>)
+        [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
 
 DESCRIPTION
-    This command is a shorthand for [ALTER DISTRIBUTION ATTACH RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a distribution in a single statement.
+    This command is a shorthand for [ALTER DISTRIBUTION ATTACH
+    RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a
+    distribution in a single statement.
     The `DISTRIBUTED` keyword is optional and has no effect on the behavior.
 
     There are two syntax forms for specifying distribution keys:
 
-    **Parenthesized syntax** — column names and optional hash functions are listed inside parentheses:
+    **Parenthesized syntax** — column names and optional hash functions are listed inside
+    parentheses:
 
 EXAMPLES
     Simple column with no hash function (uses default distribution):
@@ -33,4 +39,6 @@ EXAMPLES
         CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;
 
 NOTES
-    - **DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause: `CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> DISTRIBUTION KEY <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`
+    - **DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause: `CREATE [DISTRIBUTED]
+      RELATION [schema.]<relation_name> DISTRIBUTION KEY <keys> [IN <distribution_id> | FOR
+      DISTRIBUTION <distribution_id>]`

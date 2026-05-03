@@ -1,5 +1,6 @@
 NAME
-    INVALIDATE STALE CLIENTS - Identifies clients with dead TCP connections and signals them to close.
+    INVALIDATE STALE CLIENTS - Identifies clients with dead TCP connections and signals them to
+    close.
 
 SYNTAX
     INVALIDATE STALE CLIENTS

@@ -1,5 +1,6 @@
 NAME
-    UNLOCK KEY RANGE - Releases the lock on a key range that was previously locked with LOCK KEY RANGE.
+    UNLOCK KEY RANGE - Releases the lock on a key range that was previously locked with LOCK KEY
+    RANGE.
 
 SYNTAX
     UNLOCK KEY RANGE <keyRangeID>
