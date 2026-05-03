@@ -5983,3 +5983,142 @@ func TestSimpleInTheMiddleOfExtended(t *testing.T) {
 
 	protoTestRunner(t, frontend, tt)
 }
+
+func TestPrepStmtPartialDeploy(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+
+		{
+			SkipCheckCommandTag: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES(1), (11), (1000), (2000)",
+				},
+
+				&pgproto3.Parse{
+					Query: "SELECT FROM t WHERE id IN (1, 1000, 2000)",
+					Name:  "part_dispatch_p1",
+				},
+
+				&pgproto3.Parse{
+					Query: "SELECT FROM t WHERE id IN (1, 11, 2000)",
+					Name:  "part_dispatch_p2",
+				},
+
+				&pgproto3.Parse{
+					Query: "SELECT FROM t WHERE id IN (1000, 1)",
+					Name:  "part_dispatch_p3",
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "part_dispatch_p1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "part_dispatch_p2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "part_dispatch_p3",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+
+				&pgproto3.Query{
+					String: "DEALLOCATE ALL",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					// CommandTag: []byte("INSERT 0 4"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 3"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 3"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("DEALLOCATE ALL"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
