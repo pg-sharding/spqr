@@ -1,0 +1,14 @@
+NAME
+    ALTER DISTRIBUTION ALTER TABLE SCHEMA - Changes the schema associated with an attached table in the distribution metadata.
+
+SYNTAX
+    ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
+      SCHEMA <schemaName>
+      SCHEMA <schemaName>
+
+DESCRIPTION
+    Changes the schema associated with an attached table in the distribution metadata.
+
+EXAMPLES
+    Change table schema:
+        ALTER DISTRIBUTION ds1 ALTER TABLE orders SCHEMA my_schema;

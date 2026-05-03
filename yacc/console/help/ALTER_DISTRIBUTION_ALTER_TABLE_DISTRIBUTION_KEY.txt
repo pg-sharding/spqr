@@ -1,0 +1,25 @@
+NAME
+    ALTER DISTRIBUTION ALTER TABLE DISTRIBUTION KEY - Replaces the entire distribution key of an already attached table. This overwrites all column names and hash functions in one shot — it does not patch individual columns. Use this when you need to change the key structure entirely, or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not support).
+
+SYNTAX
+    ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
+      DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
+
+    where keys is a comma-separated list of column names or expression entries
+    where hashFunction is one of: IDENTITY, MURMUR, CITY
+
+DESCRIPTION
+    Replaces the entire distribution key of an already attached table. This overwrites all column names and hash functions in one shot — it does not patch individual columns. Use this when you need to change the key structure entirely, or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not support).
+
+    The new key must have the same number of entries as the distribution's column types. Duplicate column names in the new key are rejected.
+
+WARNINGS
+    - This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
+
+EXAMPLES
+    Replace the distribution key with a new column name:
+        ALTER DISTRIBUTION ds1 ALTER TABLE orders DISTRIBUTION KEY customer_id;
+    Replace with a composite key:
+        ALTER DISTRIBUTION ds1 ALTER TABLE events DISTRIBUTION KEY region_id, event_id;
+    Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this):
+        ALTER DISTRIBUTION ds1 ALTER TABLE tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
