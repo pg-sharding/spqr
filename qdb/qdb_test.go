@@ -10,7 +10,7 @@ import (
 func TestPackToEtcdCommands(t *testing.T) {
 	t.Run("test happy path pack commands", func(t *testing.T) {
 		is := assert.New(t)
-		statements := []QdbStatement{
+		statements := []XRecord{
 			{CmdType: CmdPut, Key: "test1", Value: "val1"},
 			{CmdType: CmdDelete, Key: "test3"},
 		}
@@ -24,7 +24,7 @@ func TestPackToEtcdCommands(t *testing.T) {
 	})
 	t.Run("test unknown type", func(t *testing.T) {
 		is := assert.New(t)
-		statements := []QdbStatement{
+		statements := []XRecord{
 			{CmdType: 7, Key: "test1", Value: "val1"},
 			{CmdType: CmdDelete, Key: "test3"},
 		}

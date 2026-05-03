@@ -297,12 +297,12 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 }
 
 // DEPRECATED
-func (a *Adapter) CreateKeyRange(_ context.Context, _ *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (a *Adapter) CreateKeyRange(_ context.Context, _ *kr.KeyRange) ([]qdb.XRecord, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // DEPRECATED
-func (a *Adapter) UpdateKeyRange(_ context.Context, _ *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (a *Adapter) UpdateKeyRange(_ context.Context, _ *kr.KeyRange) ([]qdb.XRecord, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (UpdateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
@@ -569,7 +569,7 @@ func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 }
 
 // DEPRECATED
-func (a *Adapter) DropKeyRange(_ context.Context, _ string) ([]qdb.QdbStatement, error) {
+func (a *Adapter) DropKeyRange(_ context.Context, _ string) ([]qdb.XRecord, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
@@ -819,7 +819,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 }
 
 // DEPRECATED
-func (a *Adapter) CreateDistribution(_ context.Context, _ *distributions.Distribution) ([]qdb.QdbStatement, error) {
+func (a *Adapter) CreateDistribution(_ context.Context, _ *distributions.Distribution) ([]qdb.XRecord, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
 }
 

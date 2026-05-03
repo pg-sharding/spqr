@@ -792,7 +792,7 @@ func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
-func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) ([]qdb.XRecord, error) {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.Raw()[0]).
@@ -892,7 +892,7 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
+func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.XRecord, error) {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
 
@@ -3084,7 +3084,7 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context, relat
 
 // CreateDistribution creates distribution in QDB.
 // Sending data to routers is done through ExecNoTran or CommTran.
-func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
+func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.XRecord, error) {
 	return qc.Coordinator.CreateDistribution(ctx, ds)
 }
 

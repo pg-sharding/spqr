@@ -71,7 +71,7 @@ func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	var chunk []qdb.QdbStatement
+	var chunk []qdb.XRecord
 	if chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", []string{qdb.ColumnTypeInteger})); err != nil {
 		return nil, err
 	}

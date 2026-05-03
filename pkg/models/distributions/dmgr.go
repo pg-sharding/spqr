@@ -9,7 +9,7 @@ import (
 
 type DistributionMgr interface {
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
-	CreateDistribution(ctx context.Context, ds *Distribution) ([]qdb.QdbStatement, error)
+	CreateDistribution(ctx context.Context, ds *Distribution) ([]qdb.XRecord, error)
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 

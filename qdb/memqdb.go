@@ -247,8 +247,8 @@ func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string) error {
 //                                 KEY RANGES
 // ==============================================================================
 
-func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 4)
+func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]XRecord, error) {
+	commands := make([]XRecord, 4)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
@@ -273,8 +273,8 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	return commands, nil
 }
 
-func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 3)
+func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]XRecord, error) {
+	commands := make([]XRecord, 3)
 
 	cmd, err := NewQdbStatementExt(CmdDelete, keyRangeId, "", MapKrs)
 	if err != nil {
@@ -294,8 +294,8 @@ func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, e
 	return commands, nil
 }
 
-func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 2)
+func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]XRecord, error) {
+	commands := make([]XRecord, 2)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
@@ -314,7 +314,7 @@ func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 }
 
 // TODO : unit tests
-func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]XRecord, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
@@ -348,14 +348,14 @@ func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]XRecord, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
 
 	return q.updateKeyRangeQdbStatements(keyRange)
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
+func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]XRecord, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 
 	q.mu.Lock()
@@ -878,11 +878,11 @@ func (q *MemQDB) ListReferenceRelations(_ context.Context) ([]*ReferenceRelation
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]QdbStatement, error) {
+func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]XRecord, error) {
 	spqrlog.Zero.Debug().Interface("distribution", distribution).Msg("memqdb: add distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
+	commands := make([]XRecord, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
 		q.State.RelationDistribution[r.Name] = distribution.ID
 		if cmd, err := NewQdbStatementExt(CmdPut, r.Name, distribution.ID, MapRelationDistribution); err != nil {
@@ -1597,7 +1597,7 @@ func (q *MemQDB) GetAllTaskGroupStatuses(_ context.Context) (map[string]*TaskGro
 //                                 SEQUENCES
 // ==============================================================================
 
-func (q *MemQDB) createSequenceQdbStatements(seqName string, initialValue int64) ([]QdbStatement, error) {
+func (q *MemQDB) createSequenceQdbStatements(seqName string, initialValue int64) ([]XRecord, error) {
 	cmd1, err := NewQdbStatementExt(CmdPut, seqName, true, MapSequences)
 	if err != nil {
 		return nil, err
@@ -1606,10 +1606,10 @@ func (q *MemQDB) createSequenceQdbStatements(seqName string, initialValue int64)
 	if err != nil {
 		return nil, err
 	}
-	return []QdbStatement{*cmd1, *cmd2}, nil
+	return []XRecord{*cmd1, *cmd2}, nil
 }
 
-func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
+func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]XRecord, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).Msg("memqdb: alter sequence attach")
 	return q.createSequenceQdbStatements(seqName, initialValue)
@@ -1744,7 +1744,7 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 	return next, nil
 }
 
-func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toRelationDistributionOperation(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.RelationDistribution, stmt.Key), nil
@@ -1758,7 +1758,7 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 		return nil, fmt.Errorf("unsupported memqdb cmd %d (relation distribution)", stmt.CmdType)
 	}
 }
-func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toDistributions(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.Distributions, stmt.Key), nil
@@ -1778,7 +1778,7 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toKeyRange(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.Krs, stmt.Key), nil
@@ -1797,7 +1797,7 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toFreq(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.Freq, stmt.Key), nil
@@ -1812,7 +1812,7 @@ func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toLock(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.Locks, stmt.Key), nil
@@ -1837,7 +1837,7 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toKrVersion(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.KrVersions, stmt.Key), nil
@@ -1852,7 +1852,7 @@ func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toSequences(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.Sequences, stmt.Key), nil
@@ -1867,7 +1867,7 @@ func (q *MemQDB) toSequences(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toSequenceToValues(stmt XRecord) (Command, error) {
 	switch stmt.CmdType {
 	case CmdDelete:
 		return NewDeleteCommand(q.State.SequenceToValues, stmt.Key), nil
@@ -1882,10 +1882,10 @@ func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
+func (q *MemQDB) packMemqdbCommands(operations []XRecord) ([]Command, error) {
 	memOperations := make([]Command, 0, len(operations))
 	for _, stmt := range operations {
-		var converterToCmd func(QdbStatement) (Command, error)
+		var converterToCmd func(XRecord) (Command, error)
 		switch stmt.Extension {
 		case MapRelationDistribution:
 			converterToCmd = q.toRelationDistributionOperation
@@ -1915,7 +1915,7 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 	return memOperations, nil
 }
 
-func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement) error {
+func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []XRecord) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
 	q.mu.Lock()
 	defer q.mu.Unlock()

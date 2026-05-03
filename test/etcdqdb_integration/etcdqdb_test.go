@@ -194,7 +194,7 @@ func TestTransactions(t *testing.T) {
 		db, err := setupSubTest(ctx)
 		is.NoError(err)
 		t.Run("happy path", func(_ *testing.T) {
-			statements := []qdb.QdbStatement{
+			statements := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 				{CmdType: qdb.CmdPut, Key: "test2", Value: "val2"},
 				{CmdType: qdb.CmdDelete, Key: "test3"},
@@ -214,7 +214,7 @@ func TestTransactions(t *testing.T) {
 		})
 		t.Run("2 sequential runs", func(_ *testing.T) {
 			//run1
-			statements := []qdb.QdbStatement{
+			statements := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: "test3", Value: "val3"},
 			}
 			err := db.ExecNoTransaction(ctx, statements)
@@ -224,7 +224,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			is.Equal("val3", string(result.Kvs[0].Value))
 			//run2
-			statements = []qdb.QdbStatement{
+			statements = []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 				{CmdType: qdb.CmdDelete, Key: "test3"},
 			}
@@ -249,7 +249,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran)
 			is.NoError(err)
-			statements := []qdb.QdbStatement{
+			statements := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 				{CmdType: qdb.CmdPut, Key: "test2", Value: "val2"},
 				{CmdType: qdb.CmdDelete, Key: "test3"},
@@ -274,7 +274,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
-			statements := []qdb.QdbStatement{
+			statements := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 			}
 			err = tran1.Append(statements)
@@ -292,7 +292,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
-			statements := []qdb.QdbStatement{
+			statements := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: "test1", Value: "val1"},
 			}
 			err = tran1.Append(statements)
@@ -309,7 +309,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
-			statements := []qdb.QdbStatement{}
+			statements := []qdb.XRecord{}
 			_ = tran1.Append(statements) //handling this error was skipped intentionally
 			err = db.CommitTransaction(ctx, tran1)
 			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.Id(), tran1.Id()))

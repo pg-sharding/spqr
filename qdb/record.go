@@ -13,7 +13,7 @@ const (
 
 const DefaultMaxTxnSize uint16 = 128 // like ETCD max-txn-ops default value
 
-type QdbStatement struct {
+type XRecord struct {
 	CmdType int32
 	Key     string
 	Value   any
@@ -21,14 +21,14 @@ type QdbStatement struct {
 	Extension string
 }
 
-func NewQdbStatement(cmdType int32, key string, value any) (*QdbStatement, error) {
+func NewQdbStatement(cmdType int32, key string, value any) (*XRecord, error) {
 	if cmdType != CmdPut && cmdType != CmdDelete {
 		return nil, fmt.Errorf("unknown type of QdbStatement: %d", cmdType)
 	}
-	return &QdbStatement{CmdType: cmdType, Key: key, Value: value}, nil
+	return &XRecord{CmdType: cmdType, Key: key, Value: value}, nil
 }
 
-func NewQdbStatementExt(cmdType int32, key string, value any, extension string) (*QdbStatement, error) {
+func NewQdbStatementExt(cmdType int32, key string, value any, extension string) (*XRecord, error) {
 	if stmt, err := NewQdbStatement(cmdType, key, value); err != nil {
 		return nil, err
 	} else {
@@ -39,7 +39,7 @@ func NewQdbStatementExt(cmdType int32, key string, value any, extension string) 
 
 type QdbTransaction struct {
 	transactionId uuid.UUID
-	commands      []QdbStatement
+	commands      []XRecord
 }
 
 func (t *QdbTransaction) Id() uuid.UUID {
@@ -48,14 +48,14 @@ func (t *QdbTransaction) Id() uuid.UUID {
 
 func NewTransaction() (*QdbTransaction, error) {
 	transactionId := uuid.New()
-	return &QdbTransaction{transactionId: transactionId, commands: make([]QdbStatement, 0)}, nil
+	return &QdbTransaction{transactionId: transactionId, commands: make([]XRecord, 0)}, nil
 }
 
-func NewTransactionWithCmd(transactionId uuid.UUID, commands []QdbStatement) *QdbTransaction {
+func NewTransactionWithCmd(transactionId uuid.UUID, commands []XRecord) *QdbTransaction {
 	return &QdbTransaction{transactionId: transactionId, commands: commands}
 }
 
-func (t *QdbTransaction) Append(qdbCommands []QdbStatement) error {
+func (t *QdbTransaction) Append(qdbCommands []XRecord) error {
 	if len(qdbCommands) == 0 {
 		return fmt.Errorf("cant't add empty list of DB changes to transaction %s", t.transactionId)
 	}

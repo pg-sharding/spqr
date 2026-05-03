@@ -318,7 +318,7 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 }
 
 // DropKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
+func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.XRecord, error) {
 	return lc.qdb.DropKeyRange(ctx, id)
 }
 
@@ -928,7 +928,7 @@ func (lc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	return res, nil
 }
 
-func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
+func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.XRecord, error) {
 	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
 		return nil, fmt.Errorf("empty distributions are disallowed")
 	}
@@ -1001,7 +1001,7 @@ func (lc *Coordinator) ShareKeyRange(id string) error {
 // Returns:
 // - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
-func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.XRecord, error) {
 	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
@@ -1014,7 +1014,7 @@ func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]q
 // Returns:
 // - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
-func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.XRecord, error) {
 	return lc.qdb.UpdateKeyRange(ctx, kr.ToDB())
 }
 

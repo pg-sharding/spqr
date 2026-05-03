@@ -44,7 +44,7 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
 		})
 
-		ops := make([]qdb.QdbStatement, 0)
+		ops := make([]qdb.XRecord, 0)
 		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {
 			krStmts, err := swapDb.CreateKeyRange(ctx, ckr)
