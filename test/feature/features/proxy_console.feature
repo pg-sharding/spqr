@@ -328,11 +328,11 @@ Feature: Proxy console
         [
             {
                 "shard":"sh1",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh2",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh5",
@@ -357,11 +357,11 @@ Feature: Proxy console
         [
             {
                 "shard":"sh1",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh2",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh5",
@@ -386,11 +386,11 @@ Feature: Proxy console
         [
             {
                 "shard":"sh1",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh2",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
             }
         ]
         """
