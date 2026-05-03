@@ -1421,13 +1421,13 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 							return true
 						}
 						spqrlog.Zero.Debug().Str("id", id).Msg("rechecking task aliveness")
-						stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
+						stop, immediate, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
 						if err != nil {
 							spqrlog.Zero.Info().Err(err).Msg("failed to check for stop flag:")
 						}
 
 						// TODO create special error type here, use it to stop redistribute/balancer tasks
-						if stop {
+						if stop && immediate {
 
 							/* Ideally, client should receive this error
 							 spqrerror.Newf(
@@ -1816,7 +1816,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 		return nil, nil
 	}
 
-	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
+	stop, _, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -1846,7 +1846,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	}
 
 	/* Getting next key range bound can be costly (seq scan) */
-	stop, err = qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
+	stop, _, err = qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -2124,8 +2124,8 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
-	return qc.QDB().AddMoveTaskGroupStopFlag(ctx, id)
+func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
+	return qc.QDB().AddMoveTaskGroupStopFlag(ctx, id, immediate)
 }
 
 func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, id string) ([][][]byte, int, error) {

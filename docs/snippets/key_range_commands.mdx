@@ -58,8 +58,8 @@ Locks a key range to prevent concurrent modifications. This is typically
 used before performing operations like SPLIT or UNITE that require
 exclusive access to the key range.
 
-While a key range is locked, queries routed to it will wait until the
-lock is released.
+While a key range is locked, queries routed to it will receive a
+`key range is locked` error.
 
 
 ```sql

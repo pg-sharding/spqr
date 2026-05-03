@@ -46,7 +46,6 @@ canreq
 ccb
 ccfg
 ccmsg
-Cfgs
 cillum
 Cimpl
 CIn
@@ -204,7 +203,7 @@ helpgen
 Highload
 hostnossl
 hostssl
-hotspots
+hotspot
 hst
 HTAP
 iana
@@ -364,6 +363,7 @@ Oids
 oiwejow
 OLAP
 omnis
+onehost
 opgejrqr
 optarg
 optval
@@ -451,6 +451,7 @@ rclient
 rconn
 rdistr
 rebootstrap
+redmon
 regclass
 reloid
 relpersistence
@@ -542,6 +543,7 @@ spqrql
 SPQRR
 SPQRT
 SPQRU
+SPQRV
 SPQRX
 SPQRZ
 SQLF
@@ -589,6 +591,7 @@ timeb
 timestamptz
 tlsconfig
 tlt
+tmgr
 TMINUS
 tmpfs
 tmpnum
@@ -605,7 +608,6 @@ truncatable
 tsa
 TSEMICOLON
 tstmt
-tmgr
 tupleslot
 tupletableslot
 twopc

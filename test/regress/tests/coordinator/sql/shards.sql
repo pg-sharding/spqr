@@ -2,11 +2,35 @@ REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 
 DROP SHARD sh1;
 SHOW SHARDS;
+
+\set VERBOSITY verbose
+
 CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
 SHOW SHARDS;
-ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD user 'test_user');
+
+ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD USER 'test_user', ADD USER 'another_user');
 SHOW SHARDS;
+
+ALTER SHARD sh1 OPTIONS (ADD sslmode 'require');
+ALTER SHARD sh1 OPTIONS (SET SSLMODE 'allow');
+SHOW SHARDS;
+
+ALTER SHARD sh1 OPTIONS (SET HOST 'onehost:6432');
 ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
+SHOW SHARDS;
+
+ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'allow');
+SHOW SHARDS;
+
+ALTER SHARD unknown OPTIONS (ADD SSLMODE 'require');
+ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'require', ADD SSLMODE 'verify-full');
+ALTER SHARD sh1 OPTIONS (ADD SSLMODE 'verify-full', DROP SSLMODE 'verify-full');
+ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');
+ALTER SHARD sh1 OPTIONS (DROP HOST 'unknown:6432');
+ALTER SHARD sh1 OPTIONS (ADD HOST 'spqr_shard_1_replica:6432', ADD HOST 'spqr_shard_1_replica:6432');
+ALTER SHARD sh1 OPTIONS (SET unknown 'unknown');
+ALTER SHARD sh1 OPTIONS (DROP user);
+
 SHOW SHARDS;
 
 UNREGISTER ROUTER ALL;

@@ -237,10 +237,10 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 	if err == nil {
 		return nil
 	}
+	if err := pi.cl.ReplyErrMsgPure(err); err != nil {
+		return err
+	}
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{Severity: "ERROR",
-			Message: err.Error(),
-		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
 		},

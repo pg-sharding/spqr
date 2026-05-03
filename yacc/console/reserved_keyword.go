@@ -109,4 +109,5 @@ var reservedWords = map[string]int{
 	"grant":        GRANT,
 	"local":        LOCAL,
 	"global":       GLOBAL,
+	"immediate":    IMMEDIATE,
 }

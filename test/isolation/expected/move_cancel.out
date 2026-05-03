@@ -76,7 +76,7 @@ shard sh1   |11|1
 shard sh1   |11|1
 (2 rows)
 
-step s4_cancel: select __spqr__console_execute('STOP TASK GROUP zid') /*__spqr__preferred_engine: v2 */;
+step s4_cancel: select __spqr__console_execute('STOP TASK GROUP zid immediate') /*__spqr__preferred_engine: v2 */;
 Move task group ID
 ------------------
 zid               
