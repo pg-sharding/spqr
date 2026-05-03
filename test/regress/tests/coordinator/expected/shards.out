@@ -38,7 +38,7 @@ ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD USER 'test_user', ADD USER 'anot
                           alter shard                           
 ----------------------------------------------------------------
  shard id -> sh1
- options  -> {sslmode=require,user=test_user,user=another_user}
+ options  -> {sslmode=require,user=another_user,user=test_user}
 (2 rows)
 
 SHOW SHARDS;
