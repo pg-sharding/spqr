@@ -493,8 +493,8 @@ func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) e
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr
-func (lc *Coordinator) StopMoveTaskGroup(_ context.Context, _ string) error {
-	panic("unimplemented")
+func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
+	return lc.QDB().AddMoveTaskGroupStopFlag(ctx, id, immediate)
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.

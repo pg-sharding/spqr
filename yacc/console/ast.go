@@ -402,7 +402,8 @@ type RetryMoveTaskGroup struct {
 func (*RetryMoveTaskGroup) iStatement() {}
 
 type StopMoveTaskGroup struct {
-	ID string
+	ID        string
+	Immediate bool
 }
 
 func (*StopMoveTaskGroup) iStatement() {}

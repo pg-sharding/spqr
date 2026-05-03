@@ -1194,17 +1194,17 @@ func (mr *MockCoordinatorMockRecorder) StartupFinished() *gomock.Call {
 }
 
 // StopMoveTaskGroup mocks base method.
-func (m *MockCoordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
+func (m *MockCoordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StopMoveTaskGroup", ctx, id)
+	ret := m.ctrl.Call(m, "StopMoveTaskGroup", ctx, id, immediate)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StopMoveTaskGroup indicates an expected call of StopMoveTaskGroup.
-func (mr *MockCoordinatorMockRecorder) StopMoveTaskGroup(ctx, id any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) StopMoveTaskGroup(ctx, id, immediate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).StopMoveTaskGroup), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).StopMoveTaskGroup), ctx, id, immediate)
 }
 
 // SyncReferenceRelations mocks base method.

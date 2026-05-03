@@ -662,7 +662,7 @@ func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *prot
 
 // TODO: unit tests
 func (l *LocalQrouterServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.StopMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.StopMoveTaskGroup(ctx, req.ID, req.Immediate)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupBoundsCache(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupBoundsCache, error) {
