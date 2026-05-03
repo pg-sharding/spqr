@@ -13,9 +13,10 @@ import (
 )
 
 type MessageGroup struct {
-	Request   []pgproto3.FrontendMessage
-	Response  []pgproto3.BackendMessage
-	CheckCode bool
+	Request             []pgproto3.FrontendMessage
+	Response            []pgproto3.BackendMessage
+	CheckCode           bool
+	SkipCheckCommandTag bool
 }
 
 func isPurePGTesting() bool {
@@ -73,6 +74,16 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 						break
 					default:
 						backendFinished = true
+					}
+				case *pgproto3.CommandComplete:
+
+					switch q := msg.(type) {
+					case *pgproto3.CommandComplete:
+						if q.CommandTag == nil {
+							if msgroup.SkipCheckCommandTag {
+								retMsgType.CommandTag = nil
+							}
+						}
 					}
 				default:
 					break
@@ -159,6 +170,16 @@ func SetupSharding() {
 	}()
 
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds1 COLUMN TYPES integer;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 2000 ROUTE TO sh4 FOR DISTRIBUTION ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 1000 ROUTE TO sh3 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
