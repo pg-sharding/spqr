@@ -2128,7 +2128,7 @@ func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bo
 		Msg("etcdqdb: check for task group stop flag")
 	t := time.Now()
 
-	resp, err := q.cli.Get(ctx, taskGroupStopFlagNodePath(id), clientv3.WithCountOnly())
+	resp, err := q.cli.Get(ctx, taskGroupStopFlagNodePath(id))
 	if err != nil {
 		return false, false, err
 	}
