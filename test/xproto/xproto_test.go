@@ -6012,29 +6012,29 @@ func TestPrepStmtPartialDeploy(t *testing.T) {
 
 				&pgproto3.Parse{
 					Query: "SELECT FROM t WHERE id IN (1, 1000, 2000)",
-					Name:  "part_dsipatch_p1",
+					Name:  "part_dispatch_p1",
 				},
 
 				&pgproto3.Parse{
 					Query: "SELECT FROM t WHERE id IN (1, 11, 2000)",
-					Name:  "part_dsipatch_p2",
+					Name:  "part_dispatch_p2",
 				},
 
 				&pgproto3.Parse{
 					Query: "SELECT FROM t WHERE id IN (1000, 1)",
-					Name:  "part_dsipatch_p3",
+					Name:  "part_dispatch_p3",
 				},
 
 				&pgproto3.Bind{
-					PreparedStatement: "part_dsipatch_p1",
+					PreparedStatement: "part_dispatch_p1",
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Bind{
-					PreparedStatement: "part_dsipatch_p2",
+					PreparedStatement: "part_dispatch_p2",
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Bind{
-					PreparedStatement: "part_dsipatch_p3",
+					PreparedStatement: "part_dispatch_p3",
 				},
 				&pgproto3.Execute{},
 
