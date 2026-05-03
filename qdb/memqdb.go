@@ -1357,7 +1357,7 @@ func (q *MemQDB) AddMoveTaskGroupStopFlag(_ context.Context, id string, immediat
 
 	kind := StopTaskGroup
 	if immediate {
-		kind = StopTaskGroupimmediate
+		kind = StopTaskGroupImmediate
 	}
 
 	q.State.StopMoveTaskGroup[id] = kind
@@ -1377,7 +1377,7 @@ func (q *MemQDB) CheckMoveTaskGroupStopFlag(_ context.Context, id string) (bool,
 		return false, false, nil
 	}
 
-	return true, val == StopTaskGroupimmediate, nil
+	return true, val == StopTaskGroupImmediate, nil
 }
 
 func (q *MemQDB) GetMoveTaskByGroup(_ context.Context, taskGroupID string) (*MoveTask, error) {

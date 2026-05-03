@@ -2110,7 +2110,7 @@ func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string, immed
 	kind := StopTaskGroup
 
 	if immediate {
-		kind = StopTaskGroupimmediate
+		kind = StopTaskGroupImmediate
 	}
 
 	_, err := q.cli.Put(ctx, taskGroupStopFlagNodePath(id), kind)
@@ -2137,7 +2137,7 @@ func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bo
 		kind = string(resp.Kvs[0].Value)
 	}
 	statistics.RecordQDBOperation("CheckMoveTaskGroupStopFlag", time.Since(t))
-	return resp.Count > 0, kind == StopTaskGroupimmediate, nil
+	return resp.Count > 0, kind == StopTaskGroupImmediate, nil
 }
 
 // TODO unit test

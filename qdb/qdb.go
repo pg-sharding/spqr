@@ -65,7 +65,7 @@ type TaskStateKeeper interface {
 
 const (
 	StopTaskGroup          = "cancel"
-	StopTaskGroupimmediate = "cancel immediate"
+	StopTaskGroupImmediate = "cancel immediate"
 )
 
 // QDB is a generic interface used by both the coordinator and the router.
