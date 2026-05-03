@@ -212,8 +212,10 @@ mockgen:
 	mockgen -source=./router/client/client.go -destination=./router/mock/client/mock_client.go -package=mock
 	mockgen -source=./router/poolmgr/pool_mgr.go -destination=./router/mock/poolmgr/mock_pool_mgr.go -package=mock
 	mockgen -source=./router/qrouter/qrouter.go -destination=./router/mock/qrouter/mock_qrouter.go -package=mock
+	mockgen -source=./router/rulerouter/rulerouter.go -destination=./router/mock/rulerouter/mock_rulerouter.go -package=mock
 	mockgen -source=./pkg/meta/meta.go -destination=./pkg/mock/meta/mock_meta.go -package=mock
 	mockgen -source=./pkg/clientinteractor/interactor.go -destination=pkg/mock/clientinteractor/mock_interactor.go -package=mock
+	mockgen -source=./pkg/client/clientpool.go -destination=pkg/mock/client/mock_clientpool.go -package=mock
 	mockgen -source=qdb/qdb.go -destination=qdb/mock/qdb.go -package=mock
 	mockgen -source=./coordinator/coordinator.go -destination=./coordinator/mock/mock_coordinator.go -package=mock
 

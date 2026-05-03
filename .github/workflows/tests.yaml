@@ -181,6 +181,15 @@ jobs:
       - name: Extended proto
         run: PROTO_TEST_TAG=xproto make xproto_regress
 
+  proto-regress-xproto-portal-suspect:
+    name: proto-extended-portal-suspend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Extended proto with portal suspend
+        run: PROTO_TEST_TAG=xproto_suspend make xproto_regress
+
   proto-regress-copy:
     name: proto-copy
     runs-on: ubuntu-latest
