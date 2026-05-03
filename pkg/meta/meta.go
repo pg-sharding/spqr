@@ -2346,7 +2346,10 @@ func processAlterShard(ctx context.Context,
 func optionsToTuple(opts []topology.GenericOption) string {
 	t := []string{}
 	sort.Slice(opts, func(i, j int) bool {
-		return opts[i].Name < opts[j].Name
+		if opts[i].Name != opts[j].Name {
+			return opts[i].Name < opts[j].Name
+		}
+		return opts[i].Arg < opts[j].Arg
 	})
 	for _, v := range opts {
 		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
