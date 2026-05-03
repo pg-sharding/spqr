@@ -129,7 +129,11 @@ l:
 			}
 		}
 
+		startTime := time.Now()
+
 		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
+
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
 		if txbefore != txstatus.TXIDLE && err != nil {
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
@@ -170,7 +174,6 @@ var (
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
 func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, _ bool) (*PortalDesc, error) {
-	startTime := time.Now()
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
@@ -193,7 +196,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 			}
 			err := rst.QueryExecutor().ExecBegin(query, st)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
@@ -218,7 +220,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 			}
 			err := rst.QueryExecutor().ExecCommit(query)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
@@ -226,7 +227,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 			}
 			err := rst.QueryExecutor().ExecRollback(query)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return noDataPd, err
 
 		default:
@@ -239,8 +239,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		for _, name := range rst.QueryExecutor().Client().ListPreparedStatements() {
 			rst.QueryExecutor().Client().ClosePreparedStatement(name)
 		}
-
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
 		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD ALL")
 	case *lyx.DeallocateStmt:
@@ -256,7 +254,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			rst.QueryExecutor().Client().ClosePreparedStatement(st.Name)
 			cmdTag = "DEALLOCATE"
 		}
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
 		return noDataPd, rst.QueryExecutor().ReplyCommandComplete(cmdTag)
 
@@ -316,12 +313,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		} else {
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTION)
 
 			case session.SPQR_DISTRIBUTED_RELATION:
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTED_RELATION)
 
@@ -358,7 +353,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 			case session.SPQR_SCATTER_QUERY:
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_SCATTER_QUERY)
 			case session.SPQR_EXECUTE_ON:
@@ -486,7 +480,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					/* If router does dot have any info about param, fire query to random shard. */
 					if _, ok := rst.Client().Params()[param]; !ok {
 						err := rst.queryProc(comment, binderQ)
-						spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 						return pd, err
 					}
 
@@ -499,7 +492,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return nil, err
 		}
 
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return pd, nil
 	case *lyx.VariableSetStmt:
 
@@ -507,11 +499,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
 		}
-		// XXX: TODO: support
-		// if q.IsLocal {
-		// 	// ignore for now
-		// }
-
 		switch q.Kind {
 		case lyx.VarTypeResetAll:
 			rst.Client().ResetAll()
@@ -581,7 +568,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 		}
 
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, nil
 	case *lyx.PrepareStmt:
 		// sql level prepares stmt pooling
@@ -599,12 +585,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
 		} else {
 			// process like regular query
 			err := rst.queryProc(comment, binderQ)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, err
 		}
 	case *lyx.ExecuteStmt:
@@ -643,17 +627,14 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
 		} else {
 			// process like regular query
 			err := rst.queryProc(comment, binderQ)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, err
 		}
 	default:
 		err := rst.queryProc(comment, binderQ)
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return nil, err
 	}
 }
