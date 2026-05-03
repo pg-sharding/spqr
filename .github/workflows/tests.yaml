@@ -218,7 +218,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**') }}"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
@@ -263,7 +263,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**') }}"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
