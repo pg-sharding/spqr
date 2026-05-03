@@ -4,28 +4,28 @@ order: 3
 description: |
   Modifies distribution metadata.
 
-  Covers relation attachments, distribution key metadata, schema metadata,
+  Covers table attachments, distribution key metadata, schema metadata,
   and default shard settings. This command operates on SPQR metadata and does
   not execute table DDL on shards.
 
-  ATTACH RELATION attaches one or more relations to the distribution with a
+  ATTACH TABLE attaches one or more tables to the distribution with a
   specified distribution key. For composite sharding keys, specify multiple
   column names separated by commas in the DISTRIBUTION KEY clause.
 
-  DETACH RELATION detaches a relation from the distribution.
+  DETACH TABLE detaches a table from the distribution.
 
-  ALTER RELATION DISTRIBUTION KEY replaces the entire distribution key of an
-  already attached relation. This overwrites all column names and hash functions
+  ALTER TABLE DISTRIBUTION KEY replaces the entire distribution key of an
+  already attached table. This overwrites all column names and hash functions
   in one shot — it does not patch individual columns. Use this when you need to
   change the key structure entirely, or to fix expression-based routing entries
   (which RENAME DISTRIBUTION COLUMN does not support). The new key must have the
   same number of entries as the distribution's column types.
 
-  ALTER RELATION SCHEMA changes the schema associated with an attached relation
+  ALTER TABLE SCHEMA changes the schema associated with an attached table
   in the distribution metadata.
 
   RENAME DISTRIBUTION COLUMN is a metadata-only fix that renames a column in the
-  distribution key of an attached relation. It does not execute ALTER TABLE RENAME
+  distribution key of an attached table. It does not execute ALTER TABLE RENAME
   COLUMN on PostgreSQL — it only updates the column name stored in SPQR metadata.
   The primary use case is fixing a case mismatch between the column name in SPQR
   metadata and the actual PostgreSQL column. For composite keys, call this command
@@ -35,14 +35,14 @@ description: |
   do not match any key range. DROP DEFAULT SHARD removes the default shard setting.
 
 syntax: |
-  ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName>
+  ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
     DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
-  ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>
-  ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+  ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+  ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
     DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
-  ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+  ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
     SCHEMA <schemaName>
-  ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+  ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
     RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>
   ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>
   ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD
@@ -53,14 +53,14 @@ syntax: |
 parameters:
   - name: distributionID
     description: Identifier of the distribution to modify
-  - name: relationName
-    description: Relation to attach, detach, or alter
+  - name: tableName
+    description: Table to attach, detach, or alter
   - name: keys
     description: Distribution key definition (column list and optional hash functions)
   - name: hashFunction
     description: Hash function to apply to the key (IDENTITY, MURMUR, or CITY)
   - name: schemaName
-    description: Schema metadata value for an attached relation
+    description: Schema metadata value for an attached table
   - name: oldColumnName
     description: Existing distribution key column name in metadata
   - name: newColumnName
@@ -69,35 +69,35 @@ parameters:
     description: Shard identifier to set as default shard
 
 examples:
-  - description: Attach relation with single distribution key
-    code: ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
-  - description: Attach relation with composite key and hash function
-    code: ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
-  - description: Detach relation
-    code: ALTER DISTRIBUTION ds1 DETACH RELATION orders;
-  - description: Replace relation distribution key
-    code: ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
-  - description: Change relation schema
-    code: ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
+  - description: Attach table with single distribution key
+    code: ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
+  - description: Attach table with composite key and hash function
+    code: ALTER DISTRIBUTION ds2 ATTACH TABLE users DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
+  - description: Detach table
+    code: ALTER DISTRIBUTION ds1 DETACH TABLE orders;
+  - description: Replace table distribution key
+    code: ALTER DISTRIBUTION ds1 ALTER TABLE orders DISTRIBUTION KEY customer_id;
+  - description: Change table schema
+    code: ALTER DISTRIBUTION ds1 ALTER TABLE orders SCHEMA my_schema;
   - description: Fix column name casing in metadata (w_id vs W_ID)
-    code: ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+    code: ALTER DISTRIBUTION ds1 ALTER TABLE rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
   - description: Set default shard
     code: ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
   - description: Remove default shard
     code: ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;
 
 warnings:
-  - ALTER RELATION operations are metadata changes and may affect routing immediately.
+  - ALTER TABLE operations are metadata changes and may affect routing immediately.
   - Use maintenance windows for key/schema metadata changes in write-heavy workloads.
 
 notes:
   - RENAME DISTRIBUTION COLUMN does not execute ALTER TABLE on PostgreSQL — it only updates SPQR metadata.
-  - For expression-based routing entries, use ALTER RELATION DISTRIBUTION KEY to replace the full key instead of RENAME DISTRIBUTION COLUMN.
+  - For expression-based routing entries, use ALTER TABLE DISTRIBUTION KEY to replace the full key instead of RENAME DISTRIBUTION COLUMN.
 
 tips:
-  - Use CREATE DISTRIBUTION first, then attach relations and create key ranges
+  - Use CREATE DISTRIBUTION first, then attach tables and create key ranges
   - Verify metadata after changes with SHOW relations and SHOW distributions
-  - Prefer replacing full distribution keys when relation uses expression-based routing
+  - Prefer replacing full distribution keys when table uses expression-based routing
   - For composite keys, call RENAME DISTRIBUTION COLUMN once per column that needs renaming
 
 related_commands:
@@ -107,107 +107,108 @@ related_commands:
   - SHOW
 
 subcommands:
-  - name: ALTER DISTRIBUTION ATTACH RELATION
+  - name: ALTER DISTRIBUTION ATTACH TABLE
     description: |
-      Attaches one or more [relations](/sharding/sharded_tables) to an existing distribution using the ATTACH RELATION clause.
+      Attaches one or more [tables](/sharding/sharded_tables) to an existing distribution using the ATTACH TABLE clause.
 
       For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> [, <relationName> ...]
+      ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> [, <tableName> ...]
         DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
       where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
       where hashFunction is one of: IDENTITY, MURMUR, CITY
     examples:
       - description: Single column sharding key
-        code: ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
+        code: ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
       - description: Composite sharding key with two columns
-        code: ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
+        code: ALTER DISTRIBUTION ds2 ATTACH TABLE users DISTRIBUTION KEY tenant_id, user_id;
       - description: Composite key with hash function
-        code: ALTER DISTRIBUTION ds3 ATTACH RELATION events DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+        code: ALTER DISTRIBUTION ds3 ATTACH TABLE events DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
 
-  - name: CREATE RELATION
+  - name: CREATE TABLE
     description: |
-      This command is a shorthand for [ALTER DISTRIBUTION ATTACH RELATION](#alter-distribution-attach-relation). It creates a relation and attaches it to a distribution in a single statement.
+      This command is a shorthand for [ALTER DISTRIBUTION ATTACH TABLE](#alter-distribution-attach-table). It creates a table and attaches it to a distribution in a single statement.
       The `DISTRIBUTED` keyword is optional and has no effect on the behavior.
 
       There are two syntax forms for specifying distribution keys:
 
       **Parenthesized syntax** — column names and optional hash functions are listed inside parentheses:
     syntax: |
-      CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
+      CREATE [DISTRIBUTED] TABLE [schema.]<table_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
     notes:
-      - "**DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause: `CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> DISTRIBUTION KEY <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`"
+      - "**DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause: `CREATE [DISTRIBUTED] TABLE [schema.]<table_name> DISTRIBUTION KEY <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`"
     examples:
       - description: Simple column with no hash function (uses default distribution)
-        code: CREATE RELATION r (i);
+        code: CREATE TABLE r (i);
       - description: Column with hash function
-        code: CREATE RELATION r (i HASH MURMUR);
+        code: CREATE TABLE r (i HASH MURMUR);
       - description: Attach to a specific distribution
-        code: CREATE RELATION t (id) IN ds1;
+        code: CREATE TABLE t (id) IN ds1;
       - description: Using FOR DISTRIBUTION syntax
-        code: CREATE DISTRIBUTED RELATION table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;
+        code: CREATE DISTRIBUTED TABLE table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;
       - description: Composite key with multiple columns
-        code: CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
+        code: CREATE TABLE t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
       - description: Routing expression syntax for composite keys with typed columns
-        code: CREATE RELATION tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
-      - description: Schema-qualified relation name
-        code: CREATE DISTRIBUTED RELATION sh1.r (i) IN d;
+        code: CREATE TABLE tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
+      - description: Schema-qualified table name
+        code: CREATE DISTRIBUTED TABLE sh1.r (i) IN d;
       - description: DISTRIBUTION KEY syntax
-        code: CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
+        code: CREATE DISTRIBUTED TABLE xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
       - description: Composite key without hash using DISTRIBUTION KEY syntax
-        code: CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;
+        code: CREATE DISTRIBUTED TABLE copy_test (id1, id2) IN ds2;
 
-  - name: ALTER DISTRIBUTION DETACH RELATION
+  - name: ALTER DISTRIBUTION DETACH TABLE
     description: |
-      Detaches a relation from the distribution using the DETACH RELATION clause.
+      Detaches a table from the distribution using the DETACH TABLE clause.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>
+      ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
 
-  - name: ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY
+  - name: ALTER DISTRIBUTION ALTER TABLE DISTRIBUTION KEY
     description: |
-      Replaces the entire distribution key of an already attached relation. This overwrites all column names and hash functions in one shot — it does not patch individual columns. Use this when you need to change the key structure entirely, or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not support).
+      Replaces the entire distribution key of an already attached table. This overwrites all column names and hash functions in one shot — it does not patch individual columns. Use this when you need to change the key structure entirely, or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not support).
 
       The new key must have the same number of entries as the distribution's column types. Duplicate column names in the new key are rejected.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+      ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
         DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
       where keys is a comma-separated list of column names or expression entries
       where hashFunction is one of: IDENTITY, MURMUR, CITY
     examples:
       - description: Replace the distribution key with a new column name
-        code: ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+        code: ALTER DISTRIBUTION ds1 ALTER TABLE orders DISTRIBUTION KEY customer_id;
       - description: Replace with a composite key
-        code: ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
+        code: ALTER DISTRIBUTION ds1 ALTER TABLE events DISTRIBUTION KEY region_id, event_id;
       - description: Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
-        code: "ALTER DISTRIBUTION ds1 ALTER RELATION tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];"
+        code: "ALTER DISTRIBUTION ds1 ALTER TABLE tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];"
     warnings:
       - This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
 
-  - name: ALTER DISTRIBUTION ALTER RELATION SCHEMA
+  - name: ALTER DISTRIBUTION ALTER TABLE SCHEMA
     description: |
-      Changes the schema associated with an attached relation in the distribution metadata.
+      Changes the schema associated with an attached table in the distribution metadata.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+      ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
+        SCHEMA <schemaName>
         SCHEMA <schemaName>
     examples:
-      - description: Change relation schema
-        code: ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
+      - description: Change table schema
+        code: ALTER DISTRIBUTION ds1 ALTER TABLE orders SCHEMA my_schema;
 
   - name: ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN
     description: |
-      A metadata-only fix that renames a column in the distribution key of an attached relation. This does **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only updates the column name stored in SPQR's distribution metadata.
+      A metadata-only fix that renames a column in the distribution key of an attached table. This does **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only updates the column name stored in SPQR's distribution metadata.
 
-      The primary use case is fixing a case mismatch between the column name in SPQR metadata and the actual PostgreSQL column. Because PostgreSQL normalizes unquoted identifiers to lowercase, attaching a relation with `W_ID` when the table column is `w_id` breaks routing: INSERTs fail and SELECTs scatter to all shards.
+      The primary use case is fixing a case mismatch between the column name in SPQR metadata and the actual PostgreSQL column. Because PostgreSQL normalizes unquoted identifiers to lowercase, attaching a table with `W_ID` when the table column is `w_id` breaks routing: INSERTs fail and SELECTs scatter to all shards.
 
       For composite (multi-column) distribution keys, call this command once per column that needs renaming.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+      ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
         RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>
     examples:
       - description: Fix column name casing in metadata
-        code: ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+        code: ALTER DISTRIBUTION ds1 ALTER TABLE rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
     warnings:
       - This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
 

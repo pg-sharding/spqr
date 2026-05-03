@@ -2388,3 +2388,42 @@ func TestGrant(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestTableKeywordForRelation(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		relationQuery string
+		tableQuery    string
+	}
+
+	for _, tt := range []tcase{
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 ATTACH TABLE t DISTRIBUTION KEY id;",
+		},
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 DETACH RELATION t;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 DETACH TABLE t;",
+		},
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 ALTER TABLE t DISTRIBUTION KEY id;",
+		},
+		{
+			relationQuery: "CREATE RELATION t (id) IN ds1;",
+			tableQuery:    "CREATE TABLE t (id) IN ds1;",
+		},
+	} {
+
+		relationStmt, err := spqrparser.Parse(tt.relationQuery)
+
+		assert.NoError(err, "query %s", tt.relationQuery)
+
+		tableStmt, err := spqrparser.Parse(tt.tableQuery)
+
+		assert.NoError(err, "query %s", tt.tableQuery)
+
+		assert.Equal(relationStmt, tableStmt, "table query %s should parse like relation query %s", tt.tableQuery, tt.relationQuery)
+	}
+}
