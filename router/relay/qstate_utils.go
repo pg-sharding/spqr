@@ -47,34 +47,38 @@ func DispatchSlice(qd *QueryDesc,
 			/*
 			* This is only execution path for non-top level slice
 			 */
+			if p != nil {
+				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
+					/* Uh, oh, this is very ugly hack */
 
-			if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
-				/* Uh, oh, this is very ugly hack */
+					if err := serv.SendShard(&pgproto3.Query{
+						String: ovMsg,
+					}, targ); err != nil {
+						return err
+					}
 
-				if err := serv.SendShard(&pgproto3.Query{
-					String: ovMsg,
-				}, targ); err != nil {
-					return err
-				}
-
-				guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
-				if err != nil {
-					return err
-				}
-
-				if guc.Get(cl) {
-					if err := serv.PrefetchResult(targ, 1); err != nil {
+				} else {
+					/* Assert for IsQuery here? */
+					if err := serv.SendShard(qd.Msg, targ); err != nil {
 						return err
 					}
 				}
-
 			} else {
-
 				/* Assert for IsQuery here? */
 				if err := serv.SendShard(qd.Msg, targ); err != nil {
 					return err
 				}
+			}
 
+			guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+			if err != nil {
+				return err
+			}
+
+			if guc.Get(cl) {
+				if err := serv.PrefetchResult(targ, 1); err != nil {
+					return err
+				}
 			}
 
 		} else {
