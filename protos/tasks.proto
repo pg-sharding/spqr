@@ -87,6 +87,7 @@ message WriteMoveTaskGroupRequest{
 
 message MoveTaskGroupSelector {
   string ID = 1;
+  bool Immediate = 2;
 }
 
 message DropMoveTaskGroupRequest {

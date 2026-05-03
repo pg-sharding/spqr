@@ -212,7 +212,7 @@ func randomHex(n int) (string, error) {
 
 %token <str> IDENTITY MURMUR CITY 
 
-%token<str> START STOP TRACE MESSAGES
+%token<str> START STOP TRACE MESSAGES IMMEDIATE
 
 %token<str> TASK GROUP
 
@@ -322,7 +322,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
-%type <bool> opt_no_wait
+%type <bool> opt_no_wait opt_immediate
 
 %type<grant> GrantStmt
 %type<privilege_target> privilege_target
@@ -1821,16 +1821,22 @@ opt_no_wait:
 		$$ = false
 	}
 
+opt_immediate:
+	IMMEDIATE {
+		$$ = true
+	} | /* EMPTY */ {
+		$$ = false
+	}
 
 stop_move_task_group:
-	STOP opt_move TASK GROUP any_id
+	STOP opt_move TASK GROUP any_id opt_immediate
 	{
-		$$ = &StopMoveTaskGroup{ ID: $5 }
+		$$ = &StopMoveTaskGroup{ ID: $5, Immediate: $6 }
 	}
 	|
-	STOP opt_move TASK GROUP ALL
+	STOP opt_move TASK GROUP ALL opt_immediate
 	{
-		$$ = &StopMoveTaskGroup{ ID: "*" }
+		$$ = &StopMoveTaskGroup{ ID: "*",  Immediate: $6 }
 	}
 
 opt_move:

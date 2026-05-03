@@ -63,6 +63,11 @@ type TaskStateKeeper interface {
 	DropRedistributeTaskLock(ctx context.Context, id string) error
 }
 
+const (
+	StopTaskGroup          = "cancel"
+	StopTaskGroupimmediate = "cancel immediate"
+)
+
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
@@ -118,8 +123,9 @@ type QDB interface {
 	GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error)
 	UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error
 	DropMoveTaskGroup(ctx context.Context, id string) error
-	AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
-	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
+	AddMoveTaskGroupStopFlag(ctx context.Context, id string, immediate bool) error
+	/* XXX: stop move task kind? */
+	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, bool, error)
 	WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error
 	GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error)
 	GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error)

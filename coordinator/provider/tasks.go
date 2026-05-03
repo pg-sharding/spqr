@@ -101,7 +101,7 @@ func (t TasksServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.Retry
 }
 
 func (t TasksServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.StopMoveTaskGroup(ctx, req.ID)
+	return nil, t.impl.StopMoveTaskGroup(ctx, req.ID, req.Immediate)
 }
 
 func (t TasksServer) GetMoveTaskGroupBoundsCache(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupBoundsCache, error) {

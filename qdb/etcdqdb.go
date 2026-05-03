@@ -2101,13 +2101,19 @@ func (q *EtcdQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupID string) (*
 }
 
 // TODO unit test
-func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string, immediate bool) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: put task group stop flag")
 	t := time.Now()
 
-	_, err := q.cli.Put(ctx, taskGroupStopFlagNodePath(id), "set")
+	kind := StopTaskGroup
+
+	if immediate {
+		kind = StopTaskGroupimmediate
+	}
+
+	_, err := q.cli.Put(ctx, taskGroupStopFlagNodePath(id), kind)
 	if err != nil {
 		return err
 	}
@@ -2116,7 +2122,7 @@ func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
 }
 
 // TODO unit test
-func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, bool, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: check for task group stop flag")
@@ -2124,10 +2130,14 @@ func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bo
 
 	resp, err := q.cli.Get(ctx, taskGroupStopFlagNodePath(id), clientv3.WithCountOnly())
 	if err != nil {
-		return false, err
+		return false, false, err
+	}
+	kind := StopTaskGroup
+	if resp.Count > 0 {
+		kind = string(resp.Kvs[0].Value)
 	}
 	statistics.RecordQDBOperation("CheckMoveTaskGroupStopFlag", time.Since(t))
-	return resp.Count > 0, nil
+	return resp.Count > 0, kind == StopTaskGroupimmediate, nil
 }
 
 // TODO unit test

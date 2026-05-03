@@ -1146,9 +1146,9 @@ func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.StopMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.StopMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id, Immediate: immediate})
 	return spqrerror.CleanGrpcError(err)
 }
 

@@ -1273,7 +1273,7 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		for id := range tgs {
-			if err := mgr.StopMoveTaskGroup(ctx, id); err != nil {
+			if err := mgr.StopMoveTaskGroup(ctx, id, stmt.Immediate); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(id)

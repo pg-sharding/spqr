@@ -878,6 +878,7 @@ func (x *WriteMoveTaskGroupRequest) GetTaskGroup() *MoveTaskGroup {
 type MoveTaskGroupSelector struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ID            string                 `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Immediate     bool                   `protobuf:"varint,2,opt,name=Immediate,proto3" json:"Immediate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -917,6 +918,13 @@ func (x *MoveTaskGroupSelector) GetID() string {
 		return x.ID
 	}
 	return ""
+}
+
+func (x *MoveTaskGroupSelector) GetImmediate() bool {
+	if x != nil {
+		return x.Immediate
+	}
+	return false
 }
 
 type DropMoveTaskGroupRequest struct {
@@ -1626,9 +1634,10 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"taskGroups\x18\x01 \x03(\v2\x13.spqr.MoveTaskGroupR\n" +
 	"taskGroups\"N\n" +
 	"\x19WriteMoveTaskGroupRequest\x121\n" +
-	"\ttaskGroup\x18\x01 \x01(\v2\x13.spqr.MoveTaskGroupR\ttaskGroup\"'\n" +
+	"\ttaskGroup\x18\x01 \x01(\v2\x13.spqr.MoveTaskGroupR\ttaskGroup\"E\n" +
 	"\x15MoveTaskGroupSelector\x12\x0e\n" +
-	"\x02ID\x18\x01 \x01(\tR\x02ID\"D\n" +
+	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x1c\n" +
+	"\tImmediate\x18\x02 \x01(\bR\tImmediate\"D\n" +
 	"\x18DropMoveTaskGroupRequest\x12\x0e\n" +
 	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x18\n" +
 	"\acascade\x18\x02 \x01(\bR\acascade\"E\n" +

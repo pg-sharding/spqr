@@ -1959,6 +1959,11 @@ func TestStopMoveTaskGroup(t *testing.T) {
 			err:   nil,
 		},
 		{
+			query: "STOP MOVE TASK GROUP tg_id immediate",
+			exp:   &spqrparser.StopMoveTaskGroup{ID: "tg_id", immediate: true},
+			err:   nil,
+		},
+		{
 			query: "STOP TASK GROUP tg_id",
 			exp:   &spqrparser.StopMoveTaskGroup{ID: "tg_id"},
 			err:   nil,
