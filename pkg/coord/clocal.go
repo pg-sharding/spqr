@@ -92,12 +92,14 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 		if err != nil {
 			return err
 		}
-		err = lc.qdb.ExecNoTransaction(ctx, statements)
+		qualifiedName := rel.QualifiedName()
+		statementsCol, err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 		if err != nil {
 			return err
 		}
-		qualifiedName := rel.QualifiedName()
-		if err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName); err != nil {
+		statements = append(statements, statementsCol...)
+		err = lc.qdb.ExecNoTransaction(ctx, statements)
+		if err != nil {
 			return err
 		}
 	}

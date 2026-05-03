@@ -2625,16 +2625,19 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	return err
 }
 
-func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
+func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("column", colName).
 		Msg("etcdqdb: attach column to sequence")
-
-	resp, err := q.cli.Put(ctx, columnSequenceMappingNodePath(relationFQN, colName), seqName)
+	key := columnSequenceMappingNodePath(relationFQN, colName)
+	statement, err := NewQdbStatement(CmdPut, key, seqName)
+	if err != nil {
+		return nil, err
+	}
 	spqrlog.Zero.Debug().
-		Interface("response", resp).
+		Str("seq name", seqName).
 		Msg("etcdqdb: attach column to sequence")
-	return err
+	return []QdbStatement{*statement}, nil
 }
 
 func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {

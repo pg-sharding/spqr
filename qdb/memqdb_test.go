@@ -397,7 +397,9 @@ func TestMemQDB_NextVal(t *testing.T) {
 	err = memqdb.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
-	err = memqdb.AlterSequenceAttach(ctx, "seq", &rfqn.RelationFQN{RelationName: "test"}, "id")
+	statements, err = memqdb.AlterSequenceAttach(ctx, "seq", &rfqn.RelationFQN{RelationName: "test"}, "id")
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	// Test concurrency

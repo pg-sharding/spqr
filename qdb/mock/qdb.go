@@ -645,11 +645,12 @@ func (mr *MockQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relation
 }
 
 // AlterSequenceAttach mocks base method.
-func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
+func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relationFQN, colName)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AlterSequenceAttach indicates an expected call of AlterSequenceAttach.
@@ -2351,11 +2352,12 @@ func (mr *MockXQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relatio
 }
 
 // AlterSequenceAttach mocks base method.
-func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
+func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relationFQN, colName)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AlterSequenceAttach indicates an expected call of AlterSequenceAttach.
@@ -3865,11 +3867,12 @@ func (mr *MockStateKeeperQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsI
 }
 
 // AlterSequenceAttach mocks base method.
-func (m *MockStateKeeperQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
+func (m *MockStateKeeperQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relationFQN, colName)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AlterSequenceAttach indicates an expected call of AlterSequenceAttach.

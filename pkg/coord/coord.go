@@ -190,7 +190,12 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
 		qualifiedName := rel.QualifiedName()
-		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName); err != nil {
+		statements, err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName)
+		if err != nil {
+			return err
+		}
+		err = lc.qdb.ExecNoTransaction(ctx, statements)
+		if err != nil {
 			return err
 		}
 	}
@@ -273,10 +278,12 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 		if err != nil {
 			return err
 		}
-		if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
+		colStatements, err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.RelationName, entry.Column)
+		if err != nil {
 			return err
 		}
-		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.RelationName, entry.Column); err != nil {
+		statements = append(statements, colStatements...)
+		if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 			return err
 		}
 	}
@@ -938,12 +945,13 @@ func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			if err != nil {
 				return nil, err
 			}
-			if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
+			qualifiedName := rel.QualifiedName()
+			colStatements, err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
+			if err != nil {
 				return nil, err
 			}
-			qualifiedName := rel.QualifiedName()
-			err = lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
-			if err != nil {
+			statements = append(statements, colStatements...)
+			if lc.qdb.ExecNoTransaction(ctx, statements) != nil {
 				return nil, err
 			}
 		}

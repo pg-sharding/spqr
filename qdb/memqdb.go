@@ -27,6 +27,7 @@ const (
 	MapKrVersions           = "KrVersions"
 	MapSequences            = "Sequences"
 	MapSequenceToValues     = "SequenceToValues"
+	MapColumnSequence       = "ColumnSequence"
 )
 
 type MemQDBState struct {
@@ -1622,19 +1623,19 @@ func (q *MemQDB) CheckSequence(_ context.Context, seqName string) (bool, error) 
 	return ok, nil
 }
 
-func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
+func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Str("relation", relationFQN.RelationName).
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
-	if _, ok := q.State.Sequences[seqName]; !ok {
-		return fmt.Errorf("sequence %s does not exist", seqName)
-	}
-
 	key := fmt.Sprintf("%s_%s", relationFQN, colName)
+	cmd1, err := NewQdbStatementExt(CmdPut, key, seqName, MapColumnSequence)
+	if err != nil {
+		return nil, err
+	}
 	q.State.ColumnSequence[key] = seqName
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.ColumnSequence, key, seqName))
+	return []QdbStatement{*cmd1}, nil
 }
 
 func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relationFQN *rfqn.RelationFQN) error {
@@ -1881,6 +1882,20 @@ func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 		return nil, fmt.Errorf("unsupported memDB cmd %d (SequenceToValues)", stmt.CmdType)
 	}
 }
+func (q *MemQDB) toColumnSequence(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CmdDelete:
+		return NewDeleteCommand(q.State.ColumnSequence, stmt.Key), nil
+	case CmdPut:
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for MapColumnSequence, int64 is expected", stmt.Value)
+		}
+		return NewUpdateCommand(q.State.ColumnSequence, stmt.Key, val), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (ColumnSequence)", stmt.CmdType)
+	}
+}
 
 func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
 	memOperations := make([]Command, 0, len(operations))
@@ -1903,6 +1918,8 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 			converterToCmd = q.toSequences
 		case MapSequenceToValues:
 			converterToCmd = q.toSequenceToValues
+		case MapColumnSequence:
+			converterToCmd = q.toColumnSequence
 		default:
 			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
 		}
