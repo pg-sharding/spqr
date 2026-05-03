@@ -771,6 +771,7 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmtcache_v_1",
@@ -781,6 +782,10 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 					ObjectType: 'P',
 				},
 				&pgproto3.Sync{},
+				&pgproto3.Close{
+					Name:       "stmtcache_v_1",
+					ObjectType: 'S',
+				},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
@@ -792,10 +797,13 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
+
+				&pgproto3.CloseComplete{},
 			},
 		},
 
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmtcache_v_2",
@@ -815,6 +823,10 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 					ObjectType: 'P',
 				},
 				&pgproto3.Sync{},
+				&pgproto3.Close{
+					Name:       "stmtcache_v_2",
+					ObjectType: 'S',
+				},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
@@ -840,10 +852,12 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
+				&pgproto3.CloseComplete{},
 			},
 		},
 
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Bind{
 					PreparedStatement: "out-of-nowhere",
@@ -3647,7 +3661,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
-			CheckCode: true,
+			CheckCodeOnly: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
 					Name:       "err_test_1",
@@ -3701,7 +3715,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 		},
 
 		{
-			CheckCode: true,
+			CheckCodeOnly: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
 					Name:       "err_test_2",
@@ -3768,7 +3782,7 @@ func TestExtendedErrorImplicitTX(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
-			CheckCode: true,
+			CheckCodeOnly: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
 					Name:       "err_test_1",
