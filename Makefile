@@ -152,9 +152,6 @@ xproto_regress: build_images
 isolation_regress: build_images
 	docker compose -f test/isolation/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/isolation/docker-compose.yaml build && docker compose -f test/isolation/docker-compose.yaml run --remove-orphans regress
 
-stress: build_images
-	docker compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
-
 split_feature_test_old:
 	docker compose build slicer
 	(cd test/feature/features; tar -c .) | docker compose run slicer | (mkdir test/feature/generatedFeatures; cd test/feature/generatedFeatures; tar -x)

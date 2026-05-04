@@ -8,7 +8,6 @@ test/regress/Dockerfile
 test/regress/tests
 test/regress/schedule
 test/xproto/router/Dockerfile
-test/stress/Dockerfile
 test/drivers
 docker-compose.yaml
 docker/spqr/Dockerfile
