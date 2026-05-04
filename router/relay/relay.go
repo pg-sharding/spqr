@@ -351,7 +351,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	}
 
 	if rm != nil && rm.UsedSelectQueryAdjust {
-		rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
+		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
 	switch v := queryPlan.(type) {
