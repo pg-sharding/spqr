@@ -199,7 +199,9 @@ lint:
 
 gogen:
 	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
-	protos/* 
+	-I=. \
+	-I=./protos/third_party/protovalidate/proto/protovalidate \
+	protos/*.proto 
 
 mockgen:
 	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/pgx/mock_pgxconn_iface.go -package=mock

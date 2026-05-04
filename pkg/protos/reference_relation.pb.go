@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -406,7 +407,7 @@ var File_protos_reference_relation_proto protoreflect.FileDescriptor
 
 const file_protos_reference_relation_proto_rawDesc = "" +
 	"\n" +
-	"\x1fprotos/reference_relation.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\x1a\x10protos/acl.proto\"\xd8\x02\n" +
+	"\x1fprotos/reference_relation.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\x1a\x10protos/acl.proto\"\xd8\x02\n" +
 	"\x11ReferenceRelation\x12-\n" +
 	"\arelName\x18\x01 \x01(\v2\x13.spqr.QualifiedNameR\arelName\x12V\n" +
 	"\x0fsequenceColumns\x18\x02 \x03(\v2,.spqr.ReferenceRelation.SequenceColumnsEntryR\x0fsequenceColumns\x12%\n" +
@@ -421,19 +422,19 @@ const file_protos_reference_relation_proto_rawDesc = "" +
 	"\aColName\x18\x01 \x01(\tR\aColName\x12\x1e\n" +
 	"\n" +
 	"StartValue\x18\x02 \x01(\x04R\n" +
-	"StartValue\"\x8a\x01\n" +
-	"\x1fCreateReferenceRelationsRequest\x123\n" +
-	"\brelation\x18\x01 \x01(\v2\x17.spqr.ReferenceRelationR\brelation\x122\n" +
+	"StartValue\"\x92\x01\n" +
+	"\x1fCreateReferenceRelationsRequest\x12;\n" +
+	"\brelation\x18\x01 \x01(\v2\x17.spqr.ReferenceRelationB\x06\xbaH\x03\xc8\x01\x01R\brelation\x122\n" +
 	"\aentries\x18\x02 \x03(\v2\x18.spqr.AutoIncrementEntryR\aentries\"R\n" +
 	"\x1dDropReferenceRelationsRequest\x121\n" +
 	"\trelations\x18\x01 \x03(\v2\x13.spqr.QualifiedNameR\trelations\"T\n" +
 	"\x1bListReferenceRelationsReply\x125\n" +
-	"\trelations\x18\x01 \x03(\v2\x17.spqr.ReferenceRelationR\trelations\"m\n" +
-	"\x1dSyncReferenceRelationsRequest\x12\x19\n" +
-	"\bshard_id\x18\x01 \x01(\tR\ashardId\x121\n" +
-	"\trelations\x18\x02 \x03(\v2\x13.spqr.QualifiedNameR\trelations\"t\n" +
-	"$AlterReferenceRelationStorageRequest\x12/\n" +
-	"\brelation\x18\x01 \x01(\v2\x13.spqr.QualifiedNameR\brelation\x12\x1b\n" +
+	"\trelations\x18\x01 \x03(\v2\x17.spqr.ReferenceRelationR\trelations\"u\n" +
+	"\x1dSyncReferenceRelationsRequest\x12!\n" +
+	"\bshard_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ashardId\x121\n" +
+	"\trelations\x18\x02 \x03(\v2\x13.spqr.QualifiedNameR\trelations\"|\n" +
+	"$AlterReferenceRelationStorageRequest\x127\n" +
+	"\brelation\x18\x01 \x01(\v2\x13.spqr.QualifiedNameB\x06\xbaH\x03\xc8\x01\x01R\brelation\x12\x1b\n" +
 	"\tshard_ids\x18\x02 \x03(\tR\bshardIds2\xd7\x04\n" +
 	"\x19ReferenceRelationsService\x12[\n" +
 	"\x18CreateReferenceRelations\x12%.spqr.CreateReferenceRelationsRequest\x1a\x16.google.protobuf.Empty\"\x00\x12W\n" +

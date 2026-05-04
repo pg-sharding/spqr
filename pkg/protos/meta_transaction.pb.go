@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -539,7 +540,7 @@ var File_protos_meta_transaction_proto protoreflect.FileDescriptor
 
 const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\n" +
-	"\x1dprotos/meta_transaction.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\"protos/distribution_entities.proto\x1a\x16protos/key_range.proto\"T\n" +
+	"\x1dprotos/meta_transaction.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\"protos/distribution_entities.proto\x1a\x16protos/key_range.proto\"T\n" +
 	"\x18CreateDistributionGossip\x128\n" +
 	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"s\n" +
 	"\x14CreateKeyRangeGossip\x128\n" +
@@ -563,9 +564,9 @@ const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\bcommands\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\bcommands\"\x82\x01\n" +
 	"\x14MetaTransactionReply\x12$\n" +
 	"\rtransactionId\x18\x01 \x01(\tR\rtransactionId\x12D\n" +
-	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"\x84\x01\n" +
-	"\x16MetaTransactionRequest\x12$\n" +
-	"\rtransactionId\x18\x01 \x01(\tR\rtransactionId\x12D\n" +
+	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"\x8c\x01\n" +
+	"\x16MetaTransactionRequest\x12,\n" +
+	"\rtransactionId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rtransactionId\x12D\n" +
 	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"Y\n" +
 	"\x11ExecNoTranRequest\x12D\n" +
 	"\vmetaCmdList\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList2i\n" +

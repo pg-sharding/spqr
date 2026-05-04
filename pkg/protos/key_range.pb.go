@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -1147,30 +1148,30 @@ var File_protos_key_range_proto protoreflect.FileDescriptor
 
 const file_protos_key_range_proto_rawDesc = "" +
 	"\n" +
-	"\x16protos/key_range.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12protos/tasks.proto\"\xb7\x01\n" +
+	"\x16protos/key_range.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12protos/tasks.proto\"\xb7\x01\n" +
 	"\fKeyRangeInfo\x12)\n" +
 	"\x05bound\x18\x01 \x01(\v2\x13.spqr.KeyRangeBoundR\x05bound\x12\x12\n" +
 	"\x04krid\x18\x02 \x01(\tR\x04krid\x12\x18\n" +
 	"\ashardId\x18\x03 \x01(\tR\ashardId\x12&\n" +
 	"\x0edistributionId\x18\x04 \x01(\tR\x0edistributionId\x12\x1b\n" +
 	"\x06locked\x18\x05 \x01(\bH\x00R\x06locked\x88\x01\x01B\t\n" +
-	"\a_locked\"9\n" +
-	"\x13ListKeyRangeRequest\x12\"\n" +
-	"\fdistribution\x18\x01 \x01(\tR\fdistribution\"Q\n" +
-	"\x15CreateKeyRangeRequest\x128\n" +
-	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\"\x7f\n" +
-	"\x14SplitKeyRangeRequest\x12\x15\n" +
-	"\x06new_id\x18\x01 \x01(\tR\x05newId\x12\x14\n" +
-	"\x05bound\x18\x02 \x01(\fR\x05bound\x12\x1b\n" +
-	"\tsource_id\x18\x03 \x01(\tR\bsourceId\x12\x1d\n" +
+	"\a_locked\"A\n" +
+	"\x13ListKeyRangeRequest\x12*\n" +
+	"\fdistribution\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fdistribution\"Y\n" +
+	"\x15CreateKeyRangeRequest\x12@\n" +
+	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoB\x06\xbaH\x03\xc8\x01\x01R\fkeyRangeInfo\"\x97\x01\n" +
+	"\x14SplitKeyRangeRequest\x12\x1d\n" +
+	"\x06new_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05newId\x12\x1c\n" +
+	"\x05bound\x18\x02 \x01(\fB\x06\xbaH\x03\xc8\x01\x01R\x05bound\x12#\n" +
+	"\tsource_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bsourceId\x12\x1d\n" +
 	"\n" +
-	"split_left\x18\x04 \x01(\bR\tsplitLeft\"R\n" +
-	"\x14MergeKeyRangeRequest\x12\x17\n" +
-	"\abase_id\x18\x01 \x01(\tR\x06baseId\x12!\n" +
-	"\fappendage_id\x18\x02 \x01(\tR\vappendageId\"C\n" +
-	"\x13MoveKeyRangeRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
-	"\ttoShardId\x18\x02 \x01(\tR\ttoShardId\"%\n" +
+	"split_left\x18\x04 \x01(\bR\tsplitLeft\"b\n" +
+	"\x14MergeKeyRangeRequest\x12\x1f\n" +
+	"\abase_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06baseId\x12)\n" +
+	"\fappendage_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vappendageId\"S\n" +
+	"\x13MoveKeyRangeRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12$\n" +
+	"\ttoShardId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ttoShardId\"%\n" +
 	"\x13DropKeyRangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x03(\tR\x02id\"K\n" +
 	"\x18DropAllKeyRangesResponse\x12/\n" +
@@ -1184,38 +1185,38 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\x12KeyRangeLocksReply\x12(\n" +
 	"\x10key_ranges_locks\x18\x01 \x03(\tR\x0ekeyRangesLocks\"0\n" +
 	"\vModifyReply\x12!\n" +
-	"\foperation_id\x18\x01 \x01(\tR\voperationId\".\n" +
-	"\x16ResolveKeyRangeRequest\x12\x14\n" +
-	"\x05bound\x18\x01 \x01(\tR\x05bound\"6\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\"6\n" +
+	"\x16ResolveKeyRangeRequest\x12\x1c\n" +
+	"\x05bound\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05bound\"6\n" +
 	"\x14ResolveKeyRangeReply\x12\x1e\n" +
 	"\vkey_range_d\x18\x01 \x03(\tR\tkeyRangeD\"&\n" +
 	"\x12GetKeyRangeRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xe3\x02\n" +
-	"\x18BatchMoveKeyRangeRequest\x12\x1e\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xfb\x02\n" +
+	"\x18BatchMoveKeyRangeRequest\x12&\n" +
 	"\n" +
-	"keyRangeId\x18\x01 \x01(\tR\n" +
-	"keyRangeId\x12\x1c\n" +
-	"\ttoShardId\x18\x02 \x01(\tR\ttoShardId\x12\x16\n" +
-	"\x06toKrId\x18\x03 \x01(\tR\x06toKrId\x129\n" +
+	"keyRangeId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"keyRangeId\x12$\n" +
+	"\ttoShardId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ttoShardId\x12\x1e\n" +
+	"\x06toKrId\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06toKrId\x129\n" +
 	"\tlimitType\x18\x04 \x01(\x0e2\x1b.spqr.RedistributeLimitTypeR\tlimitType\x12\x14\n" +
 	"\x05limit\x18\x05 \x01(\x03R\x05limit\x12\x1c\n" +
 	"\tbatchSize\x18\x06 \x01(\x03R\tbatchSize\x12-\n" +
 	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\x12 \n" +
 	"\vtaskGroupId\x18\b \x01(\tR\vtaskGroupId\x121\n" +
-	"\x06issuer\x18\t \x01(\v2\x19.spqr.MoveTaskGroupIssuerR\x06issuer\"\xcf\x01\n" +
-	"\x1bRedistributeKeyRangeRequest\x12\x12\n" +
-	"\x04krid\x18\x01 \x01(\tR\x04krid\x12\x18\n" +
-	"\ashardId\x18\x02 \x01(\tR\ashardId\x12\x1c\n" +
+	"\x06issuer\x18\t \x01(\v2\x19.spqr.MoveTaskGroupIssuerR\x06issuer\"\xdf\x01\n" +
+	"\x1bRedistributeKeyRangeRequest\x12\x1a\n" +
+	"\x04krid\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04krid\x12 \n" +
+	"\ashardId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ashardId\x12\x1c\n" +
 	"\tbatchSize\x18\x03 \x01(\x03R\tbatchSize\x12\x14\n" +
 	"\x05check\x18\x04 \x01(\bR\x05check\x12\x14\n" +
 	"\x05apply\x18\x05 \x01(\bR\x05apply\x12\x16\n" +
 	"\x06noWait\x18\x06 \x01(\bR\x06noWait\x12 \n" +
-	"\vtaskGroupId\x18\a \x01(\tR\vtaskGroupId\"]\n" +
-	"\x15RenameKeyRangeRequest\x12\x1e\n" +
+	"\vtaskGroupId\x18\a \x01(\tR\vtaskGroupId\"m\n" +
+	"\x15RenameKeyRangeRequest\x12&\n" +
 	"\n" +
-	"keyRangeId\x18\x01 \x01(\tR\n" +
-	"keyRangeId\x12$\n" +
-	"\rnewKeyRangeId\x18\x02 \x01(\tR\rnewKeyRangeId*+\n" +
+	"keyRangeId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"keyRangeId\x12,\n" +
+	"\rnewKeyRangeId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rnewKeyRangeId*+\n" +
 	"\x0eKeyRangeStatus\x12\n" +
 	"\n" +
 	"\x06LOCKED\x10\x00\x12\r\n" +

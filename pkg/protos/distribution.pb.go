@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -1406,7 +1407,7 @@ var File_protos_distribution_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_proto_rawDesc = "" +
 	"\n" +
-	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\x1a\x1dprotos/meta_transaction.proto\x1a\"protos/distribution_entities.proto\"U\n" +
+	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\x1a\x1dprotos/meta_transaction.proto\x1a\"protos/distribution_entities.proto\"U\n" +
 	"\x19CreateDistributionRequest\x128\n" +
 	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"_\n" +
 	"\x17CreateDistributionReply\x12D\n" +
@@ -1414,54 +1415,54 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x16ListDistributionsReply\x128\n" +
 	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"+\n" +
 	"\x17DropDistributionRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"i\n" +
-	"\x1eAlterDistributionAttachRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
-	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\"a\n" +
-	"\x1eAlterDistributionDetachRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
-	"\brelNames\x18\x02 \x03(\v2\x13.spqr.QualifiedNameR\brelNames\"{\n" +
-	"%AlterDistributedRelationSchemaRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
-	"\frelationName\x18\x02 \x01(\tR\frelationName\x12\x1e\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"q\n" +
+	"\x1eAlterDistributionAttachRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x127\n" +
+	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\"i\n" +
+	"\x1eAlterDistributionDetachRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12/\n" +
+	"\brelNames\x18\x02 \x03(\v2\x13.spqr.QualifiedNameR\brelNames\"\x8b\x01\n" +
+	"%AlterDistributedRelationSchemaRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12*\n" +
+	"\frelationName\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\frelationName\x12\x1e\n" +
 	"\n" +
 	"schemaName\x18\x03 \x01(\tR\n" +
-	"schemaName\"\xaa\x01\n" +
-	".AlterDistributedRelationDistributionKeyRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
-	"\frelationName\x18\x02 \x01(\tR\frelationName\x12D\n" +
-	"\x0fdistributionKey\x18\x03 \x03(\v2\x1a.spqr.DistributionKeyEntryR\x0fdistributionKey\"h\n" +
-	"\x1fAlterDistributedRelationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x125\n" +
-	"\brelation\x18\x02 \x01(\v2\x19.spqr.DistributedRelationR\brelation\"(\n" +
-	"\x16GetDistributionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"N\n" +
+	"schemaName\"\xba\x01\n" +
+	".AlterDistributedRelationDistributionKeyRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12*\n" +
+	"\frelationName\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\frelationName\x12D\n" +
+	"\x0fdistributionKey\x18\x03 \x03(\v2\x1a.spqr.DistributionKeyEntryR\x0fdistributionKey\"x\n" +
+	"\x1fAlterDistributedRelationRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12=\n" +
+	"\brelation\x18\x02 \x01(\v2\x19.spqr.DistributedRelationB\x06\xbaH\x03\xc8\x01\x01R\brelation\"0\n" +
+	"\x16GetDistributionRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"N\n" +
 	"\x14GetDistributionReply\x126\n" +
-	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution\"T\n" +
-	"\x1eGetRelationDistributionRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1e\n" +
+	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution\"\\\n" +
+	"\x1eGetRelationDistributionRequest\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1e\n" +
 	"\n" +
 	"schemaName\x18\x02 \x01(\tR\n" +
 	"schemaName\"V\n" +
 	"\x1cGetRelationDistributionReply\x126\n" +
-	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution\"B\n" +
-	"\x10NextRangeRequest\x12\x10\n" +
-	"\x03seq\x18\x01 \x01(\tR\x03seq\x12\x1c\n" +
+	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution\"J\n" +
+	"\x10NextRangeRequest\x12\x18\n" +
+	"\x03seq\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03seq\x12\x1c\n" +
 	"\trangeSize\x18\x02 \x01(\x03R\trangeSize\":\n" +
 	"\x0eNextRangeReply\x12\x12\n" +
 	"\x04left\x18\x01 \x01(\x03R\x04left\x12\x14\n" +
-	"\x05right\x18\x02 \x01(\x03R\x05right\"\"\n" +
-	"\x0eCurrValRequest\x12\x10\n" +
-	"\x03seq\x18\x01 \x01(\tR\x03seq\"$\n" +
+	"\x05right\x18\x02 \x01(\x03R\x05right\"*\n" +
+	"\x0eCurrValRequest\x12\x18\n" +
+	"\x03seq\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03seq\"$\n" +
 	"\fCurrValReply\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\x03R\x05value\"*\n" +
 	"\x12ListSequencesReply\x12\x14\n" +
-	"\x05names\x18\x01 \x03(\tR\x05names\"?\n" +
-	"\x13DropSequenceRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05force\x18\x02 \x01(\bR\x05force\"R\n" +
-	"\x1cListRelationSequencesRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1e\n" +
+	"\x05names\x18\x01 \x03(\tR\x05names\"G\n" +
+	"\x13DropSequenceRequest\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x14\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\"Z\n" +
+	"\x1cListRelationSequencesRequest\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1e\n" +
 	"\n" +
 	"schemaName\x18\x02 \x01(\tR\n" +
 	"schemaName\"\xc1\x01\n" +
@@ -1469,25 +1470,25 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x0fcolumnSequences\x18\x01 \x03(\v25.spqr.ListRelationSequencesReply.ColumnSequencesEntryR\x0fcolumnSequences\x1aB\n" +
 	"\x14ColumnSequencesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"g\n" +
-	"\x18CreateUniqueIndexRequest\x12&\n" +
-	"\x0edistributionId\x18\x01 \x01(\tR\x0edistributionId\x12#\n" +
-	"\x03idx\x18\x02 \x01(\v2\x11.spqr.UniqueIndexR\x03idx\".\n" +
-	"\x16DropUniqueIndexRequest\x12\x14\n" +
-	"\x05idxId\x18\x02 \x01(\tR\x05idxId\"N\n" +
-	"$ListDistributionUniqueIndexesRequest\x12&\n" +
-	"\x0edistributionId\x18\x01 \x01(\tR\x0edistributionId\"\xac\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"w\n" +
+	"\x18CreateUniqueIndexRequest\x12.\n" +
+	"\x0edistributionId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0edistributionId\x12+\n" +
+	"\x03idx\x18\x02 \x01(\v2\x11.spqr.UniqueIndexB\x06\xbaH\x03\xc8\x01\x01R\x03idx\"6\n" +
+	"\x16DropUniqueIndexRequest\x12\x1c\n" +
+	"\x05idxId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05idxId\"V\n" +
+	"$ListDistributionUniqueIndexesRequest\x12.\n" +
+	"\x0edistributionId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0edistributionId\"\xac\x01\n" +
 	"\x16ListUniqueIndexesReply\x12C\n" +
 	"\aindexes\x18\x01 \x03(\v2).spqr.ListUniqueIndexesReply.IndexesEntryR\aindexes\x1aM\n" +
 	"\fIndexesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12'\n" +
-	"\x05value\x18\x02 \x01(\v2\x11.spqr.UniqueIndexR\x05value:\x028\x01\"F\n" +
-	" ListRelationUniqueIndexesRequest\x12\"\n" +
-	"\frelationName\x18\x01 \x01(\tR\frelationName\"]\n" +
-	"\"AlterSequenceDetachRelationRequest\x127\n" +
-	"\frelationName\x18\x01 \x01(\v2\x13.spqr.QualifiedNameR\frelationName\"1\n" +
-	"\x1bGetSequenceRelationsRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"L\n" +
+	"\x05value\x18\x02 \x01(\v2\x11.spqr.UniqueIndexR\x05value:\x028\x01\"N\n" +
+	" ListRelationUniqueIndexesRequest\x12*\n" +
+	"\frelationName\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\frelationName\"e\n" +
+	"\"AlterSequenceDetachRelationRequest\x12?\n" +
+	"\frelationName\x18\x01 \x01(\v2\x13.spqr.QualifiedNameB\x06\xbaH\x03\xc8\x01\x01R\frelationName\"9\n" +
+	"\x1bGetSequenceRelationsRequest\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\"L\n" +
 	"\x19GetSequenceRelationsReply\x12/\n" +
 	"\brelNames\x18\x01 \x03(\v2\x13.spqr.QualifiedNameR\brelNames2\x8d\x0f\n" +
 	"\x13DistributionService\x12V\n" +
