@@ -32,7 +32,6 @@ require (
 	go.etcd.io/etcd/client/v3 v3.6.11
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.50.0
-	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6
 	golang.org/x/sync v0.20.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	google.golang.org/grpc v1.81.0
@@ -50,6 +49,7 @@ require (
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 )
 
 require (
