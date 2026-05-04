@@ -26,6 +26,16 @@ INSERT INTO xjoin (id) values(10);
 INSERT INTO xjoin (id) values(15);
 INSERT INTO xjoin (id) values(25);
 
+INSERT INTO xjoin2 (id) values(1);
+INSERT INTO xjoin2 (id) values(10);
+INSERT INTO xjoin2 (id) values(15);
+INSERT INTO xjoin2 (id) values(25);
+
+INSERT INTO rf (rid) values(1);
+INSERT INTO rf (rid) values(10);
+INSERT INTO rf (rid) values(15);
+INSERT INTO rf (rid) values(25);
+
 INSERT INTO yjoin (w_id) values(1);
 INSERT INTO yjoin (w_id) values(10);
 INSERT INTO yjoin (w_id) values(15);

@@ -217,22 +217,23 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					if ok, err := rm.ProcessConstExpr(leftAlias, leftColname, v); err != nil {
 						return err
 					} else if ok {
-						if resolvedRelationRight != nil {
+						if resolvedRelationLeft != nil {
 							searchKey := rm.SearchKeyByColRef(right)
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
 						}
 					}
 				}
 
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(lft) {
+
 					if ok, err := rm.ProcessConstExpr(rightAlias, rightColname, v); err != nil {
 						return err
 					} else if ok {
-						if resolvedRelationLeft != nil {
+						if resolvedRelationRight != nil {
 							searchKey := rm.SearchKeyByColRef(lft)
 
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
+							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
 						}
 					}
 				}

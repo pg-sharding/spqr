@@ -77,6 +77,22 @@ INSERT INTO xjoin (id) values(15);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xjoin (id) values(25);
 NOTICE: send query to shard(s) : sh2
+INSERT INTO xjoin2 (id) values(1);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xjoin2 (id) values(10);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xjoin2 (id) values(15);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xjoin2 (id) values(25);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO rf (rid) values(1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rf (rid) values(10);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rf (rid) values(15);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rf (rid) values(25);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO yjoin (w_id) values(10);
@@ -158,6 +174,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 --with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on v.i = t.id;
 --with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on v.i = t.id;
 with v (i) as (values(10), (20), (25)) select * from v join xjoin t on v.i = t.id;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  i  | id 
 ----+----
@@ -189,6 +206,7 @@ NOTICE: send query to shard(s) : sh1
 
 -- with multishard/rewrite
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  j | i  | id 
 ---+----+----
@@ -197,6 +215,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (2 rows)
 
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)), v2 (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  j | i  | id 
 ---+----+----
@@ -213,6 +232,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (2 rows)
 
 with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  i  | id 
 ----+----
@@ -222,6 +242,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (3 rows)
 
 with v (i) as (values(10), (20), (25)) select * from v RIGHT join xjoin t on t.id = v.i;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  i  | id 
 ----+----
@@ -232,6 +253,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (4 rows)
 
 with v (i) as (values(10), (20), (25)) select * from v join xjoin t on t.id = v.i;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  i  | id 
 ----+----
@@ -240,6 +262,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (2 rows)
 
 with v (i) as (values(10), (20), (25)), z as (select * from v join xjoin t on v.i = t.id) SELECT * FROM z;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  i  | id 
 ----+----
@@ -251,7 +274,8 @@ with v(j, id) as (values(1,10)), v_j_d as (select * from v vz join rf on vz.id=r
 NOTICE: send query to shard(s) : sh1
  id | id 
 ----+----
-(0 rows)
+ 10 | 10
+(1 row)
 
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
