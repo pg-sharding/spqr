@@ -224,6 +224,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (2 rows)
 
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2
  j | i  | id 
 ---+----+----
@@ -276,6 +277,15 @@ NOTICE: send query to shard(s) : sh1
 ----+----
  10 | 10
 (1 row)
+
+with v(j, id) as (values(1,10), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid)  select * from xjoin yy right join v_j_d zz on zz.id=yy.id;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh1,sh2
+ id | j | id | rid 
+----+---+----+-----
+ 10 | 1 | 10 |  10
+ 15 | 1 | 15 |  15
+(2 rows)
 
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

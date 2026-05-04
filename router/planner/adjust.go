@@ -19,7 +19,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		return p, nil
 	}
 
-	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msg("adjust scatter query plan for in-shard joins")
+	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msgf("adjust scatter query plan for in-shard joins: %+v", rm.UsedAuxCTE)
 
 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
 		var firstKey rmeta.AuxValuesKey
@@ -60,6 +60,15 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		/* simple WITH .. AS (VALUES()) SELECT .. JOIN .. on ..  */
 
 		var shs []kr.ShardKey
+
+		for {
+			/* CHECK_FOR_INTERRUPTS :) */
+			if v, ok := rm.AuxValuesParent[firstKey]; ok {
+				firstKey = v
+			} else {
+				break
+			}
+		}
 
 		cte, ok := rm.CteNames[firstKey.CTEName]
 		if !ok {
