@@ -22,7 +22,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 
 	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msg("adjust scatter query plan for in-shard joins")
 
-	if sc.SubSlice == nil {
+	if sc.SubSlice == nil && len(rm.UsedAuxCTE) >= 1 {
 		var firstKey rmeta.AuxValuesKey
 		var ds *distributions.Distribution
 		var hf string

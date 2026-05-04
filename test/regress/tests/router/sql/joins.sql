@@ -103,7 +103,7 @@ with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf
 with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from v_j_d zz right join xjoin yy on zz.id=yy.id), ff as (select * from xjoin2 yy2 right join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
 
 
-with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 left join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on true;
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 right join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on true;
 with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 left join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
 with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from v_j_d zz right join xjoin yy on zz.id=yy.id), ff as (select * from xjoin2 yy2 left join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
 
