@@ -64,6 +64,11 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 
 				dRel := dsTmp.GetRelation(r)
 
+				/* plan adjust for expression routing is not yet supported */
+				if dRel.IsExpressionRouting() {
+					return p, nil
+				}
+
 				if ds == nil {
 					ds = dsTmp
 					/* XXX: support multicolumn here? */
