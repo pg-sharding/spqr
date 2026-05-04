@@ -14,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/qdb"
-	"golang.org/x/exp/slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -755,7 +754,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			// columns from output
 			for ind := range def.OverwriteRemoveParamIDs {
 				// NB: ind are zero - indexed
-				desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
+				desc.ParameterOIDs = append(desc.ParameterOIDs[:ind-1], desc.ParameterOIDs[ind:]...)
 			}
 
 			if err := rst.Client().Send(desc); err != nil {

@@ -28,7 +28,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
-	"golang.org/x/exp/slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -1094,9 +1093,14 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 	beforeTx := s.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
-		if slices.ContainsFunc(s.ActiveShards(), func(c kr.ShardKey) bool {
-			return shkey == c
-		}) {
+		found := false
+		for _, c := range s.ActiveShards() {
+			if shkey == c {
+				found = true
+				break
+			}
+		}
+		if found {
 			continue
 		}
 
