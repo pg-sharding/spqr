@@ -1,5 +1,6 @@
 NAME
-    ALTER REFERENCE TABLE STORAGE - Changes the set of shards where a reference table is stored.
+    ALTER REFERENCE TABLE STORAGE - Changes the set of shards where a reference
+    table is stored.
 
 SYNTAX
     ALTER REFERENCE TABLE <table_name> STORAGE TO (<shard_id>, ...)

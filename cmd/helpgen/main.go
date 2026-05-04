@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const maxLineWidth = 100
+const maxLineWidth = 80
 
 // Command represents a console command from YAML source
 type Command struct {

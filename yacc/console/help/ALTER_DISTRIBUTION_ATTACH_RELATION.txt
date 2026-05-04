@@ -1,6 +1,7 @@
 NAME
-    ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more [relations](/sharding/sharded_tables)
-    to an existing distribution using the ATTACH RELATION clause.
+    ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more
+    [relations](/sharding/sharded_tables) to an existing distribution using the
+    ATTACH RELATION clause.
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> [, <relationName> ...]
@@ -10,11 +11,11 @@ SYNTAX
     where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 DESCRIPTION
-    Attaches one or more [relations](/sharding/sharded_tables) to an existing distribution using the
-    ATTACH RELATION clause.
+    Attaches one or more [relations](/sharding/sharded_tables) to an existing
+    distribution using the ATTACH RELATION clause.
 
-    For composite sharding keys, specify multiple column names separated by commas in the
-    DISTRIBUTION KEY clause.
+    For composite sharding keys, specify multiple column names separated by
+    commas in the DISTRIBUTION KEY clause.
 
 EXAMPLES
     Single column sharding key:

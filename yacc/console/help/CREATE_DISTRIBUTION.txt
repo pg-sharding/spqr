@@ -1,6 +1,6 @@
 NAME
-    CREATE DISTRIBUTION - Creates a sharding distribution with a distribution identifier and key
-    column types.
+    CREATE DISTRIBUTION - Creates a sharding distribution with a distribution
+    identifier and key column types.
 
 SYNTAX
     CREATE DISTRIBUTION <distributionID>
@@ -13,13 +13,18 @@ SYNTAX
     where <shardID> is a default shard identifier. The <shardID> must exist.
 
 DESCRIPTION
-    Creates a sharding distribution with a distribution identifier and key column types.
+    Creates a sharding distribution with a distribution identifier and key
+    column types.
 
-    A distribution defines the sharding key type layout used by attached relations and key ranges.
-    Optionally, specify a default shard to route records that do not match any key range.
+    A distribution defines the sharding key type layout used by attached
+    relations and key ranges.
+    Optionally, specify a default shard to route records that do not match any
+    key range.
 
-    For composite sharding keys (multiple columns), specify multiple types separated by commas.
-    You can append "hash" after a column type to apply hash-based distribution to that column.
+    For composite sharding keys (multiple columns), specify multiple types
+    separated by commas.
+    You can append "hash" after a column type to apply hash-based distribution
+    to that column.
 
 PARAMETERS
     <distributionID> - Unique identifier of the distribution

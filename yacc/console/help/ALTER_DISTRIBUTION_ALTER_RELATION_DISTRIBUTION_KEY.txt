@@ -1,9 +1,10 @@
 NAME
-    ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY - Replaces the entire distribution key of an
-    already attached relation. This overwrites all column names and hash functions in one shot — it
-    does not patch individual columns. Use this when you need to change the key structure entirely,
-    or to fix expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does not
-    support).
+    ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY - Replaces the entire
+    distribution key of an already attached relation. This overwrites all column
+    names and hash functions in one shot — it does not patch individual columns.
+    Use this when you need to change the key structure entirely, or to fix
+    expression-based routing entries (which `RENAME DISTRIBUTION COLUMN` does
+    not support).
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
@@ -13,17 +14,18 @@ SYNTAX
     where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 DESCRIPTION
-    Replaces the entire distribution key of an already attached relation. This overwrites all column
-    names and hash functions in one shot — it does not patch individual columns. Use this when you
-    need to change the key structure entirely, or to fix expression-based routing entries (which
-    `RENAME DISTRIBUTION COLUMN` does not support).
+    Replaces the entire distribution key of an already attached relation. This
+    overwrites all column names and hash functions in one shot — it does not
+    patch individual columns. Use this when you need to change the key structure
+    entirely, or to fix expression-based routing entries (which `RENAME
+    DISTRIBUTION COLUMN` does not support).
 
-    The new key must have the same number of entries as the distribution's column types. Duplicate
-    column names in the new key are rejected.
+    The new key must have the same number of entries as the distribution's
+    column types. Duplicate column names in the new key are rejected.
 
 WARNINGS
-    - This command does not have well-defined behavior with concurrent read-write operations. Use it
-      during setup or maintenance windows only.
+    - This command does not have well-defined behavior with concurrent
+      read-write operations. Use it during setup or maintenance windows only.
 
 EXAMPLES
     Replace the distribution key with a new column name:

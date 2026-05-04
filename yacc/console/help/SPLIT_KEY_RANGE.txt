@@ -1,6 +1,6 @@
 NAME
-    SPLIT KEY RANGE - Splits an existing key range into two key ranges at the specified boundary
-    value.
+    SPLIT KEY RANGE - Splits an existing key range into two key ranges at the
+    specified boundary value.
 
 SYNTAX
     SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
@@ -8,18 +8,22 @@ SYNTAX
     where splitBound is a single value or comma-separated values for composite keys
 
 DESCRIPTION
-    Splits an existing key range into two key ranges at the specified boundary value.
-    The new key range takes the upper portion of the original range (from the split
-    point to the original upper bound), while the source range keeps the lower portion.
+    Splits an existing key range into two key ranges at the specified boundary
+    value.
+    The new key range takes the upper portion of the original range (from the
+    split
+    point to the original upper bound), while the source range keeps the lower
+    portion.
 
-    Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE
+    Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY
+    RANGE
     afterwards to relocate one of them if needed.
 
 PARAMETERS
     <newKeyRangeID> - Identifier for the newly created key range (upper portion)
     <sourceKeyRangeID> - Identifier of the existing key range to split
-    <splitBound> - Boundary value where the split occurs. Can be integer, string, or comma-separated
-        values for composite keys
+    <splitBound> - Boundary value where the split occurs. Can be integer,
+        string, or comma-separated values for composite keys
 
 EXAMPLES
     Split a key range at integer boundary:
@@ -28,7 +32,8 @@ EXAMPLES
         SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';
 
 TIPS
-    - Lock the source key range before splitting to prevent concurrent modifications
+    - Lock the source key range before splitting to prevent concurrent
+      modifications
     - The split bound must fall within the source key range boundaries
     - After splitting, use MOVE KEY RANGE to relocate a range to another shard
     - Use UNITE KEY RANGE to reverse a split operation

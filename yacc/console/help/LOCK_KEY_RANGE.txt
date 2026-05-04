@@ -1,5 +1,6 @@
 NAME
-    LOCK KEY RANGE - Locks a key range to prevent concurrent modifications. This is typically
+    LOCK KEY RANGE - Locks a key range to prevent concurrent modifications. This
+    is typically
 
 SYNTAX
     LOCK KEY RANGE <keyRangeID>

@@ -31,34 +31,50 @@ DESCRIPTION
     DETACH RELATION detaches a relation from the distribution.
 
     ALTER RELATION DISTRIBUTION KEY replaces the entire distribution key of an
-    already attached relation. This overwrites all column names and hash functions
-    in one shot — it does not patch individual columns. Use this when you need to
-    change the key structure entirely, or to fix expression-based routing entries
-    (which RENAME DISTRIBUTION COLUMN does not support). The new key must have the
+    already attached relation. This overwrites all column names and hash
+    functions
+    in one shot — it does not patch individual columns. Use this when you need
+    to
+    change the key structure entirely, or to fix expression-based routing
+    entries
+    (which RENAME DISTRIBUTION COLUMN does not support). The new key must have
+    the
     same number of entries as the distribution's column types.
 
-    ALTER RELATION SCHEMA changes the schema associated with an attached relation
+    ALTER RELATION SCHEMA changes the schema associated with an attached
+    relation
     in the distribution metadata.
 
-    RENAME DISTRIBUTION COLUMN is a metadata-only fix that renames a column in the
-    distribution key of an attached relation. It does not execute ALTER TABLE RENAME
-    COLUMN on PostgreSQL — it only updates the column name stored in SPQR metadata.
-    The primary use case is fixing a case mismatch between the column name in SPQR
-    metadata and the actual PostgreSQL column. For composite keys, call this command
+    RENAME DISTRIBUTION COLUMN is a metadata-only fix that renames a column in
+    the
+    distribution key of an attached relation. It does not execute ALTER TABLE
+    RENAME
+    COLUMN on PostgreSQL — it only updates the column name stored in SPQR
+    metadata.
+    The primary use case is fixing a case mismatch between the column name in
+    SPQR
+    metadata and the actual PostgreSQL column. For composite keys, call this
+    command
     once per column that needs renaming.
 
-    ADD DEFAULT SHARD sets a default shard for the distribution, routing records that
-    do not match any key range. DROP DEFAULT SHARD removes the default shard setting.
+    ADD DEFAULT SHARD sets a default shard for the distribution, routing records
+    that
+    do not match any key range. DROP DEFAULT SHARD removes the default shard
+    setting.
 
 WARNINGS
-    - ALTER RELATION operations are metadata changes and may affect routing immediately.
-    - Use maintenance windows for key/schema metadata changes in write-heavy workloads.
+    - ALTER RELATION operations are metadata changes and may affect routing
+      immediately.
+    - Use maintenance windows for key/schema metadata changes in write-heavy
+      workloads.
 
 PARAMETERS
     <distributionID> - Identifier of the distribution to modify
     <relationName> - Relation to attach, detach, or alter
-    <keys> - Distribution key definition (column list and optional hash functions)
-    <hashFunction> - Hash function to apply to the key (IDENTITY, MURMUR, or CITY)
+    <keys> - Distribution key definition (column list and optional hash
+        functions)
+    <hashFunction> - Hash function to apply to the key (IDENTITY, MURMUR, or
+        CITY)
     <schemaName> - Schema metadata value for an attached relation
     <oldColumnName> - Existing distribution key column name in metadata
     <newColumnName> - New distribution key column name in metadata
@@ -96,8 +112,10 @@ SUBCOMMANDS
 TIPS
     - Use CREATE DISTRIBUTION first, then attach relations and create key ranges
     - Verify metadata after changes with SHOW relations and SHOW distributions
-    - Prefer replacing full distribution keys when relation uses expression-based routing
-    - For composite keys, call RENAME DISTRIBUTION COLUMN once per column that needs renaming
+    - Prefer replacing full distribution keys when relation uses
+      expression-based routing
+    - For composite keys, call RENAME DISTRIBUTION COLUMN once per column that
+      needs renaming
 
 RELATED COMMANDS
     CREATE DISTRIBUTION

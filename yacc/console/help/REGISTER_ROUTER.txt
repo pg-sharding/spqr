@@ -10,7 +10,8 @@ SYNTAX
 DESCRIPTION
     Registers a router with the SPQR coordinator.
 
-    When a router is registered, the coordinator becomes aware of it and can manage
+    When a router is registered, the coordinator becomes aware of it and can
+    manage
     it as part of the cluster. After registration, the coordinator automatically
     synchronizes metadata (shards, key ranges, distributions) to the router.
 
@@ -19,7 +20,8 @@ WARNINGS
 
 PARAMETERS
     <routerID> - Unique identifier for the router (e.g., r1 or 'my-router')
-    <address> - Network address of the router in '[host]:port' format (e.g., '[localhost]:6432')
+    <address> - Network address of the router in '[host]:port' format (e.g.,
+        '[localhost]:6432')
 
 EXAMPLES
     Register a router on localhost:
