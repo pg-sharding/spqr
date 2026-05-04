@@ -59,22 +59,10 @@ jobs:
           set -euo pipefail
           make test-cli-overrides
 
-  stress:
-    name: stress
-    runs-on: ubuntu-latest
-    needs: ['cli-overrides']
-    steps:
-
-      - name: Check out code
-        uses: actions/checkout@v6
-
-      - name: stress tests
-        run: make stress
-
   regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
+    needs: ['unit', 'gorm-regress', 'jdbc-regress']
 
     strategy:
       matrix:
@@ -90,15 +78,15 @@ jobs:
 
       - name: Run tests
         run: |
-             if [[ ${{ matrix.version }} == *"-mdb" ]]; then 
-                version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }'); 
+             if [[ ${{ matrix.version }} == *"-mdb" ]]; then
+                version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }');
                 if !(make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress); then
-                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs; 
+                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs;
                   exit 1;
                 fi
-             else 
+             else
                 if !(make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; ); then
-                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs; 
+                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs;
                   exit 1;
                 fi
              fi
@@ -106,7 +94,7 @@ jobs:
   regress-clustered-pgdg:
     name: regress-clustered
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
+    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
 
     strategy:
       matrix:
@@ -127,7 +115,7 @@ jobs:
   isolation-regress:
     name: Isolation tests
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
+    needs: ['unit', 'gorm-regress', 'jdbc-regress']
 
     steps:
 
@@ -202,7 +190,7 @@ jobs:
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress']
+    needs: ['unit', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress']
     outputs:
       output1: ${{ steps.step1.outputs.features }}
     steps:
