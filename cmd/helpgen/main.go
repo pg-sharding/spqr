@@ -240,7 +240,16 @@ func wrapLine(text string, firstPrefix, contPrefix string) string {
 			currentLine = candidate
 		} else {
 			lines = append(lines, currentLine)
-			currentLine = contPrefix + word
+			// If contPrefix+word alone exceeds maxLineWidth, force-split the word.
+			prefix := contPrefix
+			for utf8.RuneCountInString(prefix+word) > maxLineWidth {
+				available := maxLineWidth - utf8.RuneCountInString(prefix)
+				runes := []rune(word)
+				lines = append(lines, prefix+string(runes[:available]))
+				word = string(runes[available:])
+				prefix = contPrefix
+			}
+			currentLine = prefix + word
 		}
 	}
 	lines = append(lines, currentLine)

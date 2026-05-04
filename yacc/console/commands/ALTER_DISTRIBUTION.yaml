@@ -126,7 +126,7 @@ subcommands:
       - description: Composite sharding key with two columns
         code: ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
       - description: Composite key with hash function
-        code: |
+        code: |-
           ALTER DISTRIBUTION ds3 ATTACH RELATION events
               DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
 
@@ -186,7 +186,7 @@ subcommands:
       - description: Replace with a composite key
         code: ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
       - description: Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
-        code: |
+        code: |-
           ALTER DISTRIBUTION ds1 ALTER RELATION tr
               DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
     warnings:
