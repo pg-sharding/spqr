@@ -336,7 +336,7 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 			/* special case */
 			for _, vv := range qq.Values {
 				for i, name := range cte.NameList {
-					if i < len(cte.NameList) && i < len(vv) {
+					if i < len(vv) {
 						/* XXX: currently only one-tuple aux values supported */
 						rm.RecordAuxExpr(cte.Name, name, vv[i])
 					}
@@ -351,10 +351,12 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 					case *lyx.RangeVar:
 						for auxValKey, val := range rm.AuxValues {
 							if auxValKey.CTEName == rv.RelationName {
-								rm.AuxValues[rmeta.AuxValuesKey{
+								key := rmeta.AuxValuesKey{
 									CTEName:    cte.Name,
 									ColRefName: auxValKey.ColRefName,
-								}] = val
+								}
+								rm.AuxValues[key] = val
+								rm.AuxValuesParent[key] = auxValKey
 							}
 						}
 					}

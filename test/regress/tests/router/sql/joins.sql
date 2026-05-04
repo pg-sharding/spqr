@@ -94,6 +94,8 @@ with v (i) as (values(10), (20), (25)), z as (select * from v join xjoin t on v.
 
 with v(j, id) as (values(1,10)), v_j_d as (select * from v vz join rf on vz.id=rid) , c as (select xx.id from xjoin xx join v_j_d  vv on vv.id=xx.id) select * from xjoin2 yy join c zz on zz.id=yy.id;
 
+with v(j, id) as (values(1,10), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid)  select * from xjoin yy right join v_j_d zz on zz.id=yy.id;
+
 DROP TABLE xjoin;
 DROP TABLE xjoin2;
 DROP TABLE yjoin;

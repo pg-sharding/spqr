@@ -61,6 +61,15 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 
 		var shs []kr.ShardKey
 
+		for {
+			/* CHECK_FOR_INTERRUPTS :) */
+			if v, ok := rm.AuxValuesParent[firstKey]; ok {
+				firstKey = v
+			} else {
+				break
+			}
+		}
+
 		cte, ok := rm.CteNames[firstKey.CTEName]
 		if !ok {
 			return nil, fmt.Errorf("failed to resolve CTE by name %v", firstKey.CTEName)
