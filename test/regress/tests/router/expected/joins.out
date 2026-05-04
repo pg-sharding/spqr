@@ -5,6 +5,18 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
+CREATE KEY RANGE kridi4 from 2000 route to sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 2000
+(1 row)
+
+CREATE KEY RANGE kridi3 from 1000 route to sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1000
+(1 row)
+
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
@@ -285,6 +297,54 @@ NOTICE: send query to shard(s) : sh1,sh2
  10 | 1 | 10 |  10
  15 | 1 | 15 |  15
 (2 rows)
+
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 right join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on true;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh2,sh3
+ id | id | j | j | id | rid 
+----+----+---+---+----+-----
+ 15 | 15 | 1 | 1 | 15 |  15
+(1 row)
+
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 right join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh2,sh3
+ id | id | j | j | id | rid 
+----+----+---+---+----+-----
+ 15 | 15 | 1 | 1 | 15 |  15
+(1 row)
+
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from v_j_d zz right join xjoin yy on zz.id=yy.id), ff as (select * from xjoin2 yy2 right join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh2,sh3
+ id | id | j | j | id | rid 
+----+----+---+---+----+-----
+ 15 | 15 | 1 | 1 | 15 |  15
+(1 row)
+
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 right join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on true;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh2,sh3
+ id | id | j | j | id | rid 
+----+----+---+---+----+-----
+ 15 | 15 | 1 | 1 | 15 |  15
+(1 row)
+
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from xjoin yy right join v_j_d zz on zz.id=yy.id), ff as (select * from xjoin2 yy2 left join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh2,sh3
+ id | id | j | j | id | rid 
+----+----+---+---+----+-----
+ 15 | 15 | 1 | 1 | 15 |  15
+(1 row)
+
+with v(j, id) as (values(1,1000), (1, 15)), v_j_d as (select * from v vz join rf on vz.id=rid), ss as (select yy.id, zz.j from v_j_d zz right join xjoin yy on zz.id=yy.id), ff as (select * from xjoin2 yy2 left join ss zz2 on zz2.id=yy2.id) select * from ff join v_j_d on ff.j = v_j_d.j;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh2,sh3
+ id | id | j | j | id | rid 
+----+----+---+---+----+-----
+ 15 | 15 | 1 | 1 | 15 |  15
+(1 row)
 
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
