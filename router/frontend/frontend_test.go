@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/rps"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/frontend"
@@ -94,6 +95,8 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
+	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()

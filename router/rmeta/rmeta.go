@@ -61,7 +61,8 @@ type RoutingMetadataContext struct {
 
 	AuxValues map[AuxValuesKey][]lyx.Node
 	// CTE -> which distributed relations join on it.
-	UsedAuxCTE map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedAuxCTE            map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedSelectQueryAdjust bool
 
 	/* Is query proven to be read-only? */
 	ro bool

@@ -15,7 +15,8 @@ import (
 type MessageGroup struct {
 	Request             []pgproto3.FrontendMessage
 	Response            []pgproto3.BackendMessage
-	CheckCode           bool
+	CheckCodeOnly       bool
+	CheckErrAll         bool
 	SkipCheckCommandTag bool
 }
 
@@ -58,10 +59,12 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 					retMsgType.SeverityUnlocalized = ""
 					retMsgType.File = ""
 					retMsgType.Where = ""
-					if msgroup.CheckCode {
-						retMsgType.Message = ""
-					} else {
-						retMsgType.Code = ""
+					if !msgroup.CheckErrAll {
+						if msgroup.CheckCodeOnly {
+							retMsgType.Message = ""
+						} else {
+							retMsgType.Code = ""
+						}
 					}
 				case *pgproto3.RowDescription:
 					for i := range retMsgType.Fields {
