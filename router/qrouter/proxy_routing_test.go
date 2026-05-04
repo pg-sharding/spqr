@@ -591,13 +591,21 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
+
+				OverwriteQuery: map[string]string{
+					"sh1": `
+			WITH vals(x,y) AS (VALUES (5, 'jidw'))
+			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
+					"sh2": `
+			WITH vals(x,y) AS (VALUES (100, 'jidw'))
+			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
+				},
 				ExecTargets: []kr.ShardKey{
 					{
-						Name: "sh2",
+						Name: "sh1",
 					},
 					{
-						Name: "sh1",
+						Name: "sh2",
 					},
 				},
 			},
@@ -663,9 +671,9 @@ func TestRoutingByExpression(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
-			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
+			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.Equal(tt.exp, tmp, tt.query)
 		}
