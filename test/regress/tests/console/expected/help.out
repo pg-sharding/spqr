@@ -54,11 +54,11 @@ HELP CREATE KEY RANGE;
      UNLOCK KEY RANGE                                                            +
      SPLIT KEY RANGE                                                             +
      UNITE KEY RANGE                                                             +
-     DROP KEY RANGE                                                               
+     DROP KEY RANGE
 (1 row)
 
 HELP DROP KEY RANGE;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      DROP KEY RANGE - Removes a key range from the cluster. This deletes the key+
@@ -92,7 +92,7 @@ HELP DROP KEY RANGE;
  RELATED COMMANDS                                                               +
      CREATE KEY RANGE                                                           +
      SHOW KEY RANGES                                                            +
-     MOVE KEY RANGE                                                              
+     MOVE KEY RANGE
 (1 row)
 
 HELP LOCK KEY RANGE;
@@ -124,11 +124,11 @@ HELP LOCK KEY RANGE;
      UNLOCK KEY RANGE                                                            +
      SPLIT KEY RANGE                                                             +
      UNITE KEY RANGE                                                             +
-     SHOW KEY RANGES                                                              
+     SHOW KEY RANGES
 (1 row)
 
 HELP UNLOCK KEY RANGE;
-                                      help                                     
+                                     help                                      
 -------------------------------------------------------------------------------
  NAME                                                                         +
      UNLOCK KEY RANGE - Releases the lock on a key range that was previously  +
@@ -155,7 +155,7 @@ HELP UNLOCK KEY RANGE;
      LOCK KEY RANGE                                                           +
      SPLIT KEY RANGE                                                          +
      UNITE KEY RANGE                                                          +
-     SHOW KEY RANGES                                                           
+     SHOW KEY RANGES
 (1 row)
 
 HELP SPLIT KEY RANGE;
@@ -208,11 +208,11 @@ HELP SPLIT KEY RANGE;
      UNLOCK KEY RANGE                                                            +
      UNITE KEY RANGE                                                             +
      MOVE KEY RANGE                                                              +
-     CREATE KEY RANGE                                                             
+     CREATE KEY RANGE
 (1 row)
 
 HELP MOVE KEY RANGE;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      MOVE KEY RANGE - Updates the routing metadata to assign a key range to a   +
@@ -248,7 +248,7 @@ HELP MOVE KEY RANGE;
      REDISTRIBUTE KEY RANGE                                                     +
      SHOW KEY RANGES                                                            +
      CREATE KEY RANGE                                                           +
-     DROP KEY RANGE                                                              
+     DROP KEY RANGE
 (1 row)
 
 HELP UNITE KEY RANGE;
@@ -291,7 +291,7 @@ HELP UNITE KEY RANGE;
      LOCK KEY RANGE                                                              +
      UNLOCK KEY RANGE                                                            +
      SHOW KEY RANGES                                                             +
-     DROP KEY RANGE                                                               
+     DROP KEY RANGE
 (1 row)
 
 HELP REDISTRIBUTE KEY RANGE;
@@ -349,7 +349,7 @@ HELP REDISTRIBUTE KEY RANGE;
      MOVE KEY RANGE                                                              +
      SHOW KEY RANGES                                                             +
      CREATE KEY RANGE                                                            +
-     SPLIT KEY RANGE                                                              
+     SPLIT KEY RANGE
 (1 row)
 
 HELP SHOW;
@@ -412,11 +412,11 @@ HELP SHOW;
  RELATED COMMANDS                                                                +
      CREATE KEY RANGE                                                            +
      CREATE DISTRIBUTION                                                         +
-     REDISTRIBUTE KEY RANGE                                                       
+     REDISTRIBUTE KEY RANGE
 (1 row)
 
 HELP CREATE DISTRIBUTION;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      CREATE DISTRIBUTION - Creates a sharding distribution with a distribution  +
@@ -473,7 +473,7 @@ HELP CREATE DISTRIBUTION;
      ALTER DISTRIBUTION                                                         +
      DROP DISTRIBUTION                                                          +
      CREATE KEY RANGE                                                           +
-     SHOW                                                                        
+     SHOW
 (1 row)
 
 HELP DROP DISTRIBUTION;
@@ -511,7 +511,7 @@ HELP DROP DISTRIBUTION;
  RELATED COMMANDS                                                              +
      CREATE DISTRIBUTION                                                       +
      ALTER DISTRIBUTION                                                        +
-     SHOW                                                                       
+     SHOW
 (1 row)
 
 HELP ALTER DISTRIBUTION;
@@ -642,7 +642,7 @@ HELP ALTER DISTRIBUTION;
      CREATE DISTRIBUTION                                                         +
      DROP DISTRIBUTION                                                           +
      CREATE KEY RANGE                                                            +
-     SHOW                                                                         
+     SHOW
 (1 row)
 
 HELP ALTER DISTRIBUTION ATTACH RELATION;
@@ -677,7 +677,7 @@ HELP ALTER DISTRIBUTION ATTACH RELATION;
              DISTRIBUTION KEY tenant_id, user_id;                                +
      Composite key with hash function:                                           +
          ALTER DISTRIBUTION ds3 ATTACH RELATION events                           +
-             DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;           
+             DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
 (1 row)
 
 HELP CREATE RELATION;
@@ -727,7 +727,7 @@ HELP CREATE RELATION;
  NOTES                                                                           +
      - **DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause:    +
        `CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> DISTRIBUTION KEY  +
-       <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`        
+       <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`
 (1 row)
 
 HELP REGISTER ROUTER;
@@ -767,11 +767,11 @@ HELP REGISTER ROUTER;
                                                                                  +
  RELATED COMMANDS                                                                +
      UNREGISTER ROUTER                                                           +
-     SHOW                                                                         
+     SHOW
 (1 row)
 
 HELP UNREGISTER ROUTER;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      UNREGISTER ROUTER - Unregisters a router from the SPQR coordinator.        +
@@ -803,7 +803,7 @@ HELP UNREGISTER ROUTER;
                                                                                 +
  RELATED COMMANDS                                                               +
      REGISTER ROUTER                                                            +
-     SHOW                                                                        
+     SHOW
 (1 row)
 
 HELP CREATE REFERENCE TABLE;
@@ -847,11 +847,11 @@ HELP CREATE REFERENCE TABLE;
      DROP REFERENCE TABLE                                                      +
      ALTER REFERENCE TABLE STORAGE                                             +
      SYNC REFERENCE TABLE                                                      +
-     DROP SEQUENCE                                                              
+     DROP SEQUENCE
 (1 row)
 
 HELP DROP REFERENCE TABLE;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      DROP REFERENCE TABLE - Removes a reference table from SPQR metadata. This  +
@@ -873,11 +873,11 @@ HELP DROP REFERENCE TABLE;
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
-     ALTER REFERENCE TABLE STORAGE                                               
+     ALTER REFERENCE TABLE STORAGE
 (1 row)
 
 HELP ALTER REFERENCE TABLE STORAGE;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      ALTER REFERENCE TABLE STORAGE - Changes the set of shards where a reference+
@@ -899,11 +899,11 @@ HELP ALTER REFERENCE TABLE STORAGE;
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
-     DROP REFERENCE TABLE                                                        
+     DROP REFERENCE TABLE
 (1 row)
 
 HELP DROP SEQUENCE;
-                                    help                                   
+                                   help                                    
 ---------------------------------------------------------------------------
  NAME                                                                     +
      DROP SEQUENCE - Drops a sequence used for auto-increment columns in  +
@@ -927,11 +927,11 @@ HELP DROP SEQUENCE;
          DROP SEQUENCE orders_id_seq CASCADE;                             +
                                                                           +
  RELATED COMMANDS                                                         +
-     CREATE REFERENCE TABLE                                                
+     CREATE REFERENCE TABLE
 (1 row)
 
 HELP SYNC REFERENCE TABLE;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      SYNC REFERENCE TABLE - Synchronizes a reference table to a target shard by +
@@ -960,7 +960,7 @@ HELP SYNC REFERENCE TABLE;
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
-     ALTER REFERENCE TABLE STORAGE                                               
+     ALTER REFERENCE TABLE STORAGE
 (1 row)
 
 HELP KILL CLIENT;
@@ -986,7 +986,7 @@ HELP KILL CLIENT;
                                                                              +
  RELATED COMMANDS                                                            +
      KILL BACKEND                                                            +
-     SHOW                                                                     
+     SHOW
 (1 row)
 
 HELP KILL BACKEND;
@@ -1012,7 +1012,7 @@ HELP KILL BACKEND;
                                                                            +
  RELATED COMMANDS                                                          +
      KILL CLIENT                                                           +
-     SHOW                                                                   
+     SHOW
 (1 row)
 
 HELP INVALIDATE CACHE;
@@ -1036,7 +1036,7 @@ HELP INVALIDATE CACHE;
                                                                                +
  RELATED COMMANDS                                                              +
      INVALIDATE BACKENDS                                                       +
-     INVALIDATE STALE CLIENTS                                                   
+     INVALIDATE STALE CLIENTS
 (1 row)
 
 HELP INVALIDATE BACKENDS;
@@ -1058,11 +1058,11 @@ HELP INVALIDATE BACKENDS;
                                                                                +
  RELATED COMMANDS                                                              +
      INVALIDATE CACHE                                                          +
-     INVALIDATE STALE CLIENTS                                                   
+     INVALIDATE STALE CLIENTS
 (1 row)
 
 HELP INVALIDATE STALE CLIENTS;
-                                       help                                      
+                                      help                                       
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      INVALIDATE STALE CLIENTS - Identifies clients with dead TCP connections and+
@@ -1080,5 +1080,6 @@ HELP INVALIDATE STALE CLIENTS;
                                                                                 +
  RELATED COMMANDS                                                               +
      INVALIDATE CACHE                                                           +
-     INVALIDATE BACKENDS                                                         
+     INVALIDATE BACKENDS
 (1 row)
+
