@@ -352,8 +352,6 @@ func (cl *PsqlClient) Reset() error {
 	serv := cl.serverP.Load()
 	cl.serverP.Store(nil)
 
-	cl.CleanupStatementSet()
-
 	if serv == nil || *serv == nil {
 		return nil
 	}

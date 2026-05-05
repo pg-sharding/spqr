@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -28,7 +30,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
-	"slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -1155,6 +1156,8 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.eMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
+
+	s.cl.CleanupStatementSet()
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
