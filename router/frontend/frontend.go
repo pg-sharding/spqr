@@ -4,11 +4,9 @@ import (
 	"context"
 	"io"
 	"slices"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -16,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
-	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
@@ -103,7 +100,6 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		return rst.Client().Flush()
 	case *pgproto3.Sync:
-		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		err := rst.ProcessExtendedBuffer(context.Background())
 
@@ -124,8 +120,6 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
-		rps.OnRequest()
-		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		// copy interface
 		cpQ := *q

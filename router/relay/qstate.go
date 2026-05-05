@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/rerrors"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -179,6 +180,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", rst.Client().ID()).Msgf("process relay state advanced")
 
+	statistics.IncTotalRequest()
+
+	/* XXX: support implicit tx semantics here */
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+
 	switch st := stmt.(type) {
 	case nil:
 		/* empty query */
@@ -195,6 +201,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
 				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 			}
+
 			err := rst.QueryExecutor().ExecBegin(query, st)
 			return noDataPd, err
 

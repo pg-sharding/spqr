@@ -21,7 +21,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
@@ -257,8 +256,6 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		}
-
-		rps.InitRPSStats()
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
