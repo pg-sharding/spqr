@@ -1069,7 +1069,6 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 	if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
 		/* XXX: support implicit tx semantics here */
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
-		// rst.QueryExecutor().
 	}
 
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
