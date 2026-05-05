@@ -12,7 +12,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -77,7 +76,6 @@ func TestFrontendSimple(t *testing.T) {
 		Usr: "user1",
 	}
 
-	rps.InitRPSStats()
 	_ = statistics.InitStatisticsStr(nil)
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
@@ -194,8 +192,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
-
-	rps.InitRPSStats()
 
 	frrule := &config.FrontendRule{
 		DB:       "db1",
