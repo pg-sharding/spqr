@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -28,7 +30,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
-	"slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -270,11 +271,12 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 }
 
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
-	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
 
 	serv := s.cl.Server()
 
-	if s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
+	/* XXX: warn user of misconfiguration */
+	if config.RouterConfig().AllowTwoPhaseCommit && s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
