@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -21,14 +22,31 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 
 	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msg("adjust scatter query plan for in-shard joins")
 
-	if sc.SubSlice == nil && len(rm.UsedAuxCTE) == 1 {
+	if sc.SubSlice == nil && len(rm.UsedAuxCTE) >= 1 {
 		var firstKey rmeta.AuxValuesKey
 		var ds *distributions.Distribution
 		var hf string
 		var err error
 
 		for k, v := range rm.UsedAuxCTE {
-			firstKey = k
+			tmpKey := k
+
+			for {
+				/* CHECK_FOR_INTERRUPTS :) */
+				if v, ok := rm.AuxValuesParent[tmpKey]; ok {
+					tmpKey = v
+				} else {
+					break
+				}
+			}
+
+			if firstKey.CTEName == "" {
+				firstKey = tmpKey
+			}
+
+			if firstKey.CTEName != tmpKey.CTEName {
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multiple AUX CTE join rewrite").Hint("create issue on github for support")
+			}
 
 			for _, r := range v {
 				if rm.RFQNIsCTE(r) {
@@ -46,6 +64,11 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 
 				dRel := dsTmp.GetRelation(r)
 
+				/* plan adjust for expression routing is not yet supported */
+				if dRel.IsExpressionRouting() {
+					return p, nil
+				}
+
 				if ds == nil {
 					ds = dsTmp
 					/* XXX: support multicolumn here? */
@@ -60,15 +83,6 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		/* simple WITH .. AS (VALUES()) SELECT .. JOIN .. on ..  */
 
 		var shs []kr.ShardKey
-
-		for {
-			/* CHECK_FOR_INTERRUPTS :) */
-			if v, ok := rm.AuxValuesParent[firstKey]; ok {
-				firstKey = v
-			} else {
-				break
-			}
-		}
 
 		cte, ok := rm.CteNames[firstKey.CTEName]
 		if !ok {
@@ -102,7 +116,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 			return nil, err
 		}
 
-		p, err = RewriteDistributedRelWithValues(rm.Query, firstKey.CTEName, shs)
+		p, err = RewriteDistributedRelWithValues(rm.Query, firstKey.CTEName, shs, true)
 		if err != nil {
 			return nil, err
 		}

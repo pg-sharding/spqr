@@ -54,10 +54,11 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 	return query, nil
 }
 
-func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
 
-	p := &plan.ScatterPlan{
-		SubPlan: &plan.ModifyTable{},
+	p := &plan.ScatterPlan{}
+	if !ro {
+		p.SubPlan = &plan.ModifyTable{}
 	}
 
 	// Find the VALUES keyword
@@ -153,11 +154,11 @@ func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey) (*plan.ScatterP
 }
 
 func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	return CommonValuesRewrite(query, 0, shs)
+	return CommonValuesRewrite(query, 0, shs, false)
 }
 
 /* We assume that all sanity check about query CTE collocation are already done. */
-func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
 	// Find the VALUES keyword
 	targetWithClause := strings.Index(strings.ToUpper(query), "WITH")
 	if targetWithClause == -1 {
@@ -199,7 +200,7 @@ func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.Shard
 		return nil, fmt.Errorf("invalid query: missing AS %s clause", auxCTE)
 	}
 
-	return CommonValuesRewrite(query, offsetStart+2 /* + AS */, shs)
+	return CommonValuesRewrite(query, offsetStart+2 /* + AS */, shs, ro)
 }
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {

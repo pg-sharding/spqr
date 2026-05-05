@@ -991,7 +991,7 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		},
 	} {
 		t.Run("rewrite", func(t *testing.T) {
-			result, err := RewriteDistributedRelWithValues(tt.query, tt.cteName, tt.shs)
+			result, err := RewriteDistributedRelWithValues(tt.query, tt.cteName, tt.shs, false)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery expected error, got nil. Plan: %+v", result)

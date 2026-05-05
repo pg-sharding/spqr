@@ -219,7 +219,12 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					} else if ok {
 						if resolvedRelationLeft != nil {
 							searchKey := rm.SearchKeyByColRef(right)
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
+
+							if _, ok := rm.AuxValues[searchKey]; ok {
+								if !slices.Contains(rm.UsedAuxCTE[searchKey], resolvedRelationLeft) {
+									rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
+								}
+							}
 						}
 					}
 				}
@@ -233,7 +238,12 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 						if resolvedRelationRight != nil {
 							searchKey := rm.SearchKeyByColRef(lft)
 
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
+							if _, ok := rm.AuxValues[searchKey]; ok {
+								if !slices.Contains(rm.UsedAuxCTE[searchKey], resolvedRelationRight) {
+									rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
+								}
+							}
+
 						}
 					}
 				}
@@ -348,6 +358,20 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 				switch jE := qq.FromClause[0].(type) {
 				case *lyx.JoinExpr:
 					switch rv := jE.Larg.(type) {
+					case *lyx.RangeVar:
+						for auxValKey, val := range rm.AuxValues {
+							if auxValKey.CTEName == rv.RelationName {
+								key := rmeta.AuxValuesKey{
+									CTEName:    cte.Name,
+									ColRefName: auxValKey.ColRefName,
+								}
+								rm.AuxValues[key] = val
+								rm.AuxValuesParent[key] = auxValKey
+							}
+						}
+					}
+
+					switch rv := jE.Rarg.(type) {
 					case *lyx.RangeVar:
 						for auxValKey, val := range rm.AuxValues {
 							if auxValKey.CTEName == rv.RelationName {

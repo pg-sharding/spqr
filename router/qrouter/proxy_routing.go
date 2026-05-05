@@ -165,7 +165,7 @@ func (qr *ProxyQrouter) planInsertV1(
 
 									/* try to rewrite, but only for simple protocol */
 									if len(rm.ParamRefs) == 0 {
-										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs)
+										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs, false)
 									}
 
 									return nil, rerrors.ErrComplexQuery
