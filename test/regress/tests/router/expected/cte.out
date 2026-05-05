@@ -203,6 +203,7 @@ SELECT
 FROM table2 r
 JOIN vals 
 	ON r.a = vals.x;
+NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2,sh4
   a  | b  | c  |  x  
 -----+----+----+-----

@@ -3,6 +3,8 @@ module github.com/pg-sharding/spqr
 go 1.26.0
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1
+	buf.build/go/protovalidate v1.2.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/caio/go-tdigest v3.1.0+incompatible
 	github.com/containerd/errdefs v1.0.0
@@ -12,6 +14,7 @@ require (
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.13
 	github.com/google/uuid v1.6.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/jcmturner/gofork v1.7.6
@@ -26,25 +29,27 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/xdg-go/scram v1.2.0
-	go.etcd.io/etcd/client/v3 v3.6.10
+	go.etcd.io/etcd/client/v3 v3.6.11
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.50.0
-	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/sync v0.20.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	cel.dev/expr v0.25.1 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/google/cel-go v0.28.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 )
 
 require (
@@ -96,8 +101,8 @@ require (
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
-	go.etcd.io/etcd/api/v3 v3.6.10 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.6.10 // indirect
+	go.etcd.io/etcd/api/v3 v3.6.11 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.6.11 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.47.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect

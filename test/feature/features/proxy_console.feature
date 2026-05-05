@@ -365,7 +365,7 @@ Feature: Proxy console
             },
             {
                 "shard":"sh5",
-                "options": "{sslmode=verify-full,host=spqr_shard_1:6432}"
+                "options": "{host=spqr_shard_1:6432,sslmode=verify-full}"
             }
         ]
         """

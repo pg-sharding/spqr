@@ -28,7 +28,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
-	"golang.org/x/exp/slices"
+	"slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )

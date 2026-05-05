@@ -59,9 +59,11 @@ type RoutingMetadataContext struct {
 	Query string
 	Stmt  lyx.Node
 
-	AuxValues map[AuxValuesKey][]lyx.Node
+	AuxValues       map[AuxValuesKey][]lyx.Node
+	AuxValuesParent map[AuxValuesKey]AuxValuesKey
 	// CTE -> which distributed relations join on it.
-	UsedAuxCTE map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedAuxCTE            map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedSelectQueryAdjust bool
 
 	/* Is query proven to be read-only? */
 	ro bool
@@ -102,6 +104,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
 		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
 		SPH:                        sph,
 		CSM:                        csm,

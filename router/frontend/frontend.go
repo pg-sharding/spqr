@@ -80,11 +80,7 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 			return rerr
 		}
 
-		if err := rst.Client().ReplyErrMsgPure(err); err != nil {
-			return err
-		}
-
-		return nil
+		return rst.Client().ReplyErrMsgPure(err)
 	}
 }
 
@@ -101,32 +97,11 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			Uint("client", rst.Client().ID()).
 			Msg("client connection flushed")
 
-		switch err {
-		case nil:
-			/* ok */
-
-			return rst.Client().Flush()
-		case io.ErrUnexpectedEOF:
-			fallthrough
-		case io.EOF:
+		if err := ReplyErrUtil(rst, err); err != nil {
 			return err
-			// ok
-		default:
-			spqrlog.Zero.Error().
-				Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-				Msg("client iteration done with error")
-
-			/* try to report error to user  */
-			if rerr := rst.Reset(); rerr != nil {
-				return rerr
-			}
-
-			if err := rst.Client().ReplyErrMsgPure(err); err != nil {
-				return err
-			}
-
-			return rst.Client().Flush()
 		}
+
+		return rst.Client().Flush()
 	case *pgproto3.Sync:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
