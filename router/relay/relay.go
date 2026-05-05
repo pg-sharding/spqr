@@ -45,7 +45,6 @@ type RelayStateMgr interface {
 	PoolMgr() poolmgr.PoolMgr
 
 	Reset() error
-	ResetWithError(err error) error
 
 	Parse(query string, doCaching bool) ([]lyx.Node, string, error)
 
@@ -230,9 +229,6 @@ func (rst *RelayStateImpl) Reset() error {
 
 	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
-
-	/* See flush vs sync */
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
 	_ = rst.Client().Reset()
 
@@ -440,8 +436,8 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 			Err(err).
 			Msg("failed to complete relay")
 
-		if err := rst.Reset(); err != nil {
-			return err
+		if reset_err := rst.Reset(); reset_err != nil {
+			return reset_err
 		}
 		return err
 	}
@@ -449,15 +445,6 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	rst.QueryExecutor().Reset()
 
 	return nil
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) ResetWithError(err error) error {
-
-	// XXX: use rst.QueryExecutor().FailStatement
-
-	_ = rst.Client().ReplyErr(err)
-	return rst.Reset()
 }
 
 // TODO : unit tests
@@ -1071,6 +1058,10 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
 		rst.WaitSync = true
+		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
+			/* this way we format next msg correctly */
+			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
+		}
 		return err
 	}
 	return nil

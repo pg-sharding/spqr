@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/poolmgr"
@@ -17,43 +16,13 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func teardownPipeline(rst relay.RelayStateMgr, err error) error {
+func teardownPipeline(rst relay.RelayStateMgr) error {
 
-	switch err {
-	case nil:
-
-		if err := rst.CompleteRelay(); err != nil {
-			return err
-		}
-
-		if err := rst.CompleteRelayClient(); err != nil {
-			return err
-		}
-
-		return nil
-	case io.ErrUnexpectedEOF:
-		fallthrough
-	case io.EOF:
-		return err
-		// ok
-	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-			Msg("client iteration done with error")
-
-		/* try to report error to user  */
-		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			if rerr := rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR); rerr != nil {
-				return rerr
-			}
-		} else {
-			if rerr := rst.ResetWithError(err); rerr != nil {
-				return rerr
-			}
-		}
-
+	if err := rst.CompleteRelay(); err != nil {
 		return err
 	}
+
+	return rst.CompleteRelayClient()
 }
 
 func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
@@ -72,9 +41,8 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
 			Msg("client iteration done with error")
 
-		/* try to report error to user  */
-		if rerr := rst.Reset(); rerr != nil {
-			return rerr
+		if err := rst.Reset(); err != nil {
+			return err
 		}
 
 		return rst.Client().ReplyErrMsgPure(err)
@@ -106,7 +74,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 
-		return teardownPipeline(rst, nil)
+		return teardownPipeline(rst)
 	case *pgproto3.Close:
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
@@ -127,7 +95,11 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		rst.Client().ClosePreparedStatement("")
 
-		return teardownPipeline(rst, err)
+		if rerr := ReplyErrUtil(rst, err); rerr != nil {
+			return rerr
+		}
+
+		return teardownPipeline(rst)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
 		// copy interface
@@ -197,7 +169,8 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 				// EOF is OK.
 				return nil
 			default:
-				return rst.ResetWithError(err)
+				_ = rst.Client().ReplyErr(err)
+				return rst.Reset()
 			}
 		}
 
