@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -14,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/qdb"
-	"slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -31,6 +32,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/slice"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/virtual"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -1063,6 +1065,13 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 }
 
 func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error {
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		/* XXX: support implicit tx semantics here */
+		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+		// rst.QueryExecutor().
+	}
+
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
 		rst.WaitSync = true
 		return err

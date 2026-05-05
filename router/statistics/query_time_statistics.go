@@ -135,7 +135,8 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 
 	clientST := clientH.GetTimeData()
 	if clientST == nil {
-		panic("finish of unstarted transaction")
+		spqrlog.Zero.Error().Msg("finish of unstarted transaction")
+		return
 	}
 
 	if !clientST.RouterStart.IsZero() {
