@@ -198,14 +198,8 @@ NOTICE: send query to shard(s) : sh1,sh2
 (2 rows)
 
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
-NOTICE: query used select adjust for JOIN semantics
-NOTICE: send query to shard(s) : sh1,sh2
- j | i  | id 
----+----+----
- 1 | 10 | 10
- 1 | 25 | 25
-(2 rows)
-
+ERROR:  multiple JOIN rules on AUX CTE
+QUERY:  with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
 with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
 NOTICE: query used select adjust for JOIN semantics
 NOTICE: send query to shard(s) : sh1,sh2

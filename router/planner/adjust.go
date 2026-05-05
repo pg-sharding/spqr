@@ -20,7 +20,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		return p, nil
 	}
 
-	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msg("adjust scatter query plan for in-shard joins")
+	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msgf("adjust scatter query plan for in-shard joins: %v", rm.UsedAuxCTE)
 
 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) >= 1 {
 		var firstKey rmeta.AuxValuesKey
@@ -44,8 +44,8 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 				firstKey = tmpKey
 			}
 
-			if firstKey.CTEName != tmpKey.CTEName {
-				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multiple AUX CTE join rewrite").Hint("create issue on github for support")
+			if firstKey.CTEName != tmpKey.CTEName || firstKey.ColRefName != tmpKey.ColRefName {
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multiple JOIN rules on AUX CTE").Hint("create issue on github for support")
 			}
 
 			for _, r := range v {
