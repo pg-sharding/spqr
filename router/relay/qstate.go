@@ -142,10 +142,8 @@ l:
 
 		/* outer function will complete relay here */
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("executed statement in client relay")
 	}
 	return pd, err
 }
@@ -182,9 +180,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	statistics.IncTotalRequest()
 
-	/* XXX: support implicit tx semantics here */
-	statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
-
 	switch st := stmt.(type) {
 	case nil:
 		/* empty query */
@@ -195,6 +190,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		switch st.Kind {
 		case lyx.TRANS_STMT_BEGIN:
+
+			/* XXX: unwind implicit tx here */
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 				// ignore this
