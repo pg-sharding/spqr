@@ -88,20 +88,16 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Flush:
-		err := rst.ProcessExtendedBuffer(context.Background())
-
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client connection flushed")
 
-		if err := ReplyErrUtil(rst, err); err != nil {
+		if err := ReplyErrUtil(rst, nil); err != nil {
 			return err
 		}
 
 		return rst.Client().Flush()
 	case *pgproto3.Sync:
-
-		err := rst.ProcessExtendedBuffer(context.Background())
 
 		/* XXX: dont do it in flush case */
 		rst.PipelineCleanup()
@@ -110,13 +106,8 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 
-		return teardownPipeline(rst, err)
+		return teardownPipeline(rst, nil)
 	case *pgproto3.Close:
-
-		/* Flush pending, if any */
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
@@ -144,17 +135,8 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q = &cpQ
 		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
-		/* Flush pending, if any */
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
-
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Describe:
-		/* Flush pending, if any */
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.FunctionCall:
@@ -163,17 +145,8 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q = &cpQ
 		q.Arguments = xproto.CopyByteSlices(q.Arguments)
 
-		/* Flush pending, if any */
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
-
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Execute:
-
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 
@@ -186,10 +159,6 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q.ParameterFormatCodes = slices.Clone(q.ParameterFormatCodes)
 
 		/* Flush pending, if any */
-		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
-			return err
-		}
-
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 
 	default:
