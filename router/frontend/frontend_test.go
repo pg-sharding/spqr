@@ -46,7 +46,6 @@ func TestFrontendSimpleEOF(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().Close().Times(1)
-	cl.EXPECT().CleanupStatementSet().Times(1)
 	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Unroute().Times(1)
 	cl.EXPECT().Server().AnyTimes()

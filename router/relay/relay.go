@@ -436,8 +436,8 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 			Err(err).
 			Msg("failed to complete relay")
 
-		if reset_err := rst.Reset(); reset_err != nil {
-			return reset_err
+		if resetErr := rst.Reset(); resetErr != nil {
+			return resetErr
 		}
 		return err
 	}
