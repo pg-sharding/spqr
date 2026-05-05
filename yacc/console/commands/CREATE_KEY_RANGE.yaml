@@ -13,8 +13,8 @@ syntax: |
     ROUTE TO <shardID> 
     FOR DISTRIBUTION <distributionID>
   
-  where lowerBound is a single value or comma-separated values for composite keys 
-  (e.g., "100, 'value'" for a two-column key)
+  where lowerBound is a single value or comma-separated values
+  for composite keys (e.g., "100, 'value'" for a two-column key)
 
 parameters:
   - name: keyRangeID
@@ -32,7 +32,9 @@ examples:
   - description: Composite key range with two integers
     code: CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
   - description: Composite key range with integer and varchar
-    code: "CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;"
+    code: |-
+      CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
+          ROUTE TO shard3 FOR DISTRIBUTION ds3;
 
 tips:
   - Value bounds should be continuous and non-overlapping

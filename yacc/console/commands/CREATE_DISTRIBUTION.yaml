@@ -15,8 +15,9 @@ syntax: |
     [COLUMN TYPES <types> | (<types>)]
     [DEFAULT SHARD <shardID>]
 
-  where types is a comma-separated list of column types for the distribution key,
-  and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+  where types is a comma-separated list of column types for the
+  distribution key, and each type is one of: INTEGER, INT,
+  VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
 
   where <shardID> is a default shard identifier. The <shardID> must exist.
 

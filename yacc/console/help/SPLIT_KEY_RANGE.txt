@@ -5,7 +5,8 @@ NAME
 SYNTAX
     SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
 
-    where splitBound is a single value or comma-separated values for composite keys
+    where splitBound is a single value or comma-separated values
+    for composite keys
 
 DESCRIPTION
     Splits an existing key range into two key ranges at the specified boundary
@@ -29,7 +30,8 @@ EXAMPLES
     Split a key range at integer boundary:
         SPLIT KEY RANGE krid2 FROM krid1 BY 100;
     Split a key range at UUID boundary:
-        SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';
+        SPLIT KEY RANGE krid4 FROM krid3
+            BY 'FF000000-0000-0000-0000-000000000000';
 
 TIPS
     - Lock the source key range before splitting to prevent concurrent

@@ -34,7 +34,8 @@ EXAMPLES
     Schema-qualified relation name:
         CREATE DISTRIBUTED RELATION sh1.r (i) IN d;
     DISTRIBUTION KEY syntax:
-        CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
+        CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY
+            col1, col2 HASH FUNCTION MURMUR IN ds1;
     Composite key without hash using DISTRIBUTION KEY syntax:
         CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;
 

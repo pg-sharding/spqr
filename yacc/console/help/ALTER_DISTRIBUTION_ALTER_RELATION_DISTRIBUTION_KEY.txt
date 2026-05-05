@@ -29,9 +29,11 @@ WARNINGS
 
 EXAMPLES
     Replace the distribution key with a new column name:
-        ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+        ALTER DISTRIBUTION ds1 ALTER RELATION orders
+            DISTRIBUTION KEY customer_id;
     Replace with a composite key:
-        ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
+        ALTER DISTRIBUTION ds1 ALTER RELATION events
+            DISTRIBUTION KEY region_id, event_id;
     Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this):
         ALTER DISTRIBUTION ds1 ALTER RELATION tr
             DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];

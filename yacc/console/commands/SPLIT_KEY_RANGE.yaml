@@ -11,7 +11,8 @@ description: |
 syntax: |
   SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
 
-  where splitBound is a single value or comma-separated values for composite keys
+  where splitBound is a single value or comma-separated values
+  for composite keys
 
 parameters:
   - name: newKeyRangeID
@@ -25,7 +26,9 @@ examples:
   - description: Split a key range at integer boundary
     code: SPLIT KEY RANGE krid2 FROM krid1 BY 100;
   - description: Split a key range at UUID boundary
-    code: "SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';"
+    code: |-
+      SPLIT KEY RANGE krid4 FROM krid3
+          BY 'FF000000-0000-0000-0000-000000000000';
 
 tips:
   - Lock the source key range before splitting to prevent concurrent modifications

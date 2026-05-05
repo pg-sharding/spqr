@@ -1,63 +1,64 @@
 HELP CREATE KEY RANGE;
-                                          help                                          
-----------------------------------------------------------------------------------------
- NAME                                                                                  +
-     CREATE KEY RANGE - This command is used to create a new key range. Since the      +
-     key space is an ordered set,                                                      +
-                                                                                       +
- SYNTAX                                                                                +
-     CREATE KEY RANGE [ <keyRangeID> ]                                                 +
-       FROM <lowerBound>                                                               +
-       ROUTE TO <shardID>                                                              +
-       FOR DISTRIBUTION <distributionID>                                               +
-                                                                                       +
-     where lowerBound is a single value or comma-separated values for composite keys   +
-     (e.g., "100, 'value'" for a two-column key)                                       +
-                                                                                       +
- DESCRIPTION                                                                           +
-     This command is used to create a new key range. Since the key space is an         +
-     ordered set,                                                                      +
-     it is enough to specify only one end of the range.                                +
-                                                                                       +
-     For composite sharding keys, specify multiple values separated by commas          +
-     that correspond                                                                   +
-     to each column in the distribution.                                               +
-                                                                                       +
- PARAMETERS                                                                            +
-     <keyRangeID> - Unique identifier for the key range (optional, auto-generated      +
-         if omitted)                                                                   +
-     <lowerBound> - Lower boundary value (inclusive). Can be integer, string, or       +
-         comma-separated values for composite keys                                     +
-     <shardID> - Target shard ID where data in this range is stored                    +
-     <distributionID> - Distribution ID this key range belongs to                      +
-                                                                                       +
- EXAMPLES                                                                              +
-     Single column key range:                                                          +
-         CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;        +
-     Composite key range with two integers:                                            +
-         CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;      +
-     Composite key range with integer and varchar:                                     +
-         CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;+
-                                                                                       +
- TIPS                                                                                  +
-     - Value bounds should be continuous and non-overlapping                           +
-     - Use SHOW KEY RANGES to list existing ranges                                     +
-     - Lock key ranges during maintenance operations with LOCK KEY RANGE               +
-     - Key ranges are immutable once created; use SPLIT or UNITE for                   +
-       modifications                                                                   +
-     - Consider boundary values carefully to distribute data evenly                    +
-                                                                                       +
- RELATED COMMANDS                                                                      +
-     SHOW KEY RANGES                                                                   +
-     LOCK KEY RANGE                                                                    +
-     UNLOCK KEY RANGE                                                                  +
-     SPLIT KEY RANGE                                                                   +
-     UNITE KEY RANGE                                                                   +
-     DROP KEY RANGE
+                                       help                                       
+----------------------------------------------------------------------------------
+ NAME                                                                            +
+     CREATE KEY RANGE - This command is used to create a new key range. Since the+
+     key space is an ordered set,                                                +
+                                                                                 +
+ SYNTAX                                                                          +
+     CREATE KEY RANGE [ <keyRangeID> ]                                           +
+       FROM <lowerBound>                                                         +
+       ROUTE TO <shardID>                                                        +
+       FOR DISTRIBUTION <distributionID>                                         +
+                                                                                 +
+     where lowerBound is a single value or comma-separated values                +
+     for composite keys (e.g., "100, 'value'" for a two-column key)              +
+                                                                                 +
+ DESCRIPTION                                                                     +
+     This command is used to create a new key range. Since the key space is an   +
+     ordered set,                                                                +
+     it is enough to specify only one end of the range.                          +
+                                                                                 +
+     For composite sharding keys, specify multiple values separated by commas    +
+     that correspond                                                             +
+     to each column in the distribution.                                         +
+                                                                                 +
+ PARAMETERS                                                                      +
+     <keyRangeID> - Unique identifier for the key range (optional, auto-generated+
+         if omitted)                                                             +
+     <lowerBound> - Lower boundary value (inclusive). Can be integer, string, or +
+         comma-separated values for composite keys                               +
+     <shardID> - Target shard ID where data in this range is stored              +
+     <distributionID> - Distribution ID this key range belongs to                +
+                                                                                 +
+ EXAMPLES                                                                        +
+     Single column key range:                                                    +
+         CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;  +
+     Composite key range with two integers:                                      +
+         CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;+
+     Composite key range with integer and varchar:                               +
+         CREATE KEY RANGE krid3 FROM 100, 'aaaaa'                                +
+             ROUTE TO shard3 FOR DISTRIBUTION ds3;                               +
+                                                                                 +
+ TIPS                                                                            +
+     - Value bounds should be continuous and non-overlapping                     +
+     - Use SHOW KEY RANGES to list existing ranges                               +
+     - Lock key ranges during maintenance operations with LOCK KEY RANGE         +
+     - Key ranges are immutable once created; use SPLIT or UNITE for             +
+       modifications                                                             +
+     - Consider boundary values carefully to distribute data evenly              +
+                                                                                 +
+ RELATED COMMANDS                                                                +
+     SHOW KEY RANGES                                                             +
+     LOCK KEY RANGE                                                              +
+     UNLOCK KEY RANGE                                                            +
+     SPLIT KEY RANGE                                                             +
+     UNITE KEY RANGE                                                             +
+     DROP KEY RANGE                                                               
 (1 row)
 
 HELP DROP KEY RANGE;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      DROP KEY RANGE - Removes a key range from the cluster. This deletes the key+
@@ -91,7 +92,7 @@ HELP DROP KEY RANGE;
  RELATED COMMANDS                                                               +
      CREATE KEY RANGE                                                           +
      SHOW KEY RANGES                                                            +
-     MOVE KEY RANGE
+     MOVE KEY RANGE                                                              
 (1 row)
 
 HELP LOCK KEY RANGE;
@@ -123,11 +124,11 @@ HELP LOCK KEY RANGE;
      UNLOCK KEY RANGE                                                            +
      SPLIT KEY RANGE                                                             +
      UNITE KEY RANGE                                                             +
-     SHOW KEY RANGES
+     SHOW KEY RANGES                                                              
 (1 row)
 
 HELP UNLOCK KEY RANGE;
-                                     help                                      
+                                      help                                     
 -------------------------------------------------------------------------------
  NAME                                                                         +
      UNLOCK KEY RANGE - Releases the lock on a key range that was previously  +
@@ -154,62 +155,64 @@ HELP UNLOCK KEY RANGE;
      LOCK KEY RANGE                                                           +
      SPLIT KEY RANGE                                                          +
      UNITE KEY RANGE                                                          +
-     SHOW KEY RANGES
+     SHOW KEY RANGES                                                           
 (1 row)
 
 HELP SPLIT KEY RANGE;
-                                        help                                         
--------------------------------------------------------------------------------------
- NAME                                                                               +
-     SPLIT KEY RANGE - Splits an existing key range into two key ranges at the      +
-     specified boundary value.                                                      +
-                                                                                    +
- SYNTAX                                                                             +
-     SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>        +
-                                                                                    +
-     where splitBound is a single value or comma-separated values for composite keys+
-                                                                                    +
- DESCRIPTION                                                                        +
-     Splits an existing key range into two key ranges at the specified boundary     +
-     value.                                                                         +
-     The new key range takes the upper portion of the original range (from the      +
-     split                                                                          +
-     point to the original upper bound), while the source range keeps the lower     +
-     portion.                                                                       +
-                                                                                    +
-     Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY       +
-     RANGE                                                                          +
-     afterwards to relocate one of them if needed.                                  +
-                                                                                    +
- PARAMETERS                                                                         +
-     <newKeyRangeID> - Identifier for the newly created key range (upper portion)   +
-     <sourceKeyRangeID> - Identifier of the existing key range to split             +
-     <splitBound> - Boundary value where the split occurs. Can be integer,          +
-         string, or comma-separated values for composite keys                       +
-                                                                                    +
- EXAMPLES                                                                           +
-     Split a key range at integer boundary:                                         +
-         SPLIT KEY RANGE krid2 FROM krid1 BY 100;                                   +
-     Split a key range at UUID boundary:                                            +
-         SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';+
-                                                                                    +
- TIPS                                                                               +
-     - Lock the source key range before splitting to prevent concurrent             +
-       modifications                                                                +
-     - The split bound must fall within the source key range boundaries             +
-     - After splitting, use MOVE KEY RANGE to relocate a range to another shard     +
-     - Use UNITE KEY RANGE to reverse a split operation                             +
-                                                                                    +
- RELATED COMMANDS                                                                   +
-     LOCK KEY RANGE                                                                 +
-     UNLOCK KEY RANGE                                                               +
-     UNITE KEY RANGE                                                                +
-     MOVE KEY RANGE                                                                 +
-     CREATE KEY RANGE
+                                       help                                       
+----------------------------------------------------------------------------------
+ NAME                                                                            +
+     SPLIT KEY RANGE - Splits an existing key range into two key ranges at the   +
+     specified boundary value.                                                   +
+                                                                                 +
+ SYNTAX                                                                          +
+     SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>     +
+                                                                                 +
+     where splitBound is a single value or comma-separated values                +
+     for composite keys                                                          +
+                                                                                 +
+ DESCRIPTION                                                                     +
+     Splits an existing key range into two key ranges at the specified boundary  +
+     value.                                                                      +
+     The new key range takes the upper portion of the original range (from the   +
+     split                                                                       +
+     point to the original upper bound), while the source range keeps the lower  +
+     portion.                                                                    +
+                                                                                 +
+     Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY    +
+     RANGE                                                                       +
+     afterwards to relocate one of them if needed.                               +
+                                                                                 +
+ PARAMETERS                                                                      +
+     <newKeyRangeID> - Identifier for the newly created key range (upper portion)+
+     <sourceKeyRangeID> - Identifier of the existing key range to split          +
+     <splitBound> - Boundary value where the split occurs. Can be integer,       +
+         string, or comma-separated values for composite keys                    +
+                                                                                 +
+ EXAMPLES                                                                        +
+     Split a key range at integer boundary:                                      +
+         SPLIT KEY RANGE krid2 FROM krid1 BY 100;                                +
+     Split a key range at UUID boundary:                                         +
+         SPLIT KEY RANGE krid4 FROM krid3                                        +
+             BY 'FF000000-0000-0000-0000-000000000000';                          +
+                                                                                 +
+ TIPS                                                                            +
+     - Lock the source key range before splitting to prevent concurrent          +
+       modifications                                                             +
+     - The split bound must fall within the source key range boundaries          +
+     - After splitting, use MOVE KEY RANGE to relocate a range to another shard  +
+     - Use UNITE KEY RANGE to reverse a split operation                          +
+                                                                                 +
+ RELATED COMMANDS                                                                +
+     LOCK KEY RANGE                                                              +
+     UNLOCK KEY RANGE                                                            +
+     UNITE KEY RANGE                                                             +
+     MOVE KEY RANGE                                                              +
+     CREATE KEY RANGE                                                             
 (1 row)
 
 HELP MOVE KEY RANGE;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      MOVE KEY RANGE - Updates the routing metadata to assign a key range to a   +
@@ -245,7 +248,7 @@ HELP MOVE KEY RANGE;
      REDISTRIBUTE KEY RANGE                                                     +
      SHOW KEY RANGES                                                            +
      CREATE KEY RANGE                                                           +
-     DROP KEY RANGE
+     DROP KEY RANGE                                                              
 (1 row)
 
 HELP UNITE KEY RANGE;
@@ -288,7 +291,7 @@ HELP UNITE KEY RANGE;
      LOCK KEY RANGE                                                              +
      UNLOCK KEY RANGE                                                            +
      SHOW KEY RANGES                                                             +
-     DROP KEY RANGE
+     DROP KEY RANGE                                                               
 (1 row)
 
 HELP REDISTRIBUTE KEY RANGE;
@@ -346,7 +349,7 @@ HELP REDISTRIBUTE KEY RANGE;
      MOVE KEY RANGE                                                              +
      SHOW KEY RANGES                                                             +
      CREATE KEY RANGE                                                            +
-     SPLIT KEY RANGE
+     SPLIT KEY RANGE                                                              
 (1 row)
 
 HELP SHOW;
@@ -409,67 +412,68 @@ HELP SHOW;
  RELATED COMMANDS                                                                +
      CREATE KEY RANGE                                                            +
      CREATE DISTRIBUTION                                                         +
-     REDISTRIBUTE KEY RANGE
+     REDISTRIBUTE KEY RANGE                                                       
 (1 row)
 
 HELP CREATE DISTRIBUTION;
-                                                help                                                
-----------------------------------------------------------------------------------------------------
- NAME                                                                                              +
-     CREATE DISTRIBUTION - Creates a sharding distribution with a distribution                     +
-     identifier and key column types.                                                              +
-                                                                                                   +
- SYNTAX                                                                                            +
-     CREATE DISTRIBUTION <distributionID>                                                          +
-       [COLUMN TYPES <types> | (<types>)]                                                          +
-       [DEFAULT SHARD <shardID>]                                                                   +
-                                                                                                   +
-     where types is a comma-separated list of column types for the distribution key,               +
-     and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)+
-                                                                                                   +
-     where <shardID> is a default shard identifier. The <shardID> must exist.                      +
-                                                                                                   +
- DESCRIPTION                                                                                       +
-     Creates a sharding distribution with a distribution identifier and key                        +
-     column types.                                                                                 +
-                                                                                                   +
-     A distribution defines the sharding key type layout used by attached                          +
-     relations and key ranges.                                                                     +
-     Optionally, specify a default shard to route records that do not match any                    +
-     key range.                                                                                    +
-                                                                                                   +
-     For composite sharding keys (multiple columns), specify multiple types                        +
-     separated by commas.                                                                          +
-     You can append "hash" after a column type to apply hash-based distribution                    +
-     to that column.                                                                               +
-                                                                                                   +
- PARAMETERS                                                                                        +
-     <distributionID> - Unique identifier of the distribution                                      +
-     <types> - Distribution key column types in order (single or composite key)                    +
-     <shardID> - Optional default shard identifier for unmatched routing cases                     +
-                                                                                                   +
- EXAMPLES                                                                                          +
-     Single integer key distribution:                                                              +
-         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;                                             +
-     Single varchar key distribution with hash:                                                    +
-         CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;                                        +
-     Composite key distribution with two columns:                                                  +
-         CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;                                    +
-     Composite key with mixed types and hash on second column:                                     +
-         CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;                               +
-     Parenthesized type syntax with default shard:                                                 +
-         CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;                        +
-                                                                                                   +
- TIPS                                                                                              +
-     - Keep column type order aligned with relation distribution keys                              +
-     - Use hashed types for high-cardinality string/integer keys when needed                       +
-     - Configure DEFAULT SHARD only when fallback routing is explicitly required                   +
-                                                                                                   +
- RELATED COMMANDS                                                                                  +
-     ALTER DISTRIBUTION                                                                            +
-     DROP DISTRIBUTION                                                                             +
-     CREATE KEY RANGE                                                                              +
-     SHOW
+                                       help                                      
+---------------------------------------------------------------------------------
+ NAME                                                                           +
+     CREATE DISTRIBUTION - Creates a sharding distribution with a distribution  +
+     identifier and key column types.                                           +
+                                                                                +
+ SYNTAX                                                                         +
+     CREATE DISTRIBUTION <distributionID>                                       +
+       [COLUMN TYPES <types> | (<types>)]                                       +
+       [DEFAULT SHARD <shardID>]                                                +
+                                                                                +
+     where types is a comma-separated list of column types for the              +
+     distribution key, and each type is one of: INTEGER, INT,                   +
+     VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)                    +
+                                                                                +
+     where <shardID> is a default shard identifier. The <shardID> must exist.   +
+                                                                                +
+ DESCRIPTION                                                                    +
+     Creates a sharding distribution with a distribution identifier and key     +
+     column types.                                                              +
+                                                                                +
+     A distribution defines the sharding key type layout used by attached       +
+     relations and key ranges.                                                  +
+     Optionally, specify a default shard to route records that do not match any +
+     key range.                                                                 +
+                                                                                +
+     For composite sharding keys (multiple columns), specify multiple types     +
+     separated by commas.                                                       +
+     You can append "hash" after a column type to apply hash-based distribution +
+     to that column.                                                            +
+                                                                                +
+ PARAMETERS                                                                     +
+     <distributionID> - Unique identifier of the distribution                   +
+     <types> - Distribution key column types in order (single or composite key) +
+     <shardID> - Optional default shard identifier for unmatched routing cases  +
+                                                                                +
+ EXAMPLES                                                                       +
+     Single integer key distribution:                                           +
+         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;                          +
+     Single varchar key distribution with hash:                                 +
+         CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;                     +
+     Composite key distribution with two columns:                               +
+         CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;                 +
+     Composite key with mixed types and hash on second column:                  +
+         CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;            +
+     Parenthesized type syntax with default shard:                              +
+         CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;     +
+                                                                                +
+ TIPS                                                                           +
+     - Keep column type order aligned with relation distribution keys           +
+     - Use hashed types for high-cardinality string/integer keys when needed    +
+     - Configure DEFAULT SHARD only when fallback routing is explicitly required+
+                                                                                +
+ RELATED COMMANDS                                                               +
+     ALTER DISTRIBUTION                                                         +
+     DROP DISTRIBUTION                                                          +
+     CREATE KEY RANGE                                                           +
+     SHOW                                                                        
 (1 row)
 
 HELP DROP DISTRIBUTION;
@@ -507,260 +511,267 @@ HELP DROP DISTRIBUTION;
  RELATED COMMANDS                                                              +
      CREATE DISTRIBUTION                                                       +
      ALTER DISTRIBUTION                                                        +
-     SHOW
+     SHOW                                                                       
 (1 row)
 
 HELP ALTER DISTRIBUTION;
-                                              help                                              
-------------------------------------------------------------------------------------------------
- NAME                                                                                          +
-     ALTER DISTRIBUTION - Modifies distribution metadata.                                      +
-                                                                                               +
- SYNTAX                                                                                        +
-     ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName>                        +
-       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                                  +
-     ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>                        +
-     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>                         +
-       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                                  +
-     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>                         +
-       SCHEMA <schemaName>                                                                     +
-     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>                         +
-       RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>                           +
-     ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>                           +
-     ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD                                    +
-                                                                                               +
-     where keys is a comma-separated list of column names (e.g., "col1, col2")                 +
-     where hashFunction is one of: IDENTITY, MURMUR, CITY                                      +
-                                                                                               +
- DESCRIPTION                                                                                   +
-     Modifies distribution metadata.                                                           +
-                                                                                               +
-     Covers relation attachments, distribution key metadata, schema metadata,                  +
-     and default shard settings. This command operates on SPQR metadata and does               +
-     not execute table DDL on shards.                                                          +
-                                                                                               +
-     ATTACH RELATION attaches one or more relations to the distribution with a                 +
-     specified distribution key. For composite sharding keys, specify multiple                 +
-     column names separated by commas in the DISTRIBUTION KEY clause.                          +
-                                                                                               +
-     DETACH RELATION detaches a relation from the distribution.                                +
-                                                                                               +
-     ALTER RELATION DISTRIBUTION KEY replaces the entire distribution key of an                +
-     already attached relation. This overwrites all column names and hash                      +
-     functions                                                                                 +
-     in one shot — it does not patch individual columns. Use this when you need                +
-     to                                                                                        +
-     change the key structure entirely, or to fix expression-based routing                     +
-     entries                                                                                   +
-     (which RENAME DISTRIBUTION COLUMN does not support). The new key must have                +
-     the                                                                                       +
-     same number of entries as the distribution's column types.                                +
-                                                                                               +
-     ALTER RELATION SCHEMA changes the schema associated with an attached                      +
-     relation                                                                                  +
-     in the distribution metadata.                                                             +
-                                                                                               +
-     RENAME DISTRIBUTION COLUMN is a metadata-only fix that renames a column in                +
-     the                                                                                       +
-     distribution key of an attached relation. It does not execute ALTER TABLE                 +
-     RENAME                                                                                    +
-     COLUMN on PostgreSQL — it only updates the column name stored in SPQR                     +
-     metadata.                                                                                 +
-     The primary use case is fixing a case mismatch between the column name in                 +
-     SPQR                                                                                      +
-     metadata and the actual PostgreSQL column. For composite keys, call this                  +
-     command                                                                                   +
-     once per column that needs renaming.                                                      +
-                                                                                               +
-     ADD DEFAULT SHARD sets a default shard for the distribution, routing records              +
-     that                                                                                      +
-     do not match any key range. DROP DEFAULT SHARD removes the default shard                  +
-     setting.                                                                                  +
-                                                                                               +
- WARNINGS                                                                                      +
-     - ALTER RELATION operations are metadata changes and may affect routing                   +
-       immediately.                                                                            +
-     - Use maintenance windows for key/schema metadata changes in write-heavy                  +
-       workloads.                                                                              +
-                                                                                               +
- PARAMETERS                                                                                    +
-     <distributionID> - Identifier of the distribution to modify                               +
-     <relationName> - Relation to attach, detach, or alter                                     +
-     <keys> - Distribution key definition (column list and optional hash                       +
-         functions)                                                                            +
-     <hashFunction> - Hash function to apply to the key (IDENTITY, MURMUR, or                  +
-         CITY)                                                                                 +
-     <schemaName> - Schema metadata value for an attached relation                             +
-     <oldColumnName> - Existing distribution key column name in metadata                       +
-     <newColumnName> - New distribution key column name in metadata                            +
-     <shardID> - Shard identifier to set as default shard                                      +
-                                                                                               +
- EXAMPLES                                                                                      +
-     Attach relation with single distribution key:                                             +
-         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;              +
-     Attach relation with composite key and hash function:                                     +
-         ALTER DISTRIBUTION ds2 ATTACH RELATION users                                          +
-             DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;                         +
-     Detach relation:                                                                          +
-         ALTER DISTRIBUTION ds1 DETACH RELATION orders;                                        +
-     Replace relation distribution key:                                                        +
-         ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;            +
-     Change relation schema:                                                                   +
-         ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;                        +
-     Fix column name casing in metadata (w_id vs W_ID):                                        +
-         ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;+
-     Set default shard:                                                                        +
-         ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;                                         +
-     Remove default shard:                                                                     +
-         ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;                                            +
-                                                                                               +
- SUBCOMMANDS                                                                                   +
-     ALTER DISTRIBUTION ATTACH RELATION                                                        +
-     CREATE RELATION                                                                           +
-     ALTER DISTRIBUTION DETACH RELATION                                                        +
-     ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY                                        +
-     ALTER DISTRIBUTION ALTER RELATION SCHEMA                                                  +
-     ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN                                             +
-     ALTER DISTRIBUTION ADD DEFAULT SHARD                                                      +
-     ALTER DISTRIBUTION DROP DEFAULT SHARD                                                     +
-                                                                                               +
- TIPS                                                                                          +
-     - Use CREATE DISTRIBUTION first, then attach relations and create key ranges              +
-     - Verify metadata after changes with SHOW relations and SHOW distributions                +
-     - Prefer replacing full distribution keys when relation uses                              +
-       expression-based routing                                                                +
-     - For composite keys, call RENAME DISTRIBUTION COLUMN once per column that                +
-       needs renaming                                                                          +
-                                                                                               +
- RELATED COMMANDS                                                                              +
-     CREATE DISTRIBUTION                                                                       +
-     DROP DISTRIBUTION                                                                         +
-     CREATE KEY RANGE                                                                          +
-     SHOW
+                                       help                                       
+----------------------------------------------------------------------------------
+ NAME                                                                            +
+     ALTER DISTRIBUTION - Modifies distribution metadata.                        +
+                                                                                 +
+ SYNTAX                                                                          +
+     ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName>          +
+       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                    +
+     ALTER DISTRIBUTION <distributionID> DETACH RELATION <relationName>          +
+     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>           +
+       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                    +
+     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>           +
+       SCHEMA <schemaName>                                                       +
+     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>           +
+       RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>             +
+     ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardID>             +
+     ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD                      +
+                                                                                 +
+     where keys is a comma-separated list of column names (e.g., "col1, col2")   +
+     where hashFunction is one of: IDENTITY, MURMUR, CITY                        +
+                                                                                 +
+ DESCRIPTION                                                                     +
+     Modifies distribution metadata.                                             +
+                                                                                 +
+     Covers relation attachments, distribution key metadata, schema metadata,    +
+     and default shard settings. This command operates on SPQR metadata and does +
+     not execute table DDL on shards.                                            +
+                                                                                 +
+     ATTACH RELATION attaches one or more relations to the distribution with a   +
+     specified distribution key. For composite sharding keys, specify multiple   +
+     column names separated by commas in the DISTRIBUTION KEY clause.            +
+                                                                                 +
+     DETACH RELATION detaches a relation from the distribution.                  +
+                                                                                 +
+     ALTER RELATION DISTRIBUTION KEY replaces the entire distribution key of an  +
+     already attached relation. This overwrites all column names and hash        +
+     functions                                                                   +
+     in one shot — it does not patch individual columns. Use this when you need  +
+     to                                                                          +
+     change the key structure entirely, or to fix expression-based routing       +
+     entries                                                                     +
+     (which RENAME DISTRIBUTION COLUMN does not support). The new key must have  +
+     the                                                                         +
+     same number of entries as the distribution's column types.                  +
+                                                                                 +
+     ALTER RELATION SCHEMA changes the schema associated with an attached        +
+     relation                                                                    +
+     in the distribution metadata.                                               +
+                                                                                 +
+     RENAME DISTRIBUTION COLUMN is a metadata-only fix that renames a column in  +
+     the                                                                         +
+     distribution key of an attached relation. It does not execute ALTER TABLE   +
+     RENAME                                                                      +
+     COLUMN on PostgreSQL — it only updates the column name stored in SPQR       +
+     metadata.                                                                   +
+     The primary use case is fixing a case mismatch between the column name in   +
+     SPQR                                                                        +
+     metadata and the actual PostgreSQL column. For composite keys, call this    +
+     command                                                                     +
+     once per column that needs renaming.                                        +
+                                                                                 +
+     ADD DEFAULT SHARD sets a default shard for the distribution, routing records+
+     that                                                                        +
+     do not match any key range. DROP DEFAULT SHARD removes the default shard    +
+     setting.                                                                    +
+                                                                                 +
+ WARNINGS                                                                        +
+     - ALTER RELATION operations are metadata changes and may affect routing     +
+       immediately.                                                              +
+     - Use maintenance windows for key/schema metadata changes in write-heavy    +
+       workloads.                                                                +
+                                                                                 +
+ PARAMETERS                                                                      +
+     <distributionID> - Identifier of the distribution to modify                 +
+     <relationName> - Relation to attach, detach, or alter                       +
+     <keys> - Distribution key definition (column list and optional hash         +
+         functions)                                                              +
+     <hashFunction> - Hash function to apply to the key (IDENTITY, MURMUR, or    +
+         CITY)                                                                   +
+     <schemaName> - Schema metadata value for an attached relation               +
+     <oldColumnName> - Existing distribution key column name in metadata         +
+     <newColumnName> - New distribution key column name in metadata              +
+     <shardID> - Shard identifier to set as default shard                        +
+                                                                                 +
+ EXAMPLES                                                                        +
+     Attach relation with single distribution key:                               +
+         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;+
+     Attach relation with composite key and hash function:                       +
+         ALTER DISTRIBUTION ds2 ATTACH RELATION users                            +
+             DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;           +
+     Detach relation:                                                            +
+         ALTER DISTRIBUTION ds1 DETACH RELATION orders;                          +
+     Replace relation distribution key:                                          +
+         ALTER DISTRIBUTION ds1 ALTER RELATION orders                            +
+             DISTRIBUTION KEY customer_id;                                       +
+     Change relation schema:                                                     +
+         ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;          +
+     Fix column name casing in metadata (w_id vs W_ID):                          +
+         ALTER DISTRIBUTION ds1 ALTER RELATION rc_test                           +
+             RENAME DISTRIBUTION COLUMN W_ID TO w_id;                            +
+     Set default shard:                                                          +
+         ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;                           +
+     Remove default shard:                                                       +
+         ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;                              +
+                                                                                 +
+ SUBCOMMANDS                                                                     +
+     ALTER DISTRIBUTION ATTACH RELATION                                          +
+     CREATE RELATION                                                             +
+     ALTER DISTRIBUTION DETACH RELATION                                          +
+     ALTER DISTRIBUTION ALTER RELATION DISTRIBUTION KEY                          +
+     ALTER DISTRIBUTION ALTER RELATION SCHEMA                                    +
+     ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN                               +
+     ALTER DISTRIBUTION ADD DEFAULT SHARD                                        +
+     ALTER DISTRIBUTION DROP DEFAULT SHARD                                       +
+                                                                                 +
+ TIPS                                                                            +
+     - Use CREATE DISTRIBUTION first, then attach relations and create key ranges+
+     - Verify metadata after changes with SHOW relations and SHOW distributions  +
+     - Prefer replacing full distribution keys when relation uses                +
+       expression-based routing                                                  +
+     - For composite keys, call RENAME DISTRIBUTION COLUMN once per column that  +
+       needs renaming                                                            +
+                                                                                 +
+ RELATED COMMANDS                                                                +
+     CREATE DISTRIBUTION                                                         +
+     DROP DISTRIBUTION                                                           +
+     CREATE KEY RANGE                                                            +
+     SHOW                                                                         
 (1 row)
 
 HELP ALTER DISTRIBUTION ATTACH RELATION;
-                                               help                                               
---------------------------------------------------------------------------------------------------
- NAME                                                                                            +
-     ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more                                   +
-     [relations](/sharding/sharded_tables) to an existing distribution using the                 +
-     ATTACH RELATION clause.                                                                     +
-                                                                                                 +
- SYNTAX                                                                                          +
-     ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> [, <relationName> ...]   +
-       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                                    +
-                                                                                                 +
-     where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)+
-     where hashFunction is one of: IDENTITY, MURMUR, CITY                                        +
-                                                                                                 +
- DESCRIPTION                                                                                     +
-     Attaches one or more [relations](/sharding/sharded_tables) to an existing                   +
-     distribution using the ATTACH RELATION clause.                                              +
-                                                                                                 +
-     For composite sharding keys, specify multiple column names separated by                     +
-     commas in the DISTRIBUTION KEY clause.                                                      +
-                                                                                                 +
- EXAMPLES                                                                                        +
-     Single column sharding key:                                                                 +
-         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;                +
-     Composite sharding key with two columns:                                                    +
-         ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;       +
-     Composite key with hash function:                                                           +
-         ALTER DISTRIBUTION ds3 ATTACH RELATION events                                           +
-             DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+                                       help                                       
+----------------------------------------------------------------------------------
+ NAME                                                                            +
+     ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more                   +
+     [relations](/sharding/sharded_tables) to an existing distribution using the +
+     ATTACH RELATION clause.                                                     +
+                                                                                 +
+ SYNTAX                                                                          +
+     ALTER DISTRIBUTION <distributionID> ATTACH RELATION                         +
+       <relationName> [, <relationName> ...]                                     +
+       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                    +
+                                                                                 +
+     where keys is a comma-separated list of column names                        +
+     (e.g., "col1, col2" for composite keys)                                     +
+     where hashFunction is one of: IDENTITY, MURMUR, CITY                        +
+                                                                                 +
+ DESCRIPTION                                                                     +
+     Attaches one or more [relations](/sharding/sharded_tables) to an existing   +
+     distribution using the ATTACH RELATION clause.                              +
+                                                                                 +
+     For composite sharding keys, specify multiple column names separated by     +
+     commas in the DISTRIBUTION KEY clause.                                      +
+                                                                                 +
+ EXAMPLES                                                                        +
+     Single column sharding key:                                                 +
+         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;+
+     Composite sharding key with two columns:                                    +
+         ALTER DISTRIBUTION ds2 ATTACH RELATION users                            +
+             DISTRIBUTION KEY tenant_id, user_id;                                +
+     Composite key with hash function:                                           +
+         ALTER DISTRIBUTION ds3 ATTACH RELATION events                           +
+             DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;           
 (1 row)
 
 HELP CREATE RELATION;
-                                              help                                               
--------------------------------------------------------------------------------------------------
- NAME                                                                                           +
-     CREATE RELATION - This command is a shorthand for [ALTER DISTRIBUTION ATTACH               +
-     RELATION](#alter-distribution-attach-relation). It creates a relation and                  +
-     attaches it to a distribution in a single statement.                                       +
-                                                                                                +
- SYNTAX                                                                                         +
-     CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>)                            +
-         [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]                            +
-                                                                                                +
- DESCRIPTION                                                                                    +
-     This command is a shorthand for [ALTER DISTRIBUTION ATTACH                                 +
-     RELATION](#alter-distribution-attach-relation). It creates a relation and                  +
-     attaches it to a distribution in a single statement.                                       +
-     The `DISTRIBUTED` keyword is optional and has no effect on the behavior.                   +
-                                                                                                +
-     There are two syntax forms for specifying distribution keys:                               +
-                                                                                                +
-     **Parenthesized syntax** — column names and optional hash functions are                    +
-     listed inside parentheses:                                                                 +
-                                                                                                +
- EXAMPLES                                                                                       +
-     Simple column with no hash function (uses default distribution):                           +
-         CREATE RELATION r (i);                                                                 +
-     Column with hash function:                                                                 +
-         CREATE RELATION r (i HASH MURMUR);                                                     +
-     Attach to a specific distribution:                                                         +
-         CREATE RELATION t (id) IN ds1;                                                         +
-     Using FOR DISTRIBUTION syntax:                                                             +
-         CREATE DISTRIBUTED RELATION table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;               +
-     Composite key with multiple columns:                                                       +
-         CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;                           +
-     Routing expression syntax for composite keys with typed columns:                           +
-         CREATE RELATION tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);                          +
-     Schema-qualified relation name:                                                            +
-         CREATE DISTRIBUTED RELATION sh1.r (i) IN d;                                            +
-     DISTRIBUTION KEY syntax:                                                                   +
-         CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;+
-     Composite key without hash using DISTRIBUTION KEY syntax:                                  +
-         CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;                               +
-                                                                                                +
- NOTES                                                                                          +
-     - **DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause:                   +
-       `CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> DISTRIBUTION KEY                 +
-       <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`
+                                       help                                       
+----------------------------------------------------------------------------------
+ NAME                                                                            +
+     CREATE RELATION - This command is a shorthand for [ALTER DISTRIBUTION ATTACH+
+     RELATION](#alter-distribution-attach-relation). It creates a relation and   +
+     attaches it to a distribution in a single statement.                        +
+                                                                                 +
+ SYNTAX                                                                          +
+     CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> (<keys>)             +
+         [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]             +
+                                                                                 +
+ DESCRIPTION                                                                     +
+     This command is a shorthand for [ALTER DISTRIBUTION ATTACH                  +
+     RELATION](#alter-distribution-attach-relation). It creates a relation and   +
+     attaches it to a distribution in a single statement.                        +
+     The `DISTRIBUTED` keyword is optional and has no effect on the behavior.    +
+                                                                                 +
+     There are two syntax forms for specifying distribution keys:                +
+                                                                                 +
+     **Parenthesized syntax** — column names and optional hash functions are     +
+     listed inside parentheses:                                                  +
+                                                                                 +
+ EXAMPLES                                                                        +
+     Simple column with no hash function (uses default distribution):            +
+         CREATE RELATION r (i);                                                  +
+     Column with hash function:                                                  +
+         CREATE RELATION r (i HASH MURMUR);                                      +
+     Attach to a specific distribution:                                          +
+         CREATE RELATION t (id) IN ds1;                                          +
+     Using FOR DISTRIBUTION syntax:                                              +
+         CREATE DISTRIBUTED RELATION table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;+
+     Composite key with multiple columns:                                        +
+         CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;            +
+     Routing expression syntax for composite keys with typed columns:            +
+         CREATE RELATION tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);           +
+     Schema-qualified relation name:                                             +
+         CREATE DISTRIBUTED RELATION sh1.r (i) IN d;                             +
+     DISTRIBUTION KEY syntax:                                                    +
+         CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY                         +
+             col1, col2 HASH FUNCTION MURMUR IN ds1;                             +
+     Composite key without hash using DISTRIBUTION KEY syntax:                   +
+         CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;                +
+                                                                                 +
+ NOTES                                                                           +
+     - **DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause:    +
+       `CREATE [DISTRIBUTED] RELATION [schema.]<relation_name> DISTRIBUTION KEY  +
+       <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`        
 (1 row)
 
 HELP REGISTER ROUTER;
-                                          help                                          
-----------------------------------------------------------------------------------------
- NAME                                                                                  +
-     REGISTER ROUTER - Registers a router with the SPQR coordinator.                   +
-                                                                                       +
- SYNTAX                                                                                +
-     REGISTER ROUTER <routerID> ADDRESS <address>                                      +
-                                                                                       +
-     where <routerID> is a unique identifier for the router (unquoted or quoted string)+
-     where <address> is the network address in the format '[host]:port'                +
-                                                                                       +
- DESCRIPTION                                                                           +
-     Registers a router with the SPQR coordinator.                                     +
-                                                                                       +
-     When a router is registered, the coordinator becomes aware of it and can          +
-     manage                                                                            +
-     it as part of the cluster. After registration, the coordinator automatically      +
-     synchronizes metadata (shards, key ranges, distributions) to the router.          +
-                                                                                       +
- WARNINGS                                                                              +
-     - This command is not available for installations without SPQR coordinator.       +
-                                                                                       +
- PARAMETERS                                                                            +
-     <routerID> - Unique identifier for the router (e.g., r1 or 'my-router')           +
-     <address> - Network address of the router in '[host]:port' format (e.g.,          +
-         '[localhost]:6432')                                                           +
-                                                                                       +
- EXAMPLES                                                                              +
-     Register a router on localhost:                                                   +
-         REGISTER ROUTER r1 ADDRESS '[localhost]:6432';                                +
-     Register a router with a custom address:                                          +
-         REGISTER ROUTER r2 ADDRESS '[router-host]:7432';                              +
-                                                                                       +
- RELATED COMMANDS                                                                      +
-     UNREGISTER ROUTER                                                                 +
-     SHOW
+                                       help                                       
+----------------------------------------------------------------------------------
+ NAME                                                                            +
+     REGISTER ROUTER - Registers a router with the SPQR coordinator.             +
+                                                                                 +
+ SYNTAX                                                                          +
+     REGISTER ROUTER <routerID> ADDRESS <address>                                +
+                                                                                 +
+     where <routerID> is a unique identifier for the router                      +
+     (unquoted or quoted string)                                                 +
+     where <address> is the network address in the format '[host]:port'          +
+                                                                                 +
+ DESCRIPTION                                                                     +
+     Registers a router with the SPQR coordinator.                               +
+                                                                                 +
+     When a router is registered, the coordinator becomes aware of it and can    +
+     manage                                                                      +
+     it as part of the cluster. After registration, the coordinator automatically+
+     synchronizes metadata (shards, key ranges, distributions) to the router.    +
+                                                                                 +
+ WARNINGS                                                                        +
+     - This command is not available for installations without SPQR coordinator. +
+                                                                                 +
+ PARAMETERS                                                                      +
+     <routerID> - Unique identifier for the router (e.g., r1 or 'my-router')     +
+     <address> - Network address of the router in '[host]:port' format (e.g.,    +
+         '[localhost]:6432')                                                     +
+                                                                                 +
+ EXAMPLES                                                                        +
+     Register a router on localhost:                                             +
+         REGISTER ROUTER r1 ADDRESS '[localhost]:6432';                          +
+     Register a router with a custom address:                                    +
+         REGISTER ROUTER r2 ADDRESS '[router-host]:7432';                        +
+                                                                                 +
+ RELATED COMMANDS                                                                +
+     UNREGISTER ROUTER                                                           +
+     SHOW                                                                         
 (1 row)
 
 HELP UNREGISTER ROUTER;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      UNREGISTER ROUTER - Unregisters a router from the SPQR coordinator.        +
@@ -792,7 +803,7 @@ HELP UNREGISTER ROUTER;
                                                                                 +
  RELATED COMMANDS                                                               +
      REGISTER ROUTER                                                            +
-     SHOW
+     SHOW                                                                        
 (1 row)
 
 HELP CREATE REFERENCE TABLE;
@@ -836,11 +847,11 @@ HELP CREATE REFERENCE TABLE;
      DROP REFERENCE TABLE                                                      +
      ALTER REFERENCE TABLE STORAGE                                             +
      SYNC REFERENCE TABLE                                                      +
-     DROP SEQUENCE
+     DROP SEQUENCE                                                              
 (1 row)
 
 HELP DROP REFERENCE TABLE;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      DROP REFERENCE TABLE - Removes a reference table from SPQR metadata. This  +
@@ -862,11 +873,11 @@ HELP DROP REFERENCE TABLE;
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
-     ALTER REFERENCE TABLE STORAGE
+     ALTER REFERENCE TABLE STORAGE                                               
 (1 row)
 
 HELP ALTER REFERENCE TABLE STORAGE;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      ALTER REFERENCE TABLE STORAGE - Changes the set of shards where a reference+
@@ -888,11 +899,11 @@ HELP ALTER REFERENCE TABLE STORAGE;
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
-     DROP REFERENCE TABLE
+     DROP REFERENCE TABLE                                                        
 (1 row)
 
 HELP DROP SEQUENCE;
-                                   help                                    
+                                    help                                   
 ---------------------------------------------------------------------------
  NAME                                                                     +
      DROP SEQUENCE - Drops a sequence used for auto-increment columns in  +
@@ -916,11 +927,11 @@ HELP DROP SEQUENCE;
          DROP SEQUENCE orders_id_seq CASCADE;                             +
                                                                           +
  RELATED COMMANDS                                                         +
-     CREATE REFERENCE TABLE
+     CREATE REFERENCE TABLE                                                
 (1 row)
 
 HELP SYNC REFERENCE TABLE;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      SYNC REFERENCE TABLE - Synchronizes a reference table to a target shard by +
@@ -949,7 +960,7 @@ HELP SYNC REFERENCE TABLE;
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
-     ALTER REFERENCE TABLE STORAGE
+     ALTER REFERENCE TABLE STORAGE                                               
 (1 row)
 
 HELP KILL CLIENT;
@@ -975,7 +986,7 @@ HELP KILL CLIENT;
                                                                              +
  RELATED COMMANDS                                                            +
      KILL BACKEND                                                            +
-     SHOW
+     SHOW                                                                     
 (1 row)
 
 HELP KILL BACKEND;
@@ -1001,7 +1012,7 @@ HELP KILL BACKEND;
                                                                            +
  RELATED COMMANDS                                                          +
      KILL CLIENT                                                           +
-     SHOW
+     SHOW                                                                   
 (1 row)
 
 HELP INVALIDATE CACHE;
@@ -1025,7 +1036,7 @@ HELP INVALIDATE CACHE;
                                                                                +
  RELATED COMMANDS                                                              +
      INVALIDATE BACKENDS                                                       +
-     INVALIDATE STALE CLIENTS
+     INVALIDATE STALE CLIENTS                                                   
 (1 row)
 
 HELP INVALIDATE BACKENDS;
@@ -1047,11 +1058,11 @@ HELP INVALIDATE BACKENDS;
                                                                                +
  RELATED COMMANDS                                                              +
      INVALIDATE CACHE                                                          +
-     INVALIDATE STALE CLIENTS
+     INVALIDATE STALE CLIENTS                                                   
 (1 row)
 
 HELP INVALIDATE STALE CLIENTS;
-                                      help                                       
+                                       help                                      
 ---------------------------------------------------------------------------------
  NAME                                                                           +
      INVALIDATE STALE CLIENTS - Identifies clients with dead TCP connections and+
@@ -1069,6 +1080,5 @@ HELP INVALIDATE STALE CLIENTS;
                                                                                 +
  RELATED COMMANDS                                                               +
      INVALIDATE CACHE                                                           +
-     INVALIDATE BACKENDS
+     INVALIDATE BACKENDS                                                         
 (1 row)
-

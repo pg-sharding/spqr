@@ -16,8 +16,9 @@ CREATE DISTRIBUTION <distributionID>
   [COLUMN TYPES <types> | (<types>)]
   [DEFAULT SHARD <shardID>]
 
-where types is a comma-separated list of column types for the distribution key,
-and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+where types is a comma-separated list of column types for the
+distribution key, and each type is one of: INTEGER, INT,
+VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
 
 where <shardID> is a default shard identifier. The <shardID> must exist.
 ```
@@ -68,10 +69,12 @@ For composite sharding keys, specify multiple column names separated by commas i
 
 
 ```sql
-ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> [, <relationName> ...]
+ALTER DISTRIBUTION <distributionID> ATTACH RELATION
+  <relationName> [, <relationName> ...]
   DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
-where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
+where keys is a comma-separated list of column names
+(e.g., "col1, col2" for composite keys)
 where hashFunction is one of: IDENTITY, MURMUR, CITY
 ```
 
@@ -81,7 +84,8 @@ where hashFunction is one of: IDENTITY, MURMUR, CITY
 -- Single column sharding key
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
 -- Composite sharding key with two columns
-ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
+ALTER DISTRIBUTION ds2 ATTACH RELATION users
+    DISTRIBUTION KEY tenant_id, user_id;
 -- Composite key with hash function
 ALTER DISTRIBUTION ds3 ATTACH RELATION events
     DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
@@ -123,7 +127,8 @@ CREATE RELATION tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
 -- Schema-qualified relation name
 CREATE DISTRIBUTED RELATION sh1.r (i) IN d;
 -- DISTRIBUTION KEY syntax
-CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
+CREATE DISTRIBUTED RELATION xx DISTRIBUTION KEY
+    col1, col2 HASH FUNCTION MURMUR IN ds1;
 -- Composite key without hash using DISTRIBUTION KEY syntax
 CREATE DISTRIBUTED RELATION copy_test (id1, id2) IN ds2;
 ```
@@ -159,9 +164,11 @@ where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 ```sql
 -- Replace the distribution key with a new column name
-ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+ALTER DISTRIBUTION ds1 ALTER RELATION orders
+    DISTRIBUTION KEY customer_id;
 -- Replace with a composite key
-ALTER DISTRIBUTION ds1 ALTER RELATION events DISTRIBUTION KEY region_id, event_id;
+ALTER DISTRIBUTION ds1 ALTER RELATION events
+    DISTRIBUTION KEY region_id, event_id;
 -- Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
 ALTER DISTRIBUTION ds1 ALTER RELATION tr
     DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
@@ -205,7 +212,8 @@ ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
 
 ```sql
 -- Fix column name casing in metadata
-ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+ALTER DISTRIBUTION ds1 ALTER RELATION rc_test
+    RENAME DISTRIBUTION COLUMN W_ID TO w_id;
 ```
 
 ### ALTER DISTRIBUTION ADD DEFAULT SHARD

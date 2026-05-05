@@ -89,11 +89,13 @@ EXAMPLES
     Detach relation:
         ALTER DISTRIBUTION ds1 DETACH RELATION orders;
     Replace relation distribution key:
-        ALTER DISTRIBUTION ds1 ALTER RELATION orders DISTRIBUTION KEY customer_id;
+        ALTER DISTRIBUTION ds1 ALTER RELATION orders
+            DISTRIBUTION KEY customer_id;
     Change relation schema:
         ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;
     Fix column name casing in metadata (w_id vs W_ID):
-        ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+        ALTER DISTRIBUTION ds1 ALTER RELATION rc_test
+            RENAME DISTRIBUTION COLUMN W_ID TO w_id;
     Set default shard:
         ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
     Remove default shard:

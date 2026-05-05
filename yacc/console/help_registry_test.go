@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 )
 
-const maxHelpLineLength = 100
+const maxHelpLineLength = 80
 
 func TestHelpFileMaxLineLength(t *testing.T) {
 	entries, err := helpFS.ReadDir("help")

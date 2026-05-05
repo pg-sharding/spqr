@@ -4,10 +4,12 @@ NAME
     ATTACH RELATION clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> [, <relationName> ...]
+    ALTER DISTRIBUTION <distributionID> ATTACH RELATION
+      <relationName> [, <relationName> ...]
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
-    where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
+    where keys is a comma-separated list of column names
+    (e.g., "col1, col2" for composite keys)
     where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 DESCRIPTION
@@ -21,7 +23,8 @@ EXAMPLES
     Single column sharding key:
         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
     Composite sharding key with two columns:
-        ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
+        ALTER DISTRIBUTION ds2 ATTACH RELATION users
+            DISTRIBUTION KEY tenant_id, user_id;
     Composite key with hash function:
         ALTER DISTRIBUTION ds3 ATTACH RELATION events
             DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
