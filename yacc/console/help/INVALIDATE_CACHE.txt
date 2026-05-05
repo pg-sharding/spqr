@@ -1,5 +1,6 @@
 NAME
-    INVALIDATE CACHE - Invalidates the router's schema cache, forcing it to be rebuilt on the
+    INVALIDATE CACHE - Invalidates the router's schema cache, forcing it to be
+    rebuilt on the
 
 SYNTAX
     INVALIDATE CACHE

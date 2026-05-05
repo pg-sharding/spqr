@@ -1,20 +1,33 @@
 NAME
-    ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN - A metadata-only fix that renames a column in the distribution key of an attached relation. This does **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only updates the column name stored in SPQR's distribution metadata.
+    ALTER DISTRIBUTION RENAME DISTRIBUTION COLUMN - A metadata-only fix that
+    renames a column in the distribution key of an attached relation. This does
+    **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only
+    updates the column name stored in SPQR's distribution metadata.
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
       RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>
 
 DESCRIPTION
-    A metadata-only fix that renames a column in the distribution key of an attached relation. This does **not** execute `ALTER TABLE ... RENAME COLUMN` on PostgreSQL — it only updates the column name stored in SPQR's distribution metadata.
+    A metadata-only fix that renames a column in the distribution key of an
+    attached relation. This does **not** execute `ALTER TABLE ... RENAME COLUMN`
+    on PostgreSQL — it only updates the column name stored in SPQR's
+    distribution metadata.
 
-    The primary use case is fixing a case mismatch between the column name in SPQR metadata and the actual PostgreSQL column. Because PostgreSQL normalizes unquoted identifiers to lowercase, attaching a relation with `W_ID` when the table column is `w_id` breaks routing: INSERTs fail and SELECTs scatter to all shards.
+    The primary use case is fixing a case mismatch between the column name in
+    SPQR metadata and the actual PostgreSQL column. Because PostgreSQL
+    normalizes unquoted identifiers to lowercase, attaching a relation with
+    `W_ID` when the table column is `w_id` breaks routing: INSERTs fail and
+    SELECTs scatter to all shards.
 
-    For composite (multi-column) distribution keys, call this command once per column that needs renaming.
+    For composite (multi-column) distribution keys, call this command once per
+    column that needs renaming.
 
 WARNINGS
-    - This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
+    - This command does not have well-defined behavior with concurrent
+      read-write operations. Use it during setup or maintenance windows only.
 
 EXAMPLES
     Fix column name casing in metadata:
-        ALTER DISTRIBUTION ds1 ALTER RELATION rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+        ALTER DISTRIBUTION ds1 ALTER RELATION rc_test
+            RENAME DISTRIBUTION COLUMN W_ID TO w_id;

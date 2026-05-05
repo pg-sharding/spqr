@@ -1,19 +1,24 @@
 NAME
-    UNITE KEY RANGE - Merges two adjacent key ranges into a single key range. The left key range absorbs
+    UNITE KEY RANGE - Merges two adjacent key ranges into a single key range.
+    The left key range absorbs
 
 SYNTAX
     UNITE KEY RANGE <leftKeyRangeID> WITH <rightKeyRangeID>
 
 DESCRIPTION
-    Merges two adjacent key ranges into a single key range. The left key range absorbs
+    Merges two adjacent key ranges into a single key range. The left key range
+    absorbs
     the right key range, extending its upper bound to cover both ranges.
 
-    The two key ranges must be adjacent (share a boundary) and must route to the same shard.
+    The two key ranges must be adjacent (share a boundary) and must route to the
+    same shard.
     After the operation, the right key range is removed.
 
 PARAMETERS
-    <leftKeyRangeID> - Identifier of the left (lower) key range that will absorb the other
-    <rightKeyRangeID> - Identifier of the right (upper) key range that will be merged into the left
+    <leftKeyRangeID> - Identifier of the left (lower) key range that will absorb
+        the other
+    <rightKeyRangeID> - Identifier of the right (upper) key range that will be
+        merged into the left
 
 EXAMPLES
     Unite two adjacent key ranges:
