@@ -1,0 +1,248 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_commit s1_commit
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s2_cancel: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */; <waiting ...>
+step s1_commit: COMMIT;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s2_cancel: <... completed>
+bool_and
+--------
+t       
+(1 row)
+
+step s1_commit: COMMIT;
+
+starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_rollback s1_rollback
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s2_cancel: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */;
+bool_and
+--------
+t       
+(1 row)
+
+step s1_rollback: ROLLBACK;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_rollback s1_commit
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s2_cancel: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */;
+bool_and
+--------
+t       
+(1 row)
+
+step s1_rollback: ROLLBACK;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_commit: COMMIT;
+
+starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_commit s1_rollback
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s_s: SELECT 1+2 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       3
+(1 row)
+
+step s2_cancel: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */;
+bool_and
+--------
+t       
+(1 row)
+
+step s1_commit: COMMIT;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_commit s1_commit
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s2_cancel_all: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__scatter_query: true */; <waiting ...>
+step s1_commit: COMMIT;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s2_cancel_all: <... completed>
+bool_and
+--------
+t       
+t       
+t       
+t       
+(4 rows)
+
+step s1_commit: COMMIT;
+
+starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_rollback s1_rollback
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+FATAL:  terminating connection due to administrator command
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s2_cancel_all: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__scatter_query: true */;
+bool_and
+--------
+t       
+t       
+t       
+t       
+(4 rows)
+
+step s1_rollback: ROLLBACK;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_rollback s1_commit
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s2_cancel_all: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__scatter_query: true */;
+bool_and
+--------
+t       
+t       
+t       
+t       
+(4 rows)
+
+step s1_rollback: ROLLBACK;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_commit: COMMIT;
+
+starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_commit s1_rollback
+step s1_report: SET __spqr__reply_notice TO on;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 /* __spqr__scatter_query: true */;
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
+
+step s2_cancel_all: select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__scatter_query: true */;
+bool_and
+--------
+t       
+t       
+t       
+t       
+(4 rows)
+
+step s1_commit: COMMIT;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_rollback: ROLLBACK;
