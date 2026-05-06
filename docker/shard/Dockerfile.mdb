@@ -57,9 +57,12 @@ RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     make && make install && \
     cd .. && git clone https://github.com/pg-sharding/spqrguard.git && \
     cd spqrguard && \
-    make && make install && \
+    make install && \
     cd .. && git clone https://github.com/pg-sharding/spqrhash.git && \
     cd spqrhash && \
-    make install
+    make install && \
+    cd .. && git clone git@github.com:pg-sharding/twopc_aux_tester.git && \
+    cd twopc_aux_tester && \
+    make USE_PGXS=1 install
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "$POSTGRES_VERSION"]
