@@ -19,8 +19,7 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
-	switch err {
-	case nil:
+	if err == nil {
 
 		if err := rst.CompleteRelay(); err != nil {
 			return err
@@ -31,6 +30,13 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 		}
 
 		return nil
+	}
+
+	if err := rst.Cleanup(); err != nil {
+		return err
+	}
+
+	switch err {
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:

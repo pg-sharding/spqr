@@ -176,7 +176,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Uint("client", rst.Client().ID()).Msgf("process relay state advanced")
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
 
 	statistics.IncTotalRequest()
 
@@ -196,7 +196,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 				// ignore this
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
-				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
+				rst.QueryExecutor().SetCommandCompleteTag("BEGIN")
+				return noDataPd, nil
 			}
 
 			err := rst.QueryExecutor().ExecBegin(query, st)
@@ -221,14 +222,17 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
-				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
+				rst.QueryExecutor().SetCommandCompleteTag("COMMIT")
+
+				return noDataPd, nil
 			}
 			err := rst.QueryExecutor().ExecCommit(query)
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
-				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
+				rst.QueryExecutor().SetCommandCompleteTag("ROLLBACK")
+				return noDataPd, nil
 			}
 			err := rst.QueryExecutor().ExecRollback(query)
 			return noDataPd, err
@@ -244,7 +248,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			rst.QueryExecutor().Client().ClosePreparedStatement(name)
 		}
 
-		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD ALL")
+		rst.QueryExecutor().SetCommandCompleteTag("DISCARD ALL")
+
+		return noDataPd, nil
 	case *lyx.DeallocateStmt:
 		var cmdTag string
 		if st.Name == "" {
@@ -259,7 +265,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			cmdTag = "DEALLOCATE"
 		}
 
-		return noDataPd, rst.QueryExecutor().ReplyCommandComplete(cmdTag)
+		rst.QueryExecutor().SetCommandCompleteTag(cmdTag)
+
+		return noDataPd, nil
 
 	// with tx pooling we might have no active connection while processing set x to y
 	case *lyx.VariableShowStmt:
@@ -492,9 +500,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 		}
 
-		if err := rst.QueryExecutor().ReplyCommandComplete("SHOW"); err != nil {
-			return nil, err
-		}
+		rst.QueryExecutor().SetCommandCompleteTag("SHOW")
 
 		return pd, nil
 	case *lyx.VariableSetStmt:
@@ -506,9 +512,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		switch q.Kind {
 		case lyx.VarTypeResetAll:
 			rst.Client().ResetAll()
-			if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
-				return nil, err
-			}
+
+			rst.QueryExecutor().SetCommandCompleteTag("RESET")
 		case lyx.VarTypeReset:
 			switch q.Name {
 			case "session_authorization", "role":
@@ -522,10 +527,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					rst.Client().ResetParam("role")
 				}
 
-				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
-					return nil, err
-				}
-
+				rst.QueryExecutor().SetCommandCompleteTag("RESET")
 			default:
 
 				param := virtualParamTransformName(q.Name)
@@ -542,10 +544,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					}
 				}
 
-				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
-					return nil, err
-				}
-
+				rst.QueryExecutor().SetCommandCompleteTag("RESET")
 			}
 		/* TBD: support multi-set */
 		// case pgquery.VariableSetKind_VAR_SET_MULTI:
@@ -585,9 +584,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			if err := rst.QueryExecutor().ReplyCommandComplete("PREPARE"); err != nil {
-				return nil, err
-			}
+			rst.QueryExecutor().SetCommandCompleteTag("PREPARE")
 
 			return nil, nil
 		} else {
@@ -766,5 +763,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 		}
 	}
 
-	return rst.QueryExecutor().ReplyCommandComplete("SET")
+	rst.QueryExecutor().SetCommandCompleteTag("SET")
+
+	return nil
 }
