@@ -25,11 +25,7 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 			return err
 		}
 
-		if err := rst.CompleteRelayClient(); err != nil {
-			return err
-		}
-
-		return nil
+		return rst.CompleteRelayClient()
 	}
 
 	if err := rst.Cleanup(); err != nil {
