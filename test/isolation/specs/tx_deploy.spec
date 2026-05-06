@@ -10,6 +10,8 @@ step s1_commit         { COMMIT; }
 step s1_rollback       { ROLLBACK; }
 
 
+teardown { select __spqr__console_execute('INVALIDATE BACKENDS') /*__spqr__preferred_engine: v2 */; }
+
 
 session s2
 step s2_cancel          { select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */; } 
