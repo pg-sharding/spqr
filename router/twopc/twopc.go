@@ -87,12 +87,13 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
 		}, txstatus.TXIDLE)
 
+		/* err may we a purely network error  */
+		undoShards = append(undoShards, dsh)
+
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
 			return txstatus.TXERR, err
 		}
-
-		undoShards = append(undoShards, dsh)
 
 		retST = st
 	}
