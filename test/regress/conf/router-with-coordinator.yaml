@@ -12,6 +12,7 @@ time_quantiles:
   - "0.9999"
 world_shard_fallback: true
 show_notice_messages: true
+allow_two_phase_commit: true
 use_coordinator_init: true
 notice_message_format: "{shard}"
 query_routing:
