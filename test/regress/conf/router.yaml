@@ -12,7 +12,7 @@ time_quantiles:
   - "0.9999"
 world_shard_fallback: true
 show_notice_messages: true
-allow_two_phase_commit
+allow_two_phase_commit: true
 enable_role_system: true
 roles_file: /spqr/test/regress/conf/roles.yaml
 notice_message_format: "{shard}"
