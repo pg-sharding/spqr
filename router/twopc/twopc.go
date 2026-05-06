@@ -107,7 +107,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}
 	}
 
-	/* past thos line, there is no way back. We actaully can reset undoShards
+	/* past thos line, there is no way back. We actually can reset undoShards
 	* after tx state in dcs, but this will require additional tx status re-check, so
 	* don't bother with that */
 	undoShards = nil
