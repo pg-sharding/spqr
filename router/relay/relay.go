@@ -44,6 +44,8 @@ type RelayStateMgr interface {
 	QueryRouter() qrouter.QueryRouter
 	PoolMgr() poolmgr.PoolMgr
 
+	/* Cleanup is same as reset, but no tx management */
+	Cleanup() error
 	Reset() error
 	ResetWithError(err error) error
 
@@ -219,9 +221,7 @@ func (rst *RelayStateImpl) Close() error {
 	return rst.Cl.Close()
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) Reset() error {
-
+func (rst *RelayStateImpl) Cleanup() error {
 	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
 
 	if err != nil {
@@ -231,14 +231,17 @@ func (rst *RelayStateImpl) Reset() error {
 	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
 
-	/* See flush vs sync */
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
-
 	_ = rst.Client().Reset()
 
-	if rerr := rst.Client().Unroute(); rerr != nil {
-		return rerr
-	}
+	return rst.Client().Unroute()
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) Reset() error {
+	err := rst.Cleanup()
+
+	/* See flush vs sync */
+	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
 	return err
 }
