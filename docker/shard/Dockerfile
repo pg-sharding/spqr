@@ -56,7 +56,7 @@ RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd .. && git clone https://github.com/pg-sharding/spqrhash.git && \
     cd spqrhash && \
     make USE_PGXS=1 install && \
-    cd .. && git clone git@github.com:pg-sharding/twopc_aux_tester.git && \
+    cd .. && git clone https://github.com/pg-sharding/twopc_aux_tester.git && \
     cd twopc_aux_tester && \
     make USE_PGXS=1 install
 
