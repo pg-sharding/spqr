@@ -275,7 +275,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 
 				s.cache.MarkUnmatched(tsa, host.Address, host.AZ, false, err.Error())
 
-				spqrlog.Zero.Error().
+				spqrlog.Zero.Debug().
 					Err(err).
 					Str("host", host.Address).
 					Str("az", host.AZ).
@@ -452,7 +452,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 
 				s.cache.MarkUnmatched(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
 
-				spqrlog.Zero.Error().
+				spqrlog.Zero.Debug().
 					Err(err).
 					Str("host", host.Address).
 					Str("availability-zone", host.AZ).
