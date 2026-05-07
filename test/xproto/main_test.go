@@ -177,12 +177,12 @@ func SetupSharding() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 2000 ROUTE TO sh4 FOR DISTRIBUTION ds1;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid6 FROM 2000 ROUTE TO sh4 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 1000 ROUTE TO sh3 FOR DISTRIBUTION ds1;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid5 FROM 1000 ROUTE TO sh3 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
