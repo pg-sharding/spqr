@@ -70,7 +70,7 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			}
 
-			guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+			guc, err := session.BoolGUCByName(session.SPQR_LINEARIZE_DISPATCH)
 			if err != nil {
 				return err
 			}

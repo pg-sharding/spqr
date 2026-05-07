@@ -28,8 +28,8 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxtest_sw DISTRIBUTION KEY id;
 SET __spqr__maintain_params To true;
 SET __spqr__reply_notice TO false;
 SHOW __spqr__maintain_params;
- maintain params 
------------------
+ deploy GUC params on pool connection acquire 
+----------------------------------------------
  true
 (1 row)
 
@@ -74,7 +74,7 @@ SHOW application_name;
 SET __spqr__reply_notice TO true;
 INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
 NOTICE: send query to shard(s) : sh1
-SELECT * from xxtest_sw WHERE id <= 2;
+SELECT * from xxtest_sw WHERE id = 2 or id = 1;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
@@ -84,14 +84,14 @@ NOTICE: send query to shard(s) : sh1
 
 SET search_path to 'error';
 -- should fail
-SELECT * from xxtest_sw WHERE id <= 2;
+SELECT * from xxtest_sw WHERE id = 2 or id = 1;
 NOTICE: send query to shard(s) : sh1
 ERROR:  relation "xxtest_sw" does not exist
-LINE 1: SELECT * from xxtest_sw WHERE id <= 2;
+LINE 1: SELECT * from xxtest_sw WHERE id = 2 or id = 1;
                       ^
 SET search_path to 'public';
 -- should success
-SELECT * from xxtest_sw WHERE id <= 2;
+SELECT * from xxtest_sw WHERE id = 2 or id = 1;
 NOTICE: send query to shard(s) : sh1
  id 
 ----

@@ -89,7 +89,6 @@ type SimpleSessionParamHandler struct {
 	paramCodes []int16
 
 	showNoticeMessages bool
-	maintainParams     bool
 }
 
 func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
@@ -207,16 +206,6 @@ func (cl *SimpleSessionParamHandler) SetDistributionKey(val string) {
 // DistributionKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributionKey() string {
 	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTION_KEY, "")
-}
-
-// MaintainParams implements RouterClient.
-func (cl *SimpleSessionParamHandler) MaintainParams() bool {
-	return cl.maintainParams
-}
-
-// SetMaintainParams implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
-	cl.maintainParams = val
 }
 
 // SetShowNoticeMsg implements client.Client.
@@ -471,6 +460,13 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 
 var BoolGUCs = []BoolGUCimpl{
 	{
+		n:         SPQR_MAINTAIN_PARAMS,
+		shortName: "deploy GUC params on pool connection acquire",
+		def: func() bool {
+			return config.RouterConfig().MaintainParams
+		},
+	},
+	{
 		n:         SPQR_ALLOW_SPLIT_UPDATE,
 		shortName: "allow split update",
 		def: func() bool {
@@ -493,7 +489,7 @@ var BoolGUCs = []BoolGUCimpl{
 	},
 }
 
-func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
+func BoolGUCByName(n string) (BoolGUC, error) {
 	for _, guc := range BoolGUCs {
 		if guc.n == n {
 			return guc, nil

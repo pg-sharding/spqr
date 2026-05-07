@@ -12,7 +12,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
-	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/frontend"
@@ -92,9 +91,8 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
-	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
-	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
-	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
+
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
@@ -215,6 +213,8 @@ func TestFrontendXProto(t *testing.T) {
 		sh,
 	})
 
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
+
 	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	/* query Router */
@@ -226,7 +226,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().Unroute().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
-	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
