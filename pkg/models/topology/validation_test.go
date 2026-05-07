@@ -2,6 +2,7 @@ package topology
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -19,6 +20,13 @@ func TestValidateDataShardHostsAcceptsReachableHost(t *testing.T) {
 
 	err = ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-ok", &config.Shard{
 		RawHosts: []string{listener.Addr().String()},
+		Type:     config.DataShard,
+	}))
+	assert.NoError(t, err)
+
+	// Hosts with AZ
+	err = ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-ok", &config.Shard{
+		RawHosts: []string{fmt.Sprintf("%s:local", listener.Addr().String())},
 		Type:     config.DataShard,
 	}))
 	assert.NoError(t, err)
