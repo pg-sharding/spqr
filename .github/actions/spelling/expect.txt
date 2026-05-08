@@ -416,6 +416,7 @@ ppp
 pppp
 prepstatement
 privs
+promhttp
 procps
 proident
 protobuf
