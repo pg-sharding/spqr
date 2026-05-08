@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -114,9 +115,6 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
 
-		// copy interface
-		cpQ := *q
-		q = &cpQ
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
 			return rst.ProcessSimpleQuery(q, true)
@@ -134,8 +132,10 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
+		cpQ.Query = strings.Clone(q.Query)
+		cpQ.ParameterOIDs = slices.Clone(q.ParameterOIDs)
+
 		q = &cpQ
-		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Describe:
