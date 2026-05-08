@@ -36,6 +36,7 @@ func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolo
 		writer = zerolog.ConsoleWriter{Out: writer}
 	}
 
+	/* TODO: configure this using "common" router/coordinator config */
 	wrAsync := diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
 		fmt.Printf("Logger Dropped %d messages", missed)
 	})
