@@ -979,6 +979,11 @@ func (f FakeClient) Send(_ pgproto3.BackendMessage) error {
 	return nil
 }
 
+func (f FakeClient) ReplyErrMsgPure(e error) error {
+	spqrlog.Zero.Error().Err(e).Msg("sql init error")
+	return nil
+}
+
 var _ RouterClient = &FakeClient{}
 
 func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient {
