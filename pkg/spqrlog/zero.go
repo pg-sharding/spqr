@@ -1,11 +1,13 @@
 package spqrlog
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/diode"
 )
 
 // Zero is a singleton object of zerolog.Logger.
@@ -34,7 +36,11 @@ func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolo
 		writer = zerolog.ConsoleWriter{Out: writer}
 	}
 
-	logger := zerolog.New(writer).With().Timestamp().Logger().Level(level)
+	wrAsync := diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
+		fmt.Printf("Logger Dropped %d messages", missed)
+	})
+
+	logger := zerolog.New(wrAsync).With().Timestamp().Logger().Level(level)
 	return &logger
 }
 
