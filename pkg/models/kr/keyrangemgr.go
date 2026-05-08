@@ -53,14 +53,14 @@ type KeyRangeMgr interface {
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	ListKeyRangeLocks(ctx context.Context) ([]string, error)
-	CreateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.QdbStatement, error)
-	UpdateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.QdbStatement, error)
+	CreateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.XRecord, error)
+	UpdateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.XRecord, error)
 	LockKeyRange(ctx context.Context, krid string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, krid string) error
 	Split(ctx context.Context, split *SplitKeyRange) error
 	Unite(ctx context.Context, unite *UniteKeyRange) error
 	Move(ctx context.Context, move *MoveKeyRange) error
-	DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error)
+	DropKeyRange(ctx context.Context, krid string) ([]qdb.XRecord, error)
 	DropKeyRangeAll(ctx context.Context) error
 	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error
 	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error

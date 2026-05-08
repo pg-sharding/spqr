@@ -102,7 +102,7 @@ func TestMemqdbRacing(t *testing.T) {
 			if err != nil {
 				panic("can't unmarshal distribution (exec no transaction test)!")
 			}
-			commands := []qdb.QdbStatement{
+			commands := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
@@ -116,7 +116,7 @@ func TestMemqdbRacing(t *testing.T) {
 			if err != nil {
 				panic("can't unmarshal distribution case(1)!")
 			}
-			commands := []qdb.QdbStatement{
+			commands := []qdb.XRecord{
 				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			err = tran.Append(commands)

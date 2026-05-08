@@ -14,8 +14,8 @@ import (
 
 // Here are methods for converting gossip commands into QDB commands.
 
-func createDistributionPrepare(ctx context.Context, mngr meta.EntityMgr, gossip *proto.CreateDistributionGossip) ([]qdb.QdbStatement, error) {
-	result := make([]qdb.QdbStatement, 0, len(gossip.GetDistributions()))
+func createDistributionPrepare(ctx context.Context, mngr meta.EntityMgr, gossip *proto.CreateDistributionGossip) ([]qdb.XRecord, error) {
+	result := make([]qdb.XRecord, 0, len(gossip.GetDistributions()))
 	for _, ds := range gossip.GetDistributions() {
 		mds, err := distributions.DistributionFromProto(ds)
 		if err != nil {
@@ -37,8 +37,8 @@ func createDistributionPrepare(ctx context.Context, mngr meta.EntityMgr, gossip 
 // TODO: unit tests
 func createKeyRangePrepare(ctx context.Context,
 	mngr meta.EntityMgr,
-	gossip *proto.CreateKeyRangeGossip) ([]qdb.QdbStatement, error) {
-	result := make([]qdb.QdbStatement, 0)
+	gossip *proto.CreateKeyRangeGossip) ([]qdb.XRecord, error) {
+	result := make([]qdb.XRecord, 0)
 	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, gossip.ColumnTypes)
 	if err != nil {
 		return nil, err
@@ -56,8 +56,8 @@ func createKeyRangePrepare(ctx context.Context,
 
 func updateKeyRangePrepare(ctx context.Context,
 	mngr meta.EntityMgr,
-	gossip *proto.UpdateKeyRangeGossip) ([]qdb.QdbStatement, error) {
-	result := make([]qdb.QdbStatement, 0)
+	gossip *proto.UpdateKeyRangeGossip) ([]qdb.XRecord, error) {
+	result := make([]qdb.XRecord, 0)
 	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, gossip.ColumnTypes)
 	if err != nil {
 		return nil, err
@@ -73,8 +73,8 @@ func updateKeyRangePrepare(ctx context.Context,
 	return result, nil
 }
 
-func dropKeyRangePrepare(ctx context.Context, mngr meta.EntityMgr, gossip *proto.DropKeyRangeGossip) ([]qdb.QdbStatement, error) {
-	result := make([]qdb.QdbStatement, 0, len(gossip.GetId()))
+func dropKeyRangePrepare(ctx context.Context, mngr meta.EntityMgr, gossip *proto.DropKeyRangeGossip) ([]qdb.XRecord, error) {
+	result := make([]qdb.XRecord, 0, len(gossip.GetId()))
 	for _, idKeyRange := range gossip.GetId() {
 		qdbStatements, err := mngr.DropKeyRange(ctx, idKeyRange)
 		if err != nil {
@@ -87,10 +87,10 @@ func dropKeyRangePrepare(ctx context.Context, mngr meta.EntityMgr, gossip *proto
 	return result, nil
 }
 
-func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, chunk *mtran.MetaTransactionChunk) ([]qdb.QdbStatement, error) {
-	qdbCmds := make([]qdb.QdbStatement, 0, len(chunk.GossipRequests))
+func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, chunk *mtran.MetaTransactionChunk) ([]qdb.XRecord, error) {
+	qdbCmds := make([]qdb.XRecord, 0, len(chunk.GossipRequests))
 	for _, gossipCommand := range chunk.GossipRequests {
-		var cmdList []qdb.QdbStatement
+		var cmdList []qdb.XRecord
 		var err error
 		cmdType, _ := mtran.GetGossipRequestType(gossipCommand)
 		switch cmdType {

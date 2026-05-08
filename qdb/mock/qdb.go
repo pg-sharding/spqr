@@ -400,7 +400,7 @@ func (mr *MockTXManagerMockRecorder) CommitTransaction(ctx, transaction any) *go
 }
 
 // ExecNoTransaction mocks base method.
-func (m *MockTXManager) ExecNoTransaction(ctx context.Context, operations []qdb.QdbStatement) error {
+func (m *MockTXManager) ExecNoTransaction(ctx context.Context, operations []qdb.XRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecNoTransaction", ctx, operations)
 	ret0, _ := ret[0].(error)
@@ -734,10 +734,10 @@ func (mr *MockQDBMockRecorder) CheckSequence(ctx, seqName any) *gomock.Call {
 }
 
 // CreateDistribution mocks base method.
-func (m *MockQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.QdbStatement, error) {
+func (m *MockQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, distr)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -749,10 +749,10 @@ func (mr *MockQDBMockRecorder) CreateDistribution(ctx, distr any) *gomock.Call {
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -792,10 +792,10 @@ func (mr *MockQDBMockRecorder) CreateReferenceRelation(ctx, r any) *gomock.Call 
 }
 
 // CreateSequence mocks base method.
-func (m *MockQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.QdbStatement, error) {
+func (m *MockQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSequence", ctx, seqName, initialValue)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -864,10 +864,10 @@ func (mr *MockQDBMockRecorder) DropDistribution(ctx, id any) *gomock.Call {
 }
 
 // DropKeyRange mocks base method.
-func (m *MockQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
+func (m *MockQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, id)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1498,10 +1498,10 @@ func (mr *MockQDBMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call 
 }
 
 // UpdateKeyRange mocks base method.
-func (m *MockQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2512,10 +2512,10 @@ func (mr *MockXQDBMockRecorder) CommitTransaction(ctx, transaction any) *gomock.
 }
 
 // CreateDistribution mocks base method.
-func (m *MockXQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.QdbStatement, error) {
+func (m *MockXQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, distr)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2527,10 +2527,10 @@ func (mr *MockXQDBMockRecorder) CreateDistribution(ctx, distr any) *gomock.Call 
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2570,10 +2570,10 @@ func (mr *MockXQDBMockRecorder) CreateReferenceRelation(ctx, r any) *gomock.Call
 }
 
 // CreateSequence mocks base method.
-func (m *MockXQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.QdbStatement, error) {
+func (m *MockXQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSequence", ctx, seqName, initialValue)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2684,10 +2684,10 @@ func (mr *MockXQDBMockRecorder) DropDistribution(ctx, id any) *gomock.Call {
 }
 
 // DropKeyRange mocks base method.
-func (m *MockXQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
+func (m *MockXQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, id)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2839,7 +2839,7 @@ func (mr *MockXQDBMockRecorder) DropUniqueIndex(ctx, id any) *gomock.Call {
 }
 
 // ExecNoTransaction mocks base method.
-func (m *MockXQDB) ExecNoTransaction(ctx context.Context, operations []qdb.QdbStatement) error {
+func (m *MockXQDB) ExecNoTransaction(ctx context.Context, operations []qdb.XRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecNoTransaction", ctx, operations)
 	ret0, _ := ret[0].(error)
@@ -3561,10 +3561,10 @@ func (mr *MockXQDBMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call
 }
 
 // UpdateKeyRange mocks base method.
-func (m *MockXQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockXQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4055,10 +4055,10 @@ func (mr *MockStateKeeperQDBMockRecorder) CommitTransaction(ctx, transaction any
 }
 
 // CreateDistribution mocks base method.
-func (m *MockStateKeeperQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.QdbStatement, error) {
+func (m *MockStateKeeperQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, distr)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4070,10 +4070,10 @@ func (mr *MockStateKeeperQDBMockRecorder) CreateDistribution(ctx, distr any) *go
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockStateKeeperQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockStateKeeperQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4113,10 +4113,10 @@ func (mr *MockStateKeeperQDBMockRecorder) CreateReferenceRelation(ctx, r any) *g
 }
 
 // CreateSequence mocks base method.
-func (m *MockStateKeeperQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.QdbStatement, error) {
+func (m *MockStateKeeperQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSequence", ctx, seqName, initialValue)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4227,10 +4227,10 @@ func (mr *MockStateKeeperQDBMockRecorder) DropDistribution(ctx, id any) *gomock.
 }
 
 // DropKeyRange mocks base method.
-func (m *MockStateKeeperQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
+func (m *MockStateKeeperQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, id)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4382,7 +4382,7 @@ func (mr *MockStateKeeperQDBMockRecorder) DropUniqueIndex(ctx, id any) *gomock.C
 }
 
 // ExecNoTransaction mocks base method.
-func (m *MockStateKeeperQDB) ExecNoTransaction(ctx context.Context, operations []qdb.QdbStatement) error {
+func (m *MockStateKeeperQDB) ExecNoTransaction(ctx context.Context, operations []qdb.XRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecNoTransaction", ctx, operations)
 	ret0, _ := ret[0].(error)
@@ -5206,10 +5206,10 @@ func (mr *MockStateKeeperQDBMockRecorder) UpdateCoordinator(ctx, address any) *g
 }
 
 // UpdateKeyRange mocks base method.
-func (m *MockStateKeeperQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockStateKeeperQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

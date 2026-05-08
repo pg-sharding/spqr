@@ -264,10 +264,10 @@ func (mr *MockCoordinatorMockRecorder) CommitTran(ctx, arg1 any) *gomock.Call {
 }
 
 // CreateDistribution mocks base method.
-func (m *MockCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
+func (m *MockCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, ds)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -279,10 +279,10 @@ func (mr *MockCoordinatorMockRecorder) CreateDistribution(ctx, ds any) *gomock.C
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -379,10 +379,10 @@ func (mr *MockCoordinatorMockRecorder) DropDistribution(ctx, id any) *gomock.Cal
 }
 
 // DropKeyRange mocks base method.
-func (m *MockCoordinator) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
+func (m *MockCoordinator) DropKeyRange(ctx context.Context, krid string) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, krid)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1335,10 +1335,10 @@ func (mr *MockCoordinatorMockRecorder) UpdateCoordinator(ctx, address any) *gomo
 }
 
 // UpdateKeyRange mocks base method.
-func (m *MockCoordinator) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockCoordinator) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.XRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, arg1)
-	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret0, _ := ret[0].([]qdb.XRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

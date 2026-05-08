@@ -31,7 +31,7 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	var chunk []qdb.QdbStatement
+	var chunk []qdb.XRecord
 	if chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil)); err != nil {
 		return nil, err
 	}

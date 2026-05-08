@@ -30,7 +30,7 @@ func TestPackMemqdbCommands(t *testing.T) {
 	dataDistribution2, err := json.Marshal(distribution2)
 	is.NoError(err)
 	t.Run("test happy path pack commands", func(_ *testing.T) {
-		commands := []QdbStatement{
+		commands := []XRecord{
 			{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 			{CmdType: CmdPut, Key: relation.Name, Value: distribution1.ID, Extension: MapRelationDistribution},
 			{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
@@ -45,7 +45,7 @@ func TestPackMemqdbCommands(t *testing.T) {
 		is.Equal(expected, actual)
 	})
 	t.Run("fail: invalid extension", func(_ *testing.T) {
-		commands := []QdbStatement{
+		commands := []XRecord{
 			{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 			{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: "testMap1"},
 		}
@@ -97,7 +97,7 @@ func TestMemQdbTransactions(t *testing.T) {
 		t.Run("happy path", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
-			commands := []QdbStatement{
+			commands := []XRecord{
 				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
@@ -110,14 +110,14 @@ func TestMemQdbTransactions(t *testing.T) {
 		t.Run("2 sequential runs", func(_ *testing.T) {
 			memqdb, err := NewMemQDB("")
 			is.NoError(err)
-			commands := []QdbStatement{
+			commands := []XRecord{
 				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
 			err = memqdb.ExecNoTransaction(ctx, commands)
 			is.NoError(err)
 
-			commands = []QdbStatement{
+			commands = []XRecord{
 				{CmdType: CmdPut, Key: distribution3.ID, Value: string(dataDistribution3), Extension: MapDistributions},
 			}
 			err = memqdb.ExecNoTransaction(ctx, commands)
@@ -136,7 +136,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran)
 			is.NoError(err)
-			commands := []QdbStatement{
+			commands := []XRecord{
 				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
@@ -155,7 +155,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran1)
 			is.NoError(err)
-			commands := []QdbStatement{
+			commands := []XRecord{
 				{CmdType: CmdPut, Key: distribution1.ID, Value: string(dataDistribution1), Extension: MapDistributions},
 				{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Extension: MapDistributions},
 			}
@@ -177,7 +177,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran1)
 			is.NoError(err)
-			statements := []QdbStatement{}
+			statements := []XRecord{}
 			_ = tran1.Append(statements) //handling this error was skipped intentionally
 			err = memqdb.CommitTransaction(ctx, tran1)
 			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.Id(), tran1.Id()))
@@ -200,7 +200,7 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		}
 		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
 		is.NoError(err)
-		expected := []QdbStatement{
+		expected := []XRecord{
 			{
 				CmdType:   CmdPut,
 				Key:       "krid1",
@@ -241,7 +241,7 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		}
 		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
 		is.NoError(err)
-		expected := []QdbStatement{
+		expected := []XRecord{
 			{
 				CmdType:   CmdPut,
 				Key:       "krid1",
@@ -283,7 +283,7 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		}
 		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
 		is.NoError(err)
-		expected := []QdbStatement{
+		expected := []XRecord{
 			{
 				CmdType:   CmdPut,
 				Key:       "krid1",
@@ -320,7 +320,7 @@ func TestDropKeyRangeQdbStatements(t *testing.T) {
 		is.NoError(err)
 		actual, err := memQdb.dropKeyRangeQdbStatements("testKr")
 		is.NoError(err)
-		expected := []QdbStatement{
+		expected := []XRecord{
 			{
 				CmdType:   CmdDelete,
 				Key:       "testKr",

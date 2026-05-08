@@ -214,7 +214,7 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]XRecord, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
@@ -225,7 +225,7 @@ func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 	if err != nil {
 		return nil, err
 	}
-	respKR := make([]QdbStatement, 2, 3)
+	respKR := make([]XRecord, 2, 3)
 	resp, err := NewQdbStatement(CmdPut, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
@@ -316,7 +316,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]XRecord, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
@@ -329,7 +329,7 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 	if err != nil {
 		return nil, fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
-	respKR := make([]QdbStatement, 2)
+	respKR := make([]XRecord, 2)
 	resp, err := NewQdbStatement(CmdPut, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
@@ -363,12 +363,12 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
+func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]XRecord, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
-	resp := make([]QdbStatement, 2)
+	resp := make([]XRecord, 2)
 	statement, err := NewQdbStatement(CmdDelete, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
@@ -1337,7 +1337,7 @@ func (q *EtcdQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelat
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]XRecord, error) {
 	spqrlog.Zero.Debug().
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
@@ -1352,7 +1352,7 @@ func (q *EtcdQDB) CreateDistribution(_ context.Context, distribution *Distributi
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("etcdqdb: add distribution")
-		return []QdbStatement{*resp}, nil
+		return []XRecord{*resp}, nil
 	}
 }
 
@@ -1513,7 +1513,7 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relati
 	}
 
 	delete(distribution.Relations, relation.RelationName)
-	var operations []QdbStatement
+	var operations []XRecord
 	if operations, err = q.CreateDistribution(ctx, distribution); err != nil {
 		return err
 	}
@@ -1816,7 +1816,7 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 		return err
 	}
 
-	if err = tx.Append([]QdbStatement{
+	if err = tx.Append([]XRecord{
 		*idxCommand,
 		*idxByRelCommand,
 	}); err != nil {
@@ -1885,7 +1885,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 		return err
 	}
 
-	if err := tx.Append([]QdbStatement{
+	if err := tx.Append([]XRecord{
 		*idxCommand,
 		*idxByRelCommand,
 	}); err != nil {
@@ -2710,7 +2710,7 @@ func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 //                                 SEQUENCES
 // ==============================================================================
 
-func (q *EtcdQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]QdbStatement, error) {
+func (q *EtcdQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) ([]XRecord, error) {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")
@@ -2719,7 +2719,7 @@ func (q *EtcdQDB) CreateSequence(_ context.Context, seqName string, initialValue
 	if err != nil {
 		return nil, err
 	}
-	return []QdbStatement{*statement}, nil
+	return []XRecord{*statement}, nil
 }
 
 func (q *EtcdQDB) CheckSequence(ctx context.Context, seqName string) (bool, error) {
@@ -2843,7 +2843,7 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return nextval, err
 }
 
-func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
+func packEtcdCommands(operations []XRecord) ([]clientv3.Op, error) {
 	writeOperations := make([]clientv3.Op, 0)
 	for _, v := range operations {
 		switch v.CmdType {
@@ -2862,7 +2862,7 @@ func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
 	return writeOperations, nil
 }
 
-func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
+func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []XRecord) error {
 	ops, err := packEtcdCommands(operations)
 	if err != nil {
 		return err

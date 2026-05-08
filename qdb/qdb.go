@@ -50,7 +50,7 @@ type TransferXactKeeper interface {
 
 type TXManager interface {
 	//batch execution
-	ExecNoTransaction(ctx context.Context, operations []QdbStatement) error
+	ExecNoTransaction(ctx context.Context, operations []XRecord) error
 	CommitTransaction(ctx context.Context, transaction *QdbTransaction) error
 	BeginTransaction(ctx context.Context, transaction *QdbTransaction) error
 }
@@ -73,10 +73,10 @@ const (
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
 type QDB interface {
 	// Key ranges
-	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
+	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]XRecord, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
-	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
-	DropKeyRange(ctx context.Context, id string) ([]QdbStatement, error)
+	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]XRecord, error)
+	DropKeyRange(ctx context.Context, id string) ([]XRecord, error)
 	DropKeyRangeAll(ctx context.Context) error
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
@@ -88,7 +88,7 @@ type QDB interface {
 	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
 
 	// Distribution management
-	CreateDistribution(ctx context.Context, distr *Distribution) ([]QdbStatement, error)
+	CreateDistribution(ctx context.Context, distr *Distribution) ([]XRecord, error)
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
@@ -158,7 +158,7 @@ type QDB interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 
 	// Sequences for reference relation
-	CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error)
+	CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]XRecord, error)
 	CheckSequence(ctx context.Context, seqName string) (bool, error)
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error
