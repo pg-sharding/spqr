@@ -5,6 +5,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -15,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
@@ -114,6 +116,11 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
+
+		if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+			/* XXX: support implicit tx semantics here */
+			statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+		}
 
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
