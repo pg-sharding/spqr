@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -24,16 +25,18 @@ import (
 )
 
 type Coordinator struct {
-	qdb qdb.XQDB
-	dcs qdb.DCStateKeeper
+	qdb         qdb.XQDB
+	dcs         qdb.DCStateKeeper
+	maxTxnBatch uint16
 }
 
 var _ meta.EntityMgr = &Coordinator{}
 
-func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
+func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper, maxTxnBatch uint16) Coordinator {
 	return Coordinator{
-		qdb: q,
-		dcs: d,
+		qdb:         q,
+		dcs:         d,
+		maxTxnBatch: maxTxnBatch,
 	}
 }
 
@@ -41,9 +44,19 @@ func (lc *Coordinator) StartupFinished() bool {
 	return true
 }
 
+func (lc *Coordinator) TaskWorkersID() []string {
+	return nil
+}
+
+func (lc *Coordinator) TaskState(string) (*transferworker.TaskGroupWorkerState, error) {
+	return &transferworker.TaskGroupWorkerState{
+		Cancel: func() {},
+	}, nil
+}
+
 // AlterReferenceRelationStorage alters shards, on which reference relation is contained.
-func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
-	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
+func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
+	return lc.qdb.AlterReferenceRelationStorage(ctx, relationFQN, shs)
 }
 
 // AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
@@ -52,23 +65,23 @@ func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, 
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	for _, qualName := range relNames {
+func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs []*rfqn.RelationFQN, destShard string) error {
+	for _, qualName := range relationFQNs {
 		rel, err := lc.GetReferenceRelation(ctx, qualName)
 		if err != nil {
 			return err
 		}
 
-		if len(rel.ShardIds) == 0 {
+		if len(rel.ShardIDs) == 0 {
 			// XXX: should we error-our here?
 			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
 		}
-		fromShard := rel.ShardIds[0]
+		fromShard := rel.ShardIDs[0]
 
 		// XXX: should we ignore the command/error here?
-		destShards := rel.ShardIds
-		if !slices.Contains(rel.ShardIds, destShard) {
-			destShards = append(rel.ShardIds, destShard)
+		destShards := rel.ShardIDs
+		if !slices.Contains(rel.ShardIDs, destShard) {
+			destShards = append(rel.ShardIDs, destShard)
 		}
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
@@ -88,38 +101,64 @@ func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataSha
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
-func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, changes []topology.GenericOption) error {
 	shard, err := lc.GetShard(ctx, shardID)
 	if err != nil {
 		return err
 	}
 
-	newOptions := shard.Options()
-	for _, opt := range options {
-		optionInd := slices.IndexFunc(shard.Options(), func(el topology.GenericOption) bool { return el.Name == opt.Name })
+	newOptions := slices.Clone(shard.Options())
 
-		switch opt.Action {
+	for _, change := range changes {
+
+		optionNameCount := 0
+		optionValueCount := 0
+		for _, o := range newOptions {
+			if o.Name == change.Name {
+				optionNameCount++
+				if o.Arg == change.Arg {
+					optionValueCount++
+				}
+			}
+		}
+
+		switch change.Action {
 		case topology.GenericOptionActionUnspecified:
 			fallthrough
 		case topology.GenericOptionActionAdd:
-			if optionInd != -1 {
-				return fmt.Errorf("option \"%s\" was specified more than once", opt.Name)
+			if optionValueCount > 0 {
+				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" provided more than once", change.Name, change.Arg))
 			}
-			newOptions = append(newOptions, topology.GenericOption{Name: opt.Name, Arg: opt.Arg})
+			newOptions = append(newOptions, topology.GenericOption{Name: change.Name, Arg: change.Arg})
 		case topology.GenericOptionActionSet:
-			if optionInd == -1 {
-				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			if optionNameCount == 0 {
+				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 			}
-			newOptions[optionInd].Arg = opt.Arg
-		case topology.GenericOptionActionDrop:
-			if optionInd == -1 {
-				return fmt.Errorf("option \"%s\" not found", opt.Name)
+			if optionNameCount > 1 {
+				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" has multiple values provided", change.Name))
 			}
 
-			for i := len(newOptions) - 1; i >= 0; i-- {
-				if opt.Name == newOptions[i].Name && (opt.Arg == "" || opt.Arg == newOptions[i].Arg) {
-					newOptions = slices.Delete(newOptions, i, i+1)
+			ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name })
+			newOptions[ind].Arg = change.Arg
+		case topology.GenericOptionActionDrop:
+			// Drop all
+			if change.Arg == "" {
+				if optionNameCount == 0 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 				}
+
+				for i := len(newOptions) - 1; i >= 0; i-- {
+					if change.Name == newOptions[i].Name {
+						newOptions = slices.Delete(newOptions, i, i+1)
+					}
+				}
+			} else { // Drop option with specific value
+				if optionValueCount == 0 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
+				}
+
+				ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name && o.Arg == change.Arg })
+				newOptions = slices.Delete(newOptions, ind, ind+1)
 			}
 		}
 	}
@@ -289,12 +328,12 @@ func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
-func (lc *Coordinator) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
-	err := lc.qdb.DropReferenceRelation(ctx, relName)
+func (lc *Coordinator) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
+	err := lc.qdb.DropReferenceRelation(ctx, relationFQN)
 	if err != nil {
 		return err
 	}
-	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, relName)
+	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, relationFQN)
 }
 
 // DropSequence implements meta.EntityMgr.
@@ -445,10 +484,7 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 	if _, err := lc.GetKeyRange(ctx, krIdNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
 	}
-	if err := lc.qdb.RenameKeyRange(ctx, krId, krIdNew); err != nil {
-		return err
-	}
-	return nil
+	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
@@ -457,8 +493,8 @@ func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) e
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr
-func (lc *Coordinator) StopMoveTaskGroup(_ context.Context, _ string) error {
-	panic("unimplemented")
+func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
+	return lc.QDB().AddMoveTaskGroupStopFlag(ctx, id, immediate)
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
@@ -616,8 +652,8 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 
 // GetReference relations retrieves info about ref relation from QDB
 // TODO: unit tests
-func (lc *Coordinator) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	ret, err := lc.qdb.GetReferenceRelation(ctx, relName)
+func (lc *Coordinator) GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+	ret, err := lc.qdb.GetReferenceRelation(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}
@@ -761,7 +797,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 		return nil
 	}
 	if cascade && taskGroup.Issuer != nil && taskGroup.Issuer.Type == tasks.IssuerRedistributeTask {
-		return lc.DropRedistributeTask(ctx, taskGroup.Issuer.Id, true)
+		return lc.DropRedistributeTask(ctx, taskGroup.Issuer.ID, true)
 	}
 	task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
@@ -877,11 +913,11 @@ func (lc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	for _, ds := range distrs {
 		ret := distributions.DistributionFromDB(ds)
 		for relName := range ds.Relations {
-			qualifiedName, err := rfqn.ParseFQN(relName)
+			relationFQN, err := rfqn.ParseFQN(relName)
 			if err != nil {
 				return nil, err
 			}
-			mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
+			mapping, err := lc.qdb.GetRelationSequence(ctx, relationFQN)
 			if err != nil {
 				return nil, err
 			}
@@ -926,23 +962,23 @@ func (lc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 // - id (string): the ID of the distribution to be altered.
-// - relName (string): the name of the distributed relation to be detached.
+// - relationFQN (string): the name of the distributed relation to be detached.
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (lc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+func (lc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
 	ds, err := lc.GetDistribution(ctx, id)
 	if err != nil {
 		return err
 	}
-	rel, ok := ds.Relations[relName.RelationName]
+	rel, ok := ds.Relations[relationFQN.RelationName]
 	if !ok {
-		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.Id)
+		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relationFQN.RelationName, ds.Id)
 	}
 	if len(rel.UniqueIndexesByColumn) > 0 {
-		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relName.RelationName)
+		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relationFQN.RelationName)
 	}
-	return lc.qdb.AlterDistributionDetach(ctx, id, relName)
+	return lc.qdb.AlterDistributionDetach(ctx, id, relationFQN)
 }
 
 // ShareKeyRange shares a key range with the LocalCoordinator.
@@ -1074,8 +1110,8 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // Returns:
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeId).Str("appendage id", uniteKeyRange.AppendageKeyRangeId).Msg("unite key ranges")
-	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeId)
+	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeID).Str("appendage id", uniteKeyRange.AppendageKeyRangeID).Msg("unite key ranges")
+	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeID)
 	if err != nil {
 		return err
 	}
@@ -1083,7 +1119,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	defer func() {
 		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
 		// We'll just check existing lock at the start.
-		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
+		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Unite")
 		}
 	}()
@@ -1093,7 +1129,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 
-	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
+	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeID)
 	if err != nil {
 		return err
 	}
@@ -1165,12 +1201,12 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 // - error: an error if the split operation encounters any issues.
 func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	spqrlog.Zero.Debug().
-		Str("krid", req.Krid).
+		Str("krid", req.KeyRangeID).
 		Interface("bound", req.Bound).
 		Str("source-id", req.SourceID).
 		Msg("split request is")
 
-	if kRange, err := lc.GetKeyRange(ctx, req.Krid); err == nil {
+	if kRange, err := lc.GetKeyRange(ctx, req.KeyRangeID); err == nil {
 		ds, err := lc.qdb.GetDistribution(ctx, kRange.Distribution)
 		if err != nil {
 			return err
@@ -1199,7 +1235,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			// already split, so no-op
 			return nil
 		}
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.KeyRangeID)
 	}
 
 	krOld, err := lc.LockKeyRange(ctx, req.SourceID)
@@ -1264,7 +1300,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 
 	if req.SplitLeft {
 		krTemp.ID = req.SourceID
-		krOld.ID = req.Krid
+		krOld.ID = req.KeyRangeID
 		if krOld.IsLocked == nil {
 			return fmt.Errorf("unexpected nil isLocked value in Split")
 		}
@@ -1278,7 +1314,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			return fmt.Errorf("could not create new key range in left key range split: %s", err)
 		}
 	} else {
-		krTemp.ID = req.Krid
+		krTemp.ID = req.KeyRangeID
 		err = tranMngr.CreateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in right key range split: %s", err)
@@ -1332,6 +1368,10 @@ func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, e
 		}
 		return mtran.NewMetaTransaction(*qdbTran), nil
 	}
+}
+
+func (lc *Coordinator) GetTxnBatchSize() uint16 {
+	return lc.maxTxnBatch
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.
@@ -1402,8 +1442,8 @@ func (lc *Coordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distr
 }
 
 // ListRelationIndexes implements meta.EntityMgr.
-func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
-	idxs, err := lc.qdb.ListRelationIndexes(ctx, relName)
+func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListRelationIndexes(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}

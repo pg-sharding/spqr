@@ -1,0 +1,19 @@
+NAME
+    INVALIDATE CACHE - Invalidates the router's schema cache, forcing it to be
+    rebuilt on the
+
+SYNTAX
+    INVALIDATE CACHE
+    INVALIDATE SCHEMA CACHE
+
+DESCRIPTION
+    Invalidates the router's schema cache, forcing it to be rebuilt on the
+    next query.
+
+EXAMPLES
+    Invalidate the schema cache:
+        INVALIDATE CACHE;
+
+RELATED COMMANDS
+    INVALIDATE BACKENDS
+    INVALIDATE STALE CLIENTS

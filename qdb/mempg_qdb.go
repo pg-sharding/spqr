@@ -61,9 +61,9 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 	}
 	err = json.Unmarshal(data, qdb)
 
-	for kr, locked := range qdb.Freq {
+	for kr, locked := range qdb.State.Freq {
 		if locked {
-			qdb.Locks[kr].Lock()
+			qdb.State.Locks[kr].Lock()
 		}
 	}
 
@@ -107,10 +107,22 @@ func (q *MemPgQDB) ListTXNames(ctx context.Context) ([]string, error) {
 	return q.stateKeeper.ListTXNames(ctx)
 }
 
+func (q *MemPgQDB) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error) {
+	return q.stateKeeper.GetTXs(ctx)
+}
+
 func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {
 	return q.stateKeeper.SetTxMetaStorage(storage)
 }
 
 func (q *MemPgQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return q.stateKeeper.GetTxMetaStorage(), nil
+}
+
+func (q *MemPgQDB) RemoveTXData(ctx context.Context, txid string) error {
+	return q.stateKeeper.RemoveTXData(ctx, txid)
+}
+
+func (q *MemPgQDB) ClearTxStatuses(ctx context.Context) error {
+	return q.stateKeeper.ClearTxStatuses(ctx)
 }

@@ -17,7 +17,9 @@ type GroupBy struct {
 	GroupByClause
 	Col []*lyx.ColumnRef
 }
+
 type Show struct {
+	Kind    int
 	Cmd     string
 	Columns []string
 	Where   lyx.Node
@@ -79,7 +81,7 @@ type DistributionDefinition struct {
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
-	ShardIds             []string
+	ShardIDs             []string
 }
 
 type UniqueIndexDefinition struct {
@@ -222,13 +224,32 @@ type Listen struct {
 type Shutdown struct{}
 
 type Kill struct {
-	Cmd    string
-	Target uint
+	Cmd      string
+	Target   uint
+	TargetID string
 }
 
 type System struct {
-	Reload  bool
-	Restart bool
+	Reload      bool
+	Restart     bool
+	Rebootstrap bool
+}
+
+type GrantStmt struct {
+	IsGrant bool
+
+	Privileges []string
+	Objtype    string
+	Objects    []*rfqn.RelationFQN
+
+	Grantees []string
+}
+
+func (GrantStmt) iStatement() {}
+
+type PrivTarget struct {
+	Objtype string
+	Objs    []*rfqn.RelationFQN
 }
 
 type InvalidateCacheTarget string
@@ -381,7 +402,8 @@ type RetryMoveTaskGroup struct {
 func (*RetryMoveTaskGroup) iStatement() {}
 
 type StopMoveTaskGroup struct {
-	ID string
+	ID        string
+	Immediate bool
 }
 
 func (*StopMoveTaskGroup) iStatement() {}
@@ -398,6 +420,15 @@ type InstanceControlPoint struct {
 }
 
 func (*InstanceControlPoint) iStatement() {}
+
+//revive:disable:var-naming
+const (
+	SHOW_KIND_UNSPEC = 0
+	SHOW_KIND_LOCAL  = 1
+	SHOW_KIND_GLOBAL = 2
+)
+
+//revive:enable:var-naming
 
 // The following constants represent SHOW statements.
 const (
@@ -439,18 +470,17 @@ const (
 	TwoPhaseTXStr         = "two_phase_tx"
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
+	TaskGroupWorkersStr   = "task_group_workers"
 )
 
 // not SHOW target
 const (
 	ClientStr  = "client"
 	BackendStr = "backend"
+	TaskStr    = "task"
 )
 
-const (
-	//key range for default shard
-	DEFAULT_KEY_RANGE_SUFFIX = "DEFAULT"
-)
+const DefaultKeyRangeSuffix = "DEFAULT"
 
 // Statement represents a statement.
 type Statement interface {

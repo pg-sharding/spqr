@@ -14,7 +14,7 @@ type Coordinator struct {
 	QdbAddr              string          `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
 	QdbAddrs             []string        `json:"qdb_addrs" toml:"qdb_addrs" yaml:"qdb_addrs"`
 	CoordinatorPort      string          `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
-	GrpcApiPort          string          `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	GrpcAPIPort          string          `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	Host                 string          `json:"host" toml:"host" yaml:"host"`
 	FrontendTLS          *TLSConfig      `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
 	FrontendRules        []*FrontendRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
@@ -27,6 +27,7 @@ type Coordinator struct {
 	RolesFile            string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
 	EtcdMaxSendBytes          int    `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
+	EtcdMaxTxnOps             int    `json:"etcd_max_txn_ops" toml:"etcd_max_txn_ops" yaml:"etcd_max_txn_ops"`
 	DataMoveDisableTriggers   bool   `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
 	DataMoveBoundBatchSize    int64  `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
 	DataMoveQueryLogLevel     string `json:"data_move_query_log_level" toml:"data_move_query_log_level" yaml:"data_move_query_log_level"`

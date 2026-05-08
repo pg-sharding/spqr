@@ -1,10 +1,11 @@
-Dzz
 aaaa
 aboba
 abortable
 abracadabras
 abracadabrav
 accusantium
+ACLTO
+ACLTODB
 addgroup
 addprinc
 adipiscing
@@ -35,6 +36,7 @@ benchbase
 Benro
 berule
 BOOLOID
+bootstraping
 Bootstrapper
 buildpackage
 cachedchecker
@@ -44,7 +46,6 @@ canreq
 ccb
 ccfg
 ccmsg
-Cfgs
 cillum
 Cimpl
 CIn
@@ -85,6 +86,7 @@ ctsa
 cupidatat
 currkr
 currroute
+cyclomatic
 Darth
 datacenter
 datadir
@@ -120,11 +122,13 @@ DOUBLEOID
 drb
 drel
 dserr
+dsid
 Dsn
 dssd
 dstmt
 Duis
 dumbo
+Dzz
 ebff
 eda
 edabaf
@@ -138,7 +142,6 @@ enim
 epn
 errcounter
 errdefs
-errhint
 errtype
 eshkere
 etcdctl
@@ -172,6 +175,7 @@ fugiat
 gcflags
 getconn
 gettime
+gitmodules
 godog
 gofmt
 gofmtcheck
@@ -200,7 +204,7 @@ helpgen
 Highload
 hostnossl
 hostssl
-hotspots
+hotspot
 hst
 HTAP
 iana
@@ -254,7 +258,6 @@ keytabfile
 killall
 kinit
 Kirill
-Klepov
 kpass
 krb
 krdb
@@ -350,6 +353,7 @@ nroute
 nsecs
 nspname
 nulla
+Objtype
 occaecat
 odit
 odssd
@@ -360,6 +364,7 @@ Oids
 oiwejow
 OLAP
 omnis
+onehost
 opgejrqr
 optarg
 optval
@@ -387,6 +392,7 @@ pgi
 pgoption
 PGPORT
 pgproto
+PGQDB
 pgquery
 pgsharding
 PGSSLMODE
@@ -409,16 +415,19 @@ postgresql
 ppp
 pppp
 prepstatement
+privs
 procps
 proident
 protobuf
 protoc
+protovalidate
 psswd
 pstmt
 PYTHONUNBUFFERED
 qcfg
 qdb
 QDBKR
+QDBRe
 QDBTx
 Qdocker
 qlogger
@@ -437,11 +446,14 @@ RAddr
 ragel
 randkey
 randomhex
+randutil
 rarg
 rcfg
 rclient
 rconn
 rdistr
+rebootstrap
+redmon
 regclass
 reloid
 relpersistence
@@ -510,6 +522,7 @@ spqr
 SPQRA
 SPQRB
 SPQRC
+SPQRCTID
 SPQRD
 spqrdump
 SPQRE
@@ -532,10 +545,12 @@ spqrql
 SPQRR
 SPQRT
 SPQRU
+SPQRV
 SPQRX
 SPQRZ
 SQLF
 sqlfile
+SQLIn
 SQLOn
 sqlx
 sshjt
@@ -578,6 +593,7 @@ timeb
 timestamptz
 tlsconfig
 tlt
+tmgr
 TMINUS
 tmpfs
 tmpnum
@@ -588,6 +604,7 @@ TOPENSQBR
 tpcc
 tracelog
 tran
+transferworker
 TRASCE
 truncatable
 tsa
@@ -607,6 +624,9 @@ txidle
 txs
 txstatus
 txtstatus
+typarray
+typname
+typnamespace
 uber
 uinteger
 Uints
@@ -661,3 +681,4 @@ yjoin
 YMid
 yylex
 zerolog
+zjoin

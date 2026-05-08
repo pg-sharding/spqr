@@ -29,7 +29,7 @@ func NewDefaultShardManager(distribution *distributions.Distribution,
 }
 
 func DefaultKeyRangeId(distrib *distributions.Distribution) string {
-	return distrib.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
+	return distrib.Id + "." + spqrparser.DefaultKeyRangeSuffix
 }
 
 func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
@@ -51,10 +51,10 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 	return lowerBound, nil
 }
 
-func (manager *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.KeyRange, error) {
+func (manager *DefaultShardManager) keyRangeDefault(defaultShardId string) (*kr.KeyRange, error) {
 	if lowerBound, err := DefaultRangeLowerBound(manager.distribution.ColTypes); err == nil {
 		keyRange := &kr.KeyRange{
-			ShardID:      DefaultShardId,
+			ShardID:      defaultShardId,
 			ID:           DefaultKeyRangeId(manager.distribution),
 			Distribution: manager.distribution.Id,
 			ColumnTypes:  manager.distribution.ColTypes,

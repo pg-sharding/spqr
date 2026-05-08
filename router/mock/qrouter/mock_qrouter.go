@@ -203,17 +203,3 @@ func (mr *MockQueryRouterMockRecorder) SetReady(ready any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockQueryRouter)(nil).SetReady), ready)
 }
-
-// WorldShardsRoutes mocks base method.
-func (m *MockQueryRouter) WorldShardsRoutes() []kr.ShardKey {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WorldShardsRoutes")
-	ret0, _ := ret[0].([]kr.ShardKey)
-	return ret0
-}
-
-// WorldShardsRoutes indicates an expected call of WorldShardsRoutes.
-func (mr *MockQueryRouterMockRecorder) WorldShardsRoutes() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WorldShardsRoutes", reflect.TypeOf((*MockQueryRouter)(nil).WorldShardsRoutes))
-}

@@ -1,0 +1,22 @@
+name: ALTER REFERENCE TABLE STORAGE
+snippet: reference_table_commands
+order: 3
+description: |
+  Changes the set of shards where a reference table is stored.
+
+syntax: |
+  ALTER REFERENCE TABLE <table_name> STORAGE TO (<shard_id>, ...)
+
+parameters:
+  - name: table_name
+    description: Name of the reference table to alter
+  - name: shard_id
+    description: New list of shard identifiers for the reference table
+
+examples:
+  - description: Change storage to three shards
+    code: ALTER REFERENCE TABLE tax_rates STORAGE TO (sh1, sh2, sh3);
+
+related_commands:
+  - CREATE REFERENCE TABLE
+  - DROP REFERENCE TABLE

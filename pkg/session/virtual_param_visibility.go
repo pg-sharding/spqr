@@ -31,83 +31,83 @@ func (v *VirtualParamVisibility) Commit() {
 	v.updateInGlobal()
 }
 
-func (s *VirtualParamVisibility) get() (string, bool) {
-	if len(s.entries) == 0 {
+func (v *VirtualParamVisibility) get() (string, bool) {
+	if len(v.entries) == 0 {
 		return "", false
 	}
 
-	lastEntry := s.entries[len(s.entries)-1]
-	if v, ok := lastEntry.Levels[VirtualParamLevelLocal]; ok {
-		return v, true
+	lastEntry := v.entries[len(v.entries)-1]
+	if val, ok := lastEntry.Levels[VirtualParamLevelLocal]; ok {
+		return val, true
 	}
-	if v, ok := lastEntry.Levels[VirtualParamLevelStatement]; ok {
-		return v, true
+	if val, ok := lastEntry.Levels[VirtualParamLevelStatement]; ok {
+		return val, true
 	}
-	if v, ok := lastEntry.Levels[VirtualParamLevelTxBlock]; ok {
-		return v, true
+	if val, ok := lastEntry.Levels[VirtualParamLevelTxBlock]; ok {
+		return val, true
 	}
 
 	return "", false
 }
 
-func (s *VirtualParamVisibility) Set(entry ParamEntry) {
-	if len(s.entries) == 0 {
-		s.entries = append(s.entries, entry)
+func (v *VirtualParamVisibility) Set(entry ParamEntry) {
+	if len(v.entries) == 0 {
+		v.entries = append(v.entries, entry)
 	} else {
-		lastEntry := s.entries[len(s.entries)-1]
+		lastEntry := v.entries[len(v.entries)-1]
 		if lastEntry.EqualIgnoringValue(entry) {
-			for lvl, v := range entry.Levels {
-				s.entries[len(s.entries)-1].Levels[lvl] = v
+			for lvl, val := range entry.Levels {
+				v.entries[len(v.entries)-1].Levels[lvl] = val
 			}
 		} else {
-			s.entries = append(s.entries, entry)
+			v.entries = append(v.entries, entry)
 		}
 	}
 
-	s.updateInGlobal()
+	v.updateInGlobal()
 }
 
-func (s *VirtualParamVisibility) updateInGlobal() {
-	v, ok := s.get()
+func (v *VirtualParamVisibility) updateInGlobal() {
+	val, ok := v.get()
 
 	if ok {
-		s.globalMap[s.name] = v
+		v.globalMap[v.name] = val
 	} else {
-		delete(s.globalMap, s.name)
+		delete(v.globalMap, v.name)
 	}
 }
 
-func (s *VirtualParamVisibility) RollbackTo(txCnt int) {
-	i := len(s.entries) - 1
-	for ; i >= 0 && s.entries[i].Tx > txCnt; i-- {
+func (v *VirtualParamVisibility) RollbackTo(txCnt int) {
+	i := len(v.entries) - 1
+	for ; i >= 0 && v.entries[i].Tx > txCnt; i-- {
 	}
 
 	if i >= 0 {
-		s.entries = s.entries[:i+1]
+		v.entries = v.entries[:i+1]
 	} else {
-		s.entries = nil
+		v.entries = nil
 	}
 
-	s.updateInGlobal()
+	v.updateInGlobal()
 }
 
-func (s *VirtualParamVisibility) CleanupStatementSet() {
-	for i := range s.entries {
-		delete(s.entries[i].Levels, VirtualParamLevelStatement)
+func (v *VirtualParamVisibility) CleanupStatementSet() {
+	for i := range v.entries {
+		delete(v.entries[i].Levels, VirtualParamLevelStatement)
 
-		if len(s.entries[i].Levels) == 0 {
-			s.entries = s.entries[:len(s.entries)-1]
+		if len(v.entries[i].Levels) == 0 {
+			v.entries = v.entries[:len(v.entries)-1]
 		}
 	}
 
-	s.updateInGlobal()
+	v.updateInGlobal()
 }
 
-func (s *VirtualParamVisibility) Reset(_ int, defaultValue *string) {
+func (v *VirtualParamVisibility) Reset(_ int, defaultValue *string) {
 	if defaultValue != nil {
-		s.globalMap[s.name] = *defaultValue
+		v.globalMap[v.name] = *defaultValue
 	} else {
-		delete(s.globalMap, s.name)
+		delete(v.globalMap, v.name)
 	}
-	s.entries = nil
+	v.entries = nil
 }

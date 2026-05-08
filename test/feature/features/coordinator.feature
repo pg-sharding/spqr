@@ -246,7 +246,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "router" should match regexp
     """
-    key range .* is locked
+    key range is locked
     """
 
     Given I run SQL on host "coordinator"
@@ -359,7 +359,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range krid1 is locked
+    key range is locked
     """
 
     When I run SQL on host "coordinator"
@@ -479,13 +479,16 @@ Feature: Coordinator test
     """
     [
       {
-        "shard":"sh1"
+        "shard":"sh1",
+        "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh2"
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh3"
+        "shard":"sh3",
+        "options": "{host=spqr_shard_3:6432}"
       }
     ]
     """
@@ -572,10 +575,12 @@ Feature: Coordinator test
     """
     [
       {
-        "shard":"sh2"
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh3"
+        "shard":"sh3",
+        "options": "{host=spqr_shard_3:6432}"
       }
     ]
     """
@@ -589,10 +594,12 @@ Feature: Coordinator test
     """
     [
       {
-        "shard":"sh2"
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh3"
+        "shard":"sh3",
+        "options": "{host=spqr_shard_3:6432}"
       }
     ]
     """

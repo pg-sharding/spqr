@@ -104,7 +104,7 @@ func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx t
 		return txstatus.TXERR, err
 	}
 	if _, ok := msg.(*pgproto3.CommandComplete); !ok {
-		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+v", msg)
+		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+T", msg)
 	}
 
 	/* we expect command complete and rfq as begin response */
@@ -114,7 +114,7 @@ func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx t
 	}
 	q, ok := msg.(*pgproto3.ReadyForQuery)
 	if !ok || q.TxStatus != byte(expTx) {
-		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+v", msg)
+		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+T", msg)
 	}
 	return txstatus.TXStatus(q.TxStatus), nil
 }

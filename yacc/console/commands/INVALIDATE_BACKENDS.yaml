@@ -1,0 +1,16 @@
+name: INVALIDATE BACKENDS
+snippet: admin_commands
+order: 4
+description: |
+  Marks all backend connections as stale, causing them to be re-established.
+
+syntax: |
+  INVALIDATE BACKENDS
+
+examples:
+  - description: Invalidate all backend connections
+    code: INVALIDATE BACKENDS;
+
+related_commands:
+  - INVALIDATE CACHE
+  - INVALIDATE STALE CLIENTS

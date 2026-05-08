@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -74,7 +75,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
@@ -89,7 +90,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -123,7 +124,7 @@ func TestCreateShardValidatesReachableHosts(t *testing.T) {
 
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.NoError(t, err)
@@ -159,7 +160,7 @@ func TestCreateShardRejectsUnreachableHosts(t *testing.T) {
 
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "not reachable")
@@ -205,7 +206,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
@@ -227,8 +228,8 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	mmgr.EXPECT().
 		Move(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange) error {
-			assert.Equal(t, "krid3", move.Krid)
-			assert.Equal(t, "sh2", move.ShardId)
+			assert.Equal(t, "krid3", move.KeyRangeID)
+			assert.Equal(t, "sh2", move.ShardID)
 			return nil
 		})
 
@@ -266,7 +267,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
@@ -290,9 +291,10 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh1", "sh2"},
+			ShardIDs:              []string{"sh1", "sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
+			ACL:                   []acl.ACLItem{},
 		}
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)
@@ -302,13 +304,13 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
 				RelationName: "xtab",
 			},
-			ShardIds: []string{"sh2"},
+			ShardIDs: []string{"sh2"},
 		}
 		tupleslotExpected := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
@@ -327,9 +329,10 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh2"},
+			ShardIDs:              []string{"sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
+			ACL:                   []acl.ACLItem{},
 		}
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)

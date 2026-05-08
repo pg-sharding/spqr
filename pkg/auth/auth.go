@@ -223,14 +223,14 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		return nil
 	case config.AuthSCRAM:
-		const SCRAMSaltLen = 16
-		const SCRAMIterCount = 4096
-		const SCRAMKeyLen = 32
-		salt := make([]byte, SCRAMSaltLen)
+		const scramSaltLen = 16
+		const scramIterCount = 4096
+		const scramKeyLen = 32
+		salt := make([]byte, scramSaltLen)
 		if _, err := rand.Read(salt); err != nil {
 			return err
 		}
-		saltedPassword := pbkdf2.Key([]byte(rule.AuthRule.Password), salt, SCRAMIterCount, SCRAMKeyLen, sha256.New)
+		saltedPassword := pbkdf2.Key([]byte(rule.AuthRule.Password), salt, scramIterCount, scramKeyLen, sha256.New)
 		// Generate ServerKey = HMAC(saltedPassword, "Server Key")
 		h := hmac.New(sha256.New, saltedPassword)
 		h.Write([]byte("Server Key"))
@@ -246,7 +246,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 				return scram.StoredCredentials{
 					KeyFactors: scram.KeyFactors{
 						Salt:  string(salt),
-						Iters: SCRAMIterCount,
+						Iters: scramIterCount,
 					},
 					ServerKey: serverKey,
 					StoredKey: storedKey,
@@ -380,7 +380,10 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 				keyTabFileProperty: rule.AuthRule.GssConfig.KrbKeyTabFile,
 			},
 		}
-		kerb := NewKerberosModule(b)
+		kerb, err := NewKerberosModule(b)
+		if err != nil {
+			return err
+		}
 		cred, err := kerb.Process(cl)
 		if err != nil {
 			return err

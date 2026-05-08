@@ -34,7 +34,8 @@ SHOW relations;
 \c regress
 -- INSERT fails: router can't match column "w_id" to metadata "W_ID"
 INSERT INTO rc_test (w_id, val) VALUES (1, 'row_sh1');
-ERROR:  error processing query 'INSERT INTO rc_test (w_id, val) VALUES (1, 'row_sh1');': too complex query to route
+ERROR:  too complex query to route
+QUERY:  INSERT INTO rc_test (w_id, val) VALUES (1, 'row_sh1');
 -- SELECT scatters to all shards: column mismatch
 SELECT * FROM rc_test WHERE w_id = 1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

@@ -11,6 +11,7 @@ import (
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	"github.com/pg-sharding/spqr/router/instance"
@@ -97,8 +98,8 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 	return app.spqr.RunAdm(ctx, listener)
 }
 
-func (app *App) ServeGrpcApi(ctx context.Context) error {
-	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort)
+func (app *App) ServeGrpcAPI(ctx context.Context) error {
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 
 func (app *App) ServeWD(ctx context.Context) error {
 
-	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 
 	if err != nil {
 		return err
@@ -156,9 +157,15 @@ func (app *App) ServeWD(ctx context.Context) error {
 			spqrlog.Zero.Info().Msg("recovery watchdog done")
 			return nil
 		default:
-			err := wd.RecoverDistributedTx()
+			_, err := wd.RecoverDistributedTx()
 			if err != nil {
 				spqrlog.Zero.Error().Err(err)
+			}
+
+			if config.RouterConfig().TxDataTTL != 0 {
+				if _, err := wd.CleanUpOldTXs(ctx); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to clean up outdated two-phase commit transaction data")
+				}
 			}
 
 			/* wait for some period of time */

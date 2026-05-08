@@ -29,7 +29,7 @@ func DistributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.
 		return nil, nil, err
 	}
 
-	return NewAdapter(conn), func() {
+	return NewAdapter(conn, localCoordinator.GetTxnBatchSize()), func() {
 		if err := conn.Close(); err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}

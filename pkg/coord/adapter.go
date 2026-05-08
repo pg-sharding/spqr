@@ -14,6 +14,7 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -22,7 +23,8 @@ import (
 )
 
 type Adapter struct {
-	conn *grpc.ClientConn
+	conn        *grpc.ClientConn
+	maxTxnBatch uint16
 }
 
 var _ meta.EntityMgr = &Adapter{}
@@ -34,9 +36,10 @@ var _ meta.EntityMgr = &Adapter{}
 //
 // Returns:
 // - a pointer to an Adapter object.
-func NewAdapter(conn *grpc.ClientConn) *Adapter {
+func NewAdapter(conn *grpc.ClientConn, maxTxnBatch uint16) *Adapter {
 	return &Adapter{
-		conn: conn,
+		conn:        conn,
+		maxTxnBatch: maxTxnBatch,
 	}
 }
 
@@ -61,6 +64,16 @@ func (a *Adapter) Cache() *cache.SchemaCache {
 
 func (a *Adapter) StartupFinished() bool {
 	return true
+}
+
+func (a *Adapter) TaskWorkersID() []string {
+	return nil
+}
+
+func (a *Adapter) TaskState(string) (*transferworker.TaskGroupWorkerState, error) {
+	return &transferworker.TaskGroupWorkerState{
+		Cancel: func() {},
+	}, nil
 }
 
 // TODO : unit tests
@@ -95,8 +108,8 @@ func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 		return nil, spqrerror.CleanGrpcError(err)
 	}
 	result := make([]*rfqn.RelationFQN, 0, len(resp.GetRelNames()))
-	for _, relName := range resp.GetRelNames() {
-		result = append(result, rfqn.RelationFQNFromProto(relName))
+	for _, relationFQN := range resp.GetRelNames() {
+		result = append(result, rfqn.RelationFQNFromProto(relationFQN))
 	}
 	return result, nil
 }
@@ -112,10 +125,10 @@ func (a *Adapter) AlterReferenceRelationStorage(_ context.Context, _ *rfqn.Relat
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
-func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
-		Relation: rfqn.RelationFQNToProto(relName),
+		Relation: rfqn.RelationFQNToProto(relationFQN),
 		ShardIds: shs,
 	})
 	return err
@@ -132,12 +145,12 @@ func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.Refe
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+func (a *Adapter) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
 	/* XXX: fix protos to new schema */
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
 		Relations: []*proto.QualifiedName{
-			rfqn.RelationFQNToProto(relName),
+			rfqn.RelationFQNToProto(relationFQN),
 		},
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -370,19 +383,19 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 
 			nkr := keyRange.ToProto()
-			nkr.Krid = split.Krid
+			nkr.Krid = split.KeyRangeID
 
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
 				Bound:     split.Bound[0], // fix multidim case
 				SourceId:  split.SourceID,
-				NewId:     split.Krid,
+				NewId:     split.KeyRangeID,
 				SplitLeft: split.SplitLeft,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.Krid)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.KeyRangeID)
 }
 
 // TODO : unit tests
@@ -406,10 +419,10 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	// Check for in-between key ranges
 	for _, kr := range krs {
-		if kr.ID == unite.BaseKeyRangeId {
+		if kr.ID == unite.BaseKeyRangeID {
 			left = kr
 		}
-		if kr.ID == unite.AppendageKeyRangeId {
+		if kr.ID == unite.AppendageKeyRangeID {
 			right = kr
 		}
 	}
@@ -419,7 +432,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	}
 
 	for _, krCurr := range krs {
-		if krCurr.ID == unite.BaseKeyRangeId || krCurr.ID == unite.AppendageKeyRangeId {
+		if krCurr.ID == unite.BaseKeyRangeID || krCurr.ID == unite.AppendageKeyRangeID {
 			continue
 		}
 		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
@@ -433,8 +446,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
-		BaseId:      unite.BaseKeyRangeId,
-		AppendageId: unite.AppendageKeyRangeId,
+		BaseId:      unite.BaseKeyRangeID,
+		AppendageId: unite.AppendageKeyRangeID,
 	})
 	return spqrerror.CleanGrpcError(err)
 }
@@ -456,17 +469,17 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	}
 
 	for _, keyRange := range krs {
-		if keyRange.ID == move.Krid {
+		if keyRange.ID == move.KeyRangeID {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 				Id:        keyRange.ID,
-				ToShardId: move.ShardId,
+				ToShardId: move.ShardID,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.KeyRangeID)
 }
 
 // TODO : unit tests
@@ -490,10 +503,10 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
 	}
 	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
-		TaskGroupId: req.TaskGroupId,
-		KeyRangeId:  req.KeyRangeId,
-		ToShardId:   req.ShardId,
-		ToKrId:      req.DestKrId,
+		TaskGroupId: req.TaskGroupID,
+		KeyRangeId:  req.KeyRangeID,
+		ToShardId:   req.ShardID,
+		ToKrId:      req.DestKeyRangeID,
 		LimitType:   limitType,
 		Limit:       limit,
 		BatchSize:   int64(req.BatchSize),
@@ -524,9 +537,9 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
-		TaskGroupId: req.TaskGroupId,
-		Krid:        req.KrId,
-		ShardId:     req.ShardId,
+		TaskGroupId: req.TaskGroupID,
+		Krid:        req.KeyRangeID,
+		ShardId:     req.ShardID,
 		BatchSize:   int64(req.BatchSize),
 		Check:       req.Check,
 		Apply:       req.Apply,
@@ -679,14 +692,19 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 // - error: An error if the data shard addition fails, otherwise nil.
 func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard)})
+	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard, false)})
 	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
 // TODO : implement
-func (a *Adapter) AlterShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardOptions not implemented")
+func (a *Adapter) AlterShardOptions(ctx context.Context, shardID string, optionChanges []topology.GenericOption) error {
+	client := proto.NewShardServiceClient(a.conn)
+	_, err := client.AlterShard(ctx, &proto.AlterShardRequest{
+		Id:      shardID,
+		Options: topology.GenericOptionsToProto(optionChanges, true),
+	})
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -742,7 +760,11 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error)
 	}
 	var ds []*topology.DataShard
 	for _, shard := range resp.Shards {
-		ds = append(ds, topology.DataShardFromProto(shard))
+		grpcShard, err := topology.DataShardFromProto(shard)
+		if err != nil {
+			return nil, err
+		}
+		ds = append(ds, grpcShard)
 	}
 	return ds, err
 }
@@ -764,7 +786,7 @@ func (a *Adapter) GetShard(ctx context.Context, shardID string) (*topology.DataS
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	return topology.DataShardFromProto(resp.Shard), nil
+	return topology.DataShardFromProto(resp.Shard)
 }
 
 // TODO : unit tests
@@ -873,16 +895,16 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution of the relation.
-// - relName (string): The name of the relation.
+// - relationFQN (string): The name of the relation.
 // - schemaName (string): the new schema name for the relation.
 //
 // Returns:
 // - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
+func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, schemaName string) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 		Id:           id,
-		RelationName: relationName.RelationName,
+		RelationName: relationFQN.RelationName,
 		SchemaName:   schemaName,
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -893,16 +915,16 @@ func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string,
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution of the relation.
-// - relName (string): The name of the relation.
+// - relationFQN (string): The name of the relation.
 // - distributionKey ([]distributions.DistributionKeyEntry): the new distribution key for the relation.
 //
 // Returns:
 // - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
 		Id:              id,
-		RelationName:    relationName.RelationName,
+		RelationName:    relationFQN.RelationName,
 		DistributionKey: distributions.DistributionKeyToProto(distributionKey),
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -913,15 +935,15 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution to detach from.
-// - relName (*rfqn.RelationFQN): The qualified name of the relation to detach.
+// - relationFQN (*rfqn.RelationFQN): The qualified name of the relation to detach.
 //
 // Returns:
 // - error: An error if the detachment fails, otherwise nil.
-func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 		Id:       id,
-		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
+		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relationFQN)},
 	})
 
 	return spqrerror.CleanGrpcError(err)
@@ -955,16 +977,16 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - relationName (string): The ID of the relation (type: string).
+// - relationFQN (*rfqn.RelationFQN): The fully qualified relation name, including schema and relation name.
 //
 // Returns:
 // - *distributions.Distribution: The retrieved distribution related to the relation.
 // - error: An error if the retrieval of the distribution fails, otherwise nil.
-func (a *Adapter) GetRelationDistribution(ctx context.Context, relationName *rfqn.RelationFQN) (*distributions.Distribution, error) {
+func (a *Adapter) GetRelationDistribution(ctx context.Context, relationFQN *rfqn.RelationFQN) (*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.GetRelationDistribution(ctx, &proto.GetRelationDistributionRequest{
-		Name:       relationName.RelationName,
-		SchemaName: relationName.SchemaName,
+		Name:       relationFQN.RelationName,
+		SchemaName: relationFQN.SchemaName,
 	})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
@@ -1124,9 +1146,9 @@ func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.StopMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.StopMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id, Immediate: immediate})
 	return spqrerror.CleanGrpcError(err)
 }
 
@@ -1328,11 +1350,11 @@ func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return resp.Value, nil
 }
 
-func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
+func (a *Adapter) ListRelationSequences(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]string, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.ListRelationSequences(ctx, &proto.ListRelationSequencesRequest{
-		Name:       relName.RelationName,
-		SchemaName: relName.SchemaName,
+		Name:       relationFQN.RelationName,
+		SchemaName: relationFQN.SchemaName,
 	})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
@@ -1341,10 +1363,10 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 	return resp.ColumnSequences, nil
 }
 
-func (a *Adapter) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+func (a *Adapter) AlterSequenceDetachRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterSequenceDetachRelation(ctx, &proto.AlterSequenceDetachRelationRequest{
-		RelationName: rfqn.RelationFQNToProto(rel),
+		RelationName: rfqn.RelationFQNToProto(relationFQN),
 	})
 	if err != nil {
 		return spqrerror.CleanGrpcError(err)
@@ -1381,6 +1403,10 @@ func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error)
 			return transactionMeta, nil
 		}
 	}
+}
+
+func (a *Adapter) GetTxnBatchSize() uint16 {
+	return a.maxTxnBatch
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.
@@ -1433,9 +1459,9 @@ func (a *Adapter) ListUniqueIndexes(ctx context.Context) (map[string]*distributi
 }
 
 // ListDistributionIndexes implements meta.EntityMgr.
-func (a *Adapter) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+func (a *Adapter) ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
-	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: /* fix that */ relName.RelationName})
+	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: /* fix that */ relationFQN.RelationName})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
@@ -60,7 +59,7 @@ type Router struct {
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
-	GrpcApiPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	GrpcAPIPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
@@ -72,6 +71,7 @@ type Router struct {
 	ExitOnInitSQLError        bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
 	UseCoordinatorInit        bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 	ManageShardsByCoordinator bool   `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
+	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
 
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
@@ -105,6 +105,7 @@ type Router struct {
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
+	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
 
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
 
@@ -120,7 +121,8 @@ type Router struct {
 	WatchdogBackendRule   *BackendRule  `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 
-	StoreTxDataPostgresql bool `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+	StoreTxDataPostgresql bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+	TxDataTTL             time.Duration `json:"tx_data_ttl" toml:"tx_data_ttl" yaml:"tx_data_ttl"`
 
 	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }
@@ -147,8 +149,6 @@ func (r *Router) PostProcess() error {
 			return err
 		}
 	}
-
-	rps.SetEnableRPSAggregation(r.Qr.RouterRpsAggregation)
 
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if r.Qr.DefaultTSA == "" {
@@ -177,10 +177,6 @@ type QRouter struct {
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 
-	// Controls whether to calculate sliding window RPS stats (requires mutex).
-	// Total requests are always counted atomically.
-	RouterRpsAggregation bool `json:"router_rps_aggregation" toml:"router_rps_aggregation" yaml:"router_rps_aggregation"`
-
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 }
 
@@ -201,8 +197,9 @@ type Shard struct {
 }
 
 type Host struct {
-	Address string // format host:port
-	AZ      string // Availability zone
+	Address  string // format host:port
+	AZ       string // Availability zone
+	Priority int    // connection acquire priority
 }
 
 func ValueOrDefaultInt(value int, def int) int {

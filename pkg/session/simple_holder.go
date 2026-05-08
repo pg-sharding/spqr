@@ -38,8 +38,9 @@ type ParamEntry struct {
 }
 
 type BoolGUCimpl struct {
-	n   string
-	def func() bool
+	n         string
+	shortName string
+	def       func() bool
 }
 
 func (guc BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
@@ -48,6 +49,10 @@ func (guc BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
 	} else {
 		cl.RecordVirtualParam(level, guc.n, "no")
 	}
+}
+
+func (guc BoolGUCimpl) ShortName() string {
+	return guc.shortName
 }
 
 func (guc BoolGUCimpl) Reset() {
@@ -84,7 +89,7 @@ type SimpleSessionParamHandler struct {
 	paramCodes []int16
 
 	showNoticeMessages bool
-	maintain_params    bool
+	maintainParams     bool
 }
 
 func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
@@ -206,12 +211,12 @@ func (cl *SimpleSessionParamHandler) DistributionKey() string {
 
 // MaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) MaintainParams() bool {
-	return cl.maintain_params
+	return cl.maintainParams
 }
 
 // SetMaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
-	cl.maintain_params = val
+	cl.maintainParams = val
 }
 
 // SetShowNoticeMsg implements client.Client.
@@ -464,23 +469,32 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 	}
 }
 
-var boolGUCs []BoolGUCimpl = []BoolGUCimpl{
+var BoolGUCs = []BoolGUCimpl{
 	{
-		n: SPQR_ALLOW_SPLIT_UPDATE,
+		n:         SPQR_ALLOW_SPLIT_UPDATE,
+		shortName: "allow split update",
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowSplitUpdate
 		},
 	},
 	{
-		n: SPQR_ALLOW_POSTPROCESSING,
+		n:         SPQR_ALLOW_POSTPROCESSING,
+		shortName: "allow postprocessing",
 		def: func() bool {
 			return config.RouterConfig().Qr.AllowPostProcessing
+		},
+	},
+	{
+		n:         SPQR_LINEARIZE_DISPATCH,
+		shortName: "linearize dispatch",
+		def: func() bool {
+			return false
 		},
 	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
-	for _, guc := range boolGUCs {
+	for _, guc := range BoolGUCs {
 		if guc.n == n {
 			return guc, nil
 		}
@@ -489,7 +503,7 @@ func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
+func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
 
@@ -500,7 +514,7 @@ func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehavio
 			SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
 		defaultTsa:            t,
-		showNoticeMessages:    show_notice,
+		showNoticeMessages:    showNotice,
 		defaultCommitStrategy: ds,
 	}
 }

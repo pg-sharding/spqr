@@ -46,7 +46,7 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRan
 		return err
 	}
 
-	var nearestKr *kr.KeyRange = nil
+	var nearestKr *kr.KeyRange
 	for _, v := range existsKrids {
 		// TODO: need remove lowlevel checks with qdbKr from QDB layer
 		if kr.CmpRangesLessEqual(v.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
@@ -189,10 +189,8 @@ func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error
 	if err := mngr.DropKeyRange(ctx, id); err != nil {
 		return err
 	}
-	if err := mngr.CommitTran(ctx); err != nil {
-		return err
-	}
-	return nil
+
+	return mngr.CommitTran(ctx)
 }
 
 // locks key range with retries

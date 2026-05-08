@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -74,6 +75,23 @@ var (
 
 	startupOverrides Overrides
 )
+
+func getMaxTxnBatchSize(configRouter *config.Router, configCoord *config.Coordinator) uint16 {
+	maxTxnBatchSize := qdb.DefaultMaxTxnSize
+	if configRouter.QdbMaxTxnOps > 0 {
+		maxTxnBatchSize = uint16(configRouter.QdbMaxTxnOps)
+	}
+	// The coordinator option EtcdMaxTxnOps has a stronger effect than the router option QdbMaxTxnOps.
+	if configCoord != nil && configCoord.EtcdMaxTxnOps > 0 {
+		if configCoord.EtcdMaxTxnOps > math.MaxUint16 {
+			maxTxnBatchSize = math.MaxUint16
+		} else {
+			maxTxnBatchSize = uint16(configCoord.EtcdMaxTxnOps)
+		}
+	}
+	spqrlog.Zero.Info().Str("maxTxnBatchSize", fmt.Sprintf("%d", maxTxnBatchSize))
+	return maxTxnBatchSize
+}
 
 func init() {
 	// Router and coordinator config paths
@@ -159,7 +177,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
 		}
 
-		if config.RouterConfig().WithCoordinator || config.RouterConfig().StoreTxDataPostgresql {
+		if config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -206,12 +224,12 @@ var runCmd = &cobra.Command{
 		ctx, cancelCtx := context.WithCancel(context.Background())
 		defer cancelCtx()
 
-		var pprofCpuFile *os.File
+		var pprofCPUFile *os.File
 		var pprofMemFile *os.File
 
 		if cpuProfile {
 			spqrlog.Zero.Info().Msg("starting cpu profile")
-			pprofCpuFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
+			pprofCPUFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
 
 			if err != nil {
 				spqrlog.Zero.Info().
@@ -220,7 +238,7 @@ var runCmd = &cobra.Command{
 				return err
 			}
 
-			if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
+			if err := pprof.StartCPUProfile(pprofCPUFile); err != nil {
 				spqrlog.Zero.Info().
 					Err(err).
 					Msg("got an error while starting cpu profile")
@@ -250,8 +268,8 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
-		// HERE
-		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
+		maxTxnBatchSize := getMaxTxnBatchSize(config.RouterConfig(), config.CoordinatorConfig())
+		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
 
@@ -277,7 +295,7 @@ var runCmd = &cobra.Command{
 						return fmt.Errorf("init frontend TLS: %w", err)
 					}
 
-					coordinator, err := coord.NewClusteredCoordinator(frTLS, db)
+					coordinator, err := coord.NewClusteredCoordinator(frTLS, db, maxTxnBatchSize)
 					if err != nil {
 						return err
 					}
@@ -303,9 +321,9 @@ var runCmd = &cobra.Command{
 					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
-						spqrlog.Zero.Info().Str("fname", pprofCpuFile.Name()).Msg("writing cpu prof")
+						spqrlog.Zero.Info().Str("fname", pprofCPUFile.Name()).Msg("writing cpu prof")
 
-						if err := pprofCpuFile.Close(); err != nil {
+						if err := pprofCPUFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
@@ -345,7 +363,7 @@ var runCmd = &cobra.Command{
 						pprof.StopCPUProfile()
 
 						spqrlog.Zero.Info().Msg("writing cpu prof")
-						if err := pprofCpuFile.Close(); err != nil {
+						if err := pprofCPUFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
@@ -375,11 +393,6 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		} else if config.RouterConfig().UseCoordinatorInit {
-			/* load config if not yet */
-			_, err := config.LoadCoordinatorCfg(ccfgPath)
-			if err != nil {
-				return err
-			}
 			e := instance.NewEtcdMetadataBootstrapper(config.CoordinatorConfig().QdbAddrs)
 			if err := e.InitializeMetadata(ctx, router); err != nil {
 				return err
@@ -412,7 +425,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServeGrpcApi(ctx)
+			err := app.ServeGrpcAPI(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
 				errCh <- err

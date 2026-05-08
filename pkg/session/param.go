@@ -3,6 +3,7 @@ package session
 import "github.com/pg-sharding/spqr/pkg/tsa"
 
 type BoolGUC interface {
+	ShortName() string
 	Get(sph SessionParamsHolder) bool
 	Set(sph SessionParamsHolder, level string, val bool)
 	Reset()
@@ -103,6 +104,7 @@ const (
 	VirtualParamLevelTxBlock   = "txBlock"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_DISTRIBUTION            = "__spqr__distribution"
 	SPQR_DISTRIBUTED_RELATION    = "__spqr__distributed_relation"
@@ -124,15 +126,19 @@ const (
 	SPQR_REPLY_NOTICE    = "__spqr__reply_notice"
 	SPQR_MAINTAIN_PARAMS = "__spqr__maintain_params"
 	SPQR_ENGINE_V2       = "__spqr__engine_v2"
-	/*XXX: should we ever disallow?*/
+	/* XXX: should we ever disallow? */
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
+
+	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
 )
+
+//revive:enable:var-naming
 
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING:
+	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH:
 		return true
 	default:
 		return false

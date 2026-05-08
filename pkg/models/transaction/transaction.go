@@ -1,4 +1,4 @@
-package meta_transaction
+package transaction
 
 import (
 	"context"
@@ -19,6 +19,8 @@ type TransactionMgr interface {
 	CommitTran(ctx context.Context, transaction *MetaTransaction) error
 	// Begins transaction in qdb
 	BeginTran(ctx context.Context) (*MetaTransaction, error)
+	// Gets txn batch size
+	GetTxnBatchSize() uint16
 }
 
 type MetaTransaction struct {
@@ -30,12 +32,12 @@ func NewMetaTransaction(qdbTransaction qdb.QdbTransaction) *MetaTransaction {
 	return &MetaTransaction{TransactionId: qdbTransaction.Id()}
 }
 
-func innerFromProto(TransactionId string, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
-	if tranId, err := uuid.Parse(TransactionId); err != nil {
+func innerFromProto(transactionId string, metaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
+	if tranId, err := uuid.Parse(transactionId); err != nil {
 		return nil, err
 	} else {
 		return &MetaTransaction{TransactionId: tranId,
-			Operations: NewMetaTransactionChunk(MetaCmdList),
+			Operations: NewMetaTransactionChunk(metaCmdList),
 		}, nil
 	}
 }
@@ -64,13 +66,13 @@ type MetaTransactionChunk struct {
 
 // Any change in this enum must change GetGossipRequestType function
 const (
-	GR_ERROR = iota - 1
-	GR_UNKNOWN
-	GR_CreateDistributionRequest
-	GR_CreateKeyRange
-	GR_DropKeyRange
-	GR_UpdateKeyRange
-	GR_CreateSequence
+	GRError = iota - 1
+	GRUnknown
+	GRCreateDistributionRequest
+	GRCreateKeyRange
+	GRDropKeyRange
+	GRUpdateKeyRange
+	GRCreateSequence
 )
 
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
@@ -105,16 +107,16 @@ func NewTransaction() (*MetaTransaction, error) {
 }
 
 func checkCommandPart(part googleProto.Message, current int, target int) int {
-	if current == GR_ERROR {
+	if current == GRError {
 		return current
 	}
 	if part == nil {
 		return current
 	}
 	v := reflect.ValueOf(part)
-	if v.Kind() == reflect.Ptr && !v.IsNil() {
-		if current != GR_UNKNOWN {
-			return GR_ERROR
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
+		if current != GRUnknown {
+			return GRError
 		} else {
 			return target
 		}
@@ -123,7 +125,7 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 }
 
 // Checks algebraic type MetaTransactionGossipCommand and returns the command type
-// or GR_UNKNOWN, GR_ERROR if check failed
+// or GRUnknown, GRError if check failed
 //
 // Parameters:
 // - (request *proto.MetaTransactionGossipCommand): generic command
@@ -132,13 +134,13 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 // - type of command
 // - type is recognized
 func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, bool) {
-	result := GR_UNKNOWN
+	result := GRUnknown
 	if request.CreateDistribution != nil {
-		result = GR_CreateDistributionRequest
+		result = GRCreateDistributionRequest
 	}
-	result = checkCommandPart(request.CreateKeyRange, result, GR_CreateKeyRange)
-	result = checkCommandPart(request.DropKeyRange, result, GR_DropKeyRange)
-	result = checkCommandPart(request.UpdateKeyRange, result, GR_UpdateKeyRange)
-	result = checkCommandPart(request.CreateSequence, result, GR_CreateSequence)
-	return result, result != GR_UNKNOWN && result != GR_ERROR
+	result = checkCommandPart(request.CreateKeyRange, result, GRCreateKeyRange)
+	result = checkCommandPart(request.DropKeyRange, result, GRDropKeyRange)
+	result = checkCommandPart(request.UpdateKeyRange, result, GRUpdateKeyRange)
+	result = checkCommandPart(request.CreateSequence, result, GRCreateSequence)
+	return result, result != GRUnknown && result != GRError
 }

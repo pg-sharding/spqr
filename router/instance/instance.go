@@ -74,13 +74,13 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
+func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceImpl, error) {
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
 	}
 
-	cache := cache.NewSchemaCache(topology.ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
+	cache := cache.NewSchemaCache(topology.TopMgr, config.RouterConfig().SchemaCacheBackendRule)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -117,14 +117,15 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	rr := rulerouter.NewRouter(topology.TopMgr, frTLS, config.RouterConfig(), notifier)
 	lc := coord.NewLocalInstanceMetadataMgr(
 		db,
 		db,
 		cache,
-		topology.ShardMapping,
+		topology.TopMgr,
 		config.RouterConfig().ManageShardsByCoordinator,
 		rr,
+		maxTxnBatchSize,
 	)
 
 	var seqMngr sequences.SequenceMgr = lc
@@ -139,7 +140,7 @@ func NewRouter(_ context.Context, ns string) (*InstanceImpl, error) {
 	}
 
 	qr, err := qrouter.NewQrouter(qtype,
-		topology.ShardMapping,
+		topology.TopMgr, /* TODO: fix */
 		lc,
 		rr,
 		&config.RouterConfig().Qr,

@@ -22,7 +22,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -128,13 +127,13 @@ func KeyRangeVirtualRelationScanExtended(
 			}
 		}
 
-		next_lower_bound := "+inf"
+		nextLowerBound := "+inf"
 
 		var maxValue any
 		if nextKr != nil {
 			maxValue = nextKr.LowerBound[0]
 
-			next_lower_bound = strings.Join(nextKr.SendRaw(), ",")
+			nextLowerBound = strings.Join(nextKr.SendRaw(), ",")
 		} else {
 			// Last key range - calculate coverage to max value
 
@@ -168,7 +167,7 @@ func KeyRangeVirtualRelationScanExtended(
 			keyRange.ShardID,
 			keyRange.Distribution,
 			strings.Join(keyRange.SendRaw(), ","),
-			next_lower_bound,
+			nextLowerBound,
 			coverage,
 			isLocked,
 		)
@@ -312,7 +311,7 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
-			fmt.Appendf(nil, "%+v", r.ShardIds),
+			fmt.Appendf(nil, "%+v", r.ShardIDs),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
 		})
 	}
@@ -352,20 +351,16 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 			"total_cancel_requests",
 			"active_tcp_connections",
 			"total_requests",
-			"current_rps",
-			"avg_rps",
-			"peak_rps")}
+		)}
 
-	stats := rps.GetRPSFullSnapshot()
+	stats := statistics.GetTotalRequests()
 
 	tts.WriteDataRow(
-		fmt.Sprintf("%v", ci.TotalTcpCount()),
+		fmt.Sprintf("%v", ci.TotalTCPCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount()),
-		fmt.Sprintf("%d", stats.TotalRequests),
-		fmt.Sprintf("%.2f", stats.CurrentRPS),
-		fmt.Sprintf("%.2f", stats.AvgRPS),
-		fmt.Sprintf("%.2f", stats.PeakRPS))
+		fmt.Sprintf("%v", ci.ActiveTCPCount()),
+		fmt.Sprintf("%d", stats),
+	)
 
 	return tts
 }
@@ -528,7 +523,7 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 			[]byte(cl.DB()),
 			[]byte(hostname),
 			[]byte(rAddr),
-			fmt.Appendf(nil, "%v", netutil.TCP_CheckAliveness(cl.Conn()))}
+			fmt.Appendf(nil, "%v", netutil.TCPCheckAliveness(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
@@ -597,7 +592,7 @@ func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statu
 		if group.CurrentTask != nil {
 			currTaskId = group.CurrentTask.ID
 		}
-		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message, group.CreatedAt.Format("02-01-2006 15:04:05"), status.UpdatedAt.Format("02-01-2006 15:04:05"))
+		tts.WriteDataRow(group.ID, group.ShardToID, group.KridFrom, group.KridTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message, group.CreatedAt.Format("02-01-2006 15:04:05"), status.UpdatedAt.Format("02-01-2006 15:04:05"))
 	}
 	return tts
 }
@@ -631,7 +626,7 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 		tts.WriteDataRow(
 			task.TaskGroupID,
 			task.ID,
-			task.KrIdTemp,
+			task.KridTemp,
 			strings.Join(krData, ";"),
 			tasks.TaskStateToStr(task.State),
 		)
@@ -693,8 +688,8 @@ func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tup
 		tts.WriteDataRow(
 			task.ID,
 			id,
-			task.KeyRangeId,
-			task.ShardId,
+			task.KeyRangeID,
+			task.ShardID,
 			strconv.FormatInt(int64(task.BatchSize), 10),
 		)
 	}

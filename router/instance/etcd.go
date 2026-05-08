@@ -2,18 +2,8 @@ package instance
 
 import (
 	"context"
-	"sort"
-	"time"
 
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
-	"github.com/sethvargo/go-retry"
+	"github.com/pg-sharding/spqr/pkg/bootstrap"
 )
 
 type EtcdMetadataBootstrapper struct {
@@ -23,139 +13,8 @@ type EtcdMetadataBootstrapper struct {
 // InitializeMetadata implements RouterMetadataBootstrapper.
 // TODO: pack TranEntityManager commands to batches
 func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
-	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddrs, 0)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := etcdConn.Client().Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
-		}
-	}()
 
-	/* Initialize shards */
-	if config.RouterConfig().ManageShardsByCoordinator {
-		shards, err := etcdConn.ListShards(ctx)
-		if err != nil {
-			return err
-		}
-		routerShards, err := r.Console().Mgr().ListShards(ctx)
-		if err != nil {
-			return err
-		}
-		/* Drop old shards */
-		for _, sh := range routerShards {
-			if err := r.Console().Mgr().DropShard(ctx, sh.ID); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
-				return err
-			}
-		}
-		/* Add shards from coordinator */
-		for _, sh := range shards {
-			if err := r.Console().Mgr().AddDataShard(ctx, topology.DataShardFromDB(sh)); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
-				return err
-			}
-		}
-	}
-
-	/* Initialize distributions */
-	ds, err := etcdConn.ListDistributions(ctx)
-	if err != nil {
-		return err
-	}
-	mngr := r.Console().Mgr()
-	for _, d := range ds {
-		if d.ID == distributions.REPLICATED {
-			continue
-		}
-		tranMngr := meta.NewTranEntityManager(mngr)
-		if err = tranMngr.CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
-			return err
-		}
-		if err = tranMngr.ExecNoTran(ctx); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
-			return err
-		}
-
-		/* initialize key ranges within distribution */
-		krs, err := etcdConn.ListKeyRanges(ctx, d.ID)
-		if err != nil {
-			return err
-		}
-
-		sort.Slice(krs, func(i, j int) bool {
-			l, _ := kr.KeyRangeFromDB(krs[i], d.ColTypes)
-			r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
-			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
-		})
-		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
-		for _, ckr := range krs {
-			kRange, err := kr.KeyRangeFromDB(ckr, d.ColTypes)
-			if err != nil {
-				return err
-			}
-			tranMngr := meta.NewTranEntityManager(mngr)
-			if err := tranMngr.CreateKeyRange(ctx, kRange, d.ColTypes); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
-				return err
-			}
-			if err = tranMngr.ExecNoTran(ctx); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
-				return err
-			}
-		}
-	}
-
-	ref_rels, err := etcdConn.ListReferenceRelations(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, rr := range ref_rels {
-		entries := []*rrelation.AutoIncrementEntry{}
-
-		for c, seq := range rr.ColumnSequenceMapping {
-			n, err := etcdConn.CurrVal(ctx, seq)
-			if err != nil {
-				return err
-			}
-			entries = append(entries, &rrelation.AutoIncrementEntry{
-				Column: c,
-				Start:  uint64(n),
-			})
-		}
-
-		/* XXX: nil for auto inc entry is OK? */
-		if err := r.Console().Mgr().CreateReferenceRelation(ctx, rrelation.RefRelationFromDB(rr), entries); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
-			return err
-		}
-	}
-
-	// TODO: initialize two-phase meta storage
-	storage, err := etcdConn.GetTxMetaStorage(ctx)
-	spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
-	if err != nil {
-		return err
-	}
-	if err := r.Console().Mgr().SetTwoPhaseTxMetaStorage(ctx, storage); err != nil {
-		return err
-	}
-
-	c, err := retry.DoValue(ctx, retry.WithMaxRetries(50, retry.NewConstant(time.Second)), func(ctx context.Context) (string, error) {
-		c, err := etcdConn.GetCoordinator(ctx)
-		if err != nil {
-			return "", retry.RetryableError(err)
-		}
-		return c, nil
-	})
-	if err != nil {
-		return err
-	}
-	err = r.Console().Mgr().UpdateCoordinator(ctx, c)
-	if err != nil {
+	if err := bootstrap.EtcdReBootstrap(ctx, r.Console().Mgr(), e.QdbAddrs); err != nil {
 		return err
 	}
 
@@ -164,6 +23,6 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	return nil
 }
 
-func NewEtcdMetadataBootstrapper(QdbAddrs []string) RouterMetadataBootstrapper {
-	return &EtcdMetadataBootstrapper{QdbAddrs: QdbAddrs}
+func NewEtcdMetadataBootstrapper(qdbAddrs []string) RouterMetadataBootstrapper {
+	return &EtcdMetadataBootstrapper{QdbAddrs: qdbAddrs}
 }

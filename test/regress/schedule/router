@@ -2,6 +2,7 @@ test: shard_routing
 test: mixed_routing
 test: copy_routing
 test: joins
+test: joins_hashed
 test: target_session_attrs
 test: transactions
 test: hash_routing
@@ -53,3 +54,4 @@ test: schema_qual
 test: postprocessing
 test: virtual_func
 test: 2pc
+test: xproto

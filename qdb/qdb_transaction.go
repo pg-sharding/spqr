@@ -7,9 +7,11 @@ import (
 )
 
 const (
-	CMD_PUT = iota
-	CMD_DELETE
+	CmdPut = iota
+	CmdDelete
 )
+
+const DefaultMaxTxnSize uint16 = 128 // like ETCD max-txn-ops default value
 
 type QdbStatement struct {
 	CmdType int32
@@ -20,7 +22,7 @@ type QdbStatement struct {
 }
 
 func NewQdbStatement(cmdType int32, key string, value any) (*QdbStatement, error) {
-	if cmdType != CMD_PUT && cmdType != CMD_DELETE {
+	if cmdType != CmdPut && cmdType != CmdDelete {
 		return nil, fmt.Errorf("unknown type of QdbStatement: %d", cmdType)
 	}
 	return &QdbStatement{CmdType: cmdType, Key: key, Value: value}, nil

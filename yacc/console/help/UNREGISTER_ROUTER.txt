@@ -1,0 +1,31 @@
+NAME
+    UNREGISTER ROUTER - Unregisters a router from the SPQR coordinator.
+
+SYNTAX
+    UNREGISTER ROUTER <routerID>
+    UNREGISTER ROUTER ALL
+
+    where <routerID> is the identifier of the router to unregister
+
+DESCRIPTION
+    Unregisters a router from the SPQR coordinator.
+
+    This removes the router from the coordinator's management. Use ALL to
+    unregister all routers at once.
+
+WARNINGS
+    - This command is not available for installations without SPQR coordinator.
+
+PARAMETERS
+    <routerID> - The unique identifier of the router to unregister, or ALL to
+        unregister every router
+
+EXAMPLES
+    Unregister a specific router:
+        UNREGISTER ROUTER r1;
+    Unregister all routers:
+        UNREGISTER ROUTER ALL;
+
+RELATED COMMANDS
+    REGISTER ROUTER
+    SHOW

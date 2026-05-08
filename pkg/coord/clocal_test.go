@@ -22,7 +22,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockXQDB(ctrl)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	krs := []*qdb.KeyRange{
 		{
@@ -101,7 +101,7 @@ func TestLocalInstanceMetadataMgr_UpdateShard_invalidatesMatchingPoolHosts(t *te
 	shCtl.EXPECT().ShardKeyName().Return("sh1")
 	shCtl.EXPECT().MarkStale()
 
-	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter)
+	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter, qdb.DefaultMaxTxnSize)
 	err = mgr.AlterShardOptions(ctx, "sh1", []topology.GenericOption{
 		{Name: "HOST", Arg: "host1:6432", Action: topology.GenericOptionActionAdd},
 	})
@@ -123,7 +123,7 @@ func TestLocalInstanceMetadataMgr_UpdateShard_skipsStaleForNonMatchingShardKey(t
 	})
 	shCtl.EXPECT().ShardKeyName().Return("other")
 
-	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter)
+	mgr := coord.NewLocalInstanceMetadataMgr(db, db, nil, nil, false, iter, qdb.DefaultMaxTxnSize)
 	err = mgr.AlterShardOptions(ctx, "sh1", []topology.GenericOption{
 		{Name: "HOST", Arg: "host1:6432", Action: topology.GenericOptionActionAdd},
 	})

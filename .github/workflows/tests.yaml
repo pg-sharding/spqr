@@ -74,7 +74,7 @@ jobs:
   regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
 
     strategy:
       matrix:
@@ -106,7 +106,7 @@ jobs:
   regress-clustered-pgdg:
     name: regress-clustered
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress', 'regress-pgdg']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
 
     strategy:
       matrix:
@@ -127,7 +127,7 @@ jobs:
   isolation-regress:
     name: Isolation tests
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
 
     steps:
 
@@ -163,21 +163,46 @@ jobs:
       - name: Run tests
         run: make jdbc_regress
 
-  xproto-regress:
-    name: xproto
+  proto-regress-simple:
+    name: proto-simple
     runs-on: ubuntu-latest
     steps:
-
       - name: Check out code
         uses: actions/checkout@v6
+      - name: Simple proto
+        run: PROTO_TEST_TAG=simple make xproto_regress
 
-      - name: Run tests
-        run: make xproto_regress
+  proto-regress-xproto:
+    name: proto-extended
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Extended proto
+        run: PROTO_TEST_TAG=xproto make xproto_regress
+
+  proto-regress-xproto-portal-suspect:
+    name: proto-extended-portal-suspend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Extended proto with portal suspend
+        run: PROTO_TEST_TAG=xproto_suspend make xproto_regress
+
+  proto-regress-copy:
+    name: proto-copy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Copy proto
+        run: PROTO_TEST_TAG=copy make xproto_regress
 
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress']
     outputs:
       output1: ${{ steps.step1.outputs.features }}
     steps:
@@ -202,7 +227,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
@@ -247,7 +272,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV

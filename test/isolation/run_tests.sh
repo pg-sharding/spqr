@@ -13,6 +13,7 @@ do
 done
 
 psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGISTER ROUTER r1 ADDRESS "[regress_router]:7000"'
+psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000"'
 
 /postgres/src/test/isolation/pg_isolation_regress \
     --inputdir /regress \

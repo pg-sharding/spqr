@@ -54,10 +54,11 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 	return query, nil
 }
 
-func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
 
-	p := &plan.ScatterPlan{
-		SubPlan: &plan.ModifyTable{},
+	p := &plan.ScatterPlan{}
+	if !ro {
+		p.SubPlan = &plan.ModifyTable{}
 	}
 
 	// Find the VALUES keyword
@@ -153,11 +154,11 @@ func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey) (*plan.ScatterP
 }
 
 func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	return CommonValuesRewrite(query, 0, shs)
+	return CommonValuesRewrite(query, 0, shs, false)
 }
 
 /* We assume that all sanity check about query CTE collocation are already done. */
-func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
 	// Find the VALUES keyword
 	targetWithClause := strings.Index(strings.ToUpper(query), "WITH")
 	if targetWithClause == -1 {
@@ -199,7 +200,7 @@ func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.Shard
 		return nil, fmt.Errorf("invalid query: missing AS %s clause", auxCTE)
 	}
 
-	return CommonValuesRewrite(query, offsetStart+2 /* + AS */, shs)
+	return CommonValuesRewrite(query, offsetStart+2 /* + AS */, shs, ro)
 }
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
@@ -354,11 +355,11 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 func InsertSequenceValue(ctx context.Context,
 	query string,
 	columns []string,
-	ColumnSequenceMapping map[string]string,
+	columnSequenceMapping map[string]string,
 	idCache IdentityRouterCache,
 ) (string, error) {
 
-	for colName, seqName := range ColumnSequenceMapping {
+	for colName, seqName := range columnSequenceMapping {
 		if slices.Contains(columns, colName) {
 			continue
 		}
@@ -380,7 +381,7 @@ func InsertSequenceValue(ctx context.Context,
 }
 
 // XXX: Rewrite this using native plan.QueryVX/analyzeQueryVx
-func getMaxPrepStmtId(s lyx.Node) int {
+func getMaxPrepStmtID(s lyx.Node) int {
 	ret := 1
 
 	switch ins := s.(type) {
@@ -392,8 +393,9 @@ func getMaxPrepStmtId(s lyx.Node) int {
 					for _, el := range v {
 						switch val := el.(type) {
 						case *lyx.ParamRef:
-							if val.Number+1 > ret {
-								ret = val.Number + 1
+							lft := int(val.Number + 1)
+							if lft > ret {
+								ret = lft
 							}
 						}
 					}
@@ -407,22 +409,22 @@ func getMaxPrepStmtId(s lyx.Node) int {
 
 func InsertSequenceParamRef(_ context.Context,
 	query string,
-	ColumnSequenceMapping map[string]string,
+	columnSequenceMapping map[string]string,
 	stmt lyx.Node,
 	def *prepstatement.PreparedStatementDefinition,
 ) (string, error) {
 
-	for colName, seqName := range ColumnSequenceMapping {
+	for colName, seqName := range columnSequenceMapping {
 
 		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (string, error) {
 			// what param ref is max for given query?
 
 			// analyze lyx statement
-			maxId := getMaxPrepStmtId(stmt)
-			def.OverwriteRemoveParamIds = map[int]struct{}{maxId: {}}
+			maxID := getMaxPrepStmtID(stmt)
+			def.OverwriteRemoveParamIDs = map[int]struct{}{maxID: {}}
 			def.SeqName = seqName
 
-			return fmt.Sprintf("$%d", maxId), nil
+			return fmt.Sprintf("$%d", maxID), nil
 		})
 		if err != nil {
 			return "", err

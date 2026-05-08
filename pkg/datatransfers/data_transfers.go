@@ -217,6 +217,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
 			}
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterCopyDataCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterCopyDataCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			tx.Status = qdb.DataCopied
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
 			statistics.RecordShardOperation("copyData", time.Since(t))
@@ -265,6 +270,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
 			}
 			statistics.RecordShardOperation("dropData", time.Since(t))
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterDeleteCP); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterDeleteCP).Err(err).Msg("error while checking control point")
+				}
+			}
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
 			}
@@ -459,10 +469,7 @@ func SetupFDW(
 			if _, err = tx.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %s INTO %s`, schema, serverName, schemaName)); err != nil {
 				return err
 			}
-			if err := tx.Commit(ctx); err != nil {
-				return err
-			}
-			return nil
+			return tx.Commit(ctx)
 		}(); err != nil {
 			return err
 		}
@@ -471,7 +478,7 @@ func SetupFDW(
 }
 
 func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
-	for _, shard := range relation.ShardIds {
+	for _, shard := range relation.ShardIDs {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
@@ -517,7 +524,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 }
 
 func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
-	for _, shard := range relation.ShardIds {
+	for _, shard := range relation.ShardIDs {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
@@ -757,7 +764,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	return nil
 }
 
-func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) ([]string, error) {
+func getTableColumns(ctx context.Context, db Queryable, relationFQN rfqn.RelationFQN) ([]string, error) {
 	cols := make([]string, 0)
 	colRows, err := db.Query(ctx, `
 	SELECT
@@ -765,9 +772,9 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 	FROM
 		information_schema.columns
 	WHERE table_schema = $1 AND table_name = $2`,
-		rfqn.GetSchema(), strings.ToLower(rfqn.RelationName))
+		relationFQN.GetSchema(), strings.ToLower(relationFQN.RelationName))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get columns of table \"%s\": %s", rfqn.String(), err)
+		return nil, fmt.Errorf("failed to get columns of table \"%s\": %s", relationFQN.String(), err)
 	}
 	for colRows.Next() {
 		colName := ""
@@ -800,18 +807,18 @@ type Queryable interface {
 // Parameters:
 // - ctx (context.Context): The context for the function.
 // - conn (*pgx.Conn): the database connection.
-// - relName (string): the name of the table to check.
+// - relationFQN (string): the name of the table to check.
 // - schema (string): the schema of the table to check.
 //
 // Returns:
 // - bool: true if the table exists, false otherwise.
 // - error: an error if there was a problem executing the query.
-func CheckTableExists(ctx context.Context, tx Queryable, relation *rfqn.RelationFQN) (bool, error) {
+func CheckTableExists(ctx context.Context, tx Queryable, relationFQN *rfqn.RelationFQN) (bool, error) {
 	res := tx.QueryRow(ctx, fmt.Sprintf(`
 	SELECT 
 		count(*) > 0 as table_exists
 	FROM information_schema.tables
-	WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(relation.RelationName), strings.ToLower(relation.GetSchema())))
+	WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(relationFQN.RelationName), strings.ToLower(relationFQN.GetSchema())))
 	exists := false
 	if err := res.Scan(&exists); err != nil {
 		return false, err
@@ -831,8 +838,8 @@ func CheckTableExists(ctx context.Context, tx Queryable, relation *rfqn.Relation
 // Returns:
 // - bool: true if the column exists, false otherwise;
 // - error: an error if there was a problem executing the query.
-func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relation *rfqn.RelationFQN, colName string) (bool, error) {
-	res := conn.QueryRow(ctx, checkColumnExistsQuery(relation, colName))
+func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relationFQN *rfqn.RelationFQN, colName string) (bool, error) {
+	res := conn.QueryRow(ctx, checkColumnExistsQuery(relationFQN, colName))
 	exists := false
 	if err := res.Scan(&exists); err != nil {
 		return false, err

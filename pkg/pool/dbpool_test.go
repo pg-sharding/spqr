@@ -30,7 +30,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	underlying_pool := mockpool.NewMockShardHostsPool(ctrl)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
@@ -38,15 +38,18 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	clId := uint(1)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
-		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
-			RawHosts: []string{
-				"h1:6432",
-				"h2:6432",
-				"h3:6432",
-			},
-		}),
-	}, &startup.StartupParams{}, underlying_pool, time.Hour)
+	dbpool := pool.NewDBPoolFromMultiPool(
+
+		topology.TopMgrFromMap(
+			map[string]*topology.DataShard{
+				key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
+					RawHosts: []string{
+						"h1:6432",
+						"h2:6432",
+						"h3:6432",
+					},
+				}),
+			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
@@ -79,17 +82,17 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1:6432"}).Times(1).Return(h1, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2:6432"}).Times(1).Return(h2, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
-	underlying_pool.EXPECT().ID().Return(uint(17)).AnyTimes()
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1:6432"}).Times(1).Return(h1, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2:6432"}).Times(1).Return(h2, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
+	underlyingPool.EXPECT().ID().Return(uint(17)).AnyTimes()
 
 	for ind, h := range hs {
 
 		h.EXPECT().IsStale().AnyTimes().Return(false)
 
 		if ind < 2 {
-			underlying_pool.EXPECT().Put(h).Return(nil)
+			underlyingPool.EXPECT().Put(h).Return(nil)
 
 			h.EXPECT().Sync().Return(int64(0))
 
@@ -133,7 +136,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	assert.NoError(err)
 
 	/* next time expect only one call */
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 
 	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
@@ -226,7 +229,7 @@ func TestDbPoolRaces(t *testing.T) {
 		})
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
+	dbpool := pool.NewDBPoolWithAllocator(topology.TopMgrFromMap(cfg), &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -269,7 +272,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	underlying_pool := mockpool.NewMockShardHostsPool(ctrl)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
@@ -277,15 +280,18 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	clId := uint(1)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
-		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
-			RawHosts: []string{
-				"h1:6432",
-				"h2:6432",
-				"h3:6432",
-			},
-		}),
-	}, &startup.StartupParams{}, underlying_pool, time.Hour)
+	dbpool := pool.NewDBPoolFromMultiPool(
+
+		topology.TopMgrFromMap(map[string]*topology.DataShard{
+
+			key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
+				RawHosts: []string{
+					"h1:6432",
+					"h2:6432",
+					"h3:6432",
+				},
+			}),
+		}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
@@ -321,14 +327,14 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1:6432"}).AnyTimes().Return(h1, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2:6432"}).AnyTimes().Return(h2, nil)
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1:6432"}).AnyTimes().Return(h1, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2:6432"}).AnyTimes().Return(h2, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
 		if ind < 2 {
-			underlying_pool.EXPECT().Put(h).Return(nil)
+			underlyingPool.EXPECT().Put(h).Return(nil)
 
 			h.EXPECT().Sync().Return(int64(0))
 
@@ -368,9 +374,9 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	assert.NoError(err)
 
-	underlying_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).MaxTimes(1).Return(h3, nil)
+	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).MaxTimes(1).Return(h3, nil)
 
-	underlying_pool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
+	underlyingPool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
 
 	h3.EXPECT().Sync().Return(int64(0)).MaxTimes(1)
 
@@ -409,13 +415,13 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 func TestBuildHostOrder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	underlying_pool := mockpool.NewMockShardHostsPool(ctrl)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
 	}
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+	shMp := map[string]*topology.DataShard{
 		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"sas-123.db.yandex.net:6432:sas",
@@ -426,7 +432,10 @@ func TestBuildHostOrder(t *testing.T) {
 				"klg-234.db.yandex.net:6432:klg",
 			},
 		}),
-	}, &startup.StartupParams{}, underlying_pool, time.Hour)
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(
+		topology.TopMgrFromMap(shMp), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	tests := []struct {
 		name               string
@@ -508,13 +517,13 @@ func TestBuildHostOrder(t *testing.T) {
 func TestBuildHostOrderWithCache(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	underlying_pool := mockpool.NewMockShardHostsPool(ctrl)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
 	}
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
+	shMp := map[string]*topology.DataShard{
 		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
 			RawHosts: []string{
 				"h1:6432:sas",
@@ -524,7 +533,9 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				"h5:6432:klg",
 			},
 		}),
-	}, &startup.StartupParams{}, underlying_pool, time.Hour)
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(topology.TopMgrFromMap(shMp), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	tests := []struct {
 		name          string
@@ -720,13 +731,16 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 func TestBuildHostOrderNonExistentShard(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	underlying_pool := mockpool.NewMockShardHostsPool(ctrl)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
 
-	dbpool := pool.NewDBPoolFromMultiPool(map[string]*topology.DataShard{
-		"existing_shard": topology.DataShardFromConfig("existing_shard", &config.Shard{
-			RawHosts: []string{"h1:6432:sas"},
-		}),
-	}, &startup.StartupParams{}, underlying_pool, time.Hour)
+	dbpool := pool.NewDBPoolFromMultiPool(
+
+		topology.TopMgrFromMap(
+			map[string]*topology.DataShard{
+				"existing_shard": topology.DataShardFromConfig("existing_shard", &config.Shard{
+					RawHosts: []string{"h1:6432:sas"},
+				}),
+			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	key := kr.ShardKey{
 		Name: "non_existent_shard",

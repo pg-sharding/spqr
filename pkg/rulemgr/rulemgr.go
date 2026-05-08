@@ -71,7 +71,7 @@ func (F *RulesMgrImpl) Reload(frules []*config.FrontendRule, brules []*config.Ba
 				ConnectionRetries: defaultBE.ConnectionRetries,
 				ConnectionTimeout: defaultBE.ConnectionTimeout,
 				KeepAlive:         defaultBE.KeepAlive,
-				TcpUserTimeout:    defaultBE.TcpUserTimeout,
+				TCPUserTimeout:    defaultBE.TCPUserTimeout,
 			}
 		},
 	}

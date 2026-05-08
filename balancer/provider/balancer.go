@@ -44,7 +44,7 @@ func NewBalancer() (*BalancerImpl, error) {
 		return nil, err
 	}
 	threshold := make([]float64, 2*metricsCount)
-	configThresholds := []float64{config.BalancerConfig().CpuThreshold, config.BalancerConfig().SpaceThreshold}
+	configThresholds := []float64{config.BalancerConfig().CPUThreshold, config.BalancerConfig().SpaceThreshold}
 	for i := range metricsCount {
 		threshold[i] = configThresholds[i]
 		threshold[metricsCount+i] = configThresholds[i]
@@ -112,12 +112,12 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, error) {
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
-	for shardId, shard := range b.shardConns.ShardsData {
-		state, err := b.getShardCurrentState(ctx, shardId, shard)
+	for shardID, shard := range b.shardConns.ShardsData {
+		state, err := b.getShardCurrentState(ctx, shardID, shard)
 		if err != nil {
 			return nil, err
 		}
-		shardToState[shardId] = state
+		shardToState[shardID] = state
 		shardStates = append(shardStates, state)
 	}
 
@@ -144,18 +144,18 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 	// determine most loaded key range
 	shardFrom := shardStates[0]
 
-	kRLoad, krId := b.getMostLoadedKR(shardFrom, criterion)
+	kRLoad, krID := b.getMostLoadedKR(shardFrom, criterion)
 
-	meanKeyLoad := kRLoad / float64(shardFrom.KeyCountKR[krId])
+	meanKeyLoad := kRLoad / float64(shardFrom.KeyCountKR[krID])
 	keyCount := int((shardFrom.MetricsTotal[criterion] - b.threshold[criterion]) / meanKeyLoad)
 	// do not move more keys than there are in the key range
-	keyCount = min(keyCount, int(shardFrom.KeyCountKR[krId]))
+	keyCount = min(keyCount, int(shardFrom.KeyCountKR[krID]))
 
 	// determine where to move keys to
-	shId, ok := b.getShardToMoveTo(shardStates, shardToState, krId, shardFrom.ShardId, keyCount)
+	shID, ok := b.getShardToMoveTo(shardStates, shardToState, krID, shardFrom.ShardID, keyCount)
 
 	if !ok {
-		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
+		shID, keyCount = b.moveMaxPossible(shardStates, shardToState, krID, shardFrom.ShardID)
 		if keyCount < 0 {
 			return nil, fmt.Errorf("could not find shard to move keys to")
 		}
@@ -164,7 +164,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 	if keyCount == 0 {
 		return &tasks.BalancerTask{}, nil
 	}
-	return b.getTask(shardFrom, krId, shId, keyCount)
+	return b.getTask(shardFrom, krID, shID, keyCount)
 }
 
 // getShardCurrentState queries the given shard to get metrics from all its hosts.
@@ -177,11 +177,11 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 // Returns:
 //   - *ShardMetrics: metrics from all hosts of the shard.
 //   - error: an error if any occurred.
-func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string, shard *config.ShardConnect) (*ShardMetrics, error) {
-	spqrlog.Zero.Debug().Str("shard id", shardId).Msg("getting shard state")
+func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardID string, shard *config.ShardConnect) (*ShardMetrics, error) {
+	spqrlog.Zero.Debug().Str("shard id", shardID).Msg("getting shard state")
 	connStrings := datatransfers.GetConnStrings(shard, "spqr-balancer")
 	res := NewShardMetrics()
-	res.ShardId = shardId
+	res.ShardID = shardID
 	replicaMetrics := NewHostMetrics()
 	for _, connString := range connStrings {
 		hostsMetrics, isMaster, err := b.getHostStatus(ctx, connString)
@@ -267,7 +267,7 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 // Returns:
 //   - error: an error if any occurred.
 func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetrics) error {
-	spqrlog.Zero.Debug().Str("shard", shard.ShardId).Msg("getting shard detailed state")
+	spqrlog.Zero.Debug().Str("shard", shard.ShardID).Msg("getting shard detailed state")
 
 	type paramsStruct struct {
 		Host            string
@@ -301,18 +301,18 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 			return err
 		}
 		for rows.Next() {
-			krId := ""
+			krID := ""
 			cpu := 0.0
-			if err = rows.Scan(&krId, &cpu); err != nil {
+			if err = rows.Scan(&krID, &cpu); err != nil {
 				return err
 			}
-			if _, ok := b.krToDs[krId]; !ok {
+			if _, ok := b.krToDs[krID]; !ok {
 				continue
 			}
-			if _, ok := shard.MetricsKR[krId]; !ok {
-				shard.MetricsKR[krId] = make([]float64, 2*metricsCount)
+			if _, ok := shard.MetricsKR[krID]; !ok {
+				shard.MetricsKR[krID] = make([]float64, 2*metricsCount)
 			}
-			shard.MetricsKR[krId][params.MetricsStartInd+cpuMetric] = cpu
+			shard.MetricsKR[krID][params.MetricsStartInd+cpuMetric] = cpu
 		}
 	}
 
@@ -321,11 +321,11 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 		return err
 	}
 
-	for _, krId := range b.shardKr[shard.ShardId] {
-		ds := b.krToDs[krId]
-		i := b.dsToKrIdx[ds][krId]
+	for _, krID := range b.shardKr[shard.ShardID] {
+		ds := b.krToDs[krID]
+		i := b.dsToKrIdx[ds][krID]
 		krg := b.dsToKeyRanges[ds][i]
-		if krg.ShardID != shard.ShardId {
+		if krg.ShardID != shard.ShardID {
 			continue
 		}
 		rels, err := b.getKRRelations(ctx, krg)
@@ -397,29 +397,29 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 //
 // Parameters:
 //   - shardMetrics ([]*ShardMetrics): metric values for all the shards sorted by criterion(the most relatively loaded metric) ascending.
-//   - shardIdToMetrics (map[string]*ShardMetrics): metric values by shard id.
-//   - krId (string): key range to move data from.
-//   - krShardId (string): shard to which the key range belongs to.
+//   - shardIDToMetrics (map[string]*ShardMetrics): metric values by shard id.
+//   - krID (string): key range to move data from.
+//   - krShardID (string): shard to which the key range belongs to.
 //   - keyCountToMove (int): key count to move from the key range.
 //
 // Returns:
 //   - string: the ID of the shard to move the data to.
 //   - error: an error if any occurred.
-func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, bool) {
-	krKeyCount := int(shardIdToMetrics[krShardId].KeyCountKR[krId])
-	shardToMetrics := shardIdToMetrics[krShardId].MetricsKR[krId]
+func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIDToMetrics map[string]*ShardMetrics, krID string, krShardID string, keyCountToMove int) (string, bool) {
+	krKeyCount := int(shardIDToMetrics[krShardID].KeyCountKR[krID])
+	shardToMetrics := shardIDToMetrics[krShardID].MetricsKR[krID]
 
 	// try fitting on shards with adjacent key ranges
-	adjShards := b.getAdjacentShards(krId)
+	adjShards := b.getAdjacentShards(krID)
 	for adjShard := range adjShards {
-		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardIdToMetrics[adjShard]) {
+		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardIDToMetrics[adjShard]) {
 			return adjShard, true
 		}
 	}
 	// try fitting on other shards ordered by criterion load ascending
 	for i := len(shardMetrics) - 1; i >= 0; i-- {
 		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardMetrics[i]) {
-			return shardMetrics[i].ShardId, true
+			return shardMetrics[i].ShardID, true
 		}
 	}
 	return "", false
@@ -429,20 +429,20 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 //
 // Parameters:
 //   - shardMetrics ([]*ShardMetrics): metric values for all the shards sorted by criterion(the most relatively loaded metric) ascending.
-//   - shardIdToMetrics (map[string]*ShardMetrics): metric values by shard id.
-//   - krId (string): key range to move data from.
-//   - krShardId (string): shard to which the key range belongs to.
+//   - shardIDToMetrics (map[string]*ShardMetrics): metric values by shard id.
+//   - krID (string): key range to move data from.
+//   - krShardID (string): shard to which the key range belongs to.
 //
 // Returns:
 //   - shardId (string): the ID of the shard to move the data to.
 //   - maxKeyCount (int): the maximal possible amount of keys to move.
-func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string) (shardId string, maxKeyCount int) {
+func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIDToMetrics map[string]*ShardMetrics, krID string, krShardID string) (shardID string, maxKeyCount int) {
 	maxKeyCount = -1
 	for i := len(shardMetrics) - 1; i >= 0; i-- {
-		keyCount := b.maxFitOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], shardIdToMetrics[krShardId].KeyCountKR[krId], shardMetrics[i])
+		keyCount := b.maxFitOnShard(shardIDToMetrics[krShardID].MetricsKR[krID], shardIDToMetrics[krShardID].KeyCountKR[krID], shardMetrics[i])
 		if keyCount > maxKeyCount {
 			maxKeyCount = keyCount
-			shardId = shardMetrics[i].ShardId
+			shardID = shardMetrics[i].ShardID
 		}
 	}
 	return
@@ -494,14 +494,14 @@ func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shar
 // getAdjacentShards returns shards containing key ranges adjacent to the given one.
 //
 // Parameters:
-//   - krId (string): the ID of the key range.
+//   - krID (string): the ID of the key range.
 //
 // Returns:
 //   - map[string]struct{}: set containing IDs of shards containing adjacent key ranges.
-func (b *BalancerImpl) getAdjacentShards(krId string) map[string]struct{} {
+func (b *BalancerImpl) getAdjacentShards(krID string) map[string]struct{} {
 	res := make(map[string]struct{}, 0)
-	ds := b.krToDs[krId]
-	krIdx := b.dsToKrIdx[ds][krId]
+	ds := b.krToDs[krID]
+	krIdx := b.dsToKrIdx[ds][krID]
 	if krIdx != 0 {
 		res[b.dsToKeyRanges[ds][krIdx-1].ShardID] = struct{}{}
 	}
@@ -542,15 +542,15 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 //
 // Returns:
 //   - value (float64): the greatest value of the metric across all key ranges on the shard.
-//   - krId (string): the key range with the greatest value of the metric.
-func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value float64, krId string) {
+//   - krID (string): the key range with the greatest value of the metric.
+func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value float64, krID string) {
 	value = -1
 	for krg := range shard.MetricsKR {
 		metric := shard.MetricsKR[krg][kind]
 		totalKRMetric := metric
 		if totalKRMetric > value {
 			value = totalKRMetric
-			krId = krg
+			krID = krg
 		}
 	}
 	return
@@ -561,43 +561,43 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 //
 // Parameters:
 //   - shardFrom (*ShardMetrics): metrics of the shard to move the data from.
-//   - krId (string): the ID of the key range to move the data from.
-//   - shardToId (string): the ID of the shard to move the data to.
+//   - krID (string): the ID of the key range to move the data from.
+//   - shardToID (string): the ID of the shard to move the data to.
 //   - keyCount (int): the amount of keys to move.
 //
 // Returns:
 //   - *tasks.BalancerTask: the resulting balancer task.
 //   - error: an error if any occurred.
-func (b *BalancerImpl) getTask(shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*tasks.BalancerTask, error) {
+func (b *BalancerImpl) getTask(shardFrom *ShardMetrics, krID string, shardToID string, keyCount int) (*tasks.BalancerTask, error) {
 	spqrlog.Zero.Debug().
-		Str("shard_from", shardFrom.ShardId).
-		Str("shard_to", shardToId).
-		Str("key_range", krId).
+		Str("shard_from", shardFrom.ShardID).
+		Str("shard_to", shardToID).
+		Str("key_range", krID).
 		Int("key_count", keyCount).
 		Msg("generating move tasks")
 	// Move from beginning or the end of key range
-	if _, ok := b.krToDs[krId]; !ok {
-		return nil, fmt.Errorf("unknown key range id \"%s\"", krId)
+	if _, ok := b.krToDs[krID]; !ok {
+		return nil, fmt.Errorf("unknown key range id \"%s\"", krID)
 	}
-	ds := b.krToDs[krId]
-	krInd := b.dsToKrIdx[ds][krId]
-	krIdTo := ""
+	ds := b.krToDs[krID]
+	krInd := b.dsToKrIdx[ds][krID]
+	krIDTo := ""
 	var join tasks.JoinType = tasks.JoinNone
-	if krInd < len(b.dsToKeyRanges[ds])-1 && b.dsToKeyRanges[ds][krInd+1].ShardID == shardToId {
-		krIdTo = b.dsToKeyRanges[ds][krInd+1].ID
+	if krInd < len(b.dsToKeyRanges[ds])-1 && b.dsToKeyRanges[ds][krInd+1].ShardID == shardToID {
+		krIDTo = b.dsToKeyRanges[ds][krInd+1].ID
 		join = tasks.JoinRight
-	} else if krInd > 0 && b.dsToKeyRanges[ds][krInd-1].ShardID == shardToId {
-		krIdTo = b.dsToKeyRanges[ds][krInd-1].ID
+	} else if krInd > 0 && b.dsToKeyRanges[ds][krInd-1].ShardID == shardToID {
+		krIDTo = b.dsToKeyRanges[ds][krInd-1].ID
 		join = tasks.JoinLeft
 	}
 
 	id := uuid.New()
 
 	return &tasks.BalancerTask{
-		KrIdFrom:  krId,
-		KrIdTo:    krIdTo,
-		KrIdTemp:  id.String(),
-		ShardIdTo: shardToId,
+		KridFrom:  krID,
+		KridTo:    krIDTo,
+		KridTemp:  id.String(),
+		ShardIDTo: shardToID,
 		KeyCount:  min(int64(keyCount), int64(config.BalancerConfig().MaxMoveCount*config.BalancerConfig().KeysPerMove)),
 		Type:      join,
 		State:     tasks.BalancerTaskPlanned,
@@ -657,9 +657,9 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 		case tasks.BalancerTaskPlanned:
 			if _, err := keyRangeService.BatchMoveKeyRange(ctx, &protos.BatchMoveKeyRangeRequest{
 				TaskGroupId: "",
-				KeyRangeId:  task.KrIdFrom,
-				ToKrId:      task.KrIdTemp,
-				ToShardId:   task.ShardIdTo,
+				KeyRangeId:  task.KridFrom,
+				ToKrId:      task.KridTemp,
+				ToShardId:   task.ShardIDTo,
 				BatchSize:   int64(config.BalancerConfig().KeysPerMove),
 				Limit:       task.KeyCount,
 				LimitType:   protos.RedistributeLimitType_RedistributeKeysLimit,
@@ -700,8 +700,8 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 				fallthrough
 			case tasks.JoinRight:
 				_, err = keyRangeService.MergeKeyRange(ctx, &protos.MergeKeyRangeRequest{
-					BaseId:      task.KrIdTo,
-					AppendageId: task.KrIdTemp,
+					BaseId:      task.KridTo,
+					AppendageId: task.KridTemp,
 				})
 			case tasks.JoinNone:
 				break

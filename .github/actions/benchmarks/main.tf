@@ -36,8 +36,9 @@ data "yandex_compute_image" "container_optimized_image" {
 resource "yandex_compute_instance" "routers" {
   count = var.router_count
 
-  hostname = "spqr-benchmarks-router-${var.pr_number}-${count.index}"
-  name     = "spqr-benchmarks-router-${var.pr_number}-${count.index}"
+  hostname = "spqr-benchmarks-router-${substr(var.pr_number, 0, 16)}-${count.index}"
+  name     = "spqr-benchmarks-router-${substr(var.pr_number, 0, 16)}-${count.index}"
+  
   zone = "ru-central1-d"
   
   boot_disk {
@@ -52,8 +53,8 @@ resource "yandex_compute_instance" "routers" {
 
   platform_id = "standard-v3"
   resources {
-    cores = 32
-    memory = 32
+    cores = var.router_cpu
+    memory = var.router_mem
     core_fraction = 100
   }
 
@@ -71,8 +72,8 @@ resource "yandex_compute_instance" "routers" {
 }
 
 resource "yandex_compute_instance" "benchmark-loader" {
-  hostname = "spqr-benchmarks-loader-${var.pr_number}"
-  name     = "spqr-benchmarks-loader-${var.pr_number}"
+  hostname = substr("spqr-benchmarks-loader-${var.pr_number}", 0, 63)
+  name     = substr("spqr-benchmarks-loader-${var.pr_number}", 0, 63)
   zone = "ru-central1-d"
   
   boot_disk {

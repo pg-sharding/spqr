@@ -15,7 +15,7 @@ const (
 	defaultInstanceConnectionRetries = 10
 	defaultInstanceConnectionTimeout = time.Second
 	defaultKeepAlive                 = time.Second
-	defaultTcpUserTimeout            = time.Millisecond * 9500
+	defaultTCPUserTimeout            = time.Millisecond * 9500
 )
 
 type ConnectionKeeper interface {
@@ -58,7 +58,8 @@ type ShardHostsPool interface {
 type MultiShardTSAPool interface {
 	ShardHostsPool
 
-	ShardMapping() map[string]*topology.DataShard
+	ShardMapping() topology.TopologyMgr
+
 	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry

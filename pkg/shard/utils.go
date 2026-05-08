@@ -29,5 +29,5 @@ func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string, extvers
 	if err := res.Scan(&count); err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	return count == 1, nil
 }

@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//revive:disable:var-naming
 const (
 	SPQR_UNEXPECTED           = "SPQRU"
 	SPQR_NO_DATASHARD         = "SPQRD"
@@ -29,17 +30,20 @@ const (
 	SPQR_SEQUENCE_ERROR       = "SPQRQ"
 	SPQR_STOP_MOVE_TASK_GROUP = "SPQRA"
 	SPQR_QUERY_BLOCKED        = "SPQRB"
+	SPQR_VALUE_ERROR          = "SPQRV"
 
 	PG_ACTIVE_SQL_TRANSACTION    = "25001"
 	PG_NO_ACTIVE_SQL_TRANSACTION = "25P01"
 
 	PG_ERRCODE_PROTOCOL_VIOLATION         = "08P01"
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
-	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
+	PG_PORTAL_DOES_NOT_EXISTS             = "34000"
 
 	PG_ERRCODE_UNDEFINED_TABLE = "42P01"
 	PG_SYNTAX_ERROR            = "42601"
 )
+
+//revive:enable:var-naming
 
 var ExistingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:         "failed to match any datashard",
@@ -83,9 +87,42 @@ var _ error = &SpqrError{}
 type SpqrError struct {
 	Err error
 
-	ErrorCode string
-	Position  int32
-	ErrHint   string
+	ErrorCode     string
+	Position      int32
+	InternalQuery string
+	ErrHint       string
+	ErrDetail     string
+	ErrContext    string
+}
+
+func (e *SpqrError) Hint(h string) *SpqrError {
+	e.ErrHint = h
+	return e
+}
+
+func (e *SpqrError) Query(q string) *SpqrError {
+	e.InternalQuery = q
+	return e
+}
+
+func (e *SpqrError) Code(c string) *SpqrError {
+	e.ErrorCode = c
+	return e
+}
+
+func (e *SpqrError) Detail(d string) *SpqrError {
+	e.ErrDetail = d
+	return e
+}
+
+func (e *SpqrError) Context(c string) *SpqrError {
+	e.ErrContext = c
+	return e
+}
+
+func (e *SpqrError) Pos(p int32) *SpqrError {
+	e.Position = p
+	return e
 }
 
 // New creates a new SpqrError with the given error code and error message.
@@ -101,15 +138,6 @@ func New(errorCode string, errorMsg string) *SpqrError {
 	err := &SpqrError{
 		Err:       fmt.Errorf("%s", errorMsg),
 		ErrorCode: errorCode,
-	}
-	return err
-}
-
-func NewWithHint(errorCode string, errorMsg string, errhint string) *SpqrError {
-	err := &SpqrError{
-		Err:       fmt.Errorf("%s", errorMsg),
-		ErrorCode: errorCode,
-		ErrHint:   errhint,
 	}
 	return err
 }
@@ -154,8 +182,8 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 //
 // Returns:
 //   - string: The formatted error message.
-func (er *SpqrError) Error() string {
-	return er.Err.Error()
+func (e *SpqrError) Error() string {
+	return e.Err.Error()
 }
 
 // Try convert grpc error to error without "rpc error: code..."

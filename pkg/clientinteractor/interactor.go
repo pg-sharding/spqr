@@ -177,7 +177,7 @@ func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*t
 		return pi.CompleteMsg(0)
 	}
 	for _, ts := range groups {
-		if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+		if err := pi.WriteDataRow(ts.ID, ts.ShardToID, ts.KridFrom, ts.KridTo); err != nil {
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 		}
 		if err := pi.WriteDataRow(
 			task.ID,
-			task.KrIdTemp,
+			task.KridTemp,
 			strings.Join(krData, ";"),
 			tasks.TaskStateToStr(task.State),
 		); err != nil {
@@ -237,10 +237,10 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 	if err == nil {
 		return nil
 	}
+	if err := pi.cl.ReplyErrMsgPure(err); err != nil {
+		return err
+	}
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{Severity: "ERROR",
-			Message: err.Error(),
-		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
 		},

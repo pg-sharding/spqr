@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -28,7 +30,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
-	"golang.org/x/exp/slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -266,15 +267,17 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
-	return s.ReplyCommandComplete("BEGIN")
+	s.SetCommandCompleteTag("BEGIN")
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
-	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
 
 	serv := s.cl.Server()
 
-	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
+	/* XXX: warn user of misconfiguration */
+	if config.RouterConfig().AllowTwoPhaseCommit && s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
@@ -296,7 +299,7 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.CommitActiveSet()
-		_ = s.ReplyCommandComplete("COMMIT")
+		s.SetCommandCompleteTag("COMMIT")
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
@@ -306,20 +309,17 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	}
 
 	s.Client().CommitActiveSet()
-	return s.ReplyCommandComplete("COMMIT")
+	s.SetCommandCompleteTag("COMMIT")
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 	if server := s.cl.Server(); server != nil {
-		for _, sh := range server.Datashards() {
-			if err := sh.Cleanup(&config.FrontendRule{
-				PoolRollback: true,
-			}); err != nil {
-				return err
-			}
+		if err := s.deployTxStatusInternal(server,
+			&pgproto3.Query{String: "ROLLBACK"}, txstatus.TXIDLE); err != nil {
+			return err
 		}
 	}
-	s.SetTxStatus(txstatus.TXIDLE)
 	return nil
 }
 
@@ -328,33 +328,33 @@ func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
-		_ = s.ReplyCommandComplete("ROLLBACK")
+		s.SetCommandCompleteTag("ROLLBACK")
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
 
-	/* unroute will take care of tx server */
-	if err := s.ExecRollbackServer(); err != nil {
-		return err
-	}
 	s.cl.Rollback()
-	return s.ReplyCommandComplete("ROLLBACK")
+	s.SetCommandCompleteTag("ROLLBACK")
+
+	/* unroute will take care of tx server */
+	return s.ExecRollbackServer()
 }
 
-func (s *QueryStateExecutorImpl) ReplyCommandComplete(commandTag string) error {
+func (s *QueryStateExecutorImpl) SetCommandCompleteTag(commandTag string) {
 	s.cacheCC.CommandTag = append([]byte(nil), commandTag...)
 	s.es.cc = &s.cacheCC
-	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string, isLocal bool) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
-		return s.ReplyCommandComplete("SET")
+		s.SetCommandCompleteTag("SET")
+		return nil
 	}
 	if !s.poolMgr.ConnectionActive(s) {
 		s.Client().SetParam(name, value, isLocal)
-		return s.ReplyCommandComplete("SET")
+		s.SetCommandCompleteTag("SET")
+		return nil
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
@@ -408,7 +408,10 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 			/* ???? */
 			continue
 		}
-		o := opt.(*lyx.Option)
+		o, ok := opt.(*lyx.Option)
+		if !ok {
+			return nil, fmt.Errorf("unexpected COPY option type %T, expected *lyx.Option", opt)
+		}
 		if strings.ToLower(o.Name) == "delimiter" {
 			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
 		}
@@ -523,7 +526,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		return nil, nil
 	}
 
-	var leftoverMsgData []byte = nil
+	var leftoverMsgData []byte
 
 	rowsMp := map[string][]byte{}
 
@@ -665,8 +668,8 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		}
 	}
 
-	var ccmsg *pgproto3.CommandComplete = nil
-	var errmsg *pgproto3.ErrorResponse = nil
+	var ccmsg *pgproto3.CommandComplete
+	var errmsg *pgproto3.ErrorResponse
 
 	txt := txstatus.TXIDLE
 
@@ -737,6 +740,13 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 		}
 
 		switch newMsg := cpMsg.(type) {
+		case *pgproto3.Flush, *pgproto3.Sync:
+			/*
+			 * Ignore Flush/Sync for the convenience of client
+			 * libraries (such as libpq) that may send those
+			 * without noticing that the command they just
+			 * sent was COPY.
+			 */
 		case *pgproto3.CopyData:
 			leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
 
@@ -763,7 +773,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan, _ bool) error {
+func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan, _ bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
@@ -775,21 +785,21 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 
 	implicitTx := false
 
-	if P != nil {
+	if p != nil {
 
-		stmt := P.Stmt()
+		stmt := p.Stmt()
 
 		serv := s.Client().Server()
 
 		if serv == nil {
 			/* serv == nil only if plan is purely virtual */
 
-			_, ok := P.(*plan.VirtualPlan)
+			_, ok := p.(*plan.VirtualPlan)
 			if !ok {
 				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 			}
 
-			if P.Subplan() != nil {
+			if p.Subplan() != nil {
 				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 			}
 		}
@@ -807,7 +817,7 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 				}
 			}
 		}
-		if P.Subplan() != nil {
+		if p.Subplan() != nil {
 			if serv.TxStatus() == txstatus.TXIDLE {
 				implicitTx = true
 			}
@@ -935,39 +945,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return nil
 
 	case *plan.CopyPlan:
-
-		if serv == nil {
-			/* Malformed */
-			return errUnAttached
-		}
-
-		/* Now dispatch this toplevel slice */
-		if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
-			return err
-		}
-
-		msg, _, err := serv.Receive()
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Str("server", serv.Name()).
-			Type("msg-type", msg).
-			Msg("received message from server")
-
-		switch msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = s.Client().Send(msg)
-			if err != nil {
-				return err
-			}
-
-			return s.copyFromExecutor(qd.simple)
-		default:
-			return server.ErrMultiShardSyncBroken
-		}
+		return rerrors.ErrExecutorSyncLost
 	case *plan.ScatterPlan:
 		if q.OverwriteCC != nil {
 			overwriteCC = q.OverwriteCC

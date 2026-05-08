@@ -103,7 +103,7 @@ Feature: Proxy console
         """
         Then SQL error on host "router2" should match regexp
         """
-        key range .* is locked
+        key range is locked
         """
 
         When I run SQL on host "router-admin"
@@ -325,7 +325,49 @@ Feature: Proxy console
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [{"shard":"sh1"}, {"shard":"sh2"} ,{"shard":"sh5"}]
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh5",
+                "options": "{host=spqr_shard_1:6432}"
+            }
+        ]
+        """
+
+        When I run SQL on host "router-admin"
+        """
+        ALTER SHARD sh5 OPTIONS (ADD sslmode 'verify-full');
+        """
+        Then command return code should be "0"
+
+        When I run SQL on host "router-admin"
+        """
+        SHOW shards;
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh5",
+                "options": "{host=spqr_shard_1:6432,sslmode=verify-full}"
+            }
+        ]
         """
 
         When I run SQL on host "router-admin"
@@ -341,6 +383,15 @@ Feature: Proxy console
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [{"shard":"sh1"}, {"shard":"sh2"}]
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+            }
+        ]
         """
     

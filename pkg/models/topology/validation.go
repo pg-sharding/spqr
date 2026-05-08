@@ -29,7 +29,7 @@ func ValidateDataShardHosts(ctx context.Context, shard *DataShard) error {
 	errCh := make(chan error, len(hosts))
 	var wg sync.WaitGroup
 
-	for _, host := range hosts {
+	for _, host := range shard.Hosts() {
 		wg.Add(1)
 		go func(h string) {
 			defer wg.Done()

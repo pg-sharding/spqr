@@ -9,9 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"buf.build/go/protovalidate"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/port"
 
+	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -72,7 +74,7 @@ func (app *App) Run(withPsql bool) error {
 
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
-		if err := app.ServeGrpcApi(wg); err != nil {
+		if err := app.ServeGrpcAPI(wg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
@@ -135,14 +137,23 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 	}
 }
 
-func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
+func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	for app.coordinator.IsReadOnly() {
 		time.Sleep(time.Second)
 	}
 
-	serv := grpc.NewServer()
+	validator, err := protovalidate.New()
+	if err != nil {
+		return err
+	}
+
+	serv := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			protovalidate_middleware.UnaryServerInterceptor(validator),
+		),
+	)
 	reflection.Register(serv)
 
 	krServ := provider.NewKeyRangeService(app.coordinator)
@@ -164,7 +175,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
 
-	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)
+	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		spqrlog.Zero.Error().

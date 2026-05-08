@@ -3,31 +3,41 @@ package planner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/console"
+	"github.com/pg-sharding/spqr/router/recovery"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/sethvargo/go-retry"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -49,7 +59,7 @@ func (p *PlannerV2) Ready() bool {
 }
 
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (*plan.ScatterPlan, error) {
-	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
+	if distributionID := rm.SPH.AutoDistribution(); distributionID != "" {
 
 		switch q := v.TableRv.(type) {
 		case *lyx.RangeVar:
@@ -57,16 +67,16 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			/* pre-attach relation to its distribution
 			 * sic! this is not transactional nor abortable
 			 */
-			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionId).Msg("attaching relation")
+			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionID).Msg("attaching relation")
 
-			if distributionId == distributions.REPLICATED {
+			if distributionID == distributions.REPLICATED {
 				err := console.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}
 			} else {
 				if v.IfNotExists {
-					if d, err := rm.Mgr.GetDistribution(ctx, distributionId); err != nil {
+					if d, err := rm.Mgr.GetDistribution(ctx, distributionID); err != nil {
 						// ok
 						return nil, err
 					} else {
@@ -74,14 +84,14 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
 							/* ok */
 						} else {
-							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
 							if err != nil {
 								return nil, err
 							}
 						}
 					}
 				} else {
-					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
 					if err != nil {
 						return nil, err
 					}
@@ -192,7 +202,6 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 
 func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
-	_ *distributions.DistributedRelation,
 	tp string,
 	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 
@@ -223,24 +232,12 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
-func PlanDistributedRelationInsert(
+func TuplePlansByDistributionEntry(
 	ctx context.Context,
 	routingList [][]lyx.Node,
+	ds *distributions.Distribution,
 	rm *rmeta.RoutingMetadataContext,
-	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
-
-	var ds *distributions.Distribution
-	var err error
-
-	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
-		return nil, err
-	}
-
-	/* Omit distributed relations */
-	if ds.Id == distributions.REPLICATED {
-		/* should not happen */
-		return nil, rerrors.ErrComplexQuery
-	}
+	routingListPos map[string]int, distribKey []distributions.DistributionKeyEntry) ([]kr.ShardKey, error) {
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -248,12 +245,8 @@ func PlanDistributedRelationInsert(
 	}
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
-	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation, ok := ds.TryGetRelation(qualName)
-	if !ok {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
-	}
 
+	tupleShards := make([]kr.ShardKey, len(routingList))
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
 
@@ -266,23 +259,23 @@ func PlanDistributedRelationInsert(
 			* we have no insert cols specified, but still able to route on select
 			 */
 
-			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
+			hf, err := hashfunction.HashFunctionByName(distribKey[j].HashFunction)
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 				return nil, err
 			}
 
-			if len(relation.DistributionKey[j].Column) == 0 {
+			if len(distribKey[j].Column) == 0 {
 
-				if len(relation.DistributionKey[j].Expr.ColRefs) == 0 {
+				if len(distribKey[j].Expr.ColRefs) == 0 {
 					return nil, rerrors.ErrComplexQuery
 				}
 
 				acc := []byte{}
 
-				for _, cr := range relation.DistributionKey[j].Expr.ColRefs {
+				for _, cr := range distribKey[j].Expr.ColRefs {
 
-					val, ok := insertColsPos[cr.ColName]
+					val, ok := routingListPos[cr.ColName]
 
 					if !ok {
 						return nil, nil
@@ -300,7 +293,7 @@ func PlanDistributedRelationInsert(
 
 					/* this is always non-ident hash function */
 					itemVal, err := CalculateRoutingListTupleItemValue(rm,
-						relation, cr.ColType,
+						cr.ColType,
 						routingList[i][val],
 						queryParamsFormatCodes)
 
@@ -323,12 +316,11 @@ func PlanDistributedRelationInsert(
 				tup[j], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 
 			} else {
-				val, ok := insertColsPos[relation.DistributionKey[j].Column]
+				val, ok := routingListPos[distribKey[j].Column]
 
 				if !ok {
 					return nil, nil
@@ -345,19 +337,17 @@ func PlanDistributedRelationInsert(
 				}
 
 				itemVal, err := CalculateRoutingListTupleItemValue(rm,
-					relation, tp,
+					tp,
 					routingList[i][val],
 					queryParamsFormatCodes)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 
 				tup[j], err = hashfunction.ApplyHashFunction(itemVal, ds.ColTypes[j], hf)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 			}
@@ -377,6 +367,32 @@ func PlanDistributedRelationInsert(
 		tupleShards[i] = tupleShard
 	}
 	return tupleShards, nil
+}
+
+func PlanDistributedRelationForKeys(
+	ctx context.Context,
+	routingList [][]lyx.Node,
+	rm *rmeta.RoutingMetadataContext,
+	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
+
+	var ds *distributions.Distribution
+	var err error
+
+	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
+		return nil, err
+	}
+
+	/* Omit distributed relations */
+	if ds.Id == distributions.REPLICATED {
+		/* should not happen */
+		return nil, rerrors.ErrComplexQuery
+	}
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+
+	return TuplePlansByDistributionEntry(ctx, routingList, ds, rm, insertColsPos, relation.DistributionKey)
 }
 
 func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
@@ -431,7 +447,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				/* Still ongoing */
 				spqrlog.Zero.Info().Str("id", tg.ID).Str("status", string(st.State)).Msgf("move task still in-progress")
 
-				/* Assert status == RUNNING here? */
+				/* RUNNING or PLANNING here are ok */
+
+				if st.State == tasks.TaskGroupError {
+					break
+				}
 
 				/* Maybe notify client here */
 
@@ -493,7 +513,16 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				defer cf()
 			}
 
-			return meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+			return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+				tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+				if err != nil {
+					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+						return nil, retry.RetryableError(err)
+					}
+					return nil, err
+				}
+				return tts, nil
+			})
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -513,7 +542,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeUinteger)
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeUinteger)
 			if err != nil {
 				return nil, err
 			}
@@ -533,10 +562,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		})
 		res := byte('f')
 
-		/* Not attached? XXX: fix this, support proper handling of second arg */
+		/* Not attached?
 		if len(lockedByVirtualPIDs) != 0 {
 			res = byte('t')
 		}
+		 XXX: fix this, support proper handling of second arg */
 
 		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
 			res = byte('t')
@@ -576,13 +606,15 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 			if err != nil {
 				return nil, err
 			}
 
-			/* Assert here? */
-			val := sVal.(string)
+			val, ok := sVal.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string param, got %T", sVal)
+			}
 
 			target = val
 		case *lyx.AExprSConst:
@@ -736,6 +768,142 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		tts.WriteDataRow(et.Name)
 
 		return tts, nil
+	case virtual.VirtualRemoteExecute:
+		if len(args) != 2 {
+			return nil, fmt.Errorf("%s function accepts two arguments", virtual.VirtualRemoteExecute)
+		}
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		dsn := strVal.Value
+		strVal, ok = args[1].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		queriesStr := strVal.Value
+		queries := strings.Split(queriesStr, ";")
+		connConfig, err := pgx.ParseConfig(dsn)
+		if err != nil {
+			return nil, err
+		}
+		connConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		connConfig.RuntimeParams["standard_conforming_strings"] = "on"
+		connConfig.RuntimeParams["idle_session_timeout"] = "10000"
+		level, err := tracelog.LogLevelFromString(tracelog.LogLevelDebug.String())
+		if err != nil {
+			return nil, err
+		}
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		return func() (*tupleslot.TupleTableSlot, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conn, err := pgx.ConnectConfig(ctx, connConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to connect to remote host: %w", err)
+			}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: tupleslot.TupleDesc{},
+			}
+			for i, q := range queries {
+				if err := func() error {
+					rows, err := conn.Query(ctx, q)
+					if err != nil {
+						return err
+					}
+					defer rows.Close()
+					for _, desc := range rows.FieldDescriptions() {
+						tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
+					}
+					for rows.Next() {
+						if i == len(queries)-1 {
+							vals, err := rows.Values()
+							if err != nil {
+								return err
+							}
+							strVals := make([]string, len(vals))
+							for i, val := range vals {
+								strVals[i] = fmt.Sprintf("%v", val)
+							}
+							tts.WriteDataRow(strVals...)
+						}
+					}
+					return nil
+				}(); err != nil {
+					return nil, err
+				}
+			}
+			return tts, nil
+		}()
+	case virtual.VirtualRun2PCRecover:
+		if len(args) > 1 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+		}
+
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("run_2pc_recover")}}
+		if len(args) == 1 {
+			strVal, ok := args[0].(*lyx.AExprSConst)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
+			gid := strVal.Value
+
+			if err := wd.LockAndRecover2PhaseCommitTX(gid); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(gid)
+		} else {
+			gids, err := wd.RecoverDistributedTx()
+			if err != nil {
+				return nil, err
+			}
+			for range gids {
+				tts.WriteDataRow("")
+			}
+		}
+		return tts, nil
+	case virtual.VirtualClear2PCData:
+		if len(args) > 0 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualClear2PCData)
+		}
+		db, err := qdb.GetStateKeeperQDB()
+		if err != nil {
+			return nil, err
+		}
+		if err := db.ClearTxStatuses(ctx); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("clear_2pc_data"),
+		}
+		return tts, nil
+	case virtual.VirtualCleanOutdated2PCData:
+		if len(args) > 0 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualCleanOutdated2PCData)
+		}
+		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
+		if err != nil {
+			return nil, err
+		}
+		gids, err := wd.CleanUpOldTXs(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("gid"),
+		}
+		for _, gid := range gids {
+			tts.WriteDataRow(gid)
+		}
+		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
@@ -758,7 +926,7 @@ func RetrieveTuples(
 	return nil, nil
 }
 
-func (plr *PlannerV2) PlanDistributedQuery(
+func (p *PlannerV2) PlanDistributedQuery(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
@@ -770,9 +938,9 @@ func (plr *PlannerV2) PlanDistributedQuery(
 			IsDDL: true,
 		}, nil
 	case *lyx.ExplainStmt:
-		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+		return p.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
 	case *lyx.SubLink:
-		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
+		return p.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
@@ -783,7 +951,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := RetrieveTuples(ctx, rm, plr, v.TargetList[0])
+				tts, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
@@ -800,7 +968,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 			if len(v.FromClause) == 0 && (v.LArg == nil || v.RArg == nil) && v.WithClause == nil {
-				p, err := PlanTargetList(ctx, rm, plr, v)
+				p, err := PlanTargetList(ctx, rm, p, v)
 				if err != nil {
 					return nil, err
 				}
@@ -820,7 +988,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				tts, err := RetrieveTuples(
 					ctx,
 					rm,
-					plr, q.Arg)
+					p, q.Arg)
 				if err != nil {
 					return nil, err
 				}
@@ -889,7 +1057,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 						return nil, err
 					}
 
-					shs, err := PlanDistributedRelationInsert(ctx, q.Values, rm, insertColsPos, qualName)
+					shs, err := PlanDistributedRelationForKeys(ctx, q.Values, rm, insertColsPos, qualName)
 					if err != nil {
 						return nil, err
 					}
@@ -918,7 +1086,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}
 			}
 
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
+			return p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -942,7 +1110,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}, nil
 			}
 
-			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
 					SubPlan:     p,
@@ -974,7 +1142,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}, nil
 			}
 
-			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
 					SubPlan:     p,

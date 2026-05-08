@@ -1,4 +1,4 @@
-package parser
+package qparser
 
 import (
 	"fmt"

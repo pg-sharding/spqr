@@ -23,8 +23,8 @@ import (
 )
 
 type AuxValuesKey struct {
-	CTEName   string
-	ValueName string
+	CTEName    string
+	ColRefName string
 }
 
 type RoutingMetadataContext struct {
@@ -43,7 +43,7 @@ type RoutingMetadataContext struct {
 	ParamRefs    map[rfqn.RelationFQN]map[string][]int
 
 	// cached CTE names
-	CteNames map[string]struct{}
+	CteNames map[string]*lyx.CommonTableExpr
 
 	// needed to parse
 	// SELECT * FROM t1 a where a.i = 1
@@ -59,7 +59,11 @@ type RoutingMetadataContext struct {
 	Query string
 	Stmt  lyx.Node
 
-	AuxValues map[AuxValuesKey][]lyx.Node
+	AuxValues       map[AuxValuesKey][]lyx.Node
+	AuxValuesParent map[AuxValuesKey]AuxValuesKey
+	// CTE -> which distributed relations join on it.
+	UsedAuxCTE            map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedSelectQueryAdjust bool
 
 	/* Is query proven to be read-only? */
 	ro bool
@@ -68,7 +72,7 @@ type RoutingMetadataContext struct {
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
-	Is_SPQR_CTID  bool
+	IsSPQRCTID    bool
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 
@@ -84,7 +88,7 @@ func (rm *RoutingMetadataContext) IsRO() bool {
 }
 
 func NewRoutingMetadataContext(sph session.SessionParamsHolder,
-	ClientRule *config.FrontendRule,
+	clientRule *config.FrontendRule,
 	query string,
 	stmt lyx.Node,
 	csm connmgr.ConnectionMgr,
@@ -92,7 +96,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	return &RoutingMetadataContext{
 		Rels:                       map[rfqn.RelationFQN]struct{}{},
 		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
-		CteNames:                   map[string]struct{}{},
+		CteNames:                   map[string]*lyx.CommonTableExpr{},
 		TableAliases:               map[string]rfqn.RelationFQN{},
 		CTEAliases:                 map[string]string{},
 		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
@@ -100,13 +104,15 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
+		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
 		SPH:                        sph,
 		CSM:                        csm,
 		Mgr:                        mgr,
 		Query:                      query,
 		Stmt:                       stmt,
 		ro:                         false,
-		ClientRule:                 ClientRule,
+		ClientRule:                 clientRule,
 	}
 }
 
@@ -136,8 +142,8 @@ func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, qualN
 
 func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
 	k := AuxValuesKey{
-		CTEName:   name,
-		ValueName: value,
+		CTEName:    name,
+		ColRefName: value,
 	}
 	vals := rm.AuxValues[k]
 	vals = append(vals, v)
@@ -159,20 +165,20 @@ func (rm *RoutingMetadataContext) ResolveTypedParamRef(paramResCodes []int16, in
 	return plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
 }
 
-func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
+func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
 	/* explicit assignment in query */
-	if vals, ok := rm.Exprs[*rfqn][col]; ok {
+	if vals, ok := rm.Exprs[*relationFQN][col]; ok {
 		return vals, nil
 	}
 
 	/* else get parameter from bind query */
 
-	inds, ok := rm.ParamRefs[*rfqn][col]
+	inds, ok := rm.ParamRefs[*relationFQN][col]
 	if !ok {
 		return nil, plan.ErrResolvingValue
 	}
 
-	off, tp := rm.GetDistributionKeyOffsetType(rfqn, col)
+	off, tp := rm.GetDistributionKeyOffsetType(relationFQN, col)
 	if off == -1 {
 		// column not from distr key
 		return nil, plan.ErrResolvingValue
@@ -185,17 +191,20 @@ func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col strin
 	return []any{singleVal}, err
 }
 
-func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) AuxValuesKey {
 	searchKey := cf.TableAlias
 	if fullName, ok := rm.CTEAliases[cf.TableAlias]; ok {
 		searchKey = fullName
 	}
 
-	k := AuxValuesKey{
-		CTEName:   searchKey,
-		ValueName: cf.ColName,
+	return AuxValuesKey{
+		CTEName:    searchKey,
+		ColRefName: cf.ColName,
 	}
-	return rm.AuxValues[k]
+}
+
+func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+	return rm.AuxValues[rm.SearchKeyByColRef(cf)]
 }
 
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
@@ -215,6 +224,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 
 	rm.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
+
 	for _, e := range r.GetDistributionKeyColumnNames() {
 		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
 	}
@@ -228,7 +238,6 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 
 // TODO : unit tests
 func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
-	spqrlog.Zero.Debug().Str("qname", resolvedRelation.String()).Str("col", colname).Msgf("!J!JHU!J!UH!U RECORD %+v", expr)
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
 		rm.Exprs[*resolvedRelation] = map[string][]any{}
@@ -240,29 +249,25 @@ func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.Relatio
 	return nil
 }
 
-func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
-	routingMeta.Rels[*resolvedRelation] = struct{}{}
-	if _, ok := routingMeta.ParamRefs[*resolvedRelation]; !ok {
-		routingMeta.ParamRefs[*resolvedRelation] = map[string][]int{}
+func (rm *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
+	rm.Rels[*resolvedRelation] = struct{}{}
+	if _, ok := rm.ParamRefs[*resolvedRelation]; !ok {
+		rm.ParamRefs[*resolvedRelation] = map[string][]int{}
 	}
-	if _, ok := routingMeta.ParamRefs[*resolvedRelation][colname]; !ok {
-		routingMeta.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
+	if _, ok := rm.ParamRefs[*resolvedRelation][colname]; !ok {
+		rm.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
 	}
-	routingMeta.ParamRefs[*resolvedRelation][colname] = append(routingMeta.ParamRefs[*resolvedRelation][colname], ind)
-	return nil
-}
-
-func (rm *RoutingMetadataContext) TryResolveByDistributionColumn(colname string) *rfqn.RelationFQN {
-	if l, ok := rm.RelationsByDistributionCol[colname]; ok && len(l) == 1 {
-		return l[0]
-	}
+	rm.ParamRefs[*resolvedRelation][colname] = append(rm.ParamRefs[*resolvedRelation][colname], ind)
 	return nil
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (*rfqn.RelationFQN, error) {
+func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) (*rfqn.RelationFQN, error) {
 	if _, ok := rm.Rels[rfqn.RelationFQN{RelationName: alias}]; ok {
 		return &rfqn.RelationFQN{RelationName: alias}, nil
+	}
+	if _, ok := rm.CTEAliases[alias]; ok {
+		return nil, nil
 	}
 	if resolvedRelation, ok := rm.TableAliases[alias]; ok {
 		// TBD: postpone routing from here to root of parsing tree
@@ -270,8 +275,16 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (*rfqn.Re
 	} else {
 		// TBD: postpone routing from here to root of parsing tree
 		if len(rm.Rels) != 1 {
-			// ambiguity in column aliasing
-			return nil, rerrors.ErrComplexQuery
+
+			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
+				if len(l) > 1 {
+					// ambiguity in column aliasing
+					return nil, rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
+				}
+				return l[0], nil
+			} else {
+				return nil, nil
+			}
 		}
 		for tbl := range rm.Rels {
 			resolvedRelation = tbl
@@ -287,7 +300,7 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	var matchedKrkey *kr.KeyRange = nil
+	var matchedKrkey *kr.KeyRange
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
@@ -328,11 +341,11 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 	hf := hashfunction.HashFunctionIdent
 
 	if dRel != "" {
-		relName, err := rfqn.ParseFQN(dRel)
+		relationFQN, err := rfqn.ParseFQN(dRel)
 		if err != nil {
 			return kr.ShardKey{}, err
 		}
-		r, ok := distrib.TryGetRelation(relName)
+		r, ok := distrib.TryGetRelation(relationFQN)
 		if ok {
 			hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
 			if err != nil {
@@ -433,7 +446,7 @@ type ParamRef struct {
 func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 	switch right := expr.(type) {
 	case *lyx.ParamRef:
-		return ParamRef{Indx: right.Number - 1}, nil
+		return ParamRef{Indx: int(right.Number - 1)}, nil
 	case *lyx.AExprSConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:
@@ -482,16 +495,6 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 }
 
 func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
-
-	if rm.RFQNIsCTE(resolvedRelation) {
-		// CTE, skip
-		return nil
-	}
-
-	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
-		// reference relation, skip
-		return nil
-	}
 
 	v, err := ParseExprValue(tp, expr)
 	if err != nil {

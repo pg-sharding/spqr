@@ -35,6 +35,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
  distribution id -> ds1
 (2 rows)
 
+\set VERBOSITY terse
 -- non adjacent key ranges
 UNITE KEY RANGE krid1 WITH krid3;
 ERROR:  failed to unite non-adjacent key ranges
@@ -60,7 +61,7 @@ LOCK KEY RANGE krid1;
 (1 row)
 
 UNITE KEY RANGE krid1 WITH krid3;
-ERROR:  key range krid1 is locked
+ERROR:  key range is locked
 UNLOCK KEY RANGE krid1;
    unlock key range    
 -----------------------

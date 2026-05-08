@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -27,11 +26,12 @@ type LocalInstanceMetadataMgr struct {
 
 	cache *cache.SchemaCache
 
-	updateShardsMapping bool
-	shardMapping        map[string]*topology.DataShard
-	shardMappingMutex   sync.Mutex
+	updateTopology bool
+
+	tmgr topology.TopologyMgr
 
 	poolShardHosts shard.ShardHostIterator
+	maxTxnBatch    uint16
 }
 
 const DefaultRouterId = "r1"
@@ -174,7 +174,7 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
-	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.Krid); err != nil {
+	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
 		return err
 	}
 
@@ -187,7 +187,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 	if err != nil {
 		return err
 	}
-	reqKr.ShardID = req.ShardId
+	reqKr.ShardID = req.ShardID
 
 	// TODO: move check to meta layer
 	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
@@ -226,12 +226,11 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
+		Bool("updateTopology", lc.updateTopology).
 		Msg("adding datashard node in local coordinator")
 
-	if lc.updateShardsMapping {
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[ds.ID] = ds
-		lc.shardMappingMutex.Unlock()
+	if lc.updateTopology {
+		lc.tmgr.AddShard(ds)
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
@@ -241,15 +240,13 @@ func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID
 		return err
 	}
 
-	if lc.updateShardsMapping {
+	if lc.updateTopology {
 		shard, err := lc.GetShard(ctx, shardID)
 		if err != nil {
 			return err
 		}
 
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[shardID].SetOptions(shard.Options())
-		lc.shardMappingMutex.Unlock()
+		lc.tmgr.SetOptions(shardID, shard.Options())
 	}
 
 	return lc.invalidatePoolsForShard(shardID)
@@ -260,15 +257,13 @@ func (lc *LocalInstanceMetadataMgr) AlterShardOptions(ctx context.Context, shard
 		return err
 	}
 
-	if lc.updateShardsMapping {
+	if lc.updateTopology {
 		shard, err := lc.GetShard(ctx, shardID)
 		if err != nil {
 			return err
 		}
 
-		lc.shardMappingMutex.Lock()
-		lc.shardMapping[shardID].SetOptions(shard.Options())
-		lc.shardMappingMutex.Unlock()
+		lc.tmgr.SetOptions(shardID, shard.Options())
 	}
 
 	return lc.invalidatePoolsForShard(shardID)
@@ -298,10 +293,8 @@ func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId strin
 		Str("node", shardId).
 		Msg("dropping datashard node in local coordinator")
 
-	if lc.updateShardsMapping {
-		lc.shardMappingMutex.Lock()
-		delete(lc.shardMapping, shardId)
-		lc.shardMappingMutex.Unlock()
+	if lc.updateTopology {
+		lc.tmgr.DropShard(shardId)
 	}
 	return lc.qdb.DropShard(ctx, shardId)
 }
@@ -376,7 +369,7 @@ func listRoutersInner(host string, port string) *topology.Router {
 // - error: an error if the retrieval encounters any issues.
 func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.Router, error) {
 	host := config.RouterConfig().Host
-	port := config.RouterConfig().GrpcApiPort
+	port := config.RouterConfig().GrpcAPIPort
 	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 
@@ -480,7 +473,7 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	mgr := NewAdapter(conn)
+	mgr := NewAdapter(conn, lc.maxTxnBatch)
 	return mgr.NextRange(ctx, seqName, rangeSize)
 }
 
@@ -501,7 +494,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	mgr := NewAdapter(conn)
+	mgr := NewAdapter(conn, lc.maxTxnBatch)
 	return mgr.CurrVal(ctx, seqName)
 }
 
@@ -511,7 +504,7 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ stri
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ string) error {
+func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ string, _ bool) error {
 	return ErrNotCoordinator
 }
 
@@ -530,14 +523,15 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(_ context.Context, _ 
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache,
-	shardMapping map[string]*topology.DataShard, updateShardsMapping bool, poolShardHosts shard.ShardHostIterator) meta.EntityMgr {
+	tmgr topology.TopologyMgr, updateTopology bool, poolShardHosts shard.ShardHostIterator, maxTxnBatch uint16) meta.EntityMgr {
 
 	lc := &LocalInstanceMetadataMgr{
-		Coordinator:         NewCoordinator(db, d),
-		cache:               cache,
-		shardMapping:        shardMapping,
-		updateShardsMapping: updateShardsMapping,
-		poolShardHosts:      poolShardHosts,
+		Coordinator:    NewCoordinator(db, d, maxTxnBatch),
+		cache:          cache,
+		tmgr:           tmgr,
+		updateTopology: updateTopology,
+		poolShardHosts: poolShardHosts,
+		maxTxnBatch:    maxTxnBatch,
 	}
 
 	return lc

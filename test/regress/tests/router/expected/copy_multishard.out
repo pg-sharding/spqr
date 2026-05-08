@@ -35,6 +35,71 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT FROM xx WHERE i = 1;
+NOTICE: send query to shard(s) : sh1
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 2;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 3;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 4;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 5;
+NOTICE: send query to shard(s) : sh1
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 4294967296;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 4294967297;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 72057594037927936;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 72057594037927937;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 144115188075855872;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 144115188075855871;
+NOTICE: send query to shard(s) : sh1
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 9223372036854775807;
+NOTICE: send query to shard(s) : sh2
+--
+(1 row)
+
+SELECT FROM xx WHERE i = 9223372036854775806;
+NOTICE: send query to shard(s) : sh1
+--
+(1 row)
+
 -- check schema-qualified name
 COPY public.xx (i, j) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

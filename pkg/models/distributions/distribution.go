@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -24,6 +25,9 @@ type DistributionKeyEntry struct {
 	Column       string
 	HashFunction string
 	Expr         RoutingExpr
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 type DistributedRelation struct {
@@ -32,6 +36,9 @@ type DistributedRelation struct {
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
 	UniqueIndexesByColumn map[string]*UniqueIndex
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
@@ -122,7 +129,11 @@ const (
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*UniqueIndex) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Relation: rel.QualifiedName(),
+		Relation:              rel.QualifiedName(),
+		ReplicatedRelation:    rel.ReplicatedRelation,
+		UniqueIndexesByColumn: idxs,
+		Version:               rel.Version,
+		ACL:                   acl.ACLFromDB(rel.ACL),
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -134,9 +145,6 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*Un
 			},
 		})
 	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-	rdistr.UniqueIndexesByColumn = idxs
 
 	return rdistr
 }
@@ -155,6 +163,9 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 		SchemaName:         rel.QualifiedName().SchemaName,
 		DistributionKey:    DistributionKeyToDB(rel.DistributionKey),
 		ReplicatedRelation: rel.ReplicatedRelation,
+
+		Version: rel.Version,
+		ACL:     acl.ACLTODB(rel.ACL),
 	}
 }
 
@@ -199,6 +210,9 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 		SequenceColumns:    rel.ColumnSequenceMapping,
 		DistributionKey:    DistributionKeyToProto(rel.DistributionKey),
 		ReplicatedRelation: rel.ReplicatedRelation,
+
+		Version: rel.Version,
+		Acl:     acl.ACLTOProto(rel.ACL),
 	}
 
 	return rdistr
@@ -267,6 +281,9 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation, idxsByColumns 
 		DistributionKey:       key,
 		ReplicatedRelation:    rel.ReplicatedRelation,
 		UniqueIndexesByColumn: idxsByColumns,
+
+		Version: rel.Version,
+		ACL:     acl.ACLFromProto(rel.Acl),
 	}, nil
 }
 
@@ -386,6 +403,9 @@ type Distribution struct {
 	UniqueIndexesByID map[string]*UniqueIndex
 
 	FQNRelations map[string]*DistributedRelation
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelation {
@@ -434,6 +454,7 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 		FQNRelations:      map[string]*DistributedRelation{},
 		Relations:         map[string]*DistributedRelation{},
 		UniqueIndexesByID: map[string]*UniqueIndex{},
+		ACL:               []acl.ACLItem{},
 	}
 }
 
@@ -471,6 +492,11 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 	for name, val := range distr.FQNRelations {
 		ret.FQNRelations[name] = DistributedRelationFromDB(val, make(map[string]*UniqueIndex))
 	}
+
+	ret.Version = distr.Version
+
+	ret.ACL = acl.ACLFromDB(distr.ACL)
+
 	return ret
 }
 
@@ -482,11 +508,11 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 // Returns:
 //   - *Distribution: The created Distribution object.
 func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
-	idxsById := make(map[string]*UniqueIndex)
+	idxsByID := make(map[string]*UniqueIndex)
 	idxsByRel := make(map[string]map[string]*UniqueIndex)
 	for _, idxProto := range ds.UniqueIndexes {
 		idx := UniqueIndexFromProto(idxProto)
-		idxsById[idx.ID] = idx
+		idxsByID[idx.ID] = idx
 		if _, ok := idxsByRel[idx.RelationName.RelationName]; !ok {
 			idxsByRel[idx.RelationName.RelationName] = make(map[string]*UniqueIndex)
 		}
@@ -510,12 +536,12 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		}
 	}
 
-	fqn_rels := make(map[string]*DistributedRelation)
+	fqnRels := make(map[string]*DistributedRelation)
 	for _, rel := range ds.FqnRelations {
 
 		var err error
 
-		fqn_rels[rfqn.RelationFQNFromFullName(rel.SchemaName, rel.Name).MetadataKey()], err = DistributedRelationFromProto(rel, map[string]*UniqueIndex{})
+		fqnRels[rfqn.RelationFQNFromFullName(rel.SchemaName, rel.Name).MetadataKey()], err = DistributedRelationFromProto(rel, map[string]*UniqueIndex{})
 		if err != nil {
 			return nil, err
 		}
@@ -533,8 +559,12 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		Id:                ds.Id,
 		ColTypes:          ds.ColumnTypes,
 		Relations:         rels,
-		UniqueIndexesByID: idxsById,
-		FQNRelations:      fqn_rels,
+		UniqueIndexesByID: idxsByID,
+		FQNRelations:      fqnRels,
+
+		Version: ds.Version,
+
+		ACL: acl.ACLFromProto(ds.Acl),
 	}, nil
 }
 
@@ -547,12 +577,12 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 //   - *proto.Distribution: The converted proto.Distribution object.
 func DistributionToProto(ds *Distribution) *proto.Distribution {
 	drels := make([]*proto.DistributedRelation, 0)
-	fqn_rels := make([]*proto.DistributedRelation, 0)
+	fqnRels := make([]*proto.DistributedRelation, 0)
 	for _, r := range ds.Relations {
 		drels = append(drels, DistributedRelationToProto(r))
 	}
 	for _, r := range ds.FQNRelations {
-		fqn_rels = append(fqn_rels, DistributedRelationToProto(r))
+		fqnRels = append(fqnRels, DistributedRelationToProto(r))
 	}
 	dsIdxs := make([]*proto.UniqueIndex, 0, len(ds.UniqueIndexesByID))
 	for _, idx := range ds.UniqueIndexesByID {
@@ -563,7 +593,10 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 		ColumnTypes:   ds.ColTypes,
 		Relations:     drels,
 		UniqueIndexes: dsIdxs,
-		FqnRelations:  fqn_rels,
+		FqnRelations:  fqnRels,
+
+		Version: ds.Version,
+		Acl:     acl.ACLTOProto(ds.ACL),
 	}
 }
 
@@ -582,6 +615,9 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 		Relations:     map[string]*qdb.DistributedRelation{},
 		FQNRelations:  map[string]*qdb.DistributedRelation{},
 		UniqueIndexes: map[string]*qdb.UniqueIndex{},
+
+		Version: ds.Version,
+		ACL:     acl.ACLTODB(ds.ACL),
 	}
 
 	for _, r := range ds.Relations {
@@ -607,9 +643,9 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 // Returns:
 //   - []string: Columns with optional hash function.
 //   - error: An error if any occurred
-func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
-	res := make([]string, len(rel.DistributionKey))
-	for i, col := range rel.DistributionKey {
+func (r *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
+	res := make([]string, len(r.DistributionKey))
+	for i, col := range r.DistributionKey {
 		hashedCol, err := GetHashedColumn(col.Column, col.HashFunction)
 		if err != nil {
 			return nil, err
@@ -625,14 +661,14 @@ func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 // Returns:
 //   - string: Column type.
 //   - bool: flag indicating fact of success.
-func (rel *DistributedRelation) GetDistributionKeyColumnType(
+func (r *DistributedRelation) GetDistributionKeyColumnType(
 	d *Distribution,
 	col string) (string, bool) {
 
-	if _, idx := rel.GetColumn(col); idx >= 0 {
+	if _, idx := r.GetColumn(col); idx >= 0 {
 		return d.ColTypes[idx], true
 	}
-	for _, colEntry := range rel.DistributionKey {
+	for _, colEntry := range r.DistributionKey {
 		for _, tcr := range colEntry.Expr.ColRefs {
 			if tcr.ColName == col {
 				return tcr.ColType, true
@@ -647,9 +683,9 @@ func (rel *DistributedRelation) GetDistributionKeyColumnType(
 // Returns:
 //   - []string: Columns with optional hash function.
 //   - error: An error if any occurred
-func (rel *DistributedRelation) GetDistributionKeyColumnNames() []string {
+func (r *DistributedRelation) GetDistributionKeyColumnNames() []string {
 	var res []string
-	for _, col := range rel.DistributionKey {
+	for _, col := range r.DistributionKey {
 		if col.Column != "" {
 			res = append(res, col.Column)
 		} else {

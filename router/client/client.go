@@ -71,8 +71,8 @@ type PsqlClient struct {
 	/* cancel */
 	csm *pgproto3.CancelRequest
 
-	cancel_pid uint32
-	cancel_key []byte
+	cancelPid uint32
+	cancelKey []byte
 
 	ReplyClientId bool
 
@@ -111,93 +111,93 @@ type PsqlClient struct {
 var _ RouterClient = &PsqlClient{}
 
 // Wait implements [RouterClient].
-func (r *PsqlClient) Wait() {
-	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waiting with client")
-	<-r.icpChan
+func (cl *PsqlClient) Wait() {
+	spqrlog.Zero.Debug().Uint("id", cl.ID()).Msg("waiting with client")
+	<-cl.icpChan
 }
 
 // Wake implements [RouterClient].
-func (r *PsqlClient) Wake() {
-	spqrlog.Zero.Debug().Uint("id", r.ID()).Msg("waking up client")
-	r.icpChan <- struct{}{}
+func (cl *PsqlClient) Wake() {
+	spqrlog.Zero.Debug().Uint("id", cl.ID()).Msg("waking up client")
+	cl.icpChan <- struct{}{}
 }
 
 // Add implements statistics.StatHolder.
-func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
+func (cl *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
 	switch st {
 	case statistics.StatisticsTypeRouter:
-		return r.RouterTime.Add(value)
+		return cl.RouterTime.Add(value)
 	case statistics.StatisticsTypeShard:
-		return r.ShardTime.Add(value)
+		return cl.ShardTime.Add(value)
 	default:
 		// panic?
 		return nil
 	}
 }
 
-func (r *PsqlClient) SetErrCounter(ec errcounter.ErrCounter) {
-	r.ec = ec
+func (cl *PsqlClient) SetErrCounter(ec errcounter.ErrCounter) {
+	cl.ec = ec
 }
 
 // Conn implements RouterClient.
-func (r *PsqlClient) Conn() net.Conn {
-	return r.tcpconn
+func (cl *PsqlClient) Conn() net.Conn {
+	return cl.tcpconn
 }
 
 // GetTimeData implements statistics.StatHolder.
-func (r *PsqlClient) GetTimeData() *statistics.StartTimes {
-	return r.TimeData
+func (cl *PsqlClient) GetTimeData() *statistics.StartTimes {
+	return cl.TimeData
 }
 
 // GetTimeQuantile implements statistics.StatHolder.
-func (r *PsqlClient) GetTimeQuantile(statType statistics.StatisticsType, q float64) float64 {
+func (cl *PsqlClient) GetTimeQuantile(statType statistics.StatisticsType, q float64) float64 {
 
 	switch statType {
 	case statistics.StatisticsTypeRouter:
-		if r.RouterTime.Count() == 0 {
+		if cl.RouterTime.Count() == 0 {
 			return 0
 		}
 
-		return r.RouterTime.Quantile(q)
+		return cl.RouterTime.Quantile(q)
 	case statistics.StatisticsTypeShard:
-		if r.ShardTime.Count() == 0 {
+		if cl.ShardTime.Count() == 0 {
 			return 0
 		}
 
-		return r.ShardTime.Quantile(q)
+		return cl.ShardTime.Quantile(q)
 	default:
 		return 0
 	}
 }
 
 // RecordStartTime implements statistics.StatHolder.
-func (r *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time.Time) {
-	if r.TimeData == nil {
-		r.TimeData = &statistics.StartTimes{}
+func (cl *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time.Time) {
+	if cl.TimeData == nil {
+		cl.TimeData = &statistics.StartTimes{}
 	}
 
 	switch statType {
 	case statistics.StatisticsTypeRouter:
-		r.TimeData.RouterStart = t
+		cl.TimeData.RouterStart = t
 	case statistics.StatisticsTypeShard:
-		r.TimeData.ShardStart = t
+		cl.TimeData.ShardStart = t
 	}
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
-	var target_session_attrs string
+	var targetSessionAttrs string
 	if instanceDefaultTsa != "" {
-		target_session_attrs = instanceDefaultTsa
+		targetSessionAttrs = instanceDefaultTsa
 	} else {
-		target_session_attrs = config.TargetSessionAttrsRW
+		targetSessionAttrs = config.TargetSessionAttrsRW
 	}
 
 	// enforce default port behaviour
 	if pt == port.RORouterPortType {
-		target_session_attrs = config.TargetSessionAttrsPS
+		targetSessionAttrs = config.TargetSessionAttrsPS
 	}
 
-	sh := session.NewSimpleHandler(target_session_attrs, showNoticeMessages, twopc.COMMIT_STRATEGY_1PC, defaultRouteBehaviour)
+	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, twopc.CommitStrategy1pc, defaultRouteBehaviour)
 
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,
@@ -212,7 +212,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		serverP: atomic.Pointer[server.Server]{},
 	}
 
-	cl.SetCommitStrategy(twopc.COMMIT_STRATEGY_BEST_EFFORT)
+	cl.SetCommitStrategy(twopc.CommitStrategyBestEffort)
 
 	cl.id = spqrlog.GetPointer(cl)
 
@@ -225,11 +225,11 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
-	return cl.cancel_pid
+	return cl.cancelPid
 }
 
 func (cl *PsqlClient) GetCancelKey() []byte {
-	return cl.cancel_key
+	return cl.cancelKey
 }
 
 func (cl *PsqlClient) SetAuthType(t uint32) error {
@@ -590,13 +590,13 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		key := rand.Uint32()
 		buf := make([]byte, 4)
 		binary.BigEndian.PutUint32(buf, key)
-		cl.cancel_key = buf
-		cl.cancel_pid = uint32(rand.Int31())
+		cl.cancelKey = buf
+		cl.cancelPid = uint32(rand.Int31())
 
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
-			Bytes("cancel_key", cl.cancel_key).
-			Uint32("cancel_pid", cl.cancel_pid)
+			Bytes("cancelKey", cl.cancelKey).
+			Uint32("cancelPid", cl.cancelPid)
 
 		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
 			return nil
@@ -671,8 +671,8 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 	}
 
 	if err := cl.Send(&pgproto3.BackendKeyData{
-		ProcessID: cl.cancel_pid,
-		SecretKey: cl.cancel_key,
+		ProcessID: cl.cancelPid,
+		SecretKey: cl.cancelKey,
 	}); err != nil {
 		return err
 	}
@@ -757,6 +757,10 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	return msg, err
 }
 
+func (cl *PsqlClient) Flush() error {
+	return cl.be.Flush()
+}
+
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
@@ -829,10 +833,32 @@ func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
 }
 
+func (cl *PsqlClient) replySpqrErr(
+	e *spqrerror.SpqrError) error {
+	var clErrMsg string
+
+	if cl.ReplyClientId {
+		clErrMsg = fmt.Sprintf("client %p: error %v", cl, e.Err.Error())
+	} else {
+		clErrMsg = e.Err.Error()
+	}
+
+	return cl.Send(&pgproto3.ErrorResponse{
+		Message:       clErrMsg,
+		Severity:      "ERROR",
+		Hint:          e.ErrHint,
+		Detail:        e.ErrDetail,
+		InternalQuery: e.InternalQuery,
+		Code:          e.ErrorCode,
+		Position:      e.Position,
+		Where:         e.ErrContext,
+	})
+}
+
 func (cl *PsqlClient) replyErrMsgHint(
 	msg string,
 	code string,
-	hint string, pos int32, s txstatus.TXStatus) error {
+	hint string, pos int32) error {
 	var clErrMsg string
 
 	if cl.ReplyClientId {
@@ -841,55 +867,48 @@ func (cl *PsqlClient) replyErrMsgHint(
 		clErrMsg = msg
 	}
 
-	for _, msg := range []pgproto3.BackendMessage{
-		spqrerror.ErrorMsgFromErr(clErrMsg, code, hint, pos),
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(s),
-		},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-	return nil
+	return cl.Send(spqrerror.ErrorMsgFromErr(clErrMsg, code, hint, pos))
 }
 
-func (cl *PsqlClient) ReplyErrMsg(msg string, code string, pos int32, s txstatus.TXStatus) error {
+func (cl *PsqlClient) ReplyErrMsg(msg string, code string, pos int32) error {
 	if cl.ec != nil {
 		cl.ec.ReportError(code)
 	}
-	return cl.replyErrMsgHint(msg, code, "", pos, s)
+	return cl.replyErrMsgHint(msg, code, "", pos)
+}
+
+func (cl *PsqlClient) ReplyErrMsgPure(e error) error {
+	switch er := e.(type) {
+	case *spqrerror.SpqrError:
+		if cl.ec != nil {
+			cl.ec.ReportError(er.ErrorCode)
+		}
+		return cl.replySpqrErr(er)
+	default:
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0)
+	}
 }
 
 func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
-	switch er := e.(type) {
-	case *spqrerror.SpqrError:
-		if cl.ec != nil {
-			cl.ec.ReportError(er.ErrorCode)
-		}
-		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, er.Position, s)
-	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, s)
+	if err := cl.ReplyErrMsgPure(e); err != nil {
+		return err
 	}
+	return cl.ReplyRFQ(s)
 }
 
 func (cl *PsqlClient) ReplyErr(e error) error {
-	switch er := e.(type) {
-	case *spqrerror.SpqrError:
-
-		if cl.ec != nil {
-			cl.ec.ReportError(er.ErrorCode)
-		}
-
-		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, er.Position, txstatus.TXIDLE)
-	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, txstatus.TXIDLE)
+	if err := cl.ReplyErrMsgPure(e); err != nil {
+		return err
 	}
+	return cl.ReplyRFQ(txstatus.TXIDLE)
 }
 
 func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
 	clErrMsg := spqrerror.GetMessageByCode(code)
-	return cl.ReplyErrMsg(clErrMsg, code, 0, txstatus.TXIDLE)
+	if err := cl.ReplyErrMsg(clErrMsg, code, 0); err != nil {
+		return err
+	}
+	return cl.ReplyRFQ(txstatus.TXIDLE)
 }
 
 func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
@@ -920,7 +939,7 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 }
 
 func (cl *PsqlClient) CancelPID() uint32 {
-	return cl.cancel_pid
+	return cl.cancelPid
 }
 
 var _ RouterClient = &PsqlClient{}
@@ -957,6 +976,11 @@ func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 }
 
 func (f FakeClient) Send(_ pgproto3.BackendMessage) error {
+	return nil
+}
+
+func (f FakeClient) ReplyErrMsgPure(e error) error {
+	spqrlog.Zero.Error().Err(e).Msg("sql init error")
 	return nil
 }
 

@@ -137,7 +137,11 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 func (c *PoolImpl) Shutdown() error {
 
 	c.pool.Range(func(_, value any) bool {
-		cl := value.(Client)
+		cl, ok := value.(Client)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected client pool value type")
+			return true
+		}
 		go func(cl Client) {
 			if err := cl.Shutdown(); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
@@ -168,7 +172,11 @@ func (c *PoolImpl) Shutdown() error {
 func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
 	c.pool.Range(func(_, value any) bool {
-		cl := value.(Client)
+		cl, ok := value.(Client)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected client pool value type")
+			return true
+		}
 
 		if err := cb(ClientInfoImpl{Client: cl, rAddr: "local"}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -182,34 +190,34 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 }
 
 // StartBackgroundHealthCheck starts background health checking for disconnected clients
-func (s *PoolImpl) StartBackgroundHealthCheck() {
-	if s.deadCheckInterval <= 0 {
+func (c *PoolImpl) StartBackgroundHealthCheck() {
+	if c.deadCheckInterval <= 0 {
 		return // Disabled
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	s.healthCheckCancel = cancel
-	s.healthCheckCtx = ctx
+	c.healthCheckCancel = cancel
+	c.healthCheckCtx = ctx
 
-	go s.backgroundHealthCheckLoop()
+	go c.backgroundHealthCheckLoop()
 }
 
 // backgroundHealthCheckLoop runs the background health checking
-func (s *PoolImpl) backgroundHealthCheckLoop() {
+func (c *PoolImpl) backgroundHealthCheckLoop() {
 	spqrlog.Zero.Info().Msg("PoolImpl client background health check started")
 
-	ticker := time.NewTicker(s.deadCheckInterval)
+	ticker := time.NewTicker(c.deadCheckInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.healthCheckCtx.Done():
+		case <-c.healthCheckCtx.Done():
 			spqrlog.Zero.Info().Msg("PoolImpl client background health check stopped")
 			return
 		case <-ticker.C:
-			_ = s.ClientPoolForeach(func(cl ClientInfo) error {
+			_ = c.ClientPoolForeach(func(cl ClientInfo) error {
 
-				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+				if !netutil.TCPCheckAliveness(cl.Conn()) {
 
 					spqrlog.Zero.Info().Uint("client-id", cl.ID()).Msg("Found un-alive client")
 					if err := cl.Cancel(); err != nil {
@@ -250,7 +258,7 @@ func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	}
 
 	/* PG errors, which are still very interesting for us.*/
-	pl.counters[spqrerror.PG_PORTAl_DOES_NOT_EXISTS] = &atomic.Uint64{}
+	pl.counters[spqrerror.PG_PORTAL_DOES_NOT_EXISTS] = &atomic.Uint64{}
 	pl.counters[spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS] = &atomic.Uint64{}
 
 	pl.StartBackgroundHealthCheck()

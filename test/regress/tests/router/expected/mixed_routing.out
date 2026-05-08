@@ -210,9 +210,11 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 INSERT INTO xxmixeduuid (id) VALUES('something');
-ERROR:  error processing query 'INSERT INTO xxmixeduuid (id) VALUES('something');': invalid UUID length: 9
+ERROR:  invalid UUID length: 9
+QUERY:  INSERT INTO xxmixeduuid (id) VALUES('something');
 INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-ERROR:  error processing query 'INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');': invalid UUID format
+ERROR:  invalid UUID format
+QUERY:  INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
 DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

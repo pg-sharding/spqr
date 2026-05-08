@@ -5,9 +5,43 @@ linters:
     - revive
   settings:
     revive:
-      enable-all-rules: false
-      rules:
-        - name: unused-parameter
+       enable-all-rules: false
+       rules:
+         - name: unused-parameter
+         - name: unexported-naming
+         - name: unnecessary-if
+         - name: receiver-naming
+         - name: if-return
+         - name: var-declaration
+         - name: var-naming
+           arguments:
+             - ["ID", "JSON"]
+         - name: add-constant
+           disabled: true
+         - name: line-length-limit
+           disabled: true
+         - name: package-comments
+           disabled: true
+         - name: cognitive-complexity
+           disabled: true
+         - name: cyclomatic
+           disabled: true
+         - name: exported
+           disabled: true
+         - name: function-length
+           disabled: true
+         - name: unchecked-type-assertion
+           disabled: true
+         - name: unused-receiver
+           disabled: true
+         - name: empty-lines
+           disabled: true
+         - name: indent-error-flow
+           disabled: true
+         - name: unnecessary-format
+           disabled: true
+
+
   exclusions:
     paths:
       - yacc/console/lex.go

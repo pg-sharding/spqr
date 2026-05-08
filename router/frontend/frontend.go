@@ -4,11 +4,11 @@ import (
 	"context"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -22,18 +22,20 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
-	switch err {
-	case nil:
+	if err == nil {
 
 		if err := rst.CompleteRelay(); err != nil {
 			return err
 		}
 
-		if err := rst.CompleteRelayClient(); err != nil {
-			return err
-		}
+		return rst.CompleteRelayClient()
+	}
 
-		return nil
+	if err := rst.Cleanup(); err != nil {
+		return err
+	}
+
+	switch err {
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
@@ -57,7 +59,31 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
 		return err
 	}
+}
 
+func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
+	switch err {
+	case nil:
+		/* ok */
+
+		return nil
+	case io.ErrUnexpectedEOF:
+		fallthrough
+	case io.EOF:
+		return err
+		// ok
+	default:
+		spqrlog.Zero.Error().
+			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+			Msg("client iteration done with error")
+
+		/* try to report error to user  */
+		if rerr := rst.Reset(); rerr != nil {
+			return rerr
+		}
+
+		return rst.Client().ReplyErrMsgPure(err)
+	}
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
@@ -67,32 +93,35 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Flush:
-		/* Ignore. XXX: proper support in future? */
-		return nil
-	case *pgproto3.Sync:
-		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Msg("client connection flushed")
 
-		err := rst.ProcessExtendedBuffer(context.Background())
+		if err := ReplyErrUtil(rst, nil); err != nil {
+			return err
+		}
+
+		return rst.Client().Flush()
+	case *pgproto3.Sync:
+
+		/* XXX: dont do it in flush case */
+		rst.PipelineCleanup()
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 
-		return teardownPipeline(rst, err)
+		return teardownPipeline(rst, nil)
 	case *pgproto3.Close:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
-		rps.OnRequest()
-		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
-		// copy interface
-		cpQ := *q
-		q = &cpQ
+		if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+			/* XXX: support implicit tx semantics here */
+			statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+		}
+
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
 			return rst.ProcessSimpleQuery(q, true)
@@ -110,37 +139,26 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
-		q = &cpQ
-		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
+		cpQ.Query = strings.Clone(q.Query)
+		cpQ.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		q = &cpQ
+
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Describe:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.FunctionCall:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 		q.Arguments = xproto.CopyByteSlices(q.Arguments)
 
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msg("client function call: simply fire parse stmt to connection")
-
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Execute:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
+
 	case *pgproto3.Bind:
 		// copy interface
 		cpQ := *q
@@ -149,8 +167,8 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		q.ResultFormatCodes = slices.Clone(q.ResultFormatCodes)
 		q.ParameterFormatCodes = slices.Clone(q.ParameterFormatCodes)
 
-		rst.AddExtendedProtocMessage(q)
-		return nil
+		/* Flush pending, if any */
+		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 
 	default:
 		return nil

@@ -97,9 +97,9 @@ func TestMultiShardRouting(t *testing.T) {
 		"sh2": {ID: "sh2"},
 	}
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -232,9 +232,9 @@ func TestCreateTable(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -376,9 +376,9 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -579,9 +579,9 @@ func TestRoutingByExpression(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -705,7 +705,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		ColumnSequenceMapping: map[string]string{
 			"id1": "s1",
 		},
-		ShardIds: []string{
+		ShardIDs: []string{
 			"sh1", "sh2",
 		},
 	})
@@ -714,9 +714,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -797,16 +797,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
-		ShardIds:  []string{"sh1", "sh2"},
+		ShardIDs:  []string{"sh1", "sh2"},
 	})
 
 	shardMapping := map[string]*topology.DataShard{
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -1023,9 +1023,9 @@ func TestComment(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1142,9 +1142,9 @@ func TestCTE(t *testing.T) {
 		"sh2": {ID: "sh2"},
 		"sh3": {ID: "sh3"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1501,9 +1501,9 @@ func TestSingleShard(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1818,9 +1818,9 @@ func TestInsertOffsets(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1980,9 +1980,9 @@ func TestJoins(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -2135,9 +2135,9 @@ func TestUnnest(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2246,9 +2246,9 @@ func TestCopySingleShard(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2341,9 +2341,9 @@ func TestCopyMultiShard(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2427,9 +2427,9 @@ func TestSetStmt(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2548,9 +2548,9 @@ func TestRouteWithRules_Select(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2879,9 +2879,9 @@ func TestHashRouting(t *testing.T) {
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2974,9 +2974,9 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		"sh1": {ID: "sh1"},
 		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	router, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	router, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	return router, err
 }

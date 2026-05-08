@@ -5,3 +5,7 @@ test: simple_move_subsequent
 test: move_schema_qualify
 test: move_fqn_relations
 test: 2pc
+test: 2pc_happy_path_recovery
+test: move_cancel
+test: 2pc_recover
+test: tx_deploy

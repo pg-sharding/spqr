@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -39,7 +38,7 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetad
 		Type("node-type", node).
 		Msg("planning from node")
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	switch q := node.(type) {
 	case *lyx.RangeVar:
@@ -71,7 +70,7 @@ func (qr *ProxyQrouter) planFromClauseList(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext, clause []lyx.FromClauseNode) (plan.Plan, error) {
 
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	for _, node := range clause {
 		tmp, err := qr.planFromNode(ctx, rm, node)
@@ -143,8 +142,8 @@ func (qr *ProxyQrouter) planInsertV1(
 						}
 
 						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
-							CTEName:   sRv.RelationName,
-							ValueName: cc.ColName,
+							CTEName:    sRv.RelationName,
+							ColRefName: cc.ColName,
 						}]; ok {
 
 							rList := [][]lyx.Node{}
@@ -157,7 +156,7 @@ func (qr *ProxyQrouter) planInsertV1(
 								rList = append(rList, inner)
 							}
 
-							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, insertColsPos, qualName)
+							shs, err := planner.PlanDistributedRelationForKeys(ctx, rList, rm, insertColsPos, qualName)
 							if err != nil {
 								return nil, err
 							}
@@ -166,7 +165,7 @@ func (qr *ProxyQrouter) planInsertV1(
 
 									/* try to rewrite, but only for simple protocol */
 									if len(rm.ParamRefs) == 0 {
-										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs)
+										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs, false)
 									}
 
 									return nil, rerrors.ErrComplexQuery
@@ -232,7 +231,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
+			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +275,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
+			shs, err := planner.PlanDistributedRelationForKeys(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -988,8 +987,8 @@ func (qr *ProxyQrouter) addSortToPlan(
 				}
 				/* We can sort by column reference only if we know type of column.
 				* For now, all we know in advance is type of distribution column. */
-				rfqn, err := rm.ResolveRelationByAlias(colRef.TableAlias)
-				if err != nil {
+				relationFQN, err := rm.ResolveRelationByAlias(colRef.TableAlias, colRef.ColName)
+				if err != nil || relationFQN == nil {
 					/* We can receive `complex query` error from ResolveRelationByAlias.
 					* log it and ignore */
 					spqrlog.Zero.
@@ -999,11 +998,11 @@ func (qr *ProxyQrouter) addSortToPlan(
 					return p, nil
 				}
 
-				d, err := rm.GetRelationDistribution(ctx, rfqn)
+				d, err := rm.GetRelationDistribution(ctx, relationFQN)
 				if err != nil {
 					return nil, err
 				}
-				r, ok := d.TryGetRelation(rfqn)
+				r, ok := d.TryGetRelation(relationFQN)
 				if !ok {
 					return p, nil
 				}
@@ -1121,7 +1120,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 			return p, nil
 		}
 
-		limitVal := 0
+		limitVal := int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
@@ -1179,7 +1178,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 						errmsg = v
 					case *pgproto3.DataRow:
 
-						if len(retSlice.TTS.Raw) < limitVal {
+						if len(retSlice.TTS.Raw) < int(limitVal) {
 							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
@@ -1229,6 +1228,13 @@ func (qr *ProxyQrouter) plannerV1(
 		}
 	}
 
+	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
+
+	p, err = planner.AdjustPlanForJoins(ctx, rm, p)
+	if err != nil {
+		return nil, err
+	}
+
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
@@ -1251,7 +1257,7 @@ func (qr *ProxyQrouter) plannerV1(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) planSPQR_CTID(
+func (qr *ProxyQrouter) planSPQRCTID(
 	_ context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
@@ -1296,13 +1302,16 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 			case *lyx.ParamRef:
 				queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
-				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 				if err != nil {
 					return nil, err
 				}
 
-				/* Assert here? */
-				relation = sVal.(string)
+				val, ok := sVal.(string)
+				if !ok {
+					return nil, rerrors.ErrComplexQuery
+				}
+				relation = val
 
 			case *lyx.AExprSConst:
 				relation = v.Value
@@ -1465,7 +1474,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			case *lyx.ResTarget:
 				if rt.Name == distribCols[0] {
 
-					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
+					if _, err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, rt.Value); err != nil {
 						return nil, err
 					}
 
@@ -1690,8 +1699,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	/* TODO: support more cases */
-	if rm.Is_SPQR_CTID {
-		return qr.planSPQR_CTID(ctx, rm)
+	if rm.IsSPQRCTID {
+		return qr.planSPQRCTID(ctx, rm)
 	}
 
 	if rm.IsSplitUpdate {
@@ -1734,9 +1743,10 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(topology.ShardMapping) == 1 {
+		mp := qr.tmgr.Snap()
+		if len(mp) == 1 {
 			firstShard := ""
-			for s := range topology.ShardMapping {
+			for s := range mp {
 				firstShard = s
 			}
 

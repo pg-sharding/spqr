@@ -63,6 +63,11 @@ type TaskStateKeeper interface {
 	DropRedistributeTaskLock(ctx context.Context, id string) error
 }
 
+const (
+	StopTaskGroup          = "cancel"
+	StopTaskGroupImmediate = "cancel immediate"
+)
+
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
@@ -92,14 +97,14 @@ type QDB interface {
 
 	// Reference relations
 	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
-	GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*ReferenceRelation, error)
-	AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error
+	GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*ReferenceRelation, error)
+	AlterReferenceRelationStorage(ctx context.Context, relationFQN *rfqn.RelationFQN, shs []string) error
 	ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error)
-	DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error
+	DropReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) error
 
 	// Update distribution
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
-	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
+	AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 	AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error
@@ -109,7 +114,7 @@ type QDB interface {
 	CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	DropUniqueIndex(ctx context.Context, id string) error
 	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
-	ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, error)
+	ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*UniqueIndex, error)
 
 	// Task group
 	ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
@@ -118,8 +123,9 @@ type QDB interface {
 	GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error)
 	UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error
 	DropMoveTaskGroup(ctx context.Context, id string) error
-	AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
-	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
+	AddMoveTaskGroupStopFlag(ctx context.Context, id string, immediate bool) error
+	/* XXX: stop move task kind? */
+	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, bool, error)
 	WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error
 	GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error)
 	GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error)
@@ -155,8 +161,8 @@ type QDB interface {
 	CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error)
 	CheckSequence(ctx context.Context, seqName string) (bool, error)
 	ListSequences(ctx context.Context) ([]string, error)
-	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
-	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)
+	AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error
+	GetRelationSequence(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]string, error)
 	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
@@ -187,12 +193,16 @@ type DCStateKeeper interface {
 	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState) error
 
 	ListTXNames(ctx context.Context) ([]string, error)
+	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
 
 	AcquireTxOwnership(ctx context.Context, gid string) (bool, error)
 	ReleaseTxOwnership(ctx context.Context, gid string) error
 
 	TXStatus(ctx context.Context, gid string) (TwoPhaseTxState, error)
 	TXCohortShards(ctx context.Context, gid string) ([]string, error)
+
+	RemoveTXData(ctx context.Context, gid string) error
+	ClearTxStatuses(ctx context.Context) error
 }
 
 type XDCStateKeeper interface {

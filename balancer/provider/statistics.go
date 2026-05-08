@@ -7,7 +7,7 @@ const (
 )
 
 type ShardMetrics struct {
-	ShardId       string
+	ShardID       string
 	MetricsTotal  []float64
 	MetricsKR     map[string][]float64 // mean value for object by key range
 	KeyCountKR    map[string]int64

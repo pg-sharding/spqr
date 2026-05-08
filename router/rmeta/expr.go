@@ -36,7 +36,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	}
 
 	var rec func(lvl int) error
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	compositeKey := make([]any, len(relation.DistributionKey))
 
@@ -232,21 +232,30 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	return rs, nil
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, expr lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(
+	resolvedRelation *rfqn.RelationFQN,
+	colname string,
+	expr lyx.Node) (bool, error) {
+
+	if rm.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return false, nil
+	}
 
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
 
 	if off == -1 {
 		// column not from distr key
-		return nil
+		return false, nil
+	}
+
+	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+		// reference relation, skip
+		return false, nil
 	}
 
 	/* simple key-value pair */
-	if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-		return err
-	}
-
-	return nil
+	return true, rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr)
 }
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
@@ -261,21 +270,21 @@ func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 	}
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExpr(
+	alias, colname string,
+	expr lyx.Node) (bool, error) {
 	var resolvedRelation *rfqn.RelationFQN
 	var err error
 
-	resolvedRelation = rm.TryResolveByDistributionColumn(colname)
+	resolvedRelation, err = rm.ResolveRelationByAlias(alias, colname)
 
-	if resolvedRelation == nil {
-		resolvedRelation, err = rm.ResolveRelationByAlias(alias)
-
-		if err != nil {
-			// failed to resolve relation, skip column
-			return err
-		}
+	if err != nil {
+		// failed to resolve relation, skip column
+		return false, err
 	}
-
+	if resolvedRelation == nil {
+		return false, nil
+	}
 	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
 }
 

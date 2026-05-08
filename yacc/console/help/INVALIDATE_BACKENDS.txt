@@ -1,0 +1,17 @@
+NAME
+    INVALIDATE BACKENDS - Marks all backend connections as stale, causing them
+    to be re-established.
+
+SYNTAX
+    INVALIDATE BACKENDS
+
+DESCRIPTION
+    Marks all backend connections as stale, causing them to be re-established.
+
+EXAMPLES
+    Invalidate all backend connections:
+        INVALIDATE BACKENDS;
+
+RELATED COMMANDS
+    INVALIDATE CACHE
+    INVALIDATE STALE CLIENTS

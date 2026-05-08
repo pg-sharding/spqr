@@ -26,6 +26,21 @@ jobs:
           cache: true
       - name: go fmt check
         run: make fmtcheck
+  
+  protos-check:
+    name: check proto generated code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: true
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache: true
+      - name: check proto generated code
+        run: make generate && git diff --exit-code
 
   golangci:
     name: golangci-lint
@@ -42,7 +57,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: latest
-          args: --timeout=10m --color=always
+          args: --timeout=10m --color=always --build-tags=all
 
   goimports:
     runs-on: ubuntu-latest

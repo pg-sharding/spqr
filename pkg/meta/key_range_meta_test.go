@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var boolTrue bool = true
-var boolFalse bool = false
+var boolTrue = true
+var boolFalse = false
 
 var ds1ColTypes = []string{qdb.ColumnTypeInteger}
 
@@ -25,7 +25,7 @@ var kr1 = &kr.KeyRange{
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
 
-var kr1_double = &kr.KeyRange{
+var kr1Double = &kr.KeyRange{
 	ID:           "kr1DOUBLE",
 	ShardID:      "sh1",
 	Distribution: "ds1",
@@ -40,7 +40,7 @@ var kr2 = &kr.KeyRange{
 	LowerBound:   []any{int64(10)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
-var kr2_sh2 = &kr.KeyRange{
+var kr2Sh2 = &kr.KeyRange{
 	ID:           "kr2",
 	ShardID:      "sh2",
 	Distribution: "ds1",
@@ -48,7 +48,7 @@ var kr2_sh2 = &kr.KeyRange{
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
 
-var kr1_locked = &kr.KeyRange{
+var kr1Locked = &kr.KeyRange{
 	ID:           "kr1",
 	ShardID:      "sh1",
 	Distribution: "ds1",
@@ -57,7 +57,7 @@ var kr1_locked = &kr.KeyRange{
 	IsLocked:     &boolTrue,
 }
 
-var kr1_not_locked = &kr.KeyRange{
+var kr1NotLocked = &kr.KeyRange{
 	ID:           "kr1",
 	ShardID:      "sh1",
 	Distribution: "ds1",
@@ -98,7 +98,7 @@ func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	assert.NoError(t, meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -113,7 +113,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -128,7 +128,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -136,7 +136,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
-	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2_sh2),
+	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2Sh2),
 		"key range kr2 intersects with key range kr1 in QDB")
 }
 
@@ -145,7 +145,7 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -153,7 +153,7 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
-	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1_double),
+	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1Double),
 		"key range kr1DOUBLE equals key range kr1 in QDB")
 }
 
@@ -162,7 +162,7 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr := meta.NewTranEntityManager(mngr)
@@ -170,7 +170,7 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 	is.NoError(err)
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
-	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1_locked))
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1Locked))
 }
 
 func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
@@ -178,7 +178,7 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr2 := meta.NewTranEntityManager(mngr)
@@ -195,7 +195,7 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 	//lock unknown
 	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1))
 	//not locked
-	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1_not_locked))
+	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1NotLocked))
 }
 
 func TestValidateKeyRangeForModify_intersection(t *testing.T) {
@@ -203,7 +203,7 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	tranMngr2 := meta.NewTranEntityManager(mngr)
@@ -218,5 +218,5 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	err = tranMngr1.ExecNoTran(ctx)
 	is.NoError(err)
 
-	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1_double))
+	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1Double))
 }
