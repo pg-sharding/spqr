@@ -20,12 +20,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/router/instance"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
 )
@@ -91,6 +93,25 @@ func getMaxTxnBatchSize(configRouter *config.Router, configCoord *config.Coordin
 	}
 	spqrlog.Zero.Info().Str("maxTxnBatchSize", fmt.Sprintf("%d", maxTxnBatchSize))
 	return maxTxnBatchSize
+}
+
+func setupMetrics() *metrics.RouterMetricRegistry {
+	promRegistry := prometheus.NewRegistry()
+	metricRegistry := metrics.NewRouterMetricRegistry(promRegistry)
+	if config.RouterConfig().UseMetrics {
+		metricPath := config.RouterConfig().MetricPath
+		metricPort := config.RouterConfig().MetricPort
+		if metricPath == "" {
+			metricPath = metrics.DefaultMetricPath
+		}
+
+		if err := metrics.Start(metricRegistry, metricPath, metricPort); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("metric server is not started")
+		} else {
+			spqrlog.Zero.Info().Str("path", metricPath).Str("port", metricPort).Msg("Metrics available")
+		}
+	}
+	return metricRegistry
 }
 
 func init() {
@@ -268,8 +289,9 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
+		metricRegistry := setupMetrics()
 		maxTxnBatchSize := getMaxTxnBatchSize(config.RouterConfig(), config.CoordinatorConfig())
-		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize)
+		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize, metricRegistry)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
 
