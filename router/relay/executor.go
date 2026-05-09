@@ -715,6 +715,42 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
+func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool) error {
+
+	for _, sh := range serv.Datashards() {
+
+	l:
+		for {
+			cpMsg, err := serv.ReceiveShard(sh.ID())
+			if err != nil {
+				return err
+			}
+			switch newMsg := cpMsg.(type) {
+			case *pgproto3.CopyData:
+				if err := s.Client().Send(newMsg); err != nil {
+					return err
+				}
+			case *pgproto3.CopyDone:
+				break l
+			default:
+				/* panic? */
+			}
+		}
+	}
+
+	txt, err := s.ProcCopyComplete(&pgproto3.CopyDone{}, simple)
+	if err != nil {
+		return err
+	}
+
+	if txt != s.cl.Server().TxStatus() {
+		return rerrors.ErrExecutorSyncLost
+	}
+	s.SetTxStatus(txt)
+
+	return nil
+}
+
 func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 
 	var leftoverMsgData []byte
@@ -974,6 +1010,14 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			Msg("received message from server")
 
 		switch v := msg.(type) {
+		case *pgproto3.CopyOutResponse:
+			// XXX: handle replyCl somehow
+			err = s.Client().Send(msg)
+			if err != nil {
+				return err
+			}
+
+			return s.copyToExecutor(serv, qd.simple)
 		case *pgproto3.CopyInResponse:
 			// handle replyCl somehow
 			err = s.Client().Send(msg)
