@@ -1,5 +1,6 @@
 NAME
-    ALTER DISTRIBUTION DETACH TABLE - Detaches a table from the distribution using the DETACH TABLE clause.
+    ALTER DISTRIBUTION DETACH TABLE - Detaches a table from the distribution
+    using the DETACH TABLE clause.
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>

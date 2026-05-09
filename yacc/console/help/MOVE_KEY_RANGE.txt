@@ -7,7 +7,7 @@ SYNTAX
 
 DESCRIPTION
     Updates the routing metadata to assign a key range to a different shard.
-    This only changes where new queries for this key range are routed — it does
+    This only changes where new queries for this key range are routed - it does
     NOT
     migrate the actual data between shards.
 

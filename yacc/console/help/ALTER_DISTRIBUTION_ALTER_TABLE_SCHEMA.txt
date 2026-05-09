@@ -1,5 +1,6 @@
 NAME
-    ALTER DISTRIBUTION ALTER TABLE SCHEMA - Changes the schema associated with an attached table in the distribution metadata.
+    ALTER DISTRIBUTION ALTER TABLE SCHEMA - Changes the schema associated with
+    an attached table in the distribution metadata.
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
@@ -7,7 +8,8 @@ SYNTAX
       SCHEMA <schemaName>
 
 DESCRIPTION
-    Changes the schema associated with an attached table in the distribution metadata.
+    Changes the schema associated with an attached table in the distribution
+    metadata.
 
 EXAMPLES
     Change table schema:
