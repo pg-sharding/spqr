@@ -4,6 +4,7 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
 enum RouterStatus {
@@ -12,8 +13,8 @@ enum RouterStatus {
 }
 
 message Router {
-  string id = 1;
-  string address = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  string address = 2 [(buf.validate.field).required = true];
   RouterStatus status = 3;
 }
 
@@ -29,7 +30,7 @@ message ListRoutersReply {
 }
 
 message AddRouterRequest {
-  Router router = 1;
+  Router router = 1 [(buf.validate.field).required = true];
 }
 
 message AddRouterReply {
@@ -37,9 +38,9 @@ message AddRouterReply {
 }
 
 message RemoveRouterRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message SyncMetadataRequest {
-  Router router = 1;
+  Router router = 1 [(buf.validate.field).required = true];
 }

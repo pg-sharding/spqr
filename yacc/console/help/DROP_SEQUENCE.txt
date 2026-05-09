@@ -1,5 +1,6 @@
 NAME
-    DROP SEQUENCE - Drops a sequence used for auto-increment columns in reference tables.
+    DROP SEQUENCE - Drops a sequence used for auto-increment columns in
+    reference tables.
 
 SYNTAX
     DROP SEQUENCE <sequence_name> [CASCADE]

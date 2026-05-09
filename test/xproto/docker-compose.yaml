@@ -51,6 +51,52 @@ services:
             xproto_test_net:
         hostname: spqr_shard_2_replica
         container_name: spqr_shard_2_replica
+
+
+
+    shard3:
+        <<: *shard-common
+        environment: &shard-env-common
+            POSTGRES_USER: regress
+            POSTGRES_DB: regress
+        # ports:
+        #     - "7432:6432"
+        networks:
+            xproto_test_net:
+        hostname: spqr_shard_3
+        container_name: spqr_shard_3
+    shard3-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_3
+        # ports:
+        #     - "7532:6432"
+        networks:
+            xproto_test_net:
+        hostname: spqr_shard_3_replica
+        container_name: spqr_shard_3_replica
+    shard4:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+        # ports:
+        #     - "7433:6432"
+        networks:
+            xproto_test_net:
+        hostname: spqr_shard_4
+        container_name: spqr_shard_4
+    shard4-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_4
+        # ports:
+        #     - "7533:6432"
+        networks:
+            xproto_test_net:
+        hostname: spqr_shard_4_replica
+        container_name: spqr_shard_4_replica
     router:
         build:
             dockerfile: ./test/xproto/router/Dockerfile
@@ -71,6 +117,14 @@ services:
             shard2:
                 condition: service_healthy
             shard2-replica:
+                condition: service_healthy
+            shard3:
+                condition: service_healthy
+            shard3-replica:
+                condition: service_healthy
+            shard4:
+                condition: service_healthy
+            shard4-replica:
                 condition: service_healthy
 
     coordinator:

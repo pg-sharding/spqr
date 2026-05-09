@@ -9,9 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"buf.build/go/protovalidate"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/port"
 
+	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -142,7 +144,16 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 		time.Sleep(time.Second)
 	}
 
-	serv := grpc.NewServer()
+	validator, err := protovalidate.New()
+	if err != nil {
+		return err
+	}
+
+	serv := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			protovalidate_middleware.UnaryServerInterceptor(validator),
+		),
+	)
 	reflection.Register(serv)
 
 	krServ := provider.NewKeyRangeService(app.coordinator)

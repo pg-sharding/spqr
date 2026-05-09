@@ -12,7 +12,9 @@ If no shards are specified with ON, the table is created on all shards.
 
 
 ```sql
-CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column> [START <value>], ...] [ON <shard_id>, ...]
+CREATE REFERENCE TABLE <table_name>
+    [AUTO INCREMENT <column> [START <value>], ...]
+    [ON <shard_id>, ...]
 ```
 
 **Examples:**

@@ -533,17 +533,17 @@ func (m *MockQDB) EXPECT() *MockQDBMockRecorder {
 }
 
 // AddMoveTaskGroupStopFlag mocks base method.
-func (m *MockQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+func (m *MockQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string, immediate bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id)
+	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id, immediate)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddMoveTaskGroupStopFlag indicates an expected call of AddMoveTaskGroupStopFlag.
-func (mr *MockQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+func (mr *MockQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id, immediate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id, immediate)
 }
 
 // AlterDistributedRelation mocks base method.
@@ -703,12 +703,13 @@ func (mr *MockQDBMockRecorder) CheckLockedKeyRange(ctx, id any) *gomock.Call {
 }
 
 // CheckMoveTaskGroupStopFlag mocks base method.
-func (m *MockQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+func (m *MockQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckMoveTaskGroupStopFlag", ctx, id)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CheckMoveTaskGroupStopFlag indicates an expected call of CheckMoveTaskGroupStopFlag.
@@ -2211,17 +2212,17 @@ func (m *MockXQDB) EXPECT() *MockXQDBMockRecorder {
 }
 
 // AddMoveTaskGroupStopFlag mocks base method.
-func (m *MockXQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+func (m *MockXQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string, immediate bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id)
+	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id, immediate)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddMoveTaskGroupStopFlag indicates an expected call of AddMoveTaskGroupStopFlag.
-func (mr *MockXQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id, immediate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockXQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockXQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id, immediate)
 }
 
 // AddRouter mocks base method.
@@ -2437,12 +2438,13 @@ func (mr *MockXQDBMockRecorder) CheckLockedKeyRange(ctx, id any) *gomock.Call {
 }
 
 // CheckMoveTaskGroupStopFlag mocks base method.
-func (m *MockXQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+func (m *MockXQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckMoveTaskGroupStopFlag", ctx, id)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CheckMoveTaskGroupStopFlag indicates an expected call of CheckMoveTaskGroupStopFlag.
@@ -3725,17 +3727,17 @@ func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(ctx, gid any) *gomo
 }
 
 // AddMoveTaskGroupStopFlag mocks base method.
-func (m *MockStateKeeperQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+func (m *MockStateKeeperQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string, immediate bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id)
+	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id, immediate)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddMoveTaskGroupStopFlag indicates an expected call of AddMoveTaskGroupStopFlag.
-func (mr *MockStateKeeperQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id, immediate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockStateKeeperQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockStateKeeperQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id, immediate)
 }
 
 // AddRouter mocks base method.
@@ -3965,12 +3967,13 @@ func (mr *MockStateKeeperQDBMockRecorder) CheckLockedKeyRange(ctx, id any) *gomo
 }
 
 // CheckMoveTaskGroupStopFlag mocks base method.
-func (m *MockStateKeeperQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+func (m *MockStateKeeperQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckMoveTaskGroupStopFlag", ctx, id)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CheckMoveTaskGroupStopFlag indicates an expected call of CheckMoveTaskGroupStopFlag.

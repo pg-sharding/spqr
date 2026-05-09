@@ -469,7 +469,7 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 	}
 }
 
-var boolGUCs = []BoolGUCimpl{
+var BoolGUCs = []BoolGUCimpl{
 	{
 		n:         SPQR_ALLOW_SPLIT_UPDATE,
 		shortName: "allow split update",
@@ -494,7 +494,7 @@ var boolGUCs = []BoolGUCimpl{
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
-	for _, guc := range boolGUCs {
+	for _, guc := range BoolGUCs {
 		if guc.n == n {
 			return guc, nil
 		}

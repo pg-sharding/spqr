@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/rerrors"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -129,7 +130,11 @@ l:
 			}
 		}
 
+		startTime := time.Now()
+
 		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
+
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
 		if txbefore != txstatus.TXIDLE && err != nil {
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
@@ -137,10 +142,8 @@ l:
 
 		/* outer function will complete relay here */
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("executed statement in client relay")
 	}
 	return pd, err
 }
@@ -170,11 +173,12 @@ var (
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
 func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, _ bool) (*PortalDesc, error) {
-	startTime := time.Now()
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Uint("client", rst.Client().ID()).Msgf("process relay state advanced")
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
+
+	statistics.IncTotalRequest()
 
 	switch st := stmt.(type) {
 	case nil:
@@ -187,13 +191,16 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		switch st.Kind {
 		case lyx.TRANS_STMT_BEGIN:
 
+			/* XXX: unwind implicit tx here */
+
 			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 				// ignore this
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
-				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
+				rst.QueryExecutor().SetCommandCompleteTag("BEGIN")
+				return noDataPd, nil
 			}
+
 			err := rst.QueryExecutor().ExecBegin(query, st)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
@@ -215,18 +222,19 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
-				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
+				rst.QueryExecutor().SetCommandCompleteTag("COMMIT")
+
+				return noDataPd, nil
 			}
 			err := rst.QueryExecutor().ExecCommit(query)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
-				return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
+				rst.QueryExecutor().SetCommandCompleteTag("ROLLBACK")
+				return noDataPd, nil
 			}
 			err := rst.QueryExecutor().ExecRollback(query)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return noDataPd, err
 
 		default:
@@ -240,9 +248,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			rst.QueryExecutor().Client().ClosePreparedStatement(name)
 		}
 
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
+		rst.QueryExecutor().SetCommandCompleteTag("DISCARD ALL")
 
-		return noDataPd, rst.QueryExecutor().ReplyCommandComplete("DISCARD ALL")
+		return noDataPd, nil
 	case *lyx.DeallocateStmt:
 		var cmdTag string
 		if st.Name == "" {
@@ -256,9 +264,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			rst.QueryExecutor().Client().ClosePreparedStatement(st.Name)
 			cmdTag = "DEALLOCATE"
 		}
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
-		return noDataPd, rst.QueryExecutor().ReplyCommandComplete(cmdTag)
+		rst.QueryExecutor().SetCommandCompleteTag(cmdTag)
+
+		return noDataPd, nil
 
 	// with tx pooling we might have no active connection while processing set x to y
 	case *lyx.VariableShowStmt:
@@ -316,12 +325,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		} else {
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTION)
 
 			case session.SPQR_DISTRIBUTED_RELATION:
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTED_RELATION)
 
@@ -358,7 +365,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 			case session.SPQR_SCATTER_QUERY:
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_SCATTER_QUERY)
 			case session.SPQR_EXECUTE_ON:
@@ -486,7 +492,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					/* If router does dot have any info about param, fire query to random shard. */
 					if _, ok := rst.Client().Params()[param]; !ok {
 						err := rst.queryProc(comment, binderQ)
-						spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 						return pd, err
 					}
 
@@ -495,11 +500,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 		}
 
-		if err := rst.QueryExecutor().ReplyCommandComplete("SHOW"); err != nil {
-			return nil, err
-		}
+		rst.QueryExecutor().SetCommandCompleteTag("SHOW")
 
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return pd, nil
 	case *lyx.VariableSetStmt:
 
@@ -507,17 +509,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if !ok {
 			return nil, rerrors.ErrComplexQuery
 		}
-		// XXX: TODO: support
-		// if q.IsLocal {
-		// 	// ignore for now
-		// }
-
 		switch q.Kind {
 		case lyx.VarTypeResetAll:
 			rst.Client().ResetAll()
-			if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
-				return nil, err
-			}
+
+			rst.QueryExecutor().SetCommandCompleteTag("RESET")
 		case lyx.VarTypeReset:
 			switch q.Name {
 			case "session_authorization", "role":
@@ -531,10 +527,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					rst.Client().ResetParam("role")
 				}
 
-				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
-					return nil, err
-				}
-
+				rst.QueryExecutor().SetCommandCompleteTag("RESET")
 			default:
 
 				param := virtualParamTransformName(q.Name)
@@ -551,10 +544,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					}
 				}
 
-				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
-					return nil, err
-				}
-
+				rst.QueryExecutor().SetCommandCompleteTag("RESET")
 			}
 		/* TBD: support multi-set */
 		// case pgquery.VariableSetKind_VAR_SET_MULTI:
@@ -581,7 +571,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 		}
 
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, nil
 	case *lyx.PrepareStmt:
 		// sql level prepares stmt pooling
@@ -595,16 +584,12 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			if err := rst.QueryExecutor().ReplyCommandComplete("PREPARE"); err != nil {
-				return nil, err
-			}
+			rst.QueryExecutor().SetCommandCompleteTag("PREPARE")
 
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
 		} else {
 			// process like regular query
 			err := rst.queryProc(comment, binderQ)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, err
 		}
 	case *lyx.ExecuteStmt:
@@ -643,17 +628,14 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, nil
 		} else {
 			// process like regular query
 			err := rst.queryProc(comment, binderQ)
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, err
 		}
 	default:
 		err := rst.queryProc(comment, binderQ)
-		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return nil, err
 	}
 }
@@ -781,5 +763,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 		}
 	}
 
-	return rst.QueryExecutor().ReplyCommandComplete("SET")
+	rst.QueryExecutor().SetCommandCompleteTag("SET")
+
+	return nil
 }

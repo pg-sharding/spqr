@@ -105,6 +105,7 @@ type Router struct {
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
+	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
 
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
 

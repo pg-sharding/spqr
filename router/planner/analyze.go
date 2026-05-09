@@ -217,22 +217,33 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 					if ok, err := rm.ProcessConstExpr(leftAlias, leftColname, v); err != nil {
 						return err
 					} else if ok {
-						if resolvedRelationRight != nil {
+						if resolvedRelationLeft != nil {
 							searchKey := rm.SearchKeyByColRef(right)
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
+
+							if _, ok := rm.AuxValues[searchKey]; ok {
+								if !slices.Contains(rm.UsedAuxCTE[searchKey], resolvedRelationLeft) {
+									rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
+								}
+							}
 						}
 					}
 				}
 
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(lft) {
+
 					if ok, err := rm.ProcessConstExpr(rightAlias, rightColname, v); err != nil {
 						return err
 					} else if ok {
-						if resolvedRelationLeft != nil {
+						if resolvedRelationRight != nil {
 							searchKey := rm.SearchKeyByColRef(lft)
 
-							rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationLeft)
+							if _, ok := rm.AuxValues[searchKey]; ok {
+								if !slices.Contains(rm.UsedAuxCTE[searchKey], resolvedRelationRight) {
+									rm.UsedAuxCTE[searchKey] = append(rm.UsedAuxCTE[searchKey], resolvedRelationRight)
+								}
+							}
+
 						}
 					}
 				}
@@ -335,7 +346,7 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 			/* special case */
 			for _, vv := range qq.Values {
 				for i, name := range cte.NameList {
-					if i < len(cte.NameList) && i < len(vv) {
+					if i < len(vv) {
 						/* XXX: currently only one-tuple aux values supported */
 						rm.RecordAuxExpr(cte.Name, name, vv[i])
 					}
@@ -350,10 +361,26 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, wi
 					case *lyx.RangeVar:
 						for auxValKey, val := range rm.AuxValues {
 							if auxValKey.CTEName == rv.RelationName {
-								rm.AuxValues[rmeta.AuxValuesKey{
+								key := rmeta.AuxValuesKey{
 									CTEName:    cte.Name,
 									ColRefName: auxValKey.ColRefName,
-								}] = val
+								}
+								rm.AuxValues[key] = val
+								rm.AuxValuesParent[key] = auxValKey
+							}
+						}
+					}
+
+					switch rv := jE.Rarg.(type) {
+					case *lyx.RangeVar:
+						for auxValKey, val := range rm.AuxValues {
+							if auxValKey.CTEName == rv.RelationName {
+								key := rmeta.AuxValuesKey{
+									CTEName:    cte.Name,
+									ColRefName: auxValKey.ColRefName,
+								}
+								rm.AuxValues[key] = val
+								rm.AuxValuesParent[key] = auxValKey
 							}
 						}
 					}

@@ -562,10 +562,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		})
 		res := byte('f')
 
-		/* Not attached? XXX: fix this, support proper handling of second arg */
+		/* Not attached?
 		if len(lockedByVirtualPIDs) != 0 {
 			res = byte('t')
 		}
+		 XXX: fix this, support proper handling of second arg */
 
 		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
 			res = byte('t')

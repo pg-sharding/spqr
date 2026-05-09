@@ -175,6 +175,7 @@ fugiat
 gcflags
 getconn
 gettime
+gitmodules
 godog
 gofmt
 gofmtcheck
@@ -419,6 +420,7 @@ procps
 proident
 protobuf
 protoc
+protovalidate
 psswd
 pstmt
 PYTHONUNBUFFERED

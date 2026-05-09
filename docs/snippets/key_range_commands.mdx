@@ -15,8 +15,8 @@ CREATE KEY RANGE [ <keyRangeID> ]
   ROUTE TO <shardID> 
   FOR DISTRIBUTION <distributionID>
 
-where lowerBound is a single value or comma-separated values for composite keys 
-(e.g., "100, 'value'" for a two-column key)
+where lowerBound is a single value or comma-separated values
+for composite keys (e.g., "100, 'value'" for a two-column key)
 ```
 
 **Examples:**
@@ -27,7 +27,8 @@ CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 -- Composite key range with two integers
 CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
 -- Composite key range with integer and varchar
-CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;
+CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
+    ROUTE TO shard3 FOR DISTRIBUTION ds3;
 ```
 
 ### DROP KEY RANGE
@@ -133,7 +134,8 @@ afterwards to relocate one of them if needed.
 ```sql
 SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
 
-where splitBound is a single value or comma-separated values for composite keys
+where splitBound is a single value or comma-separated values
+for composite keys
 ```
 
 **Examples:**
@@ -142,7 +144,8 @@ where splitBound is a single value or comma-separated values for composite keys
 -- Split a key range at integer boundary
 SPLIT KEY RANGE krid2 FROM krid1 BY 100;
 -- Split a key range at UUID boundary
-SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';
+SPLIT KEY RANGE krid4 FROM krid3
+    BY 'FF000000-0000-0000-0000-000000000000';
 ```
 
 ### UNITE KEY RANGE

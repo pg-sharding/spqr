@@ -49,7 +49,7 @@ var (
 
 var (
 	defaultPanicAction = func(ICPContextHolder) {
-		panic("reached control point")
+		// log.Fatal("reached control point")
 	}
 
 	defaultSleepAction = func(ICPContextHolder) {

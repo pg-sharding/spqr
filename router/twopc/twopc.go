@@ -66,10 +66,29 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	retST := txstatus.TXERR
 
+	undoShards := []shard.ShardHostInstance{}
+
+	defer func() {
+		/* If any error, try to happy-path error recovery with simple undo */
+
+		for _, dsh := range undoShards {
+			_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
+				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
+			}, txstatus.TXIDLE)
+
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Str("shard", dsh.InstanceHostname()).Msg("happy path error recovery failed on shard")
+			}
+		}
+	}()
+
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
 		}, txstatus.TXIDLE)
+
+		/* err may we a purely network error  */
+		undoShards = append(undoShards, dsh)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
@@ -88,6 +107,11 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 				Msg("error while checking control point")
 		}
 	}
+
+	/* past thos line, there is no way back. We actually can reset undoShards
+	* after tx state in dcs, but this will require additional tx status re-check, so
+	* don't bother with that */
+	undoShards = nil
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
