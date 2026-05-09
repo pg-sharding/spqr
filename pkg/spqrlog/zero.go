@@ -12,7 +12,7 @@ import (
 
 // Zero is a singleton object of zerolog.Logger.
 // Initialized with structured JSON logging by default (prettyLogging = false)
-var Zero = NewZeroLogger("", "info", false)
+var Zero = NewZeroLogger("", "info", false, false)
 
 // NewZeroLogger initializes a zerolog.Logger.
 // If prettyLogging is true, it outputs in a human-readable format.
@@ -24,7 +24,7 @@ var Zero = NewZeroLogger("", "info", false)
 //
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
-func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolog.Logger {
+func NewZeroLogger(filepath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
 	_, writer, err := newWriter(filepath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
@@ -36,12 +36,14 @@ func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolo
 		writer = zerolog.ConsoleWriter{Out: writer}
 	}
 
-	/* TODO: configure this using "common" router/coordinator config */
-	wrAsync := diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
-		fmt.Printf("Logger Dropped %d messages", missed)
-	})
+	if async {
+		/* TODO: configure this using "common" router/coordinator config */
+		writer = diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
+			fmt.Printf("Logger Dropped %d messages", missed)
+		})
+	}
 
-	logger := zerolog.New(wrAsync).With().Timestamp().Logger().Level(level)
+	logger := zerolog.New(writer).With().Timestamp().Logger().Level(level)
 	return &logger
 }
 
@@ -51,8 +53,8 @@ func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolo
 //   - filepath: The log file path.
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
-func ReloadLogger(logFileName string, logLevel string, prettyLogging bool) {
-	Zero = NewZeroLogger(logFileName, logLevel, prettyLogging)
+func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
+	Zero = NewZeroLogger(logFileName, logLevel, asyncLog, prettyLogging)
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.
