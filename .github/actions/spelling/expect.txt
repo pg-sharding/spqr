@@ -196,6 +196,7 @@ gssapi
 GSSREQ
 GUC
 GUCs
+GUCBy
 hashfunction
 hashicorp
 hba

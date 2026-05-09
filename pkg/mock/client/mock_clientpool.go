@@ -18,7 +18,6 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	client "github.com/pg-sharding/spqr/pkg/client"
 	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
-	session "github.com/pg-sharding/spqr/pkg/session"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
@@ -354,21 +353,6 @@ func (mr *MockClientInfoMockRecorder) ExecuteOn() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).ExecuteOn))
 }
 
-// FindBoolGUC mocks base method.
-func (m *MockClientInfo) FindBoolGUC(arg0 string) (session.BoolGUC, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindBoolGUC", arg0)
-	ret0, _ := ret[0].(session.BoolGUC)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindBoolGUC indicates an expected call of FindBoolGUC.
-func (mr *MockClientInfoMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockClientInfo)(nil).FindBoolGUC), arg0)
-}
-
 // Flush mocks base method.
 func (m *MockClientInfo) Flush() error {
 	m.ctrl.T.Helper()
@@ -451,20 +435,6 @@ func (m *MockClientInfo) Init(cfg *tls.Config) error {
 func (mr *MockClientInfoMockRecorder) Init(cfg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockClientInfo)(nil).Init), cfg)
-}
-
-// MaintainParams mocks base method.
-func (m *MockClientInfo) MaintainParams() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainParams")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// MaintainParams indicates an expected call of MaintainParams.
-func (mr *MockClientInfoMockRecorder) MaintainParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockClientInfo)(nil).MaintainParams))
 }
 
 // Params mocks base method.
@@ -1002,18 +972,6 @@ func (m *MockClientInfo) SetExecuteOn(level, val string) {
 func (mr *MockClientInfoMockRecorder) SetExecuteOn(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).SetExecuteOn), level, val)
-}
-
-// SetMaintainParams mocks base method.
-func (m *MockClientInfo) SetMaintainParams(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetMaintainParams", level, val)
-}
-
-// SetMaintainParams indicates an expected call of SetMaintainParams.
-func (mr *MockClientInfoMockRecorder) SetMaintainParams(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockClientInfo)(nil).SetMaintainParams), level, val)
 }
 
 // SetParam mocks base method.

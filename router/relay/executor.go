@@ -182,8 +182,12 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 		}
 	}
 
-	/* Do this in expand routes too. */
-	if s.Client().MaintainParams() {
+	guc, err := session.BoolGUCByName(session.SPQR_MAINTAIN_PARAMS)
+	if err != nil {
+		return err
+	}
+
+	if guc.Get(s.cl) {
 		query := s.Client().ConstructClientParams()
 		spqrlog.Zero.Debug().
 			Uint("client", s.Client().ID()).
@@ -281,7 +285,6 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
-			// serv.SetTxStatus(st)
 			s.SetTxStatus(st)
 		}
 

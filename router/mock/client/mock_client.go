@@ -19,7 +19,6 @@ import (
 	config "github.com/pg-sharding/spqr/pkg/config"
 	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
-	session "github.com/pg-sharding/spqr/pkg/session"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
@@ -425,21 +424,6 @@ func (mr *MockRouterClientMockRecorder) ExecuteOn() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).ExecuteOn))
 }
 
-// FindBoolGUC mocks base method.
-func (m *MockRouterClient) FindBoolGUC(arg0 string) (session.BoolGUC, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindBoolGUC", arg0)
-	ret0, _ := ret[0].(session.BoolGUC)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindBoolGUC indicates an expected call of FindBoolGUC.
-func (mr *MockRouterClientMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockRouterClient)(nil).FindBoolGUC), arg0)
-}
-
 // Flush mocks base method.
 func (m *MockRouterClient) Flush() error {
 	m.ctrl.T.Helper()
@@ -564,20 +548,6 @@ func (m *MockRouterClient) ListPreparedStatements() []string {
 func (mr *MockRouterClientMockRecorder) ListPreparedStatements() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockRouterClient)(nil).ListPreparedStatements))
-}
-
-// MaintainParams mocks base method.
-func (m *MockRouterClient) MaintainParams() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainParams")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// MaintainParams indicates an expected call of MaintainParams.
-func (mr *MockRouterClientMockRecorder) MaintainParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockRouterClient)(nil).MaintainParams))
 }
 
 // Params mocks base method.
@@ -1227,18 +1197,6 @@ func (m *MockRouterClient) SetExecuteOn(level, val string) {
 func (mr *MockRouterClientMockRecorder) SetExecuteOn(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).SetExecuteOn), level, val)
-}
-
-// SetMaintainParams mocks base method.
-func (m *MockRouterClient) SetMaintainParams(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetMaintainParams", level, val)
-}
-
-// SetMaintainParams indicates an expected call of SetMaintainParams.
-func (mr *MockRouterClientMockRecorder) SetMaintainParams(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), level, val)
 }
 
 // SetParam mocks base method.

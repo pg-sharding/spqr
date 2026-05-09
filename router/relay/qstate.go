@@ -298,7 +298,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		if session.ParamIsBoolean(param) {
 
-			guc, err := rst.Client().FindBoolGUC(param)
+			guc, err := session.BoolGUCByName(param)
 			if err != nil {
 				return nil, err
 			}
@@ -397,27 +397,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				}
 
 				if rst.Client().ShowNoticeMsg() {
-					tts.WriteDataRow("true")
-				} else {
-					tts.WriteDataRow("false")
-				}
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
-			case session.SPQR_MAINTAIN_PARAMS:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("maintain params"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-
-				if rst.Client().MaintainParams() {
 					tts.WriteDataRow("true")
 				} else {
 					tts.WriteDataRow("false")
@@ -669,7 +648,8 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			default:
 				return fmt.Errorf("malformed value for GUC: %v", value)
 			}
-			guc, err := rst.Client().FindBoolGUC(name)
+
+			guc, err := session.BoolGUCByName(name)
 			if err != nil {
 				return err
 			}
@@ -704,12 +684,6 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 					rst.Client().SetShowNoticeMsg(lvl, true)
 				} else {
 					rst.Client().SetShowNoticeMsg(lvl, false)
-				}
-			case session.SPQR_MAINTAIN_PARAMS:
-				if value == "on" || value == "true" {
-					rst.Client().SetMaintainParams(lvl, true)
-				} else {
-					rst.Client().SetMaintainParams(lvl, false)
 				}
 			case session.SPQR_TARGET_SESSION_ATTRS:
 				fallthrough

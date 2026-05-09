@@ -34,17 +34,17 @@ SET __spqr__reply_notice TO true;
 
 INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
 
-SELECT * from xxtest_sw WHERE id <= 2;
+SELECT * from xxtest_sw WHERE id = 2 or id = 1;
 
 SET search_path to 'error';
 
 -- should fail
-SELECT * from xxtest_sw WHERE id <= 2;
+SELECT * from xxtest_sw WHERE id = 2 or id = 1;
 
 SET search_path to 'public';
 
 -- should success
-SELECT * from xxtest_sw WHERE id <= 2;
+SELECT * from xxtest_sw WHERE id = 2 or id = 1;
 
 DROP TABLE xxtest_sw;
 

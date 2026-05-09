@@ -1238,7 +1238,7 @@ func (qr *ProxyQrouter) plannerV1(
 	/* Okay, we got some plan. If case of multishard processing,
 	* fix bogus limit support, if enabled. */
 
-	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
+	guc, err := session.BoolGUCByName(session.SPQR_ALLOW_POSTPROCESSING)
 	if err != nil {
 		return nil, err
 	}
@@ -1536,7 +1536,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_SPLIT_UPDATE)
+		guc, err := session.BoolGUCByName(session.SPQR_ALLOW_SPLIT_UPDATE)
 		if err != nil {
 			return nil, err
 		}

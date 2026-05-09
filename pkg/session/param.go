@@ -17,8 +17,6 @@ type SessionParamsHolder interface {
 	SetTsa(level string, value string)
 	ResetTsa()
 
-	FindBoolGUC(string) (BoolGUC, error)
-
 	Usr() string
 	SetUsr(string)
 
@@ -51,10 +49,6 @@ type SessionParamsHolder interface {
 
 	SetShowNoticeMsg(level string, val bool)
 	ShowNoticeMsg() bool
-
-	/* Statement level makes sence? */
-	SetMaintainParams(level string, val bool)
-	MaintainParams() bool
 
 	/* Query routing logic */
 
@@ -137,8 +131,8 @@ const (
 
 func ParamIsBoolean(n string) bool {
 	switch n {
-	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH:
+	/* SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
+	case SPQR_MAINTAIN_PARAMS, SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH:
 		return true
 	default:
 		return false
