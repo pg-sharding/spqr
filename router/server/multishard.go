@@ -34,6 +34,7 @@ const (
 	ServerErrorState
 	CommandCompleteState
 	CopyInState
+	CopyOutState
 )
 
 type MultiShardServer struct {
@@ -309,6 +310,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		var saveBC *pgproto3.BindComplete
 		var saveRFQ *pgproto3.ReadyForQuery
 		var saveCIn *pgproto3.CopyInResponse
+		var saveCOut *pgproto3.CopyOutResponse
 		/* Step one: ensure all shard backend are started */
 
 		for i := range m.activeShards {
@@ -343,8 +345,6 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					/* We should not expect any describe or row description by default. */
 					m.states[i] = DatarowState
 					saveBC = retMsg
-				case *pgproto3.CopyOutResponse:
-					return nil, 0, ErrMultiShardSyncBroken
 				case *pgproto3.CopyInResponse:
 					if m.multistate != InitialState && m.multistate != CopyInState {
 						return nil, 0, ErrMultiShardSyncBroken
@@ -352,6 +352,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					m.states[i] = ShardCopyState
 					m.multistate = CopyInState
 					saveCIn = retMsg
+
+				case *pgproto3.CopyOutResponse:
+					if m.multistate != InitialState && m.multistate != CopyOutState {
+						return nil, 0, ErrMultiShardSyncBroken
+					}
+					m.states[i] = ShardCopyState
+					m.multistate = CopyOutState
+					saveCOut = retMsg
 				case *pgproto3.CommandComplete:
 					m.states[i] = ShardCCState
 					saveCC = retMsg //
@@ -411,13 +419,18 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			return saveCIn, 0, nil
 		}
 
+		if m.multistate == CopyOutState {
+			m.multistate = RunningState
+			return saveCOut, 0, nil
+		}
+
 		m.multistate = RunningState
 		return saveRd, 0, nil
 
 	case CopyInState:
-		return &pgproto3.CommandComplete{
-			CommandTag: []byte{},
-		}, 0, nil
+		fallthrough
+	case CopyOutState:
+		return nil, 0, ErrMultiShardSyncBroken
 	case RunningState:
 		anyCCTag := []byte{}
 		/* Step two: fetch all datarow messages */
