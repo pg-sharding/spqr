@@ -310,7 +310,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		var saveBC *pgproto3.BindComplete
 		var saveRFQ *pgproto3.ReadyForQuery
 		var saveCIn *pgproto3.CopyInResponse
-		var saveCOut *pgproto3.CopyOutResponse
+		var saveCopyOut *pgproto3.CopyOutResponse
 		/* Step one: ensure all shard backend are started */
 
 		for i := range m.activeShards {
@@ -359,7 +359,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyOutState
-					saveCOut = retMsg
+					saveCopyOut = retMsg
 				case *pgproto3.CommandComplete:
 					m.states[i] = ShardCCState
 					saveCC = retMsg //
@@ -421,7 +421,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 
 		if m.multistate == CopyOutState {
 			m.multistate = RunningState
-			return saveCOut, 0, nil
+			return saveCopyOut, 0, nil
 		}
 
 		m.multistate = RunningState
