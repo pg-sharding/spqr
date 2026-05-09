@@ -26,6 +26,8 @@ type ExecutorState struct {
 	attachedCopy  bool
 	expectRowDesc bool
 
+	skipRFQ bool
+
 	savedBegin *pgproto3.Query
 	cc         *pgproto3.CommandComplete
 	eMsg       *pgproto3.ErrorResponse
