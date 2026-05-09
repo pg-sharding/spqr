@@ -2,7 +2,6 @@ package icp
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -50,7 +49,7 @@ var (
 
 var (
 	defaultPanicAction = func(ICPContextHolder) {
-		log.Fatal("reached control point")
+		// log.Fatal("reached control point")
 	}
 
 	defaultSleepAction = func(ICPContextHolder) {

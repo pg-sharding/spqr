@@ -272,7 +272,7 @@ var dump = &cobra.Command{
 	Use:   "dump",
 	Short: "dump current sharding configuration",
 	RunE: func(_ *cobra.Command, _ []string) error {
-		spqrlog.ReloadLogger("", logLevel, false)
+		spqrlog.ReloadLogger("", logLevel, false, false)
 
 		spqrlog.Zero.Debug().
 			Str("endpoint", endpoint).
