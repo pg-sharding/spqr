@@ -25,7 +25,7 @@ var runCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		w := NewWorldMock(addr, port)
 
-		spqrlog.ReloadLogger("", loglevel, false)
+		spqrlog.ReloadLogger("", loglevel, false, false)
 
 		return w.Run()
 	},
