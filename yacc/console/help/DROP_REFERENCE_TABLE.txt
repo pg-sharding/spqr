@@ -1,5 +1,6 @@
 NAME
-    DROP REFERENCE TABLE - Removes a reference table from SPQR metadata. This does not drop the actual
+    DROP REFERENCE TABLE - Removes a reference table from SPQR metadata. This
+    does not drop the actual
 
 SYNTAX
     DROP REFERENCE TABLE <table_name>

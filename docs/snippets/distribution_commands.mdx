@@ -16,8 +16,9 @@ CREATE DISTRIBUTION <distributionID>
   [COLUMN TYPES <types> | (<types>)]
   [DEFAULT SHARD <shardID>]
 
-where types is a comma-separated list of column types for the distribution key,
-and each type is one of: INTEGER, INT, VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+where types is a comma-separated list of column types for the
+distribution key, and each type is one of: INTEGER, INT,
+VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
 
 where <shardID> is a default shard identifier. The <shardID> must exist.
 ```
@@ -71,7 +72,8 @@ For composite sharding keys, specify multiple column names separated by commas i
 ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> [, <tableName> ...]
   DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
-where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
+where keys is a comma-separated list of column names
+(e.g., "col1, col2" for composite keys)
 where hashFunction is one of: IDENTITY, MURMUR, CITY
 ```
 

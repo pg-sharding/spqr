@@ -1421,13 +1421,13 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 							return true
 						}
 						spqrlog.Zero.Debug().Str("id", id).Msg("rechecking task aliveness")
-						stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
+						stop, immediate, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, id)
 						if err != nil {
 							spqrlog.Zero.Info().Err(err).Msg("failed to check for stop flag:")
 						}
 
 						// TODO create special error type here, use it to stop redistribute/balancer tasks
-						if stop {
+						if stop && immediate {
 
 							/* Ideally, client should receive this error
 							 spqrerror.Newf(
@@ -1816,7 +1816,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 		return nil, nil
 	}
 
-	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
+	stop, _, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -1846,7 +1846,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	}
 
 	/* Getting next key range bound can be costly (seq scan) */
-	stop, err = qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
+	stop, _, err = qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -2124,8 +2124,8 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
-	return qc.QDB().AddMoveTaskGroupStopFlag(ctx, id)
+func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
+	return qc.QDB().AddMoveTaskGroupStopFlag(ctx, id, immediate)
 }
 
 func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, id string) ([][][]byte, int, error) {
@@ -2412,7 +2412,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		var shardErrs []error
 
 		for _, sh := range needToAdd {
-			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh, false)})
+			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh, true)})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2864,7 +2864,7 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
-			Shard: topology.DataShardToProto(shard, false),
+			Shard: topology.DataShardToProto(shard, true),
 		})
 		return err
 	}); err != nil {
@@ -2901,7 +2901,7 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardID s
 		c := proto.NewShardServiceClient(cc)
 		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
 			Id:      shardID,
-			Options: topology.GenericOptionsToProto(shard.Options(), false),
+			Options: topology.GenericOptionsToProto(shard.Options(), true),
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {

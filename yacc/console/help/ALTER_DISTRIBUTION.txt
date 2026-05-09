@@ -47,8 +47,10 @@ DESCRIPTION
     metadata and the actual PostgreSQL column. For composite keys, call this command
     once per column that needs renaming.
 
-    ADD DEFAULT SHARD sets a default shard for the distribution, routing records that
-    do not match any key range. DROP DEFAULT SHARD removes the default shard setting.
+    ADD DEFAULT SHARD sets a default shard for the distribution, routing records
+    that
+    do not match any key range. DROP DEFAULT SHARD removes the default shard
+    setting.
 
 WARNINGS
     - ALTER TABLE operations are metadata changes and may affect routing immediately.

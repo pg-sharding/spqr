@@ -116,7 +116,8 @@ subcommands:
       ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> [, <tableName> ...]
         DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
-      where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
+      where keys is a comma-separated list of column names
+      (e.g., "col1, col2" for composite keys)
       where hashFunction is one of: IDENTITY, MURMUR, CITY
     examples:
       - description: Single column sharding key

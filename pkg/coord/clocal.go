@@ -504,7 +504,7 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ stri
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ string) error {
+func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ string, _ bool) error {
 	return ErrNotCoordinator
 }
 

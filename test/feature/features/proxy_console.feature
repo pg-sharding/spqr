@@ -314,7 +314,7 @@ Feature: Proxy console
     Scenario: add and drop shard on router-admin
         When I run SQL on host "router-admin"
         """
-        CREATE SHARD sh5 OPTIONS (HOST 'spqr_shard_1:6432');
+        CREATE SHARD sh5 OPTIONS (HOST 'spqr_shard_1:6432:spqr');
         """
         Then command return code should be "0"
 
@@ -328,15 +328,15 @@ Feature: Proxy console
         [
             {
                 "shard":"sh1",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh2",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh5",
-                "options": "{host=spqr_shard_1:6432}"
+                "options": "{host=spqr_shard_1:6432:spqr}"
             }
         ]
         """
@@ -357,15 +357,15 @@ Feature: Proxy console
         [
             {
                 "shard":"sh1",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh2",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh5",
-                "options": "{sslmode=verify-full,host=spqr_shard_1:6432}"
+                "options": "{host=spqr_shard_1:6432:spqr,sslmode=verify-full}"
             }
         ]
         """
@@ -386,12 +386,11 @@ Feature: Proxy console
         [
             {
                 "shard":"sh1",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
             },
             {
                 "shard":"sh2",
-                "options": "{db=regress,user=regress,password=12345678,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}"
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
             }
         ]
         """
-    

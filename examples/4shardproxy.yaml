@@ -31,6 +31,8 @@ query_routing:
     allow_postprocessing: true
     allow_split_update: true
 
+allow_two_phase_commit: true
+
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
   cert_file: /etc/odyssey/ssl/server.crt

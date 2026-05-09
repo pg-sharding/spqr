@@ -1,5 +1,6 @@
 NAME
-    ALTER DISTRIBUTION DROP DEFAULT SHARD - Removes the default shard from an existing distribution.
+    ALTER DISTRIBUTION DROP DEFAULT SHARD - Removes the default shard from an
+    existing distribution.
 
 SYNTAX
     ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD

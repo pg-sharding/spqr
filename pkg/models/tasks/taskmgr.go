@@ -8,7 +8,7 @@ type TaskMgr interface {
 	WriteMoveTaskGroup(ctx context.Context, taskGroup *MoveTaskGroup) error
 	DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error
 	RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error
-	StopMoveTaskGroup(ctx context.Context, id string) error
+	StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error
 	GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error)
 
 	GetTaskGroupStatus(ctx context.Context, id string) (*MoveTaskGroupStatus, error)
