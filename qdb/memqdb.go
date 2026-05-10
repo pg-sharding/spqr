@@ -1883,27 +1883,6 @@ func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 	memOperations := make([]Command, 0, len(xrecord))
 	for _, stmt := range xrecord {
-		var converterToCmd func(QdbStatement) (Command, error)
-		switch stmt.Payload {
-		case MapRelationDistribution:
-			converterToCmd = q.toRelationDistributionOperation
-		case MapDistributions:
-			converterToCmd = q.toDistributions
-		case MapKrs:
-			converterToCmd = q.toKeyRange
-		case MapFreq:
-			converterToCmd = q.toFreq
-		case MapLocks:
-			converterToCmd = q.toLock
-		case MapKrVersions:
-			converterToCmd = q.toKrVersion
-		case MapSequences:
-			converterToCmd = q.toSequences
-		case MapSequenceToValues:
-			converterToCmd = q.toSequenceToValues
-		default:
-			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Payload)
-		}
 
 		if stmt.CmdType == CmdV2 {
 			switch stmt.SubType {
@@ -1915,6 +1894,28 @@ func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 				q.DropKeyRange(context.TODO(), args.Id)
 			}
 		} else {
+			var converterToCmd func(QdbStatement) (Command, error)
+
+			switch stmt.Payload {
+			case MapRelationDistribution:
+				converterToCmd = q.toRelationDistributionOperation
+			case MapDistributions:
+				converterToCmd = q.toDistributions
+			case MapKrs:
+				converterToCmd = q.toKeyRange
+			case MapFreq:
+				converterToCmd = q.toFreq
+			case MapLocks:
+				converterToCmd = q.toLock
+			case MapKrVersions:
+				converterToCmd = q.toKrVersion
+			case MapSequences:
+				converterToCmd = q.toSequences
+			case MapSequenceToValues:
+				converterToCmd = q.toSequenceToValues
+			default:
+				return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Payload)
+			}
 
 			operation, err := converterToCmd(stmt)
 			if err != nil {

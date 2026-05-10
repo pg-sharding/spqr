@@ -322,22 +322,8 @@ func TestDropKeyRangeQdbStatements(t *testing.T) {
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
-				CmdType: CmdDelete,
-				Key:     "testKr",
-				Value:   "",
-				Payload: "Krs",
-			},
-			{
-				CmdType: CmdDelete,
-				Key:     "testKr",
-				Value:   "",
-				Payload: "Locks",
-			},
-			{
-				CmdType: CmdDelete,
-				Key:     "testKr",
-				Value:   "",
-				Payload: "Freq",
+				CmdType: CmdV2,
+				Payload: "{\"id\":\"testKr\"}",
 			},
 		}
 		is.Equal(expected, actual)
