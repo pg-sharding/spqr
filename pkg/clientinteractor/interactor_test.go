@@ -590,11 +590,10 @@ func TestReportErrorIncludesHintFromSpqrError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 
-	spErr := spqrerror.NewWithHint(
+	spErr := spqrerror.New(
 		spqrerror.SPQR_NO_DATASHARD,
 		"Shard \"shard2\" not found.",
-		"Run 'SHOW shards' to see all configured shards.",
-	)
+	).Hint("Run 'SHOW shards' to see all configured shards.")
 
 	gomock.InOrder(
 		ca.EXPECT().ReplyErrMsgPure(spErr),

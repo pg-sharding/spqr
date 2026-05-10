@@ -23,20 +23,20 @@ const (
 func rewriteMissingShardError(err error, shardID string) error {
 	var spErr *spqrerror.SpqrError
 	if errors.As(err, &spErr) && spErr.ErrorCode == spqrerror.SPQR_NO_DATASHARD {
-		return spqrerror.NewWithHint(
+		return spqrerror.New(
 			spqrerror.SPQR_NO_DATASHARD,
 			fmt.Sprintf("Shard %q not found.", shardID),
-			"Run 'SHOW shards' to see all configured shards.",
-		)
+		).Hint("Run 'SHOW shards' to see all configured shards.")
 	}
 
 	cleanErr := strings.ToLower(spqrerror.CleanGrpcError(err).Error())
-	if strings.Contains(cleanErr, "unknown shard") || strings.Contains(cleanErr, "shard") && strings.Contains(cleanErr, "not found") {
-		return spqrerror.NewWithHint(
+	hasUnknownShard := strings.Contains(cleanErr, "unknown shard")
+	hasShardNotFound := strings.Contains(cleanErr, "shard") && strings.Contains(cleanErr, "not found")
+	if hasUnknownShard || hasShardNotFound {
+		return spqrerror.New(
 			spqrerror.SPQR_NO_DATASHARD,
 			fmt.Sprintf("Shard %q not found.", shardID),
-			"Run 'SHOW shards' to see all configured shards.",
-		)
+		).Hint("Run 'SHOW shards' to see all configured shards.")
 	}
 
 	return err

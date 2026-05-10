@@ -228,7 +228,7 @@ func TestValidateKeyRangeForCreate_unknownShardReturnsHint(t *testing.T) {
 
 	memqdb, err := prepareDbTestValidate(ctx)
 	is.NoError(err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	reqKr := &kr.KeyRange{
 		ID:           "kr_missing",
@@ -255,7 +255,7 @@ func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
 	memqdb, err := prepareDbTestValidate(ctx)
 	is.NoError(err)
 
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	tranMngr := meta.NewTranEntityManager(mngr)
 
 	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
