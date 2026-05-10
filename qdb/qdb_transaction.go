@@ -9,16 +9,23 @@ import (
 const (
 	CmdPut = iota
 	CmdDelete
+	CmdV2
+)
+
+const (
+	DropKR = iota
 )
 
 const DefaultMaxTxnSize uint16 = 128 // like ETCD max-txn-ops default value
 
 type QdbStatement struct {
 	CmdType int32
+	SubType uint32
 	Key     string
 	Value   any
-	// for case when qdb have more than one KV-storage
-	Extension string
+	Version uint64
+	// XXX: change this to []byte
+	Payload string
 }
 
 func NewQdbStatement(cmdType int32, key string, value any) (*QdbStatement, error) {
@@ -28,11 +35,15 @@ func NewQdbStatement(cmdType int32, key string, value any) (*QdbStatement, error
 	return &QdbStatement{CmdType: cmdType, Key: key, Value: value}, nil
 }
 
+func NewQLogRecordV2(subType uint32, payload string) QdbStatement {
+	return QdbStatement{CmdType: CmdV2, SubType: subType, Payload: payload}
+}
+
 func NewQdbStatementExt(cmdType int32, key string, value any, extension string) (*QdbStatement, error) {
 	if stmt, err := NewQdbStatement(cmdType, key, value); err != nil {
 		return nil, err
 	} else {
-		stmt.Extension = extension
+		stmt.Payload = extension
 		return stmt, nil
 	}
 }

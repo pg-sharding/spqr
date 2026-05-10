@@ -274,24 +274,17 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 }
 
 func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 3)
+	args := DropKeyRangeArgs{
+		Id: keyRangeId,
+	}
 
-	cmd, err := NewQdbStatementExt(CmdDelete, keyRangeId, "", MapKrs)
+	payload, err := json.Marshal(args)
 	if err != nil {
 		return nil, err
 	}
-	commands[0] = *cmd
-	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeId, "", MapLocks)
-	if err != nil {
-		return nil, err
-	}
-	commands[1] = *cmd
-	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeId, "", MapFreq)
-	if err != nil {
-		return nil, err
-	}
-	commands[2] = *cmd
-	return commands, nil
+
+	stmt := NewQLogRecordV2(DropKR, string(payload))
+	return []QdbStatement{stmt}, nil
 }
 
 func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
@@ -1886,11 +1879,12 @@ func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
-	memOperations := make([]Command, 0, len(operations))
-	for _, stmt := range operations {
+/* XXX: Remove this */
+func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
+	memOperations := make([]Command, 0, len(xrecord))
+	for _, stmt := range xrecord {
 		var converterToCmd func(QdbStatement) (Command, error)
-		switch stmt.Extension {
+		switch stmt.Payload {
 		case MapRelationDistribution:
 			converterToCmd = q.toRelationDistributionOperation
 		case MapDistributions:
@@ -1908,13 +1902,26 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 		case MapSequenceToValues:
 			converterToCmd = q.toSequenceToValues
 		default:
-			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
+			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Payload)
 		}
-		operation, err := converterToCmd(stmt)
-		if err != nil {
-			return nil, err
+
+		if stmt.CmdType == CmdV2 {
+			switch stmt.SubType {
+			case DropKR:
+				var args DropKeyRangeArgs
+				json.Unmarshal([]byte(stmt.Payload), args)
+
+				/* XXX: use generic unmarshal */
+				q.DropKeyRange(context.TODO(), args.Id)
+			}
+		} else {
+
+			operation, err := converterToCmd(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
 		}
-		memOperations = append(memOperations, operation)
 	}
 	return memOperations, nil
 }
