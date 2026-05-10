@@ -4,12 +4,29 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type Command interface {
 	Do() error
 	Undo() error
+}
+
+type MetaCommand struct {
+	do func() error
+}
+
+func NewMetaCommand(do func() error) *MetaCommand {
+	return &MetaCommand{do: do}
+}
+
+func (c *MetaCommand) Do() error {
+	return c.do()
+}
+
+func (c *MetaCommand) Undo() error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "memqdb undo rejected")
 }
 
 func NewDeleteCommand[T any](m map[string]T, key string) *DeleteCommand[T] {

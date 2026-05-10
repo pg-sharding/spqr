@@ -351,6 +351,7 @@ func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSta
 func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 
+	/* XXX: remove this in favor of atomic state */
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -367,6 +368,9 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, err
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", id))
 	}
 	defer lock.Unlock()
+	delete(q.State.Krs, id)
+	delete(q.State.Freq, id)
+	delete(q.State.Locks, id)
 	return q.dropKeyRangeQdbStatements(id)
 }
 
@@ -1885,14 +1889,24 @@ func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 	for _, stmt := range xrecord {
 
 		if stmt.CmdType == CmdV2 {
-			switch stmt.SubType {
-			case DropKR:
-				var args DropKeyRangeArgs
-				json.Unmarshal([]byte(stmt.Payload), args)
 
-				/* XXX: use generic unmarshal */
-				q.DropKeyRange(context.TODO(), args.Id)
-			}
+			/* XXX: this insanity just because of locking proto, reimplement this */
+			memOperations = append(memOperations, NewMetaCommand(
+				func() error {
+					switch stmt.SubType {
+					case DropKR:
+						var args DropKeyRangeArgs
+						json.Unmarshal([]byte(stmt.Payload), &args)
+
+						/* XXX: use generic unmarshal */
+						_, err := q.DropKeyRange(context.TODO(), args.Id)
+						return err
+					default:
+						return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "failed to match command subtype")
+					}
+				},
+			))
+
 		} else {
 			var converterToCmd func(QdbStatement) (Command, error)
 
@@ -1921,7 +1935,12 @@ func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 			if err != nil {
 				return nil, err
 			}
-			memOperations = append(memOperations, operation)
+			opMeta := NewMetaCommand(func() error {
+				q.mu.Lock()
+				defer q.mu.Unlock()
+				return operation.Do()
+			})
+			memOperations = append(memOperations, opMeta)
 		}
 	}
 	return memOperations, nil
@@ -1929,8 +1948,7 @@ func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 
 func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+
 	if memOperations, err := q.packMemqdbCommands(operations); err != nil {
 		return err
 	} else {

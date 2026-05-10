@@ -69,7 +69,7 @@ const (
 )
 
 type DropKeyRangeArgs struct {
-	Id string `json:"id"`
+	Id string `json:"Id"`
 }
 
 // QDB is a generic interface used by both the coordinator and the router.
