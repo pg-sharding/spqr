@@ -1,5 +1,6 @@
 [^/]\.png$
 ^.sourcecraft/ci.yaml
+^.github/actions/spelling/excludes.txt
 ^.git/
 ^.github/actions/benchmarks/
 ^\Q.github/actions/spelling/
