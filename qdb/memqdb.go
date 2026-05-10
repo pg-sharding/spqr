@@ -1883,6 +1883,33 @@ func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 	}
 }
 
+func (q *MemQDB) LegacyPackCmd(stmt QdbStatement) (Command, error) {
+	var converterToCmd func(QdbStatement) (Command, error)
+
+	switch stmt.Payload {
+	case MapRelationDistribution:
+		converterToCmd = q.toRelationDistributionOperation
+	case MapDistributions:
+		converterToCmd = q.toDistributions
+	case MapKrs:
+		converterToCmd = q.toKeyRange
+	case MapFreq:
+		converterToCmd = q.toFreq
+	case MapLocks:
+		converterToCmd = q.toLock
+	case MapKrVersions:
+		converterToCmd = q.toKrVersion
+	case MapSequences:
+		converterToCmd = q.toSequences
+	case MapSequenceToValues:
+		converterToCmd = q.toSequenceToValues
+	default:
+		return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Payload)
+	}
+
+	return converterToCmd(stmt)
+}
+
 /* XXX: Remove this */
 func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 	memOperations := make([]Command, 0, len(xrecord))
@@ -1908,33 +1935,12 @@ func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
 			))
 
 		} else {
-			var converterToCmd func(QdbStatement) (Command, error)
 
-			switch stmt.Payload {
-			case MapRelationDistribution:
-				converterToCmd = q.toRelationDistributionOperation
-			case MapDistributions:
-				converterToCmd = q.toDistributions
-			case MapKrs:
-				converterToCmd = q.toKeyRange
-			case MapFreq:
-				converterToCmd = q.toFreq
-			case MapLocks:
-				converterToCmd = q.toLock
-			case MapKrVersions:
-				converterToCmd = q.toKrVersion
-			case MapSequences:
-				converterToCmd = q.toSequences
-			case MapSequenceToValues:
-				converterToCmd = q.toSequenceToValues
-			default:
-				return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Payload)
-			}
-
-			operation, err := converterToCmd(stmt)
+			operation, err := q.LegacyPackCmd(stmt)
 			if err != nil {
 				return nil, err
 			}
+
 			opMeta := NewMetaCommand(func() error {
 				q.mu.Lock()
 				defer q.mu.Unlock()

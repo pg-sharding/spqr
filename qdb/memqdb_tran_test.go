@@ -35,8 +35,14 @@ func TestPackMemqdbCommands(t *testing.T) {
 			{CmdType: CmdPut, Key: relation.Name, Value: distribution1.ID, Payload: MapRelationDistribution},
 			{CmdType: CmdPut, Key: distribution2.ID, Value: string(dataDistribution2), Payload: MapDistributions},
 		}
-		actual, err := memqdb.packMemqdbCommands(commands)
-		is.NoError(err)
+
+		var actual []Command
+
+		for _, el := range commands {
+			c, err := memqdb.LegacyPackCmd(el)
+			is.NoError(err)
+			actual = append(actual, c)
+		}
 		expected := []Command{
 			NewUpdateCommand(memqdb.State.Distributions, distribution1.ID, distribution1),
 			NewUpdateCommand(memqdb.State.RelationDistribution, relation.Name, distribution1.ID),
