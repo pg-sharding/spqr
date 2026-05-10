@@ -1964,8 +1964,6 @@ func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement)
 
 func (q *MemQDB) CommitTransaction(_ context.Context, transaction *QdbTransaction) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec transaction")
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
 	if transaction == nil {
 		return fmt.Errorf("cant't commit empty transaction")
