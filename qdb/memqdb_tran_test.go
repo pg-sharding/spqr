@@ -329,7 +329,7 @@ func TestDropKeyRangeQdbStatements(t *testing.T) {
 		expected := []QdbStatement{
 			{
 				CmdType: CmdV2,
-				Payload: "{\"Id\":\"testKr\"}	",
+				Payload: "{\"Id\":\"testKr\"}",
 			},
 		}
 		is.Equal(expected, actual)
