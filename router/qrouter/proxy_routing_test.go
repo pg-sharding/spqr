@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
@@ -24,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stretchr/testify/assert"
 
@@ -31,6 +33,8 @@ import (
 )
 
 const MemQDBPath = "memqdb.json"
+
+var metricRegistry = metrics.NewRouterMetricRegistry(prometheus.NewRegistry())
 
 func getIdentityMngr(lc meta.EntityMgr) planner.IdentityRouterCache {
 	var seqMngr sequences.SequenceMgr = lc
@@ -99,7 +103,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -234,7 +238,7 @@ func TestCreateTable(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -378,7 +382,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -581,7 +585,7 @@ func TestRoutingByExpression(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -716,7 +720,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -806,7 +810,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1027,7 +1031,7 @@ func TestComment(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1146,7 +1150,7 @@ func TestCTE(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1505,7 +1509,7 @@ func TestSingleShard(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1822,7 +1826,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1982,7 +1986,7 @@ func TestJoins(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2139,7 +2143,7 @@ func TestUnnest(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2250,7 +2254,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2345,7 +2349,7 @@ func TestCopyMultiShard(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2431,7 +2435,7 @@ func TestSetStmt(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2552,7 +2556,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2883,7 +2887,7 @@ func TestHashRouting(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2976,7 +2980,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	router, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	router, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	return router, err
 }
