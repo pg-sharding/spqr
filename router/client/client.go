@@ -71,6 +71,8 @@ type PsqlClient struct {
 	/* cancel */
 	csm *pgproto3.CancelRequest
 
+	peekMsg pgproto3.FrontendMessage
+
 	cancelPid uint32
 	cancelKey []byte
 
@@ -749,11 +751,32 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
 }
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
+	if cl.peekMsg != nil {
+		msg := cl.peekMsg
+		cl.peekMsg = nil
+		return msg, nil
+	}
 	msg, err := cl.be.Receive()
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Interface("message", msg).
 		Msg("received message from client")
+	return msg, err
+}
+
+func (cl *PsqlClient) Peek() (pgproto3.FrontendMessage, error) {
+	if cl.peekMsg != nil {
+		return cl.peekMsg, nil
+	}
+	msg, err := cl.be.Receive()
+	spqrlog.Zero.Debug().
+		Uint("client", cl.ID()).
+		Interface("message", msg).
+		Err(err).
+		Msg("received message from client")
+	if err == nil {
+		cl.peekMsg = msg
+	}
 	return msg, err
 }
 
@@ -972,6 +995,10 @@ func (f FakeClient) ID() uint {
 }
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
+	return &pgproto3.Query{}, nil
+}
+
+func (f FakeClient) Peek() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 

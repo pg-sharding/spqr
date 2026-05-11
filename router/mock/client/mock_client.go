@@ -624,6 +624,21 @@ func (mr *MockRouterClientMockRecorder) PasswordMD5(salt any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PasswordMD5", reflect.TypeOf((*MockRouterClient)(nil).PasswordMD5), salt)
 }
 
+// Peek mocks base method.
+func (m *MockRouterClient) Peek() (pgproto3.FrontendMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Peek")
+	ret0, _ := ret[0].(pgproto3.FrontendMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Peek indicates an expected call of Peek.
+func (mr *MockRouterClientMockRecorder) Peek() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockRouterClient)(nil).Peek))
+}
+
 // PreferredEngine mocks base method.
 func (m *MockRouterClient) PreferredEngine() string {
 	m.ctrl.T.Helper()
