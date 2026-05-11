@@ -1228,32 +1228,6 @@ func (qr *ProxyQrouter) plannerV1(
 		}
 	}
 
-	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
-
-	p, err = planner.AdjustPlanForJoins(ctx, rm, p)
-	if err != nil {
-		return nil, err
-	}
-
-	/* Okay, we got some plan. If case of multishard processing,
-	* fix bogus limit support, if enabled. */
-
-	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
-	if err != nil {
-		return nil, err
-	}
-
-	if guc.Get(rm.SPH) {
-		p, err = qr.addSortToPlan(ctx, rm, p)
-		if err != nil {
-			return nil, err
-		}
-		p, err = qr.addLimitToPlan(ctx, rm, p)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return p, nil
 }
 
@@ -1718,6 +1692,32 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	} else {
 		/* Top level plan */
 		p, err = qr.plannerV1(ctx, rm)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
+
+	p, err = planner.AdjustPlanForJoins(ctx, rm, p)
+	if err != nil {
+		return nil, err
+	}
+
+	/* Okay, we got some plan. If case of multishard processing,
+	* fix bogus limit support, if enabled. */
+
+	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
+	if err != nil {
+		return nil, err
+	}
+
+	if guc.Get(rm.SPH) {
+		p, err = qr.addSortToPlan(ctx, rm, p)
+		if err != nil {
+			return nil, err
+		}
+		p, err = qr.addLimitToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err
 		}
