@@ -84,24 +84,24 @@ func TestPeek(t *testing.T) {
 		String: "s1",
 	}
 
-	btsQ1, _ := q1.Encode(nil)
+	bytesQ1, _ := q1.Encode(nil)
 
 	rconn.EXPECT().Read(gomock.Any()).DoAndReturn(
 		func(b []byte) (int, error) {
-			copy(b, btsQ1)
-			return len(btsQ1), nil
+			copy(b, bytesQ1)
+			return len(bytesQ1), nil
 		}).Times(1)
 
 	q2 := &pgproto3.Query{
 		String: "s2",
 	}
 
-	btsQ2, _ := q2.Encode(nil)
+	bytesQ2, _ := q2.Encode(nil)
 
 	rconn.EXPECT().Read(gomock.Any()).DoAndReturn(
 		func(b []byte) (int, error) {
-			copy(b, btsQ2)
-			return len(btsQ2), nil
+			copy(b, bytesQ2)
+			return len(bytesQ2), nil
 		}).Times(1)
 
 	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, "BLOCK", false, "")
