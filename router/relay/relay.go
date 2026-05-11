@@ -1293,7 +1293,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		return err
 	}
 
-	// Do not respond with BindComplete, as the relay step should take care of itself.
+	/* Now we can create plan for this statement */
 	queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
 
 	if err != nil {

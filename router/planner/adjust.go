@@ -9,10 +9,31 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
+
+func AdjustPlanStateForUpsert(ctx context.Context, rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
+	_, ok := p.(*plan.ScatterPlan)
+	if !ok {
+		return nil
+	}
+
+	if rm.HasHazardUpsert {
+
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+		if err != nil {
+			return err
+		}
+
+		guc.Set(rm.SPH, session.VirtualParamLevelStatement /* only for this exact statement */, true)
+
+	}
+
+	return nil
+}
 
 func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p plan.Plan) (plan.Plan, error) {
 	sc, ok := p.(*plan.ScatterPlan)
