@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
@@ -40,8 +39,6 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 	if !ok {
 		return p, nil
 	}
-
-	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msgf("adjust scatter query plan for in-shard joins: %v", rm.UsedAuxCTE)
 
 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) >= 1 {
 		var firstKey rmeta.AuxValuesKey
