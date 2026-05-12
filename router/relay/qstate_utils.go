@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -75,7 +76,10 @@ func DispatchSlice(qd *QueryDesc,
 				return err
 			}
 
-			if guc.Get(cl) {
+			if guc.Get(cl) && cl.ShowNoticeMsg() {
+
+				_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %v", targ.Name))
+
 				if err := serv.PrefetchResult(targ, 1); err != nil {
 					return err
 				}
