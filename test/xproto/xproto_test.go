@@ -889,7 +889,7 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1082,42 +1082,9 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for i, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				retMsgType.Routine = ""
-				retMsgType.Line = 0
-				retMsgType.File = ""
-				retMsgType.SeverityUnlocalized = ""
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, "iter %d", i)
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtDescribeAndBind(t *testing.T) {
@@ -1129,7 +1096,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for i, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1342,37 +1309,9 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", i, ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtDescribePortalAndBind(t *testing.T) {
@@ -1384,7 +1323,7 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1466,37 +1405,9 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtNamedPortalBind(t *testing.T) {
@@ -1522,7 +1433,8 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 		assert.NoError(t, err, "startup failed")
 		return
 	}
-	for _, msgroup := range []MessageGroup{
+
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1582,37 +1494,9 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
@@ -1624,7 +1508,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1745,37 +1629,9 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
@@ -1787,7 +1643,7 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -1943,37 +1799,9 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtAdvancedParsing(t *testing.T) {
@@ -1985,7 +1813,7 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -2162,37 +1990,9 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("index %d: %s", ind, retMsg))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtBinaryFormat(t *testing.T) {
