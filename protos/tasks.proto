@@ -145,7 +145,7 @@ enum BalancerTaskStatus {
 message BalancerTask {
   JoinType type = 1;
   string keyRangeIdFrom = 2 [(buf.validate.field).required = true];
-  string keyRangeIdTo = 3 [(buf.validate.field).required = true];
+  string keyRangeIdTo = 3;
   string keyRangeIdTemp = 4;
   string shardIdTo = 5 [(buf.validate.field).required = true];
   int64 keyCount = 6;
