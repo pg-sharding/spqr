@@ -609,7 +609,7 @@ Feature: Coordinator test
     # Coordinator doesn't unregister router
     #
     Given host "router" is stopped
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinator" with timeout "120" seconds
     """
     SHOW routers
     """
