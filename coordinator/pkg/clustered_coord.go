@@ -3504,6 +3504,9 @@ func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
 }
 
 func (qc *ClusteredCoordinator) updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string, args ...any) error {
+	if !config.CoordinatorConfig().ForbidDirectShardQueries {
+		return nil
+	}
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 	if err != nil {
 		return err
