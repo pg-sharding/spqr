@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -77,6 +78,8 @@ type RoutingMetadataContext struct {
 	IsSplitUpdate bool
 	IsSPQRCTID    bool
 
+	LastResultFormatCodes []int16
+
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 
 	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
@@ -84,6 +87,16 @@ type RoutingMetadataContext struct {
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
 	rm.ro = ro
+}
+
+func (rm *RoutingMetadataContext) GetResultFormatCode(ind int) int16 {
+	if len(rm.LastResultFormatCodes) == 0 {
+		return xproto.FormatCodeText
+	}
+	if ind >= len(rm.LastResultFormatCodes) {
+		return rm.LastResultFormatCodes[0]
+	}
+	return rm.LastResultFormatCodes[ind]
 }
 
 func (rm *RoutingMetadataContext) IsRO() bool {

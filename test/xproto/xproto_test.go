@@ -5028,9 +5028,17 @@ func TestXProtoPureVirtual(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "q1",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "q2",
+				},
 				&pgproto3.Parse{
 					Query: "SELECT 1",
 					Name:  "q1",
@@ -5059,6 +5067,8 @@ func TestXProtoPureVirtual(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
@@ -5106,46 +5116,36 @@ func TestXProtoPureVirtual(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				/* skip */
-				if retMsgType.Severity != "ERROR" {
-					retMsg, err = frontend.Receive()
-					assert.NoError(t, err)
-				}
-			case *pgproto3.NoticeResponse:
-				retMsg, err = frontend.Receive()
-				assert.NoError(t, err)
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
-		}
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Query: "SELECT pg_is_in_recovery()",
+					Name:  "",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q2",
+					ResultFormatCodes: []int16{xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0}},
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestRewriteInsertXproto(t *testing.T) {
