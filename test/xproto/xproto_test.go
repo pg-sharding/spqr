@@ -5028,7 +5028,7 @@ func TestXProtoPureVirtual(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -5106,46 +5106,9 @@ func TestXProtoPureVirtual(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				/* skip */
-				if retMsgType.Severity != "ERROR" {
-					retMsg, err = frontend.Receive()
-					assert.NoError(t, err)
-				}
-			case *pgproto3.NoticeResponse:
-				retMsg, err = frontend.Receive()
-				assert.NoError(t, err)
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestRewriteInsertXproto(t *testing.T) {
