@@ -5031,6 +5031,14 @@ func TestXProtoPureVirtual(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "q1",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "q2",
+				},
 				&pgproto3.Parse{
 					Query: "SELECT 1",
 					Name:  "q1",
@@ -5059,6 +5067,8 @@ func TestXProtoPureVirtual(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
@@ -5100,6 +5110,33 @@ func TestXProtoPureVirtual(t *testing.T) {
 					Values: [][]byte{[]byte("1")},
 				},
 
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Query: "SELECT pg_is_in_recovery()",
+					Name:  "",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q2",
+					ResultFormatCodes: []int16{xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0}},
+				},
 				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

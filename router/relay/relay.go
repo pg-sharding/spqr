@@ -861,6 +861,8 @@ func (rst *RelayStateImpl) BindPrepared(
 
 		rm := rst.savedRM[preparedStatement]
 
+		rm.LastResultFormatCodes = resultFormatCodes
+
 		hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 
 		bnd.PreparedStatement = fmt.Sprintf("%d", hash)
