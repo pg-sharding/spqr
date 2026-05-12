@@ -633,7 +633,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 
 	if objType == xproto.ObjectTypePortal {
 
-		if !rst.unnamedPortalExists {
+		if !rst.unnamedPortalExists && name == "" {
 			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
 		}
 
