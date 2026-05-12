@@ -364,6 +364,7 @@ Oids
 oiwejow
 OLAP
 omnis
+ONCONFLICT
 onehost
 opgejrqr
 optarg

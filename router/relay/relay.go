@@ -353,8 +353,12 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	if rm != nil && rm.UsedSelectQueryAdjust {
+	if rm != nil && rm.UsedSelectQueryAdjust && rst.Client().ShowNoticeMsg() {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
+	}
+
+	if rm != nil && rm.AutoLinearize && rst.Client().ShowNoticeMsg() {
+		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
 	switch v := queryPlan.(type) {
@@ -1293,7 +1297,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		return err
 	}
 
-	// Do not respond with BindComplete, as the relay step should take care of itself.
+	/* Now we can create plan for this statement */
 	queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
 
 	if err != nil {
