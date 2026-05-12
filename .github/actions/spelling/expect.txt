@@ -364,6 +364,7 @@ Oids
 oiwejow
 OLAP
 omnis
+ONCONFLICT
 onehost
 opgejrqr
 optarg
@@ -416,6 +417,7 @@ ppp
 pppp
 prepstatement
 privs
+promhttp
 procps
 proident
 protobuf
@@ -654,6 +656,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+walreceiver
 Warningf
 workloadlog
 workloadreplay

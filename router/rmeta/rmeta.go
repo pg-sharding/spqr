@@ -69,6 +69,9 @@ type RoutingMetadataContext struct {
 	ro bool
 	/* NB: Not the same as !ro */
 	HasWriteTargets bool
+	/* Should we auto-linearize? */
+	HasHazardUpsert bool
+	AutoLinearize   bool
 
 	/* Is this split-update? */
 	IsSplitUpdate bool

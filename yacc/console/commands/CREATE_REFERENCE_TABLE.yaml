@@ -8,7 +8,9 @@ description: |
   If no shards are specified with ON, the table is created on all shards.
 
 syntax: |
-  CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column> [START <value>], ...] [ON <shard_id>, ...]
+  CREATE REFERENCE TABLE <table_name>
+      [AUTO INCREMENT <column> [START <value>], ...]
+      [ON <shard_id>, ...]
 
 parameters:
   - name: table_name

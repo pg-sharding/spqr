@@ -1,0 +1,22 @@
+CREATE TABLE copy_to_test (id int) /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO copy_to_test(id) VALUES (1), (2) /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+INSERT INTO copy_to_test(id) VALUES (3), (4), (5) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+/* nothing on shard3 */;
+INSERT INTO copy_to_test(id) VALUES (7), (8),(9),(12)/* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+COPY copy_to_test TO STDOUT;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+1
+2
+3
+4
+5
+7
+8
+9
+12
+DROP TABLE copy_to_test;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

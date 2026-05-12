@@ -55,8 +55,7 @@ destination shard id -> sh2
 batch size           -> 500
 (3 rows)
 
-step s4_await_planning: SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; <waiting ...>
-step s4_await_planning: <... completed>
+step s4_await_planning: SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */;
 pg_sleep
 --------
         

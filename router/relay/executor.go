@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -28,7 +30,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
-	"slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -266,15 +267,17 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
-	return s.ReplyCommandComplete("BEGIN")
+	s.SetCommandCompleteTag("BEGIN")
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
-	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
 
 	serv := s.cl.Server()
 
-	if s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
+	/* XXX: warn user of misconfiguration */
+	if config.RouterConfig().AllowTwoPhaseCommit && s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
@@ -296,7 +299,7 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.CommitActiveSet()
-		_ = s.ReplyCommandComplete("COMMIT")
+		s.SetCommandCompleteTag("COMMIT")
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
@@ -306,20 +309,17 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	}
 
 	s.Client().CommitActiveSet()
-	return s.ReplyCommandComplete("COMMIT")
+	s.SetCommandCompleteTag("COMMIT")
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 	if server := s.cl.Server(); server != nil {
-		for _, sh := range server.Datashards() {
-			if err := sh.Cleanup(&config.FrontendRule{
-				PoolRollback: true,
-			}); err != nil {
-				return err
-			}
+		if err := s.deployTxStatusInternal(server,
+			&pgproto3.Query{String: "ROLLBACK"}, txstatus.TXIDLE); err != nil {
+			return err
 		}
 	}
-	s.SetTxStatus(txstatus.TXIDLE)
 	return nil
 }
 
@@ -328,33 +328,33 @@ func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
-		_ = s.ReplyCommandComplete("ROLLBACK")
+		s.SetCommandCompleteTag("ROLLBACK")
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
 
-	/* unroute will take care of tx server */
-	if err := s.ExecRollbackServer(); err != nil {
-		return err
-	}
 	s.cl.Rollback()
-	return s.ReplyCommandComplete("ROLLBACK")
+	s.SetCommandCompleteTag("ROLLBACK")
+
+	/* unroute will take care of tx server */
+	return s.ExecRollbackServer()
 }
 
-func (s *QueryStateExecutorImpl) ReplyCommandComplete(commandTag string) error {
+func (s *QueryStateExecutorImpl) SetCommandCompleteTag(commandTag string) {
 	s.cacheCC.CommandTag = append([]byte(nil), commandTag...)
 	s.es.cc = &s.cacheCC
-	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string, isLocal bool) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
-		return s.ReplyCommandComplete("SET")
+		s.SetCommandCompleteTag("SET")
+		return nil
 	}
 	if !s.poolMgr.ConnectionActive(s) {
 		s.Client().SetParam(name, value, isLocal)
-		return s.ReplyCommandComplete("SET")
+		s.SetCommandCompleteTag("SET")
+		return nil
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
@@ -715,6 +715,42 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
+func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool) error {
+
+	for _, sh := range serv.Datashards() {
+
+	l:
+		for {
+			cpMsg, err := serv.ReceiveShard(sh.ID())
+			if err != nil {
+				return err
+			}
+			switch newMsg := cpMsg.(type) {
+			case *pgproto3.CopyData:
+				if err := s.Client().Send(newMsg); err != nil {
+					return err
+				}
+			case *pgproto3.CopyDone:
+				break l
+			default:
+				/* panic? */
+			}
+		}
+	}
+
+	txt, err := s.ProcCopyComplete(&pgproto3.CopyDone{}, simple)
+	if err != nil {
+		return err
+	}
+
+	if txt != s.cl.Server().TxStatus() {
+		return rerrors.ErrExecutorSyncLost
+	}
+	s.SetTxStatus(txt)
+
+	return nil
+}
+
 func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 
 	var leftoverMsgData []byte
@@ -974,6 +1010,14 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			Msg("received message from server")
 
 		switch v := msg.(type) {
+		case *pgproto3.CopyOutResponse:
+			// XXX: handle replyCl somehow
+			err = s.Client().Send(msg)
+			if err != nil {
+				return err
+			}
+
+			return s.copyToExecutor(serv, qd.simple)
 		case *pgproto3.CopyInResponse:
 			// handle replyCl somehow
 			err = s.Client().Send(msg)

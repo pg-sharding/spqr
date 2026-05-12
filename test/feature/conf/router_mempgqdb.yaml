@@ -14,6 +14,7 @@ store_tx_data_postgresql: true
 tx_data_ttl: 60m
 use_coordinator_init: true
 enable_icp: true
+allow_two_phase_commit: true
 watchdog_backend_rule:
   db: regress
   usr: regress

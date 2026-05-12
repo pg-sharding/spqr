@@ -301,6 +301,53 @@ func TestCmpRangesLess_String(t *testing.T) {
 	}
 }
 
+func TestCmpRangesLessStringsDeprecated(t *testing.T) {
+	tests := []struct {
+		name   string
+		bound  string
+		key    string
+		expect bool
+	}{
+		{
+			name:   "same length: lexicographically less",
+			bound:  "abc",
+			key:    "abd",
+			expect: true,
+		},
+		{
+			name:   "same length: lexicographically greater",
+			bound:  "abd",
+			key:    "abc",
+			expect: false,
+		},
+		{
+			name:   "same length: equal",
+			bound:  "abc",
+			key:    "abc",
+			expect: false,
+		},
+		{
+			name:   "shorter bound wins over lexicographic order",
+			bound:  "z",
+			key:    "aa",
+			expect: true,
+		},
+		{
+			name:   "longer bound loses over lexicographic order",
+			bound:  "aa",
+			key:    "z",
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := kr.CmpRangesLessStringsDeprecated(tt.bound, tt.key)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
 func TestCmpRangesLess_DeprecatedString(t *testing.T) {
 	tests := []struct {
 		name   string

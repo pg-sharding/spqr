@@ -1,5 +1,6 @@
 NAME
-    SHOW - Displays cluster metadata, topology, configuration, and runtime status.
+    SHOW - Displays cluster metadata, topology, configuration, and runtime
+    status.
 
 SYNTAX
     SHOW <target> [(<columns>)]
@@ -10,9 +11,12 @@ SYNTAX
 DESCRIPTION
     Displays cluster metadata, topology, configuration, and runtime status.
 
-    Valid targets: `databases`, `routers`, `shards`, `distributions`, `key_ranges`,
-    `key_ranges_extended`, `relations`, `reference_relations`, `pools`, `clients`,
-    `backend_connections`, `hosts`, `version`, `status`, `instance`, `sequences`,
+    Valid targets: `databases`, `routers`, `shards`, `distributions`,
+    `key_ranges`,
+    `key_ranges_extended`, `relations`, `reference_relations`, `pools`,
+    `clients`,
+    `backend_connections`, `hosts`, `version`, `status`, `instance`,
+    `sequences`,
     `users`, `task_group`, `task_groups`, `task_group_ext`, `task_groups_ext`,
     `move_task`, `move_tasks`, `redistribute_tasks`, `prepared_statements`,
     `time_quantiles`, `unique_indexes`, `coordinator_address`, `is_read_only`,
@@ -20,11 +24,15 @@ DESCRIPTION
     `file_settings`, `tsa_cache`.
 
 PARAMETERS
-    <target> - The metadata category to display (e.g., databases, shards, key_ranges, distributions)
-    <columns> - Optional column projection to display only specific fields (e.g., "(id, status)")
-    <WHERE condition> - Optional filter to restrict rows by column values (e.g., WHERE id = 'shard1')
+    <target> - The metadata category to display (e.g., databases, shards,
+        key_ranges, distributions)
+    <columns> - Optional column projection to display only specific fields
+        (e.g., "(id, status)")
+    <WHERE condition> - Optional filter to restrict rows by column values (e.g.,
+        WHERE id = 'shard1')
     <GROUP BY column> - Optional grouping by a column
-    <ORDER BY column> - Optional sorting by a column, with optional ASC or DESC direction
+    <ORDER BY column> - Optional sorting by a column, with optional ASC or DESC
+        direction
 
 EXAMPLES
     Show all shards:

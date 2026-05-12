@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -14,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/qdb"
-	"slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -31,6 +32,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/slice"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/virtual"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -42,6 +44,8 @@ type RelayStateMgr interface {
 	QueryRouter() qrouter.QueryRouter
 	PoolMgr() poolmgr.PoolMgr
 
+	/* Cleanup is same as reset, but no tx management */
+	Cleanup() error
 	Reset() error
 	ResetWithError(err error) error
 
@@ -63,8 +67,6 @@ type RelayStateMgr interface {
 	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
-	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
-	ProcessExtendedBuffer(ctx context.Context) error
 	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
@@ -219,9 +221,7 @@ func (rst *RelayStateImpl) Close() error {
 	return rst.Cl.Close()
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) Reset() error {
-
+func (rst *RelayStateImpl) Cleanup() error {
 	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
 
 	if err != nil {
@@ -231,14 +231,17 @@ func (rst *RelayStateImpl) Reset() error {
 	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
 
-	/* See flush vs sync */
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
-
 	_ = rst.Client().Reset()
 
-	if rerr := rst.Client().Unroute(); rerr != nil {
-		return rerr
-	}
+	return rst.Client().Unroute()
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) Reset() error {
+	err := rst.Cleanup()
+
+	/* See flush vs sync */
+	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
 	return err
 }
@@ -350,8 +353,12 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	if rm != nil && rm.UsedSelectQueryAdjust {
+	if rm != nil && rm.UsedSelectQueryAdjust && rst.Client().ShowNoticeMsg() {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
+	}
+
+	if rm != nil && rm.AutoLinearize && rst.Client().ShowNoticeMsg() {
+		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
 	switch v := queryPlan.(type) {
@@ -1063,35 +1070,16 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 }
 
 func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error {
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		/* XXX: support implicit tx semantics here */
+		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+	}
+
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
 		rst.WaitSync = true
 		return err
 	}
-	return nil
-}
-
-// TODO : unit tests
-// If we enter this function, then we need to process whole messages buffer
-// in current statement pipeline bounds.
-func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Int("xBuf", len(rst.xBuf)).
-		Bool("wait sync", rst.WaitSync).
-		Msg("process extended buffer")
-
-	defer func() {
-		// cleanup
-		rst.xBuf = nil
-	}()
-
-	for _, msg := range rst.xBuf {
-		if err := rst.ProcessOneMsgCarefully(ctx, msg); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -1309,7 +1297,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		return err
 	}
 
-	// Do not respond with BindComplete, as the relay step should take care of itself.
+	/* Now we can create plan for this statement */
 	queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
 
 	if err != nil {
