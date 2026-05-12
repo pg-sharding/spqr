@@ -357,8 +357,8 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
-	if rm != nil && rm.HasHazardUpsert && rst.Client().ShowNoticeMsg() {
-		_ = rst.Client().ReplyNotice("auto-linearize query dispatch becuase of hazard upsert")
+	if rm != nil && rm.AutoLinearize && rst.Client().ShowNoticeMsg() {
+		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
 	switch v := queryPlan.(type) {

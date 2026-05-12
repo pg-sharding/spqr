@@ -1,0 +1,142 @@
+\c spqr-console
+CREATE DISTRIBUTION d (integer);
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE KEY RANGE kridi4 from 3000 route to sh4 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 3000
+(1 row)
+
+CREATE KEY RANGE kridi3 from 2000 route to sh3 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 2000
+(1 row)
+
+CREATE KEY RANGE kridi2 from 1000 route to sh2 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 1000
+(1 row)
+
+CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE RELATION rel_al (id);
+       attach table        
+---------------------------
+ relation name   -> rel_al
+ distribution id -> d
+(2 rows)
+
+CREATE REFERENCE RELATION rf_al;
+   create reference table    
+-----------------------------
+ table    -> rf_al
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+\c regress
+CREATE TABLE rel_al(id INT UNIQUE, c INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE rf_al(id INT UNIQUE, c INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rel_al (id, c) VALUES (1111, 1) ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
+NOTICE: send query to shard(s) : sh2
+INSERT INTO rel_al (id, c) VALUES (1111, 77) ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
+NOTICE: send query to shard(s) : sh2
+INSERT INTO rel_al (id, c) VALUES (1111, 881), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: send query to shard(s) : sh2,sh3
+SELECT __spqr__ctid('rel_al');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  id  | c 
+--------------+------+---
+ shard sh2    | 1111 | 3
+ shard sh3    | 2222 | 1
+(2 rows)
+
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
+INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: send query to shard(s) : sh3,sh4
+WITH v (id, c) AS (VALUES (3330, 888), (3333, 1)) 
+INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
+NOTICE: send query to shard(s) : sh4
+SELECT __spqr__ctid('rel_al');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  id  |  c  
+--------------+------+-----
+ shard sh2    | 1111 |   3
+ shard sh3    | 2222 |   2
+ shard sh4    | 3330 | 888
+ shard sh4    | 3333 |   2
+(4 rows)
+
+INSERT INTO rf_al (id, c) VALUES (1111, 1) ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rf_al (id, c) VALUES (1111, 777), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT __spqr__ctid('rf_al');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  id  | c 
+--------------+------+---
+ shard sh1    | 1111 | 2
+ shard sh1    | 2222 | 1
+ shard sh2    | 1111 | 2
+ shard sh2    | 2222 | 1
+ shard sh3    | 1111 | 2
+ shard sh3    | 2222 | 1
+ shard sh4    | 1111 | 2
+ shard sh4    | 2222 | 1
+(8 rows)
+
+WITH v (id, c) AS (VALUES (1221, 888), (1222, 1)) 
+INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT __spqr__ctid('rf_al');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  id  |  c  
+--------------+------+-----
+ shard sh1    | 1111 |   2
+ shard sh1    | 2222 |   1
+ shard sh1    | 1221 | 888
+ shard sh1    | 1222 |   1
+ shard sh2    | 1111 |   2
+ shard sh2    | 2222 |   1
+ shard sh2    | 1221 | 888
+ shard sh2    | 1222 |   1
+ shard sh3    | 1111 |   2
+ shard sh3    | 2222 |   1
+ shard sh3    | 1221 | 888
+ shard sh3    | 1222 |   1
+ shard sh4    | 1111 |   2
+ shard sh4    | 2222 |   1
+ shard sh4    | 1221 | 888
+ shard sh4    | 1222 |   1
+(16 rows)
+
+DROP TABLE rel_al;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE rf_al;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+ d
+(2 rows)
+

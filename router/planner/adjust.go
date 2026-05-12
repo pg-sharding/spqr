@@ -14,7 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
-func AdjustPlanStateForUpsert(ctx context.Context, rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
+func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
 	_, ok := p.(*plan.ScatterPlan)
 	if !ok {
 		return nil
@@ -27,8 +27,9 @@ func AdjustPlanStateForUpsert(ctx context.Context, rm *rmeta.RoutingMetadataCont
 			return err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelStatement /* only for this exact statement */, true)
+		rm.AutoLinearize = true
 
+		guc.Set(rm.SPH, session.VirtualParamLevelStatement /* only for this exact statement */, true)
 	}
 
 	return nil

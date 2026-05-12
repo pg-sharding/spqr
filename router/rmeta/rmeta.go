@@ -71,6 +71,7 @@ type RoutingMetadataContext struct {
 	HasWriteTargets bool
 	/* Should we auto-linearize? */
 	HasHazardUpsert bool
+	AutoLinearize   bool
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
