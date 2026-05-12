@@ -487,6 +487,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
+					if !session.IsKnownSPQRHint(param) {
+						return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "SPQR unknown hint: %s", q.Name)
+					}
 					ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
 				} else {
 					/* If router does dot have any info about param, fire query to random shard. */
@@ -537,6 +540,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 					rst.Client().ResetTsa()
 				default:
+					if strings.HasPrefix(param, "__spqr__") && !session.IsKnownSPQRHint(param) {
+						return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "SPQR unknown hint: %s", q.Name)
+					}
+
 					rst.Client().ResetParam(param)
 
 					if err := rst.QueryExecutor().ExecReset(rst, query, param); err != nil {
@@ -758,6 +765,10 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			case session.SPQR_COMMIT_STRATEGY:
 				rst.Client().SetCommitStrategy(hintVal)
 			default:
+				/* Any name in the reserved __spqr__ namespace must be a known hint */
+				if strings.HasPrefix(name, "__spqr__") {
+					return fmt.Errorf("SPQR unknown hint: %s", hintName)
+				}
 				rst.Client().SetParam(name, hintVal, isLocal)
 			}
 		}

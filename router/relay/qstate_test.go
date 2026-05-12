@@ -134,3 +134,117 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 
 	is.NoError(err)
 }
+
+func TestUnknownSpqrHintFail(t *testing.T) {
+
+	is := assert.New(t)
+	ctrl := gomock.NewController(t)
+	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
+
+	client := mockcl.NewMockRouterClient(ctrl)
+	client.EXPECT().CleanupStatementSet().AnyTimes()
+
+	qr := mockqr.NewMockQueryRouter(ctrl)
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
+	rst := RelayStateImpl{
+		msgBuf:              nil,
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
+		Qr:                  qr,
+		Cl:                  client,
+		poolMgr:             cmngr,
+		execute:             nil,
+		executeMp:           map[string]func() error{},
+		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
+		savedPortalDesc:     map[string]*PortalDesc{},
+		parseCache:          map[string]ParseCacheEntry{},
+		unnamedPortalExists: false,
+	}
+	ctx := context.Background()
+	err := rst.processSpqrHint(ctx,
+		map[string]string{"__spqr__no_such_hint": "anything"},
+		false, false)
+	is.Error(err)
+	is.Contains(err.Error(), "SPQR unknown hint")
+	is.Contains(err.Error(), "__spqr__no_such_hint")
+}
+
+func TestUnknownSpqrHintDottedAliasFail(t *testing.T) {
+
+	is := assert.New(t)
+	ctrl := gomock.NewController(t)
+	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
+
+	client := mockcl.NewMockRouterClient(ctrl)
+	client.EXPECT().CleanupStatementSet().AnyTimes()
+
+	qr := mockqr.NewMockQueryRouter(ctrl)
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
+	rst := RelayStateImpl{
+		msgBuf:              nil,
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
+		Qr:                  qr,
+		Cl:                  client,
+		poolMgr:             cmngr,
+		execute:             nil,
+		executeMp:           map[string]func() error{},
+		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
+		savedPortalDesc:     map[string]*PortalDesc{},
+		parseCache:          map[string]ParseCacheEntry{},
+		unnamedPortalExists: false,
+	}
+	ctx := context.Background()
+	/* virtualParamTransformName collapses "__spqr__.foo" to "__spqr__foo", which is still unknown */
+	err := rst.processSpqrHint(ctx,
+		map[string]string{"__spqr__.no_such_hint": "anything"},
+		false, false)
+	is.Error(err)
+	is.Contains(err.Error(), "SPQR unknown hint")
+}
+
+func TestNonSpqrParamPassesThrough(t *testing.T) {
+
+	is := assert.New(t)
+	ctrl := gomock.NewController(t)
+	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
+
+	client := mockcl.NewMockRouterClient(ctrl)
+	client.EXPECT().CleanupStatementSet().AnyTimes()
+	/* non-spqr names must still be forwarded to SetParam as before */
+	client.EXPECT().SetParam("application_name", "my-app", false)
+
+	qr := mockqr.NewMockQueryRouter(ctrl)
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
+	rst := RelayStateImpl{
+		msgBuf:              nil,
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
+		Qr:                  qr,
+		Cl:                  client,
+		poolMgr:             cmngr,
+		execute:             nil,
+		executeMp:           map[string]func() error{},
+		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
+		savedPortalDesc:     map[string]*PortalDesc{},
+		parseCache:          map[string]ParseCacheEntry{},
+		unnamedPortalExists: false,
+	}
+	ctx := context.Background()
+	err := rst.processSpqrHint(ctx,
+		map[string]string{"application_name": "my-app"},
+		false, false)
+	is.NoError(err)
+}
