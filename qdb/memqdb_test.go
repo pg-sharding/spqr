@@ -103,7 +103,7 @@ func TestMemqdbRacing(t *testing.T) {
 				panic("can't unmarshal distribution (exec no transaction test)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Payload: qdb.MapDistributions},
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
@@ -117,7 +117,7 @@ func TestMemqdbRacing(t *testing.T) {
 				panic("can't unmarshal distribution case(1)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Payload: qdb.MapDistributions},
 			}
 			err = tran.Append(commands)
 			if err != nil {
@@ -466,7 +466,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	// Drop non-existent KR
 	statements, err = memqdb.DropKeyRange(ctx, "krid1")
 	// Deleting keys that are already missing from the map is more is better than trying to behave differently when they are present.
-	assert.Equal(3, len(statements))
+	assert.Equal(1, len(statements))
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 

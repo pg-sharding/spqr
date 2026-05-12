@@ -2843,10 +2843,19 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return nextval, err
 }
 
-func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
+func (q *EtcdQDB) packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
 	writeOperations := make([]clientv3.Op, 0)
 	for _, v := range operations {
 		switch v.CmdType {
+		case CmdV2:
+			switch v.SubType {
+			case DropKR:
+				var args DropKeyRangeArgs
+				json.Unmarshal([]byte(v.Payload), args)
+
+				/* XXX: use generic unmarshal */
+				q.DropKeyRange(context.TODO(), args.Id)
+			}
 		case CmdPut:
 			val, ok := v.Value.(string)
 			if !ok {
@@ -2863,7 +2872,7 @@ func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
 }
 
 func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
-	ops, err := packEtcdCommands(operations)
+	ops, err := q.packEtcdCommands(operations)
 	if err != nil {
 		return err
 	}
@@ -2884,7 +2893,7 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 	if err := transaction.Validate(); err != nil {
 		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
 	}
-	ops, err := packEtcdCommands(transaction.commands)
+	ops, err := q.packEtcdCommands(transaction.commands)
 	if err != nil {
 		return err
 	}

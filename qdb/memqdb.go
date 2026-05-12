@@ -274,24 +274,17 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 }
 
 func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 3)
+	args := DropKeyRangeArgs{
+		Id: keyRangeId,
+	}
 
-	cmd, err := NewQdbStatementExt(CmdDelete, keyRangeId, "", MapKrs)
+	payload, err := json.Marshal(args)
 	if err != nil {
 		return nil, err
 	}
-	commands[0] = *cmd
-	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeId, "", MapLocks)
-	if err != nil {
-		return nil, err
-	}
-	commands[1] = *cmd
-	cmd, err = NewQdbStatementExt(CmdDelete, keyRangeId, "", MapFreq)
-	if err != nil {
-		return nil, err
-	}
-	commands[2] = *cmd
-	return commands, nil
+
+	stmt := NewQLogRecordV2(DropKR, string(payload))
+	return []QdbStatement{stmt}, nil
 }
 
 func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
@@ -358,6 +351,7 @@ func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSta
 func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 
+	/* XXX: remove this in favor of atomic state */
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -374,6 +368,9 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, err
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", id))
 	}
 	defer lock.Unlock()
+	delete(q.State.Krs, id)
+	delete(q.State.Freq, id)
+	delete(q.State.Locks, id)
 	return q.dropKeyRangeQdbStatements(id)
 }
 
@@ -1886,43 +1883,78 @@ func (q *MemQDB) toSequenceToValues(stmt QdbStatement) (Command, error) {
 	}
 }
 
-func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
-	memOperations := make([]Command, 0, len(operations))
-	for _, stmt := range operations {
-		var converterToCmd func(QdbStatement) (Command, error)
-		switch stmt.Extension {
-		case MapRelationDistribution:
-			converterToCmd = q.toRelationDistributionOperation
-		case MapDistributions:
-			converterToCmd = q.toDistributions
-		case MapKrs:
-			converterToCmd = q.toKeyRange
-		case MapFreq:
-			converterToCmd = q.toFreq
-		case MapLocks:
-			converterToCmd = q.toLock
-		case MapKrVersions:
-			converterToCmd = q.toKrVersion
-		case MapSequences:
-			converterToCmd = q.toSequences
-		case MapSequenceToValues:
-			converterToCmd = q.toSequenceToValues
-		default:
-			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
+func (q *MemQDB) LegacyPackCmd(stmt QdbStatement) (Command, error) {
+	var converterToCmd func(QdbStatement) (Command, error)
+
+	switch stmt.Payload {
+	case MapRelationDistribution:
+		converterToCmd = q.toRelationDistributionOperation
+	case MapDistributions:
+		converterToCmd = q.toDistributions
+	case MapKrs:
+		converterToCmd = q.toKeyRange
+	case MapFreq:
+		converterToCmd = q.toFreq
+	case MapLocks:
+		converterToCmd = q.toLock
+	case MapKrVersions:
+		converterToCmd = q.toKrVersion
+	case MapSequences:
+		converterToCmd = q.toSequences
+	case MapSequenceToValues:
+		converterToCmd = q.toSequenceToValues
+	default:
+		return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Payload)
+	}
+
+	return converterToCmd(stmt)
+}
+
+/* XXX: Remove this */
+func (q *MemQDB) packMemqdbCommands(xrecord []QdbStatement) ([]Command, error) {
+	memOperations := make([]Command, 0, len(xrecord))
+	for _, stmt := range xrecord {
+
+		if stmt.CmdType == CmdV2 {
+
+			/* XXX: this insanity just because of locking proto, reimplement this */
+			memOperations = append(memOperations, NewMetaCommand(
+				func() error {
+					switch stmt.SubType {
+					case DropKR:
+						var args DropKeyRangeArgs
+						json.Unmarshal([]byte(stmt.Payload), &args)
+
+						/* XXX: use generic unmarshal */
+						_, err := q.DropKeyRange(context.TODO(), args.Id)
+						return err
+					default:
+						return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "failed to match command subtype")
+					}
+				},
+			))
+
+		} else {
+
+			operation, err := q.LegacyPackCmd(stmt)
+			if err != nil {
+				return nil, err
+			}
+
+			opMeta := NewMetaCommand(func() error {
+				q.mu.Lock()
+				defer q.mu.Unlock()
+				return operation.Do()
+			})
+			memOperations = append(memOperations, opMeta)
 		}
-		operation, err := converterToCmd(stmt)
-		if err != nil {
-			return nil, err
-		}
-		memOperations = append(memOperations, operation)
 	}
 	return memOperations, nil
 }
 
 func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+
 	if memOperations, err := q.packMemqdbCommands(operations); err != nil {
 		return err
 	} else {
@@ -1932,8 +1964,6 @@ func (q *MemQDB) ExecNoTransaction(_ context.Context, operations []QdbStatement)
 
 func (q *MemQDB) CommitTransaction(_ context.Context, transaction *QdbTransaction) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec transaction")
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
 	if transaction == nil {
 		return fmt.Errorf("cant't commit empty transaction")

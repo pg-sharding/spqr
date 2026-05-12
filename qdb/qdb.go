@@ -68,6 +68,10 @@ const (
 	StopTaskGroupImmediate = "cancel immediate"
 )
 
+type DropKeyRangeArgs struct {
+	Id string `json:"Id"`
+}
+
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
