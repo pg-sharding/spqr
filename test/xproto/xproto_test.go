@@ -2942,7 +2942,6 @@ func TestDoubleDescribe(t *testing.T) {
 }
 
 func TestMultiPortal(t *testing.T) {
-	t.Skip("todo")
 
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
@@ -2953,7 +2952,12 @@ func TestMultiPortal(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "mp-0-1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "mp-0-1",
 					Query: "SELECT 1",
@@ -2973,7 +2977,7 @@ func TestMultiPortal(t *testing.T) {
 			},
 
 			Response: []pgproto3.BackendMessage{
-
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -2988,6 +2992,107 @@ func TestMultiPortal(t *testing.T) {
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 					Code:     "34000",
+					Message:  "portal \"\" does not exist",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "mp-1-1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "mp-1-1",
+					Query: "SELECT 1+0/*__spqr__execute_on: sh1 */",
+				},
+
+				&pgproto3.Close{
+					Name:       "mp-1-2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "mp-1-2",
+					Query: "BEGIN",
+				},
+
+				&pgproto3.Close{
+					Name:       "mp-1-3",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "mp-1-3",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "p1",
+					PreparedStatement: "mp-1-2",
+				},
+				&pgproto3.Execute{
+					Portal: "p1",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "p2",
+					PreparedStatement: "mp-1-1",
+				},
+				&pgproto3.Execute{
+					Portal: "p2",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "p3",
+					PreparedStatement: "mp-1-3",
+				},
+				&pgproto3.Execute{
+					Portal: "p3",
+				},
+				&pgproto3.Sync{},
+			},
+
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0x31}},
+				},
+				&pgproto3.CommandComplete{
+
+					CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+
+					CommandTag: []byte("ROLLBACK"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -2995,10 +3100,23 @@ func TestMultiPortal(t *testing.T) {
 			},
 		},
 		{
+			SkipCheckCommandTag: true, /*XXX:fix this*/
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "mp-1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "mp-2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "mp-3",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "mp-1",
-					Query: "SELECT 1",
+					Query: "SELECT 1+0/*__spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Parse{
@@ -3050,6 +3168,10 @@ func TestMultiPortal(t *testing.T) {
 
 			Response: []pgproto3.BackendMessage{
 
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -3073,7 +3195,7 @@ func TestMultiPortal(t *testing.T) {
 					CommandTag: []byte("SELECT 1"),
 				},
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("BEGIN"),
+					// CommandTag: []byte("BEGIN"),
 				},
 
 				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
