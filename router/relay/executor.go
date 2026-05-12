@@ -1208,7 +1208,7 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	* ErrorMessage and Command complete. If our output gang did not return either of them,
 	* we are in big trouble */
 	if s.es.cc == nil && s.es.eMsg == nil {
-		/* There is an expectional case with unfinished portal. If query result not fetched
+		/* There is an exceptional case with unfinished portal. If query result not fetched
 		* fully, we should not respond with CC message. */
 		if s.es.portalSuspended {
 			return nil
