@@ -633,7 +633,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 
 	if objType == xproto.ObjectTypePortal {
 
-		if !rst.unnamedPortalExists {
+		if !rst.unnamedPortalExists && name == "" {
 			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
 		}
 
@@ -838,10 +838,11 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	rst.lastBindName = preparedStatement
-	rst.unnamedPortalExists = true
+	rst.unnamedPortalExists = false
 
 	/* only populate map for non-empty portal */
 	if destinationPortal == "" {
+		rst.unnamedPortalExists = true
 		rst.execute = emptyExecFunc
 	} else {
 		rst.executeMp[destinationPortal] = emptyExecFunc
@@ -966,6 +967,11 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 	var err error
 
 	if portal == "" {
+
+		if !rst.unnamedPortalExists {
+			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
+		}
+
 		/* NB: unnamed portals are quite different is a sence of that they are
 		* auto-closed on new bind msgs
 		* From PostgreSQL doc:
