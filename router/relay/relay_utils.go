@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto3.Bind, portal string) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto3.Bind, portal string, maxrows uint32) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
@@ -23,10 +23,17 @@ func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto
 
 	if portal == "" {
 		/* save extra allocation */
-		qd.exec = pgexec
+		if maxrows == 0 {
+			qd.exec = pgexec
+		} else {
+			qd.exec = &pgproto3.Execute{
+				MaxRows: maxrows,
+			}
+		}
 	} else {
 		qd.exec = &pgproto3.Execute{
-			Portal: portal,
+			Portal:  portal,
+			MaxRows: maxrows,
 		}
 	}
 
