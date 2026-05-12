@@ -656,6 +656,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+walreceiver
 Warningf
 workloadlog
 workloadreplay
