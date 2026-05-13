@@ -1171,6 +1171,11 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
 	}
 
+	tranMngr := meta.NewTranEntityManager(lc)
+	if err := tranMngr.DropKeyRange(ctx, krAppendage.ID); err != nil {
+		return err
+	}
+
 	if krLeft.ID != krBase.ID {
 		krBase.LowerBound = krAppendage.LowerBound
 	}
@@ -1178,12 +1183,11 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if err := meta.ValidateKeyRangeForModify(ctx, lc, krBase); err != nil {
 		return err
 	}
-	tranMngr := meta.NewTranEntityManager(lc)
 	if err := tranMngr.UpdateKeyRange(ctx, krBase, ds.ColTypes); err != nil {
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to exec transaction: %s", err)
 	}
 	return nil
 }

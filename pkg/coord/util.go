@@ -21,8 +21,10 @@ func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransac
 				return err
 			}
 		case mtran.GRDropKeyRange:
-			if err := updateKeyRangeMetaOnShard(ctx, "", datatransfers.DeleteKeyRangeMeta, gossipRequest.DropKeyRange.Id); err != nil {
-				return err
+			for _, id := range gossipRequest.DropKeyRange.Id {
+				if err := updateKeyRangeMetaOnShard(ctx, "", datatransfers.DeleteKeyRangeMeta, id); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -45,6 +47,10 @@ func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string
 			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("could not update key range on shard: shard \"%s\" does not exist in shard data config", shardId))
 		}
 		shardDatas = append(shardDatas, shardData)
+	} else {
+		for _, shardData := range conns.ShardsData {
+			shardDatas = append(shardDatas, shardData)
+		}
 	}
 	errs := make([]string, 0)
 	for _, shardData := range shardDatas {
