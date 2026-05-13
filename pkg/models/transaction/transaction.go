@@ -114,7 +114,7 @@ func checkCommandPart(part googleProto.Message, current int, target int) int {
 		return current
 	}
 	v := reflect.ValueOf(part)
-	if v.Kind() == reflect.Ptr && !v.IsNil() {
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
 		if current != GRUnknown {
 			return GRError
 		} else {

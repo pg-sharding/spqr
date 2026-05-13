@@ -181,6 +181,15 @@ jobs:
       - name: Extended proto
         run: PROTO_TEST_TAG=xproto make xproto_regress
 
+  proto-regress-xproto-portal-suspect:
+    name: proto-extended-portal-suspend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+      - name: Extended proto with portal suspend
+        run: PROTO_TEST_TAG=xproto_suspend make xproto_regress
+
   proto-regress-copy:
     name: proto-copy
     runs-on: ubuntu-latest
@@ -218,7 +227,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
@@ -263,7 +272,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV

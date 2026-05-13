@@ -1,5 +1,6 @@
 NAME
-    DROP KEY RANGE - Removes a key range from the cluster. This deletes the key range metadata
+    DROP KEY RANGE - Removes a key range from the cluster. This deletes the key
+    range metadata
 
 SYNTAX
     DROP KEY RANGE <keyRangeID>

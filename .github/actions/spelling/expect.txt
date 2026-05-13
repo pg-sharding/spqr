@@ -46,7 +46,6 @@ canreq
 ccb
 ccfg
 ccmsg
-Cfgs
 cillum
 Cimpl
 CIn
@@ -176,6 +175,7 @@ fugiat
 gcflags
 getconn
 gettime
+gitmodules
 godog
 gofmt
 gofmtcheck
@@ -204,7 +204,7 @@ helpgen
 Highload
 hostnossl
 hostssl
-hotspots
+hotspot
 hst
 HTAP
 iana
@@ -299,6 +299,7 @@ lowlevel
 lsb
 lval
 maxuint
+maxrows
 mcol
 mdblocales
 mempg
@@ -364,6 +365,8 @@ Oids
 oiwejow
 OLAP
 omnis
+ONCONFLICT
+onehost
 opgejrqr
 optarg
 optval
@@ -395,6 +398,7 @@ PGQDB
 pgquery
 pgsharding
 PGSSLMODE
+pgflush
 pgsync
 PGUSER
 pgx
@@ -415,10 +419,12 @@ ppp
 pppp
 prepstatement
 privs
+promhttp
 procps
 proident
 protobuf
 protoc
+protovalidate
 psswd
 pstmt
 PYTHONUNBUFFERED
@@ -451,6 +457,7 @@ rclient
 rconn
 rdistr
 rebootstrap
+redmon
 regclass
 reloid
 relpersistence
@@ -542,6 +549,7 @@ spqrql
 SPQRR
 SPQRT
 SPQRU
+SPQRV
 SPQRX
 SPQRZ
 SQLF
@@ -589,6 +597,7 @@ timeb
 timestamptz
 tlsconfig
 tlt
+tmgr
 TMINUS
 tmpfs
 tmpnum
@@ -649,6 +658,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+walreceiver
 Warningf
 workloadlog
 workloadreplay

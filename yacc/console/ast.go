@@ -17,7 +17,9 @@ type GroupBy struct {
 	GroupByClause
 	Col []*lyx.ColumnRef
 }
+
 type Show struct {
+	Kind    int
 	Cmd     string
 	Columns []string
 	Where   lyx.Node
@@ -400,7 +402,8 @@ type RetryMoveTaskGroup struct {
 func (*RetryMoveTaskGroup) iStatement() {}
 
 type StopMoveTaskGroup struct {
-	ID string
+	ID        string
+	Immediate bool
 }
 
 func (*StopMoveTaskGroup) iStatement() {}
@@ -417,6 +420,15 @@ type InstanceControlPoint struct {
 }
 
 func (*InstanceControlPoint) iStatement() {}
+
+//revive:disable:var-naming
+const (
+	SHOW_KIND_UNSPEC = 0
+	SHOW_KIND_LOCAL  = 1
+	SHOW_KIND_GLOBAL = 2
+)
+
+//revive:enable:var-naming
 
 // The following constants represent SHOW statements.
 const (

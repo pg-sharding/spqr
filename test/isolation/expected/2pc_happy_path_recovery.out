@@ -1,0 +1,38 @@
+Parsed test spec with 1 sessions
+
+starting permutation: s1_report s1_ev2 s1_commit_strategy s1_set_conf s1_set_conf2 s1_begin s1_curr_set s1_s_m s1_commit s1_commit s1_show_pg_prep_xacts
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: set __spqr__engine_v2 to true;
+step s1_commit_strategy: set __spqr__commit_strategy to 2pc;
+s1: NOTICE: send query to shard(s) : sh4
+step s1_set_conf: select set_config('twopc_aux_tester.enabled', 'on', false) /* __spqr__execute_on: sh4 */;
+set_config
+----------
+on        
+(1 row)
+
+s1: NOTICE: send query to shard(s) : sh4
+step s1_set_conf2: select set_config('twopc_aux_tester.error_on_prepare', 'on', false) /* __spqr__execute_on: sh4 */;
+set_config
+----------
+on        
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_curr_set: select current_setting('twopc_aux_tester.error_on_prepare') /* __spqr__scatter_query: true */;
+current_setting
+---------------
+off            
+off            
+off            
+on             
+(4 rows)
+
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_s_m: SELECT 1+2 INTO z/* __spqr__scatter_query: true */;
+step s1_commit: COMMIT;
+ERROR:  unexpected response in transaction deploy *pgproto3.ErrorResponse
+step s1_commit: COMMIT;
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_show_pg_prep_xacts: select __spqr__ctid('pg_prepared_xacts');

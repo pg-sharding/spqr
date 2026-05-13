@@ -31,6 +31,7 @@ type ExecutorState struct {
 	eMsg       *pgproto3.ErrorResponse
 
 	replyEmptyQuery bool
+	portalSuspended bool
 
 	/* misc for Copy */
 	copyStmt lyx.Node
@@ -58,7 +59,7 @@ type QueryStateExecutor interface {
 	ExecCommit(query string) error
 	ExecRollback(query string) error
 
-	ReplyCommandComplete(commandTag string) error
+	SetCommandCompleteTag(commandTag string)
 
 	/* Copy execution */
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)

@@ -1,5 +1,6 @@
 NAME
-    SYNC REFERENCE TABLE - Synchronizes a reference table to a target shard by copying data from an
+    SYNC REFERENCE TABLE - Synchronizes a reference table to a target shard by
+    copying data from an
 
 SYNTAX
     SYNC REFERENCE TABLE <table_name> ON <shard_id>

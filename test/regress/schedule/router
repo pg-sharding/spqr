@@ -55,3 +55,5 @@ test: postprocessing
 test: virtual_func
 test: 2pc
 test: xproto
+test: copy_to
+test: auto_linearize

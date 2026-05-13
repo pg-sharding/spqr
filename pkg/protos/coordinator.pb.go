@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -174,13 +175,13 @@ var File_protos_coordinator_proto protoreflect.FileDescriptor
 
 const file_protos_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"\x18protos/coordinator.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13protos/router.proto\"\x87\x01\n" +
+	"\x18protos/coordinator.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13protos/router.proto\"\x87\x01\n" +
 	"\x14GetRouterStatusReply\x12*\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x12.spqr.RouterStatusR\x06status\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12)\n" +
-	"\x10metadata_version\x18\x03 \x01(\x04R\x0fmetadataVersion\"4\n" +
-	"\x18UpdateCoordinatorRequest\x12\x18\n" +
-	"\aaddress\x18\x01 \x01(\tR\aaddress\"2\n" +
+	"\x10metadata_version\x18\x03 \x01(\x04R\x0fmetadataVersion\"<\n" +
+	"\x18UpdateCoordinatorRequest\x12 \n" +
+	"\aaddress\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aaddress\"2\n" +
 	"\x16GetCoordinatorResponse\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress2\xf4\x02\n" +
 	"\x0fTopologyService\x12>\n" +

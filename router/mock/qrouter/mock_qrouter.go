@@ -17,6 +17,7 @@ import (
 	config "github.com/pg-sharding/spqr/pkg/config"
 	connmgr "github.com/pg-sharding/spqr/pkg/connmgr"
 	meta "github.com/pg-sharding/spqr/pkg/meta"
+	metrics "github.com/pg-sharding/spqr/pkg/metrics"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	plan "github.com/pg-sharding/spqr/pkg/plan"
 	session "github.com/pg-sharding/spqr/pkg/session"
@@ -135,6 +136,20 @@ func (mr *MockQueryRouterMockRecorder) Initialized() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialized", reflect.TypeOf((*MockQueryRouter)(nil).Initialized))
 }
 
+// MetricRegistry mocks base method.
+func (m *MockQueryRouter) MetricRegistry() *metrics.RouterMetricRegistry {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MetricRegistry")
+	ret0, _ := ret[0].(*metrics.RouterMetricRegistry)
+	return ret0
+}
+
+// MetricRegistry indicates an expected call of MetricRegistry.
+func (mr *MockQueryRouterMockRecorder) MetricRegistry() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MetricRegistry", reflect.TypeOf((*MockQueryRouter)(nil).MetricRegistry))
+}
+
 // Mgr mocks base method.
 func (m *MockQueryRouter) Mgr() meta.EntityMgr {
 	m.ctrl.T.Helper()
@@ -202,18 +217,4 @@ func (m *MockQueryRouter) SetReady(ready bool) {
 func (mr *MockQueryRouterMockRecorder) SetReady(ready any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockQueryRouter)(nil).SetReady), ready)
-}
-
-// WorldShardsRoutes mocks base method.
-func (m *MockQueryRouter) WorldShardsRoutes() []kr.ShardKey {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WorldShardsRoutes")
-	ret0, _ := ret[0].([]kr.ShardKey)
-	return ret0
-}
-
-// WorldShardsRoutes indicates an expected call of WorldShardsRoutes.
-func (mr *MockQueryRouterMockRecorder) WorldShardsRoutes() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WorldShardsRoutes", reflect.TypeOf((*MockQueryRouter)(nil).WorldShardsRoutes))
 }

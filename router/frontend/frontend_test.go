@@ -12,7 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
-	"github.com/pg-sharding/spqr/pkg/rps"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/frontend"
@@ -76,7 +76,6 @@ func TestFrontendSimple(t *testing.T) {
 		Usr: "user1",
 	}
 
-	rps.InitRPSStats()
 	_ = statistics.InitStatisticsStr(nil)
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
@@ -94,6 +93,8 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
+	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
@@ -139,9 +140,9 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, nil).Times(1)
 
-	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*topology.DataShard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, topology.TopMgrFromMap(map[string]*topology.DataShard{
 		"sh1": {},
-	}, time.Duration(0) /* never do healthcheck */)
+	}), time.Duration(0) /* never do healthcheck */)
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
 
@@ -191,8 +192,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
-
-	rps.InitRPSStats()
 
 	frrule := &config.FrontendRule{
 		DB:       "db1",
@@ -256,9 +255,12 @@ func TestFrontendXProto(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*topology.DataShard{
-		"sh1": {},
-	}, time.Duration(0) /* never do healthcheck */)
+	route := route.NewRoute(&config.BackendRule{}, frrule,
+
+		topology.TopMgrFromMap(
+			map[string]*topology.DataShard{
+				"sh1": {},
+			}), time.Duration(0) /* never do healthcheck */)
 
 	// route to any route
 	cl.EXPECT().Route().AnyTimes().Return(route)

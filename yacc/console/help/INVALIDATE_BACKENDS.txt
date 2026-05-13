@@ -1,5 +1,6 @@
 NAME
-    INVALIDATE BACKENDS - Marks all backend connections as stale, causing them to be re-established.
+    INVALIDATE BACKENDS - Marks all backend connections as stale, causing them
+    to be re-established.
 
 SYNTAX
     INVALIDATE BACKENDS

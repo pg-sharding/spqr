@@ -1,22 +1,30 @@
 NAME
-    ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more [relations](/sharding/sharded_tables) to an existing distribution using the ATTACH RELATION clause.
+    ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more
+    [relations](/sharding/sharded_tables) to an existing distribution using the
+    ATTACH RELATION clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName> [, <relationName> ...]
+    ALTER DISTRIBUTION <distributionID> ATTACH RELATION
+      <relationName> [, <relationName> ...]
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
-    where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
+    where keys is a comma-separated list of column names
+    (e.g., "col1, col2" for composite keys)
     where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 DESCRIPTION
-    Attaches one or more [relations](/sharding/sharded_tables) to an existing distribution using the ATTACH RELATION clause.
+    Attaches one or more [relations](/sharding/sharded_tables) to an existing
+    distribution using the ATTACH RELATION clause.
 
-    For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
+    For composite sharding keys, specify multiple column names separated by
+    commas in the DISTRIBUTION KEY clause.
 
 EXAMPLES
     Single column sharding key:
         ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
     Composite sharding key with two columns:
-        ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
+        ALTER DISTRIBUTION ds2 ATTACH RELATION users
+            DISTRIBUTION KEY tenant_id, user_id;
     Composite key with hash function:
-        ALTER DISTRIBUTION ds3 ATTACH RELATION events DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+        ALTER DISTRIBUTION ds3 ATTACH RELATION events
+            DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;

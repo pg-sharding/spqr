@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -352,21 +353,21 @@ var File_protos_router_proto protoreflect.FileDescriptor
 
 const file_protos_router_proto_rawDesc = "" +
 	"\n" +
-	"\x13protos/router.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"^\n" +
-	"\x06Router\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\aaddress\x18\x02 \x01(\tR\aaddress\x12*\n" +
+	"\x13protos/router.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\"n\n" +
+	"\x06Router\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12 \n" +
+	"\aaddress\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aaddress\x12*\n" +
 	"\x06status\x18\x03 \x01(\x0e2\x12.spqr.RouterStatusR\x06status\":\n" +
 	"\x10ListRoutersReply\x12&\n" +
-	"\arouters\x18\x01 \x03(\v2\f.spqr.RouterR\arouters\"8\n" +
-	"\x10AddRouterRequest\x12$\n" +
-	"\x06router\x18\x01 \x01(\v2\f.spqr.RouterR\x06router\" \n" +
+	"\arouters\x18\x01 \x03(\v2\f.spqr.RouterR\arouters\"@\n" +
+	"\x10AddRouterRequest\x12,\n" +
+	"\x06router\x18\x01 \x01(\v2\f.spqr.RouterB\x06\xbaH\x03\xc8\x01\x01R\x06router\" \n" +
 	"\x0eAddRouterReply\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"%\n" +
-	"\x13RemoveRouterRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\";\n" +
-	"\x13SyncMetadataRequest\x12$\n" +
-	"\x06router\x18\x01 \x01(\v2\f.spqr.RouterR\x06router*&\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"-\n" +
+	"\x13RemoveRouterRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"C\n" +
+	"\x13SyncMetadataRequest\x12,\n" +
+	"\x06router\x18\x01 \x01(\v2\f.spqr.RouterB\x06\xbaH\x03\xc8\x01\x01R\x06router*&\n" +
 	"\fRouterStatus\x12\n" +
 	"\n" +
 	"\x06CLOSED\x10\x00\x12\n" +

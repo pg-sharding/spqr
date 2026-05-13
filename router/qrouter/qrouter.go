@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -22,7 +23,6 @@ type QueryRouter interface {
 		sph session.SessionParamsHolder, rule *config.FrontendRule, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error)
 	PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error)
 
-	WorldShardsRoutes() []kr.ShardKey
 	DataShardsRoutes() []kr.ShardKey
 
 	Initialized() bool
@@ -36,21 +36,23 @@ type QueryRouter interface {
 	Mgr() meta.EntityMgr
 	CSM() connmgr.ConnectionMgr
 	SchemaCache() *cache.SchemaCache
+	MetricRegistry() *metrics.RouterMetricRegistry
 }
 
 func NewQrouter(qtype config.RouterMode,
-	shardMapping map[string]*topology.DataShard,
+	tmgr topology.TopologyMgr,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
+	metricRegistry *metrics.RouterMetricRegistry,
 ) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalMode:
-		return NewLocalQrouter(shardMapping)
+		return NewLocalQrouter(tmgr.Snap(), metricRegistry)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping, mgr, csm, qcfg, cache, idRangeCache)
+		return NewProxyRouter(tmgr, mgr, csm, qcfg, cache, idRangeCache, metricRegistry)
 	default:
 		return nil, fmt.Errorf("unknown qrouter type: %v", qtype)
 	}

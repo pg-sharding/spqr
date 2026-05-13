@@ -18,6 +18,7 @@ SHOW SHARDS;
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (3 rows)
 
+\set VERBOSITY verbose
 CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
     add shard    
 -----------------
@@ -33,22 +34,44 @@ SHOW SHARDS;
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (4 rows)
 
-ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD user 'test_user');
-                 alter shard                  
-----------------------------------------------
+ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD USER 'test_user', ADD USER 'another_user');
+                          alter shard                           
+----------------------------------------------------------------
  shard id -> sh1
- options  -> {sslmode=require,user=test_user}
+ options  -> {sslmode=require,user=another_user,user=test_user}
 (2 rows)
 
 SHOW SHARDS;
- shard |                                        options                                         
--------+----------------------------------------------------------------------------------------
- sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,sslmode=require,user=test_user}
+ shard |                                                 options                                                  
+-------+----------------------------------------------------------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,sslmode=require,user=another_user,user=test_user}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (4 rows)
 
+ALTER SHARD sh1 OPTIONS (ADD sslmode 'require');
+ERROR:  SPQRV: malformed options array
+HINT:  option "sslmode" with value "require" provided more than once
+ALTER SHARD sh1 OPTIONS (SET SSLMODE 'allow');
+         alter shard         
+-----------------------------
+ shard id -> sh1
+ options  -> {sslmode=allow}
+(2 rows)
+
+SHOW SHARDS;
+ shard |                                                options                                                 
+-------+--------------------------------------------------------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,sslmode=allow,user=another_user,user=test_user}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(4 rows)
+
+ALTER SHARD sh1 OPTIONS (SET HOST 'onehost:6432');
+ERROR:  SPQRV: malformed options array
+HINT:  option "host" has multiple values provided
 ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
                  alter shard                  
 ----------------------------------------------
@@ -57,9 +80,64 @@ ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
 (2 rows)
 
 SHOW SHARDS;
+ shard |                                 options                                 
+-------+-------------------------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,sslmode=allow,user=another_user,user=test_user}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(4 rows)
+
+ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'allow');
+         alter shard         
+-----------------------------
+ shard id -> sh1
+ options  -> {sslmode=allow}
+(2 rows)
+
+SHOW SHARDS;
+ shard |                          options                          
+-------+-----------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432,user=another_user,user=test_user}
+ sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
+ sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
+ sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
+(4 rows)
+
+ALTER SHARD unknown OPTIONS (ADD SSLMODE 'require');
+ERROR:  SPQRD: unknown shard unknown
+ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'require', ADD SSLMODE 'verify-full');
+ERROR:  SPQRV: malformed options array
+HINT:  option "sslmode" with value "require" not found
+ALTER SHARD sh1 OPTIONS (ADD SSLMODE 'verify-full', DROP SSLMODE 'verify-full');
+                      alter shard                      
+-------------------------------------------------------
+ shard id -> sh1
+ options  -> {sslmode=verify-full,sslmode=verify-full}
+(2 rows)
+
+ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');
+ERROR:  SPQRU: failed to parse query "ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');": syntax error
+ALTER SHARD sh1 OPTIONS (DROP HOST 'unknown:6432');
+ERROR:  SPQRV: malformed options array
+HINT:  option "host" with value "unknown:6432" not found
+ALTER SHARD sh1 OPTIONS (ADD HOST 'spqr_shard_1_replica:6432', ADD HOST 'spqr_shard_1_replica:6432');
+ERROR:  SPQRV: malformed options array
+HINT:  option "host" with value "spqr_shard_1_replica:6432" provided more than once
+ALTER SHARD sh1 OPTIONS (SET unknown 'unknown');
+ERROR:  SPQRV: malformed options array
+HINT:  option "unknown" not found
+ALTER SHARD sh1 OPTIONS (DROP user);
+     alter shard     
+---------------------
+ shard id -> sh1
+ options  -> {user=}
+(2 rows)
+
+SHOW SHARDS;
  shard |                         options                         
 -------+---------------------------------------------------------
- sh1   | {host=spqr_shard_1:6432,sslmode=require,user=test_user}
+ sh1   | {host=spqr_shard_1:6432}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}

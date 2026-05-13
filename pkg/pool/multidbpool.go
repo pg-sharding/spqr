@@ -15,13 +15,13 @@ import (
 type MultiDBPool struct {
 	dbs      sync.Map
 	be       *config.BackendRule
-	mapping  map[string]*topology.DataShard
+	mapping  topology.TopologyMgr
 	poolSize int
 
 	// TODO implement LRU cache
 }
 
-func NewMultiDBPool(mapping map[string]*topology.DataShard, be *config.BackendRule, poolSize int) *MultiDBPool {
+func NewMultiDBPool(mapping topology.TopologyMgr, be *config.BackendRule, poolSize int) *MultiDBPool {
 	return &MultiDBPool{
 		be:       be,
 		mapping:  mapping,
@@ -89,7 +89,7 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 	}
 
 	// get random host from random shard
-	shardName, randShard := getRandomShard(p.mapping)
+	shardName, randShard := getRandomShard(p.mapping.Snap())
 	hosts := randShard.HostsAZ()
 	host := hosts[rand.Int()%len(hosts)]
 

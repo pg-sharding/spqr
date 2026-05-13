@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -59,18 +60,25 @@ type RoutingMetadataContext struct {
 	Query string
 	Stmt  lyx.Node
 
-	AuxValues map[AuxValuesKey][]lyx.Node
+	AuxValues       map[AuxValuesKey][]lyx.Node
+	AuxValuesParent map[AuxValuesKey]AuxValuesKey
 	// CTE -> which distributed relations join on it.
-	UsedAuxCTE map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedAuxCTE            map[AuxValuesKey][]*rfqn.RelationFQN
+	UsedSelectQueryAdjust bool
 
 	/* Is query proven to be read-only? */
 	ro bool
 	/* NB: Not the same as !ro */
 	HasWriteTargets bool
+	/* Should we auto-linearize? */
+	HasHazardUpsert bool
+	AutoLinearize   bool
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
 	IsSPQRCTID    bool
+
+	LastResultFormatCodes []int16
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 
@@ -79,6 +87,16 @@ type RoutingMetadataContext struct {
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
 	rm.ro = ro
+}
+
+func (rm *RoutingMetadataContext) GetResultFormatCode(ind int) int16 {
+	if len(rm.LastResultFormatCodes) == 0 {
+		return xproto.FormatCodeText
+	}
+	if ind >= len(rm.LastResultFormatCodes) {
+		return rm.LastResultFormatCodes[0]
+	}
+	return rm.LastResultFormatCodes[ind]
 }
 
 func (rm *RoutingMetadataContext) IsRO() bool {
@@ -102,6 +120,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
 		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
 		SPH:                        sph,
 		CSM:                        csm,

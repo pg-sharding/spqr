@@ -2,8 +2,7 @@ package qrouter
 
 import (
 	"context"
-	"math/rand"
-	"sync"
+	"sort"
 
 	"sync/atomic"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -18,26 +18,26 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 type ProxyQrouter struct {
 	planner.QueryPlanner
 
-	mu sync.Mutex
-
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}
 
+	tmgr topology.TopologyMgr
+
 	// shards
-	DataShardCfgs  map[string]*config.Shard
-	WorldShardCfgs map[string]*config.Shard
 
 	cfg *config.QRouter
 
-	mgr          meta.EntityMgr
-	csm          connmgr.ConnectionMgr
-	schemaCache  *cache.SchemaCache
-	idRangeCache planner.IdentityRouterCache
+	mgr            meta.EntityMgr
+	csm            connmgr.ConnectionMgr
+	schemaCache    *cache.SchemaCache
+	idRangeCache   planner.IdentityRouterCache
+	metricRegistry *metrics.RouterMetricRegistry
 
 	initialized *atomic.Bool
 	ready       *atomic.Bool
@@ -113,84 +113,93 @@ func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
 
 // TODO : unit tests
 func (qr *ProxyQrouter) DataShardsRoutes() []kr.ShardKey {
-	rc, _ := qr.mgr.ListShards(context.TODO())
-	rv := make([]kr.ShardKey, 0, len(rc))
-	for _, el := range rc {
+
+	rv := make([]kr.ShardKey, 0)
+
+	for _, el := range qr.tmgr.Snap() {
 		rv = append(rv, kr.ShardKey{
 			Name: el.ID,
 		})
 	}
+
+	sort.Slice(rv, func(i, j int) bool {
+		return rv[i].Name < rv[j].Name
+	})
 	return rv
 }
 
-// TODO : unit tests
-func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	var ret []kr.ShardKey
-
-	for name := range qr.WorldShardCfgs {
-		ret = append(ret, kr.ShardKey{
-			Name: name,
-		})
-	}
-
-	// a sort of round robin
-
-	rand.Shuffle(len(ret), func(i, j int) {
-		ret[i], ret[j] = ret[j], ret[i]
-	})
-	return ret
+func (qr *ProxyQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
+	return qr.metricRegistry
 }
 
 var _ planner.QueryPlanner = &ProxyQrouter{}
 
-func NewProxyRouter(shardMapping map[string]*topology.DataShard,
+func NewProxyRouter(tmgr topology.TopologyMgr,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
+	metricRegistry *metrics.RouterMetricRegistry,
 ) (*ProxyQrouter, error) {
 
 	proxy := &ProxyQrouter{
-		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    &atomic.Bool{},
 		ready:          &atomic.Bool{},
 		cfg:            qcfg,
 		mgr:            mgr,
+		tmgr:           tmgr,
 		csm:            csm,
 		schemaCache:    cache,
 		idRangeCache:   idRangeCache,
+		metricRegistry: metricRegistry,
 	}
-
+	proxy.registerMetrics()
 	ctx := context.TODO()
-
 	/* XXX: since memqdb is persistent on disk, in some cases, we need to recreate the whole topology.
 	* TODO: get this information from the coordinator, not the config.
 	 */
-	sds, err := mgr.ListShards(ctx)
+
+	exists, err := mgr.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, ds := range sds {
-		err := mgr.DropShard(ctx, ds.ID)
-		if err != nil {
-			return nil, err
-		}
+	skipMp := map[string]struct{}{}
+	for _, k := range exists {
+		skipMp[k.ID] = struct{}{}
 	}
 
-	for _, datashard := range shardMapping {
-		switch datashard.Type {
-		case config.WorldShard:
-		case config.DataShard:
-			fallthrough // default is datashard
-		default:
-			if err := mgr.AddDataShard(ctx, datashard); err != nil {
+	/* XXX: fix this */
+	for k, v := range tmgr.Snap() {
+		if _, ok := skipMp[k]; !ok {
+			if err := mgr.AddDataShard(ctx, v); err != nil {
 				return nil, err
 			}
 		}
 	}
+
 	return proxy, nil
+}
+
+func (qr *ProxyQrouter) registerMetrics() {
+	totalConnectionsMetric := &metrics.DynamicGauge{
+		Name: metrics.ClientConnectionsTCPTotalName,
+		Help: "Current number of client tcp connections",
+		Getter: func() float64 {
+			return float64(qr.csm.TotalTCPCount())
+		},
+		Value: 0,
+	}
+
+	inboundQueriesTotalMetric := &metrics.DynamicGauge{
+		Name: metrics.InboundQueriesTotalName,
+		Help: "Number of incoming queries",
+		Getter: func() float64 {
+			return float64(statistics.GetTotalRequests())
+		},
+		Value: 0,
+	}
+
+	qr.metricRegistry.RegisterDynamicGauge(totalConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicGauge(inboundQueriesTotalMetric)
 }

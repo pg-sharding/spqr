@@ -161,7 +161,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLogging)
+	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, false, rcfg.PrettyLogging)
 
 	r.rmgr.Reload(rcfg.FrontendRules, rcfg.BackendRules)
 
@@ -185,9 +185,9 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	return nil
 }
 
-func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
+func NewRouter(tmgr topology.TopologyMgr, tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	return &RuleRouterImpl{
-		RoutePool: NewRouterPoolImpl(topology.ShardMapping),
+		RoutePool: NewRouterPoolImpl(tmgr),
 		rcfg:      rcfg,
 		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,

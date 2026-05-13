@@ -4,6 +4,8 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
+
 service OperationService {
   rpc GetOperation (GetOperationRequest) returns (GetOperationReply) {}
 }
@@ -20,7 +22,7 @@ message Operation {
 }
 
 message GetOperationRequest {
-    string operation_id = 1;
+    string operation_id = 1 [(buf.validate.field).required = true];
 }
 
 message GetOperationReply {

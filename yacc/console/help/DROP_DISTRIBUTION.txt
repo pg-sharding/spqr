@@ -7,10 +7,12 @@ SYNTAX
 DESCRIPTION
     Removes a distribution from cluster metadata.
 
-    Use CASCADE to remove dependent metadata objects (key ranges, attached relations) when required.
+    Use CASCADE to remove dependent metadata objects (key ranges, attached
+    relations) when required.
 
 WARNINGS
-    - Dropping a distribution removes routing metadata and may impact attached relations.
+    - Dropping a distribution removes routing metadata and may impact attached
+      relations.
 
 PARAMETERS
     <distributionID> - Identifier of the distribution to drop

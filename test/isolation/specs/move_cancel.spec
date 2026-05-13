@@ -62,7 +62,7 @@ step s3_clean             { select __spqr__console_execute('drop distribution al
 step s3_clean_lock        { /* TODO: fix */ select __spqr__console_execute('UNLOCK KEY RANGE ALL')}
 
 session s4
-step s4_cancel             { select __spqr__console_execute('STOP TASK GROUP zid') /*__spqr__preferred_engine: v2 */;}
+step s4_cancel             { select __spqr__console_execute('STOP TASK GROUP zid immediate') /*__spqr__preferred_engine: v2 */;}
 step s4_show_tg            { select __spqr__console_execute('SHOW task_groups(task_group_id, source_key_range_id, state, message);') /*__spqr__preferred_engine: v2 */; }
 step s4_await_planning     { SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; }
 

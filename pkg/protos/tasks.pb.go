@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -878,6 +879,7 @@ func (x *WriteMoveTaskGroupRequest) GetTaskGroup() *MoveTaskGroup {
 type MoveTaskGroupSelector struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ID            string                 `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Immediate     bool                   `protobuf:"varint,2,opt,name=Immediate,proto3" json:"Immediate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -917,6 +919,13 @@ func (x *MoveTaskGroupSelector) GetID() string {
 		return x.ID
 	}
 	return ""
+}
+
+func (x *MoveTaskGroupSelector) GetImmediate() bool {
+	if x != nil {
+		return x.Immediate
+	}
+	return false
 }
 
 type DropMoveTaskGroupRequest struct {
@@ -1587,7 +1596,7 @@ var File_protos_tasks_proto protoreflect.FileDescriptor
 
 const file_protos_tasks_proto_rawDesc = "" +
 	"\n" +
-	"\x12protos/tasks.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"'\n" +
+	"\x12protos/tasks.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\"'\n" +
 	"\rKeyRangeBound\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\fR\x06values\"\xa4\x01\n" +
 	"\bMoveTask\x12\x0e\n" +
@@ -1595,22 +1604,22 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x0ekeyRangeIdTemp\x18\x01 \x01(\tR\x0ekeyRangeIdTemp\x12\x14\n" +
 	"\x05bound\x18\x02 \x03(\fR\x05bound\x12(\n" +
 	"\x06status\x18\x03 \x01(\x0e2\x10.spqr.TaskStatusR\x06status\x12 \n" +
-	"\vTaskGroupID\x18\x05 \x01(\tR\vTaskGroupID\"\"\n" +
-	"\x10MoveTaskSelector\x12\x0e\n" +
-	"\x02ID\x18\x01 \x01(\tR\x02ID\"3\n" +
+	"\vTaskGroupID\x18\x05 \x01(\tR\vTaskGroupID\"*\n" +
+	"\x10MoveTaskSelector\x12\x16\n" +
+	"\x02ID\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02ID\"3\n" +
 	"\rMoveTaskReply\x12\"\n" +
 	"\x04task\x18\x01 \x01(\v2\x0e.spqr.MoveTaskR\x04task\"6\n" +
 	"\x0eMoveTasksReply\x12$\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x0e.spqr.MoveTaskR\x05tasks\"X\n" +
 	"\x13MoveTaskGroupIssuer\x121\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1d.spqr.MoveTaskGroupIssuerTypeR\x04type\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"\x97\x03\n" +
-	"\rMoveTaskGroup\x12\x0e\n" +
-	"\x02ID\x18\r \x01(\tR\x02ID\x12#\n" +
-	"\x04type\x18\x02 \x01(\x0e2\x0f.spqr.SplitTypeR\x04type\x12\x1c\n" +
-	"\tshardIdTo\x18\x04 \x01(\tR\tshardIdTo\x12&\n" +
-	"\x0ekeyRangeIdFrom\x18\x05 \x01(\tR\x0ekeyRangeIdFrom\x12\"\n" +
-	"\fkeyRangeIdTo\x18\x06 \x01(\tR\fkeyRangeIdTo\x120\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\xb7\x03\n" +
+	"\rMoveTaskGroup\x12\x16\n" +
+	"\x02ID\x18\r \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02ID\x12#\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x0f.spqr.SplitTypeR\x04type\x12$\n" +
+	"\tshardIdTo\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tshardIdTo\x12.\n" +
+	"\x0ekeyRangeIdFrom\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0ekeyRangeIdFrom\x12*\n" +
+	"\fkeyRangeIdTo\x18\x06 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fkeyRangeIdTo\x120\n" +
 	"\vcurrentTask\x18\a \x01(\v2\x0e.spqr.MoveTaskR\vcurrentTask\x12\x1a\n" +
 	"\bboundRel\x18\b \x01(\tR\bboundRel\x12\x14\n" +
 	"\x05coeff\x18\t \x01(\x01R\x05coeff\x12\x1c\n" +
@@ -1624,13 +1633,14 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x17ListMoveTaskGroupsReply\x123\n" +
 	"\n" +
 	"taskGroups\x18\x01 \x03(\v2\x13.spqr.MoveTaskGroupR\n" +
-	"taskGroups\"N\n" +
-	"\x19WriteMoveTaskGroupRequest\x121\n" +
-	"\ttaskGroup\x18\x01 \x01(\v2\x13.spqr.MoveTaskGroupR\ttaskGroup\"'\n" +
-	"\x15MoveTaskGroupSelector\x12\x0e\n" +
-	"\x02ID\x18\x01 \x01(\tR\x02ID\"D\n" +
-	"\x18DropMoveTaskGroupRequest\x12\x0e\n" +
-	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x18\n" +
+	"taskGroups\"V\n" +
+	"\x19WriteMoveTaskGroupRequest\x129\n" +
+	"\ttaskGroup\x18\x01 \x01(\v2\x13.spqr.MoveTaskGroupB\x06\xbaH\x03\xc8\x01\x01R\ttaskGroup\"M\n" +
+	"\x15MoveTaskGroupSelector\x12\x16\n" +
+	"\x02ID\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02ID\x12\x1c\n" +
+	"\tImmediate\x18\x02 \x01(\bR\tImmediate\"L\n" +
+	"\x18DropMoveTaskGroupRequest\x12\x16\n" +
+	"\x02ID\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02ID\x12\x18\n" +
 	"\acascade\x18\x02 \x01(\bR\acascade\"E\n" +
 	"\x13MoveTaskGroupStatus\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x18\n" +
@@ -1642,19 +1652,19 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v2\x19.spqr.MoveTaskGroupStatusR\x05value:\x028\x01\"]\n" +
 	"\x18MoveTaskGroupBoundsCache\x12+\n" +
 	"\x06bounds\x18\x01 \x03(\v2\x13.spqr.KeyRangeBoundR\x06bounds\x12\x14\n" +
-	"\x05index\x18\x02 \x01(\x03R\x05index\"\x90\x02\n" +
+	"\x05index\x18\x02 \x01(\x03R\x05index\"\xa0\x02\n" +
 	"\fBalancerTask\x12\"\n" +
-	"\x04type\x18\x01 \x01(\x0e2\x0e.spqr.JoinTypeR\x04type\x12&\n" +
-	"\x0ekeyRangeIdFrom\x18\x02 \x01(\tR\x0ekeyRangeIdFrom\x12\"\n" +
+	"\x04type\x18\x01 \x01(\x0e2\x0e.spqr.JoinTypeR\x04type\x12.\n" +
+	"\x0ekeyRangeIdFrom\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0ekeyRangeIdFrom\x12\"\n" +
 	"\fkeyRangeIdTo\x18\x03 \x01(\tR\fkeyRangeIdTo\x12&\n" +
-	"\x0ekeyRangeIdTemp\x18\x04 \x01(\tR\x0ekeyRangeIdTemp\x12\x1c\n" +
-	"\tshardIdTo\x18\x05 \x01(\tR\tshardIdTo\x12\x1a\n" +
+	"\x0ekeyRangeIdTemp\x18\x04 \x01(\tR\x0ekeyRangeIdTemp\x12$\n" +
+	"\tshardIdTo\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tshardIdTo\x12\x1a\n" +
 	"\bkeyCount\x18\x06 \x01(\x03R\bkeyCount\x12.\n" +
 	"\x05state\x18\a \x01(\x0e2\x18.spqr.BalancerTaskStatusR\x05state\">\n" +
 	"\x14GetBalancerTaskReply\x12&\n" +
-	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskR\x04task\"B\n" +
-	"\x18WriteBalancerTaskRequest\x12&\n" +
-	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskR\x04task\"\x82\x02\n" +
+	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskR\x04task\"J\n" +
+	"\x18WriteBalancerTaskRequest\x12.\n" +
+	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskB\x06\xbaH\x03\xc8\x01\x01R\x04task\"\x82\x02\n" +
 	"\x10RedistributeTask\x12\x0e\n" +
 	"\x02id\x18\x06 \x01(\tR\x02id\x12\x1e\n" +
 	"\n" +
@@ -1664,16 +1674,16 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\tbatchSize\x18\x03 \x01(\x03R\tbatchSize\x121\n" +
 	"\x05state\x18\x04 \x01(\x0e2\x1b.spqr.RedistributeTaskStateR\x05state\x12 \n" +
 	"\vtaskGroupId\x18\x05 \x01(\tR\vtaskGroupId\x121\n" +
-	"\ttaskGroup\x18\a \x01(\v2\x13.spqr.MoveTaskGroupR\ttaskGroup\"*\n" +
-	"\x18RedistributeTaskSelector\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"J\n" +
+	"\ttaskGroup\x18\a \x01(\v2\x13.spqr.MoveTaskGroupR\ttaskGroup\"2\n" +
+	"\x18RedistributeTaskSelector\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"J\n" +
 	"\x1aListRedistributeTasksReply\x12,\n" +
-	"\x05tasks\x18\x01 \x03(\v2\x16.spqr.RedistributeTaskR\x05tasks\"G\n" +
-	"\x1bDropRedistributeTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\acascade\x18\x02 \x01(\bR\acascade\"o\n" +
-	"\x19RetryMoveTaskGroupRequest\x12:\n" +
-	"\bselector\x18\x01 \x01(\v2\x1e.spqr.RedistributeTaskSelectorR\bselector\x12\x16\n" +
+	"\x05tasks\x18\x01 \x03(\v2\x16.spqr.RedistributeTaskR\x05tasks\"O\n" +
+	"\x1bDropRedistributeTaskRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12\x18\n" +
+	"\acascade\x18\x02 \x01(\bR\acascade\"w\n" +
+	"\x19RetryMoveTaskGroupRequest\x12B\n" +
+	"\bselector\x18\x01 \x01(\v2\x1e.spqr.RedistributeTaskSelectorB\x06\xbaH\x03\xc8\x01\x01R\bselector\x12\x16\n" +
 	"\x06noWait\x18\x02 \x01(\bR\x06noWait*/\n" +
 	"\n" +
 	"TaskStatus\x12\v\n" +

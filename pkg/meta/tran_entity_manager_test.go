@@ -57,7 +57,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		statements, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -98,7 +98,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		statements, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -144,7 +144,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
@@ -226,7 +226,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
@@ -460,7 +460,7 @@ func TestTranState(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -476,7 +476,7 @@ func TestTranState(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		tranMngr := meta.NewTranEntityManager(mngr)
 		err = tranMngr.BeginTran(ctx)
 		is.NoError(err)
@@ -496,7 +496,7 @@ func TestTranListSequences(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*topology.DataShard{}, false, nil, qdb.DefaultMaxTxnSize)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		statements, err := memqdb.CreateSequence(ctx, "test1", 1)
 		is.NoError(err)
 		is.NoError(memqdb.ExecNoTransaction(ctx, statements))

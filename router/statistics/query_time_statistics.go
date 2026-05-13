@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/caio/go-tdigest"
@@ -23,6 +24,8 @@ type StartTimes struct {
 }
 
 type Statistics struct {
+	totalRequests uint64 // lifetime request count (atomic, monotonically increasing)
+
 	RouterTime        map[uint]*tdigest.TDigest
 	ShardTime         map[uint]*tdigest.TDigest
 	RouterTimeTotal   *tdigest.TDigest
@@ -31,10 +34,12 @@ type Statistics struct {
 	Quantiles         []float64
 	QuantilesStr      []string
 	NeedToCollectData bool
-	lock              sync.RWMutex
+
+	lock sync.RWMutex
 }
 
 var QueryStatistics = Statistics{
+	totalRequests:   0,
 	RouterTime:      make(map[uint]*tdigest.TDigest),
 	ShardTime:       make(map[uint]*tdigest.TDigest),
 	RouterTimeTotal: nil,
@@ -104,6 +109,14 @@ func GetTotalTimeQuantile(statType StatisticsType, q float64) float64 {
 	}
 }
 
+func IncTotalRequest() {
+	atomic.AddUint64(&QueryStatistics.totalRequests, 1)
+}
+
+func GetTotalRequests() uint64 {
+	return atomic.LoadUint64(&QueryStatistics.totalRequests)
+}
+
 func RecordStartTime(statType StatisticsType, t time.Time, clientH StatHolder) {
 	if !QueryStatistics.NeedToCollectData {
 		return
@@ -122,7 +135,8 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 
 	clientST := clientH.GetTimeData()
 	if clientST == nil {
-		panic("finish of unstarted transaction")
+		spqrlog.Zero.Error().Msg("finish of unstarted transaction")
+		return
 	}
 
 	if !clientST.RouterStart.IsZero() {

@@ -22,7 +22,7 @@ type TwoPCWatchDog struct {
 	p  pool.MultiShardTSAPool
 }
 
-func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
+func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPCWatchDog, error) {
 	if be == nil {
 		return nil, fmt.Errorf("invalid watchdog config: nil backend rule")
 	}
@@ -32,7 +32,7 @@ func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 
 	/* XXX: pass mapping as param here? */
 	wd.p =
-		pool.NewDBPoolWithDisabledFeatures(topology.ShardMapping)
+		pool.NewDBPoolWithDisabledFeatures(tmgr)
 
 	wd.p.SetRule(wd.be)
 

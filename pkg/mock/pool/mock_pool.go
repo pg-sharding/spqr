@@ -468,10 +468,10 @@ func (mr *MockMultiShardTSAPoolMockRecorder) SetRule(rule any) *gomock.Call {
 }
 
 // ShardMapping mocks base method.
-func (m *MockMultiShardTSAPool) ShardMapping() map[string]*topology.DataShard {
+func (m *MockMultiShardTSAPool) ShardMapping() topology.TopologyMgr {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShardMapping")
-	ret0, _ := ret[0].(map[string]*topology.DataShard)
+	ret0, _ := ret[0].(topology.TopologyMgr)
 	return ret0
 }
 

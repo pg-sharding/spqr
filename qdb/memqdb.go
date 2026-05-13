@@ -42,7 +42,7 @@ type MemQDBState struct {
 	Coordinator                 string                              `json:"coordinator"`
 	MoveTaskGroups              map[string]*MoveTaskGroup           `json:"taskGroup"`
 	TaskGroupIDToStatus         map[string]*TaskGroupStatus         `json:"task_group_statuses"`
-	StopMoveTaskGroup           map[string]bool                     `json:"stop_move_task_group"`
+	StopMoveTaskGroup           map[string]string                   `json:"stop_move_task_group"`
 	MoveTasks                   map[string]*MoveTask                `json:"move_tasks"`
 	TotalKeys                   map[string]int64                    `json:"total_keys"`
 	RedistributeTasks           map[string]*RedistributeTask        `json:"redistribute_tasks"`
@@ -95,7 +95,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 			RedistributeTasks:           map[string]*RedistributeTask{},
 			RedistributeTaskTaskGroupId: map[string]string{},
 			TaskGroupIDToStatus:         map[string]*TaskGroupStatus{},
-			StopMoveTaskGroup:           map[string]bool{},
+			StopMoveTaskGroup:           map[string]string{},
 			TotalKeys:                   map[string]int64{},
 			MoveTasks:                   map[string]*MoveTask{},
 			TwoPhaseTx:                  map[string]*TwoPCInfo{},
@@ -791,14 +791,9 @@ func (q *MemQDB) AlterShard(_ context.Context, newShard *Shard) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	shard, ok := q.State.Shards[newShard.ID]
-	if !ok {
-		return fmt.Errorf("shard with id %s not found", shard.ID)
-	}
+	q.State.Shards[newShard.ID] = newShard
 
-	shard = newShard
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, shard.ID, newShard))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, newShard.ID, newShard))
 }
 
 // TODO : unit tests
@@ -1306,11 +1301,10 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 	}
 
 	q.State.MoveTaskGroups[id] = group
-	q.State.StopMoveTaskGroup[id] = false
 	if group.Issuer != nil && group.Issuer.Type == IssuerRedistributeTask {
 		q.State.RedistributeTaskTaskGroupId[group.Issuer.Id] = id
 	}
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.MoveTaskGroups, id, group), NewUpdateCommand(q.State.StopMoveTaskGroup, id, false))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.MoveTaskGroups, id, group))
 }
 
 // TODO: unit tests
@@ -1354,19 +1348,24 @@ func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, id string, tota
 }
 
 // TODO: unit tests
-func (q *MemQDB) AddMoveTaskGroupStopFlag(_ context.Context, id string) error {
+func (q *MemQDB) AddMoveTaskGroupStopFlag(_ context.Context, id string, immediate bool) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: put task group stop flag")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.State.StopMoveTaskGroup[id] = true
+	kind := StopTaskGroup
+	if immediate {
+		kind = StopTaskGroupImmediate
+	}
+
+	q.State.StopMoveTaskGroup[id] = kind
 	return nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) CheckMoveTaskGroupStopFlag(_ context.Context, id string) (bool, error) {
+func (q *MemQDB) CheckMoveTaskGroupStopFlag(_ context.Context, id string) (bool, bool, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: put task group stop flag")
@@ -1375,10 +1374,10 @@ func (q *MemQDB) CheckMoveTaskGroupStopFlag(_ context.Context, id string) (bool,
 
 	val, ok := q.State.StopMoveTaskGroup[id]
 	if !ok {
-		return false, nil
+		return false, false, nil
 	}
 
-	return val, nil
+	return true, val == StopTaskGroupImmediate, nil
 }
 
 func (q *MemQDB) GetMoveTaskByGroup(_ context.Context, taskGroupID string) (*MoveTask, error) {

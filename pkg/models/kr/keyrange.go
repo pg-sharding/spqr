@@ -36,7 +36,6 @@ type KeyRange struct {
 /*
 * Old style key ranges comparison
  */
-// TODO : unit tests
 func CmpRangesLessStringsDeprecated(bound string, key string) bool {
 	if len(bound) == len(key) {
 		return bound < key

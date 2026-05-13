@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -1274,7 +1275,7 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		for id := range tgs {
-			if err := mgr.StopMoveTaskGroup(ctx, id); err != nil {
+			if err := mgr.StopMoveTaskGroup(ctx, id, stmt.Immediate); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(id)
@@ -1470,9 +1471,18 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ShardsStr:
-		shards, err := mngr.ListShards(ctx)
-		if err != nil {
-			return nil, err
+
+		var shards []*topology.DataShard
+
+		if stmt.Kind == spqrparser.SHOW_KIND_LOCAL {
+			for _, k := range topology.TopMgr.Snap() {
+				shards = append(shards, k)
+			}
+		} else {
+			shards, err = mngr.ListShards(ctx)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		tts = &tupleslot.TupleTableSlot{
@@ -2340,6 +2350,12 @@ func processAlterShard(ctx context.Context,
 
 func optionsToTuple(opts []topology.GenericOption) string {
 	t := []string{}
+	sort.Slice(opts, func(i, j int) bool {
+		if opts[i].Name != opts[j].Name {
+			return opts[i].Name < opts[j].Name
+		}
+		return opts[i].Arg < opts[j].Arg
+	})
 	for _, v := range opts {
 		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
 	}

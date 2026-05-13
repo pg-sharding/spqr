@@ -7,6 +7,7 @@
 package proto
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -555,9 +556,9 @@ var File_protos_shard_proto protoreflect.FileDescriptor
 
 const file_protos_shard_proto_rawDesc = "" +
 	"\n" +
-	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"F\n" +
-	"\x05Shard\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
+	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\"N\n" +
+	"\x05Shard\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12-\n" +
 	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"\x93\x01\n" +
 	"\rGenericOption\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
@@ -572,20 +573,20 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"/\n" +
 	"\n" +
 	"ShardReply\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\x1e\n" +
-	"\fShardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"6\n" +
+	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"&\n" +
+	"\fShardRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"6\n" +
 	"\x0fListShardsReply\x12#\n" +
-	"\x06shards\x18\x01 \x03(\v2\v.spqr.ShardR\x06shards\"4\n" +
-	"\x0fAddShardRequest\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"R\n" +
-	"\x11AlterShardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
-	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"9\n" +
-	"\x14AddWorldShardRequest\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\"\n" +
-	"\x10DropShardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id2\x89\x03\n" +
+	"\x06shards\x18\x01 \x03(\v2\v.spqr.ShardR\x06shards\"<\n" +
+	"\x0fAddShardRequest\x12)\n" +
+	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardB\x06\xbaH\x03\xc8\x01\x01R\x05shard\"Z\n" +
+	"\x11AlterShardRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12-\n" +
+	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"A\n" +
+	"\x14AddWorldShardRequest\x12)\n" +
+	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardB\x06\xbaH\x03\xc8\x01\x01R\x05shard\"*\n" +
+	"\x10DropShardRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id2\x89\x03\n" +
 	"\fShardService\x12=\n" +
 	"\n" +
 	"ListShards\x12\x16.google.protobuf.Empty\x1a\x15.spqr.ListShardsReply\"\x00\x12?\n" +

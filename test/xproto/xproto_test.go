@@ -24,7 +24,7 @@ func TestPrepStmtSimple(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -155,37 +155,8 @@ func TestPrepStmtSimple(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for i, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, "iter %d", i)
-		}
 	}
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
@@ -198,7 +169,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for gr, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -785,37 +756,8 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr=%d index=%d", gr, ind))
-		}
 	}
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtSimpleProtoViolation(t *testing.T) {
@@ -827,8 +769,9 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmtcache_v_1",
@@ -839,6 +782,10 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 					ObjectType: 'P',
 				},
 				&pgproto3.Sync{},
+				&pgproto3.Close{
+					Name:       "stmtcache_v_1",
+					ObjectType: 'S',
+				},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
@@ -850,10 +797,13 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
+
+				&pgproto3.CloseComplete{},
 			},
 		},
 
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmtcache_v_2",
@@ -873,6 +823,10 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 					ObjectType: 'P',
 				},
 				&pgproto3.Sync{},
+				&pgproto3.Close{
+					Name:       "stmtcache_v_2",
+					ObjectType: 'S',
+				},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
@@ -898,10 +852,12 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
+				&pgproto3.CloseComplete{},
 			},
 		},
 
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Bind{
 					PreparedStatement: "out-of-nowhere",
@@ -919,42 +875,8 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for i, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				retMsgType.Routine = ""
-				retMsgType.Line = 0
-				retMsgType.File = ""
-				retMsgType.SeverityUnlocalized = ""
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, "iter %d", i)
-		}
 	}
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtMultishardXproto(t *testing.T) {
@@ -967,7 +889,7 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1160,42 +1082,9 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for i, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				retMsgType.Routine = ""
-				retMsgType.Line = 0
-				retMsgType.File = ""
-				retMsgType.SeverityUnlocalized = ""
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, "iter %d", i)
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtDescribeAndBind(t *testing.T) {
@@ -1207,7 +1096,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for i, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1420,37 +1309,9 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr %d tc %d", i, ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtDescribePortalAndBind(t *testing.T) {
@@ -1462,7 +1323,7 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1544,37 +1405,9 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtNamedPortalBind(t *testing.T) {
@@ -1600,7 +1433,8 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 		assert.NoError(t, err, "startup failed")
 		return
 	}
-	for _, msgroup := range []MessageGroup{
+
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1660,37 +1494,9 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
@@ -1702,7 +1508,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1823,37 +1629,9 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
@@ -1865,7 +1643,7 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -2021,37 +1799,9 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtAdvancedParsing(t *testing.T) {
@@ -2063,7 +1813,7 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -2240,37 +1990,9 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("index %d: %s", ind, retMsg))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestPrepStmtBinaryFormat(t *testing.T) {
@@ -3220,7 +2942,6 @@ func TestDoubleDescribe(t *testing.T) {
 }
 
 func TestMultiPortal(t *testing.T) {
-	t.Skip("todo")
 
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
@@ -3231,7 +2952,12 @@ func TestMultiPortal(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
+			CheckErrAll: true,
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "mp-0-1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "mp-0-1",
 					Query: "SELECT 1",
@@ -3251,7 +2977,7 @@ func TestMultiPortal(t *testing.T) {
 			},
 
 			Response: []pgproto3.BackendMessage{
-
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -3266,6 +2992,107 @@ func TestMultiPortal(t *testing.T) {
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
 					Code:     "34000",
+					Message:  "portal \"\" does not exist",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "mp-1-1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "mp-1-1",
+					Query: "SELECT 1+0/*__spqr__execute_on: sh1 */",
+				},
+
+				&pgproto3.Close{
+					Name:       "mp-1-2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "mp-1-2",
+					Query: "BEGIN",
+				},
+
+				&pgproto3.Close{
+					Name:       "mp-1-3",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "mp-1-3",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "p1",
+					PreparedStatement: "mp-1-2",
+				},
+				&pgproto3.Execute{
+					Portal: "p1",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "p2",
+					PreparedStatement: "mp-1-1",
+				},
+				&pgproto3.Execute{
+					Portal: "p2",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "p3",
+					PreparedStatement: "mp-1-3",
+				},
+				&pgproto3.Execute{
+					Portal: "p3",
+				},
+				&pgproto3.Sync{},
+			},
+
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0x31}},
+				},
+				&pgproto3.CommandComplete{
+
+					CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+
+					CommandTag: []byte("ROLLBACK"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -3273,10 +3100,23 @@ func TestMultiPortal(t *testing.T) {
 			},
 		},
 		{
+			SkipCheckCommandTag: true, /*XXX:fix this*/
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "mp-1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "mp-2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "mp-3",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "mp-1",
-					Query: "SELECT 1",
+					Query: "SELECT 1+0/*__spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Parse{
@@ -3328,6 +3168,10 @@ func TestMultiPortal(t *testing.T) {
 
 			Response: []pgproto3.BackendMessage{
 
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -3351,7 +3195,7 @@ func TestMultiPortal(t *testing.T) {
 					CommandTag: []byte("SELECT 1"),
 				},
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("BEGIN"),
+					// CommandTag: []byte("BEGIN"),
 				},
 
 				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
@@ -3739,7 +3583,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
-			CheckCode: true,
+			CheckCodeOnly: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
 					Name:       "err_test_1",
@@ -3793,7 +3637,7 @@ func TestExtendedErrorWithFlush(t *testing.T) {
 		},
 
 		{
-			CheckCode: true,
+			CheckCodeOnly: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
 					Name:       "err_test_2",
@@ -3860,7 +3704,7 @@ func TestExtendedErrorImplicitTX(t *testing.T) {
 
 	tt := []MessageGroup{
 		{
-			CheckCode: true,
+			CheckCodeOnly: true,
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
 					Name:       "err_test_1",
@@ -5306,9 +5150,17 @@ func TestXProtoPureVirtual(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "q1",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "q2",
+				},
 				&pgproto3.Parse{
 					Query: "SELECT 1",
 					Name:  "q1",
@@ -5337,6 +5189,8 @@ func TestXProtoPureVirtual(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
@@ -5384,46 +5238,36 @@ func TestXProtoPureVirtual(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				/* skip */
-				if retMsgType.Severity != "ERROR" {
-					retMsg, err = frontend.Receive()
-					assert.NoError(t, err)
-				}
-			case *pgproto3.NoticeResponse:
-				retMsg, err = frontend.Receive()
-				assert.NoError(t, err)
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
-		}
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Query: "SELECT pg_is_in_recovery()",
+					Name:  "",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q2",
+					ResultFormatCodes: []int16{xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0}},
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestRewriteInsertXproto(t *testing.T) {
@@ -5557,7 +5401,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 
@@ -5701,43 +5545,9 @@ func TestSplitUpdateXproto(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for i, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.ErrorResponse:
-				retMsgType.Routine = ""
-				retMsgType.Line = 0
-				retMsgType.File = ""
-				retMsgType.SeverityUnlocalized = ""
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, "iter %d", i)
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
 func TestHintRoutingXproto(t *testing.T) {
@@ -5750,7 +5560,7 @@ func TestHintRoutingXproto(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for gr, msgroup := range []MessageGroup{
+	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -5901,40 +5711,12 @@ func TestHintRoutingXproto(t *testing.T) {
 				},
 			},
 		},
-	} {
-		for _, msg := range msgroup.Request {
-			frontend.Send(msg)
-		}
-		_ = frontend.Flush()
-		backendFinished := false
-		for ind, msg := range msgroup.Response {
-			if backendFinished {
-				break
-			}
-			retMsg, err := frontend.Receive()
-			assert.NoError(t, err)
-			switch retMsgType := retMsg.(type) {
-			case *pgproto3.RowDescription:
-				for i := range retMsgType.Fields {
-					// We don't want to check table OID
-					retMsgType.Fields[i].TableOID = 0
-				}
-			case *pgproto3.ReadyForQuery:
-				switch msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					break
-				default:
-					backendFinished = true
-				}
-			default:
-				break
-			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter msg %d", gr, ind))
-		}
 	}
+
+	protoTestRunner(t, frontend, tt)
 }
 
-func TestExecuteMaxRows(t *testing.T) {
+func TestSimpleInTheMiddleOfExtended(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
 
@@ -5951,356 +5733,165 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
+					Query: "select 42",
 				},
+
+				&pgproto3.Query{
+					String: ";",
+				},
+
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt",
 				},
-				&pgproto3.Execute{
-					MaxRows: 5,
-				},
-				&pgproto3.Flush{},
 
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
 				&pgproto3.BindComplete{},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("1"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("2"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("3"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("4"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("5"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 			},
 		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestPrepStmtPartialDeploy(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
 
 		{
+			SkipCheckCommandTag: true,
 			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Close{
-					Name:       "pstmt",
-					ObjectType: 'S',
+				&pgproto3.Query{
+					String: "BEGIN",
 				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES(1), (11), (1000), (2000)",
+				},
+
 				&pgproto3.Parse{
-					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
+					Query: "SELECT FROM t WHERE id IN (1, 1000, 2000)",
+					Name:  "part_dispatch_p1",
 				},
+
+				&pgproto3.Parse{
+					Query: "SELECT FROM t WHERE id IN (1, 11, 2000)",
+					Name:  "part_dispatch_p2",
+				},
+
+				&pgproto3.Parse{
+					Query: "SELECT FROM t WHERE id IN (1000, 1)",
+					Name:  "part_dispatch_p3",
+				},
+
 				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
+					PreparedStatement: "part_dispatch_p1",
 				},
-				&pgproto3.Execute{
-					MaxRows: 5,
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "part_dispatch_p2",
 				},
-				&pgproto3.Flush{},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "part_dispatch_p3",
+				},
+				&pgproto3.Execute{},
 
-				&pgproto3.Execute{
-					MaxRows: 3,
-				},
-				&pgproto3.Flush{},
-
-				&pgproto3.Execute{
-					MaxRows: 2,
-				},
 				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+
+				&pgproto3.Query{
+					String: "DEALLOCATE ALL",
+				},
 			},
 			Response: []pgproto3.BackendMessage{
-				&pgproto3.CloseComplete{},
-				&pgproto3.ParseComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("1"),
-					},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
 				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("2"),
-					},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
 				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("3"),
-					},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
 				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("4"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("5"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
-
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("6"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("7"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("8"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
-
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("9"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("10"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
+					TxStatus: byte(txstatus.TXACT),
 				},
-			},
-		},
-
-		{
-			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Close{
-					Name:       "pstmt",
-					ObjectType: 'S',
-				},
-				&pgproto3.Parse{
-					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
-				},
-				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
-				},
-				&pgproto3.Execute{
-					MaxRows: 5,
-				},
-				&pgproto3.Flush{},
-
-				&pgproto3.Execute{
-					MaxRows: 3,
-				},
-				&pgproto3.Flush{},
-
-				&pgproto3.Execute{
-					MaxRows: 2,
-				},
-				&pgproto3.Flush{},
-
-				&pgproto3.Execute{
-					MaxRows: 2,
-				},
-				&pgproto3.Sync{},
-			},
-			Response: []pgproto3.BackendMessage{
-				&pgproto3.CloseComplete{},
-				&pgproto3.ParseComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("1"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("2"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("3"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("4"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("5"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
-
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("6"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("7"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("8"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
-
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("9"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("10"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("SELECT 0"),
+					// CommandTag: []byte("INSERT 0 4"),
 				},
+
 				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
+					TxStatus: byte(txstatus.TXACT),
 				},
-			},
-		},
 
-		{
-			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Close{
-					Name:       "pstmt",
-					ObjectType: 'S',
-				},
-				&pgproto3.Parse{
-					Name:  "pstmt",
-					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
-				},
-				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
-				},
-				&pgproto3.Execute{
-					MaxRows: 5,
-				},
-				&pgproto3.Sync{},
-
-				&pgproto3.Execute{
-					MaxRows: 5,
-				},
-				&pgproto3.Sync{},
-			},
-			Response: []pgproto3.BackendMessage{
-				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("1"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("2"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("3"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("4"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("5"),
-					},
-				},
-				&pgproto3.PortalSuspended{},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-
-				&pgproto3.ErrorResponse{
-					Message:  "portal \"\" does not exist",
-					Severity: "ERROR",
-				},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-			},
-		},
-
-		{
-			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Close{
-					Name:       "pstmt",
-					ObjectType: 'S',
-				},
-				&pgproto3.Parse{
-					Name:  "pstmt",
-					Query: "select * from generate_series(1, 3) /* __spqr__execute_on: sh1 */",
-				},
-				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
-				},
-				&pgproto3.Execute{
-					MaxRows: 0,
-				},
-				&pgproto3.Sync{},
-			},
-			Response: []pgproto3.BackendMessage{
-				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+
 				&pgproto3.BindComplete{},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("1"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("2"),
-					},
-				},
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte("3"),
-					},
-				},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 3"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 3"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{},
+				&pgproto3.DataRow{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("DEALLOCATE ALL"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

@@ -184,6 +184,9 @@ func randomHex(n int) (string, error) {
 %type<colref> ColRef
 %type<colreflist> ColRef_list
 
+
+%type<integer> opt_show_kind
+
 %type<str> any_val any_id shard_id opt_any_id
 
 %type<uinteger> any_uint
@@ -209,7 +212,7 @@ func randomHex(n int) (string, error) {
 
 %token <str> IDENTITY MURMUR CITY 
 
-%token<str> START STOP TRACE MESSAGES
+%token<str> START STOP TRACE MESSAGES IMMEDIATE
 
 %token<str> TASK GROUP
 
@@ -218,6 +221,8 @@ func randomHex(n int) (string, error) {
 %token<str> SECONDS WAIT PANIC SLEEP
 
 %token<str> GRANT PRIVILEGES
+
+%token<str> LOCAL GLOBAL
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -317,7 +322,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
-%type <bool> opt_no_wait
+%type <bool> opt_no_wait opt_immediate
 
 %type<grant> GrantStmt
 %type<privilege_target> privilege_target
@@ -1359,10 +1364,15 @@ opt_show_columns:
 	/* Empty */ { $$ = nil } | 
 	TOPENBR show_columns_list TCLOSEBR {$$ = $2}
 
+opt_show_kind:
+	/* Empty */ { $$ = SHOW_KIND_UNSPEC } | 
+	LOCAL { $$ = SHOW_KIND_LOCAL } | 
+	GLOBAL {$$ = SHOW_KIND_GLOBAL}
+
 show_stmt:
-	SHOW show_statement_type opt_show_columns where_clause group_clause order_clause
+	SHOW opt_show_kind show_statement_type opt_show_columns where_clause group_clause order_clause
 	{
-		$$ = &Show{Cmd: $2, Columns: $3, Where: $4, GroupBy: $5, Order: $6}
+		$$ = &Show{Kind: $2, Cmd: $3, Columns: $4, Where: $5, GroupBy: $6, Order: $7}
 	}
 
 help_stmt:
@@ -1811,16 +1821,22 @@ opt_no_wait:
 		$$ = false
 	}
 
+opt_immediate:
+	IMMEDIATE {
+		$$ = true
+	} | /* EMPTY */ {
+		$$ = false
+	}
 
 stop_move_task_group:
-	STOP opt_move TASK GROUP any_id
+	STOP opt_move TASK GROUP any_id opt_immediate
 	{
-		$$ = &StopMoveTaskGroup{ ID: $5 }
+		$$ = &StopMoveTaskGroup{ ID: $5, Immediate: $6 }
 	}
 	|
-	STOP opt_move TASK GROUP ALL
+	STOP opt_move TASK GROUP ALL opt_immediate
 	{
-		$$ = &StopMoveTaskGroup{ ID: "*" }
+		$$ = &StopMoveTaskGroup{ ID: "*",  Immediate: $6 }
 	}
 
 opt_move:
