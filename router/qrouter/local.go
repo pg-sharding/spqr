@@ -30,7 +30,7 @@ type LocalQrouter struct {
 }
 
 // AnalyzeQuery implements QueryRouter.
-func (qr *LocalQrouter) AnalyzeQuery(_ context.Context, _ session.SessionParamsHolder, _ *config.FrontendRule, _ string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+func (qr *LocalQrouter) AnalyzeQuery(_ context.Context, _ session.SessionParamsHolder, _ *config.FrontendRule, _ string, stmt lyx.Node, _ *rmeta.MetadataCache) (*rmeta.RoutingMetadataContext, error) {
 	/* outer code expect this */
 	qr.rm.Stmt = stmt
 	return qr.rm, nil

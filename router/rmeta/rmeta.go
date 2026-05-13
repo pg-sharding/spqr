@@ -28,6 +28,13 @@ type AuxValuesKey struct {
 	ColRefName string
 }
 
+/* Detach trigger for shared invalidation? */
+type MetadataCache struct {
+	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+
+	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
+}
+
 type RoutingMetadataContext struct {
 	// this maps table names to its query-defined restrictions
 	// All columns in query should be considered in context of its table,
@@ -80,9 +87,7 @@ type RoutingMetadataContext struct {
 
 	LastResultFormatCodes []int16
 
-	Distributions map[rfqn.RelationFQN]*distributions.Distribution
-
-	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
+	MetaCache *MetadataCache
 }
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
@@ -108,27 +113,27 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	query string,
 	stmt lyx.Node,
 	csm connmgr.ConnectionMgr,
-	mgr meta.EntityMgr) *RoutingMetadataContext {
+	mgr meta.EntityMgr,
+	mCache *MetadataCache) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:                       map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
-		CteNames:                   map[string]*lyx.CommonTableExpr{},
-		TableAliases:               map[string]rfqn.RelationFQN{},
-		CTEAliases:                 map[string]string{},
-		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:                  map[rfqn.RelationFQN]map[string][]int{},
-		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
-		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
-		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
-		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
-		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
-		SPH:                        sph,
-		CSM:                        csm,
-		Mgr:                        mgr,
-		Query:                      query,
-		Stmt:                       stmt,
-		ro:                         false,
-		ClientRule:                 clientRule,
+		Rels:            map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:    map[rfqn.RelationFQN]struct{}{},
+		CteNames:        map[string]*lyx.CommonTableExpr{},
+		TableAliases:    map[string]rfqn.RelationFQN{},
+		CTEAliases:      map[string]string{},
+		Exprs:           map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:       map[rfqn.RelationFQN]map[string][]int{},
+		MetaCache:       mCache,
+		AuxValues:       map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent: map[AuxValuesKey]AuxValuesKey{},
+		UsedAuxCTE:      map[AuxValuesKey][]*rfqn.RelationFQN{},
+		SPH:             sph,
+		CSM:             csm,
+		Mgr:             mgr,
+		Query:           query,
+		Stmt:            stmt,
+		ro:              false,
+		ClientRule:      clientRule,
 	}
 }
 
@@ -224,7 +229,7 @@ func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node 
 }
 
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
-	if res, ok := rm.Distributions[*resolvedRelation]; ok {
+	if res, ok := rm.MetaCache.Distributions[*resolvedRelation]; ok {
 		return res, nil
 	}
 
@@ -238,11 +243,11 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 		return nil, err
 	}
 
-	rm.Distributions[*resolvedRelation] = ds
+	rm.MetaCache.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
 
 	for _, e := range r.GetDistributionKeyColumnNames() {
-		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
+		rm.MetaCache.RelationsByDistributionCol[e] = append(rm.MetaCache.RelationsByDistributionCol[e], resolvedRelation)
 	}
 	return ds, nil
 }
@@ -292,7 +297,7 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) 
 		// TBD: postpone routing from here to root of parsing tree
 		if len(rm.Rels) != 1 {
 
-			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
+			if l, ok := rm.MetaCache.RelationsByDistributionCol[colname]; ok {
 				if len(l) > 1 {
 					// ambiguity in column aliasing
 					return nil, rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))

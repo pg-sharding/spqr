@@ -200,7 +200,7 @@ func TestFrontendXProto(t *testing.T) {
 	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 

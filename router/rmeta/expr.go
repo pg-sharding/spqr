@@ -242,15 +242,15 @@ func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(
 		return false, nil
 	}
 
+	if rm.MetaCache.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+		// reference relation, skip
+		return false, nil
+	}
+
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
 
 	if off == -1 {
 		// column not from distr key
-		return false, nil
-	}
-
-	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
-		// reference relation, skip
 		return false, nil
 	}
 
