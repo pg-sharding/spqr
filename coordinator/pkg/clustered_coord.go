@@ -3330,6 +3330,16 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 	if err := qc.Coordinator.CommitTran(ctx, transaction); err != nil {
 		return err
 	}
+
+	for _, gossipRequest := range transaction.Operations.GossipRequests {
+		reqType, _ := mtran.GetGossipRequestType(gossipRequest)
+		switch reqType {
+		case mtran.GRCreateKeyRange:
+			if err := qc.updateKeyRangeMetaOnShard(ctx, gossipRequest.CreateKeyRange.KeyRangeInfo.ShardId, datatransfers.InsertKeyRangeMeta, gossipRequest.CreateKeyRange.KeyRangeInfo.Krid); err != nil {
+				return err
+			}
+		}
+	}
 	return qc.traverseRouters(ctx,
 		gossipMetaChanges(ctx,
 			&proto.MetaTransactionGossipRequest{Commands: transaction.Operations.GossipRequests},
@@ -3491,4 +3501,38 @@ func getRouterConnRetryPolicy() string {
 func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
 	qc.bounds.Delete(id)
 	qc.index.Delete(id)
+}
+
+func (qc *ClusteredCoordinator) updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string, args ...any) error {
+	if !config.CoordinatorConfig().ForbidDirectShardQueries {
+		return nil
+	}
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return err
+	}
+	shardData, ok := conns.ShardsData[shardId]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("could not update key range on shard: shard \"%s\" does not exist in shard data config", shardId))
+	}
+	conn, err := datatransfers.GetMasterConnection(ctx, shardData, "key_range_meta_update")
+	if err != nil {
+		return err
+	}
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	/* "INSERT INTO spqr_metadata.spqr_local_key_ranges (key_range_id) VALUES ($1) ON CONFLICT DO NOTHING;", keyRangeId */
+	if _, err := tx.Exec(ctx, query, args...); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
