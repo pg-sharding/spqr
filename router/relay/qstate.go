@@ -624,7 +624,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			if err := rst.ExecutePortal( /* unnamed portal */ ""); err != nil {
+			if err := rst.ExecutePortal( /* unnamed portal */ "", 0); err != nil {
 				return nil, err
 			}
 

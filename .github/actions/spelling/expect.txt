@@ -299,6 +299,7 @@ lowlevel
 lsb
 lval
 maxuint
+maxrows
 mcol
 mdblocales
 mempg
@@ -397,6 +398,7 @@ PGQDB
 pgquery
 pgsharding
 PGSSLMODE
+pgflush
 pgsync
 PGUSER
 pgx

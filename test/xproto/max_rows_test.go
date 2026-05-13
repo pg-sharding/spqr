@@ -79,15 +79,15 @@ func TestExecuteMaxRows(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "pstmt",
+					Name:       "pstmt1",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "pstmt",
+					Name:  "pstmt1",
 					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
+					PreparedStatement: "pstmt1",
 				},
 				&pgproto3.Execute{
 					MaxRows: 5,
@@ -173,15 +173,15 @@ func TestExecuteMaxRows(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "pstmt",
+					Name:       "pstmt2",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "pstmt",
+					Name:  "pstmt2",
 					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
+					PreparedStatement: "pstmt2",
 				},
 				&pgproto3.Execute{
 					MaxRows: 5,
@@ -275,15 +275,15 @@ func TestExecuteMaxRows(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "pstmt",
+					Name:       "pstmt3",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "pstmt",
+					Name:  "pstmt3",
 					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
+					PreparedStatement: "pstmt3",
 				},
 				&pgproto3.Execute{
 					MaxRows: 5,
@@ -342,15 +342,15 @@ func TestExecuteMaxRows(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "pstmt",
+					Name:       "pstmt4",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "pstmt",
+					Name:  "pstmt4",
 					Query: "select * from generate_series(1, 3) /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
-					PreparedStatement: "pstmt",
+					PreparedStatement: "pstmt4",
 				},
 				&pgproto3.Execute{
 					MaxRows: 0,

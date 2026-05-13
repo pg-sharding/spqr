@@ -102,8 +102,8 @@ type RelayStateImpl struct {
 	lastBindName        string
 	unnamedPortalExists bool
 
-	execute   func() error
-	executeMp map[string]func() error
+	execute   func(maxrows uint32) error
+	executeMp map[string]func(maxrows uint32) error
 
 	saveBind        pgproto3.Bind
 	saveBindNamed   map[string]*pgproto3.Bind
@@ -144,7 +144,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Cl:                  client,
 		poolMgr:             manager,
 		execute:             nil,
-		executeMp:           map[string]func() error{},
+		executeMp:           map[string]func(uint32) error{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
 		bindQueryPlan:       nil,
@@ -499,13 +499,14 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatemen
 var (
 	pgexec   = &pgproto3.Execute{}
 	pgsync   = &pgproto3.Sync{}
+	pgflush  = &pgproto3.Flush{}
 	pgNoData = &pgproto3.NoData{}
 
 	portalClose = &pgproto3.Close{
 		ObjectType: 'P',
 	}
 
-	emptyExecFunc = func() error {
+	emptyExecFunc = func(uint32) error {
 		return nil
 	}
 )
@@ -894,7 +895,7 @@ func (rst *RelayStateImpl) BindPrepared(
 			return fmt.Errorf("extended xproto state out of sync")
 		}
 
-		f := func() error {
+		f := func(maxrows uint32) error {
 			p := rst.bindQueryPlan
 			if destinationPortal != "" {
 				p = rst.bindQueryPlanMP[destinationPortal]
@@ -929,7 +930,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				}
 			}
 
-			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal)
+			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, maxrows)
 		}
 
 		/* only populate map for non-empty portal */
@@ -956,7 +957,7 @@ func (rst *RelayStateImpl) BindPrepared(
 	return nil
 }
 
-func (rst *RelayStateImpl) ExecutePortal(portal string) error {
+func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 	startTime := time.Now()
 	q := rst.plainQ
 	spqrlog.Zero.Debug().
@@ -981,11 +982,11 @@ func (rst *RelayStateImpl) ExecutePortal(portal string) error {
 		if rst.execute == nil {
 			return rerrors.ErrRelaySyncLost
 		}
-		err = rst.execute()
+		err = rst.execute(maxrows)
 		rst.execute = nil
 		rst.bindQueryPlan = nil
 	} else {
-		err = rst.executeMp[portal]()
+		err = rst.executeMp[portal](maxrows)
 		/* Note we do not delete from executeMP, this is intentional */
 		rst.bindQueryPlanMP[portal] = nil
 	}
@@ -1039,7 +1040,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 	case *pgproto3.Describe:
 		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)
 	case *pgproto3.Execute:
-		if err := rst.ExecutePortal(currentMsg.Portal); err != nil {
+		if err := rst.ExecutePortal(currentMsg.Portal, currentMsg.MaxRows); err != nil {
 			return err
 		}
 

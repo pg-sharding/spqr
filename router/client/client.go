@@ -773,7 +773,7 @@ func (cl *PsqlClient) Peek() (pgproto3.FrontendMessage, error) {
 		Uint("client", cl.ID()).
 		Interface("message", msg).
 		Err(err).
-		Msg("received message from client")
+		Msg("peek message from client")
 	if err == nil {
 		cl.peekMsg = msg
 	}
