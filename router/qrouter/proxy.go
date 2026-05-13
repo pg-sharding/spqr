@@ -46,7 +46,7 @@ type ProxyQrouter struct {
 // AnalyzeQuery implements QueryRouter.
 func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 	sph session.SessionParamsHolder,
-	rule *config.FrontendRule, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+	rule *config.FrontendRule, query string, stmt lyx.Node, mCache *rmeta.MetadataCache) (*rmeta.RoutingMetadataContext, error) {
 
 	ro := true
 
@@ -54,7 +54,7 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 		ro = planner.CheckRoOnlyQuery(stmt)
 	}
 
-	rm := rmeta.NewRoutingMetadataContext(sph, rule, query, stmt, qr.csm, qr.mgr)
+	rm := rmeta.NewRoutingMetadataContext(sph, rule, query, stmt, qr.csm, qr.mgr, mCache)
 
 	rm.SetRO(ro)
 
