@@ -1347,7 +1347,11 @@ func (lc *Coordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransact
 	if err != nil {
 		return err
 	}
-	return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
+	if err := lc.qdb.ExecNoTransaction(ctx, qdbStatements); err != nil {
+		return err
+	}
+
+	return UpdateKeyRangeMeta(ctx, chunk.GossipRequests)
 }
 
 func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
@@ -1356,7 +1360,11 @@ func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTr
 		return err
 	}
 	qdbTran := qdb.NewTransactionWithCmd(transaction.TransactionId, qdbStatements)
-	return lc.qdb.CommitTransaction(ctx, qdbTran)
+	if err := lc.qdb.CommitTransaction(ctx, qdbTran); err != nil {
+		return err
+	}
+
+	return UpdateKeyRangeMeta(ctx, transaction.Operations.GossipRequests)
 }
 
 func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
