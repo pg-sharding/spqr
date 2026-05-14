@@ -243,6 +243,22 @@ func TestSimpleShow(t *testing.T) {
 				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 		},
+		{
+			query: "SHOW redistribute_status",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RedistributeStatusStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
+		{
+			query: "ShOw redistribute_status",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RedistributeStatusStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -1929,6 +1945,39 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			assert.NoError(err, "query %s", tt.query)
 		}
 
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestDescribeTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: `DESCRIBE TASK GROUP "fab40bad-7446-422a-97e0-ec5cd83bfa93"`,
+			exp:   &spqrparser.DescribeTaskGroup{ID: "fab40bad-7446-422a-97e0-ec5cd83bfa93"},
+			err:   nil,
+		},
+		{
+			query: "DESCRIBE TASK GROUP tg_id",
+			exp:   &spqrparser.DescribeTaskGroup{ID: "tg_id"},
+			err:   nil,
+		},
+		{
+			query: "DeScRiBe TaSk GrOuP tg_id",
+			exp:   &spqrparser.DescribeTaskGroup{ID: "tg_id"},
+			err:   nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
