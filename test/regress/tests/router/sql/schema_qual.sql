@@ -52,6 +52,8 @@ SELECT * FROM sh2.r WHERE i = 11;
 DROP SCHEMA sh1 CASCADE;
 DROP SCHEMA sh2 CASCADE;
 
+SET __spqr__maintain_params TO false;
+
 \c spqr-console
 
 DROP DISTRIBUTION ALL CASCADE;
