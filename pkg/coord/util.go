@@ -13,6 +13,10 @@ import (
 )
 
 func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransactionGossipCommand) error {
+	if !config.CoordinatorConfig().ForbidDirectShardQueries {
+		return nil
+	}
+
 	for _, gossipRequest := range gossipRequests {
 		reqType, _ := mtran.GetGossipRequestType(gossipRequest)
 		switch reqType {
@@ -32,28 +36,25 @@ func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransac
 }
 
 func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string, args ...any) error {
-	if !config.CoordinatorConfig().ForbidDirectShardQueries {
-		return nil
-	}
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 	if err != nil {
 		return err
 	}
 
-	shardDatas := make([]*config.ShardConnect, 0)
+	shardDataArr := make([]*config.ShardConnect, 0)
 	if shardId != "" {
 		shardData, ok := conns.ShardsData[shardId]
 		if !ok {
 			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("could not update key range on shard: shard \"%s\" does not exist in shard data config", shardId))
 		}
-		shardDatas = append(shardDatas, shardData)
+		shardDataArr = append(shardDataArr, shardData)
 	} else {
 		for _, shardData := range conns.ShardsData {
-			shardDatas = append(shardDatas, shardData)
+			shardDataArr = append(shardDataArr, shardData)
 		}
 	}
 	errs := make([]string, 0)
-	for _, shardData := range shardDatas {
+	for _, shardData := range shardDataArr {
 		if err := func() error {
 			conn, err := datatransfers.GetMasterConnection(ctx, shardData, "key_range_meta_update")
 			if err != nil {
