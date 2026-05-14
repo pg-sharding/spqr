@@ -22,10 +22,20 @@ INSERT INTO rel_al (id, c) VALUES (1111, 77) ON CONFLICT (id) DO UPDATE SET c = 
 
 INSERT INTO rel_al (id, c) VALUES (1111, 881), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
 
+INSERT INTO rel_al (id, c) VALUES (1111, 881), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
+
 SELECT __spqr__ctid('rel_al');
 
 WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
+
+
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
+INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
+
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)), 
+    insert_values AS (INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *)
+SELECT * FROM insert_values;
 
 WITH v (id, c) AS (VALUES (3330, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
@@ -37,10 +47,16 @@ INSERT INTO rf_al (id, c) VALUES (1111, 1) ON CONFLICT (id) DO UPDATE SET c = rf
 
 INSERT INTO rf_al (id, c) VALUES (1111, 777), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1;
 
+INSERT INTO rf_al (id, c) VALUES (1111, 777), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1 RETURNING *;
+
 SELECT __spqr__ctid('rf_al');
 
 WITH v (id, c) AS (VALUES (1221, 888), (1222, 1)) 
 INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1;
+
+-- XXX: fix plan
+WITH v (id, c) AS (VALUES (1221, 888), (1222, 1)) 
+INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1 RETURNING *;
 
 SELECT __spqr__ctid('rf_al');
 
