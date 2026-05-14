@@ -31,6 +31,23 @@ CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
     ROUTE TO shard3 FOR DISTRIBUTION ds3;
 ```
 
+### DESCRIBE TASK GROUP
+
+Shows detailed runtime status for a single move task group issued by REDISTRIBUTE KEY RANGE.
+The output is a view with the same columns as SHOW redistribute_status, scoped to the given task group ID.
+
+
+```sql
+DESCRIBE TASK GROUP <taskGroupID>
+```
+
+**Examples:**
+
+```sql
+-- Describe a task group
+DESCRIBE TASK GROUP "fab40bad-7446-422a-97e0-ec5cd83bfa93";
+```
+
 ### DROP KEY RANGE
 
 Removes a key range from the cluster. This deletes the key range metadata

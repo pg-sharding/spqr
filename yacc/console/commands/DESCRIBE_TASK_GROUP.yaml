@@ -1,0 +1,22 @@
+name: DESCRIBE TASK GROUP
+snippet: key_range_commands
+description: |
+  Shows detailed runtime status for a single move task group issued by REDISTRIBUTE KEY RANGE.
+  The output is a view with the same columns as SHOW redistribute_status, scoped to the given task group ID.
+
+syntax: |
+  DESCRIBE TASK GROUP <taskGroupID>
+
+parameters:
+  - name: taskGroupID
+    description: |
+      UUID of the move task group to describe
+
+examples:
+  - description: Describe a task group
+    code: DESCRIBE TASK GROUP "fab40bad-7446-422a-97e0-ec5cd83bfa93";
+
+related_commands:
+  - SHOW redistribute_status
+  - SHOW task_group
+  - REDISTRIBUTE KEY RANGE

@@ -1390,7 +1390,14 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 			case err := <-ch:
 				if err != nil {
 					_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
-					_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+					_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{
+						State:         string(tasks.TaskGroupError),
+						Message:       err.Error(),
+						UpdatedAt:     time.Now(),
+						Stage:         stageError,
+						Detail:        err.Error(),
+						KeysProcessed: taskGroup.TotalKeys,
+					})
 				}
 				return err
 			}
@@ -1549,7 +1556,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
 	}
-	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupPlanned)}); err != nil {
+	if err := qc.publishTaskGroupObservability(ctx, taskGroup, taskGroup.CurrentTask, "", tasks.TaskGroupPlanned, ""); err != nil {
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 	}
 
@@ -1974,7 +1981,8 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	if err := qc.db.TryTaskGroupLock(ctx, taskGroup.ID, addr); err != nil {
 		return fmt.Errorf("failed to acquire lock on task group \"%s\": %s", taskGroup.ID, err)
 	}
-	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning), Message: fmt.Sprintf("executed by \"%s\"", addr)}); err != nil {
+	runMsg := fmt.Sprintf("executed by \"%s\"", addr)
+	if err := qc.publishTaskGroupObservability(ctx, taskGroup, taskGroup.CurrentTask, addr, tasks.TaskGroupRunning, runMsg); err != nil {
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 		return err
 	}
@@ -2008,6 +2016,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				if err := qc.QDB().WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
 					return fmt.Errorf("failed to save move task: %s", err)
 				}
+				_ = qc.publishTaskGroupObservability(ctx, taskGroup, taskGroup.CurrentTask, addr, tasks.TaskGroupRunning, runMsg)
 			} else {
 				break
 			}
@@ -2028,6 +2037,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				if err := qc.UpdateMoveTask(ctx, task); err != nil {
 					return err
 				}
+				_ = qc.publishTaskGroupObservability(ctx, taskGroup, task, addr, tasks.TaskGroupRunning, runMsg)
 				break
 			}
 			if task.Bound != nil {
@@ -2057,6 +2067,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
 			}
+			_ = qc.publishTaskGroupObservability(ctx, taskGroup, task, addr, tasks.TaskGroupRunning, runMsg)
 		case tasks.TaskSplit:
 			if err := qc.Move(ctx, &kr.MoveKeyRange{KeyRangeID: task.KridTemp, ShardID: taskGroup.ShardToID}); err != nil {
 				return err
@@ -2070,6 +2081,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
 			}
+			_ = qc.publishTaskGroupObservability(ctx, taskGroup, task, addr, tasks.TaskGroupRunning, runMsg)
 		case tasks.TaskMoved:
 			if task.KridTemp != taskGroup.KridTo {
 				if err := qc.Unite(ctx, &kr.UniteKeyRange{BaseKeyRangeID: taskGroup.KridTo, AppendageKeyRangeID: task.KridTemp}); err != nil {
@@ -2091,6 +2103,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err := qc.db.DropMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
+			_ = qc.publishTaskGroupObservability(ctx, taskGroup, nil, addr, tasks.TaskGroupRunning, runMsg)
 		}
 	}
 	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID, delayedError != nil); err != nil {
@@ -3461,7 +3474,14 @@ func (qc *ClusteredCoordinator) watchTaskGroups(ctx context.Context) {
 				}
 				if status.State == string(tasks.TaskGroupRunning) {
 					// Executor probably failed, update status
-					if err := qc.db.WriteTaskGroupStatus(ctx, id, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: "task group lost running"}); err != nil {
+					if err := qc.db.WriteTaskGroupStatus(ctx, id, &qdb.TaskGroupStatus{
+						State:         string(tasks.TaskGroupError),
+						Message:       "task group lost running",
+						UpdatedAt:     time.Now(),
+						Stage:         stageError,
+						Detail:        "coordinator worker stopped while state was RUNNING",
+						KeysProcessed: status.KeysProcessed,
+					}); err != nil {
 						spqrlog.Zero.Error().Err(err).Str("task group id", id).Msg("watch task groups iteration: failed to update task group status")
 					}
 				}

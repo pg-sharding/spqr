@@ -1,0 +1,24 @@
+NAME
+    DESCRIBE TASK GROUP - Shows detailed runtime status for a single move task
+    group issued by REDISTRIBUTE KEY RANGE.
+
+SYNTAX
+    DESCRIBE TASK GROUP <taskGroupID>
+
+DESCRIPTION
+    Shows detailed runtime status for a single move task group issued by
+    REDISTRIBUTE KEY RANGE.
+    The output is a view with the same columns as SHOW redistribute_status,
+    scoped to the given task group ID.
+
+PARAMETERS
+    <taskGroupID> - UUID of the move task group to describe
+
+EXAMPLES
+    Describe a task group:
+        DESCRIBE TASK GROUP "fab40bad-7446-422a-97e0-ec5cd83bfa93";
+
+RELATED COMMANDS
+    SHOW redistribute_status
+    SHOW task_group
+    REDISTRIBUTE KEY RANGE

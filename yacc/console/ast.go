@@ -471,7 +471,14 @@ const (
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
 	TaskGroupWorkersStr   = "task_group_workers"
+	RedistributeStatusStr = "redistribute_status"
 )
+
+type DescribeTaskGroup struct {
+	ID string
+}
+
+func (*DescribeTaskGroup) iStatement() {}
 
 // not SHOW target
 const (

@@ -1002,6 +1002,13 @@ func ProcMetadataCommand(ctx context.Context,
 	/* TODO: do not accept nil as rc here */
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
+	if _, ok := tstmt.(*spqrparser.DescribeTaskGroup); ok {
+		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
+			return nil, err
+		}
+		return ProcessDescribeTaskGroup(ctx, tstmt.(*spqrparser.DescribeTaskGroup), mgr)
+	}
+
 	if _, ok := tstmt.(*spqrparser.Show); ok {
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
 			return nil, err
@@ -1440,6 +1447,33 @@ func ProcessKill(_ context.Context,
 	}
 }
 
+func ProcessDescribeTaskGroup(ctx context.Context, stmt *spqrparser.DescribeTaskGroup, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	tg, err := mngr.GetMoveTaskGroup(ctx, stmt.ID)
+	if err != nil {
+		return nil, err
+	}
+	if tg == nil {
+		return nil, fmt.Errorf("task group \"%s\" not found", stmt.ID)
+	}
+	if tg.Issuer == nil || tg.Issuer.Type != tasks.IssuerRedistributeTask {
+		return nil, fmt.Errorf("task group \"%s\" is not a redistribute task group", stmt.ID)
+	}
+	statuses, err := mngr.GetAllTaskGroupStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rtList, err := mngr.ListRedistributeTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rtByTG := make(map[string]*tasks.RedistributeTask)
+	for _, rt := range rtList {
+		rtByTG[rt.TaskGroupID] = rt
+	}
+	groups := map[string]*tasks.MoveTaskGroup{tg.ID: tg}
+	return engine.RedistributeStatusVirtualRelationScan(groups, statuses, rtByTG), nil
+}
+
 // TODO : unit tests
 
 func ProcessShowExtended(ctx context.Context,
@@ -1674,6 +1708,24 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
+	case spqrparser.RedistributeStatusStr:
+		groups, err := mngr.ListMoveTaskGroups(ctx)
+		if err != nil {
+			return nil, err
+		}
+		statuses, err := mngr.GetAllTaskGroupStatuses(ctx)
+		if err != nil {
+			return nil, err
+		}
+		rtList, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		rtByTG := make(map[string]*tasks.RedistributeTask)
+		for _, rt := range rtList {
+			rtByTG[rt.TaskGroupID] = rt
+		}
+		tts = engine.RedistributeStatusVirtualRelationScan(groups, statuses, rtByTG)
 	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:
 		groups, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {

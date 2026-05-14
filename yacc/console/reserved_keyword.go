@@ -70,6 +70,7 @@ var reservedWords = map[string]int{
 	"group":        GROUP,
 	"replicated":   REPLICATED,
 	"redistribute": REDISTRIBUTE,
+	"describe":     DESCRIBE,
 	"batch":        BATCH,
 	"size":         SIZE,
 	"invalidate":   INVALIDATE,
