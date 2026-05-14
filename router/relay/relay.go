@@ -114,6 +114,8 @@ type RelayStateImpl struct {
 	parseCache map[string]ParseCacheEntry
 	savedRM    map[string]*rmeta.RoutingMetadataContext
 
+	mCache *rmeta.MetadataCache
+
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
 }
@@ -154,6 +156,9 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
 		WaitSync:            false,
+		mCache: &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		},
 	}
 }
 
@@ -526,7 +531,7 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	/* XXX: check that we have reference relation insert here */
 	stmt := stmts[0]
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt)
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt, rst.mCache)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +554,7 @@ func (rst *RelayStateImpl) relayParsePrepared(
 			switch rf := parsed.TableRef.(type) {
 			case *lyx.RangeVar:
 				qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-				if ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, qualName); err != nil {
+				if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 					return nil, err
 				} else if ds.Id == distributions.REPLICATED {
 					rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName)
@@ -1301,7 +1306,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 	ctx := context.TODO()
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), q.String, rst.qp.Stmt())
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), q.String, rst.qp.Stmt(), rst.mCache)
 	if err != nil {
 		return err
 	}

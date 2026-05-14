@@ -28,6 +28,11 @@ type AuxValuesKey struct {
 	ColRefName string
 }
 
+/* Detach trigger for shared invalidation? */
+type MetadataCache struct {
+	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+}
+
 type RoutingMetadataContext struct {
 	// this maps table names to its query-defined restrictions
 	// All columns in query should be considered in context of its table,
@@ -80,7 +85,7 @@ type RoutingMetadataContext struct {
 
 	LastResultFormatCodes []int16
 
-	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+	MetaCache *MetadataCache
 
 	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
@@ -108,27 +113,29 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	query string,
 	stmt lyx.Node,
 	csm connmgr.ConnectionMgr,
-	mgr meta.EntityMgr) *RoutingMetadataContext {
+	mgr meta.EntityMgr,
+	mCache *MetadataCache) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:                       map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
-		CteNames:                   map[string]*lyx.CommonTableExpr{},
-		TableAliases:               map[string]rfqn.RelationFQN{},
-		CTEAliases:                 map[string]string{},
-		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:                  map[rfqn.RelationFQN]map[string][]int{},
-		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
+		Rels:            map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:    map[rfqn.RelationFQN]struct{}{},
+		CteNames:        map[string]*lyx.CommonTableExpr{},
+		TableAliases:    map[string]rfqn.RelationFQN{},
+		CTEAliases:      map[string]string{},
+		Exprs:           map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:       map[rfqn.RelationFQN]map[string][]int{},
+		MetaCache:       mCache,
+		AuxValues:       map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent: map[AuxValuesKey]AuxValuesKey{},
+		UsedAuxCTE:      map[AuxValuesKey][]*rfqn.RelationFQN{},
+		SPH:             sph,
+		CSM:             csm,
+		Mgr:             mgr,
+		Query:           query,
+		Stmt:            stmt,
+		ro:              false,
+		ClientRule:      clientRule,
+
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
-		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
-		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
-		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
-		SPH:                        sph,
-		CSM:                        csm,
-		Mgr:                        mgr,
-		Query:                      query,
-		Stmt:                       stmt,
-		ro:                         false,
-		ClientRule:                 clientRule,
 	}
 }
 
@@ -224,7 +231,7 @@ func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node 
 }
 
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
-	if res, ok := rm.Distributions[*resolvedRelation]; ok {
+	if res, ok := rm.MetaCache.Distributions[*resolvedRelation]; ok {
 		return res, nil
 	}
 
@@ -238,7 +245,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 		return nil, err
 	}
 
-	rm.Distributions[*resolvedRelation] = ds
+	rm.MetaCache.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
 
 	for _, e := range r.GetDistributionKeyColumnNames() {
