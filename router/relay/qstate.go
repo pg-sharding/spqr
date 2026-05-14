@@ -145,6 +145,7 @@ l:
 			return nil, err
 		}
 	}
+
 	return pd, err
 }
 
@@ -155,6 +156,10 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 		if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
 			return err
 		}
+	}
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		rst.QueryExecutor().ExecBegin("BEGIN", &lyx.TransactionStmt{}, true)
 	}
 
 	return binderQ()
@@ -200,7 +205,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, nil
 			}
 
-			err := rst.QueryExecutor().ExecBegin(query, st)
+			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
