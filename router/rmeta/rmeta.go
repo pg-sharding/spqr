@@ -31,8 +31,6 @@ type AuxValuesKey struct {
 /* Detach trigger for shared invalidation? */
 type MetadataCache struct {
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
-
-	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
 type RoutingMetadataContext struct {
@@ -88,6 +86,8 @@ type RoutingMetadataContext struct {
 	LastResultFormatCodes []int16
 
 	MetaCache *MetadataCache
+
+	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
@@ -134,6 +134,8 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Stmt:            stmt,
 		ro:              false,
 		ClientRule:      clientRule,
+
+		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 	}
 }
 
@@ -247,7 +249,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 	r := ds.GetRelation(resolvedRelation)
 
 	for _, e := range r.GetDistributionKeyColumnNames() {
-		rm.MetaCache.RelationsByDistributionCol[e] = append(rm.MetaCache.RelationsByDistributionCol[e], resolvedRelation)
+		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
 	}
 	return ds, nil
 }
@@ -297,7 +299,7 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) 
 		// TBD: postpone routing from here to root of parsing tree
 		if len(rm.Rels) != 1 {
 
-			if l, ok := rm.MetaCache.RelationsByDistributionCol[colname]; ok {
+			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
 				if len(l) > 1 {
 					// ambiguity in column aliasing
 					return nil, rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))

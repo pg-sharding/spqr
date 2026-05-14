@@ -195,8 +195,6 @@ func TestMultiShardRouting(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
@@ -312,8 +310,6 @@ func TestCreateTable(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
@@ -498,8 +494,6 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(err, tt.query)
@@ -673,8 +667,6 @@ func TestRoutingByExpression(t *testing.T) {
 
 		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(err, tt.query)
@@ -776,8 +768,6 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 
 		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(err, tt.query)
@@ -965,8 +955,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(err, tt.query)
@@ -1083,8 +1071,6 @@ func TestComment(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
@@ -1396,8 +1382,6 @@ func TestCTE(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
@@ -1770,8 +1754,6 @@ func TestSingleShard(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
@@ -1938,8 +1920,6 @@ func TestInsertOffsets(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
@@ -2100,8 +2080,6 @@ func TestJoins(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		if tt.err != nil {
@@ -2227,8 +2205,6 @@ func TestUnnest(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
@@ -2326,8 +2302,6 @@ func TestCopySingleShard(t *testing.T) {
 		stmt := parserRes[0]
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
@@ -2427,8 +2401,6 @@ func TestCopyMultiShard(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
@@ -2526,8 +2498,6 @@ func TestSetStmt(t *testing.T) {
 		stmt := parserRes[0]
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
@@ -2878,8 +2848,6 @@ LIMIT 1000
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
@@ -2980,8 +2948,6 @@ func TestHashRouting(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))

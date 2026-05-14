@@ -158,8 +158,6 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		WaitSync:            false,
 		mCache: &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
-
-			RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 		},
 	}
 }
