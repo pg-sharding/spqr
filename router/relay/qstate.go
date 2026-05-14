@@ -145,6 +145,7 @@ l:
 			return nil, err
 		}
 	}
+
 	return pd, err
 }
 
@@ -200,7 +201,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, nil
 			}
 
-			err := rst.QueryExecutor().ExecBegin(query, st)
+			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
