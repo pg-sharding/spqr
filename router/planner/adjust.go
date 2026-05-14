@@ -30,7 +30,7 @@ func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) err
 
 		rm.AutoLinearize = true
 
-		guc.Set(rm.SPH, session.VirtualParamLevelStatement /* only for this exact statement */, true)
+		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock /* only for this exact statement */, true)
 	}
 
 	return nil
