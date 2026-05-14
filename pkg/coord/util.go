@@ -74,10 +74,7 @@ func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string
 				return err
 			}
 
-			if err := tx.Commit(ctx); err != nil {
-				return err
-			}
-			return nil
+			return tx.Commit(ctx)
 		}(); err != nil {
 			errs = append(errs, err.Error())
 		}
