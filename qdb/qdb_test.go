@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -31,5 +32,33 @@ func TestPackToEtcdCommands(t *testing.T) {
 		_, err := packEtcdCommands(statements)
 		is.EqualError(err, "not found operation type: 7")
 
+	})
+}
+
+func TestExactMatchedKVs(t *testing.T) {
+	t.Run("filters out prefixed keys", func(t *testing.T) {
+		is := assert.New(t)
+		resp := &clientv3.GetResponse{
+			Kvs: []*mvccpb.KeyValue{
+				{Key: []byte("/reference_relations/zz"), Value: []byte("zz")},
+				{Key: []byte("/reference_relations/zzx"), Value: []byte("zzx")},
+			},
+		}
+
+		matched := exactMatchedKVs(resp, "/reference_relations/zz")
+		is.Len(matched, 1)
+		is.Equal([]byte("/reference_relations/zz"), matched[0].Key)
+	})
+
+	t.Run("returns empty for missing exact key", func(t *testing.T) {
+		is := assert.New(t)
+		resp := &clientv3.GetResponse{
+			Kvs: []*mvccpb.KeyValue{
+				{Key: []byte("/reference_relations/zzx"), Value: []byte("zzx")},
+			},
+		}
+
+		matched := exactMatchedKVs(resp, "/reference_relations/zz")
+		is.Empty(matched)
 	})
 }
