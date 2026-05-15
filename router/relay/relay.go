@@ -438,7 +438,14 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("txstatus", rst.qse.TxStatus().String()).
+		Bool("implicitTx", rst.QueryExecutor().ImplicitTx()).
 		Msg("complete relay iter")
+
+	if rst.QueryExecutor().ImplicitTx() {
+		if err := rst.QueryExecutor().ExecCommit("COMMIT"); err != nil {
+			return err
+		}
+	}
 
 	if err := rst.QueryExecutor().CompleteTx(rst.QueryExecutor()); err != nil {
 		spqrlog.Zero.Error().

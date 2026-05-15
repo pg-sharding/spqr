@@ -59,6 +59,10 @@ func (s *QueryStateExecutorImpl) ActiveShards() []kr.ShardKey {
 	return s.es.activeShards
 }
 
+func (s *QueryStateExecutorImpl) ImplicitTx() bool {
+	return s.es.implicitTx
+}
+
 // ActiveShardsReset implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) ActiveShardsReset() {
 	s.es.activeShards = nil
@@ -244,7 +248,10 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
-func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt) error {
+func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error {
+
+	s.es.implicitTx = implicit
+
 	if s.poolMgr.ConnectionActive(s) {
 		return s.DeploySliceTransactionQuery(query)
 	}
@@ -255,7 +262,7 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 	// explicitly set silent query message, as it can differ from query begin in xproto
 	s.es.savedBegin = &pgproto3.Query{String: query}
 
-	spqrlog.Zero.Debug().Uint("client", s.Client().ID()).Msg("start new transaction")
+	spqrlog.Zero.Debug().Uint("client", s.Client().ID()).Bool("implicitTx", implicit).Msg("start new transaction")
 
 	for _, opt := range st.Options {
 		switch opt {
@@ -267,7 +274,9 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
-	s.SetCommandCompleteTag("BEGIN")
+	if !implicit {
+		s.SetCommandCompleteTag("BEGIN")
+	}
 	return nil
 }
 
@@ -299,7 +308,10 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.CommitActiveSet()
-		s.SetCommandCompleteTag("COMMIT")
+		if !s.es.implicitTx {
+			s.SetCommandCompleteTag("COMMIT")
+		}
+		s.es.implicitTx = false
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
@@ -309,7 +321,10 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	}
 
 	s.Client().CommitActiveSet()
-	s.SetCommandCompleteTag("COMMIT")
+	if !s.es.implicitTx {
+		s.SetCommandCompleteTag("COMMIT")
+	}
+	s.es.implicitTx = false
 	return nil
 }
 
@@ -325,6 +340,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 
 /* TODO: proper support for rollback to savepoint */
 func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
+	s.es.implicitTx = false
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
@@ -811,7 +827,11 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan, _ bool) error {
 
+	sv := s.es.implicitTx
+
 	s.Reset()
+
+	s.es.implicitTx = sv
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
@@ -1244,6 +1264,7 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
 	s.es.portalSuspended = false
+	s.es.implicitTx = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
