@@ -79,6 +79,10 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
 			}, txstatus.TXIDLE)
 
+			if cl.ShowNoticeMsg() {
+				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %v on %v", gid, dsh.InstanceHostname()))
+			}
+
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Str("shard", dsh.InstanceHostname()).Msg("happy path error recovery failed on shard")
 			}
@@ -96,6 +100,10 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
 			return txstatus.TXERR, err
+		}
+
+		if cl.ShowNoticeMsg() {
+			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %v on %v", gid, dsh.InstanceHostname()))
 		}
 
 		retST = st
@@ -148,6 +156,10 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
 			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member response")
+		}
+
+		if cl.ShowNoticeMsg() {
+			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %v on %v", gid, dsh.InstanceHostname()))
 		}
 
 		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
