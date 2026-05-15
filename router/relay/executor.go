@@ -340,7 +340,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 
 /* TODO: proper support for rollback to savepoint */
 func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
-	s.es.implicitTx = true
+	s.es.implicitTx = false
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
