@@ -290,7 +290,6 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
-			// serv.SetTxStatus(st)
 			s.SetTxStatus(st)
 		}
 
