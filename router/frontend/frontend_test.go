@@ -43,6 +43,8 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
+	cl.EXPECT().ID().AnyTimes().Return(uint(67))
+
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().Close().Times(1)
