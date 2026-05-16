@@ -134,7 +134,8 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			err = rst.QueryExecutor().DeriveCommandComplete()
 		}
 
-		spqrlog.Zero.Info().Str("query", q.String).TimeDiff("time", time.Now(), tm).Msg("executed query")
+		spqrlog.Zero.Info().
+			Uint("client", rst.Client().ID()).Str("query", q.String).TimeDiff("time", time.Now(), tm).Msg("executed query")
 
 		rst.Client().ClosePreparedStatement("")
 
@@ -178,6 +179,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Info().
+		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Uint("client", spqrlog.GetPointer(cl)).
@@ -190,7 +192,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 
 	defer func() {
 		if err := rst.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close relay state")
+			spqrlog.Zero.Debug().Uint("client", cl.ID()).Err(err).Msg("failed to close relay state")
 		}
 	}()
 
