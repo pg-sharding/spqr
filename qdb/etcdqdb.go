@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/clientv3util"
 	"go.etcd.io/etcd/client/v3/concurrency"
@@ -167,6 +168,20 @@ func taskGroupLockNodePath(id string) string {
 
 func totalKeysNodePath(id string) string {
 	return path.Join(totalKeysNamespace, id)
+}
+
+func exactMatchedKVs(resp *clientv3.GetResponse, key string) []*mvccpb.KeyValue {
+	if len(resp.Kvs) == 0 {
+		return nil
+	}
+
+	matches := make([]*mvccpb.KeyValue, 0, 1)
+	for _, kv := range resp.Kvs {
+		if string(kv.Key) == key {
+			matches = append(matches, kv)
+		}
+	}
+	return matches
 }
 
 func taskGroupStopFlagNodePath(id string) string {
@@ -1200,17 +1215,22 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relation *rfqn.Relat
 		Str("tablename", relation.String()).
 		Msg("etcdqdb: get reference relation")
 
-	resp, err := q.cli.Get(ctx, referenceRelationNodePath(relation))
+	nodePath := referenceRelationNodePath(relation)
+	resp, err := q.cli.Get(ctx, nodePath)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(resp.Kvs) == 0 {
+	matched := exactMatchedKVs(resp, nodePath)
+	if len(matched) == 0 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relation)
+	}
+	if len(matched) > 1 {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
 	}
 
 	var refRel *ReferenceRelation
-	if err := json.Unmarshal(resp.Kvs[0].Value, &refRel); err != nil {
+	if err := json.Unmarshal(matched[0].Value, &refRel); err != nil {
 		return nil, err
 	}
 
@@ -1230,8 +1250,9 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 	if err != nil {
 		return err
 	}
+	matched := exactMatchedKVs(resp, nodePath)
 
-	switch len(resp.Kvs) {
+	switch len(matched) {
 	case 0:
 		return spqrerror.Newf(
 			spqrerror.SPQR_OBJECT_NOT_EXIST,
@@ -1239,7 +1260,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 	case 1:
 
 		var rrs *ReferenceRelation
-		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
+		if err := json.Unmarshal(matched[0].Value, &rrs); err != nil {
 			return err
 		}
 		rrs.ShardIDs = shs
@@ -1257,7 +1278,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relation *r
 
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(matched))
 	}
 }
 
@@ -1273,14 +1294,15 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relation *rfqn.Rela
 	if err != nil {
 		return err
 	}
+	matched := exactMatchedKVs(resp, nodePath)
 
-	switch len(resp.Kvs) {
+	switch len(matched) {
 	case 0:
 		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relation)
 	case 1:
 
 		var rrs *ReferenceRelation
-		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
+		if err := json.Unmarshal(matched[0].Value, &rrs); err != nil {
 			return err
 		}
 
@@ -1297,7 +1319,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relation *rfqn.Rela
 		_, err = q.cli.Delete(ctx, relationMappingNodePath(relation))
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(matched))
 	}
 }
 
@@ -1396,14 +1418,15 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	matched := exactMatchedKVs(resp, distributionNodePath(id))
 
-	switch len(resp.Kvs) {
+	switch len(matched) {
 	case 0:
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution present in qdb")
 	case 1:
 
 		var distrib *Distribution
-		if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
+		if err := json.Unmarshal(matched[0].Value, &distrib); err != nil {
 			return err
 		}
 
@@ -1426,7 +1449,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 		return nil
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much distributions matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much distributions matched: %d", len(matched))
 	}
 }
 
@@ -1678,13 +1701,17 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 	if err != nil {
 		return nil, err
 	}
+	matched := exactMatchedKVs(resp, distributionNodePath(id))
 
-	if len(resp.Kvs) == 0 {
+	if len(matched) == 0 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+	}
+	if len(matched) > 1 {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
 	}
 
 	var distrib *Distribution
-	if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
+	if err := json.Unmarshal(matched[0].Value, &distrib); err != nil {
 		return nil, err
 	}
 
