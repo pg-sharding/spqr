@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -464,4 +465,82 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
+}
+
+func TestProcessDescribeTaskGroupSuccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	tgID := "tg-1"
+
+	mngr := mockmgr.NewMockEntityMgr(ctrl)
+	stmt := &spqrparser.DescribeTaskGroup{
+		ID: tgID,
+	}
+
+	taskGroup := &tasks.MoveTaskGroup{
+		ID:       tgID,
+		KridFrom: "kr-1",
+		KridTo:   "kr-2",
+		Issuer: &tasks.MoveTaskGroupIssuer{
+			Type: tasks.IssuerRedistributeTask,
+		},
+	}
+
+	mngr.EXPECT().GetMoveTaskGroup(ctx, tgID).Return(taskGroup, nil)
+	mngr.EXPECT().GetAllTaskGroupStatuses(ctx).Return(map[string]*tasks.MoveTaskGroupStatus{}, nil)
+	mngr.EXPECT().ListRedistributeTasks(ctx).Return([]*tasks.RedistributeTask{}, nil)
+
+	tts, err := meta.ProcessDescribeTaskGroup(ctx, stmt, mngr)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, tts)
+}
+
+func TestProcessDescribeTaskGroupNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	tgID := "tg-missing"
+
+	mngr := mockmgr.NewMockEntityMgr(ctrl)
+	stmt := &spqrparser.DescribeTaskGroup{
+		ID: tgID,
+	}
+
+	mngr.EXPECT().GetMoveTaskGroup(ctx, tgID).Return(nil, nil)
+
+	tts, err := meta.ProcessDescribeTaskGroup(ctx, stmt, mngr)
+
+	assert.Nil(t, tts)
+	assert.ErrorContains(t, err, "not found")
+}
+
+func TestProcessDescribeTaskGroupNotRedistributeTask(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	tgID := "tg-2"
+
+	mngr := mockmgr.NewMockEntityMgr(ctrl)
+	stmt := &spqrparser.DescribeTaskGroup{
+		ID: tgID,
+	}
+
+	taskGroup := &tasks.MoveTaskGroup{
+		ID: tgID,
+		Issuer: &tasks.MoveTaskGroupIssuer{
+			Type: tasks.IssuerBalancerTask,
+		},
+	}
+
+	mngr.EXPECT().GetMoveTaskGroup(ctx, tgID).Return(taskGroup, nil)
+
+	tts, err := meta.ProcessDescribeTaskGroup(ctx, stmt, mngr)
+
+	assert.Nil(t, tts)
+	assert.ErrorContains(t, err, "is not a redistribute task group")
 }
