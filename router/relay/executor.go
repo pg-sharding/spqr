@@ -877,7 +877,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 
 	if sp := p.Subplan(); sp != nil {
 		/* XXX: Do all required job in sub-plan */
-		spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+		spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
 		if err := s.executeInnerSlice(serv, sp); err != nil {
 			return err
 		}
@@ -902,7 +902,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		return err
 	}
 
-	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
 
 	/* Now dispatch this toplevel slice */
 	if err := DispatchSlice(qd, p, s.Client(), true); err != nil {
@@ -937,7 +937,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	if topPlan != nil {
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
-			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+			spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
 			if err := s.executeInnerSlice(serv, sp); err != nil {
 				return err
 			}

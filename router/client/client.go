@@ -516,7 +516,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		switch protoVer {
 		case conn.GSSREQ:
-			spqrlog.Zero.Debug().Msg("negotiate gss enc request")
+			spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("negotiate gss enc request")
 			_, err := cl.conn.Write([]byte{'N'})
 			if err != nil {
 				return err
@@ -623,6 +623,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
 	spqrlog.Zero.Info().
+		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Msg("processing frontend auth")
@@ -852,7 +853,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
-	spqrlog.Zero.Debug().Uint("client-id", cl.ID()).Msg("closing client")
+	spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("closing client")
 	return cl.conn.Close()
 }
 
