@@ -69,6 +69,8 @@ func parseLevel(level string) zerolog.Level {
 	switch strings.ToLower(level) {
 	case "disabled":
 		return zerolog.Disabled
+	case "trace":
+		return zerolog.TraceLevel
 	case "debug":
 		return zerolog.DebugLevel
 	case "info":
