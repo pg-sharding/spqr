@@ -117,9 +117,11 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
 
+		tm := time.Now()
+
 		if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
 			/* XXX: support implicit tx semantics here */
-			statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+			statistics.RecordStartTime(statistics.StatisticsTypeRouter, tm, rst.Client())
 		}
 
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
@@ -131,6 +133,8 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().DeriveCommandComplete()
 		}
+
+		spqrlog.Zero.Info().Str("query", q.String).TimeDiff("time", time.Now(), tm).Msg("executed query")
 
 		rst.Client().ClosePreparedStatement("")
 
