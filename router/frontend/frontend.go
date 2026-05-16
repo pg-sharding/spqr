@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -132,6 +133,11 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		if err == nil {
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().DeriveCommandComplete()
+		} else {
+			if sErr, ok := err.(*spqrerror.SpqrError); ok {
+				/* For simple query, set explicit query string in error message */
+				sErr.Query(q.String)
+			}
 		}
 
 		spqrlog.Zero.Info().
