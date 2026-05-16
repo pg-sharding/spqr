@@ -757,7 +757,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 		return msg, nil
 	}
 	msg, err := cl.be.Receive()
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("client", cl.ID()).
 		Interface("message", msg).
 		Msg("received message from client")
@@ -785,7 +785,7 @@ func (cl *PsqlClient) Flush() error {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("sending msg to client")

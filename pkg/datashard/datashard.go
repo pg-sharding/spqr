@@ -170,7 +170,6 @@ func (sh *Conn) Cancel() error {
 // CancellableIDs returns a single-elements list containing
 // shard connection cancel ID.
 func (sh *Conn) CancellableIDs() []uint32 {
-
 	return []uint32{sh.backendKeyPid}
 }
 
@@ -196,7 +195,7 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	default:
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("shard", sh.ID()).
 		Interface("query", query).
 		Int64("sync-in", sh.syncIn).
@@ -229,7 +228,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 		}
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("shard", sh.ID()).
 		Interface("msg", msg).
 		Int64("sync-out", sh.syncOut).
