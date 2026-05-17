@@ -1,0 +1,138 @@
+\c spqr-console
+CREATE DISTRIBUTION ds1 (INT);
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+CREATE TABLE t (id int);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO t (id) VALUES (1);
+NOTICE: send query to shard(s) : sh2
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
+MOVE KEY RANGE kr1 TO sh2;
+ERROR:  key range kr1 not locked
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
+SPLIT KEY RANGE kr2 FROM kr1 BY 10;
+   split key range    
+----------------------
+ key range id -> kr2
+ bound        -> \x14
+(2 rows)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
+UNITE KEY RANGE kr1 WITH kr2;
+         merge key ranges         
+----------------------------------
+ merge key range "kr2" into "kr1"
+(1 row)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
+DROP KEY RANGE kr1;
+ key_range_id 
+--------------
+ kr1
+(1 row)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+

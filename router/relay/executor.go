@@ -281,7 +281,6 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
 			return err
 		} else {
-			// serv.SetTxStatus(st)
 			s.SetTxStatus(st)
 		}
 
@@ -877,7 +876,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 
 	if sp := p.Subplan(); sp != nil {
 		/* XXX: Do all required job in sub-plan */
-		spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+		spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
 		if err := s.executeInnerSlice(serv, sp); err != nil {
 			return err
 		}
@@ -902,7 +901,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		return err
 	}
 
-	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
 
 	/* Now dispatch this toplevel slice */
 	if err := DispatchSlice(qd, p, s.Client(), true); err != nil {
@@ -937,7 +936,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	if topPlan != nil {
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
-			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+			spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
 			if err := s.executeInnerSlice(serv, sp); err != nil {
 				return err
 			}
@@ -1026,6 +1025,45 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 
 			return s.copyFromExecutor(qd.simple)
+		case *pgproto3.PortalSuspended:
+			s.es.portalSuspended = true
+			/* Dummy stub implementation for now. This will work OK only in single-shard case... */
+			if err := s.Client().Send(v); err != nil {
+				return err
+			}
+		portalLoop:
+			for {
+				msg, err := s.Client().Peek()
+				if err != nil {
+					return err
+				}
+
+				switch msg.(type) {
+				case *pgproto3.Sync:
+
+					if err := serv.Send(pgsync); err != nil {
+						return err
+					}
+
+					break portalLoop
+				case *pgproto3.Flush:
+					/*  "Receive" it and recent as-is */
+					_, _ = s.Client().Receive()
+
+					if err := serv.Send(pgflush); err != nil {
+						return err
+					}
+
+					break portalLoop
+				case *pgproto3.Execute:
+					/*  "Receive" it and recent as-is */
+					_, _ = s.Client().Receive()
+					if err := serv.Send(msg); err != nil {
+						return err
+					}
+				}
+
+			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
@@ -1169,6 +1207,11 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	* ErrorMessage and Command complete. If our output gang did not return either of them,
 	* we are in big trouble */
 	if s.es.cc == nil && s.es.eMsg == nil {
+		/* There is an exceptional case with unfinished portal. If query result not fetched
+		* fully, we should not respond with CC message. */
+		if s.es.portalSuspended {
+			return nil
+		}
 		return fmt.Errorf("failed to derive command complete for query")
 	}
 	if s.es.cc != nil {
@@ -1199,6 +1242,7 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.eMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
+	s.es.portalSuspended = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}

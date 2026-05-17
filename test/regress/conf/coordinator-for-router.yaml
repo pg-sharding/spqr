@@ -14,3 +14,4 @@ frontend_tls:
   cert_file: /etc/spqr/ssl/server.crt
   sslmode: require
 data_move_disable_triggers: true
+forbid_direct_shard_queries: true

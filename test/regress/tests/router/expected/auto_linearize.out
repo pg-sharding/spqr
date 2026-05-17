@@ -59,12 +59,23 @@ NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: dispatch prefetching results from shard sh2
 NOTICE: dispatch prefetching results from shard sh3
 NOTICE: send query to shard(s) : sh2,sh3
+INSERT INTO rel_al (id, c) VALUES (1111, 881), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: send query to shard(s) : sh2,sh3
+  id  | c 
+------+---
+ 1111 | 4
+ 2222 | 2
+(2 rows)
+
 SELECT __spqr__ctid('rel_al');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid |  id  | c 
 --------------+------+---
- shard sh2    | 1111 | 3
- shard sh3    | 2222 | 1
+ shard sh2    | 1111 | 4
+ shard sh3    | 2222 | 2
 (2 rows)
 
 WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
@@ -73,6 +84,31 @@ NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: dispatch prefetching results from shard sh3
 NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh3,sh4
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
+INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
+NOTICE: send query to shard(s) : sh3,sh4
+  id  | c 
+------+---
+ 2222 | 4
+ 3333 | 2
+(2 rows)
+
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)), 
+    insert_values AS (INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *)
+SELECT * FROM insert_values;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
+NOTICE: send query to shard(s) : sh3,sh4
+  id  | c 
+------+---
+ 2222 | 5
+ 3333 | 3
+(2 rows)
+
 WITH v (id, c) AS (VALUES (3330, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
 NOTICE: send query to shard(s) : sh4
@@ -80,10 +116,10 @@ SELECT __spqr__ctid('rel_al');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid |  id  |  c  
 --------------+------+-----
- shard sh2    | 1111 |   3
- shard sh3    | 2222 |   2
+ shard sh2    | 1111 |   4
+ shard sh3    | 2222 |   5
  shard sh4    | 3330 | 888
- shard sh4    | 3333 |   2
+ shard sh4    | 3333 |   4
 (4 rows)
 
 INSERT INTO rf_al (id, c) VALUES (1111, 1) ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1;
@@ -100,18 +136,31 @@ NOTICE: dispatch prefetching results from shard sh2
 NOTICE: dispatch prefetching results from shard sh3
 NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO rf_al (id, c) VALUES (1111, 777), (2222, 1) ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1 RETURNING *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+  id  | c 
+------+---
+ 1111 | 3
+ 2222 | 2
+(2 rows)
+
 SELECT __spqr__ctid('rf_al');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid |  id  | c 
 --------------+------+---
- shard sh1    | 1111 | 2
- shard sh1    | 2222 | 1
- shard sh2    | 1111 | 2
- shard sh2    | 2222 | 1
- shard sh3    | 1111 | 2
- shard sh3    | 2222 | 1
- shard sh4    | 1111 | 2
- shard sh4    | 2222 | 1
+ shard sh1    | 1111 | 3
+ shard sh1    | 2222 | 2
+ shard sh2    | 1111 | 3
+ shard sh2    | 2222 | 2
+ shard sh3    | 1111 | 3
+ shard sh3    | 2222 | 2
+ shard sh4    | 1111 | 3
+ shard sh4    | 2222 | 2
 (8 rows)
 
 WITH v (id, c) AS (VALUES (1221, 888), (1222, 1)) 
@@ -122,26 +171,47 @@ NOTICE: dispatch prefetching results from shard sh2
 NOTICE: dispatch prefetching results from shard sh3
 NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- XXX: fix plan
+WITH v (id, c) AS (VALUES (1221, 888), (1222, 1)) 
+INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1 RETURNING *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+  id  |  c  
+------+-----
+ 1221 | 889
+ 1222 |   2
+ 1221 | 889
+ 1222 |   2
+ 1221 | 889
+ 1222 |   2
+ 1221 | 889
+ 1222 |   2
+(8 rows)
+
 SELECT __spqr__ctid('rf_al');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid |  id  |  c  
 --------------+------+-----
- shard sh1    | 1111 |   2
- shard sh1    | 2222 |   1
- shard sh1    | 1221 | 888
- shard sh1    | 1222 |   1
- shard sh2    | 1111 |   2
- shard sh2    | 2222 |   1
- shard sh2    | 1221 | 888
- shard sh2    | 1222 |   1
- shard sh3    | 1111 |   2
- shard sh3    | 2222 |   1
- shard sh3    | 1221 | 888
- shard sh3    | 1222 |   1
- shard sh4    | 1111 |   2
- shard sh4    | 2222 |   1
- shard sh4    | 1221 | 888
- shard sh4    | 1222 |   1
+ shard sh1    | 1111 |   3
+ shard sh1    | 2222 |   2
+ shard sh1    | 1221 | 889
+ shard sh1    | 1222 |   2
+ shard sh2    | 1111 |   3
+ shard sh2    | 2222 |   2
+ shard sh2    | 1221 | 889
+ shard sh2    | 1222 |   2
+ shard sh3    | 1111 |   3
+ shard sh3    | 2222 |   2
+ shard sh3    | 1221 | 889
+ shard sh3    | 1222 |   2
+ shard sh4    | 1111 |   3
+ shard sh4    | 2222 |   2
+ shard sh4    | 1221 | 889
+ shard sh4    | 1222 |   2
 (16 rows)
 
 DROP TABLE rel_al;

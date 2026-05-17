@@ -556,7 +556,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			if client.CancelPID() == lockedVirtualPID {
 				lockedByVirtualPIDs = client.CancellableIDs()
 
-				spqrlog.Zero.Debug().Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
+				spqrlog.Zero.Debug().Uint("client", client.ID()).Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
 			}
 			return nil
 		})
@@ -840,7 +840,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}()
 	case virtual.VirtualRun2PCRecover:
 		if len(args) > 1 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+			return nil, fmt.Errorf("%s function accepts no more than one arg", fname)
 		}
 
 		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
@@ -872,7 +872,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		return tts, nil
 	case virtual.VirtualClear2PCData:
 		if len(args) > 0 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualClear2PCData)
+			return nil, fmt.Errorf("%s function accepts no arg", fname)
 		}
 		db, err := qdb.GetStateKeeperQDB()
 		if err != nil {
@@ -887,7 +887,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		return tts, nil
 	case virtual.VirtualCleanOutdated2PCData:
 		if len(args) > 0 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualCleanOutdated2PCData)
+			return nil, fmt.Errorf("%s function accepts no arg", fname)
 		}
 		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 		if err != nil {
@@ -904,8 +904,23 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			tts.WriteDataRow(gid)
 		}
 		return tts, nil
+	case virtual.VirtualSetNextTwoPhaseCommitGID:
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function accepts one arg", fname)
+		}
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("__spqr__set_next_2pc_gid"),
+		}
+
+		rm.SPH.SetNextGID(strVal.Value)
+		return tts, nil
+	default:
+		return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 	}
-	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
 func RetrieveTuples(

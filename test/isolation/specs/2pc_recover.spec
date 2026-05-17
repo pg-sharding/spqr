@@ -46,6 +46,7 @@ session s1
 step s1_ddl                 { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=regress', 'SET __spqr__engine_v2 TO on; SET __spqr__commit_strategy TO 2pc; BEGIN; ALTER TABLE r_2pc_aux ADD COLUMN z INT; COMMIT') /*__spqr__preferred_engine: v2 */; }
 
 session s2
+step s2_set_gid             { SELECT __spqr__set_next_2pc_gid('2pc_rec_gid'); }
 step s2_attach_cp           { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_decision_cp WAIT') /*__spqr__preferred_engine: v2 */; }
 step s2_attach_after_cp     { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_after_decision_cp WAIT') /*__spqr__preferred_engine: v2 */; }
 step s2_detach_cp           { select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'DETACH CONTROL POINT 2pc_decision_cp') /*__spqr__preferred_engine: v2 */; }
@@ -60,6 +61,7 @@ step s3_clean             { select __spqr__console_execute('drop distribution al
 
 permutation 
     s3_clear_2pc_data
+    s2_set_gid
     s2_attach_cp
     s1_ddl
     s2_show_2pc_tx
@@ -69,7 +71,8 @@ permutation
     s3_clear_2pc_data
     s3_clean
 
-permutation 
+permutation
+    s2_set_gid
     s2_attach_after_cp
     s1_ddl
     s2_show_2pc_tx

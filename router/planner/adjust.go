@@ -15,8 +15,9 @@ import (
 )
 
 func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
-	_, ok := p.(*plan.ScatterPlan)
-	if !ok {
+	_, ok := p.(*plan.ShardDispatchPlan)
+	if ok {
+		/* single shard dispatch is safe from hazard upsert */
 		return nil
 	}
 

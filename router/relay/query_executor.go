@@ -31,6 +31,7 @@ type ExecutorState struct {
 	eMsg       *pgproto3.ErrorResponse
 
 	replyEmptyQuery bool
+	portalSuspended bool
 
 	/* misc for Copy */
 	copyStmt lyx.Node
