@@ -15,6 +15,14 @@ BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
+NOTICE: prepare tx zzz1 on spqr_shard_1:6432
+NOTICE: prepare tx zzz1 on spqr_shard_2:6432
+NOTICE: prepare tx zzz1 on spqr_shard_3:6432
+NOTICE: prepare tx zzz1 on spqr_shard_4:6432
+NOTICE: commit prepared tx zzz1 on spqr_shard_1:6432
+NOTICE: commit prepared tx zzz1 on spqr_shard_2:6432
+NOTICE: commit prepared tx zzz1 on spqr_shard_3:6432
+NOTICE: commit prepared tx zzz1 on spqr_shard_4:6432
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
  gid  | status 
 ------+--------

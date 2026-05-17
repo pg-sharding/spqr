@@ -46,6 +46,7 @@ session s1
 step s1_report         { SET __spqr__reply_notice TO on; }
 step s1_ev2            { SET __spqr__engine_v2 TO on; }
 step s1_c_str          { SET __spqr__commit_strategy TO 2pc; }
+step s1_set_gid        { SELECT __spqr__set_next_2pc_gid('2pc_flow_gid'); }
 step s1_begin          { BEGIN; }
 step s1_ddl            { ALTER TABLE r_2pc_aux ADD COLUMN z INT; }
 step s1_commit         { COMMIT; }
@@ -66,6 +67,7 @@ step s3_clean             { select __spqr__console_execute('drop distribution al
 
 permutation 
     s1_report s1_ev2 s1_c_str
+    s1_set_gid
     s1_begin
     s2_attach_cp s2_attach_after_cp
     s2_show_2pc_tx
