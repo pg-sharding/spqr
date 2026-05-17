@@ -31,11 +31,14 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	/*
 	* go along first phase
 	 */
-	uid7, err := uuid.NewV7()
-	if err != nil {
-		return txstatus.TXERR, err
+	gid := cl.NextGID()
+	if gid == "" {
+		uid7, err := uuid.NewV7()
+		if err != nil {
+			return txstatus.TXERR, err
+		}
+		gid = uid7.String()
 	}
-	gid := uid7.String()
 
 	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
 		return txstatus.TXERR, err
