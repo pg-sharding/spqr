@@ -52,18 +52,18 @@ func (m *MockQueryRouter) EXPECT() *MockQueryRouterMockRecorder {
 }
 
 // AnalyzeQuery mocks base method.
-func (m *MockQueryRouter) AnalyzeQuery(ctx context.Context, sph session.SessionParamsHolder, rule *config.FrontendRule, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+func (m *MockQueryRouter) AnalyzeQuery(ctx context.Context, sph session.SessionParamsHolder, rule *config.FrontendRule, query string, stmt lyx.Node, mCache *rmeta.MetadataCache) (*rmeta.RoutingMetadataContext, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AnalyzeQuery", ctx, sph, rule, query, stmt)
+	ret := m.ctrl.Call(m, "AnalyzeQuery", ctx, sph, rule, query, stmt, mCache)
 	ret0, _ := ret[0].(*rmeta.RoutingMetadataContext)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AnalyzeQuery indicates an expected call of AnalyzeQuery.
-func (mr *MockQueryRouterMockRecorder) AnalyzeQuery(ctx, sph, rule, query, stmt any) *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) AnalyzeQuery(ctx, sph, rule, query, stmt, mCache any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnalyzeQuery", reflect.TypeOf((*MockQueryRouter)(nil).AnalyzeQuery), ctx, sph, rule, query, stmt)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnalyzeQuery", reflect.TypeOf((*MockQueryRouter)(nil).AnalyzeQuery), ctx, sph, rule, query, stmt, mCache)
 }
 
 // CSM mocks base method.
