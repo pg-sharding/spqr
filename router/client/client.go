@@ -501,6 +501,10 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
 		msg := make([]byte, msgSize)
 
+		if msgSize != 4 {
+			return fmt.Errorf("message is of unexpected size %d, want size 4", msgSize)
+		}
+
 		_, err = cl.conn.Read(msg)
 		if err != nil {
 			return err
