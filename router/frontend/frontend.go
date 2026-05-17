@@ -136,7 +136,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		} else {
 			if sErr, ok := err.(*spqrerror.SpqrError); ok {
 				/* For simple query, set explicit query string in error message */
-				sErr.Query(q.String)
+				_ = sErr.Query(q.String)
 			}
 		}
 
