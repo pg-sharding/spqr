@@ -500,7 +500,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
 
-		if msgSize != 4 {
+		if msgSize < 4 {
 			return fmt.Errorf("message has unexpected size %d, want size 4", msgSize)
 		}
 
