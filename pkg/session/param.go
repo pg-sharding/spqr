@@ -84,6 +84,10 @@ type SessionParamsHolder interface {
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
 
+	/* These are non-guc */
+	SetNextGID(string)
+	NextGID() string
+
 	Params() map[string]string
 	SetParam(name, value string, isLocal bool)
 	StartTx()
