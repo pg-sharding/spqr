@@ -101,6 +101,7 @@ NOTICE: send query to shard(s) : sh1
 SET __spqr__distribution = 'ds1';
 SHOW __spqr__distribution;
 ERROR:  parameter "__spqr__distribution" isn't user accessible
+QUERY:  SHOW __spqr__distribution;
 SET __spqr__sharding_key = 1;
 SHOW __spqr__sharding_key;
  sharding key 
@@ -224,6 +225,7 @@ NOTICE: send query to shard(s) : sh1
 
 SHOW __spqr__scatter_query; -- error
 ERROR:  parameter "__spqr__scatter_query" isn't user accessible
+QUERY:  SHOW __spqr__scatter_query;
 SHOW __spqr__default_route_behaviour;
  default route behaviour 
 -------------------------
