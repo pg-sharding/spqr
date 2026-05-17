@@ -488,7 +488,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		retPlan := sliceInsert
 
-		ds, err := rm.Mgr.GetRelationDistribution(ctx, qualName)
+		ds, err := rm.GetRelationDistribution(ctx, qualName)
 		if err != nil {
 			return nil, err
 		}
