@@ -89,7 +89,7 @@ func TestSimple(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestSimpleTrace(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -248,7 +248,7 @@ func TestSimpleShow(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -303,7 +303,7 @@ func TestSimpleWhere(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -354,7 +354,7 @@ func TestNestedWhere(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -403,7 +403,7 @@ func TestGroupBy(t *testing.T) {
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 
-			assert.Equal(tt.exp, tmp, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
 	}
 }
@@ -439,7 +439,7 @@ func TestOrderBy(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -547,9 +547,8 @@ func TestRedistribute(t *testing.T) {
 			assert.EqualError(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -706,11 +705,10 @@ func TestKeyRange(t *testing.T) {
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -755,7 +753,7 @@ func TestRegisterRouter(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 
 }
@@ -817,7 +815,7 @@ func TestKeyRangeBordersSuccess(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -857,11 +855,10 @@ func TestKeyRangeBordersFail(t *testing.T) {
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -895,7 +892,7 @@ func TestSplitKeyRange(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -905,7 +902,8 @@ func TestAttachTable(t *testing.T) {
 
 	tmp, err := spqrparser.Parse("ATTACH TABLE t TO DISTRIBUTION ds1;")
 	assert.Error(err)
-	assert.Equal(nil, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
+	var exp []spqrparser.Statement
+	assert.Equal(exp, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
 }
 
 func TestAlter(t *testing.T) {
@@ -1458,7 +1456,7 @@ func TestAlter(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1530,7 +1528,7 @@ func TestDistribution(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1693,7 +1691,7 @@ func TestReferenceRelation(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1783,7 +1781,7 @@ func TestShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1831,7 +1829,7 @@ func TestRefresh(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1866,7 +1864,7 @@ func TestSyncReferenceTable(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1927,9 +1925,8 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -1975,9 +1972,8 @@ func TestStopMoveTaskGroup(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -2043,7 +2039,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2090,7 +2086,7 @@ func TestRelationQualifiedName(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2161,7 +2157,7 @@ func TestKill(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2251,7 +2247,7 @@ func TestICP(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2306,7 +2302,7 @@ func TestUniqueIndex(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2335,7 +2331,7 @@ func TestRedistributeTasks(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2390,7 +2386,7 @@ func TestGrant(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
