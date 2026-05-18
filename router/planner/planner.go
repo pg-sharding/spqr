@@ -404,6 +404,53 @@ func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
 	}
 }
 
+func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm *rmeta.RoutingMetadataContext) (*tupleslot.TupleTableSlot, error) {
+	var cf func()
+
+	var err error
+
+	mgr := rm.Mgr
+
+	switch tstmt := tstmt.(type) {
+	case *spqrparser.Show:
+		/* TODO - fix
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
+		*/
+		switch tstmt.Cmd {
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr:
+			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+			if err != nil {
+				return nil, err
+			}
+			defer cf()
+		}
+	default:
+		/* TODO - fix
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return nil, err
+		}
+		*/
+		mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+		if err != nil {
+			return nil, err
+		}
+		defer cf()
+	}
+
+	return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+		if err != nil {
+			if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+				return nil, retry.RetryableError(err)
+			}
+			return nil, err
+		}
+		return tts, nil
+	})
+}
+
 func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
@@ -481,48 +528,15 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
 			}
+			/* Here we return only last TTS. this is intended */
+			var tts *tupleslot.TupleTableSlot
 
-			mgr := rm.Mgr
-			var cf func()
-
-			switch tstmt := tstmt.(type) {
-			case *spqrparser.Show:
-				/* TODO - fix
-				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
-					return err
-				}
-				*/
-				switch tstmt.Cmd {
-				case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr:
-					mgr, cf, err = coord.DistributedMgr(ctx, mgr)
-					if err != nil {
-						return nil, err
-					}
-					defer cf()
-				}
-			default:
-				/* TODO - fix
-				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			for _, stmt := range tstmt {
+				if tts, err = executeSingleMetaQuery(ctx, stmt, rm); err != nil {
 					return nil, err
 				}
-				*/
-				mgr, cf, err = coord.DistributedMgr(ctx, mgr)
-				if err != nil {
-					return nil, err
-				}
-				defer cf()
 			}
-
-			return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
-				tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
-				if err != nil {
-					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return nil, retry.RetryableError(err)
-					}
-					return nil, err
-				}
-				return tts, nil
-			})
+			return tts, nil
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
