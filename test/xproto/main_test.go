@@ -53,6 +53,7 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 					retMsgType.Line = 0
 					retMsgType.File = ""
 					retMsgType.Routine = ""
+					retMsgType.Detail = ""
 				case *pgproto3.ErrorResponse:
 					/* do not compare this fields */
 					retMsgType.Line = 0
