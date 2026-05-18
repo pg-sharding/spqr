@@ -1087,7 +1087,7 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DETACH RELATION qualified_name
+	distribution_select_stmt DETACH table_or_relation qualified_name
 	{
 		$$ = &AlterDistribution{
 			Distribution: $1,
@@ -1167,7 +1167,7 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Relation:    	 $2,
@@ -1175,7 +1175,7 @@ distributed_relation_def:
 			AutoIncrementEntries: $6,
 		}
 	} 
-	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
+	| table_or_relation qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
 	{
 		$$ = &DistributedRelation{
 			Relation:    	 $2,
@@ -1232,7 +1232,7 @@ relation_attach_stmt:
 	}
 
 relation_alter_stmt_v2:
-	ALTER RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list {
+	ALTER table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &AlterRelationDistributionKey{
@@ -1240,7 +1240,7 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name SCHEMA any_id {
+	ALTER table_or_relation qualified_name SCHEMA any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &AlterRelationSchema {
@@ -1248,7 +1248,7 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
+	ALTER table_or_relation qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &RenameDistributionColumn{

@@ -1,11 +1,11 @@
 NAME
-    ALTER DISTRIBUTION ATTACH RELATION - Attaches one or more
-    [relations](/sharding/sharded_tables) to an existing distribution using
-    the ATTACH RELATION clause.
+    ALTER DISTRIBUTION ATTACH TABLE - Attaches one or more
+    [tables](/sharding/sharded_tables) to an existing distribution using the
+    ATTACH TABLE clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH RELATION <relationName>
-      [, <relationName> ...]
+    ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
+      [, <tableName> ...]
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
     where keys is a comma-separated list of column names
@@ -13,19 +13,18 @@ SYNTAX
     where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 DESCRIPTION
-    Attaches one or more [relations](/sharding/sharded_tables) to an existing
-    distribution using the ATTACH RELATION clause.
+    Attaches one or more [tables](/sharding/sharded_tables) to an existing
+    distribution using the ATTACH TABLE clause.
 
     For composite sharding keys, specify multiple column names separated by
     commas in the DISTRIBUTION KEY clause.
 
 EXAMPLES
     Single column sharding key:
-        ALTER DISTRIBUTION ds1 ATTACH RELATION orders
-          DISTRIBUTION KEY order_id;
+        ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
     Composite sharding key with two columns:
-        ALTER DISTRIBUTION ds2 ATTACH RELATION users
+        ALTER DISTRIBUTION ds2 ATTACH TABLE users
           DISTRIBUTION KEY tenant_id, user_id;
     Composite key with hash function:
-        ALTER DISTRIBUTION ds3 ATTACH RELATION events
+        ALTER DISTRIBUTION ds3 ATTACH TABLE events
           DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
