@@ -3313,11 +3313,15 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
 		return err
-	} else {
-		return qc.traverseRouters(ctx,
-			gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
-		)
 	}
+
+	if err := coord.UpdateKeyRangeMeta(ctx, chunk.GossipRequests); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx,
+		gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
+	)
 }
 
 func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
@@ -3328,6 +3332,10 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 	}
 
 	if err := qc.Coordinator.CommitTran(ctx, transaction); err != nil {
+		return err
+	}
+
+	if err := coord.UpdateKeyRangeMeta(ctx, transaction.Operations.GossipRequests); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx,

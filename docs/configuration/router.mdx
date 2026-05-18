@@ -24,6 +24,7 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `enable_role_system`     | Whether to enable the [role-based access control system](./roles). | `true`, `false`     | `false` |
 | `roles_file`             | The file path to the [roles](./roles) configuration.               | Any valid file path | (none) |
 | `identity_range_size`    | Size of range identifiers of sequence which router gets from coordinator. | int > 1      | `0` |
+| `use_metrics`            | Enable prometheus metric exporter on port configured by `metric_port` setting. | `true`, `false`     | `false` |
 
 ## Network Settings
 
@@ -34,6 +35,8 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `router_ro_port`     | The port number for the read-only queries router. | Any valid port number | (none) |
 | `admin_console_port` | The port number for the admin console.            | Any valid port number | (none) |
 | `grpc_api_port`      | The port number for the gRPC API.                 | Any valid port number | (none) |
+| `metric_path`        | The path for prometheus metric exporter           | Any valid HTTP path   | `/metric` |
+| `metric_port`        | The port for prometheus metric exporter           | Any valid port number | (none) |
 
 ## Frontend Rules
 

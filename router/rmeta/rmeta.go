@@ -3,6 +3,7 @@ package rmeta
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -18,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -25,6 +27,11 @@ import (
 type AuxValuesKey struct {
 	CTEName    string
 	ColRefName string
+}
+
+/* Detach trigger for shared invalidation? */
+type MetadataCache struct {
+	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 
 type RoutingMetadataContext struct {
@@ -69,18 +76,33 @@ type RoutingMetadataContext struct {
 	ro bool
 	/* NB: Not the same as !ro */
 	HasWriteTargets bool
+	/* Should we auto-linearize? */
+	HasHazardUpsert bool
+	AutoLinearize   bool
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
 	IsSPQRCTID    bool
 
-	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+	LastResultFormatCodes []int16
+
+	MetaCache *MetadataCache
 
 	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
 	rm.ro = ro
+}
+
+func (rm *RoutingMetadataContext) GetResultFormatCode(ind int) int16 {
+	if len(rm.LastResultFormatCodes) == 0 {
+		return xproto.FormatCodeText
+	}
+	if ind >= len(rm.LastResultFormatCodes) {
+		return rm.LastResultFormatCodes[0]
+	}
+	return rm.LastResultFormatCodes[ind]
 }
 
 func (rm *RoutingMetadataContext) IsRO() bool {
@@ -92,27 +114,29 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	query string,
 	stmt lyx.Node,
 	csm connmgr.ConnectionMgr,
-	mgr meta.EntityMgr) *RoutingMetadataContext {
+	mgr meta.EntityMgr,
+	mCache *MetadataCache) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:                       map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
-		CteNames:                   map[string]*lyx.CommonTableExpr{},
-		TableAliases:               map[string]rfqn.RelationFQN{},
-		CTEAliases:                 map[string]string{},
-		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:                  map[rfqn.RelationFQN]map[string][]int{},
-		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
+		Rels:            map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:    map[rfqn.RelationFQN]struct{}{},
+		CteNames:        map[string]*lyx.CommonTableExpr{},
+		TableAliases:    map[string]rfqn.RelationFQN{},
+		CTEAliases:      map[string]string{},
+		Exprs:           map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:       map[rfqn.RelationFQN]map[string][]int{},
+		MetaCache:       mCache,
+		AuxValues:       map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent: map[AuxValuesKey]AuxValuesKey{},
+		UsedAuxCTE:      map[AuxValuesKey][]*rfqn.RelationFQN{},
+		SPH:             sph,
+		CSM:             csm,
+		Mgr:             mgr,
+		Query:           query,
+		Stmt:            stmt,
+		ro:              false,
+		ClientRule:      clientRule,
+
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
-		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
-		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
-		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
-		SPH:                        sph,
-		CSM:                        csm,
-		Mgr:                        mgr,
-		Query:                      query,
-		Stmt:                       stmt,
-		ro:                         false,
-		ClientRule:                 clientRule,
 	}
 }
 
@@ -207,8 +231,21 @@ func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node 
 	return rm.AuxValues[rm.SearchKeyByColRef(cf)]
 }
 
+func (rm *RoutingMetadataContext) updateDistribColMapping(r *distributions.DistributedRelation, resolvedRelation *rfqn.RelationFQN) {
+	for _, e := range r.GetDistributionKeyColumnNames() {
+		if !slices.ContainsFunc(rm.RelationsByDistributionCol[e], func(e *rfqn.RelationFQN) bool {
+			return e.String() == resolvedRelation.String()
+		}) {
+			rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
+		}
+	}
+}
+
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
-	if res, ok := rm.Distributions[*resolvedRelation]; ok {
+	if res, ok := rm.MetaCache.Distributions[*resolvedRelation]; ok {
+		r := res.GetRelation(resolvedRelation)
+		rm.updateDistribColMapping(r, resolvedRelation)
+
 		return res, nil
 	}
 
@@ -222,12 +259,11 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 		return nil, err
 	}
 
-	rm.Distributions[*resolvedRelation] = ds
+	rm.MetaCache.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
 
-	for _, e := range r.GetDistributionKeyColumnNames() {
-		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
-	}
+	rm.updateDistribColMapping(r, resolvedRelation)
+
 	return ds, nil
 }
 

@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -8,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/rerrors"
 )
 
 func virtualParamTransformName(name string) string {
@@ -76,6 +78,10 @@ func DispatchSlice(qd *QueryDesc,
 			}
 
 			if guc.Get(cl) {
+				if cl.ShowNoticeMsg() {
+					_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %v", targ.Name))
+				}
+
 				if err := serv.PrefetchResult(targ, 1); err != nil {
 					return err
 				}
@@ -90,9 +96,31 @@ func DispatchSlice(qd *QueryDesc,
 			if err := serv.SendShard(qd.exec, targ); err != nil {
 				return err
 			}
+			if qd.exec.MaxRows == 0 {
+				if err := serv.SendShard(pgsync, targ); err != nil {
+					return err
+				}
+			} else {
+				msg, err := cl.Peek()
+				if err != nil {
+					return err
+				}
+				switch msg.(type) {
+				case *pgproto3.Sync:
 
-			if err := serv.SendShard(pgsync, targ); err != nil {
-				return err
+					if err := serv.SendShard(pgsync, targ); err != nil {
+						return err
+					}
+				case *pgproto3.Flush:
+					/* empty buffer */
+					_, _ = cl.Receive()
+					/* XXX: this is ugly & insane... anyway, work for simple cases... */
+					if err := serv.SendShard(pgflush, targ); err != nil {
+						return err
+					}
+				default:
+					return rerrors.ErrExecutorSyncLost
+				}
 			}
 		}
 	}

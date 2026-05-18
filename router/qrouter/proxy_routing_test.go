@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
@@ -23,7 +24,9 @@ import (
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rerrors"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stretchr/testify/assert"
 
@@ -31,6 +34,8 @@ import (
 )
 
 const MemQDBPath = "memqdb.json"
+
+var metricRegistry = metrics.NewRouterMetricRegistry(prometheus.NewRegistry())
 
 func getIdentityMngr(lc meta.EntityMgr) planner.IdentityRouterCache {
 	var seqMngr sequences.SequenceMgr = lc
@@ -99,7 +104,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -188,7 +193,9 @@ func TestMultiShardRouting(t *testing.T) {
 		dh.SetPreferredEngine("", "")
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -234,7 +241,7 @@ func TestCreateTable(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -301,7 +308,9 @@ func TestCreateTable(t *testing.T) {
 		dh.SetPreferredEngine("", "")
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -378,7 +387,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -483,7 +492,9 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -581,7 +592,7 @@ func TestRoutingByExpression(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -654,7 +665,9 @@ func TestRoutingByExpression(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -716,7 +729,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -753,7 +766,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -806,7 +821,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -938,7 +953,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -1027,7 +1044,7 @@ func TestComment(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1052,7 +1069,9 @@ func TestComment(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1146,7 +1165,7 @@ func TestCTE(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1361,7 +1380,9 @@ func TestCTE(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1505,7 +1526,7 @@ func TestSingleShard(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1731,7 +1752,9 @@ func TestSingleShard(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1822,7 +1845,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1895,7 +1918,9 @@ func TestInsertOffsets(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1982,7 +2007,7 @@ func TestJoins(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2053,7 +2078,9 @@ func TestJoins(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		if tt.err != nil {
 
@@ -2139,7 +2166,7 @@ func TestUnnest(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2176,7 +2203,9 @@ func TestUnnest(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -2250,7 +2279,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2271,7 +2300,9 @@ func TestCopySingleShard(t *testing.T) {
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 
 		stmt := parserRes[0]
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -2345,7 +2376,7 @@ func TestCopyMultiShard(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2368,7 +2399,9 @@ func TestCopyMultiShard(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -2431,7 +2464,7 @@ func TestSetStmt(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2463,7 +2496,9 @@ func TestSetStmt(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
 
 		stmt := parserRes[0]
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -2552,7 +2587,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2811,7 +2846,9 @@ LIMIT 1000
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -2883,7 +2920,7 @@ func TestHashRouting(t *testing.T) {
 
 	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2909,7 +2946,9 @@ func TestHashRouting(t *testing.T) {
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -2976,7 +3015,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	router, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	router, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	return router, err
 }

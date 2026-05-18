@@ -4,6 +4,7 @@ services:
     environment: &feature-env-common
       POSTGRES_USER: regress
       POSTGRES_DB: regress
+      SYNC_REPLICA: true
     ports:
       - "5500:6432"
     hostname: spqr_shard_1

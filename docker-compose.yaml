@@ -31,6 +31,7 @@ services:
         environment: &shard-env-common
             POSTGRES_USER: user1
             POSTGRES_DB: db1
+            PG_SYNC_REPLICA: true
         ports:
             - "7432:6432"
         hostname: spqr_shard_1

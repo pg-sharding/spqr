@@ -219,9 +219,9 @@ func (c *PoolImpl) backgroundHealthCheckLoop() {
 
 				if !netutil.TCPCheckAliveness(cl.Conn()) {
 
-					spqrlog.Zero.Info().Uint("client-id", cl.ID()).Msg("Found un-alive client")
+					spqrlog.Zero.Info().Uint("client", cl.ID()).Msg("Found un-alive client")
 					if err := cl.Cancel(); err != nil {
-						spqrlog.Zero.Error().Uint("client-id", cl.ID()).Err(err).Msg("failed to send cancel request to client")
+						spqrlog.Zero.Error().Uint("client", cl.ID()).Err(err).Msg("failed to send cancel request to client")
 						/* Do not fail, continue with next client */
 					}
 				}

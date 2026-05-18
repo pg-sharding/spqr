@@ -10,6 +10,7 @@ services:
         environment: &shard-env-common
             POSTGRES_USER: regress
             POSTGRES_DB: regress
+            SYNC_REPLICA: true`
         ports:
             - "7432:6432"
         hostname: spqr_shard_1

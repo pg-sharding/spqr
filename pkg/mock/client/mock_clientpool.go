@@ -467,6 +467,20 @@ func (mr *MockClientInfoMockRecorder) MaintainParams() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockClientInfo)(nil).MaintainParams))
 }
 
+// NextGID mocks base method.
+func (m *MockClientInfo) NextGID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextGID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// NextGID indicates an expected call of NextGID.
+func (mr *MockClientInfoMockRecorder) NextGID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextGID", reflect.TypeOf((*MockClientInfo)(nil).NextGID))
+}
+
 // Params mocks base method.
 func (m *MockClientInfo) Params() map[string]string {
 	m.ctrl.T.Helper()
@@ -509,6 +523,21 @@ func (m *MockClientInfo) PasswordMD5(salt [4]byte) (string, error) {
 func (mr *MockClientInfoMockRecorder) PasswordMD5(salt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PasswordMD5", reflect.TypeOf((*MockClientInfo)(nil).PasswordMD5), salt)
+}
+
+// Peek mocks base method.
+func (m *MockClientInfo) Peek() (pgproto3.FrontendMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Peek")
+	ret0, _ := ret[0].(pgproto3.FrontendMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Peek indicates an expected call of Peek.
+func (mr *MockClientInfoMockRecorder) Peek() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockClientInfo)(nil).Peek))
 }
 
 // PreferredEngine mocks base method.
@@ -1014,6 +1043,18 @@ func (m *MockClientInfo) SetMaintainParams(level string, val bool) {
 func (mr *MockClientInfoMockRecorder) SetMaintainParams(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockClientInfo)(nil).SetMaintainParams), level, val)
+}
+
+// SetNextGID mocks base method.
+func (m *MockClientInfo) SetNextGID(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetNextGID", arg0)
+}
+
+// SetNextGID indicates an expected call of SetNextGID.
+func (mr *MockClientInfoMockRecorder) SetNextGID(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNextGID", reflect.TypeOf((*MockClientInfo)(nil).SetNextGID), arg0)
 }
 
 // SetParam mocks base method.

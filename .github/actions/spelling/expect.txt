@@ -299,6 +299,7 @@ lowlevel
 lsb
 lval
 maxuint
+maxrows
 mcol
 mdblocales
 mempg
@@ -364,6 +365,7 @@ Oids
 oiwejow
 OLAP
 omnis
+ONCONFLICT
 onehost
 opgejrqr
 optarg
@@ -396,6 +398,7 @@ PGQDB
 pgquery
 pgsharding
 PGSSLMODE
+pgflush
 pgsync
 PGUSER
 pgx
@@ -416,6 +419,7 @@ ppp
 pppp
 prepstatement
 privs
+promhttp
 procps
 proident
 protobuf
@@ -654,6 +658,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+walreceiver
 Warningf
 workloadlog
 workloadreplay
@@ -682,3 +687,4 @@ YMid
 yylex
 zerolog
 zjoin
+zzz

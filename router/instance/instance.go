@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -74,7 +75,7 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceImpl, error) {
+func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16, metricRegistry *metrics.RouterMetricRegistry) (*InstanceImpl, error) {
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
@@ -146,6 +147,7 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16) (*InstanceI
 		&config.RouterConfig().Qr,
 		cache,
 		identityMgr,
+		metricRegistry,
 	)
 	if err != nil {
 		return nil, err

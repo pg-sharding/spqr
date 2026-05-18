@@ -71,6 +71,8 @@ type PsqlClient struct {
 	/* cancel */
 	csm *pgproto3.CancelRequest
 
+	peekMsg pgproto3.FrontendMessage
+
 	cancelPid uint32
 	cancelKey []byte
 
@@ -496,9 +498,14 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			return err
 		}
 
-		msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
-		msg := make([]byte, msgSize)
+		msgSize := int(binary.BigEndian.Uint32(headerRaw))
 
+		if msgSize < 8 {
+			return fmt.Errorf("message has unexpected size %d", msgSize)
+		}
+		msgSize -= 4
+
+		msg := make([]byte, msgSize)
 		_, err = cl.conn.Read(msg)
 		if err != nil {
 			return err
@@ -514,7 +521,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		switch protoVer {
 		case conn.GSSREQ:
-			spqrlog.Zero.Debug().Msg("negotiate gss enc request")
+			spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("negotiate gss enc request")
 			_, err := cl.conn.Write([]byte{'N'})
 			if err != nil {
 				return err
@@ -621,6 +628,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
 	spqrlog.Zero.Info().
+		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Msg("processing frontend auth")
@@ -749,11 +757,32 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
 }
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
+	if cl.peekMsg != nil {
+		msg := cl.peekMsg
+		cl.peekMsg = nil
+		return msg, nil
+	}
+	msg, err := cl.be.Receive()
+	spqrlog.Zero.Trace().
+		Uint("client", cl.ID()).
+		Interface("message", msg).
+		Msg("received message from client")
+	return msg, err
+}
+
+func (cl *PsqlClient) Peek() (pgproto3.FrontendMessage, error) {
+	if cl.peekMsg != nil {
+		return cl.peekMsg, nil
+	}
 	msg, err := cl.be.Receive()
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Interface("message", msg).
-		Msg("received message from client")
+		Err(err).
+		Msg("peek message from client")
+	if err == nil {
+		cl.peekMsg = msg
+	}
 	return msg, err
 }
 
@@ -762,7 +791,7 @@ func (cl *PsqlClient) Flush() error {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("sending msg to client")
@@ -829,7 +858,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
-	spqrlog.Zero.Debug().Uint("client-id", cl.ID()).Msg("closing client")
+	spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("closing client")
 	return cl.conn.Close()
 }
 
@@ -972,6 +1001,10 @@ func (f FakeClient) ID() uint {
 }
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
+	return &pgproto3.Query{}, nil
+}
+
+func (f FakeClient) Peek() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
