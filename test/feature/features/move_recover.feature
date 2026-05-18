@@ -101,7 +101,7 @@ Feature: Move recover test
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
@@ -182,7 +182,7 @@ Feature: Move recover test
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
@@ -271,7 +271,7 @@ Feature: Move recover test
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
@@ -360,7 +360,7 @@ Feature: Move recover test
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
@@ -449,7 +449,7 @@ Feature: Move recover test
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
@@ -533,7 +533,7 @@ Feature: Move recover test
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
