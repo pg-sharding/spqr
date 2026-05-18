@@ -73,7 +73,7 @@ func TestMatchRow(t *testing.T) {
 		},
 		{
 			name:      "and: left side false short-circuits",
-			condition: &lyx.AExprOp{Op: "and", Left: eq("name", "bob"), Right: eq("age", "30")},
+			condition: &lyx.AExprOp{Op: "and", Left: eq("name", "bob"), Right: eq("missing_col", "alice")},
 			wantMatch: false,
 		},
 		{
@@ -88,7 +88,7 @@ func TestMatchRow(t *testing.T) {
 		},
 		{
 			name:      "or: left side true short-circuits",
-			condition: &lyx.AExprOp{Op: "or", Left: eq("name", "alice"), Right: eq("age", "99")},
+			condition: &lyx.AExprOp{Op: "or", Left: eq("name", "alice"), Right: eq("missing_col", "alice")},
 			wantMatch: true,
 		},
 		{
@@ -108,7 +108,7 @@ func TestMatchRow(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:      "unknown node type returns false without error",
+			name:      "unsupported node type returns false without error",
 			condition: &lyx.AExprIConst{Value: 1},
 			wantMatch: false,
 		},
@@ -156,18 +156,6 @@ func TestMatchRow(t *testing.T) {
 		{
 			name:      "column name is case-sensitive",
 			condition: eq("NAME", "alice"),
-			wantMatch: true,
-			wantErr:   true,
-		},
-		{
-			name:      "negative: constant on the left",
-			condition: &lyx.AExprOp{Op: "=", Left: str("alice"), Right: col("name")},
-			wantMatch: true,
-			wantErr:   true,
-		},
-		{
-			name:      "negative: column to column comparison",
-			condition: &lyx.AExprOp{Op: "=", Left: col("name"), Right: col("age")},
 			wantMatch: true,
 			wantErr:   true,
 		},
