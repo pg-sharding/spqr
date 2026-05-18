@@ -82,7 +82,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.DescribeTaskGroup:
-		if err := gc.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
