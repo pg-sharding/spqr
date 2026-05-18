@@ -9,7 +9,7 @@ import (
 type Tokenizer struct {
 	s string
 
-	ParseTree Statement
+	ParseTree []Statement
 	LastError string
 	l         *Lexer
 }
@@ -29,11 +29,11 @@ func (t *Tokenizer) Lex(lval *yySymType) int {
 	return t.l.Lex(lval)
 }
 
-func setParseTree(yylex any, stmt Statement) {
+func setParseTree(yylex any, stmt []Statement) {
 	yylex.(*Tokenizer).ParseTree = stmt
 }
 
-func Parse(sql string) (Statement, error) {
+func Parse(sql string) ([]Statement, error) {
 	tokenizer := NewStringTokenizer(sql)
 	if yyParse(tokenizer) != 0 {
 		return nil, errors.New(tokenizer.LastError)

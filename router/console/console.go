@@ -159,7 +159,12 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		Type("type", tstmt).
 		Msg("processQueryInternal: parsed query with type")
 
-	return l.ExecuteMetadataQuery(ctx, tstmt, rc, gc)
+	for _, stmt := range tstmt {
+		if err := l.ExecuteMetadataQuery(ctx, stmt, rc, gc); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // TODO : unit tests

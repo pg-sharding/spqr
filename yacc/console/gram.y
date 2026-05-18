@@ -43,6 +43,7 @@ func randomHex(n int) (string, error) {
 
     set                    *Set
 	statement              Statement
+	statementList		   []Statement
 	show                   *Show
 	help                   *Help
 
@@ -193,6 +194,8 @@ func randomHex(n int) (string, error) {
 // CMDS
 %type <statement> command
 
+%type <statementList> multiStmt
+
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
@@ -340,18 +343,29 @@ func randomHex(n int) (string, error) {
 %left		TSQOPENBR TSQCLOSEBR
 %left		TOPENBR TCLOSEBR
 
-
-%start any_command
+%start root
 
 %%
 
+root: multiStmt semicolon_opt {
+	setParseTree(yylex, $1)
+}
 
-any_command:
-    command semicolon_opt
+
+
+multiStmt: 
+			command {
+				$$ = []Statement{$1}
+			} | 
+			multiStmt TSEMICOLON command {
+				$$ = append($1, $3)
+			}
+	;
+
 
 semicolon_opt:
-/*empty*/ {}
-| TSEMICOLON {}
+	/*empty*/ {}
+	| TSEMICOLON {}
 
 
 command:
@@ -361,109 +375,109 @@ command:
 	|
 	add_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| create_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| trace_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| stoptrace_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| drop_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| lock_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unlock_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| show_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| help_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| kill_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| listen_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| shutdown_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| split_key_range_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| move_key_range_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| redistribute_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unite_key_range_stmt
 	{
-	   setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| register_router_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unregister_router_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| alter_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| invalidate_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} 
 	| retry_move_task_group
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| stop_move_task_group
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| sync_reference_tables_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| alter_reference_table_storage_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| create_distributed_relation_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} | icp_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} | GrantStmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 
 any_uint:
