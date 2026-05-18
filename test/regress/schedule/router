@@ -58,3 +58,4 @@ test: xproto
 test: copy_to
 test: auto_linearize
 test: spqrguard_kr_meta
+test: aliasing
