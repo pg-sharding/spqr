@@ -75,7 +75,7 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 		// ok
 	default:
 		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+			Uint("client", rst.Client().ID()).Str("tx-status", rst.QueryExecutor().TxStatus().String()).Err(err).
 			Msg("client iteration done with error")
 
 		/* try to report error to user  */
@@ -88,7 +88,7 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
@@ -229,7 +229,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			}
 		}
 
-		err := ProcessMessage(qr, rst, msg)
+		err := ProcessMessage(rst, msg)
 
 		switch err {
 		case io.ErrUnexpectedEOF:
