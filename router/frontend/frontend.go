@@ -188,7 +188,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("process frontend for route")
 
 	if config.RouterConfig().PgprotoDebug {

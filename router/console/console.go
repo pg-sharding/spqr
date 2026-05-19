@@ -207,7 +207,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		}
 	}
 
-	spqrlog.Zero.Info().Msg("console.ProcClient start")
+	spqrlog.Zero.Debug().Msg("console.ProcClient start")
 
 	for {
 		msg, err := rc.Receive()
