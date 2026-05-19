@@ -513,7 +513,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		protoVer := binary.BigEndian.Uint32(msg)
 
-		spqrlog.Zero.Info().
+		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
 			Uint32("proto-version", protoVer).
 			Int64("ms", time.Now().UnixMilli()).
@@ -553,7 +553,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return fmt.Errorf("failed to receive continuation startup message: %w", err)
 			}
 
-			spqrlog.Zero.Info().
+			spqrlog.Zero.Debug().
 				Uint("client", cl.ID()).
 				Uint32("proto-version", protoVer).
 				Msg("completed TLS setup")
