@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -113,14 +114,14 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	frRule *config.FrontendRule) (*route.Route, error) {
 
 	if nroute, ok := r.pool.Load(key); ok {
-		spqrlog.Zero.Info().
-			Str("user", key.Usr()).
-			Str("db", key.DB()).
-			Msg("match route")
 		rt, ok := nroute.(*route.Route)
 		if !ok {
-			return nil, fmt.Errorf("internal: unexpected route type %T", nroute)
+			return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "internal: unexpected route type %T", nroute)
 		}
+		spqrlog.Zero.Debug().
+			Str("user", key.Usr()).
+			Str("db", key.DB()).
+			Msg("match route OK")
 		return rt, nil
 	}
 
