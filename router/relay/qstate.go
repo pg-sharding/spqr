@@ -94,7 +94,7 @@ l:
 		if i > 0 {
 
 			switch stmt.(type) {
-			case *lyx.VariableSetStmt, *lyx.VariableShowStmt:
+			case *lyx.VariableSetStmt, *lyx.VariableShowStmt, *lyx.TransactionStmt:
 				/* ok */
 			default:
 				continue l
