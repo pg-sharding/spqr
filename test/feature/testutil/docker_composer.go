@@ -74,6 +74,7 @@ type Composer interface {
 type DockerComposer struct {
 	projectName string
 	config      string
+	env         []string
 	api         *client.Client
 	containers  map[string]container.Summary
 	stopped     map[string]bool
@@ -123,6 +124,7 @@ func (dc *DockerComposer) fillContainers() error {
 	if err != nil {
 		return err
 	}
+	dc.containers = make(map[string]container.Summary)
 	errorFlag := false
 	var name, state string
 	for _, c := range containers {
@@ -145,8 +147,45 @@ func (dc *DockerComposer) fillContainers() error {
 	return nil
 }
 
+func (dc *DockerComposer) waitHealthyContainers(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		var waiting []string
+		for service, c := range dc.containers {
+			if dc.stopped[service] {
+				continue
+			}
+			inspect, err := dc.api.ContainerInspect(context.Background(), c.ID)
+			if err != nil {
+				return fmt.Errorf("failed to inspect container %s: %s", service, err)
+			}
+			if inspect.State == nil {
+				return fmt.Errorf("container %s has no state", service)
+			}
+			if inspect.State.Status != "running" {
+				return fmt.Errorf("container %s is %s, not running", service, inspect.State.Status)
+			}
+			if inspect.State.Health != nil && inspect.State.Health.Status != "healthy" {
+				waiting = append(waiting, fmt.Sprintf("%s:%s", service, inspect.State.Health.Status))
+			}
+		}
+		if len(waiting) == 0 {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for healthy containers: %s", strings.Join(waiting, ", "))
+		}
+		time.Sleep(time.Second)
+		if err := dc.fillContainers(); err != nil {
+			return err
+		}
+	}
+}
+
 // Up brings all containers up according to config
 func (dc *DockerComposer) Up(env []string) error {
+	dc.env = env
+	dc.stopped = make(map[string]bool)
 	err := dc.runCompose([]string{"up", "-d", "--force-recreate", "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))}, env)
 	if err != nil {
 		// to save container logs
@@ -162,7 +201,7 @@ func (dc *DockerComposer) Up(env []string) error {
 				continue
 			}
 			dc.containers[srv] = c
-			if (c.State != "running" || c.Status[len(c.Status)-len("(unhealthy)"):] == "(unhealthy)") && !dc.stopped[srv] {
+			if (c.State != "running" || strings.HasSuffix(c.Status, "(unhealthy)")) && !dc.stopped[srv] {
 				r, err := dc.api.ContainerLogs(context.TODO(), c.ID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
 				if err != nil {
 					fmt.Printf("failed to get logs from \"%s\": %s\n", c.Names[0], err)
@@ -175,12 +214,17 @@ func (dc *DockerComposer) Up(env []string) error {
 		return err
 	}
 	err = dc.fillContainers()
-	return err
+	if err != nil {
+		return err
+	}
+	return dc.waitHealthyContainers(defaultDockerComposeTimeout)
 }
 
 // Down tears all containers/VMs down
 func (dc *DockerComposer) Down() error {
-	return dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, nil)
+	err := dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, dc.env)
+	dc.env = nil
+	return err
 }
 
 // Services returns names/ids of running containers
