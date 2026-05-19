@@ -125,8 +125,7 @@ func (dc *DockerComposer) fillContainers() error {
 		return err
 	}
 	dc.containers = make(map[string]container.Summary)
-	errorFlag := false
-	var name, state string
+	var failed []string
 	for _, c := range containers {
 		prj := c.Labels["com.docker.compose.project"]
 		srv := c.Labels["com.docker.compose.service"]
@@ -136,13 +135,11 @@ func (dc *DockerComposer) fillContainers() error {
 		dc.containers[srv] = c
 
 		if c.State != "running" && !dc.stopped[srv] {
-			errorFlag = true
-			name = srv
-			state = c.State
+			failed = append(failed, fmt.Sprintf("%s(%s)", srv, c.State))
 		}
 	}
-	if errorFlag {
-		return fmt.Errorf("container %s is %s, not running", name, state)
+	if len(failed) > 0 {
+		return fmt.Errorf("containers not running: %s", strings.Join(failed, ", "))
 	}
 	return nil
 }
@@ -176,6 +173,7 @@ func (dc *DockerComposer) waitHealthyContainers(timeout time.Duration) error {
 			return fmt.Errorf("timed out waiting for healthy containers: %s", strings.Join(waiting, ", "))
 		}
 		time.Sleep(time.Second)
+		// Refresh dc.containers so the next loop iteration sees updated container states.
 		if err := dc.fillContainers(); err != nil {
 			return err
 		}

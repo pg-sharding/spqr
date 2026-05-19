@@ -617,17 +617,10 @@ func (tctx *testContext) stepClusterEnvironmentIs(body *godog.DocString) error {
 	byLine := func(r rune) bool {
 		return r == '\n' || r == '\r'
 	}
-	enableAuthProfile := false
 	for _, e := range strings.FieldsFunc(body.Content, byLine) {
 		if e = strings.TrimSpace(e); e != "" {
 			tctx.composerEnv = append(tctx.composerEnv, e)
-			if strings.Contains(e, "router_with_ldap_frontend.yaml") || strings.Contains(e, "router_with_gss_frontend.yaml") {
-				enableAuthProfile = true
-			}
 		}
-	}
-	if enableAuthProfile {
-		tctx.composerEnv = append(tctx.composerEnv, "COMPOSE_PROFILES=auth")
 	}
 
 	return nil
