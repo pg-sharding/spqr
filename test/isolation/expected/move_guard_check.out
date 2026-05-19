@@ -1,6 +1,6 @@
 Parsed test spec with 4 sessions
 
-starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid st s4_attach_cp s2_redistribute_sh2_nw s2_await_planning s2_show_kr s2_show_tg s1_spqr_ctid s1_s s4_check_guard_sh1 s4_check_guard_sh2 s4_detach_cp s2_await_task s3_clean s3_clean_tg
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s4_attach_cp s2_redistribute_sh2_nw s2_await_planning s2_show_kr s2_show_tg s1_spqr_ctid s1_s s4_check_guard_sh1 s4_check_guard_sh2 s4_detach_cp s2_await_task s3_clean s3_clean_tg
 add key range
 -------------
 bound -> 0   
