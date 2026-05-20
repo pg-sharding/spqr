@@ -13,6 +13,9 @@ import (
 var ErrResolvingValue = fmt.Errorf("error while resolving expression value")
 
 func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]byte) (any, error) {
+	if ind < 0 || ind >= len(bindParams) {
+		return nil, ErrResolvingValue
+	}
 
 	switch paramCode {
 	case xproto.FormatCodeBinary:
