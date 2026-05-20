@@ -1051,6 +1051,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
+
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveKeysCP2); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveKeysCP2).Err(err).Msg("error while checking control point")
+				}
+			}
+
 			tranMngr := meta.NewTranEntityManager(qc)
 			if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 				return err
@@ -1058,11 +1065,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
+
 			if config.CoordinatorConfig().EnableICP {
 				if err := icp.CheckControlPoint(nil, icp.AfterCoordUpdateKeyRangeCP); err != nil {
 					spqrlog.Zero.Info().Str("cp", icp.AfterCoordUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
 				}
 			}
+
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err
 			}
