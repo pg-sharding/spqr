@@ -51,6 +51,9 @@ type RelayStateMgr interface {
 
 	Parse(query string, doCaching bool) ([]lyx.Node, string, error)
 
+	Cache() *rmeta.MetadataCache
+	Parser() *qparser.QParser
+
 	CompleteRelay() error
 	CompleteRelayClient() error
 	Close() error
@@ -164,6 +167,14 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 
 func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 	return rst.Qr
+}
+
+func (rst *RelayStateImpl) Cache() *rmeta.MetadataCache {
+	return rst.mCache
+}
+
+func (rst *RelayStateImpl) Parser() *qparser.QParser {
+	return &rst.qp
 }
 
 func (rst *RelayStateImpl) QueryExecutor() QueryStateExecutor {
@@ -531,7 +542,7 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	/* XXX: check that we have reference relation insert here */
 	stmt := stmts[0]
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt, rst.mCache)
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Client(), rst.Client().Rule(), query, stmt, rst.Cache())
 	if err != nil {
 		return nil, err
 	}
@@ -1306,7 +1317,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 	ctx := context.TODO()
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), q.String, rst.qp.Stmt(), rst.mCache)
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Client(), rst.Client().Rule(), q.String, rst.Parser().Stmt(), rst.Cache())
 	if err != nil {
 		return err
 	}
