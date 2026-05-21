@@ -219,7 +219,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> SYSTEM RELOAD RESTART REBOOTSTRAP
+%token<str> SYSTEM RELOAD RESTART REBOOTSTRAP ROTATE
 
 %token<str> SECONDS WAIT PANIC SLEEP
 
@@ -895,6 +895,10 @@ alter_sys_target:
 	}  | SYSTEM REBOOTSTRAP {
 		$$ = &System{
 			Rebootstrap: true,
+		}
+	} | SYSTEM ROTATE {
+		$$ = &System{
+			RotateLog: true,
 		}
 	}
 

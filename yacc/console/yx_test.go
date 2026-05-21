@@ -927,6 +927,15 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "ALTER SYSTEM ROTATE ",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					RotateLog: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "ALTER SYSTEM REBOOTSTRAP",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.System{

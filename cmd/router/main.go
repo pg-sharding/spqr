@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/router_util"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
@@ -183,10 +184,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		spqrlog.ReloadLogger(config.RouterConfig().LogFileName,
-			config.RouterConfig().LogLevel,
-			true /* XXX: Never sync log in router */, config.RouterConfig().PrettyLogging)
-		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+		router_util.ReloadRotateLog()
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -339,11 +337,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName,
-						config.RouterConfig().LogLevel,
-						true, /* XXX: Never sync log in router */
-						config.RouterConfig().PrettyLogging)
-					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+					router_util.ReloadRotateLog()
 				case syscall.SIGUSR2:
 					if cpuProfile {
 						// write profile
@@ -377,11 +371,7 @@ var runCmd = &cobra.Command{
 						spqrlog.Zero.Error().Err(err).Msg("failed to re-apply CLI overrides on SIGHUP")
 					}
 
-					spqrlog.ReloadLogger(
-						config.RouterConfig().LogFileName,
-						config.RouterConfig().LogLevel, true, /* XXX: Never sync log in router */
-						config.RouterConfig().PrettyLogging)
-					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+					router_util.ReloadRotateLog()
 
 					if err := logEffectiveConfig(config.RouterConfig()); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("failed to print running config")
