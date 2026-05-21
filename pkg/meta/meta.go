@@ -33,6 +33,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rebootstrap"
+	"github.com/pg-sharding/spqr/pkg/router_util"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
@@ -693,7 +694,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.System:
-		if stmt.Reload {
+		if stmt.RotateLog {
+			router_util.ReloadRotateLog()
+		} else if stmt.Reload {
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGHUP); err != nil {
 				return nil, err
 			}
