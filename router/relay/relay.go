@@ -1341,7 +1341,9 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	rst.routingDecisionPlan = queryPlan
 
 	if rm.HasWriteTargets && len(queryPlan.ExecutionTargets()) > 1 && rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
-		rst.QueryExecutor().ExecBegin("BEGIN", &lyx.TransactionStmt{}, true)
+		if err := rst.QueryExecutor().ExecBegin("BEGIN", &lyx.TransactionStmt{}, true); err != nil {
+			return err
+		}
 	}
 
 	es := &QueryDesc{
