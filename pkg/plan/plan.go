@@ -13,9 +13,23 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
+type PlanHints struct {
+	AutoLinearize bool
+}
+
+type BasePlan struct {
+	H PlanHints
+}
+
+func (b *BasePlan) Hints() *PlanHints {
+	return &b.H
+}
+
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
+
+	Hints() *PlanHints
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
@@ -29,7 +43,8 @@ type Plan interface {
 }
 
 type ScatterPlan struct {
-	Plan
+	BasePlan
+
 	SubPlan Plan
 
 	/* explicitly set-up link to next slice */
@@ -101,7 +116,7 @@ func (sp *ScatterPlan) RunSlice(serv server.Server) error {
 var _ Plan = &ScatterPlan{}
 
 type ModifyTable struct {
-	Plan
+	BasePlan
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
 }
@@ -137,7 +152,7 @@ func (mt *ModifyTable) PrepareRunSlice(server.Server) error {
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
-	Plan
+	BasePlan
 
 	/* Subplan */
 
@@ -183,7 +198,7 @@ func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
 var _ Plan = &ShardDispatchPlan{}
 
 type RandomDispatchPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -220,7 +235,7 @@ func (rdp *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
 var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
-	Plan
+	BasePlan
 
 	stmt lyx.Node
 
@@ -264,14 +279,8 @@ var _ Plan = &VirtualPlan{}
 
 type DataRowFilter struct {
 	Plan
-
 	stmt        lyx.Node
 	FilterIndex uint
-	SubPlan     Plan
-}
-
-func (rf *DataRowFilter) ExecutionTargets() []kr.ShardKey {
-	return rf.SubPlan.ExecutionTargets()
 }
 
 func (rf *DataRowFilter) Stmt() lyx.Node {
@@ -282,29 +291,10 @@ func (rf *DataRowFilter) SetStmt(n lyx.Node) {
 	rf.stmt = n
 }
 
-func (rf *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
-	if rf.SubPlan == nil {
-		return ""
-	}
-	return rf.SubPlan.GetGangMemberMsg(sh)
-}
-
-func (rf *DataRowFilter) Subplan() Plan {
-	return rf.SubPlan.Subplan()
-}
-
-func (rf *DataRowFilter) RunSlice(serv server.Server) error {
-	return rf.SubPlan.RunSlice(serv)
-}
-
-func (rf *DataRowFilter) PrepareRunSlice(serv server.Server) error {
-	return rf.SubPlan.PrepareRunSlice(serv)
-}
-
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -389,7 +379,7 @@ func Combine(p1, p2 Plan) Plan {
 	switch v := p1.(type) {
 	case *DataRowFilter:
 		return &DataRowFilter{
-			SubPlan: Combine(v.SubPlan, p2),
+			Plan: Combine(v.Plan, p2),
 		}
 	}
 
@@ -399,7 +389,7 @@ func Combine(p1, p2 Plan) Plan {
 		p1, p2 = p2, p1
 	case *DataRowFilter:
 		return &DataRowFilter{
-			SubPlan: Combine(p1, v.SubPlan),
+			Plan: Combine(p1, v.Plan),
 		}
 	}
 

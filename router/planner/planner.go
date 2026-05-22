@@ -1142,7 +1142,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
-					SubPlan:     p,
+					Plan:        p,
 					FilterIndex: 0,
 				}, nil
 			}
@@ -1174,7 +1174,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
-					SubPlan:     p,
+					Plan:        p,
 					FilterIndex: 0,
 				}, nil
 			}
