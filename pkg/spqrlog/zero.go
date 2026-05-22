@@ -14,6 +14,8 @@ import (
 // Initialized with structured JSON logging by default (prettyLogging = false)
 var Zero = NewZeroLogger("", "info", false, false)
 
+var lastDiode *diode.Writer
+
 // NewZeroLogger initializes a zerolog.Logger.
 // If prettyLogging is true, it outputs in a human-readable format.
 // Prints an error message if writer initialization fails.
@@ -38,9 +40,14 @@ func NewZeroLogger(filepath string, logLevel string, async bool, prettyLogging b
 
 	if async {
 		/* TODO: configure this using "common" router/coordinator config */
-		writer = diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
+		d := diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
 			fmt.Printf("Logger Dropped %d messages", missed)
 		})
+
+		lastDiode = &d
+		writer = d
+	} else {
+		lastDiode = nil
 	}
 
 	logger := zerolog.New(writer).With().Timestamp().Logger().Level(level)
@@ -54,7 +61,11 @@ func NewZeroLogger(filepath string, logLevel string, async bool, prettyLogging b
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
 func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
+	sv := lastDiode
 	Zero = NewZeroLogger(logFileName, logLevel, asyncLog, prettyLogging)
+	if sv != nil {
+		_ = sv.Close()
+	}
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.
