@@ -26,6 +26,11 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 	if err == nil {
 
 		if err := rst.CompleteRelay(); err != nil {
+			if err := rst.CompleteRelayClient(); err != nil {
+
+				/* XXXX: terminate? */
+				return err
+			}
 			return err
 		}
 
@@ -196,6 +201,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	defer func() {
+		spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("closing relay")
 		if err := rst.Close(); err != nil {
 			spqrlog.Zero.Debug().Uint("client", cl.ID()).Err(err).Msg("failed to close relay state")
 		}

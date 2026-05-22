@@ -293,13 +293,11 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 			s.SetTxStatus(st)
 		}
 
-	} else {
-		if err := s.deployTxStatusInternal(serv,
-			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
-			return err
-		}
 	}
-	return nil
+
+	return s.deployTxStatusInternal(serv,
+		&pgproto3.Query{String: query}, txstatus.TXIDLE)
+
 }
 
 // query in commit query. maybe commit or commit `name`
