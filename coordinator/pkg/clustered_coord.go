@@ -1020,52 +1020,6 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 			move.Status = qdb.MoveKeyRangeLocked
 
-		case qdb.MoveKeyRangeStarted: // nolint: staticcheck
-			// move the data
-			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-			if err != nil {
-				return err
-			}
-
-			if keyRange.ShardID != req.ShardID {
-				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
-				if err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
-					return err
-				}
-				keyRange.ShardID = req.ShardID
-				// TODO: move check to meta layer
-				if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
-					return err
-				}
-				tranMngr := meta.NewTranEntityManager(qc)
-				if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
-					return err
-				}
-				if err := tranMngr.ExecNoTran(ctx); err != nil {
-					return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
-				}
-			}
-			// Notify all routers about scheme changes.
-			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-				cl := proto.NewKeyRangeServiceClient(cc)
-				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
-					Id:        keyRange.ID,
-					ToShardId: keyRange.ShardID,
-				})
-				spqrlog.Zero.Debug().Err(err).
-					Interface("response", moveResp).
-					Msg("move key range response")
-				return err
-			}); err != nil {
-				return err
-			}
-
-			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to update key range move status")
-			}
-			move.Status = qdb.MoveKeyRangeComplete
-
 		case qdb.MoveKeyRangeLocked:
 			// move the data
 			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
@@ -1097,6 +1051,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
+
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveKeysCP2); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveKeysCP2).Err(err).Msg("error while checking control point")
+				}
+			}
+
 			tranMngr := meta.NewTranEntityManager(qc)
 			if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 				return err
@@ -1104,11 +1065,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
+
 			if config.CoordinatorConfig().EnableICP {
 				if err := icp.CheckControlPoint(nil, icp.AfterCoordUpdateKeyRangeCP); err != nil {
 					spqrlog.Zero.Info().Str("cp", icp.AfterCoordUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
 				}
 			}
+
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err
 			}
@@ -2838,16 +2801,18 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			tts, err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly())
-			if err != nil {
-				if err := cli.ReportError(err); err != nil {
-					return err
-				}
-			} else {
-				if err := cli.ReplyTTS(tts); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("processing error")
+			for _, stmt := range tstmt {
+				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly())
+				if err != nil {
+					if err := cli.ReportError(err); err != nil {
+						return err
+					}
 				} else {
-					spqrlog.Zero.Debug().Msg("processed OK")
+					if err := cli.ReplyTTS(tts); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("processing error")
+					} else {
+						spqrlog.Zero.Debug().Msg("processed OK")
+					}
 				}
 			}
 		default:
@@ -3313,11 +3278,15 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
 		return err
-	} else {
-		return qc.traverseRouters(ctx,
-			gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
-		)
 	}
+
+	if err := coord.UpdateKeyRangeMeta(ctx, chunk.GossipRequests); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx,
+		gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
+	)
 }
 
 func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
@@ -3331,14 +3300,8 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 		return err
 	}
 
-	for _, gossipRequest := range transaction.Operations.GossipRequests {
-		reqType, _ := mtran.GetGossipRequestType(gossipRequest)
-		switch reqType {
-		case mtran.GRCreateKeyRange:
-			if err := qc.updateKeyRangeMetaOnShard(ctx, gossipRequest.CreateKeyRange.KeyRangeInfo.ShardId, datatransfers.InsertKeyRangeMeta, gossipRequest.CreateKeyRange.KeyRangeInfo.Krid); err != nil {
-				return err
-			}
-		}
+	if err := coord.UpdateKeyRangeMeta(ctx, transaction.Operations.GossipRequests); err != nil {
+		return err
 	}
 	return qc.traverseRouters(ctx,
 		gossipMetaChanges(ctx,
@@ -3501,38 +3464,4 @@ func getRouterConnRetryPolicy() string {
 func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
 	qc.bounds.Delete(id)
 	qc.index.Delete(id)
-}
-
-func (qc *ClusteredCoordinator) updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string, args ...any) error {
-	if !config.CoordinatorConfig().ForbidDirectShardQueries {
-		return nil
-	}
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-	if err != nil {
-		return err
-	}
-	shardData, ok := conns.ShardsData[shardId]
-	if !ok {
-		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("could not update key range on shard: shard \"%s\" does not exist in shard data config", shardId))
-	}
-	conn, err := datatransfers.GetMasterConnection(ctx, shardData, "key_range_meta_update")
-	if err != nil {
-		return err
-	}
-
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
-
-	/* "INSERT INTO spqr_metadata.spqr_local_key_ranges (key_range_id) VALUES ($1) ON CONFLICT DO NOTHING;", keyRangeId */
-	if _, err := tx.Exec(ctx, query, args...); err != nil {
-		return err
-	}
-
-	return tx.Commit(ctx)
 }

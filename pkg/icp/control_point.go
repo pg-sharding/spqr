@@ -22,6 +22,7 @@ const (
 	AfterCopyDataCP             = "after_copy_data_cp"
 	AfterDeleteCP               = "after_delete_cp"
 	AfterMoveKeysCP             = "after_move_keys_cp"
+	AfterMoveKeysCP2            = "after_move_keys_before_update_kr_cp"
 	AfterCoordUpdateKeyRangeCP  = "after_coordinator_update_key_range_cp"
 	AfterRouterUpdateKeyRangeCP = "after_router_update_key_range_cp"
 	AfterUnlockKeyRangeCP       = "after_unlock_key_range_cp"

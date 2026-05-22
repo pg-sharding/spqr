@@ -9,27 +9,19 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
-	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
 func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
-	_, ok := p.(*plan.ScatterPlan)
-	if !ok {
+	_, ok := p.(*plan.ShardDispatchPlan)
+	if ok {
+		/* single shard dispatch is safe from hazard upsert */
 		return nil
 	}
 
 	if rm.HasHazardUpsert {
-
-		guc, err := rm.SPH.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
-		if err != nil {
-			return err
-		}
-
-		rm.AutoLinearize = true
-
-		guc.Set(rm.SPH, session.VirtualParamLevelStatement /* only for this exact statement */, true)
+		p.Hints().AutoLinearize = true
 	}
 
 	return nil

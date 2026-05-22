@@ -218,7 +218,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		return routerClient.ID(), r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
-	spqrlog.Zero.Info().
+	spqrlog.Zero.Debug().
 		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 

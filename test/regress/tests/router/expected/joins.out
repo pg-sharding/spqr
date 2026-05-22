@@ -98,12 +98,16 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xjoin2 (id) values(25);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO rf (rid) values(1);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO rf (rid) values(10);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO rf (rid) values(15);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO rf (rid) values(25);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1

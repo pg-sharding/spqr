@@ -210,7 +210,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
 					if stmt.Returning != nil {
 						return &plan.DataRowFilter{
-							SubPlan: &plan.ScatterPlan{
+							Plan: &plan.ScatterPlan{
 								ExecTargets: rel.ListStorageRoutes(),
 							},
 							FilterIndex: 0,
@@ -264,7 +264,7 @@ func (qr *ProxyQrouter) planInsertV1(
 			}
 			if stmt.Returning != nil {
 				return &plan.DataRowFilter{
-					SubPlan:     p,
+					Plan:        p,
 					FilterIndex: 0,
 				}, nil
 			}
@@ -488,7 +488,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		retPlan := sliceInsert
 
-		ds, err := rm.Mgr.GetRelationDistribution(ctx, qualName)
+		ds, err := rm.GetRelationDistribution(ctx, qualName)
 		if err != nil {
 			return nil, err
 		}
@@ -876,7 +876,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 
 	switch v := p.(type) {
 	case *plan.DataRowFilter:
-		sp, err := qr.InitExecutionTargets(ctx, rm, v.SubPlan)
+		sp, err := qr.InitExecutionTargets(ctx, rm, v.Plan)
 		if err != nil {
 			return nil, err
 		}
@@ -884,7 +884,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		/* XXX: Can we do better? */
 
 		return &plan.DataRowFilter{
-			SubPlan:     sp,
+			Plan:        sp,
 			FilterIndex: 0,
 		}, err
 	case *plan.ShardDispatchPlan:

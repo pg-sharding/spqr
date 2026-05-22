@@ -30,7 +30,7 @@ generate_help:
 ####################### BUILD #######################
 
 codename ?= jammy
-POSTGRES_VERSION ?= 15
+POSTGRES_VERSION ?= 17
 PROTO_TEST_TAG ?= all
 
 build_balancer:
