@@ -13,9 +13,23 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
+type PlanHints struct {
+	AutoLinearize bool
+}
+
+type BasePlan struct {
+	h PlanHints
+}
+
+func (b *BasePlan) Hints() *PlanHints {
+	return &b.h
+}
+
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
+
+	Hints() *PlanHints
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
@@ -29,7 +43,8 @@ type Plan interface {
 }
 
 type ScatterPlan struct {
-	Plan
+	BasePlan
+
 	SubPlan Plan
 
 	/* explicitly set-up link to next slice */
@@ -101,7 +116,7 @@ func (sp *ScatterPlan) RunSlice(serv server.Server) error {
 var _ Plan = &ScatterPlan{}
 
 type ModifyTable struct {
-	Plan
+	BasePlan
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
 }
@@ -137,7 +152,7 @@ func (mt *ModifyTable) PrepareRunSlice(server.Server) error {
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
-	Plan
+	BasePlan
 
 	/* Subplan */
 
@@ -183,7 +198,7 @@ func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
 var _ Plan = &ShardDispatchPlan{}
 
 type RandomDispatchPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -220,7 +235,7 @@ func (rdp *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
 var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
-	Plan
+	BasePlan
 
 	stmt lyx.Node
 
@@ -263,7 +278,7 @@ func (vp *VirtualPlan) PrepareRunSlice(server.Server) error {
 var _ Plan = &VirtualPlan{}
 
 type DataRowFilter struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	FilterIndex uint
@@ -304,7 +319,7 @@ func (rf *DataRowFilter) PrepareRunSlice(serv server.Server) error {
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
