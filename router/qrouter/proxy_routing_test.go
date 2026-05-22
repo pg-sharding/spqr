@@ -829,7 +829,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
-				SubPlan: &plan.ScatterPlan{
+				Plan: &plan.ScatterPlan{
 					OverwriteQuery: map[string]string{
 						"sh1": "INSERT INTO test_ref_rel VALUES(1) returning *;",
 						"sh2": "INSERT INTO test_ref_rel VALUES(1) returning *;",

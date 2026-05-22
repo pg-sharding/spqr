@@ -232,6 +232,7 @@ type Kill struct {
 type System struct {
 	Reload      bool
 	Restart     bool
+	RotateLog   bool
 	Rebootstrap bool
 }
 
