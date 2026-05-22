@@ -64,7 +64,7 @@ func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogg
 	sv := lastDiode
 	Zero = NewZeroLogger(logFileName, logLevel, asyncLog, prettyLogging)
 	if sv != nil {
-		sv.Close()
+		_ = sv.Close()
 	}
 }
 
