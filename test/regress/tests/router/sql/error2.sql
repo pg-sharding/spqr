@@ -7,7 +7,11 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tt DISTRIBUTION KEY id;
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 50 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 
+CREATE REFERENCE RELATION ref_err_rel;
+
 \c regress
+
+CREATE TABLE ref_err_rel(err_id INT);
 
 -- test table does not exist
 INSERT INTO tt (id, data) VALUES (2, 'valid');
@@ -47,7 +51,15 @@ BEGIN;
 SELECT 1/0 /* __spqr__.execute_on: sh1 */;
 COMMIT;
 
+INSERT INTO ref_err_rel(i) VALUES(12);
+
+BEGIN;
+\set VERBOSITY SQLSTATE
+INSERT INTO ref_err_rel(i) VALUES(12);
+COMMIT;
+
 DROP TABLE tt;
+DROP TABLE ref_err_rel;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

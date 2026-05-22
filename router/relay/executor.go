@@ -287,19 +287,18 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 
 	/* XXX: warn user of misconfiguration */
 	if config.RouterConfig().AllowTwoPhaseCommit && s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
-		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
-			return err
-		} else {
-			s.SetTxStatus(st)
-		}
+		st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv)
 
-	} else {
-		if err := s.deployTxStatusInternal(serv,
-			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
+		if err != nil {
 			return err
 		}
+		s.SetTxStatus(st)
+		return nil
 	}
-	return nil
+
+	return s.deployTxStatusInternal(serv,
+		&pgproto3.Query{String: query}, txstatus.TXIDLE)
+
 }
 
 // query in commit query. maybe commit or commit `name`

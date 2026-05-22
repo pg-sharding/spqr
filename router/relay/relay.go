@@ -459,6 +459,15 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 	if rst.QueryExecutor().ImplicitTx() {
 		if err := rst.QueryExecutor().ExecCommit("COMMIT"); err != nil {
+			spqrlog.Zero.Error().
+				Uint("client", rst.Client().ID()).
+				Str("txstatus", rst.qse.TxStatus().String()).
+				Err(err).
+				Msg("failed to complete relay implicit commit")
+
+			if err := rst.Reset(); err != nil {
+				return err
+			}
 			return err
 		}
 	}
