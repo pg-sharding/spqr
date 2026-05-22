@@ -660,7 +660,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}
-		cols, err := getTableColumns(ctx, tx, *rel.Relation)
+		cols, err := GetTableColumns(ctx, tx, rel.Relation)
 		if err != nil {
 			return err
 		}
@@ -754,7 +754,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return fmt.Errorf("could not start transaction to copy reference table data: %s", err)
 	}
 
-	cols, err := getTableColumns(ctx, tx, *rel.RelationName)
+	cols, err := GetTableColumns(ctx, tx, rel.RelationName)
 	if err != nil {
 		return err
 	}
@@ -774,7 +774,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	return nil
 }
 
-func getTableColumns(ctx context.Context, db Queryable, relationFQN rfqn.RelationFQN) ([]string, error) {
+func GetTableColumns(ctx context.Context, db Queryable, relationFQN *rfqn.RelationFQN) ([]string, error) {
 	cols := make([]string, 0)
 	colRows, err := db.Query(ctx, `
 	SELECT

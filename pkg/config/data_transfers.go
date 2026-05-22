@@ -58,3 +58,13 @@ func (sc *ShardConnect) GetConnStrings() []string {
 	}
 	return res
 }
+
+func (sc *ShardConnect) GetCombinedConnString() string {
+	hosts := make([]string, len(sc.Hosts))
+	ports := make([]string, len(sc.Hosts))
+	for i, h := range sc.Hosts {
+		hosts[i] = strings.Split(h, ":")[0]
+		ports[i] = strings.Split(h, ":")[1]
+	}
+	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sc.User, strings.Join(hosts, ","), strings.Join(ports, ","), sc.DB, sc.Password)
+}
