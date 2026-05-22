@@ -433,7 +433,6 @@ qdb
 QDBKR
 QDBRe
 QDBTx
-Qdocker
 qlogger
 qlogprovider
 qname
@@ -574,6 +573,7 @@ suscipit
 SVFOP
 SVGID
 syscache
+tablesample
 targ
 taskgroup
 taskmgr
