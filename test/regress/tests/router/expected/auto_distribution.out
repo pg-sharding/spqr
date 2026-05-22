@@ -20,10 +20,13 @@ CREATE TABLE zz(i int, j int, k int) /* __spqr__auto_distribution: REPLICATED */
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz (i,j,k) VALUES(1,2,3);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz (i,j,k) VALUES(2,3,4);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz (i,j,k) VALUES(4,5,6);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT __spqr__ctid('zz');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -69,10 +72,13 @@ CREATE TABLE zz2(i int, j int, k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz2 (i,j,k) VALUES(1,2,3);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz2 (i,j,k) VALUES(2,3,4);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz2 (i,j,k) VALUES(4,5,6);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT __spqr__ctid('zz2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
