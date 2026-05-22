@@ -1340,9 +1340,14 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 
 	rst.routingDecisionPlan = queryPlan
 
-	if rm.HasWriteTargets && len(queryPlan.ExecutionTargets()) > 1 && rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+	/* exec target = empty is a default for all shards */
+	if rm.HasWriteTargets && len(queryPlan.ExecutionTargets()) != 1 && rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
 		if err := rst.QueryExecutor().ExecBegin("BEGIN", &lyx.TransactionStmt{}, true); err != nil {
 			return err
+		}
+
+		if rst.Client().ShowNoticeMsg() {
+			_ = rst.Client().ReplyNotice("start implicit transaction becuase of multishard modify plan")
 		}
 	}
 
