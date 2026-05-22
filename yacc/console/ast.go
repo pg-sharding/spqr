@@ -471,6 +471,7 @@ const (
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
 	TaskGroupWorkersStr   = "task_group_workers"
+	ShardsExtendedStr     = "shards_extended"
 )
 
 // not SHOW target
