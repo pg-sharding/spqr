@@ -21,7 +21,6 @@ func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) err
 	}
 
 	if rm.HasHazardUpsert {
-
 		p.Hints().AutoLinearize = true
 	}
 
