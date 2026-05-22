@@ -454,7 +454,14 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("txstatus", rst.qse.TxStatus().String()).
+		Bool("implicitTx", rst.QueryExecutor().ImplicitTx()).
 		Msg("complete relay iter")
+
+	if rst.QueryExecutor().ImplicitTx() {
+		if err := rst.QueryExecutor().ExecCommit("COMMIT"); err != nil {
+			return err
+		}
+	}
 
 	if err := rst.QueryExecutor().CompleteTx(rst.QueryExecutor()); err != nil {
 		spqrlog.Zero.Error().
@@ -1332,6 +1339,12 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	}
 
 	rst.routingDecisionPlan = queryPlan
+
+	if rm.HasWriteTargets && len(queryPlan.ExecutionTargets()) > 1 && rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		if err := rst.QueryExecutor().ExecBegin("BEGIN", &lyx.TransactionStmt{}, true); err != nil {
+			return err
+		}
+	}
 
 	es := &QueryDesc{
 		Msg:    q,
