@@ -142,8 +142,10 @@ NOTICE: send query to shard(s) : sh1,sh4
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;
 UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxmultish /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xxmultish;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
