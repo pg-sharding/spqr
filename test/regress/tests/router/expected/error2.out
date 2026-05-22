@@ -31,7 +31,6 @@ CREATE REFERENCE RELATION ref_err_rel;
 CREATE TABLE ref_err_rel(err_id INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  relation "ref_err_rel" already exists
 -- test table does not exist
 INSERT INTO tt (id, data) VALUES (2, 'valid');
 NOTICE: send query to shard(s) : sh1
@@ -106,6 +105,8 @@ ERROR:  42703
 COMMIT;
 WARNING:  25P01
 DROP TABLE tt;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ref_err_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

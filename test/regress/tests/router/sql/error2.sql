@@ -59,6 +59,7 @@ INSERT INTO ref_err_rel(i) VALUES(12);
 COMMIT;
 
 DROP TABLE tt;
+DROP TABLE ref_err_rel;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
