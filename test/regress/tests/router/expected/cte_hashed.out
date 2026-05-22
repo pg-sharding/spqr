@@ -131,6 +131,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (3 rows)
 
 INSERT INTO table2 (a,b,c) VALUES (1, 22, 33), (2, 23, 34), (3, 24, 35), (4, 25, 36);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh2,sh3,sh4
 WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
 NOTICE: send query to shard(s) : sh2
@@ -229,6 +230,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 with vals (z) as (values (1), (44), (55), (88)) insert into table2 (a) select z from vals;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -247,6 +249,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (z) as (values (1), (2), (288), (388), (188)) insert into table2 (a) select z from vals;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -265,6 +268,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (i) as (values (101), (288)),
 	z as (insert into table2 (a)
 		select i from vals returning *) table z;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2
   a  | b | c 
 -----+---+---
@@ -355,6 +359,7 @@ NOTICE: send query to shard(s) : sh2
 (1 row)
 
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh2,sh4
   a  | b | c 
 -----+---+---
@@ -417,6 +422,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh2
   a  | b | c 
 -----+---+---
