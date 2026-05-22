@@ -287,6 +287,7 @@ with vals (i) as (values (101), (288)),
 	z as (insert into table2 (a) select i from vals returning *),
 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
 			table z union all table zz;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2
   a  | b | c 
 -----+---+---
@@ -303,12 +304,14 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (2 rows)
 
 INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__engine_v2 to false;
 with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
 NOTICE: send query to shard(s) : sh4
 -- 3 out of 4 shards.
 with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -328,6 +331,7 @@ TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- all shards.
 with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -378,6 +382,7 @@ with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_re
 NOTICE: send query to shard(s) : sh4
 -- 3 out of 4 shards.
 with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -395,6 +400,7 @@ TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- all shards.
 with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
