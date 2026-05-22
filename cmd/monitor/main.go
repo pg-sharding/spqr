@@ -37,7 +37,7 @@ var (
 	checkCmd = &cobra.Command{
 		Use:   "check",
 		Short: "run check iteration",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
 				_, _ = fmt.Println("no shard data file found, skipping...")
@@ -58,7 +58,7 @@ var (
 				if !ok {
 					continue
 				}
-				vals, err := checkShard(context.Background(), shardConf, keyRangeMap, dsMap, tableSampleSize)
+				vals, relName, err := checkShard(context.Background(), shardConf, keyRangeMap, dsMap, tableSampleSize)
 				if err != nil {
 					_, _ = fmt.Fprintf(os.Stderr, "error running check on shard \"%s\": %s\n", id, err)
 					os.Exit(1)
@@ -69,7 +69,7 @@ var (
 						_, _ = fmt.Fprintf(os.Stderr, "failed to open state file: %s", err)
 						os.Exit(1)
 					}
-					if _, err := fmt.Fprintf(f, "Corruption found: row %v, rel \"%s\" shard \"%s\"", vals, "", id); err != nil {
+					if _, err := fmt.Fprintf(f, "Corruption found: row %v, rel \"%s\" shard \"%s\"", vals, relName, id); err != nil {
 						_, _ = fmt.Fprintf(os.Stderr, "failed to write into state file: %s", err)
 						os.Exit(1)
 					}
@@ -91,7 +91,7 @@ func init() {
 }
 
 func main() {
-	rootCmd.Execute()
+	_ = rootCmd.Execute()
 }
 
 type keyRangeExt struct {
@@ -148,26 +148,26 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB) (keyRangesMap map[string]m
 	return keyRangesMap, distributionsMap, nil
 }
 
-func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, error) {
+func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
 	connConfig, err := pgx.ParseConfig(shardConn.GetCombinedConnString())
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	connConfig.RuntimeParams["target_session_attrs"] = "prefer-standby"
 	conn, err := pgx.ConnectConfig(ctx, connConfig)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	defer func() { _ = conn.Close(ctx) }()
 	for dsId, krs := range keyRangesMap {
 		ds, ok := distributionsMap[dsId]
 		if !ok {
-			return nil, fmt.Errorf("distribution \"%s\" not found in distributions map")
+			return nil, "", fmt.Errorf("distribution \"%s\" not found in distributions map", dsId)
 		}
 		if len(ds.FQNRelations)+len(ds.Relations) == 0 {
 			continue
@@ -184,23 +184,23 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 			for _, keyRange := range krs {
 				cond, err := kr.GetKRCondition(rel, keyRange.KeyRange, keyRange.UpperBound, "")
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 				krQueries = append(krQueries, "("+cond+")")
 			}
 			rows, err := tx.Query(ctx, fmt.Sprintf("SELECT * FROM %s WHERE NOT (%s) TABLESAMPLE SYSTEM(%f) LIMIT 1", rel.Relation.String(), strings.Join(krQueries, " OR "), tableSampleSize))
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 			defer rows.Close()
 			if rows.Next() {
 				vals, err := rows.Values()
 				if err != nil {
-					return vals, nil
+					return vals, rel.Relation.String(), nil
 				}
 			}
 		}
 	}
 	_ = tx.Commit(ctx)
-	return nil, nil
+	return nil, "", nil
 }
