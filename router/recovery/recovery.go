@@ -160,6 +160,7 @@ func (d *TwoPCWatchDog) CheckTXShards(serv shard.ShardHostInstance, gid string) 
 	}
 
 	res := false
+	var errResponse *pgproto3.ErrorResponse
 
 	for {
 		msg, err := serv.Receive()
@@ -171,7 +172,12 @@ func (d *TwoPCWatchDog) CheckTXShards(serv shard.ShardHostInstance, gid string) 
 			if v.Values[0][0] == 't' {
 				res = true
 			}
+		case *pgproto3.ErrorResponse:
+			errResponse = v
 		case *pgproto3.ReadyForQuery:
+			if errResponse != nil {
+				return false, fmt.Errorf("failed to check prepared transaction %q on shard: %s", gid, errResponse.Message)
+			}
 			return res, nil
 		}
 	}
@@ -186,16 +192,31 @@ func (d *TwoPCWatchDog) executeCommitShards(shs []string, gid string) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-		if res, err := d.CheckTXShards(serv, gid); err != nil {
-			return err
-		} else if !res {
-			/* tx already committed */
-			continue
-		}
 
-		/* Commit */
-		if err := d.DeployQueryOnShard(serv, fmt.Sprintf("COMMIT PREPARED '%s'", gid)); err != nil {
+		keepConnection := false
+		if err := func() error {
+			if res, err := d.CheckTXShards(serv, gid); err != nil {
+				return err
+			} else if !res {
+				/* tx already committed */
+				keepConnection = true
+				return nil
+			}
+
+			/* Commit */
+			if err := d.DeployQueryOnShard(serv, fmt.Sprintf("COMMIT PREPARED '%s'", gid)); err != nil {
+				return err
+			}
+			keepConnection = true
+			return nil
+		}(); err != nil {
+			_ = d.p.Discard(serv)
 			return err
+		}
+		if keepConnection {
+			if err := d.p.Put(serv); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -209,13 +230,19 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 		return err
 	}
 
+	var errResponse *pgproto3.ErrorResponse
 	for {
 		msg, err := serv.Receive()
 		if err != nil {
 			return err
 		}
-		switch msg.(type) {
+		switch v := msg.(type) {
+		case *pgproto3.ErrorResponse:
+			errResponse = v
 		case *pgproto3.ReadyForQuery:
+			if errResponse != nil {
+				return fmt.Errorf("failed to execute recovery query %q on shard: %s", s, errResponse.Message)
+			}
 			return nil
 		}
 	}
@@ -230,17 +257,32 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-		if res, err := d.CheckTXShards(serv, gid); err != nil {
-			return err
-		} else if !res {
-			/* tx already committed */
-			spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
-			continue
-		}
 
-		/* Commit */
-		if err := d.DeployQueryOnShard(serv, fmt.Sprintf("ROLLBACK PREPARED '%s'", gid)); err != nil {
+		keepConnection := false
+		if err := func() error {
+			if res, err := d.CheckTXShards(serv, gid); err != nil {
+				return err
+			} else if !res {
+				/* tx already committed */
+				spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
+				keepConnection = true
+				return nil
+			}
+
+			/* Rollback */
+			if err := d.DeployQueryOnShard(serv, fmt.Sprintf("ROLLBACK PREPARED '%s'", gid)); err != nil {
+				return err
+			}
+			keepConnection = true
+			return nil
+		}(); err != nil {
+			_ = d.p.Discard(serv)
 			return err
+		}
+		if keepConnection {
+			if err := d.p.Put(serv); err != nil {
+				return err
+			}
 		}
 	}
 
