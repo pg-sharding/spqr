@@ -117,8 +117,10 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (16 rows)
 
 UPDATE xxm_expd SET j = -1 /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction becuase of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction becuase of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xxm_expd;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

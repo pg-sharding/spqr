@@ -41,6 +41,7 @@ CREATE TABLE r_pp(i TEXT, id INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 insert into r_pp(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__allow_postprocessing TO false;
 SELECT i FROM r_pp ORDER BY i;

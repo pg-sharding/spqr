@@ -1347,7 +1347,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		}
 
 		if rst.Client().ShowNoticeMsg() {
-			_ = rst.Client().ReplyNotice("start implicit transaction becuase of multishard modify plan")
+			_ = rst.Client().ReplyNotice("start implicit transaction because of multishard modify plan")
 		}
 	}
 
