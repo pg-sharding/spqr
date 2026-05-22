@@ -47,7 +47,7 @@ Feature: Initialize router metadata from Etcd
         #
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then SQL result should match json_exactly
         """
