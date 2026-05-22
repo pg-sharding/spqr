@@ -422,7 +422,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
-NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh2
   a  | b | c 
 -----+---+---
@@ -430,6 +429,7 @@ NOTICE: send query to shard(s) : sh2
 (1 row)
 
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh2,sh4
   a  | b | c 
 -----+---+---

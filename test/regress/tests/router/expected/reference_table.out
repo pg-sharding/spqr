@@ -272,6 +272,7 @@ NOTICE: send query to shard(s) : sh4
 (7 rows)
 
 DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- check data
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
