@@ -276,7 +276,7 @@ func CleanGrpcError(err error) error {
 				Query(info.Metadata[grpcErrorQueryKey])
 
 			if position, parseErr := strconv.ParseInt(info.Metadata[grpcErrorPositionKey], 10, 32); parseErr == nil {
-				spErr.Pos(int32(position))
+				spErr.Position = int32(position)
 			}
 
 			return spErr

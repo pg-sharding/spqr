@@ -196,7 +196,7 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 func spqrErrorUnaryServerInterceptor(
 	ctx context.Context,
 	req any,
-	info *grpc.UnaryServerInfo,
+	_ *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (any, error) {
 	resp, err := handler(ctx, req)
