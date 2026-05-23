@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,19 @@ var mockDataTransferTransaction = &qdb.DataTransferTransaction{
 	ToShardId:   mockShard.ID,
 	FromShardId: mockShard.ID,
 	Status:      "fake_st",
+}
+
+func TestMemQDBGetShardReturnsShardNotFound(t *testing.T) {
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(t, err)
+
+	_, err = memqdb.GetShard(context.TODO(), "missing-shard")
+
+	spErr, ok := err.(*spqrerror.SpqrError)
+	assert.True(t, ok)
+	assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+	assert.Equal(t, "Shard \"missing-shard\" not found.", spErr.Error())
+	assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
 }
 
 // must run with -race

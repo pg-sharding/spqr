@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -186,7 +187,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mngr := mockmgr.NewMockEntityMgr(ctrl)
-	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, fmt.Errorf("rpc error: code = Unknown desc = unknown shard sh-new"))
+	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
 	mngr.EXPECT().AddDataShard(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, shard *topology.DataShard) error {
 		assert.Equal(t, "sh-new", shard.ID)
 		assert.Equal(t, []string{listener.Addr().String()}, shard.Hosts())

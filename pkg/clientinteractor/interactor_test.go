@@ -607,6 +607,31 @@ func TestReportErrorIncludesHintFromSpqrError(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestReportErrorIncludesHintFromGrpcSpqrError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+
+	gomock.InOrder(
+		ca.EXPECT().
+			ReplyErrMsgPure(gomock.Any()).
+			DoAndReturn(func(err error) error {
+				spErr, ok := err.(*spqrerror.SpqrError)
+				assert.True(t, ok)
+				assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+				assert.Equal(t, "Shard \"shard2\" not found.", spErr.Error())
+				assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+				return nil
+			}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(txstatus.TXIDLE),
+		}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	err := interactor.ReportError(spqrerror.ToGrpcError(spqrerror.ShardNotFound("shard2")))
+	assert.NoError(t, err)
+}
+
 func TestKeyRangesSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)

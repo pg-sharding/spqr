@@ -2,9 +2,7 @@ package meta
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
@@ -20,37 +18,8 @@ const (
 	LockRetryStep = 500 * time.Millisecond
 )
 
-func rewriteMissingShardError(err error, shardID string) error {
-	var spErr *spqrerror.SpqrError
-	if errors.As(err, &spErr) && spErr.ErrorCode == spqrerror.SPQR_NO_DATASHARD {
-		return spqrerror.New(
-			spqrerror.SPQR_NO_DATASHARD,
-			fmt.Sprintf("Shard %q not found.", shardID),
-		).Hint("Run 'SHOW shards' to see all configured shards.")
-	}
-
-	cleanErr := strings.ToLower(spqrerror.CleanGrpcError(err).Error())
-	hasUnknownShard := strings.Contains(cleanErr, "unknown shard")
-	hasShardNotFound := strings.Contains(cleanErr, "shard") && strings.Contains(cleanErr, "not found")
-	if hasUnknownShard || hasShardNotFound {
-		return spqrerror.New(
-			spqrerror.SPQR_NO_DATASHARD,
-			fmt.Sprintf("Shard %q not found.", shardID),
-		).Hint("Run 'SHOW shards' to see all configured shards.")
-	}
-
-	return err
-}
-
-func validateTargetShardExists(ctx context.Context, mngr EntityMgrReader, shardID string) error {
-	if _, err := mngr.GetShard(ctx, shardID); err != nil {
-		return rewriteMissingShardError(err, shardID)
-	}
-	return nil
-}
-
 func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRange *kr.KeyRange) error {
-	if err := validateTargetShardExists(ctx, mngr, keyRange.ShardID); err != nil {
+	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
 
@@ -106,7 +75,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange.ID)
 	}
 
-	if err := validateTargetShardExists(ctx, mngr, keyRange.ShardID); err != nil {
+	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
 

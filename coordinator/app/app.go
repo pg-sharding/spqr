@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"buf.build/go/protovalidate"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/port"
 
@@ -150,7 +151,8 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	}
 
 	serv := grpc.NewServer(
-		grpc.UnaryInterceptor(
+		grpc.ChainUnaryInterceptor(
+			spqrErrorUnaryServerInterceptor,
 			protovalidate_middleware.UnaryServerInterceptor(validator),
 		),
 	)
@@ -189,6 +191,19 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 		Msg("serve grpc coordinator service")
 
 	return serv.Serve(listener)
+}
+
+func spqrErrorUnaryServerInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		return resp, spqrerror.ToGrpcError(err)
+	}
+	return resp, nil
 }
 
 func (app *App) ServeUnixSocket(wg *sync.WaitGroup) error {

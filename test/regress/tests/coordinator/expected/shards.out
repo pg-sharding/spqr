@@ -105,7 +105,8 @@ SHOW SHARDS;
 (4 rows)
 
 ALTER SHARD unknown OPTIONS (ADD SSLMODE 'require');
-ERROR:  SPQRD: unknown shard unknown
+ERROR:  SPQRD: Shard "unknown" not found.
+HINT:  Run 'SHOW shards' to see all configured shards.
 ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'require', ADD SSLMODE 'verify-full');
 ERROR:  SPQRV: malformed options array
 HINT:  option "sslmode" with value "require" not found
