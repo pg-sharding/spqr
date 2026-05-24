@@ -81,6 +81,10 @@ func (dw *LocalQlog) Recover(_ context.Context, path string) ([]string, error) {
 		}
 	}
 
+	if strings.TrimSpace(qs) != "" {
+		queries = append(queries, qs)
+	}
+
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
