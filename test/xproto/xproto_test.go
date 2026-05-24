@@ -875,6 +875,37 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "corrupt_bind_num",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "corrupt_bind_num",
+					Query: "SELECT $1, $2",
+				},
+				&pgproto3.Bind{
+					PreparedStatement:    "corrupt_bind_num",
+					ParameterFormatCodes: []int16{xproto.FormatCodeText, xproto.FormatCodeText},
+					Parameters:           nil,
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 	protoTestRunner(t, frontend, tt)
 }

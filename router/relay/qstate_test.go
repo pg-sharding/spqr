@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
-	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -53,39 +52,6 @@ func TestAutoDistributionSetFail(t *testing.T) {
 	ctx := context.Background()
 	err := rst.processSpqrHint(ctx, map[string]string{"__spqr__auto_distribution": "distrNotFound"}, false, false)
 	is.Error(err)
-}
-
-func TestBindPreparedRejectsMismatchedParamFormatCodes(t *testing.T) {
-	is := assert.New(t)
-	ctrl := gomock.NewController(t)
-	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
-
-	client := mockcl.NewMockRouterClient(ctrl)
-	client.EXPECT().ID().AnyTimes().Return(uint(67))
-	client.EXPECT().PreparedStatementDefinitionByName("stmt").Return(&prepstatement.PreparedStatementDefinition{
-		Name:  "stmt",
-		Query: "INSERT INTO orders (customer_id, amount) VALUES ($1, $2)",
-	})
-
-	qr := mockqr.NewMockQueryRouter(ctrl)
-	mmgr := mockmgr.NewMockEntityMgr(ctrl)
-	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
-	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-
-	rst := NewRelayState(qr, client, cmngr).(*RelayStateImpl)
-	err := rst.BindPrepared(
-		context.Background(),
-		"stmt",
-		"",
-		nil,
-		[]int16{0, 0},
-		nil,
-	)
-	is.Error(err)
-
-	var spqrErr *spqrerror.SpqrError
-	is.ErrorAs(err, &spqrErr)
-	is.Equal(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, spqrErr.ErrorCode)
 }
 
 func TestAutoDistributionSetSuccess(t *testing.T) {
