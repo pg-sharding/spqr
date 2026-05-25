@@ -12,9 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var boolTrue = true
-var boolFalse = false
-
 var ds1ColTypes = []string{qdb.ColumnTypeInteger}
 
 var kr1 = &kr.KeyRange{
