@@ -27,5 +27,6 @@ SELECT * FROM flux_access_t1 WHERE i = 67;
 INSERT INTO flux_access_t1(i) VALUES(67);
 
 DROP TABLE flux_access_t1;
+DELETE FROM spqr_metadata.spqr_local_key_ranges  /* __spqr__execute_on: sh1 */;
 
 SELECT __spqr__console_execute('UNLOCK KEY RANGE k0; DROP DISTRIBUTION ALL CASCADE');

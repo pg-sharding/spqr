@@ -37,11 +37,16 @@ SELECT __spqr__console_execute('CREATE RELATION flux_access_t1(i)');
 
 -- xxx: fix this
 INSERT INTO spqr_metadata.spqr_local_key_ranges (spqr_distribution, key_range_id, lower_bound) VALUES ('TODO', 'k0', 0) /* __spqr__execute_on: sh1 */;
-ERROR:  shard sh1: failed to find primary within host localhost:5550: unexpected EOF
+NOTICE: send query to shard(s) : sh1
 CREATE TABLE flux_access_t1(i INT);
-ERROR:  shard sh1: failed to find primary within 
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM flux_access_t1 WHERE i = 67;
-ERROR:  shard sh1: failed to find primary within 
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+(0 rows)
+
 SELECT __spqr__console_execute('LOCK KEY RANGE k0');
    lock key range   
 --------------------
@@ -63,12 +68,20 @@ SHOW __spqr__flux_access;
 (1 row)
 
 SELECT * FROM flux_access_t1 WHERE i = 67;
-ERROR:  shard sh1: failed to find primary within 
+NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+(0 rows)
+
 -- should fail
 INSERT INTO flux_access_t1(i) VALUES(67);
-ERROR:  shard sh1: failed to find primary within 
+ERROR:  non-select only query
+QUERY:  INSERT INTO flux_access_t1(i) VALUES(67);
 DROP TABLE flux_access_t1;
-ERROR:  shard sh1: failed to find primary within 
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DELETE FROM spqr_metadata.spqr_local_key_ranges  /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
 SELECT __spqr__console_execute('UNLOCK KEY RANGE k0; DROP DISTRIBUTION ALL CASCADE');
  distribution_id 
 -----------------
