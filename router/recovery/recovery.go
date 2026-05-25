@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -208,15 +209,27 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 	}); err != nil {
 		return err
 	}
+	var deployErr error
+	ccRecieved := false
+	deployErr = nil
 
 	for {
 		msg, err := serv.Receive()
 		if err != nil {
 			return err
 		}
-		switch msg.(type) {
+		switch v := msg.(type) {
+		case *pgproto3.ErrorResponse:
+			deployErr = spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "deploy recovery SQL failed: %v", v.Message).Hint(v.Hint).Detail(v.Detail)
+
+		case *pgproto3.CommandComplete:
+			ccRecieved = true
+
 		case *pgproto3.ReadyForQuery:
-			return nil
+			if !ccRecieved {
+				spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "missing command complete message in 2pc recovery")
+			}
+			return deployErr
 		}
 	}
 }
@@ -238,7 +251,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 			continue
 		}
 
-		/* Commit */
+		/* ROLLBACK */
 		if err := d.DeployQueryOnShard(serv, fmt.Sprintf("ROLLBACK PREPARED '%s'", gid)); err != nil {
 			return err
 		}
