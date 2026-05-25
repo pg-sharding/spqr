@@ -326,8 +326,19 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		} else {
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_DISTRIBUTION)
+				tts := tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("distribution"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				}
+				tts.WriteDataRow(rst.Client().Distribution())
+
+				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
 			case session.SPQR_DISTRIBUTED_RELATION:
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
