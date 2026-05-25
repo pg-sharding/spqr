@@ -210,7 +210,7 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 		return err
 	}
 	var deployErr error
-	ccRecieved := false
+	ccReceived := false
 	deployErr = nil
 
 	for {
@@ -223,10 +223,10 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 			deployErr = spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "deploy recovery SQL failed: %v", v.Message).Hint(v.Hint).Detail(v.Detail)
 
 		case *pgproto3.CommandComplete:
-			ccRecieved = true
+			ccReceived = true
 
 		case *pgproto3.ReadyForQuery:
-			if !ccRecieved {
+			if !ccReceived {
 				spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "missing command complete message in 2pc recovery")
 			}
 			return deployErr
