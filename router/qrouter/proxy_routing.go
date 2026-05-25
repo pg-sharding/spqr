@@ -1697,6 +1697,13 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	}
 
+	/* If we planned to read in-flight chunk data, add double-check plan nodes to plan */
+	if len(rm.RecheckKeyRange) != 0 {
+		if err := planner.AdjustPlanStateForFluxAccess(rm, p); err != nil {
+			return nil, err
+		}
+	}
+
 	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
 	if err := planner.AdjustPlanStateForUpsert(rm, p); err != nil {

@@ -159,6 +159,8 @@ type ShardDispatchPlan struct {
 	SP   Plan
 	runF func(server.Server) error
 
+	OverWriteQuery string
+
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
 	TargetSessionAttrs tsa.TSA
@@ -177,7 +179,7 @@ func (sms *ShardDispatchPlan) SetStmt(n lyx.Node) {
 }
 
 func (sms *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
-	return ""
+	return sms.OverWriteQuery
 }
 
 func (sms *ShardDispatchPlan) Subplan() Plan {
