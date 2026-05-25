@@ -33,6 +33,10 @@ func AdjustPlanStateForFluxAccess(rm *rmeta.RoutingMetadataContext, p plan.Plan)
 		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "non-empty subplan")
 	}
 
+	if rm.HasWriteTargets {
+		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "non-select only query")
+	}
+
 	dsp.SP = &plan.ShardDispatchPlan{
 		OverWriteQuery: fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; SET spqrguard.prevent_distributed_table_modify TO on; SELECT EXISTS(SELECT * FROM spqr_metadata.spqr_local_key_ranges WHERE key_range_id = '%s')", rm.RecheckKeyRange[0].ID),
 		ExecTarget:     dsp.ExecTarget,

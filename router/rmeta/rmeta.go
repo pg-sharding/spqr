@@ -348,7 +348,13 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	}
 
 	if matchedKeyRange != nil {
-		if config.RouterConfig().Qr.AllowFluxChunkAccess {
+
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_FLUX_ACCESS)
+		if err != nil {
+			return kr.ShardKey{}, err
+		}
+
+		if guc.Get(rm.SPH) {
 			/* XXX: recheck for races here */
 			if matchedKeyRange.IsLocked {
 				if !slices.ContainsFunc(rm.RecheckKeyRange, func(r *kr.KeyRange) bool {
