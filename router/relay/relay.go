@@ -851,6 +851,10 @@ func (rst *RelayStateImpl) BindPrepared(
 		return pstmtDoesNotExistsErr(preparedStatement)
 	}
 
+	if _, err := prepstatement.GetParams(parameterFormatCodes, parameters); err != nil {
+		return err
+	}
+
 	if def.OverwriteRemoveParamIDs != nil {
 		// we did query overwrite for sole reason -
 		// to insert next sequence value.
@@ -862,6 +866,9 @@ func (rst *RelayStateImpl) BindPrepared(
 		}
 
 		parameters = append(parameters, fmt.Appendf(nil, "%d", v))
+		if len(parameterFormatCodes) > 1 {
+			parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
+		}
 	}
 
 	// We implicitly assume that there is always Execute after Bind for the same portal.

@@ -179,15 +179,16 @@ func (rm *RoutingMetadataContext) ResolveTypedParamRef(paramResCodes []int16, in
 	// TODO: switch column type here
 	// only works for one value
 
-	if len(paramResCodes) < ind {
+	if ind < 0 || ind >= len(paramResCodes) {
 		return nil, plan.ErrResolvingValue
 	}
-	if ind >= len(paramResCodes) {
+	bindParams := rm.SPH.BindParams()
+	if ind >= len(bindParams) {
 		return nil, plan.ErrResolvingValue
 	}
 	fc := paramResCodes[ind]
 
-	return plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
+	return plan.ParseResolveParamValue(fc, ind, tp, bindParams)
 }
 
 func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
