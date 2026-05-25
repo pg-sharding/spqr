@@ -157,7 +157,7 @@ type ShardDispatchPlan struct {
 	/* Subplan */
 
 	SP   Plan
-	runF func(server.Server) error
+	RunF func(server.Server) error
 
 	OverWriteQuery string
 
@@ -191,10 +191,10 @@ func (sms *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
 }
 
 func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
-	if sms.runF == nil {
+	if sms.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return sms.runF(serv)
+	return sms.RunF(serv)
 }
 
 var _ Plan = &ShardDispatchPlan{}
