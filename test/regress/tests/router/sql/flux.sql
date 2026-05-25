@@ -7,7 +7,7 @@ SELECT __spqr__console_execute('CREATE KEY RANGE k0 FROM 0 ROUTE TO sh1');
 SELECT __spqr__console_execute('CREATE RELATION flux_access_t1(i)');
 
 -- xxx: fix this
-INSERT INTO spqr_metadata.spqr_local_key_ranges (spqr_distribution, key_range_id, lower_bound) VALUES ('TODO', 'k0', 0) /* __spqr__execute_on: sh1 */;
+INSERT INTO spqr_metadata.spqr_local_key_ranges (spqr_distribution, key_range_id, lower_bound) VALUES ('TODO', 'k0', 0) ON CONFLICT (key_range_id) DO NOTHING /* __spqr__execute_on: sh1 */;
 
 CREATE TABLE flux_access_t1(i INT);
 
