@@ -1474,6 +1474,16 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ShardsStr:
+		return ProcessShow(ctx, &spqrparser.Show{
+			Kind:    stmt.Kind,
+			Cmd:     spqrparser.ShardsExtendedStr,
+			Columns: []string{"shard"},
+			Where:   stmt.Where,
+			Order:   stmt.Order,
+			GroupBy: stmt.GroupBy,
+		}, mngr, ci, true)
+
+	case spqrparser.ShardsExtendedStr:
 
 		var shards []*topology.DataShard
 

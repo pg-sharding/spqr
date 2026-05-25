@@ -48,7 +48,7 @@ CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6
 
 CREATE SHARD sh1 OPTIONS (HOST "localhost:6432");
 ERROR:  shard with id sh1 already exists
-SHOW shards;
+SHOW shards_extended;
  shard |                         options                         
 -------+---------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}
@@ -72,7 +72,7 @@ SHOW hosts;
 
 CREATE SHARD sh5 OPTIONS (HOST "127.0.0.1:1");
 ERROR:  shard host "127.0.0.1:1" is not reachable: dial tcp 127.0.0.1:1: connect: connection refused
-SHOW shards;
+SHOW shards_extended;
  shard |                         options                         
 -------+---------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}
@@ -100,7 +100,7 @@ DROP SHARD sh5;
  sh5
 (1 row)
 
-SHOW shards;
+SHOW shards_extended;
  shard |                         options                         
 -------+---------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432}

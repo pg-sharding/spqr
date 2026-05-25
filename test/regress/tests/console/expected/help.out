@@ -368,8 +368,8 @@ HELP SHOW;
  DESCRIPTION                                                                     +
      Displays cluster metadata, topology, configuration, and runtime status.     +
                                                                                  +
-     Valid targets: `databases`, `routers`, `shards`, `distributions`,           +
-     `key_ranges`,                                                               +
+     Valid targets: `databases`, `routers`, `shards`, `shards_extended`,         +
+     `distributions`, `key_ranges`,                                              +
      `key_ranges_extended`, `relations`, `reference_relations`, `pools`,         +
      `clients`,                                                                  +
      `backend_connections`, `hosts`, `version`, `status`, `instance`,            +

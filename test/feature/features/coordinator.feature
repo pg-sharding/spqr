@@ -472,7 +472,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    SHOW shards;
+    SHOW shards_extended;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -568,7 +568,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    SHOW shards;
+    SHOW shards_extended;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -587,7 +587,7 @@ Feature: Coordinator test
 
     When I run SQL on host "router-admin"
     """
-    SHOW shards;
+    SHOW shards_extended;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
