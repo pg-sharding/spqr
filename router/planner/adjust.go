@@ -34,7 +34,7 @@ func AdjustPlanStateForFluxAccess(rm *rmeta.RoutingMetadataContext, p plan.Plan)
 	}
 
 	dsp.SP = &plan.ShardDispatchPlan{
-		OverWriteQuery: fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL TO REPEATABLE READ; SELECT EXISTS(SELECT * FROM spqr_metadata.spqr_local_key_ranges WHERE key_range_id = '%s')", rm.RecheckKeyRange[0].ID),
+		OverWriteQuery: fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; SET spqrguard.prevent_distributed_table_modify TO on; SELECT EXISTS(SELECT * FROM spqr_metadata.spqr_local_key_ranges WHERE key_range_id = '%s')", rm.RecheckKeyRange[0].ID),
 		ExecTarget:     dsp.ExecTarget,
 		RunF: func(serv server.Server) error {
 			spqrlog.Zero.Debug().Msg("run bottom-level recheck slice")
