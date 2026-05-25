@@ -157,7 +157,9 @@ type ShardDispatchPlan struct {
 	/* Subplan */
 
 	SP   Plan
-	runF func(server.Server) error
+	RunF func(server.Server) error
+
+	OverWriteQuery string
 
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
@@ -177,7 +179,7 @@ func (sms *ShardDispatchPlan) SetStmt(n lyx.Node) {
 }
 
 func (sms *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
-	return ""
+	return sms.OverWriteQuery
 }
 
 func (sms *ShardDispatchPlan) Subplan() Plan {
@@ -189,10 +191,10 @@ func (sms *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
 }
 
 func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
-	if sms.runF == nil {
+	if sms.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return sms.runF(serv)
+	return sms.RunF(serv)
 }
 
 var _ Plan = &ShardDispatchPlan{}

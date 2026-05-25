@@ -87,6 +87,8 @@ type RoutingMetadataContext struct {
 
 	MetaCache *MetadataCache
 
+	RecheckKeyRange []*kr.KeyRange
+
 	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
@@ -335,20 +337,32 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	var matchedKrkey *kr.KeyRange
+	var matchedKeyRange *kr.KeyRange
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
-			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
-			matchedKrkey = krkey
+			(matchedKeyRange == nil || kr.CmpRangesLessEqual(matchedKeyRange.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
+			matchedKeyRange = krkey
 		}
 	}
 
-	if matchedKrkey != nil {
-		if err := rm.Mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
-			return kr.ShardKey{}, err
+	if matchedKeyRange != nil {
+		if config.RouterConfig().Qr.AllowFluxChunkAccess {
+			/* XXX: recheck for races here */
+			if matchedKeyRange.IsLocked {
+				if !slices.ContainsFunc(rm.RecheckKeyRange, func(r *kr.KeyRange) bool {
+					return r.ID == matchedKeyRange.ID
+				}) {
+					rm.RecheckKeyRange = append(rm.RecheckKeyRange, matchedKeyRange)
+				}
+			}
+
+		} else {
+			if err := rm.Mgr.ShareKeyRange(matchedKeyRange.ID); err != nil {
+				return kr.ShardKey{}, err
+			}
 		}
-		return kr.ShardKey{Name: matchedKrkey.ShardID}, nil
+		return kr.ShardKey{Name: matchedKeyRange.ShardID}, nil
 	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
