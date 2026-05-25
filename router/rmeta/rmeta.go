@@ -331,7 +331,7 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) 
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(ctx context.Context, key []any, krs []*kr.KeyRange) (kr.ShardKey, error) {
+func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context, key []any, krs []*kr.KeyRange) (kr.ShardKey, error) {
 	spqrlog.Zero.Debug().
 		Interface("key", key[0]).
 		Int("key-ranges-count", len(krs)).
