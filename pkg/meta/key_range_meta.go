@@ -80,7 +80,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 		return err
 	}
 
-	if krLock.IsLocked == nil || !(*krLock.IsLocked) {
+	if !krLock.IsLocked {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange.ID)
 	}
 
