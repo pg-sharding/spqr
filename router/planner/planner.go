@@ -216,7 +216,7 @@ func CalculateRoutingListTupleItemValue(
 		// TODO: switch column type here
 		// only works for one value
 		ind := q.Indx
-		if len(queryParamsFormatCodes) < ind {
+		if ind < 0 || ind >= len(queryParamsFormatCodes) {
 			return nil, plan.ErrResolvingValue
 		}
 
@@ -244,7 +244,10 @@ func TuplePlansByDistributionEntry(
 		return nil, err
 	}
 
-	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	if err != nil {
+		return nil, err
+	}
 
 	tupleShards := make([]kr.ShardKey, len(routingList))
 	for i := range routingList {
@@ -554,7 +557,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			lockedVirtualPID = uint32(v.Value)
 		case *lyx.ParamRef:
 
-			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			if err != nil {
+				return nil, err
+			}
 
 			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeUinteger)
 			if err != nil {
@@ -618,7 +624,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		switch v := args[0].(type) {
 		case *lyx.ParamRef:
 
-			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			if err != nil {
+				return nil, err
+			}
 
 			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 			if err != nil {
