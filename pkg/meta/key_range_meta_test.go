@@ -54,7 +54,7 @@ var kr1Locked = &kr.KeyRange{
 	Distribution: "ds1",
 	LowerBound:   []any{int64(0)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
-	IsLocked:     &boolTrue,
+	IsLocked:     true,
 }
 
 var kr1NotLocked = &kr.KeyRange{
@@ -63,7 +63,7 @@ var kr1NotLocked = &kr.KeyRange{
 	Distribution: "ds1",
 	LowerBound:   []any{int64(0)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
-	IsLocked:     &boolFalse,
+	IsLocked:     false,
 }
 
 func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {

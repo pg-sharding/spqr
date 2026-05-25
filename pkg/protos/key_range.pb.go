@@ -122,7 +122,7 @@ type KeyRangeInfo struct {
 	Krid           string                 `protobuf:"bytes,2,opt,name=krid,proto3" json:"krid,omitempty"`
 	ShardId        string                 `protobuf:"bytes,3,opt,name=shardId,proto3" json:"shardId,omitempty"`
 	DistributionId string                 `protobuf:"bytes,4,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
-	Locked         *bool                  `protobuf:"varint,5,opt,name=locked,proto3,oneof" json:"locked,omitempty"`
+	Locked         bool                   `protobuf:"varint,5,opt,name=locked,proto3" json:"locked,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -186,8 +186,8 @@ func (x *KeyRangeInfo) GetDistributionId() string {
 }
 
 func (x *KeyRangeInfo) GetLocked() bool {
-	if x != nil && x.Locked != nil {
-		return *x.Locked
+	if x != nil {
+		return x.Locked
 	}
 	return false
 }
@@ -1148,14 +1148,13 @@ var File_protos_key_range_proto protoreflect.FileDescriptor
 
 const file_protos_key_range_proto_rawDesc = "" +
 	"\n" +
-	"\x16protos/key_range.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12protos/tasks.proto\"\xb7\x01\n" +
+	"\x16protos/key_range.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12protos/tasks.proto\"\xa7\x01\n" +
 	"\fKeyRangeInfo\x12)\n" +
 	"\x05bound\x18\x01 \x01(\v2\x13.spqr.KeyRangeBoundR\x05bound\x12\x12\n" +
 	"\x04krid\x18\x02 \x01(\tR\x04krid\x12\x18\n" +
 	"\ashardId\x18\x03 \x01(\tR\ashardId\x12&\n" +
-	"\x0edistributionId\x18\x04 \x01(\tR\x0edistributionId\x12\x1b\n" +
-	"\x06locked\x18\x05 \x01(\bH\x00R\x06locked\x88\x01\x01B\t\n" +
-	"\a_locked\"A\n" +
+	"\x0edistributionId\x18\x04 \x01(\tR\x0edistributionId\x12\x16\n" +
+	"\x06locked\x18\x05 \x01(\bR\x06locked\"A\n" +
 	"\x13ListKeyRangeRequest\x12*\n" +
 	"\fdistribution\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fdistribution\"Y\n" +
 	"\x15CreateKeyRangeRequest\x12@\n" +
@@ -1337,7 +1336,6 @@ func file_protos_key_range_proto_init() {
 		return
 	}
 	file_protos_tasks_proto_init()
-	file_protos_key_range_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

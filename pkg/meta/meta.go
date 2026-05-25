@@ -1177,7 +1177,7 @@ func ProcMetadataCommand(ctx context.Context,
 			}
 
 			for _, kr := range krs {
-				if kr.IsLocked != nil && *kr.IsLocked {
+				if kr.IsLocked {
 					if err := mgr.UnlockKeyRange(ctx, kr.ID); err != nil {
 						return nil, err
 					}
