@@ -227,7 +227,7 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 
 		case *pgproto3.ReadyForQuery:
 			if !ccReceived {
-				spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "missing command complete message in 2pc recovery")
+				return spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "missing command complete message in 2pc recovery")
 			}
 			return deployErr
 		}
