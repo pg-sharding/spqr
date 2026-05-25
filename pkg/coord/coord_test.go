@@ -15,8 +15,6 @@ import (
 
 const MemQDBPath = ""
 
-var boolFalse = false
-
 var mockShard1 = &qdb.Shard{
 	ID:       "sh1",
 	RawHosts: []string{"host1", "host2"},

@@ -181,6 +181,7 @@ type QRouter struct {
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
+	AllowFluxChunkAccess     bool `json:"allow_flux_chunk_access" toml:"allow_flux_chunk_access" yaml:"allow_flux_chunk_access"`
 }
 
 const (
