@@ -505,6 +505,13 @@ var BoolGUCs = []BoolGUCimpl{
 			return false
 		},
 	},
+	{
+		n:         SPQR_ALLOW_FLUX_ACCESS,
+		shortName: "flux data access",
+		def: func() bool {
+			return config.RouterConfig().Qr.AllowFluxChunkAccess
+		},
+	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
