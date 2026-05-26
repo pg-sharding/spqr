@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
-const DefaultTSATimeout = 500 * time.Millisecond
+const DefaultTSATimeout = 5000 * time.Millisecond
 
 type NetChecker struct {
 }
