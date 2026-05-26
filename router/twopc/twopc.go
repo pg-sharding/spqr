@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/icp"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -43,7 +44,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
 		return txstatus.TXERR, err
 	} else if !ok {
-		return txstatus.TXERR, fmt.Errorf("failed to acquire ownership for tx \"%s\"", gid)
+		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
 	}
 
 	/* Store our intentions in state keeper */
@@ -155,7 +156,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
-			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member response")
+			return txstatus.TXERR, spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "unexpected 2pc member response")
 		}
 
 		if cl.ShowNoticeMsg() {
