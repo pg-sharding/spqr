@@ -192,6 +192,7 @@ func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
 	if t.state.Chunk == nil {
 		return fmt.Errorf("invalid state for ExecNoTran")
 	}
+	/* use vesions check */
 	if t.state.CanCommit() {
 		err := t.EntityMgr.ExecNoTran(ctx, t.state.Chunk)
 		if err != nil {

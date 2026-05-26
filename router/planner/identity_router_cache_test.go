@@ -13,11 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const MemQDBPath = "memqdb.json"
-
 func TestStepOne(t *testing.T) {
 	assert := assert.New(t)
-	db, _ := qdb.NewMemQDB(MemQDBPath)
+	db, _ := qdb.NewMemQDB("")
 	ctx := context.TODO()
 	statements, err := db.CreateSequence(ctx, "testSeq", 0)
 	assert.NoError(err)
@@ -47,7 +45,7 @@ func TestStepOne(t *testing.T) {
 
 func TestStepFive(t *testing.T) {
 	assert := assert.New(t)
-	db, _ := qdb.NewMemQDB(MemQDBPath)
+	db, _ := qdb.NewMemQDB("")
 	ctx := context.TODO()
 	statements, err := db.CreateSequence(ctx, "testSeq", 0)
 	assert.NoError(err)
@@ -97,7 +95,7 @@ func TestStepOne_concurrent(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 
-	db, _ := qdb.NewMemQDB(MemQDBPath)
+	db, _ := qdb.NewMemQDB("")
 	statements, err := db.CreateSequence(ctx, "testSeq", 0)
 	assert.NoError(err)
 	err = db.ExecNoTransaction(context.TODO(), statements)
@@ -139,7 +137,7 @@ func TestStepFive_concurrent(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 
-	db, _ := qdb.NewMemQDB(MemQDBPath)
+	db, _ := qdb.NewMemQDB("")
 	statements, err := db.CreateSequence(ctx, "testSeq", 0)
 	assert.NoError(err)
 	err = db.ExecNoTransaction(context.TODO(), statements)
