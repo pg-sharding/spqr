@@ -2105,6 +2105,173 @@ func TestJoins(t *testing.T) {
 	}
 }
 
+func TestDerivedTableLeftJoinRouting(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   plan.Plan
+	}
+
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "dd_derived_left_join"
+	ctx := context.TODO()
+
+	chunk, err := db.CreateDistribution(ctx, &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"opaque_lhs": {
+				Name: "opaque_lhs",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "k",
+					},
+				},
+			},
+			"opaque_rhs": {
+				Name: "opaque_rhs",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "k",
+					},
+				},
+			},
+		},
+	})
+	assert.NoError(err)
+	assert.NoError(db.ExecNoTransaction(ctx, chunk))
+
+	statements, err := db.CreateKeyRange(ctx, (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id_derived_left_join_1",
+		LowerBound:   []any{int64(0)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
+	assert.NoError(err)
+	assert.NoError(db.ExecNoTransaction(ctx, statements))
+
+	statements, err = db.CreateKeyRange(ctx, (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id_derived_left_join_2",
+		LowerBound:   []any{int64(10)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
+	assert.NoError(err)
+	assert.NoError(db.ExecNoTransaction(ctx, statements))
+
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
+	}
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
+
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	}, nil, getIdentityMngr(lc), metricRegistry)
+	assert.NoError(err)
+
+	expected := &plan.ShardDispatchPlan{
+		ExecTarget: kr.ShardKey{
+			Name: "sh2",
+		},
+		TargetSessionAttrs: config.TargetSessionAttrsRW,
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: `
+				SELECT *
+				FROM (
+					SELECT j, k
+					FROM opaque_lhs
+					WHERE k = 12 AND f = true
+				) left_src
+				LEFT JOIN (
+					SELECT j, k, SUM(v) AS total_v
+					FROM opaque_rhs
+					WHERE k = 12
+					GROUP BY j, k
+				) right_src
+					ON left_src.k = right_src.k;
+			`,
+			exp: expected,
+		},
+		{
+			query: `
+				WITH left_src AS (
+					SELECT j, k
+					FROM opaque_lhs
+					WHERE k = 12 AND f = true
+				)
+				SELECT *
+				FROM left_src l
+				LEFT JOIN (
+					SELECT j, k, SUM(v) AS total_v
+					FROM opaque_rhs
+					WHERE k = 12
+					GROUP BY j, k
+				) right_src
+					ON l.k = right_src.k;
+			`,
+			exp: expected,
+		},
+		{
+			query: `
+				SELECT *
+				FROM (
+					SELECT *
+					FROM opaque_lhs
+					WHERE k = 12 AND f = true
+				) left_src
+				LEFT JOIN (
+					SELECT j, k, SUM(v) AS total_v
+					FROM opaque_rhs
+					WHERE k = 12
+					GROUP BY j, k
+				) right_src
+					ON left_src.k = right_src.k;
+			`,
+			exp: expected,
+		},
+		{
+			query: `
+				SELECT *
+				FROM (
+					SELECT k AS kk
+					FROM opaque_lhs
+					WHERE k = 12 AND f = true
+				) left_src
+				LEFT JOIN (
+					SELECT k
+					FROM opaque_rhs
+					WHERE k = 12
+				) right_src
+					ON left_src.kk = right_src.k;
+			`,
+			exp: expected,
+		},
+	} {
+		parserRes, _, err := lyx.Parse(tt.query)
+		assert.NoError(err, "query %s", tt.query)
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
+		stmt := parserRes[0]
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt), tt.query)
+		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
+		assert.NoError(err, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp, tt.query)
+	}
+}
+
 func TestUnnest(t *testing.T) {
 	assert := assert.New(t)
 
