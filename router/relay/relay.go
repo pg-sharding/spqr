@@ -1139,10 +1139,16 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, stri
 		return cache.ps, cache.comm, nil
 	}
 
+	bef := time.Now()
+
 	stmts, comm, err := rst.qp.Parse(query)
 
 	if err != nil {
 		return nil, "", err
+	}
+
+	if rst.Client().ShowNoticeMsg() {
+		_ = rst.Client().ReplyNotice(fmt.Sprintf("parse time %v", time.Since(bef)))
 	}
 
 	/* XXX remove from here */
