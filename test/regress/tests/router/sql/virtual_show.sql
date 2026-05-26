@@ -1,8 +1,6 @@
 
 
 SHOW __spqr__distribution;
-SET __spqr__distribution TO 'ds1';
-SHOW __spqr__distribution;
 SHOW __spqr__default_route_behaviour;
 SHOW __spqr__auto_distribution;
 SHOW __spqr__distribution_key;

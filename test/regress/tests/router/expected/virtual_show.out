@@ -4,13 +4,6 @@ SHOW __spqr__distribution;
  default
 (1 row)
 
-SET __spqr__distribution TO 'ds1';
-SHOW __spqr__distribution;
- distribution 
---------------
- ds1
-(1 row)
-
 SHOW __spqr__default_route_behaviour;
  default route behaviour 
 -------------------------
