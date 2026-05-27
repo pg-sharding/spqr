@@ -151,7 +151,9 @@ func (c *PoolImpl) Shutdown() error {
 		return true
 	})
 
-	c.healthCheckCancel()
+	if c.healthCheckCancel != nil {
+		c.healthCheckCancel()
+	}
 
 	return nil
 }
@@ -247,8 +249,7 @@ const (
 // - Pool: A pointer to the newly created PoolImpl instance.
 func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	pl := &PoolImpl{
-		pool: sync.Map{},
-
+		pool:              sync.Map{},
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, clientDeadCheckInterval),
 		counters:          map[string]*atomic.Uint64{},
 	}
