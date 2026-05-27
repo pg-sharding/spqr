@@ -241,11 +241,12 @@ func TestValidateKeyRangeForCreate_unknownShardReturnsHint(t *testing.T) {
 	err = meta.ValidateKeyRangeForCreate(ctx, mngr, reqKr)
 	is.Error(err)
 
-	spErr, ok := err.(*spqrerror.SpqrError)
-	is.True(ok)
-	is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
-	is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
-	is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	var spErr *spqrerror.SpqrError
+	if is.ErrorAs(err, &spErr) {
+		is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
+		is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	}
 }
 
 func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
@@ -277,9 +278,10 @@ func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
 	err = meta.ValidateKeyRangeForModify(ctx, mngr, reqKr)
 	is.Error(err)
 
-	spErr, ok := err.(*spqrerror.SpqrError)
-	is.True(ok)
-	is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
-	is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
-	is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	var spErr *spqrerror.SpqrError
+	if is.ErrorAs(err, &spErr) {
+		is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
+		is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	}
 }

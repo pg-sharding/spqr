@@ -24,13 +24,14 @@ func TestCleanGrpcErrorRestoresSpqrErrorMetadata(t *testing.T) {
 
 	cleanErr := spqrerror.CleanGrpcError(spqrerror.ToGrpcError(original))
 
-	spErr, ok := cleanErr.(*spqrerror.SpqrError)
-	assert.True(t, ok)
-	assert.Equal(t, original.ErrorCode, spErr.ErrorCode)
-	assert.Equal(t, original.Error(), spErr.Error())
-	assert.Equal(t, original.ErrHint, spErr.ErrHint)
-	assert.Equal(t, original.ErrDetail, spErr.ErrDetail)
-	assert.Equal(t, original.ErrContext, spErr.ErrContext)
-	assert.Equal(t, original.Position, spErr.Position)
-	assert.Equal(t, original.InternalQuery, spErr.InternalQuery)
+	var spErr *spqrerror.SpqrError
+	if assert.ErrorAs(t, cleanErr, &spErr) {
+		assert.Equal(t, original.ErrorCode, spErr.ErrorCode)
+		assert.Equal(t, original.Error(), spErr.Error())
+		assert.Equal(t, original.ErrHint, spErr.ErrHint)
+		assert.Equal(t, original.ErrDetail, spErr.ErrDetail)
+		assert.Equal(t, original.ErrContext, spErr.ErrContext)
+		assert.Equal(t, original.Position, spErr.Position)
+		assert.Equal(t, original.InternalQuery, spErr.InternalQuery)
+	}
 }

@@ -615,11 +615,12 @@ func TestReportErrorIncludesHintFromGrpcSpqrError(t *testing.T) {
 		ca.EXPECT().
 			ReplyErrMsgPure(gomock.Any()).
 			DoAndReturn(func(err error) error {
-				spErr, ok := err.(*spqrerror.SpqrError)
-				assert.True(t, ok)
-				assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
-				assert.Equal(t, "Shard \"shard2\" not found.", spErr.Error())
-				assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+				var spErr *spqrerror.SpqrError
+				if assert.ErrorAs(t, err, &spErr) {
+					assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+					assert.Equal(t, "Shard \"shard2\" not found.", spErr.Error())
+					assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+				}
 				return nil
 			}),
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{

@@ -46,11 +46,12 @@ func TestMemQDBGetShardReturnsShardNotFound(t *testing.T) {
 
 	_, err = memqdb.GetShard(context.TODO(), "missing-shard")
 
-	spErr, ok := err.(*spqrerror.SpqrError)
-	assert.True(t, ok)
-	assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
-	assert.Equal(t, "Shard \"missing-shard\" not found.", spErr.Error())
-	assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	var spErr *spqrerror.SpqrError
+	if assert.ErrorAs(t, err, &spErr) {
+		assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		assert.Equal(t, "Shard \"missing-shard\" not found.", spErr.Error())
+		assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	}
 }
 
 // must run with -race
