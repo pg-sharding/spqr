@@ -1137,14 +1137,14 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return fmt.Errorf("unexpected row description in slice deploy")
+				return rerrors.ErrExecutorSyncLost.Detail("unexpected row description in slice deploy")
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
-			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
+			return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
 		}
 	}
 }
