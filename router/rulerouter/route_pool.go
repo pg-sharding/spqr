@@ -84,7 +84,9 @@ func (r *RoutePoolImpl) Obsolete(key route.Key) {
 		}
 
 		/* Stop watchdogs, if any */
-		_ = rt.Close()
+		rt.MultiShardPool().StopCacheWatchdog()
+		/* XXX: do not .Close() or Shutdown client pool here, we
+		* do not want to reset still active client connections */
 	}
 }
 
