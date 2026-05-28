@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -32,6 +33,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rebootstrap"
+	"github.com/pg-sharding/spqr/pkg/router_util"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
@@ -48,7 +50,8 @@ import (
 )
 
 const (
-	defaultBatchSize = 500
+	defaultBatchSize  = 500
+	pingRouterTimeout = 2 * time.Second
 )
 
 type EntityMgr interface {
@@ -691,7 +694,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.System:
-		if stmt.Reload {
+		if stmt.RotateLog {
+			router_util.ReloadRotateLog()
+		} else if stmt.Reload {
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGHUP); err != nil {
 				return nil, err
 			}
@@ -1179,7 +1184,7 @@ func ProcMetadataCommand(ctx context.Context,
 			}
 
 			for _, kr := range krs {
-				if kr.IsLocked != nil && *kr.IsLocked {
+				if kr.IsLocked {
 					if err := mgr.UnlockKeyRange(ctx, kr.ID); err != nil {
 						return nil, err
 					}
@@ -1503,6 +1508,16 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ShardsStr:
+		return ProcessShow(ctx, &spqrparser.Show{
+			Kind:    stmt.Kind,
+			Cmd:     spqrparser.ShardsExtendedStr,
+			Columns: []string{"shard"},
+			Where:   stmt.Where,
+			Order:   stmt.Order,
+			GroupBy: stmt.GroupBy,
+		}, mngr, ci, true)
+
+	case spqrparser.ShardsExtendedStr:
 
 		var shards []*topology.DataShard
 
@@ -1899,6 +1914,7 @@ type RouterVersionInfo struct {
 func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, func(), error)) map[string]RouterVersionInfo {
 	versions := make(map[string]RouterVersionInfo)
 
+	// TODO: make pooling routers parallel in goroutines with common deadline
 	for _, router := range routers {
 		versionInfo := RouterVersionInfo{
 			Version:         "N/A",
@@ -1913,7 +1929,9 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 				versionInfo.Error = err
 			} else {
 				client := protos.NewTopologyServiceClient(conn)
-				resp, err := client.GetRouterStatus(ctx, &emptypb.Empty{})
+				pingRouterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(pingRouterTimeout))
+				defer cancel()
+				resp, err := client.GetRouterStatus(pingRouterCtx, &emptypb.Empty{})
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to query router status")
 					versionInfo.Error = err

@@ -121,6 +121,7 @@ DROP SCHEMA sh1 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP SCHEMA sh2 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SET __spqr__maintain_params TO false;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

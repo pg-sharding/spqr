@@ -10,7 +10,7 @@ services:
         environment: &shard-env-common
             POSTGRES_USER: regress
             POSTGRES_DB: regress
-            SYNC_REPLICA: true
+            PG_SYNC_REPLICA: true
         ports:
             - "7432:6432"
         hostname: spqr_shard_1
@@ -127,7 +127,7 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/test/isolation/conf/router.yaml
             - ROUTER_LOG=/var/log/spqr-router.log
-            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+            - COORDINATOR_CONFIG=/spqr/test/isolation/conf/coordinator.yaml
         hostname: regress_router
         container_name: regress_router
         healthcheck:
@@ -159,7 +159,7 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/test/isolation/conf/router2.yaml
             - ROUTER_LOG=/var/log/spqr-router.log
-            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+            - COORDINATOR_CONFIG=/spqr/test/isolation/conf/coordinator.yaml
         hostname: regress_router_2
         container_name: regress_router_2
         healthcheck:

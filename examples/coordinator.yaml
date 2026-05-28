@@ -5,6 +5,8 @@ qdb_addr: 'localhost:2379'
 log_level: info
 shard_data: 'examples/shard_data.yaml'
 
+forbid_direct_shard_queries: true
+
 # Coordinator timing settings (optional)
 # iteration_timeout: 1s           # How often to check router status (default: 1s)
                                    # Increase to 10s-5m for production to reduce overhead

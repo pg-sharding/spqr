@@ -151,7 +151,9 @@ func (c *PoolImpl) Shutdown() error {
 		return true
 	})
 
-	c.healthCheckCancel()
+	if c.healthCheckCancel != nil {
+		c.healthCheckCancel()
+	}
 
 	return nil
 }
@@ -219,9 +221,9 @@ func (c *PoolImpl) backgroundHealthCheckLoop() {
 
 				if !netutil.TCPCheckAliveness(cl.Conn()) {
 
-					spqrlog.Zero.Info().Uint("client-id", cl.ID()).Msg("Found un-alive client")
+					spqrlog.Zero.Info().Uint("client", cl.ID()).Msg("Found un-alive client")
 					if err := cl.Cancel(); err != nil {
-						spqrlog.Zero.Error().Uint("client-id", cl.ID()).Err(err).Msg("failed to send cancel request to client")
+						spqrlog.Zero.Error().Uint("client", cl.ID()).Err(err).Msg("failed to send cancel request to client")
 						/* Do not fail, continue with next client */
 					}
 				}
@@ -247,8 +249,7 @@ const (
 // - Pool: A pointer to the newly created PoolImpl instance.
 func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	pl := &PoolImpl{
-		pool: sync.Map{},
-
+		pool:              sync.Map{},
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, clientDeadCheckInterval),
 		counters:          map[string]*atomic.Uint64{},
 	}

@@ -216,7 +216,7 @@ func CalculateRoutingListTupleItemValue(
 		// TODO: switch column type here
 		// only works for one value
 		ind := q.Indx
-		if len(queryParamsFormatCodes) < ind {
+		if ind < 0 || ind >= len(queryParamsFormatCodes) {
 			return nil, plan.ErrResolvingValue
 		}
 
@@ -244,7 +244,10 @@ func TuplePlansByDistributionEntry(
 		return nil, err
 	}
 
-	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	if err != nil {
+		return nil, err
+	}
 
 	tupleShards := make([]kr.ShardKey, len(routingList))
 	for i := range routingList {
@@ -404,6 +407,53 @@ func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
 	}
 }
 
+func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm *rmeta.RoutingMetadataContext) (*tupleslot.TupleTableSlot, error) {
+	var cf func()
+
+	var err error
+
+	mgr := rm.Mgr
+
+	switch tstmt := tstmt.(type) {
+	case *spqrparser.Show:
+		/* TODO - fix
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
+		*/
+		switch tstmt.Cmd {
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.RedistributeStatusStr:
+			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+			if err != nil {
+				return nil, err
+			}
+			defer cf()
+		}
+	default:
+		/* TODO - fix
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return nil, err
+		}
+		*/
+		mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+		if err != nil {
+			return nil, err
+		}
+		defer cf()
+	}
+
+	return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+		if err != nil {
+			if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+				return nil, retry.RetryableError(err)
+			}
+			return nil, err
+		}
+		return tts, nil
+	})
+}
+
 func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
@@ -481,48 +531,15 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
 			}
+			/* Here we return only last TTS. this is intended */
+			var tts *tupleslot.TupleTableSlot
 
-			mgr := rm.Mgr
-			var cf func()
-
-			switch tstmt := tstmt.(type) {
-			case *spqrparser.Show:
-				/* TODO - fix
-				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
-					return err
-				}
-				*/
-				switch tstmt.Cmd {
-				case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.RedistributeStatusStr:
-					mgr, cf, err = coord.DistributedMgr(ctx, mgr)
-					if err != nil {
-						return nil, err
-					}
-					defer cf()
-				}
-			default:
-				/* TODO - fix
-				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			for _, stmt := range tstmt {
+				if tts, err = executeSingleMetaQuery(ctx, stmt, rm); err != nil {
 					return nil, err
 				}
-				*/
-				mgr, cf, err = coord.DistributedMgr(ctx, mgr)
-				if err != nil {
-					return nil, err
-				}
-				defer cf()
 			}
-
-			return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
-				tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
-				if err != nil {
-					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return nil, retry.RetryableError(err)
-					}
-					return nil, err
-				}
-				return tts, nil
-			})
+			return tts, nil
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -540,7 +557,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			lockedVirtualPID = uint32(v.Value)
 		case *lyx.ParamRef:
 
-			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			if err != nil {
+				return nil, err
+			}
 
 			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeUinteger)
 			if err != nil {
@@ -556,7 +576,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			if client.CancelPID() == lockedVirtualPID {
 				lockedByVirtualPIDs = client.CancellableIDs()
 
-				spqrlog.Zero.Debug().Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
+				spqrlog.Zero.Debug().Uint("client", client.ID()).Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
 			}
 			return nil
 		})
@@ -604,7 +624,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		switch v := args[0].(type) {
 		case *lyx.ParamRef:
 
-			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			if err != nil {
+				return nil, err
+			}
 
 			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 			if err != nil {
@@ -840,7 +863,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}()
 	case virtual.VirtualRun2PCRecover:
 		if len(args) > 1 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualRun2PCRecover)
+			return nil, fmt.Errorf("%s function accepts no more than one arg", fname)
 		}
 
 		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
@@ -872,7 +895,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		return tts, nil
 	case virtual.VirtualClear2PCData:
 		if len(args) > 0 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualClear2PCData)
+			return nil, fmt.Errorf("%s function accepts no arg", fname)
 		}
 		db, err := qdb.GetStateKeeperQDB()
 		if err != nil {
@@ -887,7 +910,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		return tts, nil
 	case virtual.VirtualCleanOutdated2PCData:
 		if len(args) > 0 {
-			return nil, fmt.Errorf("%s function accepts no more than one arg", virtual.VirtualCleanOutdated2PCData)
+			return nil, fmt.Errorf("%s function accepts no arg", fname)
 		}
 		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
 		if err != nil {
@@ -904,8 +927,23 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			tts.WriteDataRow(gid)
 		}
 		return tts, nil
+	case virtual.VirtualSetNextTwoPhaseCommitGID:
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function accepts one arg", fname)
+		}
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("__spqr__set_next_2pc_gid"),
+		}
+
+		rm.SPH.SetNextGID(strVal.Value)
+		return tts, nil
+	default:
+		return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 	}
-	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
 func RetrieveTuples(
@@ -1113,7 +1151,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
-					SubPlan:     p,
+					Plan:        p,
 					FilterIndex: 0,
 				}, nil
 			}
@@ -1145,7 +1183,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
 				return &plan.DataRowFilter{
-					SubPlan:     p,
+					Plan:        p,
 					FilterIndex: 0,
 				}, nil
 			}

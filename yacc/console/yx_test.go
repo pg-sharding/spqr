@@ -89,7 +89,7 @@ func TestSimple(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestSimpleTrace(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -264,7 +264,7 @@ func TestSimpleShow(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -319,7 +319,7 @@ func TestSimpleWhere(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -370,7 +370,7 @@ func TestNestedWhere(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -419,7 +419,7 @@ func TestGroupBy(t *testing.T) {
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 
-			assert.Equal(tt.exp, tmp, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
 	}
 }
@@ -455,7 +455,7 @@ func TestOrderBy(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -563,9 +563,8 @@ func TestRedistribute(t *testing.T) {
 			assert.EqualError(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -722,11 +721,10 @@ func TestKeyRange(t *testing.T) {
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -771,7 +769,7 @@ func TestRegisterRouter(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 
 }
@@ -833,7 +831,7 @@ func TestKeyRangeBordersSuccess(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -873,11 +871,10 @@ func TestKeyRangeBordersFail(t *testing.T) {
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -911,7 +908,7 @@ func TestSplitKeyRange(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -921,7 +918,8 @@ func TestAttachTable(t *testing.T) {
 
 	tmp, err := spqrparser.Parse("ATTACH TABLE t TO DISTRIBUTION ds1;")
 	assert.Error(err)
-	assert.Equal(nil, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
+	var exp []spqrparser.Statement
+	assert.Equal(exp, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
 }
 
 func TestAlter(t *testing.T) {
@@ -940,6 +938,15 @@ func TestAlter(t *testing.T) {
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.System{
 					Restart: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM ROTATE ",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					RotateLog: true,
 				},
 			},
 			err: nil,
@@ -1474,7 +1481,7 @@ func TestAlter(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1546,7 +1553,7 @@ func TestDistribution(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1709,7 +1716,7 @@ func TestReferenceRelation(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1799,7 +1806,7 @@ func TestShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1847,7 +1854,7 @@ func TestRefresh(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1882,7 +1889,7 @@ func TestSyncReferenceTable(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1943,9 +1950,8 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -2024,9 +2030,8 @@ func TestStopMoveTaskGroup(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -2092,7 +2097,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2139,7 +2144,7 @@ func TestRelationQualifiedName(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2210,7 +2215,7 @@ func TestKill(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2300,7 +2305,7 @@ func TestICP(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2355,7 +2360,7 @@ func TestUniqueIndex(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2384,7 +2389,7 @@ func TestRedistributeTasks(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2439,6 +2444,106 @@ func TestGrant(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+	}
+}
+
+func TestTableKeywordForRelation(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		relationQuery string
+		tableQuery    string
+	}
+
+	for _, tt := range []tcase{
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 ATTACH TABLE t DISTRIBUTION KEY id;",
+		},
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 DETACH RELATION t;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 DETACH TABLE t;",
+		},
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 ALTER TABLE t DISTRIBUTION KEY id;",
+		},
+		{
+			relationQuery: "CREATE RELATION t (id) IN ds1;",
+			tableQuery:    "CREATE TABLE t (id) IN ds1;",
+		},
+	} {
+
+		relationStmt, err := spqrparser.Parse(tt.relationQuery)
+
+		assert.NoError(err, "query %s", tt.relationQuery)
+
+		tableStmt, err := spqrparser.Parse(tt.tableQuery)
+
+		assert.NoError(err, "query %s", tt.tableQuery)
+
+		assert.Equal(relationStmt, tableStmt, "table query %s should parse like relation query %s", tt.tableQuery, tt.relationQuery)
+	}
+}
+
+func TestADDDeprecation(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query      string
+		shouldFail bool
+		errMsg     string
+	}
+
+	for _, tt := range []tcase{
+		{
+			query:      "ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			shouldFail: true,
+			errMsg:     "ADD KEY RANGE is deprecated, use CREATE KEY RANGE instead",
+		},
+		{
+			query:      "ADD SHARD sh1 OPTIONS (HOST 'localhost:5432');",
+			shouldFail: true,
+			errMsg:     "ADD SHARD is deprecated, use CREATE SHARD instead",
+		},
+		{
+			query:      "ADD DISTRIBUTION ds1 COLUMN TYPES integer;",
+			shouldFail: true,
+			errMsg:     "ADD DISTRIBUTION is deprecated, use CREATE DISTRIBUTION instead",
+		},
+		{
+			query:      "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "CREATE SHARD sh1 OPTIONS (HOST 'localhost:5432');",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "CREATE DISTRIBUTION ds1 COLUMN TYPES integer;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.shouldFail {
+			assert.Error(err, "query %s should fail", tt.query)
+			assert.ErrorContains(err, tt.errMsg, "query %s", tt.query)
+			assert.Nil(tmp, "query %s should return nil", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.NotNil(tmp, "query %s should return result", tt.query)
+		}
 	}
 }

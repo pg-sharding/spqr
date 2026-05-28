@@ -28,7 +28,7 @@ type KeyRange struct {
 	ShardID      string
 	ID           string
 	Distribution string
-	IsLocked     *bool //if nil then is not checked lock state in qdb
+	IsLocked     bool
 	ColumnTypes  []string
 	Version      int
 }
@@ -333,7 +333,7 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 		ID:           krdb.KeyRangeID,
 		Distribution: krdb.DistributionId,
 		ColumnTypes:  colTypes,
-		IsLocked:     &krdb.Locked,
+		IsLocked:     krdb.Locked,
 		Version:      krdb.Version,
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
@@ -449,16 +449,12 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) (*KeyRang
 //
 // TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
-	isLocked := false
-	if kr.IsLocked != nil {
-		isLocked = *kr.IsLocked
-	}
 	krDb := &qdb.KeyRange{
 		LowerBound:     make([][]byte, len(kr.ColumnTypes)),
 		ShardID:        kr.ShardID,
 		KeyRangeID:     kr.ID,
 		DistributionId: kr.Distribution,
-		Locked:         isLocked,
+		Locked:         kr.IsLocked,
 		Version:        kr.Version,
 	}
 	for i := range len(kr.ColumnTypes) {

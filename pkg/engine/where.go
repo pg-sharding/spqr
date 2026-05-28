@@ -8,8 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 )
 
-// TODO : unit tests
-
 // MatchRow checks if a row matches a given condition in a WHERE clause.
 //
 // Parameters:

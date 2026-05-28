@@ -80,6 +80,8 @@ func NewMultiShardServerFromShard(pool pool.MultiShardTSAPool, sh shard.ShardHos
 		dataRowCnt: 0,
 		states:     []ShardState{ShardRFQState},
 		status:     sh.TxStatus(),
+
+		prefetchMp: map[string][]pgproto3.BackendMessage{},
 	}
 }
 

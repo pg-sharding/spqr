@@ -580,6 +580,20 @@ func (mr *MockRouterClientMockRecorder) MaintainParams() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockRouterClient)(nil).MaintainParams))
 }
 
+// NextGID mocks base method.
+func (m *MockRouterClient) NextGID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextGID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// NextGID indicates an expected call of NextGID.
+func (mr *MockRouterClientMockRecorder) NextGID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextGID", reflect.TypeOf((*MockRouterClient)(nil).NextGID))
+}
+
 // Params mocks base method.
 func (m *MockRouterClient) Params() map[string]string {
 	m.ctrl.T.Helper()
@@ -1254,6 +1268,18 @@ func (m *MockRouterClient) SetMaintainParams(level string, val bool) {
 func (mr *MockRouterClientMockRecorder) SetMaintainParams(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), level, val)
+}
+
+// SetNextGID mocks base method.
+func (m *MockRouterClient) SetNextGID(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetNextGID", arg0)
+}
+
+// SetNextGID indicates an expected call of SetNextGID.
+func (mr *MockRouterClientMockRecorder) SetNextGID(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNextGID", reflect.TypeOf((*MockRouterClient)(nil).SetNextGID), arg0)
 }
 
 // SetParam mocks base method.

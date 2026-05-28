@@ -163,3 +163,8 @@ func (r *Route) ReleaseClient(clientID uint) (bool, error) {
 func (r *Route) ForEachPool(cb func(pool.Pool) error) error {
 	return r.mShardPool.ForEachPool(cb)
 }
+
+func (r *Route) Close() error {
+	r.MultiShardPool().StopCacheWatchdog()
+	return r.ClientPool().Shutdown()
+}

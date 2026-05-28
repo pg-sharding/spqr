@@ -14,6 +14,9 @@ const (
 	VirtualCTID      = "__spqr__ctid"
 	VirtualFuncHosts = "__spqr__host_status"
 
+	/* XXX: debug-only */
+	VirtualSetNextTwoPhaseCommitGID = "__spqr__set_next_2pc_gid"
+
 	/* isolation tester support function */
 	VirtualAwaitTask                = "__spqr__await_task"
 	PGIsolationTestSessionIsBlocked = "pg_isolation_test_session_is_blocked"
@@ -25,7 +28,7 @@ func IsVirtualFuncName(n string) bool {
 		VirtualCTID, VirtualFuncHosts, VirtualAwaitTask,
 		VirtualRouteKey, VirtualRemoteExecute, VirtualRun2PCRecover,
 		VirtualClear2PCData, VirtualCleanOutdated2PCData,
-		PGIsolationTestSessionIsBlocked:
+		PGIsolationTestSessionIsBlocked, VirtualSetNextTwoPhaseCommitGID:
 		return true
 	default:
 		return false

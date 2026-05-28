@@ -46,10 +46,13 @@ func DispatchSlice(qd *QueryDesc,
 
 		if qd.simple {
 
+			forceLinearize := false
+
 			/*
 			* This is only execution path for non-top level slice
 			 */
 			if p != nil {
+				forceLinearize = p.Hints().AutoLinearize
 				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
 					/* Uh, oh, this is very ugly hack */
 
@@ -77,7 +80,7 @@ func DispatchSlice(qd *QueryDesc,
 				return err
 			}
 
-			if guc.Get(cl) {
+			if guc.Get(cl) || forceLinearize {
 				if cl.ShowNoticeMsg() {
 					_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %v", targ.Name))
 				}

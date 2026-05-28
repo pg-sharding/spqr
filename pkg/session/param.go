@@ -84,6 +84,10 @@ type SessionParamsHolder interface {
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
 
+	/* These are non-guc */
+	SetNextGID(string)
+	NextGID() string
+
 	Params() map[string]string
 	SetParam(name, value string, isLocal bool)
 	StartTx()
@@ -131,6 +135,7 @@ const (
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
 
 	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
+	SPQR_ALLOW_FLUX_ACCESS  = "__spqr__flux_access"
 )
 
 //revive:enable:var-naming
@@ -138,7 +143,7 @@ const (
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH:
+	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH, SPQR_ALLOW_FLUX_ACCESS:
 		return true
 	default:
 		return false

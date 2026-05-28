@@ -142,7 +142,7 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	if v == nil {
 		return ErrShardUnavailable
 	}
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("single-shard", (*v).ID()).
 		Type("query-type", query).
 		Msg("single-shard sending msg to server")
@@ -167,7 +167,7 @@ func (srv *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 
 	msg, err := (*srv.shard.Load()).Receive()
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("single-shard", (*srv.shard.Load()).ID()).
 		Type("message-type", msg).
 		Str("txstatus", srv.TxStatus().String()).

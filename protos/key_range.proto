@@ -40,7 +40,7 @@ message KeyRangeInfo {
   string krid = 2;
   string shardId = 3;
   string distributionId = 4;
-  optional bool locked = 5;
+  bool locked = 5;
 }
 
 message ListKeyRangeRequest {

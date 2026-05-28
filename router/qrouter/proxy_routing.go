@@ -210,7 +210,7 @@ func (qr *ProxyQrouter) planInsertV1(
 				case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
 					if stmt.Returning != nil {
 						return &plan.DataRowFilter{
-							SubPlan: &plan.ScatterPlan{
+							Plan: &plan.ScatterPlan{
 								ExecTargets: rel.ListStorageRoutes(),
 							},
 							FilterIndex: 0,
@@ -264,7 +264,7 @@ func (qr *ProxyQrouter) planInsertV1(
 			}
 			if stmt.Returning != nil {
 				return &plan.DataRowFilter{
-					SubPlan:     p,
+					Plan:        p,
 					FilterIndex: 0,
 				}, nil
 			}
@@ -488,7 +488,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		retPlan := sliceInsert
 
-		ds, err := rm.Mgr.GetRelationDistribution(ctx, qualName)
+		ds, err := rm.GetRelationDistribution(ctx, qualName)
 		if err != nil {
 			return nil, err
 		}
@@ -876,7 +876,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 
 	switch v := p.(type) {
 	case *plan.DataRowFilter:
-		sp, err := qr.InitExecutionTargets(ctx, rm, v.SubPlan)
+		sp, err := qr.InitExecutionTargets(ctx, rm, v.Plan)
 		if err != nil {
 			return nil, err
 		}
@@ -884,7 +884,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		/* XXX: Can we do better? */
 
 		return &plan.DataRowFilter{
-			SubPlan:     sp,
+			Plan:        sp,
 			FilterIndex: 0,
 		}, err
 	case *plan.ShardDispatchPlan:
@@ -1274,7 +1274,10 @@ func (qr *ProxyQrouter) planSPQRCTID(
 
 			switch v := f.Args[0].(type) {
 			case *lyx.ParamRef:
-				queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+				queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+				if err != nil {
+					return nil, err
+				}
 
 				sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
 				if err != nil {
@@ -1452,7 +1455,10 @@ func (qr *ProxyQrouter) planSplitUpdate(
 						return nil, err
 					}
 
-					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+					queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+					if err != nil {
+						return nil, err
+					}
 
 					krs, err := rm.Mgr.ListKeyRanges(ctx, d.Id)
 					if err != nil {
@@ -1693,6 +1699,13 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		/* Top level plan */
 		p, err = qr.plannerV1(ctx, rm)
 		if err != nil {
+			return nil, err
+		}
+	}
+
+	/* If we planned to read in-flight chunk data, add double-check plan nodes to plan */
+	if len(rm.RecheckKeyRange) != 0 {
+		if err := planner.AdjustPlanStateForFluxAccess(rm, p); err != nil {
 			return nil, err
 		}
 	}

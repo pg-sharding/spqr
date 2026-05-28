@@ -39,7 +39,6 @@ func (dw *LocalQlog) DumpQuery(_ context.Context, fname string, q string) error 
 	return nil
 }
 
-// TODO : unit tests
 func (dw *LocalQlog) Recover(_ context.Context, path string) ([]string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return []string{}, err
@@ -79,6 +78,10 @@ func (dw *LocalQlog) Recover(_ context.Context, path string) ([]string, error) {
 				qs = ""
 			}
 		}
+	}
+
+	if strings.TrimSpace(qs) != "" {
+		queries = append(queries, qs)
 	}
 
 	if err := scanner.Err(); err != nil {

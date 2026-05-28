@@ -1,5 +1,6 @@
 SHOW __spqr__distribution;
 ERROR:  parameter "__spqr__distribution" isn't user accessible
+QUERY:  SHOW __spqr__distribution;
 SHOW __spqr__default_route_behaviour;
  default route behaviour 
 -------------------------
@@ -26,6 +27,7 @@ SHOW __spqr__sharding_key;
 
 SHOW __spqr__scatter_query;
 ERROR:  parameter "__spqr__scatter_query" isn't user accessible
+QUERY:  SHOW __spqr__scatter_query;
 SHOW __spqr__reply_notice;
  show notice messages 
 ----------------------
