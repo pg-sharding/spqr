@@ -1984,7 +1984,8 @@ func TestDescribeTaskGroup(t *testing.T) {
 		tmp, err := spqrparser.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Len(tmp, 1, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
