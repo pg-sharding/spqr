@@ -57,6 +57,32 @@ DROP REFERENCE RELATION zz2;
 --should fail
 DROP REFERENCE RELATION zz2;
 ERROR:  reference relation "zz2" not found
+CREATE REFERENCE RELATION zzx;
+   create reference table    
+-----------------------------
+ table    -> zzx
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+SHOW reference_relations;
+ table_name | schema_name | schema_version |      shards       | column_sequence_mapping 
+------------+-------------+----------------+-------------------+-------------------------
+ zz         | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+ zzx        | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+(2 rows)
+
+DROP REFERENCE RELATION zz;
+ relation_name 
+---------------
+ zz
+(1 row)
+
+DROP REFERENCE RELATION zzx;
+ relation_name 
+---------------
+ zzx
+(1 row)
+
 CREATE REFERENCE RELATION r;
    create reference table    
 -----------------------------
