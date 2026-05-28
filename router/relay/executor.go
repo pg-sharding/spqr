@@ -178,7 +178,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 	for _, shkey := range s.ActiveShards() {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
-			Msg("adding shard with tsa")
+			Msgf("adding shard with tsa %+v", p)
 		if err := s.Client().Server().AllocateGangMember(
 			s.Client().ID(),
 			shkey, s.Client().GetTsa()); err != nil {
