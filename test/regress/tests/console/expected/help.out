@@ -375,7 +375,8 @@ HELP SHOW;
      `backend_connections`, `hosts`, `version`, `status`, `instance`,            +
      `sequences`,                                                                +
      `users`, `task_group`, `task_groups`, `task_group_ext`, `task_groups_ext`,  +
-     `move_task`, `move_tasks`, `redistribute_tasks`, `prepared_statements`,     +
+     `move_task`, `move_tasks`, `redistribute_tasks`, `redistribute_status`,     +
+     `prepared_statements`,                                                      +
      `time_quantiles`, `unique_indexes`, `coordinator_address`, `is_read_only`,  +
      `move_stats`, `errors`, `startup_finished`, `two_phase_tx`, `dcs_storage`,  +
      `file_settings`, `tsa_cache`.                                               +
