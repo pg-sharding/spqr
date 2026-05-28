@@ -27,6 +27,10 @@ func TestPrepStmtSimple(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmtcache_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_1",
 					Query: "select 'Hello, world!';",
@@ -38,6 +42,7 @@ func TestPrepStmtSimple(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -1130,6 +1135,10 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmtcache_dab_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_dab_1",
 					Query: "select 'Hello, world!';",
@@ -1146,6 +1155,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -1187,6 +1197,10 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmtcache_dab_2_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_dab_2_1",
 					Query: "BEGIN",
@@ -1197,6 +1211,10 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				},
 				&pgproto3.Sync{},
 
+				&pgproto3.Close{
+					Name:       "stmtcache_dab_2_2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_dab_2_2",
 					Query: "ROLLBACK",
@@ -1207,6 +1225,10 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				},
 				&pgproto3.Sync{},
 
+				&pgproto3.Close{
+					Name:       "stmtcache_dab_2_3",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_dab_2_3",
 					Query: "SELECT * FROM t WHERE id = 1",
@@ -1217,6 +1239,10 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				},
 				&pgproto3.Sync{},
 
+				&pgproto3.Close{
+					Name:       "stmtcache_dab_2_4",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmtcache_dab_2_4",
 					Query: "INSERT INTO t (id) values (1)",
@@ -1252,6 +1278,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -1262,6 +1289,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -1273,6 +1301,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -1295,6 +1324,7 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ParameterDescription{
@@ -1468,6 +1498,10 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "named_p_s_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "named_p_s_1",
 					Query: "SELECT 1 AS z FROM t WHERE id = $1",
@@ -1492,6 +1526,7 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.ParameterDescription{
@@ -1542,6 +1577,10 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "named_tx_p_s_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "named_tx_p_s_1",
 					Query: "SELECT 1+$1 AS z /* __spqr__execute_on: sh1 */",
@@ -1561,6 +1600,10 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 					Name:       "d_n_tx_p_1",
 				},
 
+				&pgproto3.Close{
+					Name:       "named_tx_p_s_2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "named_tx_p_s_2",
 					Query: "SELECT 2+$1 AS z /* __spqr__execute_on: sh1 */",
@@ -1590,6 +1633,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.ParameterDescription{
@@ -1616,6 +1660,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 					},
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.ParameterDescription{
@@ -1680,6 +1725,10 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 				&pgproto3.Query{
 					String: `BEGIN`,
 				},
+				&pgproto3.Close{
+					Name:       "named_tx_p_s_1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "named_tx_p_s_1",
 					Query: "SELECT 1+$1 AS z /* __spqr__execute_on: sh1 */",
@@ -1700,6 +1749,10 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 				},
 				&pgproto3.Sync{},
 
+				&pgproto3.Close{
+					Name:       "named_tx_p_s_2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "named_tx_p_s_2",
 					Query: "SELECT 2+$1 AS z /* __spqr__execute_on: sh1 */",
@@ -1742,6 +1795,7 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.ParameterDescription{
@@ -1771,6 +1825,7 @@ func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
 				&pgproto3.ParameterDescription{
@@ -1847,17 +1902,30 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt1",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmt1",
 					Query: "BEGIN;",
 				},
 				&pgproto3.Sync{},
+
+				&pgproto3.Close{
+					Name:       "stmt2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmt2",
 					Query: "SELECT 11;",
 				},
 				&pgproto3.Sync{},
 
+				&pgproto3.Close{
+					Name:       "stmt3",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmt3",
 					Query: "ROLLBACK;",
@@ -1882,17 +1950,20 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -1928,21 +1999,37 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 
+				&pgproto3.Close{
+					Name:       "stmt1-0",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmt1-0",
 					Query: "set session characteristics as transaction read only;",
+				},
+				&pgproto3.Close{
+					Name:       "stmt1-1",
+					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
 					Name:  "stmt1-1",
 					Query: "BEGIN;",
 				},
 				&pgproto3.Sync{},
+				&pgproto3.Close{
+					Name:       "stmt1-2",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmt1-2",
 					Query: "SELECT 12;",
 				},
 				&pgproto3.Sync{},
 
+				&pgproto3.Close{
+					Name:       "stmt1-3",
+					ObjectType: 'S',
+				},
 				&pgproto3.Parse{
 					Name:  "stmt1-3",
 					Query: "ROLLBACK;",
@@ -1972,19 +2059,23 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
