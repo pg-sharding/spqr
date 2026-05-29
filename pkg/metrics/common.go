@@ -104,21 +104,21 @@ type DynamicSummary struct {
 	GetCount   func() uint64
 }
 
-func (h *DynamicSummary) Desc() *prometheus.Desc {
-	return prometheus.NewDesc(h.Name, h.Help, nil, nil)
+func (s *DynamicSummary) Desc() *prometheus.Desc {
+	return prometheus.NewDesc(s.Name, s.Help, nil, nil)
 }
 
-func (h *DynamicSummary) Collect(ch chan<- prometheus.Metric) {
-	data := h.GetBuckets()
+func (s *DynamicSummary) Collect(ch chan<- prometheus.Metric) {
+	data := s.GetBuckets()
 	metric, _ := prometheus.NewConstSummary(
-		h.Desc(),
-		h.GetCount(),
-		h.GetSum(),
+		s.Desc(),
+		s.GetCount(),
+		s.GetSum(),
 		data,
 	)
 	ch <- metric
 }
 
-func (g *DynamicSummary) Describe(ch chan<- *prometheus.Desc) {
-	ch <- g.Desc()
+func (s *DynamicSummary) Describe(ch chan<- *prometheus.Desc) {
+	ch <- s.Desc()
 }
