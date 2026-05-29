@@ -26,14 +26,16 @@ type StartTimes struct {
 type Statistics struct {
 	totalRequests uint64 // lifetime request count (atomic, monotonically increasing)
 
-	RouterTime        map[uint]*tdigest.TDigest
-	ShardTime         map[uint]*tdigest.TDigest
-	RouterTimeTotal   *tdigest.TDigest
-	ShardTimeTotal    *tdigest.TDigest
-	TimeData          map[uint]*StartTimes
-	Quantiles         []float64
-	QuantilesStr      []string
-	NeedToCollectData bool
+	RouterTime         map[uint]*tdigest.TDigest
+	ShardTime          map[uint]*tdigest.TDigest
+	RouterTimeTotal    *tdigest.TDigest
+	RouterTimeTotalSum float64
+	ShardTimeTotal     *tdigest.TDigest
+	ShardTimeTotalSum  float64
+	TimeData           map[uint]*StartTimes
+	Quantiles          []float64
+	QuantilesStr       []string
+	NeedToCollectData  bool
 
 	lock sync.RWMutex
 }
@@ -149,6 +151,7 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
+		QueryStatistics.RouterTimeTotalSum += routerTime
 		clientST.RouterStart = time.Time{}
 	}
 	if !clientST.ShardStart.IsZero() {
@@ -161,6 +164,7 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
+		QueryStatistics.ShardTimeTotalSum += shardTime
 		clientST.ShardStart = time.Time{}
 	}
 }
