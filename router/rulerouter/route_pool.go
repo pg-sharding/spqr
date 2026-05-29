@@ -23,7 +23,7 @@ type RoutePool interface {
 		frRule *config.FrontendRule,
 	) (*route.Route, error)
 
-	Obsolete(key route.Key) *route.Route
+	Obsolete(key route.Key)
 	Shutdown() error
 	NotifyRoutes(func(route *route.Route) (bool, error)) error
 }
@@ -75,17 +75,19 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) 
 }
 
 // TODO : unit tests
-func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
+func (r *RoutePoolImpl) Obsolete(key route.Key) {
 	ret, ok := r.pool.LoadAndDelete(key)
 	if ok {
 		rt, ok := ret.(*route.Route)
 		if !ok {
-			return nil
+			return
 		}
-		return rt
-	}
 
-	return nil
+		/* Stop watchdogs, if any */
+		rt.MultiShardPool().StopCacheWatchdog()
+		/* XXX: do not .Close() or Shutdown client pool here, we
+		* do not want to reset still active client connections */
+	}
 }
 
 // TODO : unit tests
@@ -140,8 +142,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	if loaded {
 		// conflict, release goroutines
-		nroute.MultiShardPool().StopCacheWatchdog()
-		_ = nroute.ClientPool().Shutdown()
+		_ = nroute.Close()
 	}
 	rt, ok := act.(*route.Route)
 	if !ok {

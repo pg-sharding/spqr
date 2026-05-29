@@ -999,9 +999,6 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		}
 
 		return nil
-
-	case *plan.CopyPlan:
-		return rerrors.ErrExecutorSyncLost
 	case *plan.ScatterPlan:
 		if q.OverwriteCC != nil {
 			overwriteCC = q.OverwriteCC
@@ -1109,11 +1106,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			if replyCl {
 				s.es.eMsg = v
 			}
-		// never expect these msgs
+		// skip
 		case *pgproto3.BindComplete:
-			// skip
+		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost
+			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
@@ -1137,20 +1134,26 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return fmt.Errorf("unexpected row description in slice deploy")
+				return rerrors.ErrExecutorSyncLost.Detail("unexpected row description in slice deploy")
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
-			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
+			return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
 		}
 	}
 }
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
+
+	/* First thing first, do sanity check */
+	switch topPlan.(type) {
+	case *plan.CopyPlan:
+		return rerrors.ErrExecutorSyncLost.Detail("copy plan is not convertable to dispatchable plan")
+	}
 
 	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {
 		return err

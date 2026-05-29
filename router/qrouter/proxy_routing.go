@@ -900,7 +900,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		}
 
 	case *plan.CopyPlan:
-		/* temporary */
+		/* Convert to dispatchable plan */
 		return &plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
