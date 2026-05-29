@@ -112,6 +112,7 @@ diffs
 distrib
 distrr
 distrs
+dispatchable
 dmgr
 dockerhub
 dolore

@@ -1110,7 +1110,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.BindComplete:
 		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement responce in plan deploy")
+			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
@@ -1152,7 +1152,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 	/* First thing first, do sanity check */
 	switch topPlan.(type) {
 	case *plan.CopyPlan:
-		return rerrors.ErrExecutorSyncLos.Detail("copy plan is not convertable to dispatchable plan")
+		return rerrors.ErrExecutorSyncLost.Detail("copy plan is not convertable to dispatchable plan")
 	}
 
 	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {
