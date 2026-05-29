@@ -91,6 +91,30 @@ func GetTimeQuantile(statType StatisticsType, q float64, h StatHolder) float64 {
 	return h.GetTimeQuantile(statType, q)
 }
 
+func GetRouterTimeTotalSum() float64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.RouterTimeTotalSum
+}
+
+func GetShardTimeTotalSum() float64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.ShardTimeTotalSum
+}
+
+func GetRouterTimeTotalCount() uint64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.RouterTimeTotal.Count()
+}
+
+func GetShardTimeTotalCount() uint64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.ShardTimeTotal.Count()
+}
+
 func GetTotalTimeQuantile(statType StatisticsType, q float64) float64 {
 	QueryStatistics.lock.Lock()
 	defer QueryStatistics.lock.Unlock()

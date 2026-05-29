@@ -213,10 +213,10 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Name: metrics.RouterTimeHistogram,
 		Help: "routing latency time quantiles",
 		GetSum: func() float64 {
-			return float64(statistics.QueryStatistics.RouterTimeTotalSum)
+			return statistics.GetRouterTimeTotalSum()
 		},
 		GetCount: func() uint64 {
-			return statistics.QueryStatistics.RouterTimeTotal.Count()
+			return statistics.GetRouterTimeTotalCount()
 		},
 		GetBuckets: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeRouter) },
 	}
@@ -224,10 +224,10 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Name: metrics.ShardTimeHistogram,
 		Help: "shard latency time quantiles",
 		GetSum: func() float64 {
-			return float64(statistics.QueryStatistics.ShardTimeTotalSum)
+			return statistics.GetShardTimeTotalSum()
 		},
 		GetCount: func() uint64 {
-			return statistics.QueryStatistics.ShardTimeTotal.Count()
+			return statistics.GetShardTimeTotalCount()
 		},
 		GetBuckets: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeShard) },
 	}
