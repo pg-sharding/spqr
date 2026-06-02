@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/icp"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -31,16 +32,19 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	/*
 	* go along first phase
 	 */
-	uid7, err := uuid.NewV7()
-	if err != nil {
-		return txstatus.TXERR, err
+	gid := cl.NextGID()
+	if gid == "" {
+		uid7, err := uuid.NewV7()
+		if err != nil {
+			return txstatus.TXERR, err
+		}
+		gid = uid7.String()
 	}
-	gid := uid7.String()
 
 	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
 		return txstatus.TXERR, err
 	} else if !ok {
-		return txstatus.TXERR, fmt.Errorf("failed to acquire ownership for tx \"%s\"", gid)
+		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
 	}
 
 	/* Store our intentions in state keeper */
@@ -76,6 +80,10 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
 			}, txstatus.TXIDLE)
 
+			if cl.ShowNoticeMsg() {
+				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %v on %v", gid, dsh.InstanceHostname()))
+			}
+
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Str("shard", dsh.InstanceHostname()).Msg("happy path error recovery failed on shard")
 			}
@@ -93,6 +101,10 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
 			return txstatus.TXERR, err
+		}
+
+		if cl.ShowNoticeMsg() {
+			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %v on %v", gid, dsh.InstanceHostname()))
 		}
 
 		retST = st
@@ -144,7 +156,11 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
-			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member response")
+			return txstatus.TXERR, spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "unexpected 2pc member response")
+		}
+
+		if cl.ShowNoticeMsg() {
+			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %v on %v", gid, dsh.InstanceHostname()))
 		}
 
 		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")

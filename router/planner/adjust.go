@@ -4,23 +4,102 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/server"
 )
+
+func AdjustPlanStateForFluxAccess(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
+
+	/* For now, only simple single-shard support */
+	dsp, ok := p.(*plan.ShardDispatchPlan)
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked")
+	}
+
+	if len(rm.RecheckKeyRange) != 1 {
+		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "too many locked key ranges")
+	}
+
+	if dsp.SP != nil {
+		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "non-empty subplan")
+	}
+
+	if rm.HasWriteTargets {
+		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "non-select only query")
+	}
+
+	dsp.SP = &plan.ShardDispatchPlan{
+		OverWriteQuery: fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; SET spqrguard.prevent_distributed_table_modify TO on; SELECT EXISTS(SELECT * FROM spqr_metadata.spqr_local_key_ranges WHERE key_range_id = '%s')", rm.RecheckKeyRange[0].ID),
+		ExecTarget:     dsp.ExecTarget,
+		RunF: func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level recheck slice")
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+				var checkErr error
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if checkErr != nil {
+							return checkErr
+						}
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.DataRow:
+						if len(v.Values) == 0 || v.Values[0][0] != 't' {
+							checkErr = spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "recheck key range failed")
+						}
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		},
+	}
+
+	return nil
+}
+
+func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
+	_, ok := p.(*plan.ShardDispatchPlan)
+	if ok {
+		/* single shard dispatch is safe from hazard upsert */
+		return nil
+	}
+
+	if rm.HasHazardUpsert {
+		p.Hints().AutoLinearize = true
+	}
+
+	return nil
+}
 
 func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p plan.Plan) (plan.Plan, error) {
 	sc, ok := p.(*plan.ScatterPlan)
 	if !ok {
 		return p, nil
 	}
-
-	spqrlog.Zero.Debug().Int("used cte", len(rm.UsedAuxCTE)).Msgf("adjust scatter query plan for in-shard joins: %v", rm.UsedAuxCTE)
 
 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) >= 1 {
 		var firstKey rmeta.AuxValuesKey

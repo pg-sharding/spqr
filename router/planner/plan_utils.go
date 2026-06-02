@@ -406,9 +406,16 @@ func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, rou
 		rm.RoutableRels[*qualName] = struct{}{}
 	}
 
+	rfqnNew := *rfqn.RelationFQNFromRangeRangeVar(q)
+
 	if q.Alias != "" {
 		/* remember table alias */
-		rm.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
+		rm.TableAliases[q.Alias] = rfqnNew
+	} else {
+		if rr, ok := rm.TableAliases[q.RelationName]; ok && rr.String() != rfqnNew.String() {
+			return rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation aliasing ambiguity: %s vs %s", rfqnNew.String(), rr.String()))
+		}
+		rm.TableAliases[q.RelationName] = rfqnNew
 	}
 	return nil
 }

@@ -320,7 +320,7 @@ Feature: Proxy console
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
@@ -349,7 +349,7 @@ Feature: Proxy console
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
@@ -378,7 +378,7 @@ Feature: Proxy console
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly

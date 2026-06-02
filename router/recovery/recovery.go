@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -152,7 +153,7 @@ func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(gid string) error {
 	return nil
 }
 
-func (d *TwoPCWatchDog) CheckTXShards(serv shard.ShardHostInstance, gid string) (bool, error) {
+func (d *TwoPCWatchDog) CheckTransactionOnShard(serv shard.ShardHostInstance, gid string) (bool, error) {
 	if err := serv.Send(&pgproto3.Query{
 		String: fmt.Sprintf("SELECT EXISTS(SELECT * FROM pg_prepared_xacts WHERE gid = '%s')", gid),
 	}); err != nil {
@@ -168,7 +169,7 @@ func (d *TwoPCWatchDog) CheckTXShards(serv shard.ShardHostInstance, gid string) 
 		}
 		switch v := msg.(type) {
 		case *pgproto3.DataRow:
-			if v.Values[0][0] == 't' {
+			if len(v.Values) > 0 && v.Values[0][0] == 't' {
 				res = true
 			}
 		case *pgproto3.ReadyForQuery:
@@ -177,24 +178,46 @@ func (d *TwoPCWatchDog) CheckTXShards(serv shard.ShardHostInstance, gid string) 
 	}
 }
 
+func (d *TwoPCWatchDog) FinalizeTxStatus(sh string, gid string, q string) error {
+	serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
+		Name: sh,
+	}, tsa.TSA(config.TargetSessionAttrsRW))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	defer func() {
+		if err := d.p.Put(serv); err != nil {
+			spqrlog.Zero.Error().Str(gid, "gid").Err(err).Msg("failed to release cleanup connection")
+		}
+	}()
+
+	if res, err := d.CheckTransactionOnShard(serv, gid); err != nil {
+		return err
+	} else if !res {
+		/* tx already finalized */
+		spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
+		return nil
+	}
+
+	/* ROLLBACK */
+	return d.DeployQueryOnShard(serv, q)
+}
+
 func (d *TwoPCWatchDog) executeCommitShards(shs []string, gid string) error {
 	for _, sh := range shs {
-		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
-			Name: sh,
-		}, tsa.TSA(config.TargetSessionAttrsRW))
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+		if err := d.FinalizeTxStatus(sh, gid, fmt.Sprintf("COMMIT PREPARED '%s'", gid)); err != nil {
 			return err
 		}
-		if res, err := d.CheckTXShards(serv, gid); err != nil {
-			return err
-		} else if !res {
-			/* tx already committed */
-			continue
-		}
+	}
 
-		/* Commit */
-		if err := d.DeployQueryOnShard(serv, fmt.Sprintf("COMMIT PREPARED '%s'", gid)); err != nil {
+	return nil
+}
+
+func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
+	for _, sh := range shs {
+		if err := d.FinalizeTxStatus(sh, gid, fmt.Sprintf("ROLLBACK PREPARED '%s'", gid)); err != nil {
 			return err
 		}
 	}
@@ -208,43 +231,29 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 	}); err != nil {
 		return err
 	}
+	var deployErr error
+	ccReceived := false
+	deployErr = nil
 
 	for {
 		msg, err := serv.Receive()
 		if err != nil {
 			return err
 		}
-		switch msg.(type) {
+		switch v := msg.(type) {
+		case *pgproto3.ErrorResponse:
+			deployErr = spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "deploy recovery SQL failed: %v", v.Message).Hint(v.Hint).Detail(v.Detail)
+
+		case *pgproto3.CommandComplete:
+			ccReceived = true
+
 		case *pgproto3.ReadyForQuery:
-			return nil
+			if !ccReceived {
+				return spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "missing command complete message in 2pc recovery")
+			}
+			return deployErr
 		}
 	}
-}
-
-func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
-	for _, sh := range shs {
-		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
-			Name: sh,
-		}, tsa.TSA(config.TargetSessionAttrsRW))
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-		if res, err := d.CheckTXShards(serv, gid); err != nil {
-			return err
-		} else if !res {
-			/* tx already committed */
-			spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
-			continue
-		}
-
-		/* Commit */
-		if err := d.DeployQueryOnShard(serv, fmt.Sprintf("ROLLBACK PREPARED '%s'", gid)); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) error {

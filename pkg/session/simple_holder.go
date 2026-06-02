@@ -90,6 +90,20 @@ type SimpleSessionParamHandler struct {
 
 	showNoticeMessages bool
 	maintainParams     bool
+
+	nextGID string
+}
+
+// NextGID implements [SessionParamsHolder].
+func (cl *SimpleSessionParamHandler) NextGID() string {
+	val := cl.nextGID
+	cl.nextGID = ""
+	return val
+}
+
+// SetNextGID implements [SessionParamsHolder].
+func (cl *SimpleSessionParamHandler) SetNextGID(gid string) {
+	cl.nextGID = gid
 }
 
 func (cl *SimpleSessionParamHandler) ResolveVirtualBoolParam(name string, defaultVal bool) bool {
@@ -489,6 +503,13 @@ var BoolGUCs = []BoolGUCimpl{
 		shortName: "linearize dispatch",
 		def: func() bool {
 			return false
+		},
+	},
+	{
+		n:         SPQR_ALLOW_FLUX_ACCESS,
+		shortName: "flux data access",
+		def: func() bool {
+			return config.RouterConfig().Qr.AllowFluxChunkAccess
 		},
 	},
 }

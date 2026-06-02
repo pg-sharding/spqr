@@ -500,6 +500,13 @@ func AnalyzeQueryV1(
 
 		rm.HasWriteTargets = true
 
+		if stmt.OnConflict != nil {
+			cl, ok := stmt.OnConflict.(*lyx.OnConflictClause)
+			if ok && cl.Action == lyx.ONCONFLICT_UPDATE {
+				rm.HasHazardUpsert = true
+			}
+		}
+
 		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}

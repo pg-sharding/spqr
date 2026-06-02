@@ -18,15 +18,6 @@ const (
 	LockRetryStep = 500 * time.Millisecond
 )
 
-// ValidateKeyRangeForCreate validates key range before create
-//
-// Parameters:
-// - ctx: the context of the operation.
-// - mngr (meta.EntityMgr): this entity manager gets data about meta for validating key range
-// - keyRange (*kr.KeyRange): key range for validating
-//
-// Returns:
-// - error: an error if validation is not passed
 func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRange *kr.KeyRange) error {
 	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
@@ -80,7 +71,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 		return err
 	}
 
-	if krLock.IsLocked == nil || !(*krLock.IsLocked) {
+	if !krLock.IsLocked {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange.ID)
 	}
 

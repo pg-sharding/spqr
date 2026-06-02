@@ -232,6 +232,7 @@ type Kill struct {
 type System struct {
 	Reload      bool
 	Restart     bool
+	RotateLog   bool
 	Rebootstrap bool
 }
 
@@ -471,6 +472,7 @@ const (
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
 	TaskGroupWorkersStr   = "task_group_workers"
+	ShardsExtendedStr     = "shards_extended"
 )
 
 // not SHOW target

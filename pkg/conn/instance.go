@@ -157,6 +157,7 @@ func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 	switch query.(type) {
 	case
 		*pgproto3.Sync,
+		*pgproto3.Flush,
 		*pgproto3.Query,
 		*pgproto3.StartupMessage,
 		*pgproto3.PasswordMessage,

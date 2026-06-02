@@ -7,7 +7,7 @@ SHOW key_ranges;
 DROP SHARD sh1;
 DROP SHARD sh1 CASCADE;
 
-SHOW shards;
+SHOW shards_extended;
 SHOW key_ranges;
 
 CREATE SHARD sh1 OPTIONS (HOST "spqr_shard_1:6432", HOST "spqr_shard_1_replica:6432");

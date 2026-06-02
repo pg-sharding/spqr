@@ -112,6 +112,7 @@ diffs
 distrib
 distrr
 distrs
+dispatchable
 dmgr
 dockerhub
 dolore
@@ -142,6 +143,7 @@ enim
 epn
 errcounter
 errdefs
+errdetails
 errtype
 eshkere
 etcdctl
@@ -173,6 +175,7 @@ frules
 ftts
 fugiat
 gcflags
+genproto
 getconn
 gettime
 gitmodules
@@ -299,6 +302,7 @@ lowlevel
 lsb
 lval
 maxuint
+maxrows
 mcol
 mdblocales
 mempg
@@ -364,6 +368,7 @@ Oids
 oiwejow
 OLAP
 omnis
+ONCONFLICT
 onehost
 opgejrqr
 optarg
@@ -396,6 +401,7 @@ PGQDB
 pgquery
 pgsharding
 PGSSLMODE
+pgflush
 pgsync
 PGUSER
 pgx
@@ -416,6 +422,7 @@ ppp
 pppp
 prepstatement
 privs
+promhttp
 procps
 proident
 protobuf
@@ -429,7 +436,6 @@ qdb
 QDBKR
 QDBRe
 QDBTx
-Qdocker
 qlogger
 qlogprovider
 qname
@@ -654,6 +660,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+walreceiver
 Warningf
 workloadlog
 workloadreplay
@@ -682,3 +689,4 @@ YMid
 yylex
 zerolog
 zjoin
+zzz

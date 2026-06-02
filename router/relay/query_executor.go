@@ -31,6 +31,8 @@ type ExecutorState struct {
 	eMsg       *pgproto3.ErrorResponse
 
 	replyEmptyQuery bool
+	portalSuspended bool
+	implicitTx      bool
 
 	/* misc for Copy */
 	copyStmt lyx.Node
@@ -54,7 +56,7 @@ type QueryStateExecutor interface {
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
 
-	ExecBegin(query string, st *lyx.TransactionStmt) error
+	ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error
 	ExecCommit(query string) error
 	ExecRollback(query string) error
 
@@ -70,6 +72,8 @@ type QueryStateExecutor interface {
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
 	RFQ() *pgproto3.ReadyForQuery
+
+	ImplicitTx() bool
 
 	ReplyEmptyQuery()
 	FailStatement(err *pgproto3.ErrorResponse)

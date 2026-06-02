@@ -20,7 +20,17 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 CREATE KEY RANGE krid2 FROM 50 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 ERROR:  key range krid2 intersects with key range krid1 in QDB
+CREATE REFERENCE RELATION ref_err_rel;
+   create reference table    
+-----------------------------
+ table    -> ref_err_rel
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
 \c regress
+CREATE TABLE ref_err_rel(err_id INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- test table does not exist
 INSERT INTO tt (id, data) VALUES (2, 'valid');
 NOTICE: send query to shard(s) : sh1
@@ -81,12 +91,28 @@ SELECT 1/0 /* __spqr__.execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
 ERROR:  division by zero
 COMMIT;
+INSERT INTO ref_err_rel(i) VALUES(12);
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  column "i" of relation "ref_err_rel" does not exist
+LINE 1: INSERT INTO ref_err_rel(i) VALUES(12);
+                                ^
+BEGIN;
+\set VERBOSITY SQLSTATE
+INSERT INTO ref_err_rel(i) VALUES(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  42703
+COMMIT;
+WARNING:  25P01
 DROP TABLE tt;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ref_err_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
+ REPLICATED
  ds1
-(1 row)
+(2 rows)
 

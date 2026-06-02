@@ -129,7 +129,7 @@ Then, populate it with an order:
 ```bash
 demo=> BEGIN;
 BEGIN
-demo=> INSERT INTO orders (id, customer_id, order_data) VALUES (777, 123456, '2024-01-08');
+demo=> INSERT INTO orders (id, customer_id, order_date) VALUES (777, 123456, '2024-01-08');
 NOTICE: send query to shard(s) : shard01
 INSERT 0 1
 demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
@@ -145,7 +145,7 @@ The order can be found on the first shard:
 ```bash
 demo=> SELECT * FROM orders WHERE id = 777;
 NOTICE: send query to shard(s) : shard01
-  id  | customer_id | order_data 
+  id  | customer_id | order_date 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
 (1 row)
@@ -156,7 +156,7 @@ SPQR can handle such queries as `SELECT * FROM table` but we don't recommend usi
 ```bash
 demo=> SELECT * FROM orders;
 NOTICE: send query to shard(s) : shard01,shard02
-  id  | customer_id | order_data 
+  id  | customer_id | order_date 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
 (1 row)

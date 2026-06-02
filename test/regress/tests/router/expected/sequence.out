@@ -39,10 +39,13 @@ CREATE TABLE test3(a INT, b INT, c INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (16) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (17) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (18) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test /* __spqr__execute_on: sh2 */ ORDER BY id, age;
 NOTICE: send query to shard(s) : sh2
@@ -54,10 +57,13 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 INSERT INTO test2(age) VALUES (16) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test2(age) VALUES (17) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test2(age) VALUES (18) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- asserting error
 INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;
@@ -73,6 +79,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 INSERT INTO test3(b,c) VALUES (1001, 1002),(101, 102), (999, 998) /* __spqr__engine_v2: true */;
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test3 /* __spqr__execute_on: sh4 */ ORDER BY 1,2,3;
 NOTICE: send query to shard(s) : sh4

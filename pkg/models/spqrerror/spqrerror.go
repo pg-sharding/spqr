@@ -1,9 +1,13 @@
 package spqrerror
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -31,6 +35,8 @@ const (
 	SPQR_STOP_MOVE_TASK_GROUP = "SPQRA"
 	SPQR_QUERY_BLOCKED        = "SPQRB"
 	SPQR_VALUE_ERROR          = "SPQRV"
+
+	SPQR_TWO_PHASE_ERROR = "SPQR2"
 
 	PG_ACTIVE_SQL_TRANSACTION    = "25001"
 	PG_NO_ACTIVE_SQL_TRANSACTION = "25P01"
@@ -94,6 +100,17 @@ type SpqrError struct {
 	ErrDetail     string
 	ErrContext    string
 }
+
+const (
+	grpcErrorDomain       = "spqr"
+	grpcErrorCodeKey      = "code"
+	grpcErrorHintKey      = "hint"
+	grpcErrorDetailKey    = "detail"
+	grpcErrorContextKey   = "context"
+	grpcErrorPositionKey  = "position"
+	grpcErrorQueryKey     = "internal_query"
+	shardNotFoundHintText = "Run 'SHOW shards' to see all configured shards."
+)
 
 func (e *SpqrError) Hint(h string) *SpqrError {
 	e.ErrHint = h
@@ -177,6 +194,10 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 	return err
 }
 
+func ShardNotFound(shardID string) *SpqrError {
+	return Newf(SPQR_NO_DATASHARD, "Shard %q not found.", shardID).Hint(shardNotFoundHintText)
+}
+
 // Error returns the error message associated with the SpqrError.
 // It formats the error message using the underlying error's Error method.
 //
@@ -184,6 +205,47 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 //   - string: The formatted error message.
 func (e *SpqrError) Error() string {
 	return e.Err.Error()
+}
+
+func ToGrpcError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var spErr *SpqrError
+	if !errors.As(err, &spErr) {
+		return err
+	}
+
+	metadata := map[string]string{
+		grpcErrorCodeKey: spErr.ErrorCode,
+	}
+	if spErr.ErrHint != "" {
+		metadata[grpcErrorHintKey] = spErr.ErrHint
+	}
+	if spErr.ErrDetail != "" {
+		metadata[grpcErrorDetailKey] = spErr.ErrDetail
+	}
+	if spErr.ErrContext != "" {
+		metadata[grpcErrorContextKey] = spErr.ErrContext
+	}
+	if spErr.Position != 0 {
+		metadata[grpcErrorPositionKey] = strconv.FormatInt(int64(spErr.Position), 10)
+	}
+	if spErr.InternalQuery != "" {
+		metadata[grpcErrorQueryKey] = spErr.InternalQuery
+	}
+
+	st, detailErr := status.New(codes.Unknown, spErr.Error()).WithDetails(&errdetails.ErrorInfo{
+		Reason:   spErr.ErrorCode,
+		Domain:   grpcErrorDomain,
+		Metadata: metadata,
+	})
+	if detailErr != nil {
+		return err
+	}
+
+	return st.Err()
 }
 
 // Try convert grpc error to error without "rpc error: code..."
@@ -195,6 +257,32 @@ func CleanGrpcError(err error) error {
 		return nil
 	}
 	if st, ok := status.FromError(err); ok {
+		for _, detail := range st.Details() {
+			info, ok := detail.(*errdetails.ErrorInfo)
+			if !ok || info.Domain != grpcErrorDomain {
+				continue
+			}
+
+			code := info.Reason
+			if code == "" {
+				code = info.Metadata[grpcErrorCodeKey]
+			}
+			if code == "" {
+				break
+			}
+
+			spErr := New(code, st.Message()).
+				Hint(info.Metadata[grpcErrorHintKey]).
+				Detail(info.Metadata[grpcErrorDetailKey]).
+				Context(info.Metadata[grpcErrorContextKey]).
+				Query(info.Metadata[grpcErrorQueryKey])
+
+			if position, parseErr := strconv.ParseInt(info.Metadata[grpcErrorPositionKey], 10, 32); parseErr == nil {
+				spErr.Position = int32(position)
+			}
+
+			return spErr
+		}
 		return fmt.Errorf("%s", st.Message())
 	}
 	return err // non grpc error

@@ -26,5 +26,9 @@ if [ "x" != "x$PG_MASTER" ]; then
 else
     sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/pg_ctl -D /var/lib/postgresql/$POSTGRES_VERSION/main/ init
     setup
-    sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/postgres -D /var/lib/postgresql/$POSTGRES_VERSION/main
+    if  [ "x" != "x$PG_SYNC_REPLICA" ]; then
+        sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/postgres -c "synchronous_standby_names=FIRST 1 (\"walreceiver\")" -D /var/lib/postgresql/$POSTGRES_VERSION/main
+    else
+        sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/postgres -D /var/lib/postgresql/$POSTGRES_VERSION/main
+    fi
 fi

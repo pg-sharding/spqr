@@ -7,13 +7,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
-
-var boolTrue = true
-var boolFalse = false
 
 var ds1ColTypes = []string{qdb.ColumnTypeInteger}
 
@@ -54,7 +52,7 @@ var kr1Locked = &kr.KeyRange{
 	Distribution: "ds1",
 	LowerBound:   []any{int64(0)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
-	IsLocked:     &boolTrue,
+	IsLocked:     true,
 }
 
 var kr1NotLocked = &kr.KeyRange{
@@ -63,7 +61,7 @@ var kr1NotLocked = &kr.KeyRange{
 	Distribution: "ds1",
 	LowerBound:   []any{int64(0)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
-	IsLocked:     &boolFalse,
+	IsLocked:     false,
 }
 
 func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
@@ -219,4 +217,68 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	is.NoError(err)
 
 	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1Double))
+}
+
+func TestValidateKeyRangeForCreate_unknownShardReturnsHint(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := prepareDbTestValidate(ctx)
+	is.NoError(err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+
+	reqKr := &kr.KeyRange{
+		ID:           "kr_missing",
+		ShardID:      "nonexistentshard",
+		Distribution: "ds1",
+		LowerBound:   []any{int64(100)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}
+
+	err = meta.ValidateKeyRangeForCreate(ctx, mngr, reqKr)
+	is.Error(err)
+
+	var spErr *spqrerror.SpqrError
+	if is.ErrorAs(err, &spErr) {
+		is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
+		is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	}
+}
+
+func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := prepareDbTestValidate(ctx)
+	is.NoError(err)
+
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+	tranMngr := meta.NewTranEntityManager(mngr)
+
+	err = tranMngr.CreateKeyRange(ctx, kr1, ds1ColTypes)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
+	is.NoError(err)
+
+	_, err = mngr.LockKeyRange(ctx, kr1.ID)
+	is.NoError(err)
+
+	reqKr := &kr.KeyRange{
+		ID:           kr1.ID,
+		ShardID:      "nonexistentshard",
+		Distribution: kr1.Distribution,
+		LowerBound:   kr1.LowerBound,
+		ColumnTypes:  kr1.ColumnTypes,
+	}
+
+	err = meta.ValidateKeyRangeForModify(ctx, mngr, reqKr)
+	is.Error(err)
+
+	var spErr *spqrerror.SpqrError
+	if is.ErrorAs(err, &spErr) {
+		is.Equal(spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		is.Equal("Shard \"nonexistentshard\" not found.", spErr.Error())
+		is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	}
 }

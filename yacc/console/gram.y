@@ -43,6 +43,7 @@ func randomHex(n int) (string, error) {
 
     set                    *Set
 	statement              Statement
+	statementList		   []Statement
 	show                   *Show
 	help                   *Help
 
@@ -193,6 +194,8 @@ func randomHex(n int) (string, error) {
 // CMDS
 %type <statement> command
 
+%type <statementList> multiStmt
+
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
@@ -216,7 +219,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> SYSTEM RELOAD RESTART REBOOTSTRAP
+%token<str> SYSTEM RELOAD RESTART REBOOTSTRAP ROTATE
 
 %token<str> SECONDS WAIT PANIC SLEEP
 
@@ -340,18 +343,29 @@ func randomHex(n int) (string, error) {
 %left		TSQOPENBR TSQCLOSEBR
 %left		TOPENBR TCLOSEBR
 
-
-%start any_command
+%start root
 
 %%
 
+root: multiStmt semicolon_opt {
+	setParseTree(yylex, $1)
+}
 
-any_command:
-    command semicolon_opt
+
+
+multiStmt: 
+			command {
+				$$ = []Statement{$1}
+			} | 
+			multiStmt TSEMICOLON command {
+				$$ = append($1, $3)
+			}
+	;
+
 
 semicolon_opt:
-/*empty*/ {}
-| TSEMICOLON {}
+	/*empty*/ {}
+	| TSEMICOLON {}
 
 
 command:
@@ -361,109 +375,109 @@ command:
 	|
 	add_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| create_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| trace_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| stoptrace_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| drop_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| lock_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unlock_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| show_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| help_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| kill_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| listen_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| shutdown_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| split_key_range_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| move_key_range_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| redistribute_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unite_key_range_stmt
 	{
-	   setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| register_router_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unregister_router_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| alter_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| invalidate_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} 
 	| retry_move_task_group
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| stop_move_task_group
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| sync_reference_tables_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| alter_reference_table_storage_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| create_distributed_relation_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} | icp_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} | GrantStmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 
 any_uint:
@@ -735,7 +749,7 @@ show_statement_type:
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr, TaskGroupWorkersStr:
+			FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -836,19 +850,22 @@ drop_stmt:
 	}
 
 add_stmt:
-	// TODO: drop
+	// Deprecated: ADD is no longer supported, use CREATE instead
 	ADD distribution_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD DISTRIBUTION is deprecated, use CREATE DISTRIBUTION instead")
+		return 1
 	}
 	|
 	ADD key_range_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD KEY RANGE is deprecated, use CREATE KEY RANGE instead")
+		return 1
 	} |
 	ADD shard_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD SHARD is deprecated, use CREATE SHARD instead")
+		return 1
 	}
 
 trace_stmt:
@@ -881,6 +898,10 @@ alter_sys_target:
 	}  | SYSTEM REBOOTSTRAP {
 		$$ = &System{
 			Rebootstrap: true,
+		}
+	} | SYSTEM ROTATE {
+		$$ = &System{
+			RotateLog: true,
 		}
 	}
 
@@ -1087,7 +1108,7 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DETACH RELATION qualified_name
+	distribution_select_stmt DETACH table_or_relation qualified_name
 	{
 		$$ = &AlterDistribution{
 			Distribution: $1,
@@ -1167,7 +1188,7 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Relation:    	 $2,
@@ -1175,7 +1196,7 @@ distributed_relation_def:
 			AutoIncrementEntries: $6,
 		}
 	} 
-	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
+	| table_or_relation qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
 	{
 		$$ = &DistributedRelation{
 			Relation:    	 $2,
@@ -1232,7 +1253,7 @@ relation_attach_stmt:
 	}
 
 relation_alter_stmt_v2:
-	ALTER RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list {
+	ALTER table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &AlterRelationDistributionKey{
@@ -1240,7 +1261,7 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name SCHEMA any_id {
+	ALTER table_or_relation qualified_name SCHEMA any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &AlterRelationSchema {
@@ -1248,7 +1269,7 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
+	ALTER table_or_relation qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &RenameDistributionColumn{

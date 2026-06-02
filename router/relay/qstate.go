@@ -94,7 +94,7 @@ l:
 		if i > 0 {
 
 			switch stmt.(type) {
-			case *lyx.VariableSetStmt, *lyx.VariableShowStmt:
+			case *lyx.VariableSetStmt, *lyx.VariableShowStmt, *lyx.TransactionStmt:
 				/* ok */
 			default:
 				continue l
@@ -145,6 +145,7 @@ l:
 			return nil, err
 		}
 	}
+
 	return pd, err
 }
 
@@ -200,7 +201,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, nil
 			}
 
-			err := rst.QueryExecutor().ExecBegin(query, st)
+			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
@@ -631,7 +632,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			if err := rst.ExecutePortal( /* unnamed portal */ ""); err != nil {
+			if err := rst.ExecutePortal( /* unnamed portal */ "", 0); err != nil {
 				return nil, err
 			}
 

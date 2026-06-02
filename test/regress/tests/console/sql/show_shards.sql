@@ -10,15 +10,15 @@ CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6
 
 CREATE SHARD sh1 OPTIONS (HOST "localhost:6432");
 
-SHOW shards;
+SHOW shards_extended;
 SHOW hosts;
 
 CREATE SHARD sh5 OPTIONS (HOST "127.0.0.1:1");
 
-SHOW shards;
+SHOW shards_extended;
 SHOW hosts;
 
 DROP SHARD sh5;
 
-SHOW shards;
+SHOW shards_extended;
 SHOW hosts;
