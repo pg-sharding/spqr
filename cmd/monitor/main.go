@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb"
@@ -180,6 +181,10 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 			rels = append(rels, rel)
 		}
 		for _, rel := range rels {
+			tableExists, err := datatransfers.CheckTableExists(ctx, tx, rel.Relation)
+			if !tableExists {
+				continue
+			}
 			krQueries := make([]string, 0, len(krs))
 			for _, keyRange := range krs {
 				cond, err := kr.GetKRCondition(rel, keyRange.KeyRange, keyRange.UpperBound, "")
