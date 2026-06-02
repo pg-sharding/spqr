@@ -68,3 +68,7 @@ func (sc *ShardConnect) GetCombinedConnString() string {
 	}
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sc.User, strings.Join(hosts, ","), strings.Join(ports, ","), sc.DB, sc.Password)
 }
+
+func AddTSA(connString, tsa string) string {
+	return fmt.Sprintf("%s target_session_attrs=%s", connString, tsa)
+}

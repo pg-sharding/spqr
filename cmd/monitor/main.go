@@ -149,11 +149,10 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB) (keyRangesMap map[string]m
 }
 
 func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
-	connConfig, err := pgx.ParseConfig(shardConn.GetCombinedConnString())
+	connConfig, err := pgx.ParseConfig(config.AddTSA(shardConn.GetCombinedConnString(), "prefer-standby"))
 	if err != nil {
 		return nil, "", err
 	}
-	connConfig.RuntimeParams["target_session_attrs"] = "prefer-standby"
 	conn, err := pgx.ConnectConfig(ctx, connConfig)
 	if err != nil {
 		return nil, "", err
@@ -188,7 +187,7 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 				}
 				krQueries = append(krQueries, "("+cond+")")
 			}
-			rows, err := tx.Query(ctx, fmt.Sprintf("SELECT * FROM %s WHERE NOT (%s) TABLESAMPLE SYSTEM(%f) LIMIT 1", rel.Relation.String(), strings.Join(krQueries, " OR "), tableSampleSize))
+			rows, err := tx.Query(ctx, fmt.Sprintf("SELECT * FROM %s TABLESAMPLE SYSTEM(%f) WHERE NOT (%s) LIMIT 1", rel.Relation.String(), tableSampleSize, strings.Join(krQueries, " OR ")))
 			if err != nil {
 				return nil, "", err
 			}
