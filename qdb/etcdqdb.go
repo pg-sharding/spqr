@@ -1101,7 +1101,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
+		return nil, spqrerror.ShardNotFound(id)
 	}
 	if len(resp.Kvs) > 1 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,

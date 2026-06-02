@@ -143,6 +143,7 @@ enim
 epn
 errcounter
 errdefs
+errdetails
 errtype
 eshkere
 etcdctl
@@ -174,6 +175,7 @@ frules
 ftts
 fugiat
 gcflags
+genproto
 getconn
 gettime
 gitmodules
@@ -434,7 +436,6 @@ qdb
 QDBKR
 QDBRe
 QDBTx
-Qdocker
 qlogger
 qlogprovider
 qname

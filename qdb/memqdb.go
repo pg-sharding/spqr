@@ -783,7 +783,7 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 		return shard, nil
 	}
 
-	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
+	return nil, spqrerror.ShardNotFound(id)
 }
 
 func (q *MemQDB) AlterShard(_ context.Context, newShard *Shard) error {
