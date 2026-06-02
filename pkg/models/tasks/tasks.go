@@ -77,9 +77,15 @@ const (
 )
 
 type MoveTaskGroupStatus struct {
-	State     TaskGroupState
-	Message   string
-	UpdatedAt time.Time
+	State           TaskGroupState
+	Message         string
+	UpdatedAt       time.Time
+	Stage           string
+	Detail          string
+	ProgressPercent string
+	KeysProcessed   int64
+	BatchPosition   string
+	MoveTaskState   string
 }
 
 type RedistributeTaskState int
@@ -777,8 +783,14 @@ func MoveTaskGroupStatusFromDb(status *qdb.TaskGroupStatus) *MoveTaskGroupStatus
 		state = TaskGroupPlanned
 	}
 	return &MoveTaskGroupStatus{
-		State:     state,
-		Message:   status.Message,
-		UpdatedAt: status.UpdatedAt,
+		State:           state,
+		Message:         status.Message,
+		UpdatedAt:       status.UpdatedAt,
+		Stage:           status.Stage,
+		Detail:          status.Detail,
+		ProgressPercent: status.ProgressPercent,
+		KeysProcessed:   status.KeysProcessed,
+		BatchPosition:   status.BatchPosition,
+		MoveTaskState:   status.MoveTaskState,
 	}
 }

@@ -81,6 +81,15 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	var err error
 
 	switch tstmt := tstmt.(type) {
+	case *spqrparser.DescribeTaskGroup:
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
+		mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+		if err != nil {
+			return err
+		}
+		defer cf()
 	case *spqrparser.Show:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
@@ -90,7 +99,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 			switch tstmt.Cmd {
 			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
 				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
-				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+				spqrparser.RedistributeTasksStr, spqrparser.RedistributeStatusStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
 				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 				if err != nil {
 					return err

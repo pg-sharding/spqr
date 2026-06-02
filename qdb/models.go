@@ -218,9 +218,15 @@ type MoveTaskGroup struct {
 }
 
 type TaskGroupStatus struct {
-	State     string    `json:"state"`
-	Message   string    `json:"msg"`
-	UpdatedAt time.Time `json:"updated_at"`
+	State           string    `json:"state"`
+	Message         string    `json:"msg"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	Stage           string    `json:"stage,omitempty"`
+	Detail          string    `json:"detail,omitempty"`
+	ProgressPercent string    `json:"progress_percent,omitempty"`
+	KeysProcessed   int64     `json:"keys_processed,omitempty"`
+	BatchPosition   string    `json:"batch_position,omitempty"`
+	MoveTaskState   string    `json:"move_task_state,omitempty"`
 }
 
 type RedistributeTask struct {

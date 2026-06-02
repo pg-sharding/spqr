@@ -473,7 +473,14 @@ const (
 	FileSettingsStr       = "file_settings"
 	TaskGroupWorkersStr   = "task_group_workers"
 	ShardsExtendedStr     = "shards_extended"
+	RedistributeStatusStr = "redistribute_status"
 )
+
+type DescribeTaskGroup struct {
+	ID string
+}
+
+func (*DescribeTaskGroup) iStatement() {}
 
 // not SHOW target
 const (

@@ -696,3 +696,83 @@ func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tup
 
 	return tts, nil
 }
+
+func RedistributeStatusVirtualRelationScan(
+	groups map[string]*tasks.MoveTaskGroup,
+	statuses map[string]*tasks.MoveTaskGroupStatus,
+	rtByTaskGroup map[string]*tasks.RedistributeTask,
+) *tupleslot.TupleTableSlot {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader(
+			"task_group_id",
+			"redistribute_task_id",
+			"source_key_range_id",
+			"destination_shard_id",
+			"destination_key_range_id",
+			"batch_size",
+			"group_state",
+			"stage",
+			"detail",
+			"progress_percent",
+			"keys_processed",
+			"batch_position",
+			"move_task_state",
+			"move_task_id",
+			"message",
+			"updated_at",
+		),
+	}
+	ids := make([]string, 0, len(groups))
+	for id := range groups {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		group := groups[id]
+		if group == nil || group.Issuer == nil || group.Issuer.Type != tasks.IssuerRedistributeTask {
+			continue
+		}
+		rt := rtByTaskGroup[group.ID]
+		rtID := ""
+		if rt != nil {
+			rtID = rt.ID
+		}
+		status, ok := statuses[group.ID]
+		if !ok {
+			status = &tasks.MoveTaskGroupStatus{State: tasks.TaskGroupPlanned}
+		}
+		currTaskID := ""
+		moveTaskSt := status.MoveTaskState
+		if group.CurrentTask != nil {
+			currTaskID = group.CurrentTask.ID
+			moveTaskSt = tasks.TaskStateToStr(group.CurrentTask.State)
+		}
+		keysProc := status.KeysProcessed
+		if keysProc == 0 {
+			keysProc = group.TotalKeys
+		}
+		updated := ""
+		if !status.UpdatedAt.IsZero() {
+			updated = status.UpdatedAt.Format("02-01-2006 15:04:05")
+		}
+		tts.WriteDataRow(
+			group.ID,
+			rtID,
+			group.KridFrom,
+			group.ShardToID,
+			group.KridTo,
+			strconv.FormatInt(group.BatchSize, 10),
+			string(status.State),
+			status.Stage,
+			status.Detail,
+			status.ProgressPercent,
+			strconv.FormatInt(keysProc, 10),
+			status.BatchPosition,
+			moveTaskSt,
+			currTaskID,
+			status.Message,
+			updated,
+		)
+	}
+	return tts
+}

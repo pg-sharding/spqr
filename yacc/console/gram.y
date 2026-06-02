@@ -120,6 +120,7 @@ func randomHex(n int) (string, error) {
 
 	retryMoveTaskGroup     *RetryMoveTaskGroup
 	stopMoveTaskGroup      *StopMoveTaskGroup
+	describeTaskGroup      *DescribeTaskGroup
 
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
@@ -199,7 +200,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME DESCRIBE
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -325,6 +326,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
+%type <describeTaskGroup> describe_task_group_stmt
 %type <bool> opt_no_wait opt_immediate
 
 %type<grant> GrantStmt
@@ -473,6 +475,9 @@ command:
 	{
 		$$ = $1
 	} | icp_stmt
+	{
+		$$ = $1
+	} | describe_task_group_stmt
 	{
 		$$ = $1
 	} | GrantStmt
@@ -749,7 +754,7 @@ show_statement_type:
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr:
+			FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr, RedistributeStatusStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -790,10 +795,6 @@ drop_stmt:
 	DROP key_range_stmt
 	{
 		$$ = &Drop{Element: $2}
-	}
-	| DROP KEY RANGE ALL
-	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
 	| DROP distribution_select_stmt opt_cascade
 	{
@@ -1822,6 +1823,12 @@ unregister_router_stmt:
     }
 
 // move tasks
+
+describe_task_group_stmt:
+	DESCRIBE TASK GROUP any_id
+	{
+		$$ = &DescribeTaskGroup{ID: $4}
+	}
 
 retry_move_task_group:
 	RETRY opt_move TASK GROUP any_id opt_no_wait
