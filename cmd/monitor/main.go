@@ -64,16 +64,16 @@ var (
 					os.Exit(1)
 				}
 				if vals != nil {
-					f, err := os.OpenFile(stateFilePath, os.O_APPEND|os.O_CREATE, 0644)
+					f, err := os.OpenFile(stateFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 					if err != nil {
-						_, _ = fmt.Fprintf(os.Stderr, "failed to open state file: %s", err)
+						_, _ = fmt.Fprintf(os.Stderr, "failed to open state file: %s\n", err)
 						os.Exit(1)
 					}
-					if _, err := fmt.Fprintf(f, "Corruption found: row %v, rel \"%s\" shard \"%s\"", vals, relName, id); err != nil {
+					if _, err := fmt.Fprintf(f, "Corruption found: row %v, rel \"%s\" shard \"%s\"\n", vals, relName, id); err != nil {
 						_, _ = fmt.Fprintf(os.Stderr, "failed to write into state file: %s", err)
 						os.Exit(1)
 					}
-					_, _ = fmt.Fprintf(os.Stderr, "corruption found, check \"%s\" file", stateFilePath)
+					_, _ = fmt.Fprintf(os.Stderr, "corruption found, check \"%s\" file\n", stateFilePath)
 					os.Exit(2)
 				}
 			}
@@ -195,8 +195,9 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 			if rows.Next() {
 				vals, err := rows.Values()
 				if err != nil {
-					return vals, rel.Relation.String(), nil
+					return nil, "", err
 				}
+				return vals, rel.Relation.String(), nil
 			}
 		}
 	}
