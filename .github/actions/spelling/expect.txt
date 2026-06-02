@@ -274,6 +274,7 @@ krsqb
 krsqdb
 krsql
 ktadd
+KVs
 labore
 laboriosam
 laboris
@@ -336,6 +337,7 @@ multierr
 multishard
 murmurhash
 mydb
+mvccpb
 mylogs
 myuser
 myworkloadlog
