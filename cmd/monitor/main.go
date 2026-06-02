@@ -40,17 +40,17 @@ var (
 		Run: func(_ *cobra.Command, _ []string) {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
-				_, _ = fmt.Println("no shard data file found, skipping...")
+				_, _ = fmt.Println("0;no shard data file found, skipping...")
 				return
 			}
 			db, err := qdb.NewEtcdQDB(qdbAddrs, 0)
 			if err != nil {
-				_, _ = fmt.Fprintln(os.Stderr, "could not connect to QDB")
+				_, _ = fmt.Println("2;could not connect to QDB")
 				os.Exit(1)
 			}
 			keyRangeByShardMap, dsMap, err := getQDBData(context.Background(), db)
 			if err != nil {
-				_, _ = fmt.Fprintln(os.Stderr, "error getting data from QDB")
+				_, _ = fmt.Println("2;error getting data from QDB")
 				os.Exit(1)
 			}
 			for id, shardConf := range shardData.ShardsData {
@@ -60,23 +60,24 @@ var (
 				}
 				vals, relName, err := checkShard(context.Background(), shardConf, keyRangeMap, dsMap, tableSampleSize)
 				if err != nil {
-					_, _ = fmt.Fprintf(os.Stderr, "error running check on shard \"%s\": %s\n", id, err)
+					_, _ = fmt.Printf("2;error running check on shard \"%s\": %s\n", id, err)
 					os.Exit(1)
 				}
 				if vals != nil {
 					f, err := os.OpenFile(stateFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 					if err != nil {
-						_, _ = fmt.Fprintf(os.Stderr, "failed to open state file: %s\n", err)
+						_, _ = fmt.Printf("2;failed to open state file: %s\n", err)
 						os.Exit(1)
 					}
 					if _, err := fmt.Fprintf(f, "Corruption found: row %v, rel \"%s\" shard \"%s\"\n", vals, relName, id); err != nil {
-						_, _ = fmt.Fprintf(os.Stderr, "failed to write into state file: %s", err)
+						_, _ = fmt.Printf("2;failed to write into state file: %s", err)
 						os.Exit(1)
 					}
-					_, _ = fmt.Fprintf(os.Stderr, "corruption found, check \"%s\" file\n", stateFilePath)
+					_, _ = fmt.Printf("2;corruption found, check \"%s\" file\n", stateFilePath)
 					os.Exit(2)
 				}
 			}
+			fmt.Println("0;OK")
 		},
 	}
 )
