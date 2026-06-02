@@ -40,7 +40,7 @@ var (
 		Short: "run check iteration",
 		Run: func(_ *cobra.Command, _ []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
-				f.Close()
+				_ = f.Close()
 				_, _ = fmt.Printf("2;corruption found, check \"%s\" file\n", stateFilePath)
 				return
 			}
@@ -187,6 +187,9 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 		}
 		for _, rel := range rels {
 			tableExists, err := datatransfers.CheckTableExists(ctx, tx, rel.Relation)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to check if relation \"%s\" exists: %w", rel.Relation.String(), err)
+			}
 			if !tableExists {
 				continue
 			}
