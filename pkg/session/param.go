@@ -136,9 +136,8 @@ const (
 //revive:enable:var-naming
 
 // IsKnownSPQRHint reports whether n is a recognized SPQR hint name.
-// Only names in the reserved "__spqr__" namespace are considered;
-// PostgreSQL-compatible TSA aliases are intentionally excluded as
-// they live outside the reserved namespace.
+// This covers the reserved "__spqr__" namespace as well as the
+// PostgreSQL-compatible target-session-attrs aliases.
 func IsKnownSPQRHint(n string) bool {
 	switch n {
 	case SPQR_DISTRIBUTION,
@@ -150,6 +149,8 @@ func IsKnownSPQRHint(n string) bool {
 		SPQR_PREFERRED_ENGINE,
 		SPQR_COMMIT_STRATEGY,
 		SPQR_TARGET_SESSION_ATTRS,
+		SPQR_TARGET_SESSION_ATTRS_ALIAS,
+		SPQR_TARGET_SESSION_ATTRS_ALIAS_2,
 		SPQR_EXECUTE_ON,
 		SPQR_SCATTER_QUERY,
 		SPQR_REPLY_NOTICE,

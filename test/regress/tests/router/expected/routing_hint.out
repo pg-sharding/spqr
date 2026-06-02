@@ -277,6 +277,30 @@ NOTICE: send query to shard(s) : sh2
 ----------
 (0 rows)
 
+-- reconnect to get a clean session before checking SET/RESET of spqr hints
+\c regress
+-- known spqr hint: SET / SHOW / RESET round-trips correctly
+SET __spqr__execute_on TO sh1;
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ sh1
+(1 row)
+
+RESET __spqr__execute_on;
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ 
+(1 row)
+
+-- unknown hint in the reserved __spqr__ namespace is rejected on SET / SHOW / RESET
+SET __spqr__no_such_hint = 'x';
+ERROR:  SPQR unknown hint: __spqr__no_such_hint
+SHOW __spqr__no_such_hint;
+ERROR:  SPQR unknown hint: __spqr__no_such_hint
+RESET __spqr__no_such_hint;
+ERROR:  SPQR unknown hint: __spqr__no_such_hint
 -- restart session, reset all params
 \c regress
 DROP TABLE test;
