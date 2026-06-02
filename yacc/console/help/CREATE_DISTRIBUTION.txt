@@ -9,7 +9,7 @@ SYNTAX
 
     where types is a comma-separated list of column types for the
     distribution key, and each type is one of: INTEGER, INT,
-    VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+    VARCHAR, UUID (VARCHAR/INTEGER/UUID may be followed by HASH)
 
     where <shardID> is a default shard identifier. The <shardID> must exist.
 
@@ -37,6 +37,8 @@ EXAMPLES
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     Single varchar key distribution with hash:
         CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
+    Single uuid key distribution with hash:
+        CREATE DISTRIBUTION ds_uuid COLUMN TYPES uuid hash;
     Composite key distribution with two columns:
         CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
     Composite key with mixed types and hash on second column:
@@ -46,7 +48,7 @@ EXAMPLES
 
 TIPS
     - Keep column type order aligned with relation distribution keys
-    - Use hashed types for high-cardinality string/integer keys when needed
+    - Use hashed types for high-cardinality string/integer/uuid keys when needed
     - Configure DEFAULT SHARD only when fallback routing is explicitly required
 
 RELATED COMMANDS

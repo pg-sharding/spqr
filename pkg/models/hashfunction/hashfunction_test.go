@@ -4,8 +4,10 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/go-faster/city"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/spaolacci/murmur3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -119,6 +121,24 @@ func TestApplyHashFunction(t *testing.T) {
 
 		assert.Equal(tt.expected, result, "query %s", tt.input)
 	}
+}
+
+func TestApplyHashFunction_UUIDHashed(t *testing.T) {
+	hfMur, _ := hashfunction.HashFunctionByName("murmur")
+	hfCity, _ := hashfunction.HashFunctionByName("city")
+	input := "018f4b8e-37f0-7cc4-b5f2-0f62d09ca662"
+	upperInput := "018F4B8E-37F0-7CC4-B5F2-0F62D09CA662"
+
+	murmurResult, err := hashfunction.ApplyHashFunction(upperInput, qdb.ColumnTypeUUIDHashed, hfMur)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(murmur3.Sum32([]byte(input))), murmurResult)
+
+	cityResult, err := hashfunction.ApplyHashFunction([]byte(input), qdb.ColumnTypeUUIDHashed, hfCity)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(city.Hash32([]byte(input))), cityResult)
+
+	_, err = hashfunction.ApplyHashFunction("not-a-uuid", qdb.ColumnTypeUUIDHashed, hfMur)
+	assert.Error(t, err)
 }
 
 func TestApplyMurmurHashNegative(t *testing.T) {

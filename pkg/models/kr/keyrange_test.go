@@ -227,6 +227,13 @@ func TestCmpRangesLess_UInteger(t *testing.T) {
 			types:  []string{qdb.ColumnTypeUinteger},
 			expect: false,
 		},
+		{
+			name:   "uuid hashed: bound < key",
+			bound:  kr.KeyRangeBound{uint64(10)},
+			key:    kr.KeyRangeBound{uint64(20)},
+			types:  []string{qdb.ColumnTypeUUIDHashed},
+			expect: true,
+		},
 	}
 
 	for _, tt := range tests {
