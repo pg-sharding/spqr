@@ -39,6 +39,11 @@ var (
 		Use:   "check",
 		Short: "run check iteration",
 		Run: func(_ *cobra.Command, _ []string) {
+			if f, err := os.Open(stateFilePath); err == nil {
+				f.Close()
+				_, _ = fmt.Printf("2;corruption found, check \"%s\" file\n", stateFilePath)
+				return
+			}
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
 				_, _ = fmt.Println("0;no shard data file found, skipping...")
@@ -75,7 +80,7 @@ var (
 						os.Exit(1)
 					}
 					_, _ = fmt.Printf("2;corruption found, check \"%s\" file\n", stateFilePath)
-					os.Exit(2)
+					return
 				}
 			}
 			fmt.Println("0;OK")

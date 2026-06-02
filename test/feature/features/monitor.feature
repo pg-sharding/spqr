@@ -50,8 +50,68 @@ Feature: Mover test
     """
     /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
     """
-    Then command return code should be "2"
+    Then command return code should be "0"
     And command output should match regexp
     """
     2;corruption found, check "/tmp/report.txt" file
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    Corruption found: row \[1 001\], rel "xMove" shard "sh2"
+    """
+
+  Scenario: monitor works with multiple relations 
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    SET __spqr__execute_on TO sh2;
+    insert into xMove2(w_id, s) values(1, '001');
+    insert into xMove2(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    2;corruption found, check "/tmp/report.txt" file
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    Corruption found: row \[1 001\], rel "xMove2" shard "sh2"
+    """
+
+  Scenario: monitor exists if state file found
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    touch /tmp/report.txt && /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    2;corruption found, check "/tmp/report.txt" file
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    
     """
