@@ -53,6 +53,7 @@ DROP SCHEMA sh1 CASCADE;
 DROP SCHEMA sh2 CASCADE;
 
 SET __spqr__maintain_params TO false;
+SET search_path TO 'public';
 
 \c spqr-console
 
