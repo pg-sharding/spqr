@@ -301,8 +301,10 @@ SET __spqr__no_such_hint = 'x';
 ERROR:  SPQR unknown hint: __spqr__no_such_hint
 SHOW __spqr__no_such_hint;
 ERROR:  SPQR unknown hint: __spqr__no_such_hint
+QUERY:  SHOW __spqr__no_such_hint;
 RESET __spqr__no_such_hint;
 ERROR:  SPQR unknown hint: __spqr__no_such_hint
+QUERY:  RESET __spqr__no_such_hint;
 -- restart session, reset all params
 \c regress
 DROP TABLE test;
