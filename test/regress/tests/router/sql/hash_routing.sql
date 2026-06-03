@@ -32,7 +32,37 @@ The quick brown fox jumps over the lazy dog
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
 
+-- UUID HASH
+\c spqr-console
+CREATE DISTRIBUTION ds_uuid COLUMN TYPES uuid hash;
+
+CREATE KEY RANGE uuid_kr2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds_uuid;
+CREATE KEY RANGE uuid_kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds_uuid;
+
+ALTER DISTRIBUTION ds_uuid ATTACH RELATION xxhashuuid DISTRIBUTION KEY id HASH FUNCTION MURMUR;
+
+\c regress
+CREATE TABLE xxhashuuid (id uuid);
+INSERT INTO xxhashuuid (id) VALUES ('018f4b8e-37f0-7cc4-b5f2-0f62d09ca662');
+INSERT INTO xxhashuuid (id) VALUES ('018F4B8E-37F0-7CC4-B5F2-0F62D09CA663');
+INSERT INTO xxhashuuid (id) VALUES ('00000000-0000-0000-0000-000000000000');
+INSERT INTO xxhashuuid (id) VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff');
+
+SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh1 */;
+SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh2 */;
+
+COPY xxhashuuid (id) FROM STDIN;
+018f4b8e-37f0-7cc4-b5f2-0f62d09ca662
+018F4B8E-37F0-7CC4-B5F2-0F62D09CA663
+00000000-0000-0000-0000-000000000000
+ffffffff-ffff-ffff-ffff-ffffffffffff
+\.
+
+SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh1 */;
+SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh2 */;
+
 --TEARDOWN
 DROP TABLE xxhash;
+DROP TABLE xxhashuuid;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
