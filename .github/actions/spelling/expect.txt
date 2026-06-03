@@ -576,6 +576,7 @@ suscipit
 SVFOP
 SVGID
 syscache
+tablesample
 targ
 taskgroup
 taskmgr

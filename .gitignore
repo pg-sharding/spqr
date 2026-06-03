@@ -10,6 +10,7 @@ spqr-balancer
 spqr-mover
 spqr-workloadreplay
 spqr-dump
+spqr-monitor
 y.output
 *.swp
 *.swo
