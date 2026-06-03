@@ -29,6 +29,12 @@ type AuxValuesKey struct {
 	ColRefName string
 }
 
+type DerivedTableAlias struct {
+	Relation       rfqn.RelationFQN
+	Columns        map[string]string
+	PassthroughAll bool
+}
+
 /* Detach trigger for shared invalidation? */
 type MetadataCache struct {
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
@@ -57,6 +63,9 @@ type RoutingMetadataContext struct {
 	// rarg:{range_var:{relname:"t2" inh:true relpersistence:"p" alias:{aliasname:"b"}
 	TableAliases map[string]rfqn.RelationFQN
 	CTEAliases   map[string]string
+	// DerivedTableAliases maps FROM-subquery aliases back to a single underlying
+	// relation when the subquery is simple enough to preserve routing metadata.
+	DerivedTableAliases map[string]DerivedTableAlias
 
 	SPH        session.SessionParamsHolder
 	ClientRule *config.FrontendRule
@@ -118,24 +127,25 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	mgr meta.EntityMgr,
 	mCache *MetadataCache) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:            map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:    map[rfqn.RelationFQN]struct{}{},
-		CteNames:        map[string]*lyx.CommonTableExpr{},
-		TableAliases:    map[string]rfqn.RelationFQN{},
-		CTEAliases:      map[string]string{},
-		Exprs:           map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:       map[rfqn.RelationFQN]map[string][]int{},
-		MetaCache:       mCache,
-		AuxValues:       map[AuxValuesKey][]lyx.Node{},
-		AuxValuesParent: map[AuxValuesKey]AuxValuesKey{},
-		UsedAuxCTE:      map[AuxValuesKey][]*rfqn.RelationFQN{},
-		SPH:             sph,
-		CSM:             csm,
-		Mgr:             mgr,
-		Query:           query,
-		Stmt:            stmt,
-		ro:              false,
-		ClientRule:      clientRule,
+		Rels:                map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:        map[rfqn.RelationFQN]struct{}{},
+		CteNames:            map[string]*lyx.CommonTableExpr{},
+		TableAliases:        map[string]rfqn.RelationFQN{},
+		CTEAliases:          map[string]string{},
+		DerivedTableAliases: map[string]DerivedTableAlias{},
+		Exprs:               map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:           map[rfqn.RelationFQN]map[string][]int{},
+		MetaCache:           mCache,
+		AuxValues:           map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent:     map[AuxValuesKey]AuxValuesKey{},
+		UsedAuxCTE:          map[AuxValuesKey][]*rfqn.RelationFQN{},
+		SPH:                 sph,
+		CSM:                 csm,
+		Mgr:                 mgr,
+		Query:               query,
+		Stmt:                stmt,
+		ro:                  false,
+		ClientRule:          clientRule,
 
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
 	}
@@ -300,16 +310,26 @@ func (rm *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.Rela
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) (*rfqn.RelationFQN, error) {
+func (rm *RoutingMetadataContext) ResolveColumnRef(alias, colname string) (*rfqn.RelationFQN, string, error) {
 	if _, ok := rm.Rels[rfqn.RelationFQN{RelationName: alias}]; ok {
-		return &rfqn.RelationFQN{RelationName: alias}, nil
+		return &rfqn.RelationFQN{RelationName: alias}, colname, nil
 	}
 	if _, ok := rm.CTEAliases[alias]; ok {
-		return nil, nil
+		return nil, "", nil
+	}
+	if derivedAlias, ok := rm.DerivedTableAliases[alias]; ok {
+		if derivedAlias.PassthroughAll {
+			return &derivedAlias.Relation, colname, nil
+		}
+		resolvedColname, ok := derivedAlias.Columns[colname]
+		if !ok {
+			return nil, "", nil
+		}
+		return &derivedAlias.Relation, resolvedColname, nil
 	}
 	if resolvedRelation, ok := rm.TableAliases[alias]; ok {
 		// TBD: postpone routing from here to root of parsing tree
-		return &resolvedRelation, nil
+		return &resolvedRelation, colname, nil
 	} else {
 		// TBD: postpone routing from here to root of parsing tree
 		if len(rm.Rels) != 1 {
@@ -317,18 +337,24 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) 
 			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
 				if len(l) > 1 {
 					// ambiguity in column aliasing
-					return nil, rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
+					return nil, "", rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
 				}
-				return l[0], nil
+				return l[0], colname, nil
 			} else {
-				return nil, nil
+				return nil, "", nil
 			}
 		}
 		for tbl := range rm.Rels {
 			resolvedRelation = tbl
 		}
-		return &resolvedRelation, nil
+		return &resolvedRelation, colname, nil
 	}
+}
+
+// TODO : unit tests
+func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) (*rfqn.RelationFQN, error) {
+	resolvedRelation, _, err := rm.ResolveColumnRef(alias, colname)
+	return resolvedRelation, err
 }
 
 // TODO : unit tests
