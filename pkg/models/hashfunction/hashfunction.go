@@ -141,22 +141,21 @@ func ApplyCityHashFunction(input any, ctype string) (uint32, error) {
 }
 
 func canonicalUUIDBytes(input any, hf HashFunctionType) ([]byte, error) {
+	var raw string
 	switch v := input.(type) {
 	case []byte:
-		u, err := uuid.Parse(strings.ToLower(string(v)))
-		if err != nil {
-			return nil, err
-		}
-		return []byte(u.String()), nil
+		raw = string(v)
 	case string:
-		u, err := uuid.Parse(strings.ToLower(v))
-		if err != nil {
-			return nil, err
-		}
-		return []byte(u.String()), nil
+		raw = v
 	default:
 		return nil, errUnknownValueType(input, hf)
 	}
+
+	u, err := uuid.Parse(strings.ToLower(raw))
+	if err != nil {
+		return nil, err
+	}
+	return []byte(u.String()), nil
 }
 
 func ApplyNonIdentHashFunction(input any, ctype string, hf HashFunctionType) (uint32, error) {
