@@ -146,10 +146,10 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = val
 	case qdb.ColumnTypeUUIDHashed:
-		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
-		if err != nil {
+		if err := uuid.Validate(strings.ToLower(val)); err != nil {
 			return err
 		}
+		kr.LowerBound[attribInd] = strings.ToLower(val)
 	case qdb.ColumnTypeUinteger:
 		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
 		if err != nil {

@@ -141,6 +141,15 @@ func TestApplyHashFunction_UUIDHashed(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestApplyHashFunctionOnStringRepr_UUIDHashed(t *testing.T) {
+	hfMur, _ := hashfunction.HashFunctionByName("murmur")
+	input := []byte("018F4B8E-37F0-7CC4-B5F2-0F62D09CA662")
+
+	result, err := hashfunction.ApplyHashFunctionOnStringRepr(input, qdb.ColumnTypeUUIDHashed, hfMur)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(murmur3.Sum32([]byte("018f4b8e-37f0-7cc4-b5f2-0f62d09ca662"))), result)
+}
+
 func TestApplyMurmurHashNegative(t *testing.T) {
 	assert := assert.New(t)
 	uintVal := uint64(0)

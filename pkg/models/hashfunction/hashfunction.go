@@ -176,7 +176,7 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 
 	switch hf {
 	case HashFunctionIdent:
-		if ctype == qdb.ColumnTypeUUID {
+		if ctype == qdb.ColumnTypeUUID || ctype == qdb.ColumnTypeUUIDHashed {
 			if err := uuid.Validate(strings.ToLower(input.(string))); err != nil {
 				return nil, err
 			}
@@ -215,9 +215,9 @@ func ParseBytesFromStringRepr(input []byte, ctype string) (any, error) {
 		}
 		parsedInput = n
 
-	case qdb.ColumnTypeUUIDHashed:
-		parsedInput = string(input)
 	case qdb.ColumnTypeUUID:
+		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
 		parsedInput = string(input)
 	case qdb.ColumnTypeVarchar:
 		fallthrough
