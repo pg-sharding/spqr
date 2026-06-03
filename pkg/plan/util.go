@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -22,13 +21,10 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 	case xproto.FormatCodeBinary:
 		switch tp {
 		case qdb.ColumnTypeUUID:
-			fallthrough
-		case qdb.ColumnTypeUUIDHashed:
-			val, err := parseBinaryUUID(bindParams[ind])
-			if err != nil {
-				return nil, ErrResolvingValue
-			}
+			val := string(bindParams[ind])
 			return val, nil
+		case qdb.ColumnTypeUUIDHashed:
+			return string(bindParams[ind]), nil
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
@@ -104,12 +100,4 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 	}
 
 	return nil, ErrResolvingValue
-}
-
-func parseBinaryUUID(input []byte) (string, error) {
-	u, err := uuid.FromBytes(input)
-	if err != nil {
-		return "", err
-	}
-	return u.String(), nil
 }
