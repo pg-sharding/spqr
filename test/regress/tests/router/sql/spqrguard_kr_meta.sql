@@ -42,7 +42,16 @@ SET __spqr__execute_on=sh2;
 SELECT * FROM spqr_metadata.spqr_local_key_ranges;
 
 \c spqr-console
-DROP KEY RANGE kr1;
+RENAME KEY RANGE kr1 TO kr2;
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+
+\c spqr-console
+DROP KEY RANGE kr2;
 
 \c regress
 SET __spqr__execute_on=sh1;

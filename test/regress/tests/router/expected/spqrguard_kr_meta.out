@@ -119,10 +119,33 @@ NOTICE: send query to shard(s) : sh2
 (1 row)
 
 \c spqr-console
-DROP KEY RANGE kr1;
+RENAME KEY RANGE kr1 TO kr2;
+ key_range_id | new_id 
+--------------+--------
+ kr1          | kr2
+(1 row)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+ TODO              | kr2          |          67 |              
+(1 row)
+
+\c spqr-console
+DROP KEY RANGE kr2;
  key_range_id 
 --------------
- kr1
+ kr2
 (1 row)
 
 \c regress

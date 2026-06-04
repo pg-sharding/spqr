@@ -485,6 +485,9 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
+	if !config.CoordinatorConfig().ForbidDirectShardQueries {
+		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
+	}
 	if err := updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.InsertKeyRangeMeta, krIDNew); err != nil {
 		return err
 	}
