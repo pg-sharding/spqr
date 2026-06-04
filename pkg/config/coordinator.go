@@ -1,9 +1,11 @@
 package config
 
 import (
+	"sync"
 	"time"
 )
 
+var cfgMu = sync.Mutex{}
 var cfgCoordinator Coordinator
 
 type Coordinator struct {
@@ -74,6 +76,8 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
+	cfgMu.Lock()
+	defer cfgMu.Unlock()
 	cfgCoordinator = *c
 	return configStr, nil
 }
