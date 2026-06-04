@@ -474,17 +474,24 @@ func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
 }
 
 // RenameKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew string) error {
-	if _, err := lc.GetKeyRange(ctx, krId); err != nil {
+func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew string) error {
+	keyRange, err := lc.GetKeyRange(ctx, krID)
+	if err != nil {
 		return err
 	}
-	if _, err := meta.LockKeyRange(ctx, lc, krId); err != nil {
+	if _, err := meta.LockKeyRange(ctx, lc, krID); err != nil {
 		return err
 	}
-	if _, err := lc.GetKeyRange(ctx, krIdNew); err == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
-	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
+	if err := updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.InsertKeyRangeMeta, krIDNew); err != nil {
+		return err
+	}
+	if err := lc.qdb.RenameKeyRange(ctx, krID, krIDNew); err != nil {
+		return err
+	}
+	return updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.DeleteKeyRangeMeta, krID)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.

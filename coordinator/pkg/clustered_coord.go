@@ -2318,26 +2318,15 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 // Returns:
 // - error: An error if renaming key range was unsuccessful.
 func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
-	keyRange, err := qc.GetKeyRange(ctx, krID)
-	if err != nil {
-		return err
-	}
-	if err := coord.UpdateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.InsertKeyRangeMeta, krIDNew); err != nil {
-		return err
-	}
 	if err := qc.Coordinator.RenameKeyRange(ctx, krID, krIDNew); err != nil {
 		return err
 	}
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
 		_, err := cl.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{KeyRangeId: krID, NewKeyRangeId: krIDNew})
 
 		return err
-	}); err != nil {
-		return err
-	}
-
-	return coord.UpdateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.DeleteKeyRangeMeta, krID)
+	})
 }
 
 // TODO : unit tests
