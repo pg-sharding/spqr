@@ -21,12 +21,12 @@ func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransac
 		reqType, _ := mtran.GetGossipRequestType(gossipRequest)
 		switch reqType {
 		case mtran.GRCreateKeyRange:
-			if err := updateKeyRangeMetaOnShard(ctx, gossipRequest.CreateKeyRange.KeyRangeInfo.ShardId, datatransfers.InsertKeyRangeMeta, gossipRequest.CreateKeyRange.KeyRangeInfo.Krid); err != nil {
+			if err := UpdateKeyRangeMetaOnShard(ctx, gossipRequest.CreateKeyRange.KeyRangeInfo.ShardId, datatransfers.InsertKeyRangeMeta, gossipRequest.CreateKeyRange.KeyRangeInfo.Krid); err != nil {
 				return err
 			}
 		case mtran.GRDropKeyRange:
 			for _, id := range gossipRequest.DropKeyRange.Id {
-				if err := updateKeyRangeMetaOnShard(ctx, "", datatransfers.DeleteKeyRangeMeta, id); err != nil {
+				if err := UpdateKeyRangeMetaOnShard(ctx, "", datatransfers.DeleteKeyRangeMeta, id); err != nil {
 					return err
 				}
 			}
@@ -35,7 +35,7 @@ func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransac
 	return nil
 }
 
-func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string, args ...any) error {
+func UpdateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string, args ...any) error {
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 	if err != nil {
 		return err
