@@ -54,6 +54,17 @@ type CreateStmt interface {
 	iCreate()
 }
 
+type Rename struct {
+	Element RenameStmt
+	NewID   string
+}
+
+func (*Rename) iStatement() {}
+
+type RenameStmt interface {
+	iRename()
+}
+
 type TraceStmt struct {
 	Client uint
 	All    bool
@@ -209,6 +220,8 @@ func (*ShardSelector) iDrop()             {}
 func (*TaskGroupSelector) iDrop()         {}
 func (*MoveTaskSelector) iDrop()          {}
 func (*RedistributeTaskSelector) iDrop()  {}
+
+func (*KeyRangeSelector) iRename() {}
 
 type Lock struct {
 	KeyRangeID string
