@@ -604,16 +604,10 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard with id %s already exists", stmt.Id)
 		}
 
+		err = spqrerror.CleanGrpcError(err)
 		var spErr *spqrerror.SpqrError
-		if errors.As(err, &spErr) {
-			if spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
-				return nil, err
-			}
-		} else {
-			cleanErr := spqrerror.CleanGrpcError(err)
-			if !strings.Contains(cleanErr.Error(), "unknown shard") {
-				return nil, cleanErr
-			}
+		if !errors.As(err, &spErr) || spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
+			return nil, err
 		}
 
 		options, err := topology.OptionsFromSQL(stmt.Options)

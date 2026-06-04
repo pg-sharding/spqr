@@ -3,6 +3,7 @@ Feature: GSS Kerberos 5 auth test
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_gss_frontend.yaml
+    COMPOSE_PROFILES=auth
     """
     Given cluster is up and running
     When I run commands on host "router"
@@ -20,6 +21,7 @@ Feature: GSS Kerberos 5 auth test
    Given cluster environment is
    """
    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_ldap_frontend.yaml
+   COMPOSE_PROFILES=auth
    """
    Given cluster is up and running
    When I run command on host "router"

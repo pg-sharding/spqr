@@ -143,6 +143,7 @@ enim
 epn
 errcounter
 errdefs
+errdetails
 errtype
 eshkere
 etcdctl
@@ -174,6 +175,7 @@ frules
 ftts
 fugiat
 gcflags
+genproto
 getconn
 gettime
 gitmodules
@@ -272,6 +274,7 @@ krsqb
 krsqdb
 krsql
 ktadd
+KVs
 labore
 laboriosam
 laboris
@@ -334,6 +337,7 @@ multierr
 multishard
 murmurhash
 mydb
+mvccpb
 mylogs
 myuser
 myworkloadlog
@@ -434,7 +438,6 @@ qdb
 QDBKR
 QDBRe
 QDBTx
-Qdocker
 qlogger
 qlogprovider
 qname
@@ -575,6 +578,7 @@ suscipit
 SVFOP
 SVGID
 syscache
+tablesample
 targ
 taskgroup
 taskmgr
