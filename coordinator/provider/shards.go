@@ -35,7 +35,7 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 	if err != nil {
 		return nil, err
 	}
-	if err := s.impl.AddDataShard(ctx, shard); err != nil {
+	if err := s.impl.AddDataShard(ctx, shard, false); err != nil {
 		return nil, err
 	}
 

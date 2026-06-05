@@ -172,7 +172,7 @@ func NewProxyRouter(tmgr topology.TopologyMgr,
 	/* XXX: fix this */
 	for k, v := range tmgr.Snap() {
 		if _, ok := skipMp[k]; !ok {
-			if err := mgr.AddDataShard(ctx, v); err != nil {
+			if err := mgr.AddDataShard(ctx, v, true); err != nil {
 				return nil, err
 			}
 		}

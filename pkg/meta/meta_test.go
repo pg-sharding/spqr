@@ -121,6 +121,7 @@ func TestCreateShardValidatesReachableHosts(t *testing.T) {
 	statement := spqrparser.ShardDefinition{
 		Id:      "sh-new",
 		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
+		Force:   true,
 	}
 
 	memqdb, err := prepareDB(ctx)
@@ -181,6 +182,8 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	statement := spqrparser.ShardDefinition{
 		Id:      "sh-new",
 		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
+
+		Force: true,
 	}
 
 	ctrl := gomock.NewController(t)
@@ -188,7 +191,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 
 	mngr := mockmgr.NewMockEntityMgr(ctrl)
 	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
-	mngr.EXPECT().AddDataShard(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, shard *topology.DataShard) error {
+	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
 		assert.Equal(t, "sh-new", shard.ID)
 		assert.Equal(t, []string{listener.Addr().String()}, shard.Hosts())
 		return nil
