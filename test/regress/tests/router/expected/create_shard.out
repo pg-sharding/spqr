@@ -29,7 +29,7 @@ CREATE TABLE test_create_shard (id int, name text);
 NOTICE: send query to shard(s) : sh1,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh3,sh4
 \c spqr-console
-CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER 'regress', DBNAME 'regress');
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER 'regress', DBNAME 'regress') FORCE;
 ERROR:  shard is not ready
 HINT:  relation public.test_create_shard does not exist on shard
 \c regress

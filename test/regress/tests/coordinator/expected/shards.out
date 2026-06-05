@@ -19,7 +19,7 @@ SHOW shards_extended;
 (3 rows)
 
 \set VERBOSITY verbose
-CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
+CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432') FORCE;
     add shard    
 -----------------
  shard id -> sh1
