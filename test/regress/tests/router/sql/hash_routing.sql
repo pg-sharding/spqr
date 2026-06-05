@@ -48,6 +48,10 @@ INSERT INTO xxhashuuid (id) VALUES ('018F4B8E-37F0-7CC4-B5F2-0F62D09CA663');
 INSERT INTO xxhashuuid (id) VALUES ('00000000-0000-0000-0000-000000000000');
 INSERT INTO xxhashuuid (id) VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff');
 
+SELECT * FROM xxhashuuid WHERE id = '018f4b8e-37f0-7cc4-b5f2-0f62d09ca662';
+SELECT * FROM xxhashuuid WHERE id = '018F4B8E-37F0-7CC4-B5F2-0F62D09CA663';
+SELECT __spqr__ctid('xxhashuuid');
+
 SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh1 */;
 SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh2 */;
 

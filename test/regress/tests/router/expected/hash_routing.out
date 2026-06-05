@@ -121,6 +121,30 @@ INSERT INTO xxhashuuid (id) VALUES ('00000000-0000-0000-0000-000000000000');
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxhashuuid (id) VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff');
 NOTICE: send query to shard(s) : sh2
+SELECT * FROM xxhashuuid WHERE id = '018f4b8e-37f0-7cc4-b5f2-0f62d09ca662';
+NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ 018f4b8e-37f0-7cc4-b5f2-0f62d09ca662
+(1 row)
+
+SELECT * FROM xxhashuuid WHERE id = '018F4B8E-37F0-7CC4-B5F2-0F62D09CA663';
+NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 018f4b8e-37f0-7cc4-b5f2-0f62d09ca663
+(1 row)
+
+SELECT __spqr__ctid('xxhashuuid');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |                  id                  
+--------------+--------------------------------------
+ shard sh1    | 018f4b8e-37f0-7cc4-b5f2-0f62d09ca663
+ shard sh1    | 00000000-0000-0000-0000-000000000000
+ shard sh2    | 018f4b8e-37f0-7cc4-b5f2-0f62d09ca662
+ shard sh2    | ffffffff-ffff-ffff-ffff-ffffffffffff
+(4 rows)
+
 SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
                   id                  
