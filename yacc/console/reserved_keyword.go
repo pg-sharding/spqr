@@ -111,4 +111,5 @@ var reservedWords = map[string]int{
 	"global":       GLOBAL,
 	"immediate":    IMMEDIATE,
 	"rotate":       ROTATE,
+	"force":        FORCE,
 }
