@@ -47,20 +47,15 @@ func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPC
 }
 
 func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
-	ctx := context.TODO()
-
-	shs, err := d.d.ListShards(ctx)
-	if err != nil {
-		return nil, err
-	}
+	shardMapping := d.p.ShardMapping().Snap()
 
 	gids := map[string]struct{}{}
 
-	for _, sh := range shs {
-		spqrlog.Zero.Info().Str("shard", sh.ID).Msg("fetching stale two phase commit data")
+	for shID := range shardMapping {
+		spqrlog.Zero.Info().Str("shard", shID).Msg("fetching stale two phase commit data")
 
 		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
-			Name: sh.ID,
+			Name: shID,
 		}, tsa.TSA(config.TargetSessionAttrsAny))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -94,7 +89,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 					/* process */
 					gid := string(v.Values[0])
 
-					spqrlog.Zero.Debug().Str("shard", sh.ID).Str("gid", gid).Msg("found unfinished tx on shard")
+					spqrlog.Zero.Debug().Str("shard", shID).Str("gid", gid).Msg("found unfinished tx on shard")
 
 					/* XXX: Recheck gid status ? */
 
