@@ -2498,3 +2498,38 @@ func TestADDDeprecation(t *testing.T) {
 		}
 	}
 }
+
+func TestRename(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "RENAME KEY RANGE kr1 TO kr_new",
+
+			exp: &spqrparser.Rename{
+				Element: &spqrparser.KeyRangeSelector{
+					KeyRangeID: "kr1",
+				},
+				NewID: "kr_new",
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+	}
+}

@@ -1329,6 +1329,8 @@ func ProcMetadataCommand(ctx context.Context,
 			tts.WriteDataRow(stmt.RelationSelector.String(), sh)
 		}
 		return tts, nil
+	case *spqrparser.Rename:
+		return processRename(ctx, stmt, mgr)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -2350,6 +2352,26 @@ func processAlterShard(ctx context.Context,
 		}
 
 		return tts, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+}
+
+func processRename(ctx context.Context, astmt *spqrparser.Rename, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.Element.(type) {
+	case *spqrparser.KeyRangeSelector:
+		if err := mngr.RenameKeyRange(ctx, stmt.KeyRangeID, astmt.NewID); err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("key_range_id", "new_id"),
+			Raw: [][][]byte{
+				{
+					[]byte(stmt.KeyRangeID),
+					[]byte(astmt.NewID),
+				},
+			},
+		}, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
