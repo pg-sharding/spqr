@@ -507,6 +507,8 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 		switch tp {
 		case qdb.ColumnTypeUUID:
 			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
+			fallthrough
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
@@ -531,6 +533,8 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 	case *lyx.AExprIConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:
+			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
 			return nil, fmt.Errorf("uuid type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough

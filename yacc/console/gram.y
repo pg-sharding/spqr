@@ -1522,6 +1522,8 @@ col_types_elem:
 		$$ = qdb.ColumnTypeUinteger
 	} | UUID {
 		$$ = qdb.ColumnTypeUUID
+	} | UUID HASH {
+		$$ = qdb.ColumnTypeUUIDHashed
 	}
 
 opt_default_shard:
@@ -1923,4 +1925,3 @@ rename_stmt:
 	}
 
 %%
-

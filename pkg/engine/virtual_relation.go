@@ -140,7 +140,7 @@ func KeyRangeVirtualRelationScanExtended(
 			switch dist.ColTypes[0] {
 			case qdb.ColumnTypeInteger:
 				maxValue = int64(math.MaxInt64)
-			case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+			case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed, qdb.ColumnTypeUUIDHashed:
 				maxValue = uint64(math.MaxUint64)
 			case qdb.ColumnTypeUUID:
 				maxValue = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -195,7 +195,7 @@ func calculateCoverage(lowerBound, upperBound any, colType string) string {
 		percentage := (keyRangeSize / totalRange) * 100.0
 		return fmt.Sprintf("%.2f%%", percentage)
 
-	case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+	case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed, qdb.ColumnTypeUUIDHashed:
 		lower, ok := lowerBound.(uint64)
 		if !ok {
 			return "N/A"

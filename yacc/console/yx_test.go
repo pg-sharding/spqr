@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -1512,7 +1513,19 @@ func TestDistribution(t *testing.T) {
 				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
 					ColTypes: []string{
-						"varchar hashed",
+						qdb.ColumnTypeVarcharHashed,
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES uuid hash;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						qdb.ColumnTypeUUIDHashed,
 					},
 				},
 			},
