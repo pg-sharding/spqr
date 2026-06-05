@@ -2442,7 +2442,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			if err != nil {
 				return err
 			}
-			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: protoShard})
+			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{
+				Shard: protoShard,
+				Force: true,
+			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2900,6 +2903,7 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 		}
 		_, err = c.AddDataShard(ctx, &proto.AddShardRequest{
 			Shard: protoShard,
+			Force: true,
 		})
 		return err
 	}); err != nil {
