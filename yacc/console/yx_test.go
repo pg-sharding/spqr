@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -1512,7 +1513,19 @@ func TestDistribution(t *testing.T) {
 				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
 					ColTypes: []string{
-						"varchar hashed",
+						qdb.ColumnTypeVarcharHashed,
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES uuid hash;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						qdb.ColumnTypeUUIDHashed,
 					},
 				},
 			},
@@ -2495,6 +2508,41 @@ func TestADDDeprecation(t *testing.T) {
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 			assert.NotNil(tmp, "query %s should return result", tt.query)
+		}
+	}
+}
+
+func TestRename(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "RENAME KEY RANGE kr1 TO kr_new",
+
+			exp: &spqrparser.Rename{
+				Element: &spqrparser.KeyRangeSelector{
+					KeyRangeID: "kr1",
+				},
+				NewID: "kr_new",
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
 		}
 	}
 }

@@ -49,6 +49,7 @@ func randomHex(n int) (string, error) {
 
 	drop                   *Drop
 	create                 *Create
+	rename                 *Rename
 
 	kill                   *Kill
 	lock                   *Lock
@@ -250,6 +251,7 @@ func randomHex(n int) (string, error) {
 
 %type <drop> drop_stmt
 %type <create> add_stmt create_stmt
+%type <rename> rename_stmt
 
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
@@ -476,6 +478,9 @@ command:
 	{
 		$$ = $1
 	} | GrantStmt
+	{
+		$$ = $1
+	} | rename_stmt 
 	{
 		$$ = $1
 	}
@@ -1517,6 +1522,8 @@ col_types_elem:
 		$$ = qdb.ColumnTypeUinteger
 	} | UUID {
 		$$ = qdb.ColumnTypeUUID
+	} | UUID HASH {
+		$$ = qdb.ColumnTypeUUIDHashed
 	}
 
 opt_default_shard:
@@ -1908,5 +1915,13 @@ icp_stmt:
 		}
 	}
 
-%%
+rename_stmt:
+	RENAME key_range_stmt TO any_id 
+	{
+		$$ = &Rename {
+			Element: $2,
+			NewID: $4,
+		}
+	}
 
+%%
