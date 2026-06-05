@@ -139,7 +139,7 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	if err != nil {
 		return nil, err
 	}
-	if err := l.mgr.AddDataShard(ctx, shard); err != nil {
+	if err := l.mgr.AddDataShard(ctx, shard, true); err != nil {
 		return nil, err
 	}
 
