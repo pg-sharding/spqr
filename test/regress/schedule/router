@@ -62,3 +62,4 @@ test: aliasing
 test: flux
 test: autoprotect_2pc
 test: pg_advisory_lock
+test: create_shard

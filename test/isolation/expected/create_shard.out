@@ -1,0 +1,149 @@
+Parsed test spec with 2 sessions
+
+starting permutation: disable_engine_v2  create_ref_table create_shard s2_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table                 
+-----------------------------
+relation name   -> test_table
+distribution id -> d         
+(2 rows)
+
+create reference table     
+---------------------------
+table    -> ref_table      
+shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+shard_id
+--------
+sh2     
+(1 row)
+
+step disable_engine_v2: SET __spqr__engine_v2 TO on;
+step create_ref_table: CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
+step create_shard: select __spqr__console_execute('CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress")');
+ERROR:  shard is not ready
+HINT: relation public.test_table does not exist on shard
+step s2_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+distribution_id
+---------------
+REPLICATED     
+d              
+(2 rows)
+
+
+starting permutation: disable_engine_v2 create_ref_table create_shard_no_creds s2_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table                 
+-----------------------------
+relation name   -> test_table
+distribution id -> d         
+(2 rows)
+
+create reference table 
+-----------------------
+table    -> ref_table  
+shard id -> sh1,sh3,sh4
+(2 rows)
+
+shard_id
+--------
+sh2     
+(1 row)
+
+step disable_engine_v2: SET __spqr__engine_v2 TO on;
+step create_ref_table: CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
+step create_shard_no_creds: select __spqr__console_execute('CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432")');
+ERROR:  failed to connect to `user=host=spqr_shard_2_replica database=password=`: /var/run/postgresql/.s.PGSQL.6432 (/var/run/postgresql): dial error: dial unix /var/run/postgresql/.s.PGSQL.6432: connect: no such file or directory
+step s2_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+distribution_id
+---------------
+REPLICATED     
+d              
+(2 rows)
+
+
+starting permutation: disable_engine_v2 create_ref_table create_table_no_id create_shard s2_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table                 
+-----------------------------
+relation name   -> test_table
+distribution id -> d         
+(2 rows)
+
+create reference table 
+-----------------------
+table    -> ref_table  
+shard id -> sh1,sh3,sh4
+(2 rows)
+
+shard_id
+--------
+sh2     
+(1 row)
+
+step disable_engine_v2: SET __spqr__engine_v2 TO on;
+step create_ref_table: CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
+step create_table_no_id: CREATE TABLE test_table(name text) /*__spqr__execute_on: sh2 */;
+step create_shard: select __spqr__console_execute('CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress")');
+ERROR:  shard is not ready
+HINT: column id does not exist in relation public.test_table on shard
+step s2_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+distribution_id
+---------------
+REPLICATED     
+d              
+(2 rows)
+
+
+starting permutation: disable_engine_v2 create_ref_table create_table_ok create_shard s2_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table                 
+-----------------------------
+relation name   -> test_table
+distribution id -> d         
+(2 rows)
+
+create reference table 
+-----------------------
+table    -> ref_table  
+shard id -> sh1,sh3,sh4
+(2 rows)
+
+shard_id
+--------
+sh2     
+(1 row)
+
+step disable_engine_v2: SET __spqr__engine_v2 TO on;
+step create_ref_table: CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
+step create_table_ok: CREATE TABLE test_table(id int, name text) /*__spqr__execute_on: sh2 */;
+step create_shard: select __spqr__console_execute('CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress")');
+add shard      
+---------------
+shard id -> sh2
+(1 row)
+
+step s2_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+distribution_id
+---------------
+REPLICATED     
+d              
+(2 rows)
+
