@@ -1525,6 +1525,7 @@ func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.
 	if err != nil {
 		return err
 	}
+	defer func() { _ = conn.Close(ctx) }()
 
 	distributions, err := lc.ListDistributions(ctx)
 	if err != nil {
@@ -1590,6 +1591,7 @@ func listShardColumns(ctx context.Context, conn *pgx.Conn, relation *rfqn.Relati
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	cols := make(map[string]string)
 	for rows.Next() {
