@@ -223,13 +223,12 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 				// imitate use
 				time.Sleep(time.Duration(1+rand.Uint32()%50) * time.Millisecond)
 
-				mu.Lock()
 				cntExec.Add(1)
-
-				used[conn.ID()] = false
 
 				_ = shp.Put(conn)
 
+				mu.Lock()
+				used[conn.ID()] = false
 				mu.Unlock()
 			}
 		}()
