@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -923,6 +924,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("gid"),
 		}
+
+		sort.Slice(gids, func(i, j int) bool {
+			return gids[i] < gids[j]
+		})
+
 		for _, gid := range gids {
 			tts.WriteDataRow(gid)
 		}
