@@ -1,6 +1,6 @@
 Parsed test spec with 2 sessions
 
-starting permutation: disable_engine_v2  create_ref_table create_shard s2_clean
+starting permutation: disable_engine_v2 create_ref_table create_shard s2_clean
 add distribution    
 --------------------
 distribution id -> d
