@@ -181,6 +181,16 @@ func NewProxyRouter(tmgr topology.TopologyMgr,
 	return proxy, nil
 }
 
+func getTimeBuckets(statType statistics.StatisticsType) map[float64]float64 {
+	quantiles := statistics.GetQuantiles()
+	result := make(map[float64]float64, len(*quantiles))
+	for i := range *quantiles {
+		q := (*quantiles)[i]
+		result[q] = statistics.GetTotalTimeQuantile(statType, q)
+	}
+	return result
+}
+
 func (qr *ProxyQrouter) registerMetrics() {
 	totalConnectionsMetric := &metrics.DynamicGauge{
 		Name: metrics.ClientConnectionsTCPTotalName,
@@ -199,7 +209,31 @@ func (qr *ProxyQrouter) registerMetrics() {
 		},
 		Value: 0,
 	}
+	routerTimeMetric := &metrics.DynamicSummary{
+		Name: metrics.RouterTimeHistogram,
+		Help: "routing latency time quantiles",
+		GetSum: func() float64 {
+			return statistics.GetRouterTimeTotalSum()
+		},
+		GetCount: func() uint64 {
+			return statistics.GetRouterTimeTotalCount()
+		},
+		GetBuckets: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeRouter) },
+	}
+	shardTimeMetric := &metrics.DynamicSummary{
+		Name: metrics.ShardTimeHistogram,
+		Help: "shard latency time quantiles",
+		GetSum: func() float64 {
+			return statistics.GetShardTimeTotalSum()
+		},
+		GetCount: func() uint64 {
+			return statistics.GetShardTimeTotalCount()
+		},
+		GetBuckets: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeShard) },
+	}
 
 	qr.metricRegistry.RegisterDynamicGauge(totalConnectionsMetric)
 	qr.metricRegistry.RegisterDynamicGauge(inboundQueriesTotalMetric)
+	qr.metricRegistry.RegisterDynamicHistogram(routerTimeMetric)
+	qr.metricRegistry.RegisterDynamicHistogram(shardTimeMetric)
 }

@@ -8,6 +8,8 @@ const (
 	ConfigReloadsTotalName        = MetricPrefix + "reloads_total"
 	InboundQueriesTotalName       = MetricPrefix + "inbound_queries_total"
 	ClientConnectionsTCPTotalName = MetricPrefix + "router_client_conn_tcp_total"
+	RouterTimeHistogram           = MetricPrefix + "router_time"
+	ShardTimeHistogram            = MetricPrefix + "shard_time"
 )
 
 type RouterMetricRegistry struct {
@@ -42,6 +44,13 @@ func (m *RouterMetricRegistry) RegisterDynamicGauge(gauge *DynamicGauge) {
 	if _, ok := m.registeredDynamic[gauge.Name]; !ok {
 		m.registeredDynamic[gauge.Name] = struct{}{}
 		m.registry.MustRegister(gauge)
+	}
+}
+
+func (m *RouterMetricRegistry) RegisterDynamicHistogram(hist *DynamicSummary) {
+	if _, ok := m.registeredDynamic[hist.Name]; !ok {
+		m.registeredDynamic[hist.Name] = struct{}{}
+		m.registry.MustRegister(hist)
 	}
 }
 

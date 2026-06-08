@@ -26,14 +26,16 @@ type StartTimes struct {
 type Statistics struct {
 	totalRequests uint64 // lifetime request count (atomic, monotonically increasing)
 
-	RouterTime        map[uint]*tdigest.TDigest
-	ShardTime         map[uint]*tdigest.TDigest
-	RouterTimeTotal   *tdigest.TDigest
-	ShardTimeTotal    *tdigest.TDigest
-	TimeData          map[uint]*StartTimes
-	Quantiles         []float64
-	QuantilesStr      []string
-	NeedToCollectData bool
+	RouterTime         map[uint]*tdigest.TDigest
+	ShardTime          map[uint]*tdigest.TDigest
+	RouterTimeTotal    *tdigest.TDigest
+	RouterTimeTotalSum float64
+	ShardTimeTotal     *tdigest.TDigest
+	ShardTimeTotalSum  float64
+	TimeData           map[uint]*StartTimes
+	Quantiles          []float64
+	QuantilesStr       []string
+	NeedToCollectData  bool
 
 	lock sync.RWMutex
 }
@@ -87,6 +89,30 @@ func GetTimeQuantile(statType StatisticsType, q float64, h StatHolder) float64 {
 	}
 
 	return h.GetTimeQuantile(statType, q)
+}
+
+func GetRouterTimeTotalSum() float64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.RouterTimeTotalSum
+}
+
+func GetShardTimeTotalSum() float64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.ShardTimeTotalSum
+}
+
+func GetRouterTimeTotalCount() uint64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.RouterTimeTotal.Count()
+}
+
+func GetShardTimeTotalCount() uint64 {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
+	return QueryStatistics.ShardTimeTotal.Count()
 }
 
 func GetTotalTimeQuantile(statType StatisticsType, q float64) float64 {
@@ -149,6 +175,7 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
+		QueryStatistics.RouterTimeTotalSum += routerTime
 		clientST.RouterStart = time.Time{}
 	}
 	if !clientST.ShardStart.IsZero() {
@@ -161,6 +188,7 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
+		QueryStatistics.ShardTimeTotalSum += shardTime
 		clientST.ShardStart = time.Time{}
 	}
 }
