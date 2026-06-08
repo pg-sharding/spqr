@@ -1,0 +1,55 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+-- create key ranges for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+         add key range         
+-------------------------------
+ bound -> 4611686018427387901
+ bound -> -2
+ bound -> -4611686018427387905
+ bound -> -9223372036854775808
+(4 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id |     lower_bound      | locked 
+--------------+----------+-----------------+----------------------+--------
+ ds1-0        | sh1      | ds1             | 4611686018427387901  | false
+ ds1-1        | sh2      | ds1             | -2                   | false
+ ds1-2        | sh3      | ds1             | -4611686018427387905 | false
+ ds1-3        | sh4      | ds1             | -9223372036854775808 | false
+(4 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+ ds1-2
+ ds1-3
+(4 rows)
+
+-- create key range for some shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+         add key range         
+-------------------------------
+ bound -> -1
+ bound -> -9223372036854775808
+(2 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id |     lower_bound      | locked 
+--------------+----------+-----------------+----------------------+--------
+ ds1-0        | sh1      | ds1             | -1                   | false
+ ds1-1        | sh2      | ds1             | -9223372036854775808 | false
+(2 rows)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+

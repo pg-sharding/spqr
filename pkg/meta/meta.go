@@ -586,7 +586,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 	case *spqrparser.KeyRangeDefinition:
 		tranMngr := NewTranEntityManager(mngr)
-		createdKr, err := createKeyRange(ctx, tranMngr, stmt)
+		createdKr, err := createKeyRange(ctx, tranMngr, stmt, true)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return nil, err
@@ -597,6 +597,24 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				{fmt.Appendf(nil, "bound -> %s", createdKr.SendRaw()[0])},
 			},
 		}
+		return tts, nil
+	case *spqrparser.KeyRangesForDistributionDefinition:
+		tranMngr := NewTranEntityManager(mngr)
+		createdKrs, err := createKeyRangesForDistribution(ctx, tranMngr, stmt)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("add key range"),
+		}
+
+		for _, createdKr := range createdKrs {
+			tts.WriteDataRow(
+				fmt.Sprintf("bound -> %s", createdKr.SendRaw()[0]),
+			)
+		}
+
 		return tts, nil
 	case *spqrparser.ShardDefinition:
 		_, err := mngr.GetShard(ctx, stmt.Id)
