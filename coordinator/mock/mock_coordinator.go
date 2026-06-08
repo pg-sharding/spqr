@@ -53,17 +53,17 @@ func (m *MockCoordinator) EXPECT() *MockCoordinatorMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, checkMigrations bool) error {
+func (m *MockCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, checkMigrations)
+	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddDataShard indicates an expected call of AddDataShard.
-func (mr *MockCoordinatorMockRecorder) AddDataShard(ctx, shard, checkMigrations any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AddDataShard(ctx, shard, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockCoordinator)(nil).AddDataShard), ctx, shard, checkMigrations)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockCoordinator)(nil).AddDataShard), ctx, shard, force)
 }
 
 // AddWorldShard mocks base method.
