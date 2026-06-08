@@ -215,7 +215,6 @@ func createKeyRangesForDistribution(ctx context.Context, mngr *TranEntityManager
 		return nil, err
 	}
 	for i, bound := range bounds {
-		spqrlog.Zero.Debug().Interface("bound", bound).Msg("lower bound here222")
 		newKr, err := createKeyRange(ctx, mngr, &spqrparser.KeyRangeDefinition{
 			Distribution: stmt.Distribution,
 			ShardID:      selectedShards[i].ID,
@@ -257,10 +256,8 @@ func splitEqualFullKeyRange(colTypes []string, shardsNumber int) ([][][]byte, er
 				lowerBound := delta * uint64(shardsNumber-1-shInd)
 				bounds[shInd][i] = hashfunction.EncodeUInt64(lowerBound)
 			case qdb.ColumnTypeInteger:
-				// FIX, consider negative bound
 				delta := math.MaxInt64/int64(shardsNumber) - math.MinInt64/int64(shardsNumber)
 				lowerBound := math.MinInt64 + delta*int64(shardsNumber-1-shInd)
-				spqrlog.Zero.Debug().Int64("bound", lowerBound).Msg("lower bound here111")
 				bounds[shInd][i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(bounds[shInd][i], lowerBound)
 			default:
