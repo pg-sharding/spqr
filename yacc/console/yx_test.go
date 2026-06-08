@@ -696,6 +696,36 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS shard1, shard2, shard3;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"shard1", "shard2", "shard3"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
 			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),

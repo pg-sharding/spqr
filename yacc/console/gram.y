@@ -62,6 +62,7 @@ func randomHex(n int) (string, error) {
 	qnameList		   	 []*rfqn.RelationFQN
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
+	krForDistr 			   *KeyRangesForDistributionDefinition
 	shard                  *ShardDefinition
 
 	register_router        *RegisterRouter
@@ -201,7 +202,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
-%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -260,6 +261,7 @@ func randomHex(n int) (string, error) {
 %type<qnameList> qualified_name_list
 %type <ds> distribution_define_stmt
 %type <kr> key_range_define_stmt
+%type <krForDistr> key_ranges_for_distribution_define_stmt
 %type <shard> shard_define_stmt
 
 %type<strlist> privileges grantee_list privilege_list
@@ -1310,6 +1312,11 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
+	CREATE key_ranges_for_distribution_define_stmt
+	{
+		$$ = &Create{Element: $2}
+	}
+	|
 	CREATE shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
@@ -1623,6 +1630,26 @@ key_range_define_stmt:
 			ShardID: $7,
 			Distribution: $8,
 			KeyRangeID: "kr"+str,
+		}
+	}
+
+key_ranges_for_distribution_define_stmt:
+	KEY RANGES FOR DISTRIBUTION any_id USING SHARDS any_id_list
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: $8,
+		}
+	}
+	| KEY RANGES FOR DISTRIBUTION any_id USING ALL SHARDS
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: []string{"*"},
 		}
 	}
 
