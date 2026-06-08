@@ -47,6 +47,27 @@ SHOW key_ranges;
  ds1-1        | sh2      | ds1             | -9223372036854775808 | false
 (2 rows)
 
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+(2 rows)
+
+CREATE KEY RANGE kr1 FROM -100000 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+  add key range   
+------------------
+ bound -> -100000
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+ERROR:  key range ds1-1 intersects with key range kr1 in QDB
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ kr1          | sh1      | ds1             | -100000     | false
+(1 row)
+
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
