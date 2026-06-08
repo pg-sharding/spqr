@@ -114,5 +114,8 @@ var reservedWords = map[string]int{
 	"force":        FORCE,
 	"ranges":       RANGES,
 	"using":        USING,
+<<<<<<< HEAD
 	"between":      BETWEEN,
+=======
+>>>>>>> 55ab5b9b (bimpl)
 }

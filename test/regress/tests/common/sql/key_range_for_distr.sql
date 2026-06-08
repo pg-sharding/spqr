@@ -1,0 +1,13 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+
+-- create key ranges for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+SHOW key_ranges;
+
+DROP KEY RANGE ALL;
+
+-- create key range for some shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+SHOW key_ranges;
+
+DROP DISTRIBUTION ALL CASCADE;
