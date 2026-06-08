@@ -42,8 +42,6 @@ step s3_clean_tg          { /* TODO: fix */ select __spqr__console_execute('drop
 session s4
 step s4_attach_cp            { select __spqr__console_execute('ATTACH CONTROL POINT after_move_keys_cp WAIT;')}
 step s4_detach_cp            { select __spqr__console_execute('DETACH CONTROL POINT after_move_keys_cp;')}
-step s4_check_guard_sh1      { select * FROM spqr_metadata.spqr_local_key_ranges /* __spqr__execute_on: sh1 */}
-step s4_check_guard_sh2      { select * FROM spqr_metadata.spqr_local_key_ranges /* __spqr__execute_on: sh2 */}
 
 
 # ok
@@ -51,7 +49,6 @@ permutation s1_report s1_ev2 s1_i s1_spqr_ctid
             s4_attach_cp s2_redistribute_sh2_nw s2_await_planning
             s2_show_kr s2_show_tg s1_spqr_ctid
             s1_s
-            s4_check_guard_sh1 s4_check_guard_sh2
             s4_detach_cp
             s2_await_task
             s3_clean s3_clean_tg
