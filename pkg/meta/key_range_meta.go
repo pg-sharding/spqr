@@ -254,12 +254,12 @@ func splitEqualFullKeyRange(colTypes []string, shardsNumber int) ([][][]byte, er
 				fallthrough
 			case qdb.ColumnTypeUinteger:
 				delta := math.MaxUint64 / uint64(shardsNumber)
-				var lowerBound uint64 = delta * uint64(shardsNumber-1-shInd)
+				lowerBound := delta * uint64(shardsNumber-1-shInd)
 				bounds[shInd][i] = hashfunction.EncodeUInt64(lowerBound)
 			case qdb.ColumnTypeInteger:
 				// FIX, consider negative bound
 				delta := math.MaxInt64/int64(shardsNumber) - math.MinInt64/int64(shardsNumber)
-				var lowerBound int64 = math.MinInt64 + delta*int64(shardsNumber-1-shInd)
+				lowerBound := math.MinInt64 + delta*int64(shardsNumber-1-shInd)
 				spqrlog.Zero.Debug().Int64("bound", lowerBound).Msg("lower bound here111")
 				bounds[shInd][i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(bounds[shInd][i], lowerBound)
