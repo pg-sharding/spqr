@@ -125,7 +125,7 @@ jobs:
               fi
 
   isolation-regress:
-    name: Isolation tests
+    name: isolation-tests
     runs-on: ubuntu-latest
     needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress']
 
