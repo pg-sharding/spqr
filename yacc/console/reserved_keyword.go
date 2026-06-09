@@ -113,4 +113,5 @@ var reservedWords = map[string]int{
 	"rotate":       ROTATE,
 	"ranges":       RANGES,
 	"using":        USING,
+	"between":      BETWEEN,
 }

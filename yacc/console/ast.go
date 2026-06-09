@@ -120,6 +120,12 @@ type KeyRangeDefinition struct {
 type KeyRangesForDistributionDefinition struct {
 	Distribution *DistributionSelector
 	Shards       []string
+	DataKeyRange *CustomDistributionRange
+}
+
+type CustomDistributionRange struct {
+	LowerBound *KeyRangeBound
+	UpperBound *KeyRangeBound
 }
 
 type ShardDefinition struct {

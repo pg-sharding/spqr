@@ -68,6 +68,80 @@ SHOW key_ranges;
  kr1          | sh1      | ds1             | -100000     | false
 (1 row)
 
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr1
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+ add key range 
+---------------
+ bound -> 750
+ bound -> 500
+ bound -> 250
+ bound -> 0
+(4 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ ds1-0        | sh1      | ds1             | 750         | false
+ ds1-1        | sh2      | ds1             | 500         | false
+ ds1-2        | sh3      | ds1             | 250         | false
+ ds1-3        | sh4      | ds1             | 0           | false
+(4 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+ ds1-2
+ ds1-3
+(4 rows)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+ add key range 
+---------------
+ bound -> 500
+ bound -> 0
+(2 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ ds1-0        | sh1      | ds1             | 500         | false
+ ds1-1        | sh2      | ds1             | 0           | false
+(2 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+(2 rows)
+
+CREATE KEY RANGE kr1 FROM 100 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+ERROR:  key range ds1-0 intersects with key range kr1 in QDB
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ kr1          | sh4      | ds1             | 100         | false
+(1 row)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr1
+(1 row)
+
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
