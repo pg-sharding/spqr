@@ -712,6 +712,25 @@ func TestKeyRange(t *testing.T) {
 
 		{
 			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS shard1, shard2, shard3;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"shard1", "shard2", "shard3"},
+					DataKeyRange: &spqrparser.CustomDistributionRange{
+						LowerBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+						UpperBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0xD0, 0x0F, 0, 0, 0, 0, 0, 0, 0, 0}}},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
 			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
 			`,
 			exp: &spqrparser.Create{
@@ -720,6 +739,25 @@ func TestKeyRange(t *testing.T) {
 						ID: "ds1",
 					},
 					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+					DataKeyRange: &spqrparser.CustomDistributionRange{
+						LowerBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+						UpperBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0xD0, 0x0F, 0, 0, 0, 0, 0, 0, 0, 0}}},
+					},
 				},
 			},
 			err: nil,
