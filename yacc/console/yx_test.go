@@ -712,7 +712,6 @@ func TestKeyRange(t *testing.T) {
 
 		{
 			query: `
-<<<<<<< HEAD
 			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS shard1, shard2, shard3;
 			`,
 			exp: &spqrparser.Create{
@@ -732,8 +731,6 @@ func TestKeyRange(t *testing.T) {
 
 		{
 			query: `
-=======
->>>>>>> 55ab5b9b (bimpl)
 			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
 			`,
 			exp: &spqrparser.Create{
@@ -748,7 +745,6 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
-<<<<<<< HEAD
 			query: `
 			CREATE KEY RANGES FOR DISTRIBUTION ds1;
 			`,
@@ -783,8 +779,6 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
-=======
->>>>>>> 55ab5b9b (bimpl)
 			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),

@@ -205,7 +205,7 @@ func createKeyRangesForDistribution(ctx context.Context, mngr *TranEntityManager
 		return nil, err
 	}
 
-	bounds, err := splitEqualFullKeyRange(distr.ColTypes, len(selectedShards))
+	bounds, err := splitEqualFullKeyRange(distr.ColTypes, len(selectedShards), stmt.DataKeyRange)
 	if err != nil {
 		return nil, err
 	}
@@ -233,31 +233,66 @@ func createKeyRangesForDistribution(ctx context.Context, mngr *TranEntityManager
 	return createdKrs, nil
 }
 
-func splitEqualFullKeyRange(colTypes []string, shardsNumber int) ([][][]byte, error) {
+func splitEqualFullKeyRange(colTypes []string, shardsNumber int, customRange *spqrparser.CustomDistributionRange) ([][][]byte, error) {
 	bounds := make([][][]byte, shardsNumber)
 	for shInd := range shardsNumber {
 		bounds[shInd] = make([][]byte, len(colTypes))
 
+		lowerBound := kr.KeyRange{
+			ColumnTypes: colTypes,
+			LowerBound:  make(kr.KeyRangeBound, len(colTypes)),
+		}
+		upperBound := kr.KeyRange{
+			ColumnTypes: colTypes,
+			LowerBound:  make(kr.KeyRangeBound, len(colTypes)),
+		}
+
 		for i, t := range colTypes {
+			if customRange != nil {
+				if err := lowerBound.InFuncSQL(i, customRange.LowerBound.Pivots[i]); err != nil {
+					return nil, err
+				}
+				if err := upperBound.InFuncSQL(i, customRange.UpperBound.Pivots[i]); err != nil {
+					return nil, err
+				}
+			}
+
 			switch t {
 			case qdb.ColumnTypeVarcharDeprecated:
 				fallthrough
 			case qdb.ColumnTypeUUID:
 				fallthrough
 			case qdb.ColumnTypeVarchar:
-				//bounds[shInd][i] = []byte(values[i])
 				return nil, fmt.Errorf("varchar is not supported yet, create key ranges manually")
 			case qdb.ColumnTypeVarcharHashed:
 				fallthrough
 			case qdb.ColumnTypeUUIDHashed:
 				fallthrough
 			case qdb.ColumnTypeUinteger:
-				delta := math.MaxUint64 / uint64(shardsNumber)
-				lowerBound := delta * uint64(shardsNumber-1-shInd)
+				minValue := uint64(0)
+				maxValue := uint64(math.MaxUint64)
+
+				if customRange != nil {
+					minValue = lowerBound.LowerBound[i].(uint64)
+					maxValue = upperBound.LowerBound[i].(uint64)
+				}
+
+				delta := maxValue/uint64(shardsNumber) - minValue/uint64(shardsNumber)
+				lowerBound := minValue + delta*uint64(shardsNumber-1-shInd)
 				bounds[shInd][i] = hashfunction.EncodeUInt64(lowerBound)
 			case qdb.ColumnTypeInteger:
-				delta := math.MaxInt64/int64(shardsNumber) - math.MinInt64/int64(shardsNumber)
-				lowerBound := math.MinInt64 + delta*int64(shardsNumber-1-shInd)
+				minValue := int64(math.MinInt64)
+				maxValue := int64(math.MaxInt64)
+
+				if customRange != nil {
+					minValue = lowerBound.LowerBound[i].(int64)
+					maxValue = upperBound.LowerBound[i].(int64)
+				}
+
+				spqrlog.Zero.Debug().Int64("min", minValue).Int64("max", maxValue).Msg("here1")
+
+				delta := maxValue/int64(shardsNumber) - minValue/int64(shardsNumber)
+				lowerBound := minValue + delta*int64(shardsNumber-1-shInd)
 				bounds[shInd][i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(bounds[shInd][i], lowerBound)
 			default:
