@@ -267,7 +267,7 @@ func splitEqualFullKeyRange(colTypes []string, shardsNumber int, customRange *sp
 			case qdb.ColumnTypeUUID:
 				fallthrough
 			case qdb.ColumnTypeVarchar:
-				return nil, fmt.Errorf("varchar is not supported yet, create key ranges manually")
+				return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "cannot determine key ranges for non-hashable distributions").Hint("Use CREATE KEY RANGE...")
 			case qdb.ColumnTypeVarcharHashed:
 				fallthrough
 			case qdb.ColumnTypeUUIDHashed:
