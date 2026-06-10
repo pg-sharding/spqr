@@ -10,6 +10,12 @@ CREATE DISTRIBUTION compositeds COLUMN TYPES integer, integer;
  distribution id -> compositeds
 (1 row)
 
+CREATE DISTRIBUTION varchards COLUMN TYPES varchar;
+       add distribution       
+------------------------------
+ distribution id -> varchards
+(1 row)
+
 -- create key ranges for all shards
 CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
          add key range         
@@ -160,5 +166,6 @@ DROP DISTRIBUTION ALL CASCADE;
 -----------------
  compositeds
  ds1
-(2 rows)
+ varchards
+(3 rows)
 
