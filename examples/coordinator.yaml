@@ -6,6 +6,7 @@ log_level: info
 shard_data: 'examples/shard_data.yaml'
 
 forbid_direct_shard_queries: true
+use_spqrguard: true
 
 # Coordinator timing settings (optional)
 # iteration_timeout: 1s           # How often to check router status (default: 1s)

@@ -12,3 +12,4 @@ frontend_rules:
       password: password
 data_move_disable_triggers: true
 forbid_direct_shard_queries: true
+use_spqrguard: true
