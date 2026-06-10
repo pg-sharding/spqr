@@ -482,6 +482,20 @@ func (mr *MockRouterClientMockRecorder) GetCancelPid() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCancelPid", reflect.TypeOf((*MockRouterClient)(nil).GetCancelPid))
 }
 
+// GetCatalogSeed mocks base method.
+func (m *MockRouterClient) GetCatalogSeed() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCatalogSeed")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetCatalogSeed indicates an expected call of GetCatalogSeed.
+func (mr *MockRouterClientMockRecorder) GetCatalogSeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCatalogSeed", reflect.TypeOf((*MockRouterClient)(nil).GetCatalogSeed))
+}
+
 // GetTimeData mocks base method.
 func (m *MockRouterClient) GetTimeData() *statistics.StartTimes {
 	m.ctrl.T.Helper()

@@ -383,6 +383,20 @@ func (mr *MockClientInfoMockRecorder) Flush() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Flush", reflect.TypeOf((*MockClientInfo)(nil).Flush))
 }
 
+// GetCatalogSeed mocks base method.
+func (m *MockClientInfo) GetCatalogSeed() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCatalogSeed")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetCatalogSeed indicates an expected call of GetCatalogSeed.
+func (mr *MockClientInfoMockRecorder) GetCatalogSeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCatalogSeed", reflect.TypeOf((*MockClientInfo)(nil).GetCatalogSeed))
+}
+
 // GetTimeData mocks base method.
 func (m *MockClientInfo) GetTimeData() *statistics.StartTimes {
 	m.ctrl.T.Helper()
