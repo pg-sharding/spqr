@@ -234,6 +234,10 @@ func createKeyRangesForDistribution(ctx context.Context, mngr *TranEntityManager
 }
 
 func splitEqualFullKeyRange(colTypes []string, shardsNumber int, customRange *spqrparser.CustomDistributionRange) ([][][]byte, error) {
+	if len(colTypes) > 1 {
+		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "cannot determine key ranges for composite keys").Hint("Use CREATE KEY RANGE...")
+	}
+
 	bounds := make([][][]byte, shardsNumber)
 	for shInd := range shardsNumber {
 		bounds[shInd] = make([][]byte, len(colTypes))

@@ -4,6 +4,12 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
+CREATE DISTRIBUTION compositeds COLUMN TYPES integer, integer;
+        add distribution        
+--------------------------------
+ distribution id -> compositeds
+(1 row)
+
 -- create key ranges for all shards
 CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
          add key range         
@@ -54,6 +60,7 @@ DROP KEY RANGE ALL;
  ds1-1
 (2 rows)
 
+-- check if there is intersecting key range
 CREATE KEY RANGE kr1 FROM -100000 ROUTE TO sh1 FOR DISTRIBUTION ds1;
   add key range   
 ------------------
@@ -142,9 +149,13 @@ DROP KEY RANGE ALL;
  kr1
 (1 row)
 
+CREATE KEY RANGES FOR DISTRIBUTION compositeds USING ALL SHARDS;
+ERROR:  cannot determine key ranges for composite keys
+HINT:  Use CREATE KEY RANGE...
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
+ compositeds
  ds1
-(1 row)
+(2 rows)
 
