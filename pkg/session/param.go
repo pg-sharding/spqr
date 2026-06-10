@@ -13,6 +13,8 @@ type SessionParamsHolder interface {
 	ResolveVirtualBoolParam(name string, defaultVal bool) bool
 	RecordVirtualParam(level string, name string, val string)
 
+	GetCatalogSeed() int
+
 	GetTsa() tsa.TSA
 	SetTsa(level string, value string)
 	ResetTsa()
