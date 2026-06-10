@@ -103,6 +103,11 @@ func (cl *SimpleSessionParamHandler) GetCatalogSeed() int {
 	return cl.seed
 }
 
+// SetSeed implements [SessionParamsHolder].
+func (cl *SimpleSessionParamHandler) SetSeed(s int) {
+	cl.seed = s
+}
+
 // NextGID implements [SessionParamsHolder].
 func (cl *SimpleSessionParamHandler) NextGID() string {
 	val := cl.nextGID

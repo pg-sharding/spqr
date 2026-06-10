@@ -14,6 +14,7 @@ type SessionParamsHolder interface {
 	RecordVirtualParam(level string, name string, val string)
 
 	GetCatalogSeed() int
+	SetSeed(int)
 
 	GetTsa() tsa.TSA
 	SetTsa(level string, value string)

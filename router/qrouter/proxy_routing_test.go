@@ -2680,8 +2680,10 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT current_schema;",
@@ -2821,8 +2823,10 @@ SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.n
 LIMIT 1000
 `,
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 
 		{
@@ -2843,6 +2847,7 @@ LIMIT 1000
 
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+		dh.SetSeed(67)
 
 		stmt := parserRes[0]
 

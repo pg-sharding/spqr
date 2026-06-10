@@ -1344,6 +1344,18 @@ func (mr *MockRouterClientMockRecorder) SetScatterQuery(val any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).SetScatterQuery), val)
 }
 
+// SetSeed mocks base method.
+func (m *MockRouterClient) SetSeed(arg0 int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetSeed", arg0)
+}
+
+// SetSeed indicates an expected call of SetSeed.
+func (mr *MockRouterClientMockRecorder) SetSeed(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockRouterClient)(nil).SetSeed), arg0)
+}
+
 // SetShardingKey mocks base method.
 func (m *MockRouterClient) SetShardingKey(level, val string) {
 	m.ctrl.T.Helper()
