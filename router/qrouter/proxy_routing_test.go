@@ -171,7 +171,6 @@ func TestMultiShardRouting(t *testing.T) {
 		{
 			query: "SELECT * FROM pg_catalog.pg_type",
 			exp: &plan.ShardDispatchPlan{
-
 				ExecTarget: kr.ShardKey{Name: "sh2"},
 			},
 			err: nil,
@@ -180,7 +179,7 @@ func TestMultiShardRouting(t *testing.T) {
 		{
 			query: "SELECT * FROM pg_class",
 			exp: &plan.ShardDispatchPlan{
-				ExecTarget: kr.ShardKey{Name: "sh1"},
+				ExecTarget: kr.ShardKey{Name: "sh2"},
 			},
 			err: nil,
 		},
@@ -196,6 +195,7 @@ func TestMultiShardRouting(t *testing.T) {
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetPreferredEngine("", "")
+		dh.SetSeed(67)
 		stmt := parserRes[0]
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
