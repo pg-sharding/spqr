@@ -1668,7 +1668,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return p, nil
 	}
 
-	utilityPlan, err := planner.PlanUtility(ctx, rm, rm.Stmt, qr.cfg.ForbidDirectShardQueries)
+	utilityPlan, err := planner.PlanUtility(ctx, rm, rm.Stmt, qr.cfg.ForbidDirectShardQueries || qr.cfg.UseSPQRGuard)
 
 	if err != nil {
 		return nil, err
