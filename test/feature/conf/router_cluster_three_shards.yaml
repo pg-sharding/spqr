@@ -11,6 +11,7 @@ show_notice_messages: true
 use_coordinator_init: true
 query_routing:
   forbid_direct_shard_queries: true
+  use_spqrguard: true
 frontend_rules:
   - db: regress
     usr: regress

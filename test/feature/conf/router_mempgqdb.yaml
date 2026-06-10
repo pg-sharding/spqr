@@ -10,6 +10,7 @@ world_shard_fallback: true
 show_notice_messages: true
 query_routing:
   forbid_direct_shard_queries: true
+  use_spqrguard: true
 store_tx_data_postgresql: true
 tx_data_ttl: 60m
 use_coordinator_init: true
