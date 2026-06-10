@@ -143,6 +143,37 @@ const (
 
 //revive:enable:var-naming
 
+// IsKnownSPQRHint reports whether n is a recognized SPQR hint name.
+// This covers the reserved "__spqr__" namespace as well as the
+// PostgreSQL-compatible target-session-attrs aliases.
+func IsKnownSPQRHint(n string) bool {
+	switch n {
+	case SPQR_DISTRIBUTION,
+		SPQR_DISTRIBUTED_RELATION,
+		SPQR_DEFAULT_ROUTE_BEHAVIOUR,
+		SPQR_AUTO_DISTRIBUTION,
+		SPQR_DISTRIBUTION_KEY,
+		SPQR_SHARDING_KEY,
+		SPQR_PREFERRED_ENGINE,
+		SPQR_COMMIT_STRATEGY,
+		SPQR_TARGET_SESSION_ATTRS,
+		SPQR_TARGET_SESSION_ATTRS_ALIAS,
+		SPQR_TARGET_SESSION_ATTRS_ALIAS_2,
+		SPQR_EXECUTE_ON,
+		SPQR_SCATTER_QUERY,
+		SPQR_REPLY_NOTICE,
+		SPQR_MAINTAIN_PARAMS,
+		SPQR_ENGINE_V2,
+		SPQR_ALLOW_SPLIT_UPDATE,
+		SPQR_ALLOW_POSTPROCESSING,
+		SPQR_LINEARIZE_DISPATCH,
+		SPQR_ALLOW_FLUX_ACCESS:
+		return true
+	default:
+		return false
+	}
+}
+
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
