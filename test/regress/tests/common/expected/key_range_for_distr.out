@@ -152,6 +152,9 @@ DROP KEY RANGE ALL;
 CREATE KEY RANGES FOR DISTRIBUTION compositeds USING ALL SHARDS;
 ERROR:  cannot determine key ranges for composite keys
 HINT:  Use CREATE KEY RANGE...
+CREATE KEY RANGES FOR DISTRIBUTION varchards USING ALL SHARDS;
+ERROR:  cannot determine key ranges for non-hashable distributions
+HINT:  Use CREATE KEY RANGE...
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
