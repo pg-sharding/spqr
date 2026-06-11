@@ -1754,6 +1754,20 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: `CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432', HOST 'other_hosts:6432') FORCE;`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id: "sh1",
+					Options: []spqrparser.GenericOption{
+						{Name: "host", Arg: "localhost:6432"},
+						{Name: "host", Arg: "other_hosts:6432"},
+					},
+					Force: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "DROP SHARD sh1;",
 			exp: &spqrparser.Drop{
 				Element: &spqrparser.ShardSelector{

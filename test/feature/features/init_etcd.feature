@@ -19,7 +19,7 @@ Feature: Initialize router metadata from Etcd
         UNREGISTER ROUTER ALL;
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE krid1 FROM 19 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        CREATE SHARD new_shard OPTIONS (host 'spqr_shard_3:6432');
+        CREATE SHARD new_shard OPTIONS (host 'spqr_shard_3:6432') FORCE;
         ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
         """
         Then command return code should be "0"

@@ -120,6 +120,8 @@ type KeyRangeDefinition struct {
 type ShardDefinition struct {
 	Id      string
 	Options []GenericOption
+
+	Force bool
 }
 
 type GenericOption struct {

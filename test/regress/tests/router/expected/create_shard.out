@@ -1,0 +1,83 @@
+\c spqr-console
+CREATE DISTRIBUTION d COLUMN TYPES INT;
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE DISTRIBUTED RELATION test_table (id) IN d;
+         attach table          
+-------------------------------
+ relation name   -> test_table
+ distribution id -> d
+(2 rows)
+
+CREATE REFERENCE TABLE ref_table;
+   create reference table    
+-----------------------------
+ table    -> ref_table
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+DROP SHARD sh2;
+ shard_id 
+----------
+ sh2
+(1 row)
+
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+ERROR:  shard is not ready
+HINT: relation public.ref_table does not exist on shard
+\c regress
+CREATE TABLE ref_table(ref_id int) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+\c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+ERROR:  shard is not ready
+HINT: relation public.test_table does not exist on shard
+\c regress
+CREATE TABLE test_table(name text) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+\c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+ERROR:  shard is not ready
+HINT: column id does not exist in relation public.test_table on shard
+\c regress
+DROP TABLE test_table /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+CREATE TABLE test_table(id int, name text) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+\c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+    add shard    
+-----------------
+ shard id -> sh2
+(1 row)
+
+DROP SHARD sh2;
+ shard_id 
+----------
+ sh2
+(1 row)
+
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432") FORCE;
+    add shard    
+-----------------
+ shard id -> sh2
+(1 row)
+
+\c regress
+DROP TABLE test_table;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  table "test_table" does not exist
+DROP TABLE ref_table;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  table "ref_table" does not exist
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+ d
+(2 rows)
+

@@ -5,7 +5,7 @@ SHOW shards_extended;
 
 \set VERBOSITY verbose
 
-CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432');
+CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432') FORCE;
 SHOW shards_extended;
 
 ALTER SHARD sh1 OPTIONS (SSLMODE 'require', ADD USER 'test_user', ADD USER 'another_user');
