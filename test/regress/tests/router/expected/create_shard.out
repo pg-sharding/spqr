@@ -35,8 +35,6 @@ NOTICE: send query to shard(s) : sh2
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 ERROR:  shard is not ready
 HINT: relation public.test_table does not exist on shard
-CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432");
-ERROR:  failed to connect to `user=host=spqr_shard_2_replica database=password=`: /var/run/postgresql/.s.PGSQL.6432 (/var/run/postgresql): server error: ERROR: failed to route frontend for client: route for user:host=spqr_shard_2_replica and db:password= is unconfigured in backend rules (SQLSTATE )
 \c regress
 CREATE TABLE test_table(name text) /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
@@ -51,6 +49,18 @@ CREATE TABLE test_table(id int, name text) /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
 \c spqr-console
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+    add shard    
+-----------------
+ shard id -> sh2
+(1 row)
+
+DROP SHARD sh2;
+ shard_id 
+----------
+ sh2
+(1 row)
+
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432") FORCE;
     add shard    
 -----------------
  shard id -> sh2
