@@ -1,44 +1,56 @@
 \c spqr-console
-DROP SHARD sh2 CASCADE;
+CREATE DISTRIBUTION d COLUMN TYPES INT;
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE DISTRIBUTED RELATION test_table (id) IN d;
+         attach table          
+-------------------------------
+ relation name   -> test_table
+ distribution id -> d
+(2 rows)
+
+CREATE REFERENCE TABLE ref_table;
+   create reference table    
+-----------------------------
+ table    -> ref_table
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+DROP SHARD sh2;
  shard_id 
 ----------
  sh2
 (1 row)
 
-CREATE DISTRIBUTION ds1 COLUMN TYPES int;
-    add distribution    
-------------------------
- distribution id -> ds1
-(1 row)
-
-ALTER DISTRIBUTION ds1 ATTACH RELATION test_create_shard DISTRIBUTION KEY id;
-             attach table             
---------------------------------------
- relation name   -> test_create_shard
- distribution id -> ds1
-(2 rows)
-
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 0
-(1 row)
-
 \c regress
-CREATE TABLE test_create_shard (id int, name text);
-NOTICE: send query to shard(s) : sh1,sh3,sh4
-NOTICE: send query to shard(s) : sh1,sh3,sh4
+SET __spqr__engine_v2 TO on;
+CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 \c spqr-console
-CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER 'regress', DBNAME 'regress') FORCE;
+
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 ERROR:  shard is not ready
-HINT:  relation public.test_create_shard does not exist on shard
+HINT: relation public.ref_table does not exist on shard
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432");
+ERROR:  failed to connect to `user=host=spqr_shard_2_replica database=password=`: /var/run/postgresql/.s.PGSQL.6432 (/var/run/postgresql): server error: ERROR: failed to route frontend for client: route for user:host=spqr_shard_2_replica and db:password= is unconfigured in backend rules (SQLSTATE )
 \c regress
-DROP TABLE test_create_shard;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  table "test_create_shard" does not exist
+CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
+ERROR:  failed to parse query "CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;": syntax error
+CREATE TABLE test_table(name text) /*__spqr__execute_on: sh2 */;
+ERROR:  failed to parse query "CREATE TABLE test_table(name text) /*__spqr__execute_on: sh2 */;": syntax error
 \c spqr-console
-DROP DISTRIBUTION ALL CASCADE;
- distribution_id 
------------------
- ds1
-(1 row)
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+ERROR:  shard with id sh2 already exists
+\c regress
+DROP TABLE test_table;
+ERROR:  failed to parse query "DROP TABLE test_table;": syntax error
+CREATE TABLE test_table(id int, name text) /*__spqr__execute_on: sh2 */;
+ERROR:  failed to parse query "CREATE TABLE test_table(id int, name text) /*__spqr__execute_on: sh2 */;": syntax error
+\c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+ERROR:  shard with id sh2 already exists
+select __spqr__console_execute('DROP SHARD sh2');
+ERROR:  failed to parse query "select __spqr__console_execute('DROP SHARD sh2');": syntax erro
