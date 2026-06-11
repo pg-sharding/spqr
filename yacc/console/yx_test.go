@@ -746,6 +746,21 @@ func TestKeyRange(t *testing.T) {
 
 		{
 			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
 			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
 			`,
 			exp: &spqrparser.Create{
