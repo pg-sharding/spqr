@@ -1655,6 +1655,16 @@ key_ranges_for_distribution_define_stmt:
 			DataKeyRange: $6,
 		}
 	}
+	| KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: []string{"*"},
+			DataKeyRange: $6,
+		}
+	}
 
 opt_custom_distr_range:
 	BETWEEN key_range_bound AND key_range_bound
