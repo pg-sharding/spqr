@@ -1677,16 +1677,6 @@ opt_custom_distr_range:
 	}
 	| /* nothing */ { $$ = nil }
 
-opt_custom_distr_range:
-	BETWEEN key_range_bound AND key_range_bound
-	{
-		$$ = &CustomDistributionRange{
-			LowerBound: $2,
-			UpperBound: $4,
-		}
-	}
-	| /* nothing */ { $$ = nil }
-
 shard_define_stmt:
 	SHARD any_id opt_options opt_force
 	{
