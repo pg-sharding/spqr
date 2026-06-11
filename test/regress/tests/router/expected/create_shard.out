@@ -25,32 +25,49 @@ DROP SHARD sh2;
  sh2
 (1 row)
 
-\c regress
-SET __spqr__engine_v2 TO on;
-CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
-\c spqr-console
-
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 ERROR:  shard is not ready
 HINT: relation public.ref_table does not exist on shard
+\c regress
+CREATE TABLE ref_table(ref_id int) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+\c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+ERROR:  shard is not ready
+HINT: relation public.test_table does not exist on shard
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432");
 ERROR:  failed to connect to `user=host=spqr_shard_2_replica database=password=`: /var/run/postgresql/.s.PGSQL.6432 (/var/run/postgresql): server error: ERROR: failed to route frontend for client: route for user:host=spqr_shard_2_replica and db:password= is unconfigured in backend rules (SQLSTATE )
 \c regress
-CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;
-ERROR:  failed to parse query "CREATE TABLE ref_table(ref_id int) /*__spqr__execute_on: sh2 */;": syntax error
-CREATE TABLE test_table(name text) /*__spqr__execute_on: sh2 */;
-ERROR:  failed to parse query "CREATE TABLE test_table(name text) /*__spqr__execute_on: sh2 */;": syntax error
+CREATE TABLE test_table(name text) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
 \c spqr-console
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
-ERROR:  shard with id sh2 already exists
+ERROR:  shard is not ready
+HINT: column id does not exist in relation public.test_table on shard
+\c regress
+DROP TABLE test_table /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+CREATE TABLE test_table(id int, name text) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+\c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
+    add shard    
+-----------------
+ shard id -> sh2
+(1 row)
+
 \c regress
 DROP TABLE test_table;
-ERROR:  failed to parse query "DROP TABLE test_table;": syntax error
-CREATE TABLE test_table(id int, name text) /*__spqr__execute_on: sh2 */;
-ERROR:  failed to parse query "CREATE TABLE test_table(id int, name text) /*__spqr__execute_on: sh2 */;": syntax error
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  table "test_table" does not exist
+DROP TABLE ref_table;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  table "ref_table" does not exist
 \c spqr-console
-CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
-ERROR:  shard with id sh2 already exists
-select __spqr__console_execute('DROP SHARD sh2');
-ERROR:  failed to parse query "select __spqr__console_execute('DROP SHARD sh2');": syntax erro
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+ d
+(2 rows)
+
