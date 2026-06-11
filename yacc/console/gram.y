@@ -62,6 +62,8 @@ func randomHex(n int) (string, error) {
 	qnameList		   	 []*rfqn.RelationFQN
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
+	krForDistr 			   *KeyRangesForDistributionDefinition
+	customDistrRange 	   *CustomDistributionRange
 	shard                  *ShardDefinition
 
 	register_router        *RegisterRouter
@@ -201,9 +203,9 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
-%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
-%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
 %token <str> CLIENT
 %token <str> BATCH SIZE NOWAIT
 %token <str> INVALIDATE CACHE
@@ -260,6 +262,8 @@ func randomHex(n int) (string, error) {
 %type<qnameList> qualified_name_list
 %type <ds> distribution_define_stmt
 %type <kr> key_range_define_stmt
+%type <krForDistr> key_ranges_for_distribution_define_stmt
+%type <customDistrRange> opt_custom_distr_range
 %type <shard> shard_define_stmt
 
 %type<strlist> privileges grantee_list privilege_list
@@ -1309,6 +1313,11 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
+	CREATE key_ranges_for_distribution_define_stmt
+	{
+		$$ = &Create{Element: $2}
+	}
+	|
 	CREATE shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
@@ -1624,6 +1633,48 @@ key_range_define_stmt:
 			KeyRangeID: "kr"+str,
 		}
 	}
+
+key_ranges_for_distribution_define_stmt:
+	KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range USING SHARDS any_id_list
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: $9,
+			DataKeyRange: $6,
+		}
+	}
+	| KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range USING ALL SHARDS
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: []string{"*"},
+			DataKeyRange: $6,
+		}
+	}
+	| KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: []string{"*"},
+			DataKeyRange: $6,
+		}
+	}
+
+opt_custom_distr_range:
+	BETWEEN key_range_bound AND key_range_bound
+	{
+		$$ = &CustomDistributionRange{
+			LowerBound: $2,
+			UpperBound: $4,
+		}
+	}
+	| /* nothing */ { $$ = nil }
 
 shard_define_stmt:
 	SHARD any_id opt_options

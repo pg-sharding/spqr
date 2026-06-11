@@ -111,4 +111,7 @@ var reservedWords = map[string]int{
 	"global":       GLOBAL,
 	"immediate":    IMMEDIATE,
 	"rotate":       ROTATE,
+	"ranges":       RANGES,
+	"using":        USING,
+	"between":      BETWEEN,
 }
