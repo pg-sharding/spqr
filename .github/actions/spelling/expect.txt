@@ -109,10 +109,10 @@ deparsed
 deparses
 deserunt
 diffs
+dispatchable
 distrib
 distrr
 distrs
-dispatchable
 dmgr
 dockerhub
 dolore
@@ -157,6 +157,7 @@ FAFBFF
 fdw
 feda
 FFCCAC
+FFFF
 ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
@@ -302,8 +303,8 @@ lol
 lowlevel
 lsb
 lval
-maxuint
 maxrows
+maxuint
 mcol
 mdblocales
 mempg
@@ -394,6 +395,7 @@ pgdata
 PGDATABASE
 pgdg
 pgexec
+pgflush
 PGHOST
 pgi
 pgoption
@@ -403,7 +405,6 @@ PGQDB
 pgquery
 pgsharding
 PGSSLMODE
-pgflush
 pgsync
 PGUSER
 pgx
@@ -424,9 +425,9 @@ ppp
 pppp
 prepstatement
 privs
-promhttp
 procps
 proident
+promhttp
 protobuf
 protoc
 protovalidate
@@ -679,6 +680,7 @@ xproto
 XQDB
 xtab
 xxerr
+xxhashuuid
 xxm
 xxmixed
 xxmixeduuid

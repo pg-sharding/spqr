@@ -15,6 +15,7 @@ world_shard_fallback: true
 show_notice_messages: true
 query_routing:
   forbid_direct_shard_queries: true
+  use_spqrguard: true
 frontend_rules:
   - db: regress
     usr: regress

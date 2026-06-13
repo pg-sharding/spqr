@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v2"
@@ -17,6 +18,8 @@ var (
 		cfg    any
 		reload func() (any, error)
 	}{}
+
+	mu = sync.RWMutex{}
 )
 
 type Config interface {
@@ -76,6 +79,8 @@ func LoadConfig(path string, cfg Config) (string, error) {
 		return "", err
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
 	loadedConfigs[fmt.Sprintf("%s%s", path, reflect.TypeOf(cfg).String())] = struct {
 		cfg    any
 		reload func() (any, error)
@@ -96,6 +101,8 @@ func LoadConfig(path string, cfg Config) (string, error) {
 }
 
 func ConfigChanges() ([]ConfigFieldState, error) {
+	mu.RLock()
+	defer mu.RUnlock()
 	changes := make([]ConfigFieldState, 0)
 
 	for _, d := range loadedConfigs {

@@ -180,6 +180,9 @@ type QRouter struct {
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 
+	// TODO: make use_spqrguard and forbid_direct_shard_queries mutually exclusive
+	UseSPQRGuard bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
+	// Deprecated. Use UseSPQRGuard instead
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 	AllowFluxChunkAccess     bool `json:"allow_flux_chunk_access" toml:"allow_flux_chunk_access" yaml:"allow_flux_chunk_access"`
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -565,15 +566,6 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
 
-		case pgproto3.ProtocolVersionNumber:
-			// reuse
-			sm = &pgproto3.StartupMessage{}
-			err = sm.Decode(msg)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
-			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
 		case conn.CANCELREQ:
 			cl.csm = &pgproto3.CancelRequest{}
 			if err = cl.csm.Decode(msg); err != nil {
@@ -582,7 +574,56 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 			return nil
 		default:
-			return fmt.Errorf("protocol number %d not supported", protoVer)
+			if protoVer>>16 == 3 {
+
+				// reuse
+				sm = &pgproto3.StartupMessage{}
+				binary.BigEndian.PutUint32(msg, pgproto3.ProtocolVersion30)
+				err = sm.Decode(msg)
+
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error while decoding startup message")
+
+					errM := &pgproto3.ErrorResponse{
+						Severity: "FATAL",
+						Message:  err.Error(),
+					}
+
+					errB, errEnc := errM.Encode(nil)
+					if errEnc != nil {
+						/* Shouldnt happen anyway */
+						return err
+					}
+
+					_, _ = cl.conn.Write(errB)
+					return err
+				}
+				backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
+
+				if protoVer&0xFFFF != 0 {
+
+					m := pgproto3.NegotiateProtocolVersion{
+						NewestMinorProtocol: pgproto3.ProtocolVersionNumber,
+					}
+
+					for opname := range sm.Parameters {
+						if strings.HasPrefix(opname, "_pq_.") {
+							m.UnrecognizedOptions = append(m.UnrecognizedOptions, opname)
+						}
+					}
+
+					buf, err := m.Encode(nil)
+					if err != nil {
+						return err
+					}
+					_, err = cl.conn.Write(buf)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				return fmt.Errorf("protocol number %d not supported", protoVer)
+			}
 		}
 
 		/* setup client params */

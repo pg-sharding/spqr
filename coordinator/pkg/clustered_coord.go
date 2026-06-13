@@ -1735,6 +1735,8 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 				bound[i] = []byte(values[i])
 			case qdb.ColumnTypeVarcharHashed:
 				fallthrough
+			case qdb.ColumnTypeUUIDHashed:
+				fallthrough
 			case qdb.ColumnTypeUinteger:
 				number, err := strconv.ParseUint(values[i], 10, 64)
 				if err != nil {

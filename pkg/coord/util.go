@@ -13,7 +13,7 @@ import (
 )
 
 func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransactionGossipCommand) error {
-	if !config.CoordinatorConfig().ForbidDirectShardQueries {
+	if !config.CoordinatorConfig().UseSPQRGuard {
 		return nil
 	}
 
