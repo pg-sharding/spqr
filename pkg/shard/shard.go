@@ -64,6 +64,8 @@ type ShardHostCtl interface {
 	IsStale() bool
 	Cancel() error
 
+	BootstrapTime() time.Time
+
 	ListPreparedStatements() []PreparedStatementsMgrDescriptor
 }
 

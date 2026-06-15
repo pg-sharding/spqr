@@ -108,6 +108,7 @@ func (c *CoordShardInfo) CreatedAt() time.Time {
 func (c *CoordShardInfo) MarkStale() {
 	/* noop */
 }
+
 func (c *CoordShardInfo) IsStale() bool {
 	return false
 }

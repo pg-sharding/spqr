@@ -47,6 +47,8 @@ type DBPool struct {
 
 	recheckTCP bool
 
+	ServerLifetime time.Duration
+
 	// Background health checking
 	healthCheckCtx    context.Context
 	healthCheckCancel context.CancelFunc
@@ -79,6 +81,13 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 			return
 		case <-ticker.C:
 			s.recheckFailedHosts()
+			n := time.Now()
+			s.ForEach(func(sh shard.ShardHostCtl) error {
+				if s.ServerLifetime != 0 && n.Sub(sh.BootstrapTime()) > s.ServerLifetime {
+					sh.MarkStale()
+				}
+				return nil
+			})
 		}
 	}
 }
