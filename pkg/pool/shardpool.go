@@ -31,6 +31,8 @@ type shardHostPool struct {
 	host string
 	az   string
 
+	discardCount int64
+
 	connectionLimit            int
 	connectionRetries          int
 	connectionRetrySleepSlice  int
@@ -91,9 +93,10 @@ func (h *shardHostPool) View() Statistics {
 		Usr:               h.beRule.Usr,
 		Hostname:          h.host,
 		RouterName:        "unknown",
-		UsedConnections:   len(h.active),
-		IdleConnections:   len(h.pool),
-		QueueResidualSize: len(h.queue),
+		UsedConnections:   int64(len(h.active)),
+		IdleConnections:   int64(len(h.pool)),
+		QueueResidualSize: int64(len(h.queue)),
+		DiscardCount:      h.discardCount,
 	}
 }
 
@@ -208,10 +211,12 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 //
 // TODO : unit tests
 func (h *shardHostPool) Discard(sh shard.ShardHostInstance) error {
-	spqrlog.Zero.Debug().Uint("pool", spqrlog.GetPointer(h)).
+	spqrlog.Zero.Info().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("discard connection to hostname from pool")
+
+	h.discardCount++
 
 	/* do not hold mutex while cleanup server connection */
 	err := sh.Close()

@@ -1,8 +1,6 @@
 package pool
 
 import (
-	"sync"
-
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -18,8 +16,7 @@ type PoolView struct {
 	ConnCount     int64
 	IdleConnCount int64
 	QueueSize     int64
-
-	m sync.RWMutex
+	DiscardCount  int64
 }
 
 var _ Pool = &PoolView{}
@@ -36,7 +33,7 @@ func NewPoolView(info *protos.PoolInfo) *PoolView {
 		ConnCount:     info.ConnCount,
 		IdleConnCount: info.IdleConnCount,
 		QueueSize:     info.QueueSize,
-		m:             sync.RWMutex{},
+		DiscardCount:  0,
 	}
 }
 
@@ -57,16 +54,15 @@ func (r *PoolView) ForEach(_ func(p shard.ShardHostCtl) error) error {
 }
 
 func (r *PoolView) View() Statistics {
-	r.m.Lock()
-	defer r.m.Unlock()
 
 	return Statistics{
 		DB:                r.DB,
 		Usr:               r.Usr,
 		Hostname:          r.Host,
 		RouterName:        r.Router,
-		UsedConnections:   int(r.ConnCount),
-		IdleConnections:   int(r.IdleConnCount),
-		QueueResidualSize: int(r.QueueSize),
+		UsedConnections:   r.ConnCount,
+		IdleConnections:   r.IdleConnCount,
+		QueueResidualSize: r.QueueSize,
+		DiscardCount:      r.DiscardCount,
 	}
 }
