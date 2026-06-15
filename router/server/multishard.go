@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -305,6 +307,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	case InitialState:
 
 		m.dataRowCnt = 0
+		modifyCnt := int64(0)
+		var anyCCTag []byte
 
 		m.copyBuf = nil
 		var saveRd *pgproto3.RowDescription
@@ -364,7 +368,25 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					saveCopyOut = retMsg
 				case *pgproto3.CommandComplete:
 					m.states[i] = ShardCCState
-					saveCC = retMsg //
+					saveCC = retMsg
+
+					if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "UPDATE"); ok {
+						cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+						if err != nil {
+							return nil, 0, err
+						}
+						modifyCnt += cnt
+						anyCCTag = []byte("UPDATE")
+					} else {
+						if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "DELETE"); ok {
+							cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+							if err != nil {
+								return nil, 0, err
+							}
+							modifyCnt += cnt
+						}
+						anyCCTag = []byte("DELETE")
+					}
 				case *pgproto3.RowDescription:
 					m.states[i] = DatarowState
 					saveRd = retMsg // all should be same
@@ -402,6 +424,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				}
 				break
 			}
+		}
+
+		if modifyCnt != 0 {
+			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
+			saveCC.CommandTag = anyCCTag
 		}
 
 		if saveCC != nil {
@@ -465,6 +492,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			case *pgproto3.CommandComplete:
 				//
 				anyCCTag = mTpd.CommandTag
+
 				m.states[i] = ShardCCState
 			case *pgproto3.ReadyForQuery:
 				m.states[i] = ErrorState
@@ -480,6 +508,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		if m.dataRowCnt != 0 {
 			anyCCTag = fmt.Appendf(nil, "SELECT %d", m.dataRowCnt)
 		}
+
 		return &pgproto3.CommandComplete{
 			CommandTag: anyCCTag,
 		}, 0, nil
