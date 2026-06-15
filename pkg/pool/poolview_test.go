@@ -26,9 +26,9 @@ func TestPoolViewThreading(t *testing.T) {
 				assert.Equal("db", statistics.DB)
 				assert.Equal("usr", statistics.Usr)
 				assert.Equal("host", statistics.Hostname)
-				assert.Equal(1, statistics.UsedConnections)
-				assert.Equal(2, statistics.IdleConnections)
-				assert.Equal(3, statistics.QueueResidualSize)
+				assert.Equal(int64(1), statistics.UsedConnections)
+				assert.Equal(int64(2), statistics.IdleConnections)
+				assert.Equal(int64(3), statistics.QueueResidualSize)
 			}
 		}()
 	}
