@@ -80,7 +80,8 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 		case <-ticker.C:
 			s.recheckFailedHosts()
 			n := time.Now()
-			s.ForEach(func(sh shard.ShardHostCtl) error {
+			/* We do not expect any erros and neither we care. */
+			_ = s.ForEach(func(sh shard.ShardHostCtl) error {
 				serverLifetime := sh.ServerLifetime()
 				if serverLifetime != 0 && n.Sub(sh.CreatedAt()) > serverLifetime {
 					spqrlog.Zero.Info().Dur("lifetime", serverLifetime).Uint("id", sh.ID()).Str("hostname", sh.InstanceHostname()).Msg("marking connection stale because of lifetime exceeded.")
