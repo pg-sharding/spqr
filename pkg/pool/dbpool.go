@@ -80,7 +80,7 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 		case <-ticker.C:
 			s.recheckFailedHosts()
 			n := time.Now()
-			/* We do not expect any erros and neither we care. */
+			/* We do not expect any errors and neither we care. */
 			_ = s.ForEach(func(sh shard.ShardHostCtl) error {
 				serverLifetime := sh.ServerLifetime()
 				if serverLifetime != 0 && n.Sub(sh.CreatedAt()) > serverLifetime {
