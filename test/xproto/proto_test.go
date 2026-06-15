@@ -1610,7 +1610,7 @@ func TestDoubleBegin(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
-func TestMshardUpdateCC(t *testing.T) {
+func TestMultiShardUpdateCC(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
