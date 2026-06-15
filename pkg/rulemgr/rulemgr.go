@@ -70,6 +70,7 @@ func (F *RulesMgrImpl) Reload(frules []*config.FrontendRule, brules []*config.Ba
 				ConnectionLimit:   defaultBE.ConnectionLimit,
 				ConnectionRetries: defaultBE.ConnectionRetries,
 				ConnectionTimeout: defaultBE.ConnectionTimeout,
+				ServerLifetime:    defaultBE.ServerLifetime,
 				KeepAlive:         defaultBE.KeepAlive,
 				TCPUserTimeout:    defaultBE.TCPUserTimeout,
 			}
@@ -178,6 +179,7 @@ func NewMgr(frules []*config.FrontendRule, brules []*config.BackendRule) RulesMg
 					ConnectionLimit:   dbr.ConnectionLimit,
 					ConnectionRetries: dbr.ConnectionRetries,
 					ConnectionTimeout: dbr.ConnectionTimeout,
+					ServerLifetime:    dbr.ServerLifetime,
 				}
 			},
 		},
