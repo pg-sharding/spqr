@@ -1627,6 +1627,9 @@ func TestMultiShardUpdateCC(t *testing.T) {
 					String: "BEGIN",
 				},
 				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+				&pgproto3.Query{
 					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1'), (12, 12, 'test12')",
 				},
 				&pgproto3.Query{
@@ -1642,6 +1645,12 @@ func TestMultiShardUpdateCC(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
