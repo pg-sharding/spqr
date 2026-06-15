@@ -1609,3 +1609,73 @@ func TestDoubleBegin(t *testing.T) {
 
 	protoTestRunner(t, frontend, tt)
 }
+
+func TestMshardUpdateCC(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			SkipCheckCommandTag: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1'), (12, 12, 'test12')",
+				},
+				&pgproto3.Query{
+					String: "UPDATE test_3col_table SET ff = 't1' WHERE j = 1",
+				},
+				&pgproto3.Query{
+					String: "UPDATE test_3col_table SET ff = 't1' WHERE j = 12",
+				},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
