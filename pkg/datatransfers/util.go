@@ -106,5 +106,8 @@ func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {
 	}
 	connConfig.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
 	connConfig.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
+	if config.CoordinatorConfig().DataMoveDisableIdleInTxTimeout {
+		connConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "0"
+	}
 	return pgx.ConnectConfig(ctx, connConfig)
 }
