@@ -50,6 +50,7 @@ type ShardHostCtl interface {
 	InstanceHostname() string
 
 	CreatedAt() time.Time
+	ServerLifetime() time.Duration
 
 	Pid() uint32
 	Usr() string
@@ -63,8 +64,6 @@ type ShardHostCtl interface {
 	MarkStale()
 	IsStale() bool
 	Cancel() error
-
-	BootstrapTime() time.Time
 
 	ListPreparedStatements() []PreparedStatementsMgrDescriptor
 }

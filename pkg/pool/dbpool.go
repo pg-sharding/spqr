@@ -47,8 +47,6 @@ type DBPool struct {
 
 	recheckTCP bool
 
-	ServerLifetime time.Duration
-
 	// Background health checking
 	healthCheckCtx    context.Context
 	healthCheckCancel context.CancelFunc
@@ -83,7 +81,9 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 			s.recheckFailedHosts()
 			n := time.Now()
 			s.ForEach(func(sh shard.ShardHostCtl) error {
-				if s.ServerLifetime != 0 && n.Sub(sh.BootstrapTime()) > s.ServerLifetime {
+				serverLifetime := sh.ServerLifetime()
+				if serverLifetime != 0 && n.Sub(sh.CreatedAt()) > serverLifetime {
+					spqrlog.Zero.Info().Dur("lifetime", serverLifetime).Uint("id", sh.ID()).Str("hostname", sh.InstanceHostname()).Msg("marking connection stale because of lifetime exceeded.")
 					sh.MarkStale()
 				}
 				return nil
@@ -700,6 +700,7 @@ func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, 
 		PreferAZ:          preferAZ,
 		AcquireRetryCount: config.ValueOrDefaultInt(config.RouterConfig().DbpoolAcquireRetryCount, DefaultAcquireRetryCount),
 		recheckTCP:/* default is false */ config.RouterConfig().DefaultRecheckTCPAliveness,
+
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolDeadCheckInterval, DefaultDeadCheckInterval),
 	}
