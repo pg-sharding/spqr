@@ -249,7 +249,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail(fmt.Sprintf("%T is not yet supported", stmt))
 	}
 }
 
