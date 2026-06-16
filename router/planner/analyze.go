@@ -545,8 +545,20 @@ func AnalyzeQueryV1(
 					for _, c := range stmt.SetClause {
 						switch cc := c.(type) {
 						case *lyx.ResTarget:
-							if slices.Contains(cols, cc.Name) {
-								rm.IsSplitUpdate = true
+							switch targ := cc.Value.(type) {
+							case *lyx.ColumnRef:
+
+								// set i = i case is OK.
+								if targ.ColName != cc.Name {
+									if slices.Contains(cols, cc.Name) {
+										rm.IsSplitUpdate = true
+									}
+								}
+							default:
+
+								if slices.Contains(cols, cc.Name) {
+									rm.IsSplitUpdate = true
+								}
 							}
 						default:
 							return rerrors.ErrComplexQuery

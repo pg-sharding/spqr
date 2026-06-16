@@ -45,6 +45,16 @@ SELECT * FROM r /* __spqr__execute_on: sh4 */;
 
 UPDATE r SET i = 401 WHERE i = 10;
 
+UPDATE r SET i = i WHERE i = 10;
+UPDATE r SET i = j WHERE i = 10;
+UPDATE r SET i = i + 1 WHERE i = 10;
+
+SET __spqr__allow_split_update TO off;
+
+UPDATE r SET i = i WHERE i = 10;
+UPDATE r SET i = j WHERE i = 10;
+UPDATE r SET i = i + 1 WHERE i = 10;
+
 SELECT * FROM r /* __spqr__execute_on: sh1 */;
 SELECT * FROM r /* __spqr__execute_on: sh4 */;
 
