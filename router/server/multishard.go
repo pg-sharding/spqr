@@ -384,8 +384,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 								return nil, 0, err
 							}
 							modifyCnt += cnt
+							anyCCTag = []byte("DELETE")
 						}
-						anyCCTag = []byte("DELETE")
 					}
 				case *pgproto3.RowDescription:
 					m.states[i] = DatarowState
@@ -509,8 +509,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 							return nil, 0, err
 						}
 						modifyCnt += cnt
+						anyCCTag = []byte("DELETE")
 					}
-					anyCCTag = []byte("DELETE")
 				}
 
 				m.states[i] = ShardCCState
