@@ -736,6 +736,14 @@ func (qr *ProxyQrouter) planQueryV1(
 	return nil, nil
 }
 
+func (qr *ProxyQrouter) CatalogDispatchPlan(seed int) *plan.ShardDispatchPlan {
+	rs := qr.DataShardsRoutes()
+
+	return &plan.ShardDispatchPlan{
+		ExecTarget: rs[seed%len(rs)],
+	}
+}
+
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -836,7 +844,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 
 		if onlyCatalog && anyCatalog {
-			return &plan.RandomDispatchPlan{}, nil
+			return qr.CatalogDispatchPlan(rm.SPH.GetCatalogSeed()), nil
 		}
 		if hasInfSchema && hasOtherSchema {
 			return nil, rerrors.ErrInformationSchemaCombinedQuery
@@ -1668,7 +1676,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return p, nil
 	}
 
-	utilityPlan, err := planner.PlanUtility(ctx, rm, rm.Stmt, qr.cfg.ForbidDirectShardQueries)
+	utilityPlan, err := planner.PlanUtility(ctx, rm, rm.Stmt, qr.cfg.ForbidDirectShardQueries || qr.cfg.UseSPQRGuard)
 
 	if err != nil {
 		return nil, err

@@ -482,6 +482,20 @@ func (mr *MockRouterClientMockRecorder) GetCancelPid() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCancelPid", reflect.TypeOf((*MockRouterClient)(nil).GetCancelPid))
 }
 
+// GetCatalogSeed mocks base method.
+func (m *MockRouterClient) GetCatalogSeed() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCatalogSeed")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetCatalogSeed indicates an expected call of GetCatalogSeed.
+func (mr *MockRouterClientMockRecorder) GetCatalogSeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCatalogSeed", reflect.TypeOf((*MockRouterClient)(nil).GetCatalogSeed))
+}
+
 // GetTimeData mocks base method.
 func (m *MockRouterClient) GetTimeData() *statistics.StartTimes {
 	m.ctrl.T.Helper()
@@ -1328,6 +1342,18 @@ func (m *MockRouterClient) SetScatterQuery(val bool) {
 func (mr *MockRouterClientMockRecorder) SetScatterQuery(val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).SetScatterQuery), val)
+}
+
+// SetSeed mocks base method.
+func (m *MockRouterClient) SetSeed(arg0 int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetSeed", arg0)
+}
+
+// SetSeed indicates an expected call of SetSeed.
+func (mr *MockRouterClientMockRecorder) SetSeed(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockRouterClient)(nil).SetSeed), arg0)
 }
 
 // SetShardingKey mocks base method.

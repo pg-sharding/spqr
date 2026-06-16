@@ -29,9 +29,10 @@ type Statistics struct {
 	Usr               string
 	Hostname          string
 	RouterName        string
-	UsedConnections   int
-	IdleConnections   int
-	QueueResidualSize int
+	UsedConnections   int64
+	IdleConnections   int64
+	QueueResidualSize int64
+	DiscardCount      int64
 }
 
 /* dedicated host connection pool */

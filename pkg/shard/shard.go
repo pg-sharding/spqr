@@ -50,6 +50,7 @@ type ShardHostCtl interface {
 	InstanceHostname() string
 
 	CreatedAt() time.Time
+	ServerLifetime() time.Duration
 
 	Pid() uint32
 	Usr() string

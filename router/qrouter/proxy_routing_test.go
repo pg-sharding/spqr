@@ -170,14 +170,18 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "SELECT * FROM pg_catalog.pg_type",
-			exp:   &plan.RandomDispatchPlan{},
-			err:   nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 
 		{
 			query: "SELECT * FROM pg_class",
-			exp:   &plan.RandomDispatchPlan{},
-			err:   nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 		{
 			query: `SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'people' AND table_type = 'BASE TABLE'`,
@@ -191,6 +195,7 @@ func TestMultiShardRouting(t *testing.T) {
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetPreferredEngine("", "")
+		dh.SetSeed(67)
 		stmt := parserRes[0]
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
@@ -306,6 +311,7 @@ func TestCreateTable(t *testing.T) {
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetPreferredEngine("", "")
+		dh.SetSeed(67)
 		stmt := parserRes[0]
 
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
@@ -2680,8 +2686,10 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT current_schema;",
@@ -2821,8 +2829,10 @@ SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.n
 LIMIT 1000
 `,
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 
 		{
@@ -2843,6 +2853,7 @@ LIMIT 1000
 
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+		dh.SetSeed(67)
 
 		stmt := parserRes[0]
 

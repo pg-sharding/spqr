@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -923,6 +924,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("gid"),
 		}
+
+		sort.Slice(gids, func(i, j int) bool {
+			return gids[i] < gids[j]
+		})
+
 		for _, gid := range gids {
 			tts.WriteDataRow(gid)
 		}
@@ -1192,6 +1198,6 @@ func (p *PlannerV2) PlanDistributedQuery(
 			return nil, rerrors.ErrComplexQuery
 		}
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail(fmt.Sprintf("%T is not yet supported in planner V2", stmt))
 	}
 }

@@ -34,7 +34,9 @@ type Coordinator struct {
 	DataMoveBoundBatchSize    int64  `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
 	DataMoveQueryLogLevel     string `json:"data_move_query_log_level" toml:"data_move_query_log_level" yaml:"data_move_query_log_level"`
 	DataMoveAwaitPIDException string `json:"data_move_await_pid_exception" toml:"data_move_await_pid_exception" yaml:"data_move_await_pid_exception"`
+	DataMoveIdleInTxTimeout   string `json:"data_move_idle_in_tx_timeout" toml:"data_move_idle_in_tx_timeout" yaml:"data_move_idle_in_tx_timeout"`
 
+	UseSPQRGuard             bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 
 	// gRPC keepalive settings for router connections
@@ -51,6 +53,7 @@ func (c *Coordinator) ApplyDefaults() {
 	c.DataMoveBoundBatchSize = 10_000
 	c.DataMoveQueryLogLevel = "debug"
 	c.DataMoveAwaitPIDException = "true"
+	c.DataMoveIdleInTxTimeout = "0"
 }
 
 func (c *Coordinator) PostProcess() error {

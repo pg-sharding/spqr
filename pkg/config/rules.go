@@ -9,6 +9,8 @@ type BackendRule struct {
 	DefaultAuthRule *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
 	PoolDefault     bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 
+	ServerLifetime time.Duration `json:"server_lifetime" yaml:"server_lifetime" toml:"server_lifetime"`
+
 	ConnectionLimit   int           `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
 	ConnectionRetries int           `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
 	ConnectionTimeout time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`

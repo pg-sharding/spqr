@@ -2,6 +2,8 @@ package session
 
 import (
 	"fmt"
+	"math"
+	"math/rand/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -72,6 +74,8 @@ type SimpleSessionParamHandler struct {
 
 	activeParamSet map[string]string
 
+	seed int
+
 	startupParameters map[string]string
 
 	savepointTxCounter map[string]int
@@ -92,6 +96,16 @@ type SimpleSessionParamHandler struct {
 	maintainParams     bool
 
 	nextGID string
+}
+
+// GetCatalogSeed implements [SessionParamsHolder].
+func (cl *SimpleSessionParamHandler) GetCatalogSeed() int {
+	return cl.seed
+}
+
+// SetSeed implements [SessionParamsHolder].
+func (cl *SimpleSessionParamHandler) SetSeed(s int) {
+	cl.seed = s
 }
 
 // NextGID implements [SessionParamsHolder].
@@ -525,8 +539,12 @@ func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
 }
 
 func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
+	seed := rand.IntN(math.MaxInt)
+
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
+
+		seed: seed,
 
 		startupParameters: map[string]string{},
 

@@ -383,6 +383,20 @@ func (mr *MockClientInfoMockRecorder) Flush() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Flush", reflect.TypeOf((*MockClientInfo)(nil).Flush))
 }
 
+// GetCatalogSeed mocks base method.
+func (m *MockClientInfo) GetCatalogSeed() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCatalogSeed")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetCatalogSeed indicates an expected call of GetCatalogSeed.
+func (mr *MockClientInfoMockRecorder) GetCatalogSeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCatalogSeed", reflect.TypeOf((*MockClientInfo)(nil).GetCatalogSeed))
+}
+
 // GetTimeData mocks base method.
 func (m *MockClientInfo) GetTimeData() *statistics.StartTimes {
 	m.ctrl.T.Helper()
@@ -1103,6 +1117,18 @@ func (m *MockClientInfo) SetScatterQuery(val bool) {
 func (mr *MockClientInfoMockRecorder) SetScatterQuery(val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockClientInfo)(nil).SetScatterQuery), val)
+}
+
+// SetSeed mocks base method.
+func (m *MockClientInfo) SetSeed(arg0 int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetSeed", arg0)
+}
+
+// SetSeed indicates an expected call of SetSeed.
+func (mr *MockClientInfoMockRecorder) SetSeed(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockClientInfo)(nil).SetSeed), arg0)
 }
 
 // SetShardingKey mocks base method.

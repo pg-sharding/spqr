@@ -79,6 +79,16 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 			return
 		case <-ticker.C:
 			s.recheckFailedHosts()
+			n := time.Now()
+			/* We do not expect any errors and neither we care. */
+			_ = s.ForEach(func(sh shard.ShardHostCtl) error {
+				serverLifetime := sh.ServerLifetime()
+				if serverLifetime != 0 && n.Sub(sh.CreatedAt()) > serverLifetime {
+					spqrlog.Zero.Info().Dur("lifetime", serverLifetime).Uint("id", sh.ID()).Str("hostname", sh.InstanceHostname()).Msg("marking connection stale because of lifetime exceeded.")
+					sh.MarkStale()
+				}
+				return nil
+			})
 		}
 	}
 }
@@ -598,6 +608,7 @@ func (s *DBPool) Put(sh shard.ShardHostInstance) error {
 			Uint("shard", spqrlog.GetPointer(sh)).
 			Int64("sync", sh.Sync()).
 			Msg("discarding unsync connection")
+
 		return s.pool.Discard(sh)
 	}
 	if sh.TxStatus() != txstatus.TXIDLE {
@@ -605,6 +616,7 @@ func (s *DBPool) Put(sh shard.ShardHostInstance) error {
 			Uint("shard", spqrlog.GetPointer(sh)).
 			Str("txstatus", sh.TxStatus().String()).
 			Msg("discarding non-idle connection")
+
 		return s.pool.Discard(sh)
 	}
 	return s.pool.Put(sh)
@@ -689,6 +701,7 @@ func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, 
 		PreferAZ:          preferAZ,
 		AcquireRetryCount: config.ValueOrDefaultInt(config.RouterConfig().DbpoolAcquireRetryCount, DefaultAcquireRetryCount),
 		recheckTCP:/* default is false */ config.RouterConfig().DefaultRecheckTCPAliveness,
+
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolDeadCheckInterval, DefaultDeadCheckInterval),
 	}
