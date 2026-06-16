@@ -426,7 +426,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			}
 		}
 
-		if modifyCnt != 0 {
+		if anyCCTag != nil {
 			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
 			saveCC.CommandTag = anyCCTag
 		}
