@@ -527,7 +527,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		m.multistate = CommandCompleteState
 		if m.dataRowCnt != 0 {
 			anyCCTag = fmt.Appendf(nil, "SELECT %d", m.dataRowCnt)
-		} else if modifyCnt != 0 {
+		} else if anyCCTag != nil {
 			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
 		}
 
