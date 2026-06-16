@@ -38,6 +38,10 @@ UPDATE r SET i = 201 WHERE i = 110;
 SELECT * FROM r /* __spqr__execute_on: sh2 */;
 SELECT * FROM r /* __spqr__execute_on: sh3 */;
 
+-- some errors
+UPDATE r SET i = j WHERE i = 10;
+UPDATE r SET i = i + 1 WHERE i = 10;
+
 BEGIN;
 
 SELECT * FROM r /* __spqr__execute_on: sh1 */;
@@ -46,20 +50,19 @@ SELECT * FROM r /* __spqr__execute_on: sh4 */;
 UPDATE r SET i = 401 WHERE i = 10;
 
 UPDATE r SET i = i WHERE i = 10;
-UPDATE r SET i = j WHERE i = 10;
-UPDATE r SET i = i + 1 WHERE i = 10;
 
 SET __spqr__allow_split_update TO off;
 
 UPDATE r SET i = i WHERE i = 10;
-UPDATE r SET i = j WHERE i = 10;
-UPDATE r SET i = i + 1 WHERE i = 10;
 
 SELECT * FROM r /* __spqr__execute_on: sh1 */;
 SELECT * FROM r /* __spqr__execute_on: sh4 */;
 
 COMMIT;
 
+-- same with __spqr__allow_split_update = off
+UPDATE r SET i = j WHERE i = 10;
+UPDATE r SET i = i + 1 WHERE i = 10;
 
 DROP TABLE r;
 

@@ -1198,6 +1198,6 @@ func (p *PlannerV2) PlanDistributedQuery(
 			return nil, rerrors.ErrComplexQuery
 		}
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail(fmt.Sprintf("%T is not yet supported in planner V2", stmt))
 	}
 }
