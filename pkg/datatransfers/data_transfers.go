@@ -266,7 +266,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 					return fmt.Errorf("could not delete data: error executing DELETE FROM: %s", err)
 				}
 			}
-			if config.CoordinatorConfig().ForbidDirectShardQueries {
+			if config.CoordinatorConfig().UseSPQRGuard {
 				if _, err := ftx.Exec(ctx, DeleteKeyRangeMeta, krg.ID); err != nil {
 					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not update key range metadata on shard: %s", err)
 				}
@@ -660,7 +660,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}
-		cols, err := getTableColumns(ctx, tx, *rel.Relation)
+		cols, err := GetTableColumns(ctx, tx, rel.Relation)
 		if err != nil {
 			return err
 		}
@@ -676,7 +676,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
 		}
 	}
-	if config.CoordinatorConfig().ForbidDirectShardQueries {
+	if config.CoordinatorConfig().UseSPQRGuard {
 		if _, err := tx.Exec(ctx, InsertKeyRangeMeta, krg.ID); err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not update key range metadata on shard: %s", err)
 		}
@@ -754,7 +754,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return fmt.Errorf("could not start transaction to copy reference table data: %s", err)
 	}
 
-	cols, err := getTableColumns(ctx, tx, *rel.RelationName)
+	cols, err := GetTableColumns(ctx, tx, rel.RelationName)
 	if err != nil {
 		return err
 	}
@@ -774,7 +774,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	return nil
 }
 
-func getTableColumns(ctx context.Context, db Queryable, relationFQN rfqn.RelationFQN) ([]string, error) {
+func GetTableColumns(ctx context.Context, db Queryable, relationFQN *rfqn.RelationFQN) ([]string, error) {
 	cols := make([]string, 0)
 	colRows, err := db.Query(ctx, `
 	SELECT

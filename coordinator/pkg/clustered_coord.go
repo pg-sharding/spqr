@@ -604,7 +604,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		if err == nil {
 			break
 		}
-		spqrlog.Zero.Log().Err(err).Msg("error getting qdb lock, retrying")
+		spqrlog.Zero.Warn().Err(err).Msg("error getting qdb lock, retrying")
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
 	}
@@ -1734,6 +1734,8 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 			case qdb.ColumnTypeVarchar:
 				bound[i] = []byte(values[i])
 			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
+			case qdb.ColumnTypeUUIDHashed:
 				fallthrough
 			case qdb.ColumnTypeUinteger:
 				number, err := strconv.ParseUint(values[i], 10, 64)

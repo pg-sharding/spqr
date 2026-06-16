@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -583,6 +584,53 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	_, err = engine.GroupBy(ftts, cmd.GroupBy)
 
 	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
+}
+
+func TestReportErrorIncludesHintFromSpqrError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+
+	spErr := spqrerror.New(
+		spqrerror.SPQR_NO_DATASHARD,
+		"Shard \"shard2\" not found.",
+	).Hint("Run 'SHOW shards' to see all configured shards.")
+
+	gomock.InOrder(
+		ca.EXPECT().ReplyErrMsgPure(spErr),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(txstatus.TXIDLE),
+		}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	err := interactor.ReportError(spErr)
+	assert.NoError(t, err)
+}
+
+func TestReportErrorIncludesHintFromGrpcSpqrError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+
+	gomock.InOrder(
+		ca.EXPECT().
+			ReplyErrMsgPure(gomock.Any()).
+			DoAndReturn(func(err error) error {
+				var spErr *spqrerror.SpqrError
+				if assert.ErrorAs(t, err, &spErr) {
+					assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+					assert.Equal(t, "Shard \"shard2\" not found.", spErr.Error())
+					assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+				}
+				return nil
+			}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(txstatus.TXIDLE),
+		}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	err := interactor.ReportError(spqrerror.ToGrpcError(spqrerror.ShardNotFound("shard2")))
+	assert.NoError(t, err)
 }
 
 func TestKeyRangesSuccess(t *testing.T) {

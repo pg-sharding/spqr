@@ -4,6 +4,7 @@ Feature: LDAP auth test
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_ldap_frontend.yaml
+    COMPOSE_PROFILES=auth
     """
     Given cluster is up and running
     When I run command on host "router"
@@ -20,6 +21,7 @@ Feature: LDAP auth test
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_ldap_frontend.yaml
+    COMPOSE_PROFILES=auth
     """
     Given cluster is up and running
     Given host "ldapserver" is stopped
@@ -37,6 +39,7 @@ Feature: LDAP auth test
    Given cluster environment is
    """
    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_ldap_frontend.yaml
+   COMPOSE_PROFILES=auth
    """
    Given cluster is up and running
    When I run command on host "router"

@@ -11,3 +11,4 @@ frontend_rules:
       auth_method: ok
 
 forbid_direct_shard_queries: true
+use_spqrguard: true

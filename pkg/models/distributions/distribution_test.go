@@ -145,6 +145,7 @@ func TestHashableKeyChecks(t *testing.T) {
 	assert := assert.New(t)
 	distribution1Hashed := qdb.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
 	distribution2Hashed := qdb.NewDistribution("ds1", []string{qdb.ColumnTypeVarchar, qdb.ColumnTypeUinteger})
+	distributionUUIDHashed := qdb.NewDistribution("ds_uuid", []string{qdb.ColumnTypeUUIDHashed})
 	for i, tt := range []struct {
 		distribution *qdb.Distribution
 		rel          *distributions.DistributedRelation
@@ -201,6 +202,30 @@ func TestHashableKeyChecks(t *testing.T) {
 				},
 			},
 			err: fmt.Errorf("type varchar of distribution ds1 does not support hashfunction to attach relation public.r1"),
+		},
+		{
+			distribution: distributionUUIDHashed,
+			rel: &distributions.DistributedRelation{
+				Relation: &rfqn.RelationFQN{
+					RelationName: "r1",
+				},
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "a", HashFunction: "murmur"},
+				},
+			},
+			err: nil,
+		},
+		{
+			distribution: distributionUUIDHashed,
+			rel: &distributions.DistributedRelation{
+				Relation: &rfqn.RelationFQN{
+					RelationName: "r1",
+				},
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "a"},
+				},
+			},
+			err: fmt.Errorf("hashed type uuid hashed of distribution ds_uuid needs hashfunction to attach r1"),
 		},
 	} {
 		actual := distributions.CheckRelationKeys(tt.distribution, tt.rel)

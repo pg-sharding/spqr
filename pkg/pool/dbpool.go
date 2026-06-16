@@ -598,6 +598,7 @@ func (s *DBPool) Put(sh shard.ShardHostInstance) error {
 			Uint("shard", spqrlog.GetPointer(sh)).
 			Int64("sync", sh.Sync()).
 			Msg("discarding unsync connection")
+
 		return s.pool.Discard(sh)
 	}
 	if sh.TxStatus() != txstatus.TXIDLE {
@@ -605,6 +606,7 @@ func (s *DBPool) Put(sh shard.ShardHostInstance) error {
 			Uint("shard", spqrlog.GetPointer(sh)).
 			Str("txstatus", sh.TxStatus().String()).
 			Msg("discarding non-idle connection")
+
 		return s.pool.Discard(sh)
 	}
 	return s.pool.Put(sh)

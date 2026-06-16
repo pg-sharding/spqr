@@ -1,9 +1,11 @@
 package config
 
 import (
+	"sync"
 	"time"
 )
 
+var cfgMu = sync.Mutex{}
 var cfgCoordinator Coordinator
 
 type Coordinator struct {
@@ -33,6 +35,7 @@ type Coordinator struct {
 	DataMoveQueryLogLevel     string `json:"data_move_query_log_level" toml:"data_move_query_log_level" yaml:"data_move_query_log_level"`
 	DataMoveAwaitPIDException string `json:"data_move_await_pid_exception" toml:"data_move_await_pid_exception" yaml:"data_move_await_pid_exception"`
 
+	UseSPQRGuard             bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 
 	// gRPC keepalive settings for router connections
@@ -74,6 +77,8 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
+	cfgMu.Lock()
+	defer cfgMu.Unlock()
 	cfgCoordinator = *c
 	return configStr, nil
 }

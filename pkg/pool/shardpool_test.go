@@ -44,8 +44,8 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 
 	statistics := shp.View()
 
-	assert.Equal(1, statistics.QueueResidualSize)
-	assert.Equal(0, statistics.IdleConnections)
+	assert.Equal(int64(1), statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
 
 	conn, err := shp.Connection(10, kr.ShardKey{
 		Name: "sh1",
@@ -55,14 +55,14 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	assert.Equal(shardconn, conn)
 
 	statistics = shp.View()
-	assert.Equal(0, statistics.IdleConnections)
-	assert.Equal(0, statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
+	assert.Equal(int64(0), statistics.QueueResidualSize)
 
 	assert.NoError(shp.Put(shardconn))
 
 	statistics = shp.View()
-	assert.Equal(1, statistics.QueueResidualSize)
-	assert.Equal(1, statistics.IdleConnections)
+	assert.Equal(int64(1), statistics.QueueResidualSize)
+	assert.Equal(int64(1), statistics.IdleConnections)
 }
 
 // TestShardPoolConnectionAcquireDiscard tests the acquisition and discarding of connections in the ShardPool.
@@ -92,8 +92,8 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	statistics := shp.View()
 
-	assert.Equal(1, statistics.QueueResidualSize)
-	assert.Equal(0, statistics.IdleConnections)
+	assert.Equal(int64(1), statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
 
 	conn, err := shp.Connection(10, kr.ShardKey{
 		Name: "sh1",
@@ -103,14 +103,14 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	assert.Equal(shardconn, conn)
 
 	statistics = shp.View()
-	assert.Equal(0, statistics.IdleConnections)
-	assert.Equal(0, statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
+	assert.Equal(int64(0), statistics.QueueResidualSize)
 
 	assert.NoError(shp.Discard(shardconn))
 
 	statistics = shp.View()
-	assert.Equal(1, statistics.QueueResidualSize)
-	assert.Equal(0, statistics.IdleConnections)
+	assert.Equal(int64(1), statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
 }
 
 // TestShardPoolAllocFnError tests the behavior of the ShardPool when the allocation function returns an error.
@@ -131,8 +131,8 @@ func TestShardPoolAllocFnError(t *testing.T) {
 
 	statistics := shp.View()
 
-	assert.Equal(1, statistics.QueueResidualSize)
-	assert.Equal(0, statistics.IdleConnections)
+	assert.Equal(int64(1), statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
 
 	conn, err := shp.Connection(10, kr.ShardKey{
 		Name: "sh1",
@@ -143,8 +143,8 @@ func TestShardPoolAllocFnError(t *testing.T) {
 
 	statistics = shp.View()
 
-	assert.Equal(0, statistics.IdleConnections)
-	assert.Equal(1, statistics.QueueResidualSize)
+	assert.Equal(int64(0), statistics.IdleConnections)
+	assert.Equal(int64(1), statistics.QueueResidualSize)
 }
 
 // TestShardPoolConnectionAcquireLimit tests the connection acquisition limit of the ShardPool.
@@ -223,13 +223,12 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 				// imitate use
 				time.Sleep(time.Duration(1+rand.Uint32()%50) * time.Millisecond)
 
-				mu.Lock()
 				cntExec.Add(1)
-
-				used[conn.ID()] = false
 
 				_ = shp.Put(conn)
 
+				mu.Lock()
+				used[conn.ID()] = false
 				mu.Unlock()
 			}
 		}()

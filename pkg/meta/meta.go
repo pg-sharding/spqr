@@ -604,16 +604,10 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard with id %s already exists", stmt.Id)
 		}
 
+		err = spqrerror.CleanGrpcError(err)
 		var spErr *spqrerror.SpqrError
-		if errors.As(err, &spErr) {
-			if spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
-				return nil, err
-			}
-		} else {
-			cleanErr := spqrerror.CleanGrpcError(err)
-			if !strings.Contains(cleanErr.Error(), "unknown shard") {
-				return nil, cleanErr
-			}
+		if !errors.As(err, &spErr) || spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
+			return nil, err
 		}
 
 		options, err := topology.OptionsFromSQL(stmt.Options)
@@ -1335,6 +1329,8 @@ func ProcMetadataCommand(ctx context.Context,
 			tts.WriteDataRow(stmt.RelationSelector.String(), sh)
 		}
 		return tts, nil
+	case *spqrparser.Rename:
+		return processRename(ctx, stmt, mgr)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -2023,7 +2019,8 @@ func processShowInner(ctx context.Context,
 				"pool_host",
 				"used_connections",
 				"idle_connections",
-				"queue_residual_size"),
+				"queue_residual_size",
+				"discard_count"),
 		}
 
 		if err := ci.ForEachPool(func(p pool.Pool) error {
@@ -2038,7 +2035,9 @@ func processShowInner(ctx context.Context,
 				statistics.Hostname,
 				fmt.Sprintf("%d", statistics.UsedConnections),
 				fmt.Sprintf("%d", statistics.IdleConnections),
-				fmt.Sprintf("%d", statistics.QueueResidualSize))
+				fmt.Sprintf("%d", statistics.QueueResidualSize),
+				fmt.Sprintf("%d", statistics.DiscardCount),
+			)
 			return nil
 		}); err != nil {
 			return nil, err
@@ -2356,6 +2355,26 @@ func processAlterShard(ctx context.Context,
 		}
 
 		return tts, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+}
+
+func processRename(ctx context.Context, astmt *spqrparser.Rename, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.Element.(type) {
+	case *spqrparser.KeyRangeSelector:
+		if err := mngr.RenameKeyRange(ctx, stmt.KeyRangeID, astmt.NewID); err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("key_range_id", "new_id"),
+			Raw: [][][]byte{
+				{
+					[]byte(stmt.KeyRangeID),
+					[]byte(astmt.NewID),
+				},
+			},
+		}, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

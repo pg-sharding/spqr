@@ -109,6 +109,7 @@ deparsed
 deparses
 deserunt
 diffs
+dispatchable
 distrib
 distrr
 distrs
@@ -142,6 +143,7 @@ enim
 epn
 errcounter
 errdefs
+errdetails
 errtype
 eshkere
 etcdctl
@@ -155,6 +157,7 @@ FAFBFF
 fdw
 feda
 FFCCAC
+FFFF
 ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
@@ -173,6 +176,7 @@ frules
 ftts
 fugiat
 gcflags
+genproto
 getconn
 gettime
 gitmodules
@@ -271,6 +275,7 @@ krsqb
 krsqdb
 krsql
 ktadd
+KVs
 labore
 laboriosam
 laboris
@@ -298,8 +303,8 @@ lol
 lowlevel
 lsb
 lval
-maxuint
 maxrows
+maxuint
 mcol
 mdblocales
 mempg
@@ -333,6 +338,7 @@ multierr
 multishard
 murmurhash
 mydb
+mvccpb
 mylogs
 myuser
 myworkloadlog
@@ -389,6 +395,7 @@ pgdata
 PGDATABASE
 pgdg
 pgexec
+pgflush
 PGHOST
 pgi
 pgoption
@@ -398,7 +405,6 @@ PGQDB
 pgquery
 pgsharding
 PGSSLMODE
-pgflush
 pgsync
 PGUSER
 pgx
@@ -419,9 +425,9 @@ ppp
 pppp
 prepstatement
 privs
-promhttp
 procps
 proident
+promhttp
 protobuf
 protoc
 protovalidate
@@ -433,7 +439,6 @@ qdb
 QDBKR
 QDBRe
 QDBTx
-Qdocker
 qlogger
 qlogprovider
 qname
@@ -574,6 +579,7 @@ suscipit
 SVFOP
 SVGID
 syscache
+tablesample
 targ
 taskgroup
 taskmgr
@@ -674,6 +680,7 @@ xproto
 XQDB
 xtab
 xxerr
+xxhashuuid
 xxm
 xxmixed
 xxmixeduuid

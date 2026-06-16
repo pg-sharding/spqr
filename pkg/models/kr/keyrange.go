@@ -51,6 +51,8 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) error {
 		kr.LowerBound[attribInd] = n
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		n, _ := binary.Varint(raw)
 		kr.LowerBound[attribInd] = uint64(n)
@@ -74,6 +76,8 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 		n, _ := binary.Varint(raw)
 		kr.LowerBound[attribInd] = n
 	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
 		n, _ := binary.Uvarint(raw)
@@ -100,6 +104,8 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 		return raw
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		raw := hashfunction.EncodeUInt64(kr.LowerBound[attribInd].(uint64))
 		return raw
@@ -120,6 +126,8 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 	/* Is uint */
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		return fmt.Sprintf("%v", kr.LowerBound[attribInd])
 	default:
@@ -137,6 +145,11 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 		fallthrough
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = val
+	case qdb.ColumnTypeUUIDHashed:
+		if err := uuid.Validate(strings.ToLower(val)); err != nil {
+			return err
+		}
+		kr.LowerBound[attribInd] = strings.ToLower(val)
 	case qdb.ColumnTypeUinteger:
 		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
 		if err != nil {
@@ -226,6 +239,8 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
+			fallthrough
 		case qdb.ColumnTypeUinteger:
 			i1 := bound[i].(uint64)
 			i2 := key[i].(uint64)
@@ -267,6 +282,8 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 	for i := range len(bound) {
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
 			fallthrough
 		case qdb.ColumnTypeUinteger:
 			i1 := bound[i].(uint64)

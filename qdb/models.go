@@ -110,6 +110,7 @@ var (
 	ColumnTypeInteger           = "integer"
 	ColumnTypeUinteger          = "uinteger"
 	ColumnTypeUUID              = "uuid"
+	ColumnTypeUUIDHashed        = "uuid hashed"
 )
 
 type TypedColRef struct {
