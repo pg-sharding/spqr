@@ -172,7 +172,7 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 //
 // Returns:
 // - error: an error if the move operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange, icpCH icp.ICPContextHolder) error {
+func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
 	var krmv *qdb.KeyRange
 	var err error
 	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
