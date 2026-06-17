@@ -462,7 +462,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		return nil, 0, ErrMultiShardSyncBroken
 	case RunningState:
 		anyCCTag := []byte{}
-
+		ccRewrite := false
 		modifyCnt := int64(0)
 		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
@@ -501,6 +501,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 						return nil, 0, err
 					}
 					modifyCnt += cnt
+					ccRewrite = true
 					anyCCTag = []byte("UPDATE")
 				} else {
 					if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "DELETE"); ok {
@@ -509,6 +510,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 							return nil, 0, err
 						}
 						modifyCnt += cnt
+						ccRewrite = true
 						anyCCTag = []byte("DELETE")
 					}
 				}
@@ -527,7 +529,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		m.multistate = CommandCompleteState
 		if m.dataRowCnt != 0 {
 			anyCCTag = fmt.Appendf(nil, "SELECT %d", m.dataRowCnt)
-		} else if anyCCTag != nil {
+		} else if anyCCTag != nil && ccRewrite {
 			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
 		}
 
