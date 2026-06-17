@@ -348,7 +348,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -649,12 +649,12 @@ func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *proto
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false, nil)
 }
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait, nil)
 }
 
 // TODO: unit tests

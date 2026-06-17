@@ -996,7 +996,7 @@ func ProcMetadataCommand(ctx context.Context,
 	tstmt spqrparser.Statement,
 	mgr EntityMgr,
 	ci connmgr.ConnectionMgr,
-	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool) (*tupleslot.TupleTableSlot, error) {
+	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 
 	/* TODO: do not accept nil as rc here */
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
@@ -1102,7 +1102,7 @@ func ProcMetadataCommand(ctx context.Context,
 			KeyRangeID: stmt.KeyRangeID,
 		}
 
-		if err := mgr.Move(ctx, move); err != nil {
+		if err := mgr.Move(ctx, move, icpCH); err != nil {
 			return nil, err
 		}
 
@@ -1229,7 +1229,7 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr)
 	case *spqrparser.RedistributeKeyRange:
-		return processRedistribute(ctx, stmt, mgr)
+		return processRedistribute(ctx, stmt, mgr, icpCH)
 	case *spqrparser.Invalidate:
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1290,7 +1290,7 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		for id, taskGroup := range tgs {
-			if err := mgr.RetryMoveTaskGroup(ctx, id, stmt.NoWait); err != nil {
+			if err := mgr.RetryMoveTaskGroup(ctx, id, stmt.NoWait, icpCH); err != nil {
 				return nil, err
 			}
 
@@ -2258,7 +2258,7 @@ func processShowInner(ctx context.Context,
 // - error: An error if the operation encounters any issues.
 func processRedistribute(ctx context.Context,
 	stmt *spqrparser.RedistributeKeyRange,
-	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	mngr EntityMgr, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().
 		Str("key range id", stmt.KeyRangeID).
 		Str("destination shard id", stmt.DestShardID).
@@ -2280,7 +2280,7 @@ func processRedistribute(ctx context.Context,
 		Check:       stmt.Check,
 		Apply:       stmt.Apply,
 		NoWait:      stmt.NoWait,
-	}); err != nil {
+	}, icpCH); err != nil {
 		return nil, err
 	}
 

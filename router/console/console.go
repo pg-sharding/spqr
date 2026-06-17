@@ -139,7 +139,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
 	cli := clientinteractor.NewPSQLInteractor(rc)
-	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false)
+	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false, rc)
 	if err != nil {
 		return cli.ReportError(err)
 	}
