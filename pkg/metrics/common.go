@@ -110,12 +110,16 @@ func (s *DynamicSummary) Desc() *prometheus.Desc {
 
 func (s *DynamicSummary) Collect(ch chan<- prometheus.Metric) {
 	data := s.GetBuckets()
-	metric, _ := prometheus.NewConstSummary(
+	metric, err := prometheus.NewConstSummary(
 		s.Desc(),
 		s.GetCount(),
 		s.GetSum(),
 		data,
 	)
+	if err != nil {
+		ch <- prometheus.NewInvalidMetric(s.Desc(), err)
+		return
+	}
 	ch <- metric
 }
 

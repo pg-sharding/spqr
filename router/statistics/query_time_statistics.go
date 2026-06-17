@@ -16,6 +16,7 @@ type StatisticsType string
 const (
 	StatisticsTypeRouter = StatisticsType("router")
 	StatisticsTypeShard  = StatisticsType("shard")
+	TimePrecision        = 1_000
 )
 
 type StartTimes struct {
@@ -29,9 +30,9 @@ type Statistics struct {
 	RouterTime         map[uint]*tdigest.TDigest
 	ShardTime          map[uint]*tdigest.TDigest
 	RouterTimeTotal    *tdigest.TDigest
-	RouterTimeTotalSum float64
+	RouterTimeTotalSum int64
 	ShardTimeTotal     *tdigest.TDigest
-	ShardTimeTotalSum  float64
+	ShardTimeTotalSum  int64
 	TimeData           map[uint]*StartTimes
 	Quantiles          []float64
 	QuantilesStr       []string
@@ -72,7 +73,9 @@ func InitStatisticsStr(q []string) error {
 func initStatsCommon() {
 	QueryStatistics.NeedToCollectData = len(QueryStatistics.Quantiles) > 0
 	QueryStatistics.RouterTimeTotal, _ = tdigest.New()
+	atomic.StoreInt64(&QueryStatistics.RouterTimeTotalSum, 0)
 	QueryStatistics.ShardTimeTotal, _ = tdigest.New()
+	atomic.StoreInt64(&QueryStatistics.ShardTimeTotalSum, 0)
 }
 
 func GetQuantiles() *[]float64 {
@@ -92,15 +95,13 @@ func GetTimeQuantile(statType StatisticsType, q float64, h StatHolder) float64 {
 }
 
 func GetRouterTimeTotalSum() float64 {
-	QueryStatistics.lock.Lock()
-	defer QueryStatistics.lock.Unlock()
-	return QueryStatistics.RouterTimeTotalSum
+	res := float64(atomic.LoadInt64(&QueryStatistics.RouterTimeTotalSum)) / float64(TimePrecision)
+	return res
 }
 
 func GetShardTimeTotalSum() float64 {
-	QueryStatistics.lock.Lock()
-	defer QueryStatistics.lock.Unlock()
-	return QueryStatistics.ShardTimeTotalSum
+	res := float64(atomic.LoadInt64(&QueryStatistics.ShardTimeTotalSum)) / float64(TimePrecision)
+	return res
 }
 
 func GetRouterTimeTotalCount() uint64 {
@@ -166,7 +167,8 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 	}
 
 	if !clientST.RouterStart.IsZero() {
-		routerTime := float64(t.Sub(clientST.RouterStart).Microseconds()) / 1000
+		routerTimeRaw := t.Sub(clientST.RouterStart).Microseconds()
+		routerTime := float64(routerTimeRaw) / TimePrecision
 		err := clientH.Add(StatisticsTypeRouter, routerTime)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
@@ -175,11 +177,12 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
-		QueryStatistics.RouterTimeTotalSum += routerTime
+		atomic.AddInt64(&QueryStatistics.RouterTimeTotalSum, routerTimeRaw)
 		clientST.RouterStart = time.Time{}
 	}
 	if !clientST.ShardStart.IsZero() {
-		shardTime := float64(t.Sub(clientST.ShardStart).Microseconds()) / 1000
+		shardTimeRaw := t.Sub(clientST.ShardStart).Microseconds()
+		shardTime := float64(shardTimeRaw) / TimePrecision
 		err := clientH.Add(StatisticsTypeShard, shardTime)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
@@ -188,7 +191,7 @@ func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
-		QueryStatistics.ShardTimeTotalSum += shardTime
+		atomic.AddInt64(&QueryStatistics.ShardTimeTotalSum, shardTimeRaw)
 		clientST.ShardStart = time.Time{}
 	}
 }
