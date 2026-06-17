@@ -1682,6 +1682,76 @@ func TestMultiShardUpdateCC(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1')",
+				},
+
+				&pgproto3.Query{
+					String: "SELECT FROM test_3col_table;",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1')",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{},
+
+				&pgproto3.DataRow{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 
 	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
