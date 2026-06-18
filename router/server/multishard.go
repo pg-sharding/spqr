@@ -404,6 +404,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				case *pgproto3.NoticeResponse:
 					// thats ok
 					continue
+
 				case *pgproto3.ErrorResponse:
 					if m.multistate != InitialState {
 						return nil, 0, ErrMultiShardSyncBroken
@@ -463,6 +464,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	case RunningState:
 		anyCCTag := []byte{}
 		ccRewrite := false
+		ccSelect := false
 		modifyCnt := int64(0)
 		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
@@ -476,6 +478,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			}
 
 			msg, err := m.internalReceiveShard(i)
+
 			if err != nil {
 				spqrlog.Zero.Info().
 					Uint("shard", m.activeShards[i].ID()).
@@ -494,6 +497,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			case *pgproto3.CommandComplete:
 				//
 				anyCCTag = mTpd.CommandTag
+
+				ccSelect = strings.HasPrefix(string(mTpd.CommandTag), "SELECT")
 
 				if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "UPDATE"); ok {
 					cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
@@ -527,7 +532,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		}
 		// all shard are in RFQ state
 		m.multistate = CommandCompleteState
-		if m.dataRowCnt != 0 {
+		if m.dataRowCnt != 0 && ccSelect {
 			anyCCTag = fmt.Appendf(nil, "SELECT %d", m.dataRowCnt)
 		} else if anyCCTag != nil && ccRewrite {
 			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
