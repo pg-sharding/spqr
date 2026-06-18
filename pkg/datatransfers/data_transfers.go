@@ -601,6 +601,43 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	}
 	serverNameHash := hasher.Sum64()
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
+
+	fromTx, err := from.Begin(ctx)
+	if err != nil {
+		return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR).Detail("failed to begin transaction on the source shard")
+	}
+	defer func() { _ = fromTx.Rollback(ctx) }()
+	rels := make([]struct {
+		rel   *distributions.DistributedRelation
+		count int
+	}, 0)
+	for _, rel := range ds.ListRelations() {
+		fromTableExists, err := CheckTableExists(ctx, fromTx, rel.Relation)
+		if err != nil {
+			return err
+		}
+		if !fromTableExists {
+			continue
+		}
+		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
+		if err != nil {
+			return err
+		}
+
+		relFullName := rel.QualifiedName().String()
+		fromCount, err := getEntriesCount(ctx, fromTx, relFullName, krCondition)
+		if err != nil {
+			return err
+		}
+		rels = append(rels, struct {
+			rel   *distributions.DistributedRelation
+			count int
+		}{rel: rel, count: fromCount})
+	}
+	if err := fromTx.Commit(ctx); err != nil {
+		return err
+	}
+
 	tx, err := to.Begin(ctx)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
@@ -620,23 +657,10 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 	}
 
-	for _, rel := range ds.ListRelations() {
+	for _, relWithCount := range rels {
+		rel := relWithCount.rel
+		fromCount := relWithCount.count
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
-		if err != nil {
-			return err
-		}
-		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
-
-		fromTableExists, err := CheckTableExists(ctx, from, rel.Relation)
-		if err != nil {
-			return err
-		}
-		if !fromTableExists {
-			continue
-		}
-
-		relFullName := rel.QualifiedName().String()
-		fromCount, err := getEntriesCount(ctx, from, relFullName, krCondition)
 		if err != nil {
 			return err
 		}
@@ -648,6 +672,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if !toTableExists {
 			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Relation)
 		}
+		relFullName := rel.QualifiedName().String()
 		toCount, err := getEntriesCount(ctx, tx, relFullName, krCondition)
 		if err != nil {
 			return err
@@ -724,15 +749,23 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	if err != nil {
 		return err
 	}
+	tx, err := to.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("could not start transaction to copy reference table data: %s", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
 	// check that relation exists on receiving shard. If not, exit
-	toTableExists, err := CheckTableExists(ctx, to, rel.RelationName)
+	toTableExists, err := CheckTableExists(ctx, tx, rel.RelationName)
 	if err != nil {
 		return err
 	}
 	if !toTableExists {
 		return fmt.Errorf("relation %s does not exist on receiving shard", rel.QualifiedName())
 	}
-	toCount, err := getEntriesCount(ctx, to, relFullName, "true")
+	toCount, err := getEntriesCount(ctx, tx, relFullName, "true")
 	if err != nil {
 		return err
 	}
@@ -748,10 +781,6 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		if err := icp.CheckControlPoint(nil, icp.CopyReferenceRelationDataCP); err != nil {
 			spqrlog.Zero.Info().Str("cp", icp.CopyReferenceRelationDataCP).Err(err).Msg("error while checking control point")
 		}
-	}
-	tx, err := to.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("could not start transaction to copy reference table data: %s", err)
 	}
 
 	cols, err := GetTableColumns(ctx, tx, rel.RelationName)
