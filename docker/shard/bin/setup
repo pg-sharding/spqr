@@ -56,7 +56,7 @@ do
     }
 done
 
-sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS spqrguard VERSION '2.3';" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS spqrguard VERSION '2.4';" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
     echo "ERROR: extension creation failed, examine the log"
     cat "$SETUP_LOG"
     exit 1
