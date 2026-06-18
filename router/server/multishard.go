@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -305,6 +307,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	case InitialState:
 
 		m.dataRowCnt = 0
+		modifyCnt := int64(0)
+		var anyCCTag []byte
 
 		m.copyBuf = nil
 		var saveRd *pgproto3.RowDescription
@@ -364,7 +368,25 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					saveCopyOut = retMsg
 				case *pgproto3.CommandComplete:
 					m.states[i] = ShardCCState
-					saveCC = retMsg //
+					saveCC = retMsg
+
+					if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "UPDATE"); ok {
+						cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+						if err != nil {
+							return nil, 0, err
+						}
+						modifyCnt += cnt
+						anyCCTag = []byte("UPDATE")
+					} else {
+						if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "DELETE"); ok {
+							cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+							if err != nil {
+								return nil, 0, err
+							}
+							modifyCnt += cnt
+							anyCCTag = []byte("DELETE")
+						}
+					}
 				case *pgproto3.RowDescription:
 					m.states[i] = DatarowState
 					saveRd = retMsg // all should be same
@@ -382,6 +404,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				case *pgproto3.NoticeResponse:
 					// thats ok
 					continue
+
 				case *pgproto3.ErrorResponse:
 					if m.multistate != InitialState {
 						return nil, 0, ErrMultiShardSyncBroken
@@ -402,6 +425,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				}
 				break
 			}
+		}
+
+		if anyCCTag != nil {
+			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
+			saveCC.CommandTag = anyCCTag
 		}
 
 		if saveCC != nil {
@@ -435,6 +463,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		return nil, 0, ErrMultiShardSyncBroken
 	case RunningState:
 		anyCCTag := []byte{}
+		ccRewrite := false
+		ccSelect := false
+		modifyCnt := int64(0)
 		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
 			// some shards may be in cc state
@@ -447,6 +478,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			}
 
 			msg, err := m.internalReceiveShard(i)
+
 			if err != nil {
 				spqrlog.Zero.Info().
 					Uint("shard", m.activeShards[i].ID()).
@@ -465,6 +497,29 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			case *pgproto3.CommandComplete:
 				//
 				anyCCTag = mTpd.CommandTag
+
+				ccSelect = strings.HasPrefix(string(mTpd.CommandTag), "SELECT")
+
+				if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "UPDATE"); ok {
+					cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+					if err != nil {
+						return nil, 0, err
+					}
+					modifyCnt += cnt
+					ccRewrite = true
+					anyCCTag = []byte("UPDATE")
+				} else {
+					if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "DELETE"); ok {
+						cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+						if err != nil {
+							return nil, 0, err
+						}
+						modifyCnt += cnt
+						ccRewrite = true
+						anyCCTag = []byte("DELETE")
+					}
+				}
+
 				m.states[i] = ShardCCState
 			case *pgproto3.ReadyForQuery:
 				m.states[i] = ErrorState
@@ -477,9 +532,12 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		}
 		// all shard are in RFQ state
 		m.multistate = CommandCompleteState
-		if m.dataRowCnt != 0 {
+		if m.dataRowCnt != 0 && ccSelect {
 			anyCCTag = fmt.Appendf(nil, "SELECT %d", m.dataRowCnt)
+		} else if anyCCTag != nil && ccRewrite {
+			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
 		}
+
 		return &pgproto3.CommandComplete{
 			CommandTag: anyCCTag,
 		}, 0, nil

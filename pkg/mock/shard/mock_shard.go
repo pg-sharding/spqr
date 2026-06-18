@@ -185,6 +185,20 @@ func (mr *MockShardHostCtlMockRecorder) Pid() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShardHostCtl)(nil).Pid))
 }
 
+// ServerLifetime mocks base method.
+func (m *MockShardHostCtl) ServerLifetime() time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ServerLifetime")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// ServerLifetime indicates an expected call of ServerLifetime.
+func (mr *MockShardHostCtlMockRecorder) ServerLifetime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServerLifetime", reflect.TypeOf((*MockShardHostCtl)(nil).ServerLifetime))
+}
+
 // ShardKeyName mocks base method.
 func (m *MockShardHostCtl) ShardKeyName() string {
 	m.ctrl.T.Helper()
@@ -429,6 +443,20 @@ func (m *MockCoordShardinfo) Router() string {
 func (mr *MockCoordShardinfoMockRecorder) Router() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Router", reflect.TypeOf((*MockCoordShardinfo)(nil).Router))
+}
+
+// ServerLifetime mocks base method.
+func (m *MockCoordShardinfo) ServerLifetime() time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ServerLifetime")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// ServerLifetime indicates an expected call of ServerLifetime.
+func (mr *MockCoordShardinfoMockRecorder) ServerLifetime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServerLifetime", reflect.TypeOf((*MockCoordShardinfo)(nil).ServerLifetime))
 }
 
 // ShardKeyName mocks base method.
@@ -803,6 +831,20 @@ func (m *MockShardHostInstance) Send(query pgproto3.FrontendMessage) error {
 func (mr *MockShardHostInstanceMockRecorder) Send(query any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockShardHostInstance)(nil).Send), query)
+}
+
+// ServerLifetime mocks base method.
+func (m *MockShardHostInstance) ServerLifetime() time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ServerLifetime")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// ServerLifetime indicates an expected call of ServerLifetime.
+func (mr *MockShardHostInstanceMockRecorder) ServerLifetime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServerLifetime", reflect.TypeOf((*MockShardHostInstance)(nil).ServerLifetime))
 }
 
 // SetTxStatus mocks base method.

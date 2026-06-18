@@ -94,6 +94,11 @@ type CoordShardInfo struct {
 	router     string
 }
 
+// ServerLifetime implements [shard.ShardHostCtl].
+func (c *CoordShardInfo) ServerLifetime() time.Duration {
+	return time.Duration(0)
+}
+
 // Cancel implements [shard.ShardHostCtl].
 func (c *CoordShardInfo) Cancel() error {
 	return fmt.Errorf("unimplemented")
@@ -108,6 +113,7 @@ func (c *CoordShardInfo) CreatedAt() time.Time {
 func (c *CoordShardInfo) MarkStale() {
 	/* noop */
 }
+
 func (c *CoordShardInfo) IsStale() bool {
 	return false
 }

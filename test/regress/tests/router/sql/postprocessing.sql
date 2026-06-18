@@ -12,6 +12,7 @@ CREATE DISTRIBUTED RELATION r_pp (i HASH MURMUR) FOR DISTRIBUTION ds1;
 
 \c regress
 
+SET search_path TO 'public';
 CREATE TABLE r_pp(i TEXT, id INT);
 
 insert into r_pp(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');

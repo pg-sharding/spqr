@@ -57,6 +57,7 @@ frontend_rules:
 backend_rules:
   - usr: user1
     db: db1
+    server_lifetime: 10s
     connection_limit: 100
     pool_discard: false
     pool_rollback: true
