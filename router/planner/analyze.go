@@ -31,6 +31,124 @@ func analyzeFromClauseList(
 	return nil
 }
 
+func mergeRelationMap(dst, src map[rfqn.RelationFQN]struct{}) {
+	for rel := range src {
+		dst[rel] = struct{}{}
+	}
+}
+
+func cloneCteNames(src map[string]*lyx.CommonTableExpr) map[string]*lyx.CommonTableExpr {
+	dst := map[string]*lyx.CommonTableExpr{}
+	for name, cte := range src {
+		dst[name] = cte
+	}
+	return dst
+}
+
+func mergeRelationsByDistributionCol(dst, src map[string][]*rfqn.RelationFQN) {
+	for col, srcRels := range src {
+		for _, srcRel := range srcRels {
+			if !slices.ContainsFunc(dst[col], func(dstRel *rfqn.RelationFQN) bool {
+				return dstRel.String() == srcRel.String()
+			}) {
+				dst[col] = append(dst[col], srcRel)
+			}
+		}
+	}
+}
+
+func derivedColumnBelongsToRelation(colRef *lyx.ColumnRef, rel rfqn.RelationFQN, tableAliases map[string]rfqn.RelationFQN) bool {
+	if colRef.TableAlias == "" || colRef.TableAlias == rel.RelationName {
+		return true
+	}
+
+	resolvedRelation, ok := tableAliases[colRef.TableAlias]
+	return ok && resolvedRelation.String() == rel.String()
+}
+
+func derivedTableAliasInfo(q *lyx.SubSelect, rel rfqn.RelationFQN, tableAliases map[string]rfqn.RelationFQN) (rmeta.DerivedTableAlias, bool) {
+	aliasInfo := rmeta.DerivedTableAlias{
+		Relation: rel,
+		Columns:  map[string]string{},
+	}
+
+	selectStmt, ok := q.Arg.(*lyx.Select)
+	if !ok {
+		return aliasInfo, false
+	}
+
+	for _, target := range selectStmt.TargetList {
+		switch t := target.(type) {
+		case *lyx.AExprEmpty:
+			aliasInfo.PassthroughAll = true
+		case *lyx.ColumnRef:
+			if derivedColumnBelongsToRelation(t, rel, tableAliases) {
+				aliasInfo.Columns[t.ColName] = t.ColName
+			}
+		case *lyx.ResTarget:
+			if colRef, ok := t.Value.(*lyx.ColumnRef); ok && derivedColumnBelongsToRelation(colRef, rel, tableAliases) {
+				targetName := t.Name
+				if targetName == "" {
+					targetName = colRef.ColName
+				}
+				aliasInfo.Columns[targetName] = colRef.ColName
+			}
+		}
+	}
+
+	return aliasInfo, aliasInfo.PassthroughAll || len(aliasInfo.Columns) > 0
+}
+
+func analyzeSubSelectFromNode(ctx context.Context, q *lyx.SubSelect, rm *rmeta.RoutingMetadataContext) error {
+	savedRels := rm.Rels
+	savedRoutableRels := rm.RoutableRels
+	savedCteNames := rm.CteNames
+	savedTableAliases := rm.TableAliases
+	savedCTEAliases := rm.CTEAliases
+	savedDerivedTableAliases := rm.DerivedTableAliases
+	savedRelationsByDistributionCol := rm.RelationsByDistributionCol
+
+	rm.Rels = map[rfqn.RelationFQN]struct{}{}
+	rm.RoutableRels = map[rfqn.RelationFQN]struct{}{}
+	rm.CteNames = cloneCteNames(savedCteNames)
+	rm.TableAliases = map[string]rfqn.RelationFQN{}
+	rm.CTEAliases = map[string]string{}
+	rm.DerivedTableAliases = map[string]rmeta.DerivedTableAlias{}
+	rm.RelationsByDistributionCol = map[string][]*rfqn.RelationFQN{}
+
+	err := analyzeSelectStmt(ctx, q.Arg, rm)
+	localRels := rm.Rels
+	localRoutableRels := rm.RoutableRels
+	localTableAliases := rm.TableAliases
+	localRelationsByDistributionCol := rm.RelationsByDistributionCol
+
+	rm.Rels = savedRels
+	rm.RoutableRels = savedRoutableRels
+	rm.CteNames = savedCteNames
+	rm.TableAliases = savedTableAliases
+	rm.CTEAliases = savedCTEAliases
+	rm.DerivedTableAliases = savedDerivedTableAliases
+	rm.RelationsByDistributionCol = savedRelationsByDistributionCol
+
+	if err != nil {
+		return err
+	}
+
+	mergeRelationMap(rm.Rels, localRels)
+	mergeRelationMap(rm.RoutableRels, localRoutableRels)
+	mergeRelationsByDistributionCol(rm.RelationsByDistributionCol, localRelationsByDistributionCol)
+
+	if q.Alias != "" && len(localRels) == 1 {
+		for rel := range localRels {
+			if aliasInfo, ok := derivedTableAliasInfo(q, rel, localTableAliases); ok {
+				rm.DerivedTableAliases[q.Alias] = aliasInfo
+			}
+		}
+	}
+
+	return nil
+}
+
 // TODO : unit tests
 func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.RoutingMetadataContext) error {
 
@@ -102,7 +220,7 @@ func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, routable bool
 		}
 
 	case *lyx.SubSelect:
-		return analyzeSelectStmt(ctx, q.Arg, rm)
+		return analyzeSubSelectFromNode(ctx, q, rm)
 	default:
 		// other cases to consider
 		// lateral join, natural, etc
