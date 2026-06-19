@@ -61,7 +61,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 
 		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
 			Name: sh.ID,
-		}, tsa.TSA(config.TargetSessionAttrsAny))
+		}, tsa.TSA(config.TargetSessionAttrsRW))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return nil, err
