@@ -34,7 +34,7 @@ jobs:
       ID: ${{ github.head_ref || github.ref_name }}-${{ github.sha }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           repository: ${{ github.repository }}
