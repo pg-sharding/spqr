@@ -1,22 +1,8 @@
 name: Run benchmarks
 
 on:
-  # Trigger on changes to performance-critical paths (automatic)
   pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'router/qrouter/**'
-      - 'router/relay/**'
-      - 'router/poolmgr/**'
-      - 'router/client/**'
-      - 'router/server/**'
-      - 'pkg/pool/**'
-      - '.github/actions/benchmarks/**'
-      - '.github/workflows/benchmark.yaml'
-
-  # Trigger when performance label is added (forced run for any PR)
-  pull_request:
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
 
   workflow_dispatch:
     inputs:
@@ -38,15 +24,40 @@ on:
         default: 's3-c8-m32'
 
 jobs:
+  collect_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      benchmark: ${{ steps.filter.outputs.benchmark }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            benchmark:
+              - '!**/*_test.go'
+              - '!**/*.md'
+              - 'router/qrouter/**'
+              - 'router/relay/**'
+              - 'router/poolmgr/**'
+              - 'router/client/**'
+              - 'router/server/**'
+              - 'pkg/pool/**'
+              - '.github/actions/benchmarks/**'
+              - '.github/workflows/benchmark.yaml'
+
   build:
+    needs: collect_changes
     # Run if:
     # 1. Manual dispatch
     # 2. Paths matched (opened/synchronize/reopened with changes in monitored dirs)
     # 3. Performance label was added
-    if: >
+    if:  |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'performance') ||
-      (github.event_name == 'pull_request' && contains(fromJSON('["opened", "synchronize", "reopened"]'), github.event.action))
+      needs.collect_changes.outputs.benchmark == 'true'
 
     runs-on: ubuntu-latest
     env:
