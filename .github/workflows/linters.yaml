@@ -17,7 +17,7 @@ jobs:
     name: go fmt check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v6
@@ -31,7 +31,7 @@ jobs:
     name: check proto generated code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: true
@@ -46,7 +46,7 @@ jobs:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v6
@@ -64,7 +64,7 @@ jobs:
     name: goimports check
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - name: goimports check
@@ -77,7 +77,7 @@ jobs:
     name: go mod tidy check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v6
@@ -96,7 +96,7 @@ jobs:
     name: check for new panic() calls
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: check for new panic() calls

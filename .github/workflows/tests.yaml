@@ -19,7 +19,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v6
+       uses: actions/checkout@v7
 
      - name: unit tests
        run: make unittest
@@ -29,7 +29,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v6
+       uses: actions/checkout@v7
 
      - name: etcdqdb_integration tests
        run: make etcdqdb_test
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install test deps
         run: |
@@ -66,7 +66,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: stress tests
         run: make stress
@@ -86,7 +86,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: |
@@ -115,7 +115,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: |
@@ -132,7 +132,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: |
@@ -147,7 +147,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: make gorm_regress
@@ -158,7 +158,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: make jdbc_regress
@@ -168,7 +168,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Simple proto
         run: PROTO_TEST_TAG=simple make xproto_regress
 
@@ -177,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Extended proto
         run: PROTO_TEST_TAG=xproto make xproto_regress
 
@@ -186,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Extended proto with portal suspend
         run: PROTO_TEST_TAG=xproto_suspend make xproto_regress
 
@@ -195,7 +195,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Copy proto
         run: PROTO_TEST_TAG=copy make xproto_regress
 
@@ -210,7 +210,7 @@ jobs:
         run: docker --version
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - id: step1
         run: |
@@ -268,7 +268,7 @@ jobs:
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Update env
         run: |
