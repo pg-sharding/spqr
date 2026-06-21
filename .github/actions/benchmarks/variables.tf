@@ -9,12 +9,14 @@ variable "router_count" {
 
 variable "router_cpu" {
   description = "Number of CPU cores on router"
-  type = number
+  type        = number
+  default     = 32
 }
 
 variable "router_mem" {
   description = "RAM in GB on router"
-  type = number
+  type        = number
+  default     = 32
 }
 
 variable "shards_count" {
@@ -23,7 +25,8 @@ variable "shards_count" {
 
 variable "shard_resource_preset" {
   description = "Shard's resource preset"
-  type = string
+  type        = string
+  default     = "s3-c8-m32"
 }
 
 variable "pr_number" {
