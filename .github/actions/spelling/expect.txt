@@ -119,6 +119,7 @@ dockerhub
 dolore
 dolorem
 doloremque
+dorny
 dotnet
 DOUBLEOID
 drb
@@ -158,8 +159,8 @@ FAFBFF
 fdw
 feda
 FFCCAC
-FFFF
 ffd
+FFFF
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
@@ -340,8 +341,8 @@ multidim
 multierr
 multishard
 murmurhash
-mydb
 mvccpb
+mydb
 mylogs
 myuser
 myworkloadlog
