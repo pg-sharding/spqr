@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -462,7 +463,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 //
 // Returns:
 // - error: An error if moving the key range was unsuccessful.
-func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
@@ -492,7 +493,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 //
 // Returns:
 // - error: An error if moving the data was unsuccessful.
-func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
 	limit := int64(0)
@@ -534,7 +535,7 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 //
 // Returns:
 // - error: An error if moving the key range was unsuccessful.
-func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, _ icp.ICPContextHolder) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
 		TaskGroupId: req.TaskGroupID,
@@ -1128,7 +1129,7 @@ func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, _ icp.ICPContextHolder) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.RetryMoveTaskGroupV2(ctx, &proto.RetryMoveTaskGroupRequest{
 		Selector: &proto.RedistributeTaskSelector{Id: id},

@@ -142,7 +142,7 @@ Steps:
 //
 // Returns:
 //   - error: an error if the move fails.
-func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string) error {
+func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string, icpCH icp.ICPContextHolder) error {
 	if toId == fromId {
 		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
 	}
@@ -214,7 +214,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		case qdb.Locked:
 			t := time.Now()
 			// copy data of key range to receiving shard
-			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
+			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound, icpCH); err != nil {
 				return err
 			}
 			if config.CoordinatorConfig().EnableICP {
@@ -250,6 +250,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 						count(*) > 0 as table_exists
 					FROM information_schema.tables
 					WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(rel.Relation.RelationName), rel.Relation.GetSchema()))
+				if config.CoordinatorConfig().EnableICP {
+					if err := icp.CheckControlPoint(icpCH, icp.AfterDeleteQueryCP); err != nil {
+						spqrlog.Zero.Info().Str("cp", icp.AfterDeleteQueryCP).Err(err).Msg("error while checking control point")
+					}
+				}
 				fromTableExists := false
 				if err = res.Scan(&fromTableExists); err != nil {
 					return err
@@ -579,7 +584,7 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 //
 // Returns:
 // - error: an error if the move fails.
-func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound, icpCH icp.ICPContextHolder) error {
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.ListRelations() {
 		schemas[rel.Relation.GetSchema()] = struct{}{}
@@ -696,10 +701,21 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 					WHERE %s
 					FOR UPDATE
 `, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.Relation.GetSchema(), strings.ToLower(rel.Relation.RelationName)), krCondition)
+		if config.CoordinatorConfig().EnableICP {
+			if err := icp.CheckControlPoint(icpCH, icp.BeforeInsertCP); err != nil {
+				spqrlog.Zero.Info().Str("cp", icp.BeforeInsertCP).Err(err).Msg("error while checking control point")
+			}
+		}
 		_, err = tx.Exec(ctx, query)
+		if config.CoordinatorConfig().EnableICP {
+			if err := icp.CheckControlPoint(icpCH, icp.AfterInsertCP); err != nil {
+				spqrlog.Zero.Info().Str("cp", icp.AfterInsertCP).Err(err).Msg("error while checking control point")
+			}
+		}
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
 		}
+
 	}
 	if config.CoordinatorConfig().UseSPQRGuard {
 		if _, err := tx.Exec(ctx, InsertKeyRangeMeta, krg.ID); err != nil {

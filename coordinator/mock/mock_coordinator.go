@@ -14,6 +14,7 @@ import (
 	net "net"
 	reflect "reflect"
 
+	icp "github.com/pg-sharding/spqr/pkg/icp"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -207,17 +208,17 @@ func (mr *MockCoordinatorMockRecorder) AlterShardOptions(ctx, shardID, options a
 }
 
 // BatchMoveKeyRange mocks base method.
-func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer)
+	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchMoveKeyRange indicates an expected call of BatchMoveKeyRange.
-func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer, ch)
 }
 
 // BeginTran mocks base method.
@@ -999,17 +1000,17 @@ func (mr *MockCoordinatorMockRecorder) LockKeyRange(ctx, krid any) *gomock.Call 
 }
 
 // Move mocks base method.
-func (m *MockCoordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (m *MockCoordinator) Move(ctx context.Context, move *kr.MoveKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Move", ctx, move)
+	ret := m.ctrl.Call(m, "Move", ctx, move, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Move indicates an expected call of Move.
-func (mr *MockCoordinatorMockRecorder) Move(ctx, move any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) Move(ctx, move, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move, ch)
 }
 
 // NextRange mocks base method.
@@ -1056,17 +1057,17 @@ func (mr *MockCoordinatorMockRecorder) QDB() *gomock.Call {
 }
 
 // RedistributeKeyRange mocks base method.
-func (m *MockCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (m *MockCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RedistributeKeyRange", ctx, req)
+	ret := m.ctrl.Call(m, "RedistributeKeyRange", ctx, req, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RedistributeKeyRange indicates an expected call of RedistributeKeyRange.
-func (mr *MockCoordinatorMockRecorder) RedistributeKeyRange(ctx, req any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RedistributeKeyRange(ctx, req, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RedistributeKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RedistributeKeyRange), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RedistributeKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RedistributeKeyRange), ctx, req, ch)
 }
 
 // RegisterRouter mocks base method.
@@ -1098,17 +1099,17 @@ func (mr *MockCoordinatorMockRecorder) RenameKeyRange(ctx, krid, kridNew any) *g
 }
 
 // RetryMoveTaskGroup mocks base method.
-func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, icpCH icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait)
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait, icpCH)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
-func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
 }
 
 // RunCoordinator mocks base method.

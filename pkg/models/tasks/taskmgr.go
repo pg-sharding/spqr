@@ -1,13 +1,17 @@
 package tasks
 
-import "context"
+import (
+	"context"
+
+	"github.com/pg-sharding/spqr/pkg/icp"
+)
 
 type TaskMgr interface {
 	ListMoveTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
 	GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGroup, error)
 	WriteMoveTaskGroup(ctx context.Context, taskGroup *MoveTaskGroup) error
 	DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error
-	RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error
+	RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, icpCH icp.ICPContextHolder) error
 	StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error
 	GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error)
 
