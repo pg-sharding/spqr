@@ -690,6 +690,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 			}
 
 			if krm != nil {
+				krm := krm
 				wg.Go(func() {
 					spqrlog.Zero.Error().Str("key range id", krm.KeyRangeID).Str("shard id", krm.ShardID).Msg("finish key range move in progress")
 					if err := qc.Move(context.TODO(), krm, nil); err != nil {
