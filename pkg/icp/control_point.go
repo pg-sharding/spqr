@@ -75,10 +75,11 @@ func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) 
 		}
 	case "wait":
 		return func(c ICPContextHolder) {
+			log.Printf("reached control point '%s'\n", name)
 			cpsContextMp[name] = c
 			// nil is ok.
 			if c != nil {
-				log.Printf("reached control point '%s'\n", name)
+				log.Println("waiting...")
 				BlockedPIDs[c.CancelPID()] = struct{}{}
 				c.Wait()
 			}
@@ -133,6 +134,8 @@ func ResetICP(name string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
+	log.Printf("reset icp '%s'\n", name)
+
 	switch name {
 	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP,
 		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
@@ -147,6 +150,7 @@ func ResetICP(name string) error {
 			return fmt.Errorf("control point not attached: %s", name)
 		}
 
+		log.Printf("finish resetting icp '%s'\n", name)
 		// nil is ok
 		c := cpsContextMp[name]
 		f(c)
