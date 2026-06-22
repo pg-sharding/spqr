@@ -662,42 +662,44 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 			Msg("failed to list key ranges")
 	}
 
-	wg := sync.WaitGroup{}
-	// Finish any key range move or data transfer transaction in progress
-	for _, r := range ranges {
-		move, err := qc.GetKeyRangeMove(context.TODO(), r.KeyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error getting key range move from qdb")
-		}
-
-		tx, err := qc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error getting data transfer transaction from qdb")
-		}
-
-		var krm *kr.MoveKeyRange
-		if move != nil {
-			krm = &kr.MoveKeyRange{
-				KeyRangeID: move.KeyRangeID,
-				ShardID:    move.ShardId,
+	if config.CoordinatorConfig().RecoverKeyRangeMoves {
+		wg := sync.WaitGroup{}
+		// Finish any key range move or data transfer transaction in progress
+		for _, r := range ranges {
+			move, err := qc.GetKeyRangeMove(context.TODO(), r.KeyRangeID)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error getting key range move from qdb")
 			}
-		} else if tx != nil {
-			krm = &kr.MoveKeyRange{
-				KeyRangeID: r.KeyRangeID,
-				ShardID:    tx.ToShardId,
-			}
-		}
 
-		if krm != nil {
-			wg.Go(func() {
-				spqrlog.Zero.Error().Str("key range id", krm.KeyRangeID).Str("shard id", krm.ShardID).Msg("finish key range move in progress")
-				if qc.Move(context.TODO(), krm, nil) != nil {
-					spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+			tx, err := qc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error getting data transfer transaction from qdb")
+			}
+
+			var krm *kr.MoveKeyRange
+			if move != nil {
+				krm = &kr.MoveKeyRange{
+					KeyRangeID: move.KeyRangeID,
+					ShardID:    move.ShardId,
 				}
-			})
+			} else if tx != nil {
+				krm = &kr.MoveKeyRange{
+					KeyRangeID: r.KeyRangeID,
+					ShardID:    tx.ToShardId,
+				}
+			}
+
+			if krm != nil {
+				wg.Go(func() {
+					spqrlog.Zero.Error().Str("key range id", krm.KeyRangeID).Str("shard id", krm.ShardID).Msg("finish key range move in progress")
+					if qc.Move(context.TODO(), krm, nil) != nil {
+						spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+					}
+				})
+			}
 		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	qc.startupFinished = true
 
