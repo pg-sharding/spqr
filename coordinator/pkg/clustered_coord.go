@@ -655,14 +655,14 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 
 	go qc.watchTaskGroups(context.TODO())
 
-	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
-	if err != nil {
-		spqrlog.Zero.Error().
-			Err(err).
-			Msg("failed to list key ranges")
-	}
-
 	if config.CoordinatorConfig().RecoverKeyRangeMoves {
+		ranges, err := qc.db.ListAllKeyRanges(context.TODO())
+		if err != nil {
+			spqrlog.Zero.Error().
+				Err(err).
+				Msg("failed to list key ranges")
+		}
+
 		wg := sync.WaitGroup{}
 		// Finish any key range move or data transfer transaction in progress
 		for _, r := range ranges {
