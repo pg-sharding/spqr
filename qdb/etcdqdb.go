@@ -551,6 +551,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
 			}
+			statistics.LockStats.RecordLockKeyRange(keyRangeId, time.Now())
 			return keyRangeFromInternal(keyRange, true, ver), nil
 		}
 	}
@@ -566,17 +567,18 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, idKeyRange string) error {
+func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	spqrlog.Zero.Debug().
-		Str("id", idKeyRange).
+		Str("id", keyRangeID).
 		Msg("etcdqdb: unlock key range")
 
 	t := time.Now()
-	_, err := q.cli.Delete(ctx, LockPath(keyRangeNodePath(idKeyRange)))
+	_, err := q.cli.Delete(ctx, LockPath(keyRangeNodePath(keyRangeID)))
 	if err != nil {
 		return retry.RetryableError(err)
 	}
 	statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
+	statistics.LockStats.RecordUnlockKeyRange(keyRangeID, time.Now())
 	return err
 }
 

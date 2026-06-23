@@ -17,6 +17,45 @@ const (
 	MoveStatsQDBTotalTime   = "qdb.Total"
 )
 
+var LockStats = &keyRangeLockStats{
+	mu:               sync.RWMutex{},
+	keyRangeLockTime: map[string]time.Time{},
+}
+
+type keyRangeLockStats struct {
+	mu               sync.RWMutex
+	keyRangeLockTime map[string]time.Time
+
+	opsCount     int
+	opsTotalTime time.Duration
+}
+
+func (s *keyRangeLockStats) RecordLockKeyRange(keyRangeID string, t time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.keyRangeLockTime[keyRangeID] = t
+}
+
+func (s *keyRangeLockStats) RecordUnlockKeyRange(keyRangeID string, t time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	lockTime, ok := s.keyRangeLockTime[keyRangeID]
+	if !ok {
+		return
+	}
+	s.opsCount++
+	s.opsTotalTime += t.Sub(lockTime)
+}
+
+func (s *keyRangeLockStats) GetMeanLockTime() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.opsTotalTime / time.Duration(s.opsCount)
+}
+
 type statisticsInt struct {
 	CurrentExecTimes     sync.Map
 	TotalTimes           map[string]*MoveStatisticsElem
