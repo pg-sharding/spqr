@@ -218,7 +218,7 @@ func (qr *ProxyQrouter) registerMetrics() {
 		GetCount: func() uint64 {
 			return statistics.GetRouterTimeTotalCount()
 		},
-		GetBuckets: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeRouter) },
+		GetQuantiles: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeRouter) },
 	}
 	shardTimeMetric := &metrics.DynamicSummary{
 		Name: metrics.ShardTimeSummary,
@@ -229,7 +229,7 @@ func (qr *ProxyQrouter) registerMetrics() {
 		GetCount: func() uint64 {
 			return statistics.GetShardTimeTotalCount()
 		},
-		GetBuckets: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeShard) },
+		GetQuantiles: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeShard) },
 	}
 
 	qr.metricRegistry.RegisterDynamicGauge(totalConnectionsMetric)

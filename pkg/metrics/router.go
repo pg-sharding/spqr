@@ -47,10 +47,10 @@ func (m *RouterMetricRegistry) RegisterDynamicGauge(gauge *DynamicGauge) {
 	}
 }
 
-func (m *RouterMetricRegistry) RegisterDynamicSummary(hist *DynamicSummary) {
-	if _, ok := m.registeredDynamic[hist.Name]; !ok {
-		m.registeredDynamic[hist.Name] = struct{}{}
-		m.registry.MustRegister(hist)
+func (m *RouterMetricRegistry) RegisterDynamicSummary(summary *DynamicSummary) {
+	if _, ok := m.registeredDynamic[summary.Name]; !ok {
+		m.registeredDynamic[summary.Name] = struct{}{}
+		m.registry.MustRegister(summary)
 	}
 }
 

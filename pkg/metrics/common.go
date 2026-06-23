@@ -97,11 +97,11 @@ func (g *DynamicGauge) Describe(ch chan<- *prometheus.Desc) {
 }
 
 type DynamicSummary struct {
-	Name       string
-	Help       string
-	GetBuckets func() map[float64]float64
-	GetSum     func() float64
-	GetCount   func() uint64
+	Name         string
+	Help         string
+	GetQuantiles func() map[float64]float64
+	GetSum       func() float64
+	GetCount     func() uint64
 }
 
 func (s *DynamicSummary) Desc() *prometheus.Desc {
@@ -109,7 +109,7 @@ func (s *DynamicSummary) Desc() *prometheus.Desc {
 }
 
 func (s *DynamicSummary) Collect(ch chan<- prometheus.Metric) {
-	data := s.GetBuckets()
+	data := s.GetQuantiles()
 	metric, err := prometheus.NewConstSummary(
 		s.Desc(),
 		s.GetCount(),

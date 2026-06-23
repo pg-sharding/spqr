@@ -71,6 +71,8 @@ func InitStatisticsStr(q []string) error {
 }
 
 func initStatsCommon() {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
 	QueryStatistics.NeedToCollectData = len(QueryStatistics.Quantiles) > 0
 	QueryStatistics.RouterTimeTotal, _ = tdigest.New()
 	atomic.StoreInt64(&QueryStatistics.RouterTimeTotalSum, 0)
