@@ -39,6 +39,8 @@ type Coordinator struct {
 	UseSPQRGuard             bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 
+	RecoverKeyRangeMoves bool `json:"recover_key_range_moves" toml:"recover_key_range_moves" yaml:"recover_key_range_moves"`
+
 	// gRPC keepalive settings for router connections
 	// Prevents connections from being closed by network intermediaries during idle periods
 	RouterKeepaliveTime    time.Duration `json:"router_keepalive_time" toml:"router_keepalive_time" yaml:"router_keepalive_time"`
