@@ -16,3 +16,6 @@ const INT4OID = 23 /* #no-spell-check-line */
 
 // BOOLOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L34 /* #no-spell-check-line */
 const BOOLOID = 16 /* #no-spell-check-line */
+
+// INTERVALOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L312 /* #no-spell-check-line */
+const INTERVALOID = 1186

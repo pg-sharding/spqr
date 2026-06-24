@@ -1664,7 +1664,7 @@ yydefault:
 				MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 				TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 				ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-				FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr:
+				FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr, MeanKRLockTimeStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr

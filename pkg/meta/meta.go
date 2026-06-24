@@ -1810,6 +1810,18 @@ func ProcessShowExtended(ctx context.Context,
 				fmt.Sprintf("%v", setting.Applied),
 			)
 		}
+	case spqrparser.MeanKRLockTimeStr:
+		stats := statistics.LockStats
+		t := time.Duration(0)
+		if stats != nil {
+			t = stats.GetMeanLockTime()
+		}
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(
+				"mean_key_range_lock_time",
+			),
+		}
+		tts.WriteDataRow(t.String())
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

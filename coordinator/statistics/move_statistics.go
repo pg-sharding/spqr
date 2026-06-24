@@ -53,6 +53,9 @@ func (s *keyRangeLockStats) GetMeanLockTime() time.Duration {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	if s.opsCount == 0 {
+		return 0
+	}
 	return s.opsTotalTime / time.Duration(s.opsCount)
 }
 
