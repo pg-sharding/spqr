@@ -754,7 +754,7 @@ show_statement_type:
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr:
+			FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr, MeanKRLockTimeStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

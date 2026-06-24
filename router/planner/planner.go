@@ -423,7 +423,7 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 		}
 		*/
 		switch tstmt.Cmd {
-		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr:
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MeanKRLockTimeStr:
 			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
 			if err != nil {
 				return nil, err
