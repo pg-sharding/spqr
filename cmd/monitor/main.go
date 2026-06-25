@@ -27,6 +27,7 @@ var (
 	stateFilePath     string
 	tableSampleSize   float64
 	keyRangeId        string
+	dryRun            bool
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-monitor check --shard-data `path-to-shard-data config` --host `console host` --port `console port` --user `console user` --password `console password` --file `result file`",
@@ -131,7 +132,7 @@ var (
 				lockedKeyRanges[id] = keyRange
 			}
 			for taskGroupId, keyRange := range lockedKeyRanges {
-				if err := processKeyRange(ctx, db, taskGroupId, keyRange, shardData, dsMap); err != nil {
+				if err := processKeyRange(ctx, db, taskGroupId, keyRange, shardData, dsMap, dryRun); err != nil {
 					return err
 				}
 			}
@@ -202,6 +203,7 @@ func init() {
 
 	recoverKeyRangesCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
 	recoverKeyRangesCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
+	recoverKeyRangesCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "", false, "only check key ranges, do not delete anything")
 
 	verifyKeyRangeCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
 	verifyKeyRangeCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
@@ -439,15 +441,11 @@ func getEntriesCountByRelation(ctx context.Context, keyRange *kr.KeyRange, nextB
 	return relToCount, nil
 }
 
-func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, keyRange *kr.KeyRange, shardData *config.DatatransferConnections, dsMap map[string]*distributions.Distribution) error {
+func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, keyRange *kr.KeyRange, shardData *config.DatatransferConnections, dsMap map[string]*distributions.Distribution, dryRun bool) error {
 	// 1. Lock task group
 	// 2. Check & unlock key range
 	// 3. Delete/move task group & respective redistribute task
 	// TODO: transactional unlock & delete
-	if err := db.TryTaskGroupLock(ctx, taskGroupId, "spqr-monitor recover"); err != nil {
-		log.Printf("failed to lock task group \"%s\", skipping...\n", taskGroupId)
-		return nil
-	}
 	taskGroup, err := db.GetMoveTaskGroup(ctx, taskGroupId)
 	if err != nil {
 		return err
@@ -466,7 +464,14 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, k
 	}
 	if err := checkUnlockKeyRange(ctx, db, keyRange, ds, toConnCfg, fromConnCfg); err != nil {
 		log.Printf("key range not safe to unlock: %s", err)
-		_ = db.DropTaskGroupLock(ctx, taskGroupId)
+		return nil
+	}
+	if dryRun {
+		log.Printf("key range to unlock: \"%s\"", keyRangeId)
+		return nil
+	}
+	if err := db.TryTaskGroupLock(ctx, taskGroupId, "spqr-monitor recover"); err != nil {
+		log.Printf("failed to lock task group \"%s\", skipping...\n", taskGroupId)
 		return nil
 	}
 	if err := db.UnlockKeyRange(ctx, keyRange.ID); err != nil {
