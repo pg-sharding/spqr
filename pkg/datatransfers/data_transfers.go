@@ -192,7 +192,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		_ = to.Close(ctx)
 	}()
 
-	upperBound, err := resolveNextBound(ctx, krg, mgr)
+	upperBound, err := ResolveNextBound(ctx, krg, mgr)
 	if err != nil {
 		return err
 	}
@@ -386,7 +386,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	return nil
 }
 
-// resolveNextBound finds the next lower bound key range from the given key range list that is greater than the lower bound of the given key range.
+// ResolveNextBound finds the next lower bound key range from the given key range list that is greater than the lower bound of the given key range.
 //
 // Parameters:
 // - ctx (context.Context): The context for the function.
@@ -396,7 +396,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 // Returns:
 // - kr.KeyRangeBound: the next lower bound key range found, or nil if no such key range exists.
 // - error: an error if the key range list cannot be retrieved or if there is an error in the function execution.
-func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) (kr.KeyRangeBound, error) {
+func ResolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) (kr.KeyRangeBound, error) {
 	krs, err := cr.ListKeyRanges(ctx, krg.Distribution)
 	if err != nil {
 		return nil, err
@@ -630,7 +630,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 
 		relFullName := rel.QualifiedName().String()
-		fromCount, err := getEntriesCount(ctx, fromTx, relFullName, krCondition)
+		fromCount, err := GetEntriesCount(ctx, fromTx, relFullName, krCondition)
 		if err != nil {
 			return err
 		}
@@ -678,7 +678,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Relation)
 		}
 		relFullName := rel.QualifiedName().String()
-		toCount, err := getEntriesCount(ctx, tx, relFullName, krCondition)
+		toCount, err := GetEntriesCount(ctx, tx, relFullName, krCondition)
 		if err != nil {
 			return err
 		}
@@ -761,7 +761,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return nil
 	}
 	relFullName := rel.QualifiedName().String()
-	fromCount, err := getEntriesCount(ctx, from, relFullName, "true")
+	fromCount, err := GetEntriesCount(ctx, from, relFullName, "true")
 	if err != nil {
 		return err
 	}
@@ -781,7 +781,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	if !toTableExists {
 		return fmt.Errorf("relation %s does not exist on receiving shard", rel.QualifiedName())
 	}
-	toCount, err := getEntriesCount(ctx, tx, relFullName, "true")
+	toCount, err := GetEntriesCount(ctx, tx, relFullName, "true")
 	if err != nil {
 		return err
 	}
@@ -946,7 +946,7 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 	return false, conName, nil
 }
 
-// getEntriesCount retrieves the number of entries from a database table based on the provided condition.
+// GetEntriesCount retrieves the number of entries from a database table based on the provided condition.
 //
 // Parameters:
 // - ctx (context.Context): The context for the function.
@@ -957,7 +957,7 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 // Returns:
 // - int: the count of entries in the table.
 // - error: an error if there was a problem executing the query.
-func getEntriesCount(ctx context.Context, conn Queryable, relName string, condition string) (int, error) {
+func GetEntriesCount(ctx context.Context, conn Queryable, relName string, condition string) (int, error) {
 	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, relName, condition))
 	count := 0
 	if err := res.Scan(&count); err != nil {
