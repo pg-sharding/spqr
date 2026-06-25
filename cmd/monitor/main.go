@@ -26,6 +26,7 @@ var (
 	qdbAddrs          []string
 	stateFilePath     string
 	tableSampleSize   float64
+	keyRangeId        string
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-monitor check --shard-data `path-to-shard-data config` --host `console host` --port `console port` --user `console user` --password `console password` --file `result file`",
@@ -130,11 +131,65 @@ var (
 				lockedKeyRanges[id] = keyRange
 			}
 			for taskGroupId, keyRange := range lockedKeyRanges {
-				if err := processKeyRange(ctx, db, taskGroupId, keyRange, *shardData, dsMap); err != nil {
+				if err := processKeyRange(ctx, db, taskGroupId, keyRange, shardData, dsMap); err != nil {
 					return err
 				}
 			}
 			return nil
+		},
+	}
+	verifyKeyRangeCmd = &cobra.Command{
+		Use:   "verify",
+		Short: "verify key range for unlock",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
+			if err != nil {
+				_, _ = fmt.Println("no shard data file found, skipping...")
+				return nil
+			}
+			db, err := qdb.NewEtcdQDB(qdbAddrs, 0)
+			if err != nil {
+				return fmt.Errorf("could not connect to QDB: %w", err)
+			}
+			ctx := context.Background()
+			c := coord.NewCoordinator(db, nil, qdb.DefaultMaxTxnSize)
+			keyRange, err := c.GetKeyRange(ctx, keyRangeId)
+			if err != nil {
+				return err
+			}
+			ds, err := c.GetDistribution(ctx, keyRange.Distribution)
+			if err != nil {
+				return err
+			}
+			moveTasks, err := c.ListMoveTasks(ctx)
+			if err != nil {
+				return err
+			}
+
+			var shardToConn *config.ShardConnect
+			var shardFromConn *config.ShardConnect
+			for _, moveTask := range moveTasks {
+				if moveTask.KridTemp == keyRangeId {
+					taskGroup, err := c.GetMoveTaskGroup(ctx, moveTask.TaskGroupID)
+					if err != nil {
+						return err
+					}
+					var ok bool
+					shardFromConn, ok = shardData.ShardsData[taskGroup.KridFrom]
+					if !ok {
+						return fmt.Errorf("source key range \"%s\" not found in shard_data config", taskGroup.KridFrom)
+					}
+					shardToConn, ok = shardData.ShardsData[taskGroup.KridTo]
+					if !ok {
+						return fmt.Errorf("destination key range \"%s\" not found in shard_data config", taskGroup.KridFrom)
+					}
+				}
+			}
+
+			if shardToConn == nil {
+				return fmt.Errorf("key range \"%s\" does not belong to any move task", keyRangeId)
+			}
+			return checkUnlockKeyRange(ctx, db, keyRange, ds, shardToConn, shardFromConn)
 		},
 	}
 )
@@ -148,8 +203,13 @@ func init() {
 	recoverKeyRangesCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
 	recoverKeyRangesCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
 
+	verifyKeyRangeCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
+	verifyKeyRangeCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
+	verifyKeyRangeCmd.PersistentFlags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
+
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(recoverKeyRangesCmd)
+	rootCmd.AddCommand(verifyKeyRangeCmd)
 }
 
 func main() {
@@ -379,7 +439,7 @@ func getEntriesCountByRelation(ctx context.Context, keyRange *kr.KeyRange, nextB
 	return relToCount, nil
 }
 
-func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, keyRange *kr.KeyRange, shardData config.DatatransferConnections, dsMap map[string]*distributions.Distribution) error {
+func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, keyRange *kr.KeyRange, shardData *config.DatatransferConnections, dsMap map[string]*distributions.Distribution) error {
 	// 1. Lock task group
 	// 2. Check & unlock key range
 	// 3. Delete/move task group & respective redistribute task
