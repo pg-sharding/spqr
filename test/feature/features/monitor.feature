@@ -1,4 +1,4 @@
-Feature: Mover test
+Feature: spqr-monitor test
   Background:
     #
     # Make host "coordinator" take control
@@ -113,5 +113,5 @@ Feature: Mover test
     Then command return code should be "0"
     And command output should match regexp
     """
-    
+    ^$
     """
