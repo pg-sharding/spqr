@@ -140,8 +140,9 @@ var (
 		},
 	}
 	verifyKeyRangeCmd = &cobra.Command{
-		Use:   "verify",
-		Short: "verify key range for unlock",
+		Use:          "verify",
+		Short:        "verify key range for unlock",
+		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
@@ -215,7 +216,11 @@ func init() {
 }
 
 func main() {
-	_ = rootCmd.Execute()
+	err := rootCmd.Execute()
+	if err != nil {
+		// fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 type keyRangeExt struct {
