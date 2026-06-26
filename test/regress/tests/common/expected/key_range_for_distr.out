@@ -1,0 +1,171 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE DISTRIBUTION compositeds COLUMN TYPES integer, integer;
+        add distribution        
+--------------------------------
+ distribution id -> compositeds
+(1 row)
+
+CREATE DISTRIBUTION varchards COLUMN TYPES varchar;
+       add distribution       
+------------------------------
+ distribution id -> varchards
+(1 row)
+
+-- create key ranges for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+         add key range         
+-------------------------------
+ bound -> 4611686018427387901
+ bound -> -2
+ bound -> -4611686018427387905
+ bound -> -9223372036854775808
+(4 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id |     lower_bound      | locked 
+--------------+----------+-----------------+----------------------+--------
+ ds1-0        | sh1      | ds1             | 4611686018427387901  | false
+ ds1-1        | sh2      | ds1             | -2                   | false
+ ds1-2        | sh3      | ds1             | -4611686018427387905 | false
+ ds1-3        | sh4      | ds1             | -9223372036854775808 | false
+(4 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+ ds1-2
+ ds1-3
+(4 rows)
+
+-- create key range for some shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+         add key range         
+-------------------------------
+ bound -> -1
+ bound -> -9223372036854775808
+(2 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id |     lower_bound      | locked 
+--------------+----------+-----------------+----------------------+--------
+ ds1-0        | sh1      | ds1             | -1                   | false
+ ds1-1        | sh2      | ds1             | -9223372036854775808 | false
+(2 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+(2 rows)
+
+-- check if there is intersecting key range
+CREATE KEY RANGE kr1 FROM -100000 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+  add key range   
+------------------
+ bound -> -100000
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+ERROR:  key range ds1-1 intersects with key range kr1 in QDB
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ kr1          | sh1      | ds1             | -100000     | false
+(1 row)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr1
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+ add key range 
+---------------
+ bound -> 750
+ bound -> 500
+ bound -> 250
+ bound -> 0
+(4 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ ds1-0        | sh1      | ds1             | 750         | false
+ ds1-1        | sh2      | ds1             | 500         | false
+ ds1-2        | sh3      | ds1             | 250         | false
+ ds1-3        | sh4      | ds1             | 0           | false
+(4 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+ ds1-2
+ ds1-3
+(4 rows)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+ add key range 
+---------------
+ bound -> 500
+ bound -> 0
+(2 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ ds1-0        | sh1      | ds1             | 500         | false
+ ds1-1        | sh2      | ds1             | 0           | false
+(2 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+(2 rows)
+
+CREATE KEY RANGE kr1 FROM 100 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+ERROR:  key range ds1-0 intersects with key range kr1 in QDB
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ kr1          | sh4      | ds1             | 100         | false
+(1 row)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr1
+(1 row)
+
+CREATE KEY RANGES FOR DISTRIBUTION compositeds USING ALL SHARDS;
+ERROR:  cannot determine key ranges for composite keys
+HINT:  Use CREATE KEY RANGE...
+CREATE KEY RANGES FOR DISTRIBUTION varchards USING ALL SHARDS;
+ERROR:  cannot determine key ranges for non-hashable distributions
+HINT:  Use CREATE KEY RANGE...
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ compositeds
+ ds1
+ varchards
+(3 rows)
+
