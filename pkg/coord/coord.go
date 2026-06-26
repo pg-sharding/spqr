@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/icp"
@@ -98,7 +100,13 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 }
 
 // AddDataShard implements meta.EntityMgr.
-func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+	if !force {
+		if err := lc.checkShardMigration(ctx, shard); err != nil {
+			return err
+		}
+	}
+
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
@@ -1480,4 +1488,120 @@ func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []s
 
 func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
 	return lc.qdb.GetTxMetaStorage(ctx)
+}
+
+func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.DataShard) error {
+	user := ""
+	host := ""
+	port := ""
+	dbname := ""
+	password := ""
+
+	for _, opt := range shard.Options() {
+		if opt.Name == "user" {
+			user = opt.Arg
+		}
+		if opt.Name == "host" {
+			groups := strings.Split(opt.Arg, ":")
+			host = groups[0]
+			port = groups[1]
+		}
+		if opt.Name == "dbname" {
+			dbname = opt.Arg
+		}
+		if opt.Name == "password" {
+			password = opt.Arg
+		}
+	}
+
+	connConfig, err := pgx.ParseConfig(fmt.Sprintf(
+		"user=%s host=%s port=%s dbname=%s password=%s",
+		user, host, port, dbname, password),
+	)
+	if err != nil {
+		return err
+	}
+	conn, err := pgx.ConnectConfig(ctx, connConfig)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close(ctx) }()
+
+	distributions, err := lc.ListDistributions(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check distributed relations exist on shard
+	for _, ds := range distributions {
+		relations := ds.ListRelations()
+		for _, rel := range relations {
+			shardColumns, err := listShardColumns(ctx, conn, rel.Relation)
+			if err != nil {
+				return err
+			}
+
+			if len(shardColumns) == 0 {
+				return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
+					"shard is not ready\nHINT: relation %s.%s does not exist on shard",
+					rel.Relation.GetSchema(), rel.Relation.RelationName,
+				)
+			}
+
+			key := rel.DistributionKey
+			for _, part := range key {
+				if _, ok := shardColumns[part.Column]; !ok {
+					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
+						"shard is not ready\nHINT: column %s does not exist in relation %s.%s on shard",
+						part.Column, rel.Relation.GetSchema(), rel.Relation.RelationName,
+					)
+				}
+			}
+		}
+	}
+
+	refRelations, err := lc.ListReferenceRelations(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check reference relations exist on shard
+	for _, refRel := range refRelations {
+		shardColumns, err := listShardColumns(ctx, conn, refRel.RelationName)
+		if err != nil {
+			return err
+		}
+
+		if len(shardColumns) == 0 {
+			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
+				"shard is not ready\nHINT: relation %s.%s does not exist on shard",
+				refRel.RelationName.GetSchema(), refRel.RelationName.RelationName,
+			)
+		}
+	}
+
+	return nil
+}
+
+// Returns map [column_name] = data_type
+func listShardColumns(ctx context.Context, conn *pgx.Conn, relation *rfqn.RelationFQN) (map[string]string, error) {
+	query := `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2;`
+
+	rows, err := conn.Query(ctx, query, relation.GetSchema(), relation.RelationName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cols := make(map[string]string)
+	for rows.Next() {
+		colName := ""
+		dataType := ""
+		if err := rows.Scan(&colName, &dataType); err != nil {
+			return nil, err
+		}
+		cols[colName] = dataType
+	}
+
+	return cols, err
 }

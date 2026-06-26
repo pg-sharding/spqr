@@ -157,8 +157,8 @@ Feature: TLS connections to shards via coordinator
     REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     DROP SHARD sh1 CASCADE;
     DROP SHARD sh2 CASCADE;
-    CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432',  SSLMODE 'require');
-    CREATE SHARD sh2 OPTIONS (HOST 'spqr_shard_2:6432', HOST 'spqr_shard_2_replica:6432', SSLMODE 'require');
+    CREATE SHARD sh1 OPTIONS (HOST 'spqr_shard_1:6432', HOST 'spqr_shard_1_replica:6432',  SSLMODE 'require') FORCE;
+    CREATE SHARD sh2 OPTIONS (HOST 'spqr_shard_2:6432', HOST 'spqr_shard_2_replica:6432', SSLMODE 'require') FORCE;
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
