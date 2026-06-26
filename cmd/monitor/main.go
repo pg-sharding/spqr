@@ -95,7 +95,7 @@ var (
 	recoverKeyRangesCmd = &cobra.Command{
 		Use:   "recover",
 		Short: "run locked key range recovery iteration",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
 				_, _ = fmt.Println("no shard data file found, skipping...")
@@ -142,7 +142,7 @@ var (
 	verifyKeyRangeCmd = &cobra.Command{
 		Use:   "verify",
 		Short: "verify key range for unlock",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
 				_, _ = fmt.Println("no shard data file found, skipping...")
@@ -341,7 +341,7 @@ func getFailedTaskGroups(ctx context.Context, db *qdb.EtcdQDB) (map[string]*qdb.
 	if err != nil {
 		return nil, err
 	}
-	for id, _ := range taskGroups {
+	for id := range taskGroups {
 		status, err := db.GetTaskGroupStatus(ctx, id)
 		if err != nil {
 			return nil, err
@@ -510,8 +510,5 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, k
 	}
 
 	log.Printf("deleting task group \"%s\". source key range: \"%s\", dest key range: \"%s\", state: \"%s\", error msg: \"%s\"", taskGroupId, taskGroup.KrIdFrom, taskGroup.KrIdTo, status.State, status.Message)
-	if err := db.DropMoveTaskGroup(ctx, taskGroupId); err != nil {
-		return err
-	}
-	return nil
+	return db.DropMoveTaskGroup(ctx, taskGroupId)
 }
