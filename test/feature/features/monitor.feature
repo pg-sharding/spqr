@@ -115,3 +115,29 @@ Feature: spqr-monitor test
     """
     ^$
     """
+  
+  Scenario: spqr-monitor verify fails when no move task in progress
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    SET __spqr__execute_on TO sh2;
+    insert into xMove2(w_id, s) values(1, '001');
+    insert into xMove2(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor verify --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml --key-range krid1 2&> output.txt
+    """
+    Then command return code should be "1"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    key range .* does not belong to any move task
+    """
