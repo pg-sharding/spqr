@@ -760,7 +760,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 	}
 
 	if txt != s.cl.Server().TxStatus() {
-		return rerrors.ErrExecutorSyncLost
+		return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 	}
 	s.SetTxStatus(txt)
 
@@ -813,7 +813,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 			}
 
 			if txt != s.cl.Server().TxStatus() {
-				return rerrors.ErrExecutorSyncLost
+				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 			}
 			s.SetTxStatus(txt)
 
