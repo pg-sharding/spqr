@@ -128,6 +128,11 @@ Feature: spqr-monitor test
     insert into xMove2(w_id, s) values(11, '002');
     """
     Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    Then command return code should be "0"
     When I run command on host "coordinator" with timeout "30" seconds
     """
     /spqr/spqr-monitor verify --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml --key-range krid1 2&> output.txt
@@ -153,6 +158,10 @@ Feature: spqr-monitor test
     insert into xMove(w_id, s) values(1, '001');
     """
     Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
     When I record in qdb move task group
     """
     {
@@ -198,6 +207,10 @@ Feature: spqr-monitor test
     insert into xMove(w_id, s) values(11, '002');
     """
     Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
     When I record in qdb move task group
     """
     {
@@ -224,6 +237,196 @@ Feature: spqr-monitor test
     When I run command on host "coordinator" with timeout "30" seconds
     """
     /spqr/spqr-monitor verify --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml --key-range krid1 2&> output.txt
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    ^$
+    """
+  
+  Scenario: spqr-monitor verify succeds when there are the same number of keys on both shards
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tgid1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "krid1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         0.75,
+      "bound_rel":     "test",
+      "total_keys":    200,
+      "task":
+      {
+        "id":            "2",
+        "kr_id_temp":    "krid1",
+        "bound":         ["FAAAAAAAAAA="],
+        "state":         0,
+        "task_group_id": "tgid1"
+      }
+    }
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor verify --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml --key-range krid1 2&> output.txt
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    ^$
+    """
+
+  Scenario: spqr-monitor recover does nothing when no move task in progress
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor recover --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml 2&> output.txt
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    ^$
+    """
+
+  Scenario: spqr-monitor recover does nothing when task group did not fail
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tgid1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "krid1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         0.75,
+      "bound_rel":     "test",
+      "total_keys":    200,
+      "task":
+      {
+        "id":            "2",
+        "kr_id_temp":    "krid1",
+        "bound":         ["FAAAAAAAAAA="],
+        "state":         0,
+        "task_group_id": "tgid1"
+      }
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb status of move task group "tgid1"
+    """
+    {
+      "state": "RUNNING",
+      "msg":   "executed by ..."
+    }
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor recover --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml 2&> output.txt
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    ^$
+    """
+  
+  Scenario: spqr-monitor recover does nothing when no task group status
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tgid1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "krid1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         0.75,
+      "bound_rel":     "test",
+      "total_keys":    200,
+      "task":
+      {
+        "id":            "2",
+        "kr_id_temp":    "krid1",
+        "bound":         ["FAAAAAAAAAA="],
+        "state":         0,
+        "task_group_id": "tgid1"
+      }
+    }
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor recover --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml 2&> output.txt
     """
     Then command return code should be "0"
     When I run command on host "coordinator"

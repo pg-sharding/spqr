@@ -355,7 +355,7 @@ func getFailedTaskGroups(ctx context.Context, db *qdb.EtcdQDB) (map[string]*qdb.
 		if err != nil {
 			return nil, err
 		}
-		if status.State != string(tasks.TaskGroupError) {
+		if status == nil || status.State != string(tasks.TaskGroupError) {
 			delete(taskGroups, id)
 		}
 	}
