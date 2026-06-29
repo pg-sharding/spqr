@@ -497,3 +497,87 @@ Feature: spqr-monitor test
     """
     key range not safe to unlock: cannot unlock key range: in relation .xMove. 2 entries on source shard, 1 entries on destination shard
     """
+  
+  Scenario: spqr-monitor recover succeeds when there are no keys on the destination shard
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tgid1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "krid1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         0.75,
+      "bound_rel":     "test",
+      "total_keys":    200,
+      "task":
+      {
+        "id":            "2",
+        "kr_id_temp":    "krid1",
+        "bound":         ["FAAAAAAAAAA="],
+        "state":         0,
+        "task_group_id": "tgid1"
+      }
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb status of move task group "tgid1"
+    """
+    {
+      "state": "ERROR",
+      "msg":   "some error"
+    }
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor recover --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml 2&> output.txt
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    deleting task group .tgid1.\. source key range: .krid1., dest key range: .kr_to., state: .ERROR., error msg: .some error.
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges WHERE key_range_id = 'krid1';
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "distribution_id": "ds1",
+        "key_range_id": "krid1",
+        "locked": "false",
+        "lower_bound":"1", 
+        "shard_id":"sh1"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_groups;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
