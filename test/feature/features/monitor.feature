@@ -437,3 +437,63 @@ Feature: spqr-monitor test
     """
     ^$
     """
+  
+  Scenario: spqr-monitor recover does nothing when there are keys on the destination shard
+   When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1;
+    """
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tgid1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "krid1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         0.75,
+      "bound_rel":     "test",
+      "total_keys":    200,
+      "task":
+      {
+        "id":            "2",
+        "kr_id_temp":    "krid1",
+        "bound":         ["FAAAAAAAAAA="],
+        "state":         0,
+        "task_group_id": "tgid1"
+      }
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb status of move task group "tgid1"
+    """
+    {
+      "state": "ERROR",
+      "msg":   "some error"
+    }
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor recover --etcd-addr regress_qdb_0_1:2379 -c /spqr/test/feature/conf/shard_data.yaml 2&> output.txt
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    cat output.txt
+    """
+    Then command output should match regexp
+    """
+    key range not safe to unlock: cannot unlock key range: in relation .xMove. 2 entries on source shard, 1 entries on destination shard
+    """

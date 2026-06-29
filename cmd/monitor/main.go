@@ -119,11 +119,12 @@ var (
 			for id, keyRangeDb := range lockedDbKeyRanges {
 				ds, ok := dsMap[keyRangeDb.DistributionId]
 				if !ok {
-					ds, err := db.GetDistribution(ctx, keyRangeDb.DistributionId)
+					dsDb, err := db.GetDistribution(ctx, keyRangeDb.DistributionId)
 					if err != nil {
 						return fmt.Errorf("could not get distribution: %w", err)
 					}
-					dsMap[ds.ID] = distributions.DistributionFromDB(ds)
+					ds = distributions.DistributionFromDB(dsDb)
+					dsMap[dsDb.ID] = ds
 				}
 				keyRange, err := kr.KeyRangeFromDB(keyRangeDb, ds.ColTypes)
 				if err != nil {
