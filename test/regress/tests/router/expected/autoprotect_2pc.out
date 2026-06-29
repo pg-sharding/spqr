@@ -21,50 +21,50 @@ BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
-NOTICE: prepare tx auto_zzz2 on localhost:5550
-NOTICE: prepare tx auto_zzz2 on localhost:5551
-NOTICE: prepare tx auto_zzz2 on localhost:5552
-NOTICE: prepare tx auto_zzz2 on localhost:5553
-NOTICE: commit prepared tx auto_zzz2 on localhost:5550
-NOTICE: commit prepared tx auto_zzz2 on localhost:5551
-NOTICE: commit prepared tx auto_zzz2 on localhost:5552
-NOTICE: commit prepared tx auto_zzz2 on localhost:5553
+NOTICE: prepare tx auto_zzz2 on spqr_shard_1:6432
+NOTICE: prepare tx auto_zzz2 on spqr_shard_2:6432
+NOTICE: prepare tx auto_zzz2 on spqr_shard_3:6432
+NOTICE: prepare tx auto_zzz2 on spqr_shard_4:6432
+NOTICE: commit prepared tx auto_zzz2 on spqr_shard_1:6432
+NOTICE: commit prepared tx auto_zzz2 on spqr_shard_2:6432
+NOTICE: commit prepared tx auto_zzz2 on spqr_shard_3:6432
+NOTICE: commit prepared tx auto_zzz2 on spqr_shard_4:6432
 SELECT __spqr__set_next_2pc_gid('auto_zzz3');
 INSERT INTO ref_2pc (i) VALUES (1);
 NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-NOTICE: prepare tx auto_zzz3 on localhost:5550
-NOTICE: prepare tx auto_zzz3 on localhost:5551
-NOTICE: prepare tx auto_zzz3 on localhost:5552
-NOTICE: prepare tx auto_zzz3 on localhost:5553
-NOTICE: commit prepared tx auto_zzz3 on localhost:5550
-NOTICE: commit prepared tx auto_zzz3 on localhost:5551
-NOTICE: commit prepared tx auto_zzz3 on localhost:5552
-NOTICE: commit prepared tx auto_zzz3 on localhost:5553
+NOTICE: prepare tx auto_zzz3 on spqr_shard_1:6432
+NOTICE: prepare tx auto_zzz3 on spqr_shard_2:6432
+NOTICE: prepare tx auto_zzz3 on spqr_shard_3:6432
+NOTICE: prepare tx auto_zzz3 on spqr_shard_4:6432
+NOTICE: commit prepared tx auto_zzz3 on spqr_shard_1:6432
+NOTICE: commit prepared tx auto_zzz3 on spqr_shard_2:6432
+NOTICE: commit prepared tx auto_zzz3 on spqr_shard_3:6432
+NOTICE: commit prepared tx auto_zzz3 on spqr_shard_4:6432
 SELECT __spqr__set_next_2pc_gid('auto_zzz4');
 UPDATE ref_2pc SET i = i + 1;
 NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-NOTICE: prepare tx auto_zzz4 on localhost:5550
-NOTICE: prepare tx auto_zzz4 on localhost:5551
-NOTICE: prepare tx auto_zzz4 on localhost:5552
-NOTICE: prepare tx auto_zzz4 on localhost:5553
-NOTICE: commit prepared tx auto_zzz4 on localhost:5550
-NOTICE: commit prepared tx auto_zzz4 on localhost:5551
-NOTICE: commit prepared tx auto_zzz4 on localhost:5552
-NOTICE: commit prepared tx auto_zzz4 on localhost:5553
+NOTICE: prepare tx auto_zzz4 on spqr_shard_1:6432
+NOTICE: prepare tx auto_zzz4 on spqr_shard_2:6432
+NOTICE: prepare tx auto_zzz4 on spqr_shard_3:6432
+NOTICE: prepare tx auto_zzz4 on spqr_shard_4:6432
+NOTICE: commit prepared tx auto_zzz4 on spqr_shard_1:6432
+NOTICE: commit prepared tx auto_zzz4 on spqr_shard_2:6432
+NOTICE: commit prepared tx auto_zzz4 on spqr_shard_3:6432
+NOTICE: commit prepared tx auto_zzz4 on spqr_shard_4:6432
 SELECT __spqr__set_next_2pc_gid('auto_zzz5');
 DELETE FROM ref_2pc;
 NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-NOTICE: prepare tx auto_zzz5 on localhost:5550
-NOTICE: prepare tx auto_zzz5 on localhost:5551
-NOTICE: prepare tx auto_zzz5 on localhost:5552
-NOTICE: prepare tx auto_zzz5 on localhost:5553
-NOTICE: commit prepared tx auto_zzz5 on localhost:5550
-NOTICE: commit prepared tx auto_zzz5 on localhost:5551
-NOTICE: commit prepared tx auto_zzz5 on localhost:5552
-NOTICE: commit prepared tx auto_zzz5 on localhost:5553
+NOTICE: prepare tx auto_zzz5 on spqr_shard_1:6432
+NOTICE: prepare tx auto_zzz5 on spqr_shard_2:6432
+NOTICE: prepare tx auto_zzz5 on spqr_shard_3:6432
+NOTICE: prepare tx auto_zzz5 on spqr_shard_4:6432
+NOTICE: commit prepared tx auto_zzz5 on spqr_shard_1:6432
+NOTICE: commit prepared tx auto_zzz5 on spqr_shard_2:6432
+NOTICE: commit prepared tx auto_zzz5 on spqr_shard_3:6432
+NOTICE: commit prepared tx auto_zzz5 on spqr_shard_4:6432
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
     gid    | status 
 -----------+--------
