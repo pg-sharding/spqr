@@ -25,6 +25,7 @@ aspernatur
 astmt
 authed
 Autoattach
+autoprotect
 basebackup
 bcad
 bcc
