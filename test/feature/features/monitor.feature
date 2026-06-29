@@ -435,6 +435,43 @@ Feature: spqr-monitor test
     """
     ^$
     """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges WHERE key_range_id = 'krid1';
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "distribution_id": "ds1",
+        "key_range_id": "krid1",
+        "locked": "true",
+        "lower_bound":"1", 
+        "shard_id":"sh1"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_groups;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "batch_size": "0",
+        "destination_key_range_id": "kr_to",
+        "destination_shard_id": "sh2",
+        "message": "executed by ...",
+        "move_task_id": "2",
+        "source_key_range_id": "krid1",
+        "state": "RUNNING",
+        "task_group_id": "tgid1"
+      }
+    ]
+    """
   
   Scenario: spqr-monitor recover does nothing when no task group status
    When I run SQL on host "router"
@@ -486,6 +523,23 @@ Feature: spqr-monitor test
     Then command output should match regexp
     """
     ^$
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges WHERE key_range_id = 'krid1';
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "distribution_id": "ds1",
+        "key_range_id": "krid1",
+        "locked": "true",
+        "lower_bound":"1", 
+        "shard_id":"sh1"
+      }
+    ]
     """
   
   Scenario: spqr-monitor recover does nothing when there are keys on the destination shard
