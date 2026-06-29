@@ -1591,6 +1591,8 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 
+		sort.Strings(txs)
+
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("gid", "status", "members"),
 		}
