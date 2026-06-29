@@ -119,11 +119,12 @@ var (
 			for id, keyRangeDb := range lockedDbKeyRanges {
 				ds, ok := dsMap[keyRangeDb.DistributionId]
 				if !ok {
-					ds, err := db.GetDistribution(ctx, keyRangeDb.DistributionId)
+					dsDb, err := db.GetDistribution(ctx, keyRangeDb.DistributionId)
 					if err != nil {
 						return fmt.Errorf("could not get distribution: %w", err)
 					}
-					dsMap[ds.ID] = distributions.DistributionFromDB(ds)
+					ds = distributions.DistributionFromDB(dsDb)
+					dsMap[dsDb.ID] = ds
 				}
 				keyRange, err := kr.KeyRangeFromDB(keyRangeDb, ds.ColTypes)
 				if err != nil {
@@ -140,8 +141,9 @@ var (
 		},
 	}
 	verifyKeyRangeCmd = &cobra.Command{
-		Use:   "verify",
-		Short: "verify key range for unlock",
+		Use:          "verify",
+		Short:        "verify key range for unlock",
+		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
@@ -176,11 +178,11 @@ var (
 						return err
 					}
 					var ok bool
-					shardFromConn, ok = shardData.ShardsData[taskGroup.KridFrom]
+					shardFromConn, ok = shardData.ShardsData[keyRange.ShardID]
 					if !ok {
 						return fmt.Errorf("source key range \"%s\" not found in shard_data config", taskGroup.KridFrom)
 					}
-					shardToConn, ok = shardData.ShardsData[taskGroup.KridTo]
+					shardToConn, ok = shardData.ShardsData[taskGroup.ShardToID]
 					if !ok {
 						return fmt.Errorf("destination key range \"%s\" not found in shard_data config", taskGroup.KridFrom)
 					}
@@ -215,7 +217,11 @@ func init() {
 }
 
 func main() {
-	_ = rootCmd.Execute()
+	err := rootCmd.Execute()
+	if err != nil {
+		// fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 type keyRangeExt struct {
@@ -273,11 +279,7 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB) (keyRangesMap map[string]m
 }
 
 func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
-	connConfig, err := pgx.ParseConfig(config.AddTSA(shardConn.GetCombinedConnString(), "prefer-standby"))
-	if err != nil {
-		return nil, "", err
-	}
-	conn, err := pgx.ConnectConfig(ctx, connConfig)
+	conn, err := connectWithTSA(ctx, shardConn, "prefer-standby")
 	if err != nil {
 		return nil, "", err
 	}
@@ -336,6 +338,14 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 	return nil, "", nil
 }
 
+func connectWithTSA(ctx context.Context, shardConn *config.ShardConnect, tsa string) (*pgx.Conn, error) {
+	connConfig, err := pgx.ParseConfig(config.AddTSA(shardConn.GetCombinedConnString(), tsa))
+	if err != nil {
+		return nil, err
+	}
+	return pgx.ConnectConfig(ctx, connConfig)
+}
+
 func getFailedTaskGroups(ctx context.Context, db *qdb.EtcdQDB) (map[string]*qdb.MoveTaskGroup, error) {
 	taskGroups, err := db.ListTaskGroups(ctx)
 	if err != nil {
@@ -346,7 +356,7 @@ func getFailedTaskGroups(ctx context.Context, db *qdb.EtcdQDB) (map[string]*qdb.
 		if err != nil {
 			return nil, err
 		}
-		if status.State != string(tasks.TaskGroupError) {
+		if status == nil || status.State != string(tasks.TaskGroupError) {
 			delete(taskGroups, id)
 		}
 	}
@@ -381,7 +391,7 @@ func checkUnlockKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRange *kr.KeyR
 	if err != nil {
 		return err
 	}
-	fromConn, err := datatransfers.GetMasterConnection(ctx, shardFromConnCfg, "")
+	fromConn, err := connectWithTSA(ctx, shardFromConnCfg, "read-write")
 	if err != nil {
 		return err
 	}
@@ -389,7 +399,7 @@ func checkUnlockKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRange *kr.KeyR
 	if err != nil {
 		return err
 	}
-	toConn, err := datatransfers.GetMasterConnection(ctx, shardToConnCfg, "")
+	toConn, err := connectWithTSA(ctx, shardToConnCfg, "read-write")
 	if err != nil {
 		return err
 	}
@@ -450,11 +460,11 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, k
 	if err != nil {
 		return err
 	}
-	fromConnCfg, ok := shardData.ShardsData[taskGroup.KrIdFrom]
+	fromConnCfg, ok := shardData.ShardsData[keyRange.ShardID]
 	if !ok {
 		return fmt.Errorf("source key range \"%s\" not found in shard_data config", taskGroup.KrIdFrom)
 	}
-	toConnCfg, ok := shardData.ShardsData[taskGroup.KrIdTo]
+	toConnCfg, ok := shardData.ShardsData[taskGroup.ShardToId]
 	if !ok {
 		return fmt.Errorf("destination key range \"%s\" not found in shard_data config", taskGroup.KrIdFrom)
 	}
