@@ -177,11 +177,11 @@ var (
 						return err
 					}
 					var ok bool
-					shardFromConn, ok = shardData.ShardsData[taskGroup.KridFrom]
+					shardFromConn, ok = shardData.ShardsData[keyRange.ShardID]
 					if !ok {
 						return fmt.Errorf("source key range \"%s\" not found in shard_data config", taskGroup.KridFrom)
 					}
-					shardToConn, ok = shardData.ShardsData[taskGroup.KridTo]
+					shardToConn, ok = shardData.ShardsData[taskGroup.ShardToID]
 					if !ok {
 						return fmt.Errorf("destination key range \"%s\" not found in shard_data config", taskGroup.KridFrom)
 					}
@@ -278,11 +278,7 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB) (keyRangesMap map[string]m
 }
 
 func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
-	connConfig, err := pgx.ParseConfig(config.AddTSA(shardConn.GetCombinedConnString(), "prefer-standby"))
-	if err != nil {
-		return nil, "", err
-	}
-	conn, err := pgx.ConnectConfig(ctx, connConfig)
+	conn, err := connectWithTSA(ctx, shardConn, "prefer-standby")
 	if err != nil {
 		return nil, "", err
 	}
@@ -341,6 +337,14 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 	return nil, "", nil
 }
 
+func connectWithTSA(ctx context.Context, shardConn *config.ShardConnect, tsa string) (*pgx.Conn, error) {
+	connConfig, err := pgx.ParseConfig(config.AddTSA(shardConn.GetCombinedConnString(), tsa))
+	if err != nil {
+		return nil, err
+	}
+	return pgx.ConnectConfig(ctx, connConfig)
+}
+
 func getFailedTaskGroups(ctx context.Context, db *qdb.EtcdQDB) (map[string]*qdb.MoveTaskGroup, error) {
 	taskGroups, err := db.ListTaskGroups(ctx)
 	if err != nil {
@@ -386,7 +390,7 @@ func checkUnlockKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRange *kr.KeyR
 	if err != nil {
 		return err
 	}
-	fromConn, err := datatransfers.GetMasterConnection(ctx, shardFromConnCfg, "")
+	fromConn, err := connectWithTSA(ctx, shardFromConnCfg, "read-write")
 	if err != nil {
 		return err
 	}
@@ -394,7 +398,7 @@ func checkUnlockKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRange *kr.KeyR
 	if err != nil {
 		return err
 	}
-	toConn, err := datatransfers.GetMasterConnection(ctx, shardToConnCfg, "")
+	toConn, err := connectWithTSA(ctx, shardToConnCfg, "read-write")
 	if err != nil {
 		return err
 	}
@@ -455,11 +459,11 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, k
 	if err != nil {
 		return err
 	}
-	fromConnCfg, ok := shardData.ShardsData[taskGroup.KrIdFrom]
+	fromConnCfg, ok := shardData.ShardsData[keyRange.ShardID]
 	if !ok {
 		return fmt.Errorf("source key range \"%s\" not found in shard_data config", taskGroup.KrIdFrom)
 	}
-	toConnCfg, ok := shardData.ShardsData[taskGroup.KrIdTo]
+	toConnCfg, ok := shardData.ShardsData[taskGroup.ShardToId]
 	if !ok {
 		return fmt.Errorf("destination key range \"%s\" not found in shard_data config", taskGroup.KrIdFrom)
 	}
