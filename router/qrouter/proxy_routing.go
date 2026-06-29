@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/twopc"
 	"github.com/pg-sharding/spqr/router/virtual"
 	"github.com/pg-sharding/spqr/router/xproto"
 
@@ -1715,6 +1716,17 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	if len(rm.RecheckKeyRange) != 0 {
 		if err := planner.AdjustPlanStateForFluxAccess(rm, p); err != nil {
 			return nil, err
+		}
+	}
+
+	/* Should we use 2pc? */
+	if rm.HasReferenceRelUpdate {
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_AUTOPROTECT_2PC)
+		if err != nil {
+			return nil, err
+		}
+		if guc.Get(rm.SPH) {
+			rm.SPH.SetCommitStrategy(twopc.CommitStrategy2pc)
 		}
 	}
 

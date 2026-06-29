@@ -75,7 +75,8 @@ type RoutingMetadataContext struct {
 	/* Is query proven to be read-only? */
 	ro bool
 	/* NB: Not the same as !ro */
-	HasWriteTargets bool
+	HasWriteTargets       bool
+	HasReferenceRelUpdate bool
 	/* Should we auto-linearize? */
 	HasHazardUpsert bool
 

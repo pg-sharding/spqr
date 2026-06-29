@@ -520,6 +520,13 @@ var BoolGUCs = []BoolGUCimpl{
 		},
 	},
 	{
+		n:         SPQR_ALLOW_AUTOPROTECT_2PC,
+		shortName: "Allow auto protect 2pc",
+		def: func() bool {
+			return config.RouterConfig().AllowAutoprotectTwoPhase
+		},
+	},
+	{
 		n:         SPQR_ALLOW_FLUX_ACCESS,
 		shortName: "flux data access",
 		def: func() bool {
