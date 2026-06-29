@@ -249,7 +249,7 @@ Feature: spqr-monitor test
     cannot unlock key range: in relation .xMove. 0 entries on source shard, 2 entries on destination shard
     """
   
-  Scenario: spqr-monitor verify succeds when there are no keys on destination shard
+  Scenario: spqr-monitor verify succeeds when there are no keys on destination shard
    When I run SQL on host "router"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -298,7 +298,7 @@ Feature: spqr-monitor test
     ^$
     """
   
-  Scenario: spqr-monitor verify succeds when there are the same number of keys on both shards
+  Scenario: spqr-monitor verify succeeds when there are the same number of keys on both shards
    When I run SQL on host "router"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
