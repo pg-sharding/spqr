@@ -96,18 +96,19 @@ var (
 			nextBoundInt, _ := binary.Varint(nextBoundBytes)
 			curBound, _ := binary.Varint(keyRange.OutFunc(0))
 			keyRangeToRedistribute := keyRange.ID
+			newBound := max(nextBoundInt-int64(chunkSize), curBound)
 			if dryRun {
-				newBound := max(nextBoundInt-int64(chunkSize), curBound)
 				log.Printf("redistribute key range with bound %d\n", newBound)
 				return nil
 			}
 			if nextBoundInt-int64(chunkSize) > curBound {
 				buf := make([]byte, binary.MaxVarintLen64)
-				binary.PutVarint(buf, int64(nextBoundInt-int64(chunkSize)))
+				binary.PutVarint(buf, newBound)
 				newKeyRangeID, err := uuid.NewV4()
 				if err != nil {
 					return err
 				}
+				log.Printf("splitting key range \"%s\" by %d\n", newKeyRangeID.String(), newBound)
 				if err := c.Split(ctx, &kr.SplitKeyRange{
 					Bound:      [][]byte{buf},
 					SourceID:   keyRange.ID,
@@ -117,6 +118,7 @@ var (
 				}
 				keyRangeToRedistribute = newKeyRangeID.String()
 			}
+			log.Printf("redistributing key range \"%s\"\n", keyRangeToRedistribute)
 			krService := protos.NewKeyRangeServiceClient(conn)
 			_, err = krService.RedistributeKeyRange(ctx, &protos.RedistributeKeyRangeRequest{
 				Krid:      keyRangeToRedistribute,
