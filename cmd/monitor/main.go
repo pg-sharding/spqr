@@ -42,7 +42,7 @@ var (
 	}
 
 	checkCmd = &cobra.Command{
-		Use:   "spqr-monitor check --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --host `console host` --port `console port` --user `console user` --password `console password` --file `result file`",
+		Use:   "spqr-monitor check --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --file `result file`",
 		Short: "run check iteration",
 		Run: func(_ *cobra.Command, _ []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
