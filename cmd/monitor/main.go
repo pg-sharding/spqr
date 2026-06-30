@@ -477,7 +477,7 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, k
 		return nil
 	}
 	if dryRun {
-		log.Printf("key range to unlock: \"%s\"", keyRangeId)
+		log.Printf("key range to unlock: \"%s\"", keyRange.ID)
 		return nil
 	}
 	if err := db.TryTaskGroupLock(ctx, taskGroupId, "spqr-monitor recover"); err != nil {
