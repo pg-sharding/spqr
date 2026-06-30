@@ -31,8 +31,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-monitor command args...",
-		Short: "spqr-monitor",
-		Long:  "spqr-monitor",
+		Short: "tools for monitoring key ranges & tasks during transfers",
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
@@ -42,7 +41,7 @@ var (
 	}
 
 	checkCmd = &cobra.Command{
-		Use:   "spqr-monitor check --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --file `result file`",
+		Use:   "check --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --file `result file`",
 		Short: "run check iteration",
 		Run: func(_ *cobra.Command, _ []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
@@ -93,7 +92,7 @@ var (
 		},
 	}
 	recoverKeyRangesCmd = &cobra.Command{
-		Use:   "spqr-monitor recover --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... [--dry-run]",
+		Use:   "recover --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... [--dry-run]",
 		Short: "run locked key range recovery iteration",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
@@ -141,7 +140,7 @@ var (
 		},
 	}
 	verifyKeyRangeCmd = &cobra.Command{
-		Use:          "spqr-monitor verify --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --key-range key_range_id",
+		Use:          "verify --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --key-range key_range_id",
 		Short:        "verify key range for unlock",
 		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
