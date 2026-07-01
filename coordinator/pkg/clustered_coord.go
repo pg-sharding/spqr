@@ -653,7 +653,9 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 	}
 
-	go qc.watchTaskGroups(context.TODO())
+	if config.CoordinatorConfig().WatchTaskGroups {
+		go qc.watchTaskGroups(context.Background())
+	}
 
 	if config.CoordinatorConfig().RecoverKeyRangeMoves {
 		ranges, err := qc.db.ListAllKeyRanges(context.TODO())

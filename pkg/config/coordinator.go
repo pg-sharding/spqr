@@ -39,6 +39,7 @@ type Coordinator struct {
 	UseSPQRGuard             bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 
+	WatchTaskGroups      bool `json:"watch_task_groups" toml:"watch_task_groups" yaml:"watch_task_groups"`
 	RecoverKeyRangeMoves bool `json:"recover_key_range_moves" toml:"recover_key_range_moves" yaml:"recover_key_range_moves"`
 
 	// gRPC keepalive settings for router connections
@@ -56,6 +57,7 @@ func (c *Coordinator) ApplyDefaults() {
 	c.DataMoveQueryLogLevel = "debug"
 	c.DataMoveAwaitPIDException = "true"
 	c.DataMoveIdleInTxTimeout = "0"
+	c.WatchTaskGroups = true
 }
 
 func (c *Coordinator) PostProcess() error {
