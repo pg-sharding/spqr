@@ -14,4 +14,3 @@ data_move_disable_triggers: true
 forbid_direct_shard_queries: true
 use_spqrguard: true
 recover_key_range_moves: true
-watch_task_groups: false
