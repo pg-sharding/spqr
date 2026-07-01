@@ -44,7 +44,7 @@ var (
 	generateTaskCmd = &cobra.Command{
 		Use:   "generate-task --coordinator-addr `coordinator grpc address` --etcd-addr `etcd address`... --chunk-size size --batch-size size --key-range-id id --shard-id id --max-tasks count [--dry-run]",
 		Short: "split a number of keys and redistribute them to a given shard",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if keyRangeID == "" {
 				return fmt.Errorf("key range id must not be empty")
 			}
@@ -94,6 +94,9 @@ var (
 				return nil
 			}
 			nextBound, err := datatransfers.ResolveNextBound(ctx, keyRange, &c)
+			if err != nil {
+				return err
+			}
 			nextBoundBytes := (&kr.KeyRange{LowerBound: nextBound, ColumnTypes: ds.ColTypes}).OutFunc(0)
 			nextBoundInt, _ := binary.Varint(nextBoundBytes)
 			curBound, _ := binary.Varint(keyRange.OutFunc(0))
