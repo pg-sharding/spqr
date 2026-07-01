@@ -11,6 +11,7 @@ spqr-mover
 spqr-workloadreplay
 spqr-dump
 spqr-monitor
+spqr-redistributor
 y.output
 *.swp
 *.swo
