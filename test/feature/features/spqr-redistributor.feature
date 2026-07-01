@@ -132,3 +132,91 @@ Feature: spqr-redistributor test
             "batch_size":"100"
         }]
         """
+
+    Scenario: spqr-redistributor does not create more redistribute tasks than allowed
+        When I run SQL on host "router"
+        """
+        CREATE TABLE xMove(w_id INT, s TEXT);
+        SET __spqr__execute_on TO sh1;
+        INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text data';
+        """
+        Then command return code should be "0"
+        When I record in qdb redistribute task
+        """
+        {
+            "ID": "rt1",
+            "KeyRangeId": "some_kr",
+            "ShardId": "sh2"
+        }
+        """
+        Then command return code should be "0"
+        When I run command on host "coordinator" with timeout "30" seconds
+        """
+        /spqr/spqr-redistributor generate-task --coordinator-addr regress_coordinator:7003 --etcd-addr regress_qdb_0_1:2379 --chunk-size 1000 --batch-size 100 --key-range-id krid1 --shard-id sh2 --max-tasks 1 2&> output.txt
+        """
+        Then command return code should be "0"
+        When I run command on host "coordinator"
+        """
+        cat output.txt
+        """
+        Then command output should match regexp
+        """
+        redistribute tasks limit reached, not doing anything
+        """
+
+    Scenario: spqr-redistributor considers only redistribute tasks to given shard
+        When I run SQL on host "router"
+        """
+        CREATE TABLE xMove(w_id INT, s TEXT);
+        SET __spqr__execute_on TO sh1;
+        INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text data';
+        """
+        Then command return code should be "0"
+        When I execute SQL on host "coordinator"
+        """
+        ATTACH CONTROL POINT copy_data_cp SLEEP 10000 SECONDS;
+        """
+        Then command return code should be "0"
+        When I record in qdb redistribute task
+        """
+        {
+            "ID": "rt1",
+            "KeyRangeId": "some_kr",
+            "ShardId": "sh3"
+        }
+        """
+        Then command return code should be "0"
+        When I run command on host "coordinator" with timeout "30" seconds
+        """
+        /spqr/spqr-redistributor generate-task --coordinator-addr regress_coordinator:7003 --etcd-addr regress_qdb_0_1:2379 --chunk-size 200 --batch-size 100 --key-range-id krid1 --shard-id sh2 --max-tasks 1 2&> output.txt
+        """
+        Then command return code should be "0"
+        When I run command on host "coordinator"
+        """
+        cat output.txt
+        """
+        Then command output should match regexp
+        """
+.*splitting key range .* by 800
+.*redistributing key range .*
+        """
+        When I run SQL on host "coordinator"
+        """
+        SHOW redistribute_tasks;
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "destination_shard_id":"sh2",
+                "batch_size":"100"
+            },
+            {
+                "redistribute_task_id":"rt1",
+                "key_range_id":"some_kr",
+                "destination_shard_id":"sh3",
+                "batch_size":"0"
+            }
+        ]
+        """
