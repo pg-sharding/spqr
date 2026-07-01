@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
@@ -42,7 +42,7 @@ var (
 	}
 
 	generateTaskCmd = &cobra.Command{
-		Use:   "generate-task --cordinator-addr `coordinator grpc address` --etcd-addr `etcd address`... --chunk-size size --batch-size size --key-range-id id --shard-id id --max-tasks count [--dry-run]",
+		Use:   "generate-task --coordinator-addr `coordinator grpc address` --etcd-addr `etcd address`... --chunk-size size --batch-size size --key-range-id id --shard-id id --max-tasks count [--dry-run]",
 		Short: "split a number of keys and redistribute them to a given shard",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if keyRangeID == "" {
@@ -109,19 +109,16 @@ var (
 			if nextBoundInt-int64(chunkSize) > curBound {
 				buf := make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(buf, newBound)
-				newKeyRangeID, err := uuid.NewV4()
-				if err != nil {
-					return err
-				}
-				log.Printf("splitting key range \"%s\" by %d\n", newKeyRangeID.String(), newBound)
+				newKeyRangeID := uuid.NewString()
+				log.Printf("splitting key range \"%s\" by %d\n", newKeyRangeID, newBound)
 				if _, err := krService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
-					NewId:    newKeyRangeID.String(),
+					NewId:    newKeyRangeID,
 					SourceId: keyRange.ID,
 					Bound:    buf,
 				}); err != nil {
 					return err
 				}
-				keyRangeToRedistribute = newKeyRangeID.String()
+				keyRangeToRedistribute = newKeyRangeID
 			}
 			log.Printf("redistributing key range \"%s\"\n", keyRangeToRedistribute)
 			_, err = krService.RedistributeKeyRange(ctx, &protos.RedistributeKeyRangeRequest{
