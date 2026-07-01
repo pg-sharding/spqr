@@ -2203,6 +2203,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool, icpCH icp.ICPContextHolder) error {
 	if !req.Apply {
+		spqrlog.Zero.Debug().Str("key range id", task.KeyRangeID).Msg("apply not set for redistribute request, exiting")
 		return nil
 	}
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
