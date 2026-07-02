@@ -60,7 +60,10 @@ build_spqrdump:
 build_monitor:
 	go build -pgo=auto -o spqr-monitor ./cmd/monitor
 
-build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor
+build_redistributor:
+	go build -pgo=auto -o spqr-redistributor ./cmd/redistributor
+
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor build_redistributor
 
 build_images:
 	docker compose build spqr-base-image

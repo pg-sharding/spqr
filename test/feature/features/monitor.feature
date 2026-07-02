@@ -5,7 +5,6 @@ Feature: spqr-monitor test
     #
     Given cluster is up and running
     And host "coordinator2" is stopped
-    And host "coordinator2" is started
     
     When I execute SQL on host "coordinator"
     """

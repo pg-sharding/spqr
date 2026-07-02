@@ -122,7 +122,7 @@ func DispatchSlice(qd *QueryDesc,
 						return err
 					}
 				default:
-					return rerrors.ErrExecutorSyncLost
+					return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("non sync of flush query for dispatch: %T", msg))
 				}
 			}
 		}

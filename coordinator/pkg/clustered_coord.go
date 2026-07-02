@@ -653,7 +653,9 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 	}
 
-	go qc.watchTaskGroups(context.TODO())
+	if config.CoordinatorConfig().WatchTaskGroups {
+		go qc.watchTaskGroups(context.Background())
+	}
 
 	if config.CoordinatorConfig().RecoverKeyRangeMoves {
 		ranges, err := qc.db.ListAllKeyRanges(context.TODO())
@@ -1269,7 +1271,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
-	hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.1")
+	hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.2")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
 	}
@@ -1277,7 +1279,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
 	}
 
-	hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.1")
+	hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.2")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
 	}
@@ -2203,6 +2205,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool, icpCH icp.ICPContextHolder) error {
 	if !req.Apply {
+		spqrlog.Zero.Debug().Str("key range id", task.KeyRangeID).Msg("apply not set for redistribute request, exiting")
 		return nil
 	}
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
