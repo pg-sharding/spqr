@@ -178,7 +178,7 @@ Feature: Redistribution test
   
     When I run SQL on host "shard1"
     """
-    ALTER EXTENSION spqrhash UPDATE TO '1.1';
+    ALTER EXTENSION spqrhash UPDATE;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds
@@ -193,7 +193,7 @@ Feature: Redistribution test
   
     When I run SQL on host "shard2"
     """
-    ALTER EXTENSION spqrhash UPDATE TO '1.1';
+    ALTER EXTENSION spqrhash UPDATE;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds
