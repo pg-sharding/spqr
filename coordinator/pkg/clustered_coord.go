@@ -224,6 +224,12 @@ func (ci grpcConnMgr) Shutdown() error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
 }
 
+// TODO : implement
+// TODO : unit tests
+func (ci grpcConnMgr) GracShutdown() {
+
+}
+
 // TODO : unit tests
 func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
