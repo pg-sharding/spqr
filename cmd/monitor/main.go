@@ -16,14 +16,18 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
 	shardDataFilePath string
 	qdbAddrs          []string
+	coordAddr         string
 	stateFilePath     string
 	tableSampleSize   float64
 	keyRangeId        string
@@ -131,8 +135,13 @@ var (
 				}
 				lockedKeyRanges[id] = keyRange
 			}
+			conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				return err
+			}
+			keyRangeService := protos.NewKeyRangeServiceClient(conn)
 			for taskGroupId, keyRange := range lockedKeyRanges {
-				if err := processKeyRange(ctx, db, taskGroupId, keyRange, shardData, dsMap, dryRun); err != nil {
+				if err := processKeyRange(ctx, db, keyRangeService, taskGroupId, keyRange, shardData, dsMap, dryRun); err != nil {
 					return err
 				}
 			}
@@ -197,19 +206,16 @@ var (
 )
 
 func init() {
-	checkCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
-	checkCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
-	checkCmd.PersistentFlags().StringVar(&stateFilePath, "file", "", "result file path")
-	checkCmd.PersistentFlags().Float64Var(&tableSampleSize, "tablesample-size", 0.01, "query table sample size in percents")
+	checkCmd.Flags().StringVar(&stateFilePath, "file", "", "result file path")
+	checkCmd.Flags().Float64Var(&tableSampleSize, "tablesample-size", 0.01, "query table sample size in percents")
 
-	recoverKeyRangesCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
-	recoverKeyRangesCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
-	recoverKeyRangesCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "", false, "only check key ranges, do not delete anything")
+	recoverKeyRangesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "only check key ranges, do not delete anything")
+	recoverKeyRangesCmd.Flags().StringVar(&coordAddr, "coordinator-addr", "localhost:7003", "coordinator grpc api address")
 
-	verifyKeyRangeCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
-	verifyKeyRangeCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
-	verifyKeyRangeCmd.PersistentFlags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
+	verifyKeyRangeCmd.Flags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
 
+	rootCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
+	rootCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(recoverKeyRangesCmd)
 	rootCmd.AddCommand(verifyKeyRangeCmd)
@@ -450,7 +456,7 @@ func getEntriesCountByRelation(ctx context.Context, keyRange *kr.KeyRange, nextB
 	return relToCount, nil
 }
 
-func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, keyRange *kr.KeyRange, shardData *config.DatatransferConnections, dsMap map[string]*distributions.Distribution, dryRun bool) error {
+func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRangeService protos.KeyRangeServiceClient, taskGroupId string, keyRange *kr.KeyRange, shardData *config.DatatransferConnections, dsMap map[string]*distributions.Distribution, dryRun bool) error {
 	// 1. Lock task group
 	// 2. Check & unlock key range
 	// 3. Delete/move task group & respective redistribute task
@@ -483,7 +489,7 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, taskGroupId string, k
 		log.Printf("failed to lock task group \"%s\", skipping...\n", taskGroupId)
 		return nil
 	}
-	if err := db.UnlockKeyRange(ctx, keyRange.ID); err != nil {
+	if _, err := keyRangeService.UnlockKeyRange(ctx, &protos.UnlockKeyRangeRequest{Id: []string{keyRange.ID}}); err != nil {
 		return err
 	}
 	var moveOp *qdb.MoveKeyRange
