@@ -1363,6 +1363,18 @@ func (mr *MockPoolMockRecorder) ErrorCounts() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ErrorCounts", reflect.TypeOf((*MockPool)(nil).ErrorCounts))
 }
 
+// GracShutdown mocks base method.
+func (m *MockPool) GracShutdown() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GracShutdown")
+}
+
+// GracShutdown indicates an expected call of GracShutdown.
+func (mr *MockPoolMockRecorder) GracShutdown() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GracShutdown", reflect.TypeOf((*MockPool)(nil).GracShutdown))
+}
+
 // Pop mocks base method.
 func (m *MockPool) Pop(id uint) (bool, error) {
 	m.ctrl.T.Helper()

@@ -143,6 +143,18 @@ func (mr *MockRuleRouterMockRecorder) ForEachPool(cb any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockRuleRouter)(nil).ForEachPool), cb)
 }
 
+// GracShutdown mocks base method.
+func (m *MockRuleRouter) GracShutdown() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GracShutdown")
+}
+
+// GracShutdown indicates an expected call of GracShutdown.
+func (mr *MockRuleRouterMockRecorder) GracShutdown() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GracShutdown", reflect.TypeOf((*MockRuleRouter)(nil).GracShutdown))
+}
+
 // InstanceHealthChecks mocks base method.
 func (m *MockRuleRouter) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	m.ctrl.T.Helper()

@@ -43,7 +43,7 @@ type Pool interface {
 	Put(client Client) error
 	Pop(id uint) (bool, error)
 
-	/* Same as Shutdown(), but does not immidiately kill user */
+	/* Same as Shutdown(), but does not immediately kill user */
 	GracShutdown()
 	Shutdown() error
 }
