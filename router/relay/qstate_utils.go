@@ -121,6 +121,11 @@ func DispatchSlice(qd *QueryDesc,
 					if err := serv.SendShard(pgflush, targ); err != nil {
 						return err
 					}
+				case *pgproto3.Close, *pgproto3.Parse, *pgproto3.Bind, *pgproto3.Describe:
+					/* Thats ok, ignore */
+					if err := serv.SendShard(pgflush, targ); err != nil {
+						return err
+					}
 				default:
 					return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("non sync of flush query for dispatch: %T", msg))
 				}
