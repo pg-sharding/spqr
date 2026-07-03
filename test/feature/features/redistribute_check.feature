@@ -77,8 +77,8 @@ Feature: Redistribution test
     """
     foreign-data wrapper \"postgres_fdw\" does not exist
     """
-  
-  Scenario: REDISTRIBUTE KEY RANGE CHECK detects missing spqrhash extension
+
+Scenario: REDISTRIBUTE KEY RANGE CHECK does not check for spqrhash extension when no hashed columns
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -94,6 +94,39 @@ Feature: Redistribution test
     """
     DROP extension IF EXISTS spqrhash;
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    DROP extension IF EXISTS spqrhash;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "0"
+
+  Scenario: REDISTRIBUTE KEY RANGE CHECK detects missing spqrhash extension
+    When I execute SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds2 (uuid hash);
+    CREATE RELATION xMove2 (w_id hash murmur) FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    DROP extension IF EXISTS spqrhash;
+    INSERT INTO xMove2 (w_id, s) SELECT generate_series(0, 999), 'sample text value';
     """
     Then command return code should be "0"
 
@@ -142,20 +175,22 @@ Feature: Redistribution test
   Scenario: REDISTRIBUTE KEY RANGE CHECK detects incorrect spqrhash extension version
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE DISTRIBUTION ds2 (uuid hash);
+    CREATE RELATION xMove2 (w_id hash murmur) FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
     """
     Then command return code should be "0"
 
     When I run SQL on host "router"
     """
-    CREATE TABLE xMove(w_id INT, s TEXT);
+    CREATE TABLE xMove2(w_id INT, s TEXT);
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
     """
     DROP extension IF EXISTS spqrhash;
     CREATE EXTENSION spqrhash VERSION '1.0';
-    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    INSERT INTO xMove2 (w_id, s) SELECT generate_series(0, 999), 'sample text value';
     """
     Then command return code should be "0"
 
@@ -178,7 +213,7 @@ Feature: Redistribution test
   
     When I run SQL on host "shard1"
     """
-    ALTER EXTENSION spqrhash UPDATE;
+    ALTER EXTENSION spqrhash UPDATE TO '1.1';
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds

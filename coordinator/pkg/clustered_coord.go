@@ -1277,20 +1277,29 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
-	hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.2")
-	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
-	}
-	if !hasSpqrHash {
-		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
+	anyHashedCol := false
+	for _, t := range ds.ColTypes {
+		if t == qdb.ColumnTypeUUIDHashed || t == qdb.ColumnTypeVarcharHashed {
+			anyHashedCol = true
+		}
 	}
 
-	hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.2")
-	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
-	}
-	if !hasSpqrHash {
-		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
+	if anyHashedCol {
+		hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.1", "1.2")
+		if err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
+		}
+		if !hasSpqrHash {
+			return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
+		}
+
+		hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.1", "1.2")
+		if err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
+		}
+		if !hasSpqrHash {
+			return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
+		}
 	}
 
 	if err := datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardID, schemas); err != nil {
