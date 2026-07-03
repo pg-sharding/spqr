@@ -960,9 +960,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
 	switch fname {
-	case virtual.PGAdvisoryXactLock:
-		fallthrough
-	case virtual.PGAdvisoryUnlock:
+	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
 		fallthrough
 	case virtual.PGAdvisoryLock:
 		/* For now, only scatter-out and reject is supported */

@@ -13,7 +13,7 @@ step s2_try_lock_sh1       { SELECT pg_try_advisory_lock(2) /* __spqr__execute_o
 step s2_try_lock_sh2       { SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh2 */; }
 step s2_try_lock_sh3       { SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh3 */; }
 step s2_try_lock_sh4       { SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh4 */; }
-step s2_adv_unlock          { SELECT pg_advisory_unlock(2); }
+step s2_adv_unlock         { SELECT pg_advisory_unlock(2); }
 
 permutation
     s1_ev2 s2_ev2
