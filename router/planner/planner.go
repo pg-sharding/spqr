@@ -455,15 +455,14 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 	})
 }
 
-func MetadataVirtualFunctionCall(ctx context.Context,
+func ConsoleFunctionCall(
+	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
-
-	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
-
 	switch fname {
+
 	case virtual.VirtualAwaitTask:
 
 		if len(args) != 1 {
@@ -952,17 +951,54 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	}
 }
 
+func MetadataVirtualFunctionCall(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
+	fname string,
+	args []lyx.Node) (plan.Plan, error) {
+
+	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
+
+	switch fname {
+	case virtual.PGAdvisoryXactLock:
+		fallthrough
+	case virtual.PGAdvisoryUnlock:
+		fallthrough
+	case virtual.PGAdvisoryLock:
+		/* For now, only scatter-out and reject is supported */
+		switch config.RouterConfig().Qr.AdvisoryLockBehaviour {
+		case config.AdvisoryLockBehaviourBlock:
+			return nil, spqrerror.Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).Detail("advisory_lock_behaviour is BLOCK").Hint("try to switch advisory_lock_behaviour")
+		case config.AdvisoryLockBehaviourScatter:
+			if !rm.SPH.EnhancedMultiShardProcessing() {
+				return nil, spqrerror.Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).Detail("engine V2 is OFF").Hint("try to turn engine V2 to ON")
+
+			}
+			return &plan.ScatterPlan{}, nil
+		default:
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_COMPLEX_QUERY)
+		}
+	default:
+		tts, err := ConsoleFunctionCall(ctx, rm, plr, fname, args)
+		if err != nil {
+			return nil, err
+		}
+		return &plan.VirtualPlan{
+			TTS: tts,
+		}, nil
+	}
+}
+
 func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
-	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
+	n lyx.Node) (plan.Plan, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
-			tts, err := MetadataVirtualFunctionCall(ctx,
+			return MetadataVirtualFunctionCall(ctx,
 				rm, plr, q.Name, q.Args)
-			return tts, err
 		}
 	}
 	/* XXX: we should error out here */
@@ -995,15 +1031,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
+				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
 
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			}
 
@@ -1029,17 +1063,15 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := RetrieveTuples(
+				p, err := RetrieveTuples(
 					ctx,
 					rm,
 					p, q.Arg)
 				if err != nil {
 					return nil, err
 				}
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			default:
 				break

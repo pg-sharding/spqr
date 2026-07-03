@@ -37,13 +37,14 @@ var (
 	rcfgPath string
 	ccfgPath string
 
-	logLevel              string
-	memqdbBackupPath      string
-	routerPort            int
-	routerROPort          int
-	adminPort             int
-	grpcPort              int
-	defaultRouteBehaviour string
+	logLevel                string
+	memqdbBackupPath        string
+	routerPort              int
+	routerROPort            int
+	adminPort               int
+	grpcPort                int
+	defaultRouteBehaviour   string
+	pgAdvisoryLockBehaviour string
 
 	enhancedMultishardProcessing bool
 
@@ -129,6 +130,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "overload for `admin_console_port` option in router config")
 	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "overload for `grpc_api_port` option in router config")
 	rootCmd.PersistentFlags().StringVarP(&defaultRouteBehaviour, "default-route-behaviour", "", "", "overload for `default_route_behaviour` option in router config")
+	rootCmd.PersistentFlags().StringVarP(&pgAdvisoryLockBehaviour, "advisory-lock-behaviour", "", "", "overload for `advisory_lock_behaviour` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&showNoticeMessages, "show-notice-messages", "", false, "overload for `show_notice_messages` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "pgproto-debug", "", false, "overload for `pgproto_debug` option in router config")
 

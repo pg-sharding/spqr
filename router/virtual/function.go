@@ -20,6 +20,9 @@ const (
 	/* isolation tester support function */
 	VirtualAwaitTask                = "__spqr__await_task"
 	PGIsolationTestSessionIsBlocked = "pg_isolation_test_session_is_blocked"
+	PGAdvisoryXactLock              = "pg_advisory_xact_lock"
+	PGAdvisoryLock                  = "pg_advisory_lock"
+	PGAdvisoryUnlock                = "pg_advisory_unlock"
 )
 
 func IsVirtualFuncName(n string) bool {
@@ -28,7 +31,9 @@ func IsVirtualFuncName(n string) bool {
 		VirtualCTID, VirtualFuncHosts, VirtualAwaitTask,
 		VirtualRouteKey, VirtualRemoteExecute, VirtualRun2PCRecover,
 		VirtualClear2PCData, VirtualCleanOutdated2PCData,
-		PGIsolationTestSessionIsBlocked, VirtualSetNextTwoPhaseCommitGID:
+		PGIsolationTestSessionIsBlocked,
+		PGAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock,
+		VirtualSetNextTwoPhaseCommitGID:
 		return true
 	default:
 		return false

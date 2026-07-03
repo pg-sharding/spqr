@@ -12,6 +12,7 @@ type PoolMode string
 type ShardType string
 type RouterMode string
 type DefaultRouteBehaviour string
+type AdvisoryLockBehaviour string
 
 const (
 	PoolModeSession     = PoolMode("SESSION")
@@ -26,6 +27,9 @@ const (
 
 	DefaultRouteBehaviourBlock = DefaultRouteBehaviour("BLOCK")
 	DefaultRouteBehaviourAllow = DefaultRouteBehaviour("ALLOW")
+
+	AdvisoryLockBehaviourScatter = AdvisoryLockBehaviour("SCATTER")
+	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
 )
 
 var cfgRouter Router
@@ -177,6 +181,8 @@ type QRouter struct {
 
 	AllowSplitUpdate    bool `json:"allow_split_update" toml:"allow_split_update" yaml:"allow_split_update"`
 	AllowPostProcessing bool `json:"allow_postprocessing" toml:"allow_postprocessing" yaml:"allow_postprocessing"`
+
+	AdvisoryLockBehaviour AdvisoryLockBehaviour `json:"advisory_lock_behaviour" toml:"advisory_lock_behaviour" yaml:"advisory_lock_behaviour"`
 
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`

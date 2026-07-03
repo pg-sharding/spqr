@@ -789,7 +789,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		if len(qs.FromClause) == 0 {
 			if len(qs.TargetList) == 1 {
 
-				tts, err := planner.RetrieveTuples(
+				p, err := planner.RetrieveTuples(
 					ctx,
 					rm,
 					qr,
@@ -798,10 +798,8 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 					return nil, err
 				}
 
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			}
 		} else if len(qs.FromClause) == 1 {
@@ -809,14 +807,12 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 			switch q := qs.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
+				p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
 				if err != nil {
 					return nil, err
 				}
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			default:
 				break
