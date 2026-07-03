@@ -115,5 +115,5 @@ jobs:
           YC_SERVICE_ACCOUNT_KEY_FILE: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
           TF_VAR_pr_number: ${{ env.ID }}
         run: |
-          terraform -chdir=.github/actions/benchmarks init -backend-config="key=${TF_VAR_pr_number}/terraform.tfstate"
-          terraform -chdir=.github/actions/benchmarks destroy -auto-approve
+          terraform -chdir=.github/actions/benchmarks init -backend-config="key=$TF_VAR_pr_number/terraform.tfstate"
+          terraform -chdir=.github/actions/benchmarks apply -auto-approve
