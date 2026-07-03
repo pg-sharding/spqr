@@ -384,6 +384,60 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt5",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt5",
+					Query: "select * from generate_series(1, 3) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt5",
+				},
+				&pgproto3.Execute{
+					MaxRows: 2,
+				},
+
+				&pgproto3.Parse{
+					Name:  "pstmt6",
+					Query: "select * from generate_series(1, 4) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt6",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 
 	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
