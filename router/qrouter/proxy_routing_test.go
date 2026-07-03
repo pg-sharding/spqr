@@ -2999,6 +2999,15 @@ func TestPgAdvisoryLockRouting(t *testing.T) {
 		ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}},
 		Forced:      true,
 	}, tmp)
+
+	config.RouterConfig().Qr.PgAdvisoryLockBehaviour = config.PgAdvisoryLockBehaviour("sh2")
+
+	tmp, err = v2.PlanDistributedQuery(context.TODO(), rm, stmt, true)
+	assert.NoError(err)
+	assert.Equal(&plan.ShardDispatchPlan{
+		ExecTarget:         kr.ShardKey{Name: "sh2"},
+		TargetSessionAttrs: config.TargetSessionAttrsRW,
+	}, tmp)
 }
 
 func TestHashRouting(t *testing.T) {

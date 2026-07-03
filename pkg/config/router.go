@@ -172,7 +172,8 @@ func (r *Router) PostProcess() error {
 }
 
 type QRouter struct {
-	DefaultRouteBehaviour        DefaultRouteBehaviour   `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
+	DefaultRouteBehaviour DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
+	// PgAdvisoryLockBehaviour accepts "all", "none", or a shard name.
 	PgAdvisoryLockBehaviour      PgAdvisoryLockBehaviour `json:"pg_advisory_lock_behaviour" toml:"pg_advisory_lock_behaviour" yaml:"pg_advisory_lock_behaviour"`
 	DefaultTSA                   string                  `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
 	EnhancedMultiShardProcessing bool                    `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
