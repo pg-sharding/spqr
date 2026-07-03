@@ -5,8 +5,8 @@ on:
     types: [labeled, closed]
 
   schedule:
-    # Every night at 02:00 UTC (05:00 MSK)
-    - cron: '0 */6 * * *'
+    # Every Monday night at 02:00 UTC
+    - cron: '0 2 * * 1'
 
   workflow_dispatch:
     inputs:
