@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
@@ -13,6 +15,9 @@ type QueryPlanner interface {
 
 	// XXX: find a better place
 	Ready() bool
+
+	DataShardsRoutes() []kr.ShardKey
+	PgAdvisoryLockBehaviour() config.PgAdvisoryLockBehaviour
 }
 
 type DistributedPlanner interface {

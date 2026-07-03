@@ -132,6 +132,13 @@ func (qr *ProxyQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
 	return qr.metricRegistry
 }
 
+func (qr *ProxyQrouter) PgAdvisoryLockBehaviour() config.PgAdvisoryLockBehaviour {
+	if qr.cfg == nil {
+		return config.PgAdvisoryLockBehaviourNone
+	}
+	return qr.cfg.PgAdvisoryLockBehaviour
+}
+
 var _ planner.QueryPlanner = &ProxyQrouter{}
 
 func NewProxyRouter(tmgr topology.TopologyMgr,

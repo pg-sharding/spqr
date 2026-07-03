@@ -2873,6 +2873,134 @@ LIMIT 1000
 	}
 }
 
+func TestPgAdvisoryLockRouting(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		behaviour config.PgAdvisoryLockBehaviour
+		exp       plan.Plan
+	}
+
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
+	}
+
+	for _, tt := range []tcase{
+		{
+			behaviour: config.PgAdvisoryLockBehaviourNone,
+			exp: &plan.VirtualPlan{
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_advisory_lock"),
+							DataTypeOID:  catalog.VOIDOID,
+							TypeModifier: -1,
+							DataTypeSize: 4,
+						},
+					},
+					Raw: [][][]byte{{[]byte("")}},
+				},
+			},
+		},
+		{
+			behaviour: "",
+			exp: &plan.VirtualPlan{
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_advisory_lock"),
+							DataTypeOID:  catalog.VOIDOID,
+							TypeModifier: -1,
+							DataTypeSize: 4,
+						},
+					},
+					Raw: [][][]byte{{[]byte("")}},
+				},
+			},
+		},
+		{
+			behaviour: config.PgAdvisoryLockBehaviourAll,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}},
+				Forced:      true,
+			},
+		},
+		{
+			behaviour: config.PgAdvisoryLockBehaviour("sh2"),
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget:         kr.ShardKey{Name: "sh2"},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+	} {
+		db, _ := qdb.NewMemQDB(MemQDBPath)
+		lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
+		pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
+			PgAdvisoryLockBehaviour: tt.behaviour,
+		}, nil, getIdentityMngr(lc), metricRegistry)
+		assert.NoError(err)
+
+		query := "SELECT pg_advisory_lock(1);"
+		parserRes, _, err := lyx.Parse(query)
+		assert.NoError(err)
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		stmt := parserRes[0]
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
+
+		tmp, err := pr.RouteWithRules(context.TODO(), rm, stmt)
+		assert.NoError(err)
+		assert.Equal(tt.exp, tmp)
+	}
+
+	singleShardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+	}
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(singleShardMapping), false, nil, qdb.DefaultMaxTxnSize)
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(singleShardMapping), lc, nil, &config.QRouter{
+		PgAdvisoryLockBehaviour: config.PgAdvisoryLockBehaviourNone,
+	}, nil, getIdentityMngr(lc), metricRegistry)
+	assert.NoError(err)
+
+	query := "SELECT pg_advisory_lock(1);"
+	parserRes, _, err := lyx.Parse(query)
+	assert.NoError(err)
+
+	dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+	stmt := parserRes[0]
+	rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+	})
+	tmp, err := pr.PlanQuery(context.TODO(), rm)
+	assert.NoError(err)
+	assert.IsType(&plan.VirtualPlan{}, tmp)
+
+	oldTopMgr := topology.TopMgr
+	oldPgAdvisoryLockBehaviour := config.RouterConfig().Qr.PgAdvisoryLockBehaviour
+	defer func() {
+		topology.TopMgr = oldTopMgr
+		config.RouterConfig().Qr.PgAdvisoryLockBehaviour = oldPgAdvisoryLockBehaviour
+	}()
+
+	topology.InitShardMapping(shardMapping)
+	config.RouterConfig().Qr.PgAdvisoryLockBehaviour = config.PgAdvisoryLockBehaviourAll
+
+	v2 := &planner.PlannerV2{}
+	rm = rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, query, stmt, nil, nil, &rmeta.MetadataCache{
+		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+	})
+	tmp, err = v2.PlanDistributedQuery(context.TODO(), rm, stmt, true)
+	assert.NoError(err)
+	assert.Equal(&plan.ScatterPlan{
+		ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}},
+		Forced:      true,
+	}, tmp)
+}
+
 func TestHashRouting(t *testing.T) {
 	assert := assert.New(t)
 

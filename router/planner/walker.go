@@ -3,11 +3,13 @@ package planner
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -32,7 +34,77 @@ func formatBool(v bool, format int16) []byte {
 	}
 }
 
+func targetListFuncName(stmt *lyx.Select) (string, bool) {
+	if len(stmt.TargetList) != 1 {
+		return "", false
+	}
+
+	expr := stmt.TargetList[0]
+	if rt, ok := expr.(*lyx.ResTarget); ok {
+		expr = rt.Value
+	}
+
+	fn, ok := expr.(*lyx.FuncApplication)
+	if !ok {
+		return "", false
+	}
+	return strings.ToLower(fn.Name), true
+}
+
+func noopPgAdvisoryLockPlan() *plan.VirtualPlan {
+	return &plan.VirtualPlan{
+		TTS: &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:         []byte("pg_advisory_lock"),
+					DataTypeOID:  catalog.VOIDOID,
+					TypeModifier: -1,
+					DataTypeSize: 4,
+				},
+			},
+			Raw: [][][]byte{{[]byte("")}},
+		},
+	}
+}
+
+func PlanPgAdvisoryLock(plr QueryPlanner, stmt *lyx.Select) (plan.Plan, bool) {
+	if len(stmt.FromClause) != 0 {
+		return nil, false
+	}
+
+	fn, ok := targetListFuncName(stmt)
+	if !ok || fn != "pg_advisory_lock" {
+		return nil, false
+	}
+
+	behaviour := config.PgAdvisoryLockBehaviourNone
+	if plr.PgAdvisoryLockBehaviour() != "" {
+		behaviour = plr.PgAdvisoryLockBehaviour()
+	}
+
+	switch strings.ToUpper(string(behaviour)) {
+	case "", string(config.PgAdvisoryLockBehaviourNone):
+		return noopPgAdvisoryLockPlan(), true
+	case string(config.PgAdvisoryLockBehaviourAll):
+		return &plan.ScatterPlan{
+			ExecTargets: plr.DataShardsRoutes(),
+			Forced:      true,
+		}, true
+	default:
+		return &plan.ShardDispatchPlan{
+			ExecTarget: kr.ShardKey{
+				Name: string(behaviour),
+			},
+			TargetSessionAttrs: config.TargetSessionAttrsRW,
+		}, true
+	}
+}
+
 func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr QueryPlanner, stmt *lyx.Select) (plan.Plan, error) {
+	if p, ok := PlanPgAdvisoryLock(plr, stmt); ok {
+		return p, nil
+	}
+
 	virtualRowCols := []pgproto3.FieldDescription{}
 	virtualRowVals := [][]byte{}
 

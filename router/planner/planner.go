@@ -59,6 +59,25 @@ func (p *PlannerV2) Ready() bool {
 	return true
 }
 
+func (p *PlannerV2) DataShardsRoutes() []kr.ShardKey {
+	rv := make([]kr.ShardKey, 0)
+
+	for _, el := range topology.TopMgr.Snap() {
+		rv = append(rv, kr.ShardKey{
+			Name: el.ID,
+		})
+	}
+
+	sort.Slice(rv, func(i, j int) bool {
+		return rv[i].Name < rv[j].Name
+	})
+	return rv
+}
+
+func (p *PlannerV2) PgAdvisoryLockBehaviour() config.PgAdvisoryLockBehaviour {
+	return config.RouterConfig().Qr.PgAdvisoryLockBehaviour
+}
+
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (*plan.ScatterPlan, error) {
 	if distributionID := rm.SPH.AutoDistribution(); distributionID != "" {
 

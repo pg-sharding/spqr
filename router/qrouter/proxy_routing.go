@@ -804,6 +804,9 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 					}, nil
 				}
 			}
+			if p, ok := planner.PlanPgAdvisoryLock(qr, qs); ok {
+				return p, nil
+			}
 		} else if len(qs.FromClause) == 1 {
 			/* Special case for `select * from __spqr__show('obj')` */
 
@@ -1696,6 +1699,12 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return qr.planSplitUpdate(ctx, rm)
 	}
 
+	if qs, ok := rm.Stmt.(*lyx.Select); ok {
+		if p, ok := planner.PlanPgAdvisoryLock(qr, qs); ok {
+			return p, nil
+		}
+	}
+
 	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
 
 		plr := planner.PlannerV2{}
@@ -1778,6 +1787,13 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 
 // TODO : unit tests
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+
+	if qs, ok := rm.Stmt.(*lyx.Select); ok {
+		if p, ok := planner.PlanPgAdvisoryLock(qr, qs); ok {
+			p.SetStmt(rm.Stmt)
+			return p, nil
+		}
+	}
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		mp := qr.tmgr.Snap()

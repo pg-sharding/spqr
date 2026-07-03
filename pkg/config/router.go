@@ -12,6 +12,7 @@ type PoolMode string
 type ShardType string
 type RouterMode string
 type DefaultRouteBehaviour string
+type PgAdvisoryLockBehaviour string
 
 const (
 	PoolModeSession     = PoolMode("SESSION")
@@ -26,6 +27,9 @@ const (
 
 	DefaultRouteBehaviourBlock = DefaultRouteBehaviour("BLOCK")
 	DefaultRouteBehaviourAllow = DefaultRouteBehaviour("ALLOW")
+
+	PgAdvisoryLockBehaviourAll  = PgAdvisoryLockBehaviour("ALL")
+	PgAdvisoryLockBehaviourNone = PgAdvisoryLockBehaviour("NONE")
 )
 
 var cfgRouter Router
@@ -168,12 +172,13 @@ func (r *Router) PostProcess() error {
 }
 
 type QRouter struct {
-	DefaultRouteBehaviour        DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
-	DefaultTSA                   string                `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
-	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
-	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
-	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
-	PreferEngine                 string                `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
+	DefaultRouteBehaviour        DefaultRouteBehaviour   `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
+	PgAdvisoryLockBehaviour      PgAdvisoryLockBehaviour `json:"pg_advisory_lock_behaviour" toml:"pg_advisory_lock_behaviour" yaml:"pg_advisory_lock_behaviour"`
+	DefaultTSA                   string                  `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
+	EnhancedMultiShardProcessing bool                    `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
+	AlwaysCheckRules             bool                    `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
+	StrictOperators              bool                    `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
+	PreferEngine                 string                  `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
 
 	AllowSplitUpdate    bool `json:"allow_split_update" toml:"allow_split_update" yaml:"allow_split_update"`
 	AllowPostProcessing bool `json:"allow_postprocessing" toml:"allow_postprocessing" yaml:"allow_postprocessing"`
