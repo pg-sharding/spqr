@@ -124,14 +124,14 @@ write_files:
       export AWS_DEFAULT_REGION="ru-central1"
       ENDPOINT="https://storage.yandexcloud.net"
       BUCKET="spqr-benchmark-reports"
-      PR_NUMBER="${var.pr_number}"
+      S3_RESULTS_PATH="${var.s3_results_path}"
       FOLDER="$1"
 
       for FILE in "$FOLDER"/*; do
         FILE_NAME=$(basename "$FILE")
         NAME=$${FILE_NAME#*.}
 
-        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $PR_NUMBER/$NAME --body $FILE
+        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $S3_RESULTS_PATH/$NAME --body $FILE
       done
 
   - path: /usr/local/run.sh
@@ -145,11 +145,11 @@ write_files:
       export UCF_FORCE_CONFFNEW=1
 
       BUCKET="spqr-benchmark-reports"
-      PR_NUMBER="${var.pr_number}"
+      S3_RESULTS_PATH="${var.s3_results_path}"
 
       change_status() {
         echo $1 > /tmp/status
-        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $PR_NUMBER/status --body /tmp/status
+        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $S3_RESULTS_PATH/status --body /tmp/status
       }
 
       error_exit() {

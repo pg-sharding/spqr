@@ -38,3 +38,8 @@ variable "image_tag" {
 variable "cr_registry" {
   type = string
 }
+
+variable "s3_results_path" {
+  description = "S3 key prefix for benchmark results"
+  type        = string
+}
