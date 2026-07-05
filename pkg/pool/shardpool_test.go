@@ -75,12 +75,14 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins.EXPECT().ShardName().AnyTimes().Return("sh1")
 
 	shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 	shardconn.EXPECT().IsStale().AnyTimes().Return(false)
+	shardconn.EXPECT().Sync().AnyTimes().Return(int64(0))
 
 	shardconn.EXPECT().Close().Times(1)
 
