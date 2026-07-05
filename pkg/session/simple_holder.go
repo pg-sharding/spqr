@@ -65,6 +65,28 @@ func (guc BoolGUCimpl) Get(cl SessionParamsHolder) bool {
 	return cl.ResolveVirtualBoolParam(guc.n, guc.def())
 }
 
+type StrGUCimpl struct {
+	n         string
+	shortName string
+	def       func() string
+}
+
+func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) {
+	cl.RecordVirtualParam(level, guc.n, val)
+}
+
+func (guc StrGUCimpl) ShortName() string {
+	return guc.shortName
+}
+
+func (guc StrGUCimpl) Reset() {
+
+}
+
+func (guc StrGUCimpl) Get(cl SessionParamsHolder) string {
+	return cl.ResolveVirtualStringParam(guc.n, guc.def())
+}
+
 func (lhs ParamEntry) EqualIgnoringValue(rhs ParamEntry) bool {
 	return lhs.Tx == rhs.Tx && lhs.IsLocal == rhs.IsLocal
 }
@@ -137,7 +159,7 @@ func (cl *SimpleSessionParamHandler) RecordVirtualParam(level string, name strin
 	})
 }
 
-func (cl *SimpleSessionParamHandler) resolveVirtualStringParam(name string, defaultVal string) string {
+func (cl *SimpleSessionParamHandler) ResolveVirtualStringParam(name string, defaultVal string) string {
 	v, ok := cl.activeParamSet[name]
 	if ok {
 		return v
@@ -162,12 +184,12 @@ func (cl *SimpleSessionParamHandler) SetDistribution(level string, val string) {
 
 // Distribution implements RouterClient.
 func (cl *SimpleSessionParamHandler) Distribution() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTION, "")
+	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTION, "")
 }
 
 // PreferredEngine implements client.Client.
 func (cl *SimpleSessionParamHandler) PreferredEngine() string {
-	return cl.resolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
+	return cl.ResolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
 }
 
 // SetPreferredEngine implements client.Client.
@@ -182,7 +204,7 @@ func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val st
 
 // DistributedRelation implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributedRelation() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTED_RELATION, "")
+	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTED_RELATION, "")
 }
 
 // SetExecuteOn implements RouterClient.
@@ -192,7 +214,7 @@ func (cl *SimpleSessionParamHandler) SetExecuteOn(level string, val string) {
 
 // ExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) ExecuteOn() string {
-	return cl.resolveVirtualStringParam(SPQR_EXECUTE_ON, "")
+	return cl.ResolveVirtualStringParam(SPQR_EXECUTE_ON, "")
 }
 
 // SetExecuteOn implements RouterClient.
@@ -214,7 +236,7 @@ func (cl *SimpleSessionParamHandler) SetCommitStrategy(val string) {
 }
 
 func (cl *SimpleSessionParamHandler) CommitStrategy() string {
-	return cl.resolveVirtualStringParam(SPQR_COMMIT_STRATEGY, cl.defaultCommitStrategy)
+	return cl.ResolveVirtualStringParam(SPQR_COMMIT_STRATEGY, cl.defaultCommitStrategy)
 }
 
 // SetAutoDistribution implements RouterClient.
@@ -224,7 +246,7 @@ func (cl *SimpleSessionParamHandler) SetAutoDistribution(val string) {
 
 // AutoDistribution implements RouterClient.
 func (cl *SimpleSessionParamHandler) AutoDistribution() string {
-	return cl.resolveVirtualStringParam(SPQR_AUTO_DISTRIBUTION, "")
+	return cl.ResolveVirtualStringParam(SPQR_AUTO_DISTRIBUTION, "")
 }
 
 // SetDistributionKey implements RouterClient.
@@ -234,7 +256,7 @@ func (cl *SimpleSessionParamHandler) SetDistributionKey(val string) {
 
 // DistributionKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributionKey() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTION_KEY, "")
+	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTION_KEY, "")
 }
 
 // MaintainParams implements RouterClient.
@@ -284,7 +306,7 @@ func (cl *SimpleSessionParamHandler) SetShardingKey(level string, k string) {
 
 // ShardingKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) ShardingKey() string {
-	return cl.resolveVirtualStringParam(SPQR_SHARDING_KEY, "")
+	return cl.ResolveVirtualStringParam(SPQR_SHARDING_KEY, "")
 }
 
 // SetDefaultRouteBehaviour implements RouterClient.
@@ -294,7 +316,7 @@ func (cl *SimpleSessionParamHandler) SetDefaultRouteBehaviour(level string, b st
 
 // DefaultRouteBehaviour implements RouterClient.
 func (cl *SimpleSessionParamHandler) DefaultRouteBehaviour() string {
-	return cl.resolveVirtualStringParam(SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
+	return cl.ResolveVirtualStringParam(SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
 }
 
 // ScatterQuery implements RouterClient.
@@ -312,7 +334,7 @@ func (cl *SimpleSessionParamHandler) SetScatterQuery(val bool) {
 }
 
 func (cl *SimpleSessionParamHandler) GetTsa() tsa.TSA {
-	return tsa.TSA(cl.resolveVirtualStringParam(SPQR_TARGET_SESSION_ATTRS, cl.defaultTsa))
+	return tsa.TSA(cl.ResolveVirtualStringParam(SPQR_TARGET_SESSION_ATTRS, cl.defaultTsa))
 }
 
 func (cl *SimpleSessionParamHandler) SetTsa(level string, s string) {
@@ -535,8 +557,28 @@ var BoolGUCs = []BoolGUCimpl{
 	},
 }
 
+var StrGUCs = []StrGUCimpl{
+	{
+		n:         SPQR_ADVISORY_LOCK_BEHAVIOUR,
+		shortName: "advisory lock behaviour",
+		def: func() string {
+			return string(config.RouterConfig().Qr.AdvisoryLockBehaviour)
+		},
+	},
+}
+
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
 	for _, guc := range BoolGUCs {
+		if guc.n == n {
+			return guc, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unknown GUC: %s", n)
+}
+
+func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
+	for _, guc := range StrGUCs {
 		if guc.n == n {
 			return guc, nil
 		}

@@ -323,6 +323,28 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 			ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
+		} else if session.ParamIsString(param) {
+
+			guc, err := rst.Client().FindStrGUC(param)
+			if err != nil {
+				return nil, err
+			}
+
+			tts := tupleslot.TupleTableSlot{
+				Desc: []pgproto3.FieldDescription{
+					{
+						Name:         []byte(guc.ShortName()),
+						DataTypeOID:  catalog.TEXTOID,
+						DataTypeSize: -1,
+						TypeModifier: -1,
+					},
+				},
+			}
+
+			tts.WriteDataRow(guc.Get(rst.Client()))
+
+			ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
 		} else {
 			switch param {
 			case session.SPQR_DISTRIBUTION:
@@ -676,6 +698,14 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			}
 
 			guc.Set(rst.Client(), lvl, v)
+		} else if session.ParamIsString(name) {
+
+			guc, err := rst.Client().FindStrGUC(name)
+			if err != nil {
+				return err
+			}
+
+			guc.Set(rst.Client(), lvl, value)
 		} else {
 
 			switch name {
