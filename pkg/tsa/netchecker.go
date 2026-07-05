@@ -25,7 +25,7 @@ type NetChecker struct {
 // Returns:
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (NetChecker) CheckTSA(sh shard.ShardHostInstance, TSATimeout time.Duration) (CheckResult, error) {
+func (NetChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (CheckResult, error) {
 
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
@@ -45,7 +45,7 @@ func (NetChecker) CheckTSA(sh shard.ShardHostInstance, TSATimeout time.Duration)
 	reason := "empty"
 
 	for {
-		if TSATimeout != 0 {
+		if timeout != 0 {
 			if err := sh.Instance().Conn().SetReadDeadline(time.Now().Add(DefaultTSATimeout)); err != nil {
 				return CheckResult{}, err
 			}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	mockconn "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockpool "github.com/pg-sharding/spqr/pkg/mock/pool"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
@@ -52,14 +53,28 @@ func TestDbPoolOrderCaching(t *testing.T) {
 			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
+	rawConn1 := mockconn.NewMockRawConn(ctrl)
+	rawConn1.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
+	ins1.EXPECT().Conn().AnyTimes().Return(rawConn1)
+
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
 	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
+
+	rawConn2 := mockconn.NewMockRawConn(ctrl)
+	rawConn2.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
+	ins2.EXPECT().Conn().AnyTimes().Return(rawConn2)
+
 	ins2.EXPECT().Hostname().AnyTimes().Return("h2:6432")
 	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
+
+	rawConn3 := mockconn.NewMockRawConn(ctrl)
+	rawConn3.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
+	ins3.EXPECT().Conn().AnyTimes().Return(rawConn3)
+
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3:6432")
 	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
@@ -176,9 +191,13 @@ func TestDbPoolRaces(t *testing.T) {
 			for j := range sz {
 				sh := mockshard.NewMockShardHostInstance(ctrl)
 
-				ins1 := mockinst.NewMockDBInstance(ctrl)
-				ins1.EXPECT().Hostname().Return(hst).AnyTimes()
-				ins1.EXPECT().AvailabilityZone().Return("").AnyTimes()
+				instance := mockinst.NewMockDBInstance(ctrl)
+
+				c := mockconn.NewMockRawConn(ctrl)
+				instance.EXPECT().Conn().Return(c).AnyTimes()
+
+				instance.EXPECT().Hostname().Return(hst).AnyTimes()
+				instance.EXPECT().AvailabilityZone().Return("").AnyTimes()
 
 				sh.EXPECT().IsStale().AnyTimes().Return(false)
 
@@ -215,7 +234,7 @@ func TestDbPoolRaces(t *testing.T) {
 				sh.EXPECT().InstanceHostname().Return(hst).AnyTimes()
 
 				sh.EXPECT().ID().Return(uint((3*i+hi)*sz + j)).AnyTimes()
-				sh.EXPECT().Instance().Return(ins1).AnyTimes()
+				sh.EXPECT().Instance().Return(instance).AnyTimes()
 				mp[shname][hst] = append(mp[shname][hst], sh)
 			}
 		}
@@ -248,22 +267,25 @@ func TestDbPoolRaces(t *testing.T) {
 		ConnectionLimit: sz,
 	})
 
+	/* XXX: we dont want to test network speed */
+	dbpool.CheckTimeout = 0
+
 	sem := semaphore.NewWeighted(25)
 
 	for i := range 10 {
 		for range 200 {
 			assert.NoError(sem.Acquire(context.TODO(), 1))
 
-			go func() {
+			go func(i int) {
 				defer sem.Release(1)
 
 				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
 				assert.NoError(err)
+
 				err = dbpool.Put(sh)
 				assert.NoError(err)
-			}()
+			}(i)
 		}
-
 	}
 }
 
