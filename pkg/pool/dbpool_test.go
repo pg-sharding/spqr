@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	mockconn "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockpool "github.com/pg-sharding/spqr/pkg/mock/pool"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
@@ -53,7 +52,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
-	rawConn1 := mockconn.NewMockRawConn(ctrl)
+	rawConn1 := mockinst.NewMockRawConn(ctrl)
 	rawConn1.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
 	ins1.EXPECT().Conn().AnyTimes().Return(rawConn1)
 
@@ -62,7 +61,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
 
-	rawConn2 := mockconn.NewMockRawConn(ctrl)
+	rawConn2 := mockinst.NewMockRawConn(ctrl)
 	rawConn2.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
 	ins2.EXPECT().Conn().AnyTimes().Return(rawConn2)
 
@@ -71,7 +70,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
 
-	rawConn3 := mockconn.NewMockRawConn(ctrl)
+	rawConn3 := mockinst.NewMockRawConn(ctrl)
 	rawConn3.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
 	ins3.EXPECT().Conn().AnyTimes().Return(rawConn3)
 
@@ -193,7 +192,7 @@ func TestDbPoolRaces(t *testing.T) {
 
 				instance := mockinst.NewMockDBInstance(ctrl)
 
-				c := mockconn.NewMockRawConn(ctrl)
+				c := mockinst.NewMockRawConn(ctrl)
 				instance.EXPECT().Conn().Return(c).AnyTimes()
 
 				instance.EXPECT().Hostname().Return(hst).AnyTimes()
