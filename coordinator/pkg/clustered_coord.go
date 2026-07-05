@@ -93,6 +93,16 @@ func (ci grpcConnMgr) TotalTCPCount() int64 {
 	return 0
 }
 
+// FailedAuthCount implements RuleRouter.
+func (ci grpcConnMgr) FailedAuthCount() int64 {
+	return 0
+}
+
+// FailedInitCount implements RuleRouter.
+func (ci grpcConnMgr) FailedInitCount() int64 {
+	return 0
+}
+
 // TODO : unit tests
 func (ci grpcConnMgr) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()

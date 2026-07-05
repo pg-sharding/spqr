@@ -115,6 +115,34 @@ func (mr *MockRuleRouterMockRecorder) ErrorCounts() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ErrorCounts", reflect.TypeOf((*MockRuleRouter)(nil).ErrorCounts))
 }
 
+// FailedAuthCount mocks base method.
+func (m *MockRuleRouter) FailedAuthCount() int64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FailedAuthCount")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+// FailedAuthCount indicates an expected call of FailedAuthCount.
+func (mr *MockRuleRouterMockRecorder) FailedAuthCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FailedAuthCount", reflect.TypeOf((*MockRuleRouter)(nil).FailedAuthCount))
+}
+
+// FailedInitCount mocks base method.
+func (m *MockRuleRouter) FailedInitCount() int64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FailedInitCount")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+// FailedInitCount indicates an expected call of FailedInitCount.
+func (mr *MockRuleRouterMockRecorder) FailedInitCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FailedInitCount", reflect.TypeOf((*MockRuleRouter)(nil).FailedInitCount))
+}
+
 // ForEach mocks base method.
 func (m *MockRuleRouter) ForEach(cb func(shard.ShardHostCtl) error) error {
 	m.ctrl.T.Helper()

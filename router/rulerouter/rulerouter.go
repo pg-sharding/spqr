@@ -63,9 +63,11 @@ type RuleRouterImpl struct {
 
 	initSem semaphore.Weighted
 
-	totalTCPCount   atomic.Int64
-	activeTCPCount  atomic.Int64
-	cancelConnCount atomic.Int64
+	totalTCPCount       atomic.Int64
+	activeTCPCount      atomic.Int64
+	cancelConnCount     atomic.Int64
+	clientInitFailCount atomic.Int64
+	clientAuthFailCount atomic.Int64
 }
 
 // ErrorCounts implements [RuleRouter].
@@ -133,6 +135,16 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 // TotalTCPCount implements RuleRouter.
 func (r *RuleRouterImpl) TotalTCPCount() int64 {
 	return r.totalTCPCount.Load()
+}
+
+// FailedAuthCount implements RuleRouter.
+func (r *RuleRouterImpl) FailedAuthCount() int64 {
+	return r.clientAuthFailCount.Load()
+}
+
+// FailedInitCount implements RuleRouter.
+func (r *RuleRouterImpl) FailedInitCount() int64 {
+	return r.clientInitFailCount.Load()
 }
 
 // TODO : unit tests
@@ -217,6 +229,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	if err := cl.Init(tlsConfig); err != nil {
 		r.initSem.Release(1)
+		r.clientInitFailCount.Add(1)
 		return cl, err
 	}
 
@@ -286,6 +299,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if err := cl.Auth(rt); err != nil {
+		r.clientAuthFailCount.Add(1)
 		_ = cl.ReplyErr(err)
 		if !config.RouterConfig().DisableObsoleteClient {
 			r.Obsolete(key)

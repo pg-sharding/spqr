@@ -18,6 +18,8 @@ type ConnectionStatMgr interface {
 	TotalTCPCount() int64
 	ActiveTCPCount() int64
 	TotalCancelCount() int64
+	FailedInitCount() int64
+	FailedAuthCount() int64
 }
 
 type ConnectionMgr interface {

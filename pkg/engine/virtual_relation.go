@@ -350,6 +350,8 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 			"total_tcp_connection_count",
 			"total_cancel_requests",
 			"active_tcp_connections",
+			"failed_auth",
+			"failed_init",
 			"total_requests",
 		)}
 
@@ -359,6 +361,8 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 		fmt.Sprintf("%v", ci.TotalTCPCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
 		fmt.Sprintf("%v", ci.ActiveTCPCount()),
+		fmt.Sprintf("%v", ci.FailedAuthCount()),
+		fmt.Sprintf("%v", ci.FailedInitCount()),
 		fmt.Sprintf("%d", stats),
 	)
 
