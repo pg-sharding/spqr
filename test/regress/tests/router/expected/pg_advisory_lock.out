@@ -1,7 +1,35 @@
+\set VERBOSITY verbose
+SET __spqr__advisory_lock_behaviour TO SCATTER;
+SHOW __spqr__advisory_lock_behaviour;
+ advisory lock behaviour 
+-------------------------
+ scatter
+(1 row)
+
 SET __spqr__engine_v2 TO off;
 SELECT pg_advisory_lock(11);
-ERROR:  pg_advisory_lock function execution is prohibited
+ERROR:  SPQRC: pg_advisory_lock function execution is prohibited
 QUERY:  SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
-ERROR:  pg_advisory_xact_lock function execution is prohibited
+ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
+QUERY:  SELECT pg_advisory_xact_lock(11);
+SET __spqr__advisory_lock_behaviour TO BLOCK;
+SHOW __spqr__advisory_lock_behaviour;
+ advisory lock behaviour 
+-------------------------
+ block
+(1 row)
+
+SELECT pg_advisory_lock(11);
+ERROR:  SPQRC: pg_advisory_lock function execution is prohibited
+QUERY:  SELECT pg_advisory_lock(11);
+SELECT pg_advisory_xact_lock(11);
+ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
+QUERY:  SELECT pg_advisory_xact_lock(11);
+SET __spqr__engine_v2 TO on;
+SELECT pg_advisory_lock(11);
+ERROR:  SPQRC: pg_advisory_lock function execution is prohibited
+QUERY:  SELECT pg_advisory_lock(11);
+SELECT pg_advisory_xact_lock(11);
+ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
 QUERY:  SELECT pg_advisory_xact_lock(11);

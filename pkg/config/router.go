@@ -29,6 +29,7 @@ const (
 	DefaultRouteBehaviourAllow = DefaultRouteBehaviour("ALLOW")
 
 	AdvisoryLockBehaviourScatter = AdvisoryLockBehaviour("SCATTER")
+	AdvisoryLockBehaviourDeploy  = AdvisoryLockBehaviour("DEPLOY")
 	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
 )
 

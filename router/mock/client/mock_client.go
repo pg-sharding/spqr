@@ -440,6 +440,21 @@ func (mr *MockRouterClientMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockRouterClient)(nil).FindBoolGUC), arg0)
 }
 
+// FindStrGUC mocks base method.
+func (m *MockRouterClient) FindStrGUC(arg0 string) (session.StrGUC, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStrGUC", arg0)
+	ret0, _ := ret[0].(session.StrGUC)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStrGUC indicates an expected call of FindStrGUC.
+func (mr *MockRouterClientMockRecorder) FindStrGUC(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStrGUC", reflect.TypeOf((*MockRouterClient)(nil).FindStrGUC), arg0)
+}
+
 // Flush mocks base method.
 func (m *MockRouterClient) Flush() error {
 	m.ctrl.T.Helper()
@@ -1030,6 +1045,20 @@ func (m *MockRouterClient) ResolveVirtualBoolParam(name string, defaultVal bool)
 func (mr *MockRouterClientMockRecorder) ResolveVirtualBoolParam(name, defaultVal any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualBoolParam", reflect.TypeOf((*MockRouterClient)(nil).ResolveVirtualBoolParam), name, defaultVal)
+}
+
+// ResolveVirtualStringParam mocks base method.
+func (m *MockRouterClient) ResolveVirtualStringParam(name, defaultVal string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveVirtualStringParam", name, defaultVal)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ResolveVirtualStringParam indicates an expected call of ResolveVirtualStringParam.
+func (mr *MockRouterClientMockRecorder) ResolveVirtualStringParam(name, defaultVal any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualStringParam", reflect.TypeOf((*MockRouterClient)(nil).ResolveVirtualStringParam), name, defaultVal)
 }
 
 // Rollback mocks base method.

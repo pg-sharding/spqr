@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -963,14 +964,23 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
 		fallthrough
 	case virtual.PGAdvisoryLock:
+		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
+		if err != nil {
+			return nil, err
+		}
 		/* For now, only scatter-out and reject is supported */
-		switch config.RouterConfig().Qr.AdvisoryLockBehaviour {
-		case config.AdvisoryLockBehaviourBlock:
-			return nil, spqrerror.Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).Detail("advisory_lock_behaviour is BLOCK").Hint("try to switch advisory_lock_behaviour")
-		case config.AdvisoryLockBehaviourScatter:
+		switch strings.ToUpper(g.Get(rm.SPH)) {
+		case string(config.AdvisoryLockBehaviourBlock):
+			return nil, spqrerror.
+				Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+				Detail("advisory_lock_behaviour is BLOCK").
+				Hint("try to switch advisory_lock_behaviour")
+		case string(config.AdvisoryLockBehaviourScatter):
 			if !rm.SPH.EnhancedMultiShardProcessing() {
-				return nil, spqrerror.Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).Detail("engine V2 is OFF").Hint("try to turn engine V2 to ON")
-
+				return nil, spqrerror.
+					Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+					Detail("engine V2 is OFF").
+					Hint("try to turn engine V2 to ON")
 			}
 			return &plan.ScatterPlan{}, nil
 		default:
