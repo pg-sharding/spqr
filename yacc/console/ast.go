@@ -117,6 +117,17 @@ type KeyRangeDefinition struct {
 	Distribution *DistributionSelector
 }
 
+type KeyRangesForDistributionDefinition struct {
+	Distribution *DistributionSelector
+	Shards       []string
+	DataKeyRange *CustomDistributionRange
+}
+
+type CustomDistributionRange struct {
+	LowerBound *KeyRangeBound
+	UpperBound *KeyRangeBound
+}
+
 type ShardDefinition struct {
 	Id      string
 	Options []GenericOption
@@ -150,11 +161,12 @@ type AlterShardOptions struct {
 
 func (*AlterShardOptions) iStatement() {}
 
-func (*KeyRangeDefinition) iCreate()          {}
-func (*ShardDefinition) iCreate()             {}
-func (*DistributionDefinition) iCreate()      {}
-func (*ReferenceRelationDefinition) iCreate() {}
-func (*UniqueIndexDefinition) iCreate()       {}
+func (*KeyRangeDefinition) iCreate()                 {}
+func (*KeyRangesForDistributionDefinition) iCreate() {}
+func (*ShardDefinition) iCreate()                    {}
+func (*DistributionDefinition) iCreate()             {}
+func (*ReferenceRelationDefinition) iCreate()        {}
+func (*UniqueIndexDefinition) iCreate()              {}
 
 type SplitKeyRange struct {
 	Border         *KeyRangeBound
@@ -505,37 +517,38 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Alter) iStatement()                       {}
-func (*Show) iStatement()                        {}
-func (*Set) iStatement()                         {}
-func (*KeyRangeSelector) iStatement()            {}
-func (*DistributionSelector) iStatement()        {}
-func (*ReferenceRelationSelector) iStatement()   {}
-func (*UniqueIndexSelector) iStatement()         {}
-func (*ShardSelector) iStatement()               {}
-func (*TaskGroupSelector) iStatement()           {}
-func (*MoveTaskSelector) iStatement()            {}
-func (*RedistributeTaskSelector) iStatement()    {}
-func (*SequenceSelector) iStatement()            {}
-func (*Lock) iStatement()                        {}
-func (*Unlock) iStatement()                      {}
-func (*Shutdown) iStatement()                    {}
-func (*Listen) iStatement()                      {}
-func (*MoveKeyRange) iStatement()                {}
-func (*RedistributeKeyRange) iStatement()        {}
-func (*SplitKeyRange) iStatement()               {}
-func (*UniteKeyRange) iStatement()               {}
-func (*DistributionDefinition) iStatement()      {}
-func (*ReferenceRelationDefinition) iStatement() {}
-func (*UniqueIndexDefinition) iStatement()       {}
-func (*KeyRangeDefinition) iStatement()          {}
-func (*ShardDefinition) iStatement()             {}
-func (*AlterShard) iStatement()                  {}
-func (*Kill) iStatement()                        {}
-func (*System) iStatement()                      {}
-func (*Invalidate) iStatement()                  {}
-func (*SyncReferenceTables) iStatement()         {}
-func (*AlterReferenceTableStorage) iStatement()  {}
+func (*Alter) iStatement()                              {}
+func (*Show) iStatement()                               {}
+func (*Set) iStatement()                                {}
+func (*KeyRangeSelector) iStatement()                   {}
+func (*DistributionSelector) iStatement()               {}
+func (*ReferenceRelationSelector) iStatement()          {}
+func (*UniqueIndexSelector) iStatement()                {}
+func (*ShardSelector) iStatement()                      {}
+func (*TaskGroupSelector) iStatement()                  {}
+func (*MoveTaskSelector) iStatement()                   {}
+func (*RedistributeTaskSelector) iStatement()           {}
+func (*SequenceSelector) iStatement()                   {}
+func (*Lock) iStatement()                               {}
+func (*Unlock) iStatement()                             {}
+func (*Shutdown) iStatement()                           {}
+func (*Listen) iStatement()                             {}
+func (*MoveKeyRange) iStatement()                       {}
+func (*RedistributeKeyRange) iStatement()               {}
+func (*SplitKeyRange) iStatement()                      {}
+func (*UniteKeyRange) iStatement()                      {}
+func (*DistributionDefinition) iStatement()             {}
+func (*ReferenceRelationDefinition) iStatement()        {}
+func (*UniqueIndexDefinition) iStatement()              {}
+func (*KeyRangeDefinition) iStatement()                 {}
+func (*KeyRangesForDistributionDefinition) iStatement() {}
+func (*ShardDefinition) iStatement()                    {}
+func (*AlterShard) iStatement()                         {}
+func (*Kill) iStatement()                               {}
+func (*System) iStatement()                             {}
+func (*Invalidate) iStatement()                         {}
+func (*SyncReferenceTables) iStatement()                {}
+func (*AlterReferenceTableStorage) iStatement()         {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
