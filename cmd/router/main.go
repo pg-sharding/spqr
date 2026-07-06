@@ -283,6 +283,7 @@ var runCmd = &cobra.Command{
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
 		}
+		spqrlog.Zero.Info().Int("GOMAXPROCS", runtime.GOMAXPROCS(0)).Msg("effective GOMAXPROCS")
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
