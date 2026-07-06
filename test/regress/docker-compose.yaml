@@ -178,6 +178,10 @@ services:
             context: .
         hostname: regress_tests
         container_name: regress_tests
+        environment:
+            - REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress}
+        volumes:
+            - ../../test-reports/regress:/regress/test-reports/regress
         depends_on:
             - router
             - coordinator
