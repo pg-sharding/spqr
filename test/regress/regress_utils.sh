@@ -36,7 +36,7 @@ run_tests () {
         --use-existing \
         --debug || status=$?
 
-    ./pg_regress_to_junit.sh \
+    ./pg_regress_to_junit \
         --suite "$DIR-$HOST-$PORT" \
         --regression-out "/regress/tests/$DIR/regression.out" \
         --diffs "/regress/tests/$DIR/regression.diffs" \

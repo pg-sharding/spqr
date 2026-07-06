@@ -130,16 +130,20 @@ regress_local_4sh: proxy_4sh_run
 regress_pooler_local: pooler_d_run
 	./script/regress_pooler_local.sh
 
-regress_pooler: build_images
+regress_pooler: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
 mdb-branch ?= MDB_${POSTGRES_VERSION}
 shard-image ?= spqr-shard-image
 
-regress: build_images
+build_pg_regress_junit_tool:
+	go build -o test/regress/pg_regress_to_junit ./test/tools/pg_regress_to_junit
+	go build -o test/isolation/pg_regress_to_junit ./test/tools/pg_regress_to_junit
+
+regress: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
 
-regress_coord: build_images
+regress_coord: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose-coord.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-coord.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-coord.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
@@ -155,7 +159,7 @@ xproto_regress: build_images
 	docker compose -f test/xproto/docker-compose.yaml down && \
 	docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build -e TEST_TAG=$(PROTO_TEST_TAG) regress
 
-isolation_regress: build_images
+isolation_regress: build_images build_pg_regress_junit_tool
 	docker compose -f test/isolation/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/isolation/docker-compose.yaml build && docker compose -f test/isolation/docker-compose.yaml run --remove-orphans regress
 
 stress: build_images

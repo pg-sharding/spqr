@@ -27,7 +27,7 @@ psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGIST
     --debug \
     --schedule /regress/schedule
 
-./pg_regress_to_junit.sh \
+./pg_regress_to_junit \
     --suite "isolation-regress" \
     --regression-out /regress/regression.out \
     --diffs /regress/regression.diffs \
