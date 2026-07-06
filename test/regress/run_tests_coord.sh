@@ -6,6 +6,7 @@ export PGUSER=regress
 export PGSSLMODE=allow
 
 source ./regress_utils.sh 
+REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress-coord}
 
 echo "wait for services started"
 sleep 10
