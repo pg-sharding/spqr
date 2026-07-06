@@ -1,6 +1,11 @@
 
 SELECT __spqr__console_execute('CREATE REFERENCE RELATION ref_2pc');
 
+SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh1 */;
+SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh2 */;
+SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh3 */;
+SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh4 */;
+
 CREATE TABLE ref_2pc(i INT);
 
 SET __spqr__engine_v2 TO true;
