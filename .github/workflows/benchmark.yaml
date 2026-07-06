@@ -60,6 +60,7 @@ jobs:
     # 3. Performance label was added
     if:  |
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && github.event.action != 'closed' &&github.event.action == 'labeled' && github.event.label.name == 'performance') ||
       needs.collect_changes.outputs.benchmark == 'true'
 
