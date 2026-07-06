@@ -171,6 +171,8 @@ split_feature_test:
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
+FEATURE_TEST_ENV = GODOG_FEATURE_DIR=$${GODOG_FEATURE_DIR:-generatedFeatures} GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature/feature.xml}
+
 feature_test_ci:
 	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
 		echo "Rebuild";\
@@ -181,14 +183,14 @@ feature_test_ci:
 	docker compose build spqr-base-image
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
-	(cd test/feature; go test -timeout 150m)
+	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
 
 feature_test: clean_feature_test build_images
 	make split_feature_test
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
-	(cd test/feature; GODOG_FEATURE_DIR=generatedFeatures go test -timeout 150m)
+	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
 
 ####################### LINTERS #######################
 
