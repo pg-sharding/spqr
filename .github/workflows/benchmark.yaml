@@ -3,15 +3,6 @@ name: Run benchmarks
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
-    paths:
-      - 'router/qrouter/**'
-      - 'router/relay/**'
-      - 'router/poolmgr/**'
-      - 'router/client/**'
-      - 'router/server/**'
-      - 'pkg/pool/**'
-      - '.github/actions/benchmarks/**'
-      - '.github/workflows/benchmark.yaml'
 
   schedule:
     # Every Monday night at 02:00 UTC
