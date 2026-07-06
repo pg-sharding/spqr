@@ -352,8 +352,10 @@ jobs:
           merge-multiple: true
 
       - name: Convert JUnit reports to CTRF
+        continue-on-error: true
         run: |
           if [ -d test-reports ] && find test-reports -name '*.xml' -print -quit | grep -q .; then
+            mkdir -p ctrf-reports
             npx --yes junit-to-ctrf "test-reports/**/*.xml" \
               -o ctrf-reports/ctrf-report.json \
               -t SPQR

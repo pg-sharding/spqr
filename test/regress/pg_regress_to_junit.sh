@@ -41,6 +41,9 @@ mkdir -p "$(dirname "$output")"
 if [ ! -f "$regression_out" ]; then
     regression_out=/dev/null
 fi
+if [ -n "$diffs" ] && [ ! -f "$diffs" ]; then
+    diffs=/dev/null
+fi
 
 awk -v suite="$suite" -v diffs_file="$diffs" '
 function esc(s) {
