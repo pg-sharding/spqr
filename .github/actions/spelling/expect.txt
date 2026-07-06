@@ -83,6 +83,7 @@ Cta
 CTEs
 ctid
 ctl
+ctrf
 ctsa
 cupidatat
 currkr
@@ -158,8 +159,8 @@ FAFBFF
 fdw
 feda
 FFCCAC
-FFFF
 ffd
+FFFF
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
@@ -195,8 +196,8 @@ gomod
 goooal
 gorm
 goyacc
-Greenplum
 Grac
+Greenplum
 gss
 gssapi
 GSSREQ
@@ -318,8 +319,8 @@ mintlify
 mmgr
 mngr
 mockcl
-mockconn
 mockcmgr
+mockconn
 mockgen
 mockinst
 mockmgr
@@ -341,8 +342,8 @@ multidim
 multierr
 multishard
 murmurhash
-mydb
 mvccpb
+mydb
 mylogs
 myuser
 myworkloadlog
