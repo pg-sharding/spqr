@@ -116,6 +116,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
         run: |
           terraform -chdir=.github/actions/benchmarks init -backend-config="key=$TF_VAR_pr_number/terraform.tfstate"
+          terraform -chdir=.github/actions/benchmarks destroy -auto-approve || true
           terraform -chdir=.github/actions/benchmarks apply -auto-approve
 
       - name: Send link
