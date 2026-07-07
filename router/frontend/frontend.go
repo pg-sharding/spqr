@@ -48,9 +48,35 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 		return err
 		// ok
 	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-			Msg("client iteration done with error")
+		if spqrErr, ok := err.(*spqrerror.SpqrError); ok {
+			ev := spqrlog.Zero.Error().Err(err).
+				Uint("client", rst.Client().ID()).
+				Str("tx-status", rst.QueryExecutor().TxStatus().String())
+
+			if spqrErr.InternalQuery != "" {
+				ev = ev.Str("QUERY", spqrErr.InternalQuery)
+			}
+			if spqrErr.ErrorCode != "" {
+				ev = ev.Str("SQLSTATE", spqrErr.ErrorCode)
+			}
+			if spqrErr.ErrContext != "" {
+				ev = ev.Str("CONTEXT", spqrErr.ErrContext)
+			}
+			if spqrErr.ErrDetail != "" {
+				ev = ev.Str("DETAIL", spqrErr.ErrDetail)
+			}
+			if spqrErr.ErrHint != "" {
+				ev = ev.Str("HINT", spqrErr.ErrHint)
+			}
+
+			ev.Msg("client iteration done with error")
+		} else {
+			spqrlog.Zero.Error().
+				Err(err).
+				Uint("client", rst.Client().ID()).
+				Str("tx-status", rst.QueryExecutor().TxStatus().String()).
+				Msg("client iteration done with error")
+		}
 
 		/* try to report error to user  */
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
@@ -79,9 +105,35 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 		return err
 		// ok
 	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Str("tx-status", rst.QueryExecutor().TxStatus().String()).Err(err).
-			Msg("client iteration done with error")
+
+		if spqrErr, ok := err.(*spqrerror.SpqrError); ok {
+			ev := spqrlog.Zero.Error().Err(err).
+				Uint("client", rst.Client().ID()).
+				Str("tx-status", rst.QueryExecutor().TxStatus().String())
+
+			if spqrErr.InternalQuery != "" {
+				ev = ev.Str("QUERY", spqrErr.InternalQuery)
+			}
+			if spqrErr.ErrorCode != "" {
+				ev = ev.Str("SQLSTATE", spqrErr.ErrorCode)
+			}
+			if spqrErr.ErrContext != "" {
+				ev = ev.Str("CONTEXT", spqrErr.ErrContext)
+			}
+			if spqrErr.ErrDetail != "" {
+				ev = ev.Str("DETAIL", spqrErr.ErrDetail)
+			}
+			if spqrErr.ErrHint != "" {
+				ev = ev.Str("HINT", spqrErr.ErrHint)
+			}
+
+			ev.Msg("client iteration done with error")
+		} else {
+
+			spqrlog.Zero.Error().Err(err).
+				Uint("client", rst.Client().ID()).Str("tx-status", rst.QueryExecutor().TxStatus().String()).
+				Msg("client iteration done with error")
+		}
 
 		/* try to report error to user  */
 		if rerr := rst.Reset(); rerr != nil {
