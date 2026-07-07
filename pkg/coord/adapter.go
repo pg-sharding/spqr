@@ -693,7 +693,11 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 // - error: An error if the data shard addition fails, otherwise nil.
 func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard, true)})
+	protoShard, err := topology.DataShardToProto(shard, true)
+	if err != nil {
+		return err
+	}
+	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{Shard: protoShard})
 	return spqrerror.CleanGrpcError(err)
 }
 
@@ -701,9 +705,13 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 // TODO : implement
 func (a *Adapter) AlterShardOptions(ctx context.Context, shardID string, optionChanges []topology.GenericOption) error {
 	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.AlterShard(ctx, &proto.AlterShardRequest{
+	protoOptions, err := topology.GenericOptionsToProto(optionChanges, true)
+	if err != nil {
+		return err
+	}
+	_, err = client.AlterShard(ctx, &proto.AlterShardRequest{
 		Id:      shardID,
-		Options: topology.GenericOptionsToProto(optionChanges, true),
+		Options: protoOptions,
 	})
 	return spqrerror.CleanGrpcError(err)
 }

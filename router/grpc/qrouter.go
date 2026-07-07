@@ -119,14 +119,17 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 	if err != nil {
 		return nil, err
 	}
+
+	res := make([]*protos.Shard, len(shards))
+	for i, sh := range shards {
+		res[i], err = topology.DataShardToProto(sh, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &protos.ListShardsReply{
-		Shards: func() []*protos.Shard {
-			res := make([]*protos.Shard, len(shards))
-			for i, sh := range shards {
-				res[i] = topology.DataShardToProto(sh, false)
-			}
-			return res
-		}(),
+		Shards: res,
 	}, nil
 }
 
@@ -170,9 +173,10 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 	if err != nil {
 		return nil, err
 	}
+	protoShard, err := topology.DataShardToProto(sh, false)
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh, false),
-	}, nil
+		Shard: protoShard,
+	}, err
 }
 
 // CreateDistribution creates distribution in QDB

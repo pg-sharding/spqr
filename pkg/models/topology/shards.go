@@ -222,23 +222,33 @@ func NewDataShard(name string, t config.ShardType, options []GenericOption) *Dat
 //
 // Returns:
 //   - *proto.Shard: The converted proto.Shard object.
-func DataShardToProto(shard *DataShard, hostsWithAZ bool) *proto.Shard {
+func DataShardToProto(shard *DataShard, hostsWithAZ bool) (*proto.Shard, error) {
+	options, err := GenericOptionsToProto(shard.options, hostsWithAZ)
+	if err != nil {
+		return nil, err
+	}
 	return &proto.Shard{
 		Id:      shard.ID,
-		Options: GenericOptionsToProto(shard.options, hostsWithAZ),
-	}
+		Options: options,
+	}, nil
 }
 
-func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) []*proto.GenericOption {
+func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) ([]*proto.GenericOption, error) {
 	protoOptions := make([]*proto.GenericOption, 0, len(options))
 	for _, opt := range options {
 		if !hostsWithAZ && opt.Name == "host" {
 			continue
 		}
 
+		action, err := GenericOptionActionToProto(opt.Action)
+		if err != nil {
+			return nil, err
+		}
+
 		protoOptions = append(protoOptions, &proto.GenericOption{
-			Name:  opt.Name,
-			Value: opt.Arg,
+			Name:   opt.Name,
+			Value:  opt.Arg,
+			Action: action,
 		})
 	}
 
@@ -252,7 +262,7 @@ func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) []*proto.G
 		}
 	}
 
-	return protoOptions
+	return protoOptions, nil
 }
 
 func GenericOptionsFromProto(protoOptions []*proto.GenericOption) ([]GenericOption, error) {
@@ -281,6 +291,19 @@ func GenericOptionActionFromProto(action proto.GenericOption_Action) (GenericOpt
 		return GenericOptionActionDrop, nil
 	default:
 		return -1, fmt.Errorf("unknown action %s", action.String())
+	}
+}
+
+func GenericOptionActionToProto(action GenericOptionAction) (proto.GenericOption_Action, error) {
+	switch action {
+	case GenericOptionActionAdd:
+		return proto.GenericOption_ADD, nil
+	case GenericOptionActionSet:
+		return proto.GenericOption_SET, nil
+	case GenericOptionActionDrop:
+		return proto.GenericOption_DROP, nil
+	default:
+		return -1, fmt.Errorf("unknown action %d", action)
 	}
 }
 
