@@ -549,7 +549,6 @@ func AnalyzeQueryV1(
 					for _, c := range stmt.SetClause {
 						switch cc := c.(type) {
 						case *lyx.ResTarget:
-							spqrlog.Zero.Info().Msgf("HERE : %+v %+v", cc, cc.Value)
 							switch targ := cc.Value.(type) {
 							case *lyx.ColumnRef:
 

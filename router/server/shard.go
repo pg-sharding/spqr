@@ -163,6 +163,10 @@ func (srv *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
 	return nil
 }
 
+func (srv *ShardServer) PrefetchUntilCommandComplete(_ kr.ShardKey) error {
+	return nil
+}
+
 // TODO : unit tests
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 

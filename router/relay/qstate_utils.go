@@ -126,6 +126,10 @@ func DispatchSlice(qd *QueryDesc,
 					if err := serv.SendShard(pgflush, targ); err != nil {
 						return err
 					}
+
+					if err := serv.PrefetchUntilCommandComplete(targ); err != nil {
+						return err
+					}
 				default:
 					return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("non sync of flush query for dispatch: %T", msg))
 				}

@@ -103,10 +103,13 @@ func CopyBackendMsg(msg pgproto3.BackendMessage) (pgproto3.BackendMessage, error
 	case *pgproto3.CopyDone:
 		cpQ := &pgproto3.CopyDone{}
 		return cpQ, nil
+	case *pgproto3.BindComplete:
+		cpQ := &pgproto3.BindComplete{}
+		return cpQ, nil
 
 	default:
 		/* All ok? */
-		return nil, fmt.Errorf("unexpected message type: %T", msg)
+		return nil, fmt.Errorf("unexpected message type in copy: %T", msg)
 	}
 
 }
