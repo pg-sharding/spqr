@@ -78,7 +78,7 @@ resource "yandex_compute_instance" "benchmark-loader" {
   
   boot_disk {
     initialize_params {
-      name       = "disk-loader-${var.pr_number}"
+      name       = substr("disk-loader-${var.pr_number}", 0, 63)
       type       = "network-ssd"
       size       = 20
       block_size = 4096
