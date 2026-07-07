@@ -445,6 +445,9 @@ func TestExecuteMaxRows(t *testing.T) {
 					String: "BEGIN;",
 				},
 				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
+				},
+				&pgproto3.Query{
 					String: "INSERT INTO t (id) values(1000)",
 				},
 				&pgproto3.Close{
@@ -470,6 +473,12 @@ func TestExecuteMaxRows(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
@@ -504,6 +513,9 @@ func TestExecuteMaxRows(t *testing.T) {
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
 					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
 				},
 				&pgproto3.Query{
 					String: "INSERT INTO t (id) values(1000)",
@@ -540,6 +552,12 @@ func TestExecuteMaxRows(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
 				},
 				&pgproto3.ReadyForQuery{
@@ -570,6 +588,9 @@ func TestExecuteMaxRows(t *testing.T) {
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
 					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
 				},
 				&pgproto3.Query{
 					String: "INSERT INTO t (id) values(1000)",
@@ -614,6 +635,12 @@ func TestExecuteMaxRows(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
 				},
 				&pgproto3.ReadyForQuery{
@@ -649,14 +676,17 @@ func TestExecuteMaxRows(t *testing.T) {
 					String: "BEGIN;",
 				},
 				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
+				},
+				&pgproto3.Query{
 					String: "INSERT INTO t (id) values(1000)",
 				},
 				&pgproto3.Close{
-					Name:       "pstmt7",
+					Name:       "pstmt8",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "pstmt7",
+					Name:  "pstmt8",
 					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
 				},
 				&pgproto3.Bind{
@@ -686,6 +716,12 @@ func TestExecuteMaxRows(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
