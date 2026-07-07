@@ -90,6 +90,21 @@ func TestBuildCandidatesFindsRepeatedFingerprintAndLastKnownPass(t *testing.T) {
 	}
 }
 
+func TestBuildCandidatesComputesMissingFailureFingerprint(t *testing.T) {
+	records := []historyRecord{
+		failureRecord("1", "2026-07-02T00:00:00Z", "+ERROR: boom"),
+		failureRecord("2", "2026-07-03T00:00:00Z", "+ERROR: boom"),
+	}
+
+	candidates := buildCandidates(records, 2, 5)
+	if len(candidates) != 1 {
+		t.Fatalf("expected 1 candidate, got %d", len(candidates))
+	}
+	if candidates[0].Fingerprint == "" {
+		t.Fatalf("expected computed fingerprint: %#v", candidates[0])
+	}
+}
+
 func TestReadCTRFObject(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "ctrf-report.json"), `{
@@ -120,6 +135,48 @@ func TestReadCTRFObject(t *testing.T) {
 	}
 	if records[0].RunID != "99" || records[0].Timestamp != "2026-07-07T10:00:00Z" {
 		t.Fatalf("unexpected CTRF metadata: %#v", records[0])
+	}
+}
+
+func TestTimestampFromReportPathOnlyAcceptsRFC3339(t *testing.T) {
+	if got := timestampFromReportPath("downloaded/run-123/report.xml"); got != "" {
+		t.Fatalf("expected run id fallback to be ignored, got %q", got)
+	}
+	if got := timestampFromReportPath("downloaded/run-2026-07-07T10:00:00Z/report.xml"); got != "2026-07-07T10:00:00Z" {
+		t.Fatalf("expected RFC3339 timestamp fallback, got %q", got)
+	}
+}
+
+func TestTimestampLessSortsUnknownLast(t *testing.T) {
+	if timestampLess("", "2026-07-07T10:00:00Z") {
+		t.Fatal("empty timestamp sorted before a real timestamp")
+	}
+	if !timestampLess("2026-07-07T10:00:00Z", "") {
+		t.Fatal("real timestamp should sort before an empty timestamp")
+	}
+	if timestampLess("not-a-time", "2026-07-07T10:00:00Z") {
+		t.Fatal("invalid timestamp sorted before a real timestamp")
+	}
+}
+
+func TestRenderSummaryUsesLongerFenceForBackticksInTrace(t *testing.T) {
+	summary := renderSummary(candidateReport{
+		Records:     1,
+		MinFailures: 1,
+		Candidates: []failureCandidate{
+			{
+				Suite:        "router",
+				Name:         "backtick_case",
+				Fingerprint:  "abc",
+				Failures:     1,
+				TestRuns:     1,
+				TraceExcerpt: "diff line\n```sql\nselect 1;\n```",
+			},
+		},
+	})
+
+	if !strings.Contains(summary, "````text\n") {
+		t.Fatalf("summary did not use a longer markdown fence:\n%s", summary)
 	}
 }
 

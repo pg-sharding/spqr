@@ -475,6 +475,9 @@ func buildCandidates(records []historyRecord, minFailures, maxEvidence int) []fa
 	failuresByFingerprint := make(map[string][]historyRecord)
 
 	for _, record := range records {
+		if isFailure(record.Status) && record.Fingerprint == "" {
+			record.Fingerprint = failureFingerprint(record)
+		}
 		testKey := record.testKey()
 		recordsByTest[testKey] = append(recordsByTest[testKey], record)
 		if isFailure(record.Status) {
@@ -659,12 +662,16 @@ func renderSummary(report candidateReport) string {
 			}
 		}
 		if candidate.TraceExcerpt != "" {
-			builder.WriteString("\n```text\n")
+			fence := markdownCodeFence(candidate.TraceExcerpt)
+			builder.WriteString("\n")
+			builder.WriteString(fence)
+			builder.WriteString("text\n")
 			builder.WriteString(candidate.TraceExcerpt)
 			if !strings.HasSuffix(candidate.TraceExcerpt, "\n") {
 				builder.WriteByte('\n')
 			}
-			builder.WriteString("```\n")
+			builder.WriteString(fence)
+			builder.WriteByte('\n')
 		}
 	}
 
@@ -782,7 +789,10 @@ func deriveMatrix(rel string) string {
 func timestampFromReportPath(reportPath string) string {
 	for _, part := range strings.Split(filepath.ToSlash(reportPath), "/") {
 		if strings.HasPrefix(part, "run-") {
-			return strings.TrimPrefix(part, "run-")
+			candidate := strings.TrimPrefix(part, "run-")
+			if isRFC3339Timestamp(candidate) {
+				return candidate
+			}
 		}
 	}
 	return ""
@@ -847,15 +857,21 @@ func recordAfter(left, right historyRecord) bool {
 
 func timestampLess(left, right string) bool {
 	if left == "" {
-		return right != ""
+		return false
 	}
 	if right == "" {
-		return false
+		return true
 	}
 	leftTime, leftErr := time.Parse(time.RFC3339Nano, left)
 	rightTime, rightErr := time.Parse(time.RFC3339Nano, right)
 	if leftErr == nil && rightErr == nil {
 		return leftTime.Before(rightTime)
+	}
+	if leftErr == nil {
+		return true
+	}
+	if rightErr == nil {
+		return false
 	}
 	return left < right
 }
@@ -897,6 +913,27 @@ func excerpt(value string, limit int) string {
 	return strings.TrimSpace(value[:limit]) + "\n..."
 }
 
+func markdownCodeFence(value string) string {
+	longestRun := 0
+	currentRun := 0
+	for _, char := range value {
+		if char == '`' {
+			currentRun++
+			if currentRun > longestRun {
+				longestRun = currentRun
+			}
+			continue
+		}
+		currentRun = 0
+	}
+	if longestRun < 3 {
+		longestRun = 3
+	} else {
+		longestRun++
+	}
+	return strings.Repeat("`", longestRun)
+}
+
 func markdownCell(value string) string {
 	value = strings.ReplaceAll(value, "\n", " ")
 	value = strings.ReplaceAll(value, "|", "\\|")
@@ -904,6 +941,14 @@ func markdownCell(value string) string {
 		return "-"
 	}
 	return value
+}
+
+func isRFC3339Timestamp(value string) bool {
+	if value == "" {
+		return false
+	}
+	_, err := time.Parse(time.RFC3339Nano, value)
+	return err == nil
 }
 
 func suiteField(value any) string {
