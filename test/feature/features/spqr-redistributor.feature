@@ -256,6 +256,22 @@ Feature: spqr-redistributor test
         """
         key range .krid1. is already being redistributed, not doing anything
         """
+        When I run SQL on host "coordinator"
+        """
+        SHOW redistribute_tasks;
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "redistribute_task_id":"rt1",
+                "key_range_id":"krid1",
+                "destination_shard_id":"sh3",
+                "batch_size":"0"
+            }
+        ]
+        """
 
     Scenario: spqr-redistributor does nothing if key range is on desired shard already
         When I run SQL on host "router"
@@ -270,15 +286,6 @@ Feature: spqr-redistributor test
         ATTACH CONTROL POINT copy_data_cp SLEEP 10000 SECONDS;
         """
         Then command return code should be "0"
-        When I record in qdb redistribute task
-        """
-        {
-            "ID": "rt1",
-            "KeyRangeId": "krid1",
-            "ShardId": "sh3"
-        }
-        """
-        Then command return code should be "0"
         When I run command on host "coordinator" with timeout "30" seconds
         """
         /spqr/spqr-redistributor generate-task --coordinator-addr regress_coordinator:7003 --etcd-addr regress_qdb_0_1:2379 --chunk-size 200 --batch-size 100 --key-range-id krid1 --shard-id sh1 --max-tasks 1 2&> output.txt
@@ -291,4 +298,13 @@ Feature: spqr-redistributor test
         Then command output should match regexp
         """
         key range .krid1. is already on shard .sh1., not doing anything
+        """
+        When I run SQL on host "coordinator"
+        """
+        SHOW redistribute_tasks;
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        []
         """
