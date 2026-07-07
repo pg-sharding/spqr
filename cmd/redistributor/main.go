@@ -69,6 +69,10 @@ var (
 			if err != nil {
 				return err
 			}
+			if keyRange.ShardID == shardToID {
+				log.Printf("key range \"%s\" is already on shard \"%s\", not doing anything\n", keyRangeID, shardToID)
+				return nil
+			}
 			ds, err := c.GetDistribution(ctx, keyRange.Distribution)
 			if err != nil {
 				return err
@@ -85,6 +89,10 @@ var (
 			}
 			taskCount := 0
 			for _, task := range tasks {
+				if task.KeyRangeID == keyRangeID {
+					log.Printf("key range \"%s\" is already being redistributed, not doing anything\n", keyRangeID)
+					return nil
+				}
 				if task.ShardID == shardToID {
 					taskCount++
 				}
