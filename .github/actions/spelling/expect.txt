@@ -47,6 +47,7 @@ canreq
 ccb
 ccfg
 ccmsg
+chardata
 cillum
 Cimpl
 CIn
@@ -320,7 +321,6 @@ mmgr
 mngr
 mockcl
 mockcmgr
-mockconn
 mockgen
 mockinst
 mockmgr
