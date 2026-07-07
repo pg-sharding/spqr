@@ -14,6 +14,7 @@ query_routing:
   forbid_direct_shard_queries: true
   use_spqrguard: true
   default_target_session_attrs: read-write
+  enhanced_multishard_processing: true
 
 frontend_rules:
   - db: regress
