@@ -438,6 +438,67 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt7",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt7",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt7",
+				},
+				&pgproto3.Execute{
+					MaxRows: 1,
+				},
+
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 
 	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
