@@ -1,10 +1,10 @@
 
 SELECT __spqr__console_execute('CREATE REFERENCE RELATION ref_2pc');
 
-SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh1 */;
-SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh2 */;
-SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh3 */;
-SELECT * FROM spqr_metadata.spqr_reference_relations /* __spqr__execute_on: sh4 */;
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh1 */;
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh2 */;
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh3 */;
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh4 */;
 
 CREATE TABLE ref_2pc(i INT);
 
