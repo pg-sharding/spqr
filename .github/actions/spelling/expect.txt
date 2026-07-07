@@ -26,6 +26,7 @@ astmt
 authed
 Autoattach
 autoprotect
+Backticks
 basebackup
 bcad
 bcc
@@ -364,6 +365,7 @@ Noticef
 notok
 nroute
 nsecs
+nselect
 nspname
 nulla
 Objtype
