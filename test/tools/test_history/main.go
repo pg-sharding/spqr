@@ -448,7 +448,9 @@ func readHistoryFile(path string) ([]historyRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	var records []historyRecord
 	scanner := bufio.NewScanner(file)
@@ -577,15 +579,15 @@ func writeHistory(path string, records []historyRecord) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	for _, record := range records {
 		if err := encoder.Encode(record); err != nil {
+			_ = file.Close()
 			return err
 		}
 	}
-	return nil
+	return file.Close()
 }
 
 func writeJSON(path string, value any) error {
