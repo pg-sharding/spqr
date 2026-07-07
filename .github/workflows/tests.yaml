@@ -343,6 +343,14 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - name: Download test reports
         uses: actions/download-artifact@v8
         continue-on-error: true
@@ -361,6 +369,50 @@ jobs:
               -t SPQR
           else
             echo "No JUnit XML reports found"
+          fi
+
+      - name: Upload CTRF report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ctrf-report-${{ github.run_id }}
+          path: ctrf-reports/*.json
+          if-no-files-found: ignore
+
+      - name: Generate test history candidates
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d test-reports ] && find test-reports -name '*.xml' -print -quit | grep -q .; then
+            go run ./test/tools/test_history \
+              --input-dir test-reports \
+              --history-output test-history/test-history.jsonl \
+              --candidates-output test-history/failure-candidates.json \
+              --summary-output test-history/failure-candidates.md \
+              --run-id "${{ github.run_id }}" \
+              --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --workflow "${{ github.workflow }}" \
+              --branch "${{ github.ref_name }}" \
+              --sha "${{ github.sha }}" \
+              --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          else
+            echo "No JUnit XML reports found"
+          fi
+
+      - name: Upload test history artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-history-${{ github.run_id }}
+          path: test-history/**
+          if-no-files-found: ignore
+
+      - name: Add failure candidates to summary
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -f test-history/failure-candidates.md ]; then
+            cat test-history/failure-candidates.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Publish CTRF test report
