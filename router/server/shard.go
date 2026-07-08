@@ -169,6 +169,10 @@ func (srv *ShardServer) PrefetchUntilCommandComplete(_ kr.ShardKey) error {
 	for {
 
 		msg, err := (*srv.shard.Load()).Receive()
+		if err != nil {
+			return err
+		}
+
 		cpQ, err := xproto.CopyBackendMsg(msg)
 		if err != nil {
 			return err
