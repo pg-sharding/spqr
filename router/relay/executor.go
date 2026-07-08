@@ -1025,7 +1025,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			Str("server", serv.Name()).
 			Uint("client", s.Client().ID()).
 			Type("msg-type", msg).
-			Msg("received message from server in execute:")
+			Msg("received message from server in execute")
 
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:

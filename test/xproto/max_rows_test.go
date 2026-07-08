@@ -690,7 +690,7 @@ func TestExecuteMaxRows(t *testing.T) {
 					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
 				},
 				&pgproto3.Bind{
-					PreparedStatement: "pstmt7",
+					PreparedStatement: "pstmt8",
 				},
 
 				&pgproto3.Describe{
@@ -722,6 +722,83 @@ func TestExecuteMaxRows(t *testing.T) {
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt9",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt9",
+					Query: "UPDATE t SET id = 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt9",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{
+					MaxRows: 1,
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt789",
+					Query: "UPDATE t SET id = 1",
+				},
+
+				&pgproto3.Close{
+					Name:       "pstmt789",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
