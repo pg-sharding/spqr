@@ -343,10 +343,12 @@ func TSAVirtualRelationScan(cacheEntries map[pool.TsaKey]pool.CachedEntry) *tupl
 }
 
 // TODO refactor it to make more user-friendly
-func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *tupleslot.TupleTableSlot {
+func InstanceVirtualRelationScan(ci connmgr.ConnectionMgr) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader(
+			"start_time",
+			"reload_time",
 			"total_tcp_connection_count",
 			"total_cancel_requests",
 			"active_tcp_connections",
@@ -358,6 +360,8 @@ func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *t
 	stats := statistics.GetTotalRequests()
 
 	tts.WriteDataRow(
+		fmt.Sprintf("%v", ci.StartTime()),
+		fmt.Sprintf("%v", ci.LastReloadTime()),
 		fmt.Sprintf("%v", ci.TotalTCPCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
 		fmt.Sprintf("%v", ci.ActiveTCPCount()),

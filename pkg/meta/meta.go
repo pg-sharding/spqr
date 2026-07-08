@@ -1545,7 +1545,7 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 	case spqrparser.InstanceStr:
-		tts = engine.InstanceVirtualRelationScan(ctx, ci)
+		tts = engine.InstanceVirtualRelationScan(ci)
 
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo

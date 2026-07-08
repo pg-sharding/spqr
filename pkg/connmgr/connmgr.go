@@ -1,6 +1,8 @@
 package connmgr
 
 import (
+	"time"
+
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -25,4 +27,7 @@ type ConnectionStatMgr interface {
 type ConnectionMgr interface {
 	ConnectionIterator
 	ConnectionStatMgr
+
+	StartTime() time.Time
+	LastReloadTime() time.Time
 }

@@ -62,7 +62,18 @@ import (
 )
 
 type grpcConnMgr struct {
+	InstanceStartTime time.Time
 	*ClusteredCoordinator
+}
+
+// LastReloadTime implements [connmgr.ConnectionMgr].
+func (ci grpcConnMgr) LastReloadTime() time.Time {
+	return time.Now()
+}
+
+// StartTime implements [connmgr.ConnectionMgr].
+func (ci grpcConnMgr) StartTime() time.Time {
+	return ci.InstanceStartTime
 }
 
 // InstanceHealthChecks implements connmgr.ConnectionStatsMgr.
@@ -2805,7 +2816,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		return nil
 	}
 
-	ci := grpcConnMgr{ClusteredCoordinator: qc}
+	ci := grpcConnMgr{ClusteredCoordinator: qc, InstanceStartTime: time.Now()}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
 		// TODO: check leader status

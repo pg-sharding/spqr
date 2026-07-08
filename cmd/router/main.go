@@ -373,8 +373,6 @@ var runCmd = &cobra.Command{
 						spqrlog.Zero.Error().Err(err).Msg("failed to re-apply CLI overrides on SIGHUP")
 					}
 
-					router_util.ReloadRotateLog()
-
 					if err := logEffectiveConfig(config.RouterConfig()); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("failed to print running config")
 					}
