@@ -235,8 +235,11 @@ func DataShardToProto(shard *DataShard, hostsWithAZ bool) (*proto.Shard, error) 
 
 func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) ([]*proto.GenericOption, error) {
 	protoOptions := make([]*proto.GenericOption, 0, len(options))
+
+	hostsByActions := make(map[GenericOptionAction][]GenericOption)
 	for _, opt := range options {
 		if !hostsWithAZ && opt.Name == "host" {
+			hostsByActions[opt.Action] = append(hostsByActions[opt.Action], opt)
 			continue
 		}
 
@@ -253,12 +256,19 @@ func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) ([]*proto.
 	}
 
 	if !hostsWithAZ {
-		_, addresses := retrieveHostsFromOptions(options)
-		for _, addr := range addresses {
-			protoOptions = append(protoOptions, &proto.GenericOption{
-				Name:  "host",
-				Value: addr,
-			})
+		for action, options := range hostsByActions {
+			_, addresses := retrieveHostsFromOptions(options)
+			protoAction, err := GenericOptionActionToProto(action)
+			if err != nil {
+				return nil, err
+			}
+			for _, addr := range addresses {
+				protoOptions = append(protoOptions, &proto.GenericOption{
+					Name:   "host",
+					Value:  addr,
+					Action: protoAction,
+				})
+			}
 		}
 	}
 
@@ -296,6 +306,8 @@ func GenericOptionActionFromProto(action proto.GenericOption_Action) (GenericOpt
 
 func GenericOptionActionToProto(action GenericOptionAction) (proto.GenericOption_Action, error) {
 	switch action {
+	case GenericOptionActionUnspecified:
+		fallthrough
 	case GenericOptionActionAdd:
 		return proto.GenericOption_ADD, nil
 	case GenericOptionActionSet:
