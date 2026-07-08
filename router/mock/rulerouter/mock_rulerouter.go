@@ -12,6 +12,7 @@ package mock
 import (
 	net "net"
 	reflect "reflect"
+	time "time"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	client "github.com/pg-sharding/spqr/pkg/client"
@@ -197,6 +198,20 @@ func (mr *MockRuleRouterMockRecorder) InstanceHealthChecks() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHealthChecks", reflect.TypeOf((*MockRuleRouter)(nil).InstanceHealthChecks))
 }
 
+// LastReloadTime mocks base method.
+func (m *MockRuleRouter) LastReloadTime() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LastReloadTime")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// LastReloadTime indicates an expected call of LastReloadTime.
+func (mr *MockRuleRouterMockRecorder) LastReloadTime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastReloadTime", reflect.TypeOf((*MockRuleRouter)(nil).LastReloadTime))
+}
+
 // Pop mocks base method.
 func (m *MockRuleRouter) Pop(id uint) (bool, error) {
 	m.ctrl.T.Helper()
@@ -303,6 +318,20 @@ func (m *MockRuleRouter) Shutdown() error {
 func (mr *MockRuleRouterMockRecorder) Shutdown() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockRuleRouter)(nil).Shutdown))
+}
+
+// StartTime mocks base method.
+func (m *MockRuleRouter) StartTime() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartTime")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// StartTime indicates an expected call of StartTime.
+func (mr *MockRuleRouterMockRecorder) StartTime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartTime", reflect.TypeOf((*MockRuleRouter)(nil).StartTime))
 }
 
 // TotalCancelCount mocks base method.
