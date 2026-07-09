@@ -126,13 +126,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            [Benchmark report](https://storage.yandexcloud.net/spqr-benchmark-reports/index.html?pr=$ID
+            [Benchmark report](https://storage.yandexcloud.net/spqr-benchmark-reports/index.html?pr=${{ env.ID }})
 
       - name: Output benchmark report link
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         run: |
           echo "::notice ::Benchmark report is available at:"
-          echo "::notice ::[Benchmark report](https://storage.yandexcloud.net/spqr-benchmark-reports/index.html?pr=$ID)"
+          echo "::notice ::[Benchmark report](https://storage.yandexcloud.net/spqr-benchmark-reports/index.html?pr=${{ env.ID }})"
 
   destroy:
     if: >
