@@ -2665,12 +2665,16 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force b
 	}
 	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(keyRangeMovesNodePath(moveId)), "=", resp.Kvs[0].Version)).Then(clientv3.OpDelete(keyRangeMovesNodePath(moveId))).Commit()
 
-	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
+	if err != nil {
+		return err
+	}
+
 	if !txResp.Succeeded {
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("key range move updated concurrently")
 	}
 
-	return err
+	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
+	return nil
 }
 
 func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {
