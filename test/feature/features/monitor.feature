@@ -294,7 +294,7 @@ Feature: spqr-monitor test
     """
     Then command output should match regexp
     """
-    ^$
+    key range .krid1. is safe to unlock
     """
   
   Scenario: spqr-monitor verify succeeds when there are the same number of keys on both shards
@@ -346,7 +346,7 @@ Feature: spqr-monitor test
     """
     Then command output should match regexp
     """
-    ^$
+    key range .krid1. is safe to unlock
     """
 
   Scenario: spqr-monitor recover does nothing when no move task in progress
