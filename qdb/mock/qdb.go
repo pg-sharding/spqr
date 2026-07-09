@@ -43,17 +43,17 @@ func (m *MockShardingSchemaKeeper) EXPECT() *MockShardingSchemaKeeperMockRecorde
 }
 
 // DeleteKeyRangeMove mocks base method.
-func (m *MockShardingSchemaKeeper) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (m *MockShardingSchemaKeeper) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId)
+	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteKeyRangeMove indicates an expected call of DeleteKeyRangeMove.
-func (mr *MockShardingSchemaKeeperMockRecorder) DeleteKeyRangeMove(ctx, moveId any) *gomock.Call {
+func (mr *MockShardingSchemaKeeperMockRecorder) DeleteKeyRangeMove(ctx, moveId, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockShardingSchemaKeeper)(nil).DeleteKeyRangeMove), ctx, moveId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockShardingSchemaKeeper)(nil).DeleteKeyRangeMove), ctx, moveId, force)
 }
 
 // ListKeyRangeMoves mocks base method.
@@ -2614,17 +2614,17 @@ func (mr *MockXQDBMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
 }
 
 // DeleteKeyRangeMove mocks base method.
-func (m *MockXQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (m *MockXQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId)
+	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteKeyRangeMove indicates an expected call of DeleteKeyRangeMove.
-func (mr *MockXQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockXQDB)(nil).DeleteKeyRangeMove), ctx, moveId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockXQDB)(nil).DeleteKeyRangeMove), ctx, moveId, force)
 }
 
 // DeleteRouter mocks base method.
@@ -4157,17 +4157,17 @@ func (mr *MockStateKeeperQDBMockRecorder) CurrVal(ctx, seqName any) *gomock.Call
 }
 
 // DeleteKeyRangeMove mocks base method.
-func (m *MockStateKeeperQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (m *MockStateKeeperQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId)
+	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteKeyRangeMove indicates an expected call of DeleteKeyRangeMove.
-func (mr *MockStateKeeperQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockStateKeeperQDB)(nil).DeleteKeyRangeMove), ctx, moveId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockStateKeeperQDB)(nil).DeleteKeyRangeMove), ctx, moveId, force)
 }
 
 // DeleteRouter mocks base method.

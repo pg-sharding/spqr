@@ -505,7 +505,7 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRangeService proto
 		}
 	}
 	if moveOp != nil {
-		if err := db.DeleteKeyRangeMove(ctx, moveOp.MoveId); err != nil {
+		if err := db.DeleteKeyRangeMove(ctx, moveOp.MoveId, true); err != nil {
 			return err
 		}
 	}

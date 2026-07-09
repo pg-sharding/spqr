@@ -2638,12 +2638,17 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	return nil
 }
 
-func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
 		Msg("etcdqdb: delete key range move")
 	t := time.Now()
 
+	if force {
+		_, err := q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+		statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
+		return err
+	}
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
@@ -2658,9 +2663,13 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	if moveKr.Status != MoveKeyRangeComplete {
 		return fmt.Errorf("cannot remove non-completed key range move")
 	}
-	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(keyRangeMovesNodePath(moveId)), "=", resp.Kvs[0].Version)).Then(clientv3.OpDelete(keyRangeMovesNodePath(moveId))).Commit()
 
 	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
+	if !txResp.Succeeded {
+		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("key range move updated concurrently")
+	}
+
 	return err
 }
 

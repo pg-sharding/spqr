@@ -1143,7 +1143,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 					spqrlog.Zero.Info().Str("cp", icp.AfterUnlockKeyRangeCP).Err(err).Msg("error while checking control point")
 				}
 			}
-			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
+			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId, false); err != nil {
 				return err
 			}
 			move = nil
