@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -79,6 +80,9 @@ func TestBuildCandidatesFindsRepeatedFingerprintAndLastKnownPass(t *testing.T) {
 		t.Fatalf("expected 1 candidate, got %d", len(candidates))
 	}
 	candidate := candidates[0]
+	if candidate.Scope != candidateScopeMatrix {
+		t.Fatalf("unexpected candidate scope: %#v", candidate)
+	}
 	if candidate.Failures != 2 || candidate.TestRuns != 3 {
 		t.Fatalf("unexpected counts: %#v", candidate)
 	}
@@ -87,6 +91,77 @@ func TestBuildCandidatesFindsRepeatedFingerprintAndLastKnownPass(t *testing.T) {
 	}
 	if len(candidate.Evidence) != 2 {
 		t.Fatalf("unexpected evidence count: %d", len(candidate.Evidence))
+	}
+}
+
+func TestBuildCandidatesFindsCrossMatrixFingerprint(t *testing.T) {
+	records := []historyRecord{
+		{
+			Suite:     "router",
+			Name:      "autoprotect_2pc",
+			Matrix:    "jammy-14",
+			Status:    "passed",
+			Timestamp: "2026-07-01T00:00:00Z",
+		},
+		{
+			Suite:       "router",
+			Name:        "autoprotect_2pc",
+			Matrix:      "jammy-14",
+			Status:      "failed",
+			Fingerprint: "same-fingerprint",
+			RunID:       "1",
+			Timestamp:   "2026-07-02T00:00:00Z",
+			Trace:       "+ERROR: boom",
+		},
+		{
+			Suite:       "router",
+			Name:        "autoprotect_2pc",
+			Matrix:      "noble-15",
+			Status:      "failed",
+			Fingerprint: "same-fingerprint",
+			RunID:       "2",
+			Timestamp:   "2026-07-03T00:00:00Z",
+			Trace:       "+ERROR: boom",
+		},
+		{
+			Suite:       "router",
+			Name:        "autoprotect_2pc",
+			Matrix:      "jammy-17",
+			Status:      "failed",
+			Fingerprint: "same-fingerprint",
+			RunID:       "3",
+			Timestamp:   "2026-07-04T00:00:00Z",
+			Trace:       "+ERROR: boom",
+		},
+	}
+
+	candidates := buildCandidates(records, 3, 5)
+	if len(candidates) != 1 {
+		t.Fatalf("expected 1 candidate, got %#v", candidates)
+	}
+
+	candidate := candidates[0]
+	if candidate.Scope != candidateScopeCrossMatrix {
+		t.Fatalf("unexpected candidate scope: %#v", candidate)
+	}
+	if candidate.Matrix != "" {
+		t.Fatalf("cross-matrix candidate should not pin one matrix: %#v", candidate)
+	}
+	wantMatrices := []string{"jammy-14", "jammy-17", "noble-15"}
+	if !reflect.DeepEqual(candidate.AffectedMatrices, wantMatrices) {
+		t.Fatalf("unexpected affected matrices: got %#v want %#v", candidate.AffectedMatrices, wantMatrices)
+	}
+	if candidate.Failures != 3 || candidate.TestRuns != 4 {
+		t.Fatalf("unexpected counts: %#v", candidate)
+	}
+	if candidate.LastKnownPass != "2026-07-01T00:00:00Z" {
+		t.Fatalf("unexpected last known pass: %#v", candidate)
+	}
+	if !strings.Contains(candidate.AgentTaskTitle, "cross-matrix") {
+		t.Fatalf("unexpected task title: %q", candidate.AgentTaskTitle)
+	}
+	if len(candidate.Evidence) != 3 || candidate.Evidence[0].Matrix != "jammy-17" {
+		t.Fatalf("unexpected evidence: %#v", candidate.Evidence)
 	}
 }
 
@@ -165,6 +240,7 @@ func TestRenderSummaryUsesLongerFenceForBackticksInTrace(t *testing.T) {
 		MinFailures: 1,
 		Candidates: []failureCandidate{
 			{
+				Scope:        candidateScopeMatrix,
 				Suite:        "router",
 				Name:         "backtick_case",
 				Fingerprint:  "abc",

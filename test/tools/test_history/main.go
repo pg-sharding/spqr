@@ -72,21 +72,23 @@ type candidateReport struct {
 }
 
 type failureCandidate struct {
-	ID             string        `json:"id"`
-	Suite          string        `json:"suite"`
-	Name           string        `json:"name"`
-	Matrix         string        `json:"matrix,omitempty"`
-	Fingerprint    string        `json:"fingerprint"`
-	Failures       int           `json:"failures"`
-	TestRuns       int           `json:"test_runs"`
-	FailureRate    float64       `json:"failure_rate"`
-	FirstObserved  string        `json:"first_observed,omitempty"`
-	LastObserved   string        `json:"last_observed,omitempty"`
-	LastKnownPass  string        `json:"last_known_pass,omitempty"`
-	Message        string        `json:"message,omitempty"`
-	TraceExcerpt   string        `json:"trace_excerpt,omitempty"`
-	Evidence       []runEvidence `json:"evidence"`
-	AgentTaskTitle string        `json:"agent_task_title"`
+	ID               string        `json:"id"`
+	Scope            string        `json:"scope"`
+	Suite            string        `json:"suite"`
+	Name             string        `json:"name"`
+	Matrix           string        `json:"matrix,omitempty"`
+	AffectedMatrices []string      `json:"affected_matrices,omitempty"`
+	Fingerprint      string        `json:"fingerprint"`
+	Failures         int           `json:"failures"`
+	TestRuns         int           `json:"test_runs"`
+	FailureRate      float64       `json:"failure_rate"`
+	FirstObserved    string        `json:"first_observed,omitempty"`
+	LastObserved     string        `json:"last_observed,omitempty"`
+	LastKnownPass    string        `json:"last_known_pass,omitempty"`
+	Message          string        `json:"message,omitempty"`
+	TraceExcerpt     string        `json:"trace_excerpt,omitempty"`
+	Evidence         []runEvidence `json:"evidence"`
+	AgentTaskTitle   string        `json:"agent_task_title"`
 }
 
 type runEvidence struct {
@@ -95,6 +97,7 @@ type runEvidence struct {
 	CommitSHA  string `json:"commit_sha,omitempty"`
 	Branch     string `json:"branch,omitempty"`
 	Timestamp  string `json:"timestamp,omitempty"`
+	Matrix     string `json:"matrix,omitempty"`
 	ReportPath string `json:"report_path,omitempty"`
 	Message    string `json:"message,omitempty"`
 }
@@ -123,6 +126,13 @@ var (
 	timestampRE = regexp.MustCompile(`\b\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z| ?[+-]\d{4})?\b`)
 	outHeaderRE = regexp.MustCompile(`^((?:---|\+\+\+) \S+\.out)(?:\s+.*)?$`)
 	spaceRE     = regexp.MustCompile(`[ \t]+`)
+)
+
+const (
+	candidateScopeMatrix      = "matrix"
+	candidateScopeCrossMatrix = "cross_matrix"
+
+	minAffectedMatricesForCrossMatrixCandidate = 2
 )
 
 func main() {
@@ -473,51 +483,62 @@ func readHistoryFile(path string) ([]historyRecord, error) {
 }
 
 func buildCandidates(records []historyRecord, minFailures, maxEvidence int) []failureCandidate {
+	recordsByMatrixTest := make(map[string][]historyRecord)
 	recordsByTest := make(map[string][]historyRecord)
-	failuresByFingerprint := make(map[string][]historyRecord)
+	matrixFailuresByFingerprint := make(map[string][]historyRecord)
+	crossMatrixFailuresByFingerprint := make(map[string][]historyRecord)
 
 	for _, record := range records {
 		if isFailure(record.Status) && record.Fingerprint == "" {
 			record.Fingerprint = failureFingerprint(record)
 		}
-		testKey := record.testKey()
+		matrixTestKey := record.testKey()
+		testKey := record.testNameKey()
+		recordsByMatrixTest[matrixTestKey] = append(recordsByMatrixTest[matrixTestKey], record)
 		recordsByTest[testKey] = append(recordsByTest[testKey], record)
 		if isFailure(record.Status) {
-			key := testKey + "\x00" + record.Fingerprint
-			failuresByFingerprint[key] = append(failuresByFingerprint[key], record)
+			matrixKey := candidateScopeMatrix + "\x00" + matrixTestKey + "\x00" + record.Fingerprint
+			crossMatrixKey := candidateScopeCrossMatrix + "\x00" + testKey + "\x00" + record.Fingerprint
+			matrixFailuresByFingerprint[matrixKey] = append(matrixFailuresByFingerprint[matrixKey], record)
+			crossMatrixFailuresByFingerprint[crossMatrixKey] = append(crossMatrixFailuresByFingerprint[crossMatrixKey], record)
 		}
 	}
 
-	candidates := make([]failureCandidate, 0, len(failuresByFingerprint))
-	for key, failures := range failuresByFingerprint {
+	candidates := make([]failureCandidate, 0, len(matrixFailuresByFingerprint)+len(crossMatrixFailuresByFingerprint))
+	for key, failures := range matrixFailuresByFingerprint {
 		if len(failures) < minFailures {
 			continue
 		}
 
-		sortRecords(failures)
-		first := failures[0]
-		last := failures[len(failures)-1]
-		testRecords := recordsByTest[first.testKey()]
-		sortRecords(testRecords)
+		first := earliestRecord(failures)
+		candidates = append(candidates, newFailureCandidate(
+			candidateScopeMatrix,
+			key,
+			failures,
+			recordsByMatrixTest[first.testKey()],
+			nil,
+			maxEvidence,
+		))
+	}
 
-		candidate := failureCandidate{
-			ID:             shortHash(key),
-			Suite:          first.Suite,
-			Name:           first.Name,
-			Matrix:         first.Matrix,
-			Fingerprint:    first.Fingerprint,
-			Failures:       len(failures),
-			TestRuns:       len(testRecords),
-			FailureRate:    float64(len(failures)) / float64(len(testRecords)),
-			FirstObserved:  first.Timestamp,
-			LastObserved:   last.Timestamp,
-			LastKnownPass:  lastKnownPass(testRecords, first),
-			Message:        last.Message,
-			TraceExcerpt:   excerpt(last.Trace, 1800),
-			Evidence:       evidenceFromFailures(failures, maxEvidence),
-			AgentTaskTitle: agentTaskTitle(first),
+	for key, failures := range crossMatrixFailuresByFingerprint {
+		if len(failures) < minFailures {
+			continue
 		}
-		candidates = append(candidates, candidate)
+		affectedMatrices := affectedMatricesFromFailures(failures)
+		if len(affectedMatrices) < minAffectedMatricesForCrossMatrixCandidate {
+			continue
+		}
+
+		first := earliestRecord(failures)
+		candidates = append(candidates, newFailureCandidate(
+			candidateScopeCrossMatrix,
+			key,
+			failures,
+			recordsByTest[first.testNameKey()],
+			affectedMatrices,
+			maxEvidence,
+		))
 	}
 
 	sort.Slice(candidates, func(i, j int) bool {
@@ -527,10 +548,72 @@ func buildCandidates(records []historyRecord, minFailures, maxEvidence int) []fa
 		if candidates[i].LastObserved != candidates[j].LastObserved {
 			return candidates[i].LastObserved > candidates[j].LastObserved
 		}
+		if candidates[i].Scope != candidates[j].Scope {
+			return candidates[i].Scope == candidateScopeCrossMatrix
+		}
 		return candidates[i].ID < candidates[j].ID
 	})
 
 	return candidates
+}
+
+func newFailureCandidate(scope, key string, failures, testRecords []historyRecord, affectedMatrices []string, maxEvidence int) failureCandidate {
+	sortRecords(failures)
+	sortRecords(testRecords)
+
+	first := failures[0]
+	last := failures[len(failures)-1]
+	testRuns := len(testRecords)
+	failureRate := 0.0
+	if testRuns > 0 {
+		failureRate = float64(len(failures)) / float64(testRuns)
+	}
+
+	candidate := failureCandidate{
+		ID:               shortHash(key),
+		Scope:            scope,
+		Suite:            first.Suite,
+		Name:             first.Name,
+		Matrix:           first.Matrix,
+		AffectedMatrices: affectedMatrices,
+		Fingerprint:      first.Fingerprint,
+		Failures:         len(failures),
+		TestRuns:         testRuns,
+		FailureRate:      failureRate,
+		FirstObserved:    first.Timestamp,
+		LastObserved:     last.Timestamp,
+		LastKnownPass:    lastKnownPass(testRecords, first),
+		Message:          last.Message,
+		TraceExcerpt:     excerpt(last.Trace, 1800),
+		Evidence:         evidenceFromFailures(failures, maxEvidence),
+		AgentTaskTitle:   agentTaskTitle(scope, first),
+	}
+	if scope == candidateScopeCrossMatrix {
+		candidate.Matrix = ""
+	}
+	return candidate
+}
+
+func earliestRecord(records []historyRecord) historyRecord {
+	copied := append([]historyRecord(nil), records...)
+	sortRecords(copied)
+	return copied[0]
+}
+
+func affectedMatricesFromFailures(failures []historyRecord) []string {
+	matrixSet := make(map[string]struct{})
+	for _, failure := range failures {
+		if failure.Matrix == "" {
+			continue
+		}
+		matrixSet[failure.Matrix] = struct{}{}
+	}
+	matrices := make([]string, 0, len(matrixSet))
+	for matrix := range matrixSet {
+		matrices = append(matrices, matrix)
+	}
+	sort.Strings(matrices)
+	return matrices
 }
 
 func evidenceFromFailures(failures []historyRecord, maxEvidence int) []runEvidence {
@@ -551,6 +634,7 @@ func evidenceFromFailures(failures []historyRecord, maxEvidence int) []runEviden
 			CommitSHA:  failure.CommitSHA,
 			Branch:     failure.Branch,
 			Timestamp:  failure.Timestamp,
+			Matrix:     failure.Matrix,
 			ReportPath: failure.ReportPath,
 			Message:    failure.Message,
 		})
@@ -619,17 +703,19 @@ func renderSummary(report candidateReport) string {
 		return builder.String()
 	}
 
-	builder.WriteString("| Failures | Test runs | Suite | Test | Matrix | First observed | Last observed |\n")
-	builder.WriteString("|---:|---:|---|---|---|---|---|\n")
+	builder.WriteString("| Scope | Failures | Test runs | Suite | Test | Matrix | Affected matrices | First observed | Last observed |\n")
+	builder.WriteString("|---|---:|---:|---|---|---|---|---|---|\n")
 	for _, candidate := range report.Candidates {
 		fmt.Fprintf(
 			&builder,
-			"| %d | %d | %s | %s | %s | %s | %s |\n",
+			"| %s | %d | %d | %s | %s | %s | %s | %s | %s |\n",
+			markdownCell(candidate.Scope),
 			candidate.Failures,
 			candidate.TestRuns,
 			markdownCell(candidate.Suite),
 			markdownCell(candidate.Name),
 			markdownCell(candidate.Matrix),
+			markdownCell(strings.Join(candidate.AffectedMatrices, ", ")),
 			markdownCell(candidate.FirstObserved),
 			markdownCell(candidate.LastObserved),
 		)
@@ -637,7 +723,11 @@ func renderSummary(report candidateReport) string {
 
 	for _, candidate := range report.Candidates {
 		fmt.Fprintf(&builder, "\n## %s\n\n", candidate.AgentTaskTitle)
+		fmt.Fprintf(&builder, "- Scope: `%s`\n", candidate.Scope)
 		fmt.Fprintf(&builder, "- Fingerprint: `%s`\n", candidate.Fingerprint)
+		if len(candidate.AffectedMatrices) > 0 {
+			fmt.Fprintf(&builder, "- Affected matrices: %s\n", strings.Join(candidate.AffectedMatrices, ", "))
+		}
 		fmt.Fprintf(&builder, "- Failure rate in collected history: %.2f\n", candidate.FailureRate)
 		if candidate.LastKnownPass != "" {
 			fmt.Fprintf(&builder, "- Last known pass before first observed failure: %s\n", candidate.LastKnownPass)
@@ -656,6 +746,9 @@ func renderSummary(report candidateReport) string {
 				}
 				if evidence.CommitSHA != "" {
 					fmt.Fprintf(&builder, " `%s`", shortSHA(evidence.CommitSHA))
+				}
+				if evidence.Matrix != "" {
+					fmt.Fprintf(&builder, " `%s`", evidence.Matrix)
 				}
 				if evidence.ReportPath != "" {
 					fmt.Fprintf(&builder, " `%s`", evidence.ReportPath)
@@ -831,6 +924,10 @@ func (r historyRecord) testKey() string {
 	return r.Suite + "\x00" + r.Name + "\x00" + r.Matrix
 }
 
+func (r historyRecord) testNameKey() string {
+	return r.Suite + "\x00" + r.Name
+}
+
 func sortRecords(records []historyRecord) {
 	sort.SliceStable(records, func(i, j int) bool {
 		if records[i].Timestamp != records[j].Timestamp {
@@ -888,7 +985,10 @@ func isPass(status string) bool {
 	return status == "passed" || status == "pass"
 }
 
-func agentTaskTitle(record historyRecord) string {
+func agentTaskTitle(scope string, record historyRecord) string {
+	if scope == candidateScopeCrossMatrix {
+		return fmt.Sprintf("Investigate recurring cross-matrix failure in %s / %s", record.Suite, record.Name)
+	}
 	if record.Matrix != "" {
 		return fmt.Sprintf("Investigate recurring failure in %s / %s [%s]", record.Suite, record.Name, record.Matrix)
 	}
