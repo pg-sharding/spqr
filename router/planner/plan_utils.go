@@ -227,7 +227,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			IsDDL: true,
 		}, nil
 
-	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
+	case *lyx.Alter, *lyx.Drop, *lyx.DropTable, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return &plan.ScatterPlan{
