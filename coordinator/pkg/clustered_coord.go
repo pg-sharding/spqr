@@ -1064,13 +1064,14 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				if errors.Is(err, datatransfers.AwaitPIDError) {
 					spqrlog.Zero.Debug().Msg("got AwaitPIDError")
 					if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangePlanned); err != nil {
-						return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR).Detail(fmt.Sprintf("failed to update move task status after await PID timeout: %s", err))
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update move task status after await PID timeout: %s", err)
 					}
 					move.Status = qdb.MoveKeyRangePlanned
 					if err = qc.UnlockKeyRange(ctx, keyRange.ID); err != nil {
-						return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR).Detail(fmt.Sprintf("failed to unlock key range after await PID timeout: %s", err))
+
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to unlock key range after await PID timeout: %s", err)
 					}
-					return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR).Detail("timeout waiting for vxid locks to release")
+					return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "timeout waiting for vxid locks to release")
 				}
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err

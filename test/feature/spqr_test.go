@@ -1183,6 +1183,22 @@ func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
 	return fmt.Errorf("key range moves present")
 }
 
+func (tctx *testContext) stepKeyRangeMovesShouldMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	txs, err := tctx.qdb.ListKeyRangeMoves(context.TODO())
+	if err != nil {
+		return err
+	}
+	txsJson, err := json.Marshal(txs)
+	if err != nil {
+		return err
+	}
+	return m(string(txsJson), strings.TrimSpace(body.Content))
+}
+
 func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -1530,6 +1546,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
+	s.Step(`^key range moves in qdb should match (\w+)$`, tctx.stepKeyRangeMovesShouldMatch)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
