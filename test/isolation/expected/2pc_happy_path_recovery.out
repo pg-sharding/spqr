@@ -40,7 +40,7 @@ s1: NOTICE: rollback prepared 2pc_happy_path_fail_gid on spqr_shard_2:6432
 s1: NOTICE: rollback prepared 2pc_happy_path_fail_gid on spqr_shard_3:6432
 s1: NOTICE: rollback prepared 2pc_happy_path_fail_gid on spqr_shard_4:6432
 step s1_commit: COMMIT;
-ERROR:  error while deploying shard: injected error
+ERROR:  error while deploying shard: prepare tx-injected error
 step s2_show_pg_prep_xacts: select __spqr__ctid('pg_prepared_xacts');
 step s1_commit: COMMIT;
 step s2_show_pg_prep_xacts: select __spqr__ctid('pg_prepared_xacts');

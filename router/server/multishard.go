@@ -142,7 +142,7 @@ func (m *MultiShardServer) expandGangUtil(clid uint,
 	if deployTX {
 		retst, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
 			String: "BEGIN",
-		}, txstatus.TXACT)
+		}, "multishard gang dispatch", txstatus.TXACT)
 
 		if err != nil {
 			return err

@@ -105,7 +105,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	/* TODO: deploy tx status on each gang. */
 
 	for _, sh := range serv.Datashards() {
-		st, err := shard.DeployTxOnShard(sh, q, expTx)
+		st, err := shard.DeployTxOnShard(sh, q, "deploy tx internal", expTx)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */

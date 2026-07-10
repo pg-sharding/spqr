@@ -96,7 +96,10 @@ type ShardHostIterator interface {
 }
 
 /* util function to deploy begin on shard. Used by executor and tx expand and 2pc commit. */
-func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx txstatus.TXStatus) (txstatus.TXStatus, error) {
+func DeployTxOnShard(sh ShardHostInstance,
+	qry pgproto3.FrontendMessage,
+	deployContext string,
+	expTx txstatus.TXStatus) (txstatus.TXStatus, error) {
 	if err := sh.Send(qry); err != nil {
 		return txstatus.TXERR, err
 	}
@@ -111,7 +114,7 @@ func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx t
 		// ok
 		break
 	case *pgproto3.ErrorResponse:
-		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "error while deploying shard: %s", q.Message).Detail(q.Detail).Context(q.Where)
+		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "error while deploying shard: %s-%s", deployContext, q.Message).Detail(q.Detail).Context(q.Where)
 	default:
 		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+T", msg)
 	}
