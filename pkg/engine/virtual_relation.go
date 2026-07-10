@@ -355,7 +355,7 @@ func InstanceVirtualRelationScan(ci connmgr.ConnectionMgr) *tupleslot.TupleTable
 			"failed_auth",
 			"failed_init",
 			"total_requests",
-			"_requests",
+			"non_virtual_requests",
 		)}
 
 	tts.WriteDataRow(
