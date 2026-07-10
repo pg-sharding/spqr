@@ -515,7 +515,8 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 		}
 		spqrlog.Zero.Debug().
 			Str("id", keyRangeId).
-			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
+			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId,
+				resp.Responses[0].GetResponseRange().Count, resp.Responses[1].GetResponseRange().Count))
 		return nil, retry.RetryableError(
 			spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", keyRangeId)))
 	} else {
