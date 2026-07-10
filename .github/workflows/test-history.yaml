@@ -11,12 +11,17 @@ on:
         description: Minimum failures with the same fingerprint before emitting a candidate
         required: false
         default: "3"
+      sync_issues:
+        description: Create or update GitHub issues for emitted failure candidates
+        required: false
+        default: "false"
   schedule:
     - cron: "17 3 * * *"
 
 permissions:
   actions: read
   contents: read
+  issues: write
 
 jobs:
   test-history:
@@ -75,6 +80,16 @@ jobs:
           if [ -f test-history/failure-candidates.md ]; then
             cat test-history/failure-candidates.md >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Create or update failure candidate issues
+        if: github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || inputs.sync_issues == 'true')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          go run ./test/tools/test_history_issues \
+            --candidates-input test-history/failure-candidates.json \
+            --repo "$GITHUB_REPOSITORY"
 
       - name: Upload test history artifacts
         if: always()

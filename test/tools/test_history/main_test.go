@@ -222,6 +222,21 @@ func TestTimestampFromReportPathOnlyAcceptsRFC3339(t *testing.T) {
 	}
 }
 
+func TestDeriveMatrixFromDownloadedIsolationReportPath(t *testing.T) {
+	tests := map[string]string{
+		"29030391367/test-reports-isolation/isolation-regress.xml":     "isolation",
+		"test-reports/isolation/isolation-regress.xml":                 "isolation",
+		"29030391367/test-reports-regress-jammy-16/jammy-16/test.xml":  "jammy-16",
+		"29030391367/test-reports-feature-feature-0/feature-0/out.xml": "feature-0",
+	}
+
+	for path, want := range tests {
+		if got := deriveMatrix(path); got != want {
+			t.Fatalf("deriveMatrix(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
 func TestTimestampLessSortsUnknownLast(t *testing.T) {
 	if timestampLess("", "2026-07-07T10:00:00Z") {
 		t.Fatal("empty timestamp sorted before a real timestamp")

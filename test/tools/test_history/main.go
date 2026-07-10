@@ -865,6 +865,8 @@ func deriveMatrix(rel string) string {
 			return strings.TrimPrefix(part, "test-reports-regress-")
 		case strings.HasPrefix(part, "test-reports-feature-"):
 			return strings.TrimPrefix(part, "test-reports-feature-")
+		case part == "test-reports-isolation":
+			return "isolation"
 		case part == "regress-coord" && i+1 < len(parts)-1:
 			return parts[i+1]
 		case part == "regress" && i+1 < len(parts)-1:
