@@ -414,27 +414,75 @@ func (client githubClient) ensureLabel(label githubLabel) error {
 
 func (client githubClient) listCandidateIssues(labels []string) ([]githubIssue, error) {
 	query := url.Values{}
-	query.Set("state", "open")
+	query.Set("state", "all")
 	query.Set("per_page", "100")
+	query.Set("page", "1")
 	if len(labels) > 0 {
-		query.Set("labels", labels[0])
+		query.Set("labels", strings.Join(labels, ","))
 	}
 	path := fmt.Sprintf("/repos/%s/%s/issues?%s", client.owner, client.repo, query.Encode())
-	response, err := client.do("GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = response.Body.Close()
-	}()
-	if response.StatusCode != http.StatusOK {
-		return nil, githubError(response)
-	}
+
 	var issues []githubIssue
-	if err := json.NewDecoder(response.Body).Decode(&issues); err != nil {
-		return nil, err
+	for {
+		response, err := client.do("GET", path, nil)
+		if err != nil {
+			return nil, err
+		}
+		if response.StatusCode != http.StatusOK {
+			err := githubError(response)
+			_ = response.Body.Close()
+			return nil, err
+		}
+
+		var pageIssues []githubIssue
+		if err := json.NewDecoder(response.Body).Decode(&pageIssues); err != nil {
+			_ = response.Body.Close()
+			return nil, err
+		}
+		issues = append(issues, pageIssues...)
+
+		nextPath, hasNext := nextLinkPath(response.Header.Get("Link"))
+		if err := response.Body.Close(); err != nil {
+			return nil, err
+		}
+		if !hasNext {
+			break
+		}
+		path = nextPath
 	}
 	return issues, nil
+}
+
+func nextLinkPath(header string) (string, bool) {
+	for _, link := range strings.Split(header, ",") {
+		sections := strings.Split(link, ";")
+		if len(sections) < 2 {
+			continue
+		}
+
+		isNext := false
+		for _, section := range sections[1:] {
+			if strings.TrimSpace(section) == `rel="next"` {
+				isNext = true
+				break
+			}
+		}
+		if !isNext {
+			continue
+		}
+
+		target := strings.TrimSpace(sections[0])
+		target = strings.TrimPrefix(strings.TrimSuffix(target, ">"), "<")
+		parsed, err := url.Parse(target)
+		if err != nil {
+			continue
+		}
+		if parsed.IsAbs() {
+			return parsed.RequestURI(), true
+		}
+		return target, true
+	}
+	return "", false
 }
 
 func (client githubClient) createIssue(spec issueSpec, labels []string) (githubIssue, error) {

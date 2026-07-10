@@ -1,8 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -137,6 +142,60 @@ func TestSyncIssuesSkipsEmptyCandidates(t *testing.T) {
 	}
 }
 
+func TestListCandidateIssuesUsesAllStateLabelsAndPagination(t *testing.T) {
+	var pages []string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/repos/pg-sharding/spqr/issues" {
+			t.Errorf("unexpected path: %s", request.URL.Path)
+		}
+		query := request.URL.Query()
+		if query.Get("state") != "all" {
+			t.Errorf("unexpected state query: %q", query.Get("state"))
+		}
+		if query.Get("labels") != "ci-flaky,agent:flake-fix" {
+			t.Errorf("unexpected labels query: %q", query.Get("labels"))
+		}
+		if query.Get("per_page") != "100" {
+			t.Errorf("unexpected per_page query: %q", query.Get("per_page"))
+		}
+
+		page := query.Get("page")
+		pages = append(pages, page)
+		switch page {
+		case "1":
+			writer.Header().Set("Link", fmt.Sprintf(
+				`<%s/repos/pg-sharding/spqr/issues?labels=ci-flaky%%2Cagent%%3Aflake-fix&page=2&per_page=100&state=all>; rel="next"`,
+				server.URL,
+			))
+			writeJSONResponse(t, writer, []githubIssue{{Number: 1, Body: "first"}})
+		case "2":
+			writeJSONResponse(t, writer, []githubIssue{{Number: 2, Body: "second"}})
+		default:
+			t.Errorf("unexpected page: %q", page)
+			writeJSONResponse(t, writer, []githubIssue{})
+		}
+	}))
+	defer server.Close()
+
+	client := githubClient{
+		apiURL:     server.URL,
+		owner:      "pg-sharding",
+		repo:       "spqr",
+		httpClient: server.Client(),
+	}
+	issues, err := client.listCandidateIssues([]string{"ci-flaky", "agent:flake-fix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(pages, []string{"1", "2"}) {
+		t.Fatalf("unexpected requested pages: %#v", pages)
+	}
+	if len(issues) != 2 || issues[0].Number != 1 || issues[1].Number != 2 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+}
+
 func TestRunDryRun(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "failure-candidates.json")
@@ -177,5 +236,13 @@ func TestParseRepo(t *testing.T) {
 	}
 	if _, _, err := parseRepo("spqr"); err == nil {
 		t.Fatal("expected invalid repo error")
+	}
+}
+
+func writeJSONResponse(t *testing.T, writer http.ResponseWriter, value any) {
+	t.Helper()
+	writer.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(writer).Encode(value); err != nil {
+		t.Fatal(err)
 	}
 }
