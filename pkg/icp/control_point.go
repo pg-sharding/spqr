@@ -18,6 +18,7 @@ const (
 	AfterRenameKeyRangeCP       = "after_rename_key_range_cp"
 	AfterSplitKeyRangeCP        = "after_split_key_range_cp"
 	AfterLockKeyRangeCP         = "after_lock_key_range_cp"
+	AwaitPidCP                  = "await_pid_cp"
 	CopyDataCP                  = "copy_data_cp"
 	BeforeInsertCP              = "before_insert_cp"
 	AfterInsertCP               = "after_insert_cp"
@@ -116,7 +117,9 @@ func DefineICP(name string, a *spqrparser.ICPointAction) error {
 		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
 		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
-		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP, BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP:
+		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
+		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
+		AwaitPidCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -141,7 +144,9 @@ func ResetICP(name string) error {
 		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
 		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
-		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP, BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP:
+		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
+		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
+		AwaitPidCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]

@@ -864,6 +864,11 @@ func GetTableColumns(ctx context.Context, db Queryable, relationFQN *rfqn.Relati
 func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
 	execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
 	defer cancel()
+	if config.CoordinatorConfig().EnableICP {
+		if err := icp.CheckControlPoint(nil, icp.AwaitPidCP); err != nil {
+			spqrlog.Zero.Info().Str("cp", icp.AwaitPidCP).Err(err).Msg("error while checking control point")
+		}
+	}
 	if _, err := conn.Exec(execCtx, getAwaitPIDsQuery()); err != nil {
 		return err
 	}
