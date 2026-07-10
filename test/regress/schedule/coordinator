@@ -1,3 +1,4 @@
 test: coordinator
 test: redistribute
 test: shards
+test: rebalance
