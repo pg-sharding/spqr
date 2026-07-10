@@ -677,6 +677,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+vxid
 walreceiver
 Warningf
 workloadlog
