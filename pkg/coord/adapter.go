@@ -551,6 +551,17 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return spqrerror.CleanGrpcError(err)
 }
 
+func (a *Adapter) RebalanceDistribution(ctx context.Context, distributionID string, shards []string) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err := c.RebalanceDistribution(ctx, &proto.RebalanceDistributionRequest{
+		DistributionId: distributionID,
+		Shards:         shards,
+	})
+
+	spqrlog.Zero.Debug().Err(err).Msg("proxy RebalanceKeyRange to coordinator")
+	return spqrerror.CleanGrpcError(err)
+}
+
 // RenameKeyRange renames a key range.
 //
 // Parameters:

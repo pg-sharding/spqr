@@ -2369,6 +2369,10 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 	}
 }
 
+func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, shards []string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+
 // TODO : unit tests
 
 // RenameKeyRange renames a key range.

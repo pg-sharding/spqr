@@ -464,6 +464,10 @@ func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.Redistribut
 	panic("unimplemented")
 }
 
+func (lc *Coordinator) RebalanceDistribution(ctx context.Context, distributionID string, shards []string) error {
+	panic("unimplemneted")
+}
+
 // RegisterRouter implements meta.EntityMgr.
 func (lc *Coordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return lc.qdb.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))

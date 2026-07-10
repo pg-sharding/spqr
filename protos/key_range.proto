@@ -25,6 +25,7 @@ service KeyRangeService {
   rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
   rpc BatchMoveKeyRange (BatchMoveKeyRangeRequest) returns (google.protobuf.Empty) {}
   rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (google.protobuf.Empty) {}
+  rpc RebalanceDistribution (RebalanceDistributionRequest) returns (google.protobuf.Empty) {}
   rpc RenameKeyRange (RenameKeyRangeRequest) returns (google.protobuf.Empty) {}
 }
 
@@ -133,6 +134,11 @@ message RedistributeKeyRangeRequest {
   bool apply = 5;
   bool noWait = 6;
   string taskGroupId = 7;
+}
+
+message RebalanceDistributionRequest {
+  string distributionId = 1 [(buf.validate.field).required = true];
+  repeated string shards = 2;
 }
 
 message RenameKeyRangeRequest{

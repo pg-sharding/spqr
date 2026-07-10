@@ -214,6 +214,10 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 	return ErrNotCoordinator
 }
 
+func (lc *LocalInstanceMetadataMgr) RebalanceDistribution(ctx context.Context, distributionID string, shards []string) error {
+	return ErrNotCoordinator
+}
+
 // TODO : unit tests
 
 // AddDataShard adds a new data shard to the LocalCoordinator.
