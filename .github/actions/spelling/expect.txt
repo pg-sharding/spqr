@@ -12,6 +12,7 @@ adipiscing
 adminpassword
 AExpr
 afe
+Aflake
 aliasname
 aliqua
 aliquip
@@ -42,6 +43,7 @@ bootstraping
 Bootstrapper
 buildpackage
 cachedchecker
+Cagent
 caio
 CANCELREQ
 canreq
