@@ -194,6 +194,11 @@ type RedistributeKeyRange struct {
 	NoWait      bool
 }
 
+type RebalanceDistribution struct {
+	Distribution *DistributionSelector
+	Shards       []string
+}
+
 type KeyRangeSelector struct {
 	KeyRangeID string
 }
@@ -535,6 +540,7 @@ func (*Shutdown) iStatement()                           {}
 func (*Listen) iStatement()                             {}
 func (*MoveKeyRange) iStatement()                       {}
 func (*RedistributeKeyRange) iStatement()               {}
+func (*RebalanceDistribution) iStatement()              {}
 func (*SplitKeyRange) iStatement()                      {}
 func (*UniteKeyRange) iStatement()                      {}
 func (*DistributionDefinition) iStatement()             {}

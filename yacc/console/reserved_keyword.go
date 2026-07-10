@@ -115,4 +115,5 @@ var reservedWords = map[string]int{
 	"ranges":       RANGES,
 	"using":        USING,
 	"between":      BETWEEN,
+	"rebalance":    REBALANCE,
 }
