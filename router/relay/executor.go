@@ -129,6 +129,8 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 		return ErrMatchShardError
 	}
 
+	statistics.IncTotalNonVirtualRequest()
+
 	if len(s.ActiveShards()) != 0 {
 		spqrlog.Zero.Debug().
 			Uint("relay state", spqrlog.GetPointer(s)).
