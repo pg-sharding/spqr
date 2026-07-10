@@ -20,22 +20,23 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KeyRangeService_GetKeyRange_FullMethodName          = "/spqr.KeyRangeService/GetKeyRange"
-	KeyRangeService_ListKeyRange_FullMethodName         = "/spqr.KeyRangeService/ListKeyRange"
-	KeyRangeService_ListAllKeyRanges_FullMethodName     = "/spqr.KeyRangeService/ListAllKeyRanges"
-	KeyRangeService_ListKeyRangeLocks_FullMethodName    = "/spqr.KeyRangeService/ListKeyRangeLocks"
-	KeyRangeService_LockKeyRange_FullMethodName         = "/spqr.KeyRangeService/LockKeyRange"
-	KeyRangeService_CreateKeyRange_FullMethodName       = "/spqr.KeyRangeService/CreateKeyRange"
-	KeyRangeService_DropKeyRange_FullMethodName         = "/spqr.KeyRangeService/DropKeyRange"
-	KeyRangeService_DropAllKeyRanges_FullMethodName     = "/spqr.KeyRangeService/DropAllKeyRanges"
-	KeyRangeService_UnlockKeyRange_FullMethodName       = "/spqr.KeyRangeService/UnlockKeyRange"
-	KeyRangeService_SplitKeyRange_FullMethodName        = "/spqr.KeyRangeService/SplitKeyRange"
-	KeyRangeService_MergeKeyRange_FullMethodName        = "/spqr.KeyRangeService/MergeKeyRange"
-	KeyRangeService_MoveKeyRange_FullMethodName         = "/spqr.KeyRangeService/MoveKeyRange"
-	KeyRangeService_ResolveKeyRange_FullMethodName      = "/spqr.KeyRangeService/ResolveKeyRange"
-	KeyRangeService_BatchMoveKeyRange_FullMethodName    = "/spqr.KeyRangeService/BatchMoveKeyRange"
-	KeyRangeService_RedistributeKeyRange_FullMethodName = "/spqr.KeyRangeService/RedistributeKeyRange"
-	KeyRangeService_RenameKeyRange_FullMethodName       = "/spqr.KeyRangeService/RenameKeyRange"
+	KeyRangeService_GetKeyRange_FullMethodName           = "/spqr.KeyRangeService/GetKeyRange"
+	KeyRangeService_ListKeyRange_FullMethodName          = "/spqr.KeyRangeService/ListKeyRange"
+	KeyRangeService_ListAllKeyRanges_FullMethodName      = "/spqr.KeyRangeService/ListAllKeyRanges"
+	KeyRangeService_ListKeyRangeLocks_FullMethodName     = "/spqr.KeyRangeService/ListKeyRangeLocks"
+	KeyRangeService_LockKeyRange_FullMethodName          = "/spqr.KeyRangeService/LockKeyRange"
+	KeyRangeService_CreateKeyRange_FullMethodName        = "/spqr.KeyRangeService/CreateKeyRange"
+	KeyRangeService_DropKeyRange_FullMethodName          = "/spqr.KeyRangeService/DropKeyRange"
+	KeyRangeService_DropAllKeyRanges_FullMethodName      = "/spqr.KeyRangeService/DropAllKeyRanges"
+	KeyRangeService_UnlockKeyRange_FullMethodName        = "/spqr.KeyRangeService/UnlockKeyRange"
+	KeyRangeService_SplitKeyRange_FullMethodName         = "/spqr.KeyRangeService/SplitKeyRange"
+	KeyRangeService_MergeKeyRange_FullMethodName         = "/spqr.KeyRangeService/MergeKeyRange"
+	KeyRangeService_MoveKeyRange_FullMethodName          = "/spqr.KeyRangeService/MoveKeyRange"
+	KeyRangeService_ResolveKeyRange_FullMethodName       = "/spqr.KeyRangeService/ResolveKeyRange"
+	KeyRangeService_BatchMoveKeyRange_FullMethodName     = "/spqr.KeyRangeService/BatchMoveKeyRange"
+	KeyRangeService_RedistributeKeyRange_FullMethodName  = "/spqr.KeyRangeService/RedistributeKeyRange"
+	KeyRangeService_RebalanceDistribution_FullMethodName = "/spqr.KeyRangeService/RebalanceDistribution"
+	KeyRangeService_RenameKeyRange_FullMethodName        = "/spqr.KeyRangeService/RenameKeyRange"
 )
 
 // KeyRangeServiceClient is the client API for KeyRangeService service.
@@ -57,6 +58,7 @@ type KeyRangeServiceClient interface {
 	ResolveKeyRange(ctx context.Context, in *ResolveKeyRangeRequest, opts ...grpc.CallOption) (*ResolveKeyRangeReply, error)
 	BatchMoveKeyRange(ctx context.Context, in *BatchMoveKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RedistributeKeyRange(ctx context.Context, in *RedistributeKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RebalanceDistribution(ctx context.Context, in *RebalanceDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RenameKeyRange(ctx context.Context, in *RenameKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -218,6 +220,16 @@ func (c *keyRangeServiceClient) RedistributeKeyRange(ctx context.Context, in *Re
 	return out, nil
 }
 
+func (c *keyRangeServiceClient) RebalanceDistribution(ctx context.Context, in *RebalanceDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, KeyRangeService_RebalanceDistribution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *keyRangeServiceClient) RenameKeyRange(ctx context.Context, in *RenameKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -247,6 +259,7 @@ type KeyRangeServiceServer interface {
 	ResolveKeyRange(context.Context, *ResolveKeyRangeRequest) (*ResolveKeyRangeReply, error)
 	BatchMoveKeyRange(context.Context, *BatchMoveKeyRangeRequest) (*emptypb.Empty, error)
 	RedistributeKeyRange(context.Context, *RedistributeKeyRangeRequest) (*emptypb.Empty, error)
+	RebalanceDistribution(context.Context, *RebalanceDistributionRequest) (*emptypb.Empty, error)
 	RenameKeyRange(context.Context, *RenameKeyRangeRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
@@ -302,6 +315,9 @@ func (UnimplementedKeyRangeServiceServer) BatchMoveKeyRange(context.Context, *Ba
 }
 func (UnimplementedKeyRangeServiceServer) RedistributeKeyRange(context.Context, *RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RedistributeKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) RebalanceDistribution(context.Context, *RebalanceDistributionRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RebalanceDistribution not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) RenameKeyRange(context.Context, *RenameKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameKeyRange not implemented")
@@ -597,6 +613,24 @@ func _KeyRangeService_RedistributeKeyRange_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyRangeService_RebalanceDistribution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RebalanceDistributionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).RebalanceDistribution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyRangeService_RebalanceDistribution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).RebalanceDistribution(ctx, req.(*RebalanceDistributionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KeyRangeService_RenameKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RenameKeyRangeRequest)
 	if err := dec(in); err != nil {
@@ -681,6 +715,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RedistributeKeyRange",
 			Handler:    _KeyRangeService_RedistributeKeyRange_Handler,
+		},
+		{
+			MethodName: "RebalanceDistribution",
+			Handler:    _KeyRangeService_RebalanceDistribution_Handler,
 		},
 		{
 			MethodName: "RenameKeyRange",
