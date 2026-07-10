@@ -74,6 +74,7 @@ func randomHex(n int) (string, error) {
 	unite                  *UniteKeyRange
 	
 	redistribute           *RedistributeKeyRange
+	rebalance 			   *RebalanceDistribution
 
 	invalidate             *Invalidate
 	sync_reference_tables  *SyncReferenceTables
@@ -210,7 +211,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME CALL
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REBALANCE REFERENCE CHECK APPLY UNIQUE RENAME CALL
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS SHARD COLUMNS HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
@@ -343,6 +344,7 @@ func randomHex(n int) (string, error) {
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
 %type <redistribute> redistribute_stmt
+%type <rebalance> rebalance_stmt
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
@@ -461,6 +463,10 @@ command:
 		$$ = $1
 	}
 	| redistribute_stmt
+	{
+		$$ = $1
+	}
+	| rebalance_stmt
 	{
 		$$ = $1
 	}
@@ -2232,6 +2238,25 @@ redistribute_stmt:
 			Check: false, /* or true, doesnt matter */
 			Apply: true,
 			NoWait: true,
+		}
+	}
+
+rebalance_stmt:
+	REBALANCE distribution_select_stmt
+	{
+		$$ = &RebalanceDistribution{
+			Distribution: $2,
+			Shards: []string{"*"},
+		}
+	} | REBALANCE distribution_select_stmt USING ALL SHARDS {
+		$$ = &RebalanceDistribution{
+			Distribution: $2,
+			Shards: []string{"*"},
+		}
+	} | REBALANCE distribution_select_stmt USING SHARDS any_id_list {
+		$$ = &RebalanceDistribution{
+			Distribution: $2,
+			Shards: $5,
 		}
 	}
 
