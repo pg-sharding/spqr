@@ -2,6 +2,7 @@ package datatransfers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,6 +36,17 @@ const (
 )
 
 const spqrTransferApplicationName = "spqr-transfer"
+
+type awaitPIDError struct {
+}
+
+func (awaitPIDError) Error() string {
+	return "timeout waiting for vxid locks to release"
+}
+
+var _ error = awaitPIDError{}
+
+var AwaitPIDError = awaitPIDError{}
 
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
@@ -203,6 +215,10 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			t := time.Now()
 			// Await all current virtual transactions on source shard to stop
 			if err := awaitPIDs(ctx, from); err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					_ = db.RemoveTransferTx(ctx, krg.ID)
+					return AwaitPIDError
+				}
 				return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
 			}
 			tx.Status = qdb.Locked
@@ -846,7 +862,9 @@ func GetTableColumns(ctx context.Context, db Queryable, relationFQN *rfqn.Relati
 }
 
 func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
-	if _, err := conn.Exec(ctx, getAwaitPIDsQuery()); err != nil {
+	execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
+	defer cancel()
+	if _, err := conn.Exec(execCtx, getAwaitPIDsQuery()); err != nil {
 		return err
 	}
 	return nil
