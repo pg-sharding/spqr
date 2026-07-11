@@ -24,7 +24,7 @@ t
 (1 row)
 
 step s1_commit: COMMIT;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_commit: COMMIT;
 
 starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_rollback s1_rollback
@@ -51,7 +51,7 @@ t
 (1 row)
 
 step s1_rollback: ROLLBACK;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_rollback: ROLLBACK;
 
 starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_rollback s1_commit
@@ -78,7 +78,7 @@ t
 (1 row)
 
 step s1_rollback: ROLLBACK;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_commit: COMMIT;
 
 starting permutation: s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_commit s1_rollback
@@ -105,7 +105,7 @@ t
 (1 row)
 
 step s1_commit: COMMIT;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_rollback: ROLLBACK;
 
 starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_commit s1_commit
@@ -141,7 +141,7 @@ t
 (4 rows)
 
 step s1_commit: COMMIT;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_commit: COMMIT;
 
 starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_rollback s1_rollback
@@ -177,7 +177,7 @@ t
 (4 rows)
 
 step s1_rollback: ROLLBACK;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_rollback: ROLLBACK;
 
 starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_rollback s1_commit
@@ -213,7 +213,7 @@ t
 (4 rows)
 
 step s1_rollback: ROLLBACK;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_commit: COMMIT;
 
 starting permutation: s1_report s1_s_m s1_begin s1_s_m s2_cancel_all s1_commit s1_rollback
@@ -249,5 +249,5 @@ t
 (4 rows)
 
 step s1_commit: COMMIT;
-ERROR:  error while deploying shard: terminating connection due to administrator command
+ERROR:  error while deploying shard: deploy tx internal-terminating connection due to administrator command
 step s1_rollback: ROLLBACK;

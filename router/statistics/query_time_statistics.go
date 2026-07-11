@@ -24,7 +24,8 @@ type StartTimes struct {
 }
 
 type Statistics struct {
-	totalRequests uint64 // lifetime request count (atomic, monotonically increasing)
+	totalRequests           uint64 // lifetime request count (atomic, monotonically increasing)
+	totalNonVirtualRequests uint64 // queries that are executed without shards
 
 	RouterTime        map[uint]*tdigest.TDigest
 	ShardTime         map[uint]*tdigest.TDigest
@@ -115,6 +116,14 @@ func IncTotalRequest() {
 
 func GetTotalRequests() uint64 {
 	return atomic.LoadUint64(&QueryStatistics.totalRequests)
+}
+
+func IncTotalNonVirtualRequest() {
+	atomic.AddUint64(&QueryStatistics.totalNonVirtualRequests, 1)
+}
+
+func GetTotalNonVirtualRequests() uint64 {
+	return atomic.LoadUint64(&QueryStatistics.totalNonVirtualRequests)
 }
 
 func RecordStartTime(statType StatisticsType, t time.Time, clientH StatHolder) {

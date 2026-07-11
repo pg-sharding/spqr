@@ -78,12 +78,13 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		for _, dsh := range undoShards {
 			_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
-			}, txstatus.TXIDLE)
+			}, "rollback prepared", txstatus.TXIDLE)
 
 			if cl.ShowNoticeMsg() {
 				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %v on %v", gid, dsh.InstanceHostname()))
 			}
 
+			/* Try next shard */
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Str("shard", dsh.InstanceHostname()).Msg("happy path error recovery failed on shard")
 			}
@@ -93,7 +94,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
-		}, txstatus.TXIDLE)
+		}, "prepare tx", txstatus.TXIDLE)
 
 		/* err may we a purely network error  */
 		undoShards = append(undoShards, dsh)
@@ -143,7 +144,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, gid),
-		}, txstatus.TXIDLE)
+		}, "commit prepared", txstatus.TXIDLE)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */

@@ -355,9 +355,8 @@ func InstanceVirtualRelationScan(ci connmgr.ConnectionMgr) *tupleslot.TupleTable
 			"failed_auth",
 			"failed_init",
 			"total_requests",
+			"non_virtual_requests",
 		)}
-
-	stats := statistics.GetTotalRequests()
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.StartTime()),
@@ -367,7 +366,8 @@ func InstanceVirtualRelationScan(ci connmgr.ConnectionMgr) *tupleslot.TupleTable
 		fmt.Sprintf("%v", ci.ActiveTCPCount()),
 		fmt.Sprintf("%v", ci.FailedAuthCount()),
 		fmt.Sprintf("%v", ci.FailedInitCount()),
-		fmt.Sprintf("%d", stats),
+		fmt.Sprintf("%d", statistics.GetTotalRequests()),
+		fmt.Sprintf("%d", statistics.GetTotalNonVirtualRequests()),
 	)
 
 	return tts

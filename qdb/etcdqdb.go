@@ -507,7 +507,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 	}
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
-			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' response parts insufficient count=%d",
 				keyRangeId, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
@@ -515,26 +515,30 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 		}
 		spqrlog.Zero.Debug().
 			Str("id", keyRangeId).
-			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
+			Str("key range id", keyRangeId).
+			Str("response first key", resp.Responses[0].String()).
+			Str("response second key", resp.Responses[1].String()).
+			Msg("unsuccessful lock")
+
 		return nil, retry.RetryableError(
 			spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", keyRangeId)))
 	} else {
 		if len(resp.Responses) != 3 {
-			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' response parts insufficient count=%d",
 				keyRangeId, len(resp.Responses))
 		} else {
 			rng := resp.Responses[1].GetResponseRange()
 			if len(rng.Kvs) != 1 {
-				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' insufficient key-value pairs count=%d",
 					keyRangeId, len(rng.Kvs))
 			}
 			if rng.Kvs[0] == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' invalid key range value  (case 0)",
 					keyRangeId)
 			}
 			kv := rng.Kvs[0].Value
 			if kv == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' invalid key range value  (case 1)",
 					keyRangeId)
 			}
 
