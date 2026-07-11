@@ -516,7 +516,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 		spqrlog.Zero.Debug().
 			Str("id", keyRangeId).
 			Str("key range id", keyRangeId).
-			Str("responsce first key", resp.Responses[0].String()).
+			Str("response first key", resp.Responses[0].String()).
 			Str("response second key", resp.Responses[1].String()).
 			Msg("unsuccessful lock")
 
