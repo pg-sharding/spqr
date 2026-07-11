@@ -1266,12 +1266,22 @@ func ProcMetadataCommand(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+		statuses := map[string]*tasks.MoveTaskGroupStatus{}
+		if stmt.ID == "*" {
+			statuses, err = mgr.GetAllTaskGroupStatuses(ctx)
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("Move task group ID"),
 		}
 
 		for id := range tgs {
+			if status := statuses[id]; status != nil && status.State == tasks.TaskGroupError {
+				continue
+			}
 			if err := mgr.StopMoveTaskGroup(ctx, id, stmt.Immediate); err != nil {
 				return nil, err
 			}

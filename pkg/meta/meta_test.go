@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -262,6 +263,107 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
 	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
+}
+
+func TestStopMoveTaskGroup(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("all skips groups in error state", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		groups := map[string]*tasks.MoveTaskGroup{
+			"running-1": {ID: "running-1"},
+			"running-2": {ID: "running-2"},
+			"error-1":   {ID: "error-1"},
+			"error-2":   {ID: "error-2"},
+			"error-3":   {ID: "error-3"},
+		}
+		statuses := map[string]*tasks.MoveTaskGroupStatus{
+			"running-1": {State: tasks.TaskGroupRunning},
+			"running-2": {State: tasks.TaskGroupRunning},
+			"error-1":   {State: tasks.TaskGroupError},
+			"error-2":   {State: tasks.TaskGroupError},
+			"error-3":   {State: tasks.TaskGroupError},
+		}
+
+		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(groups, nil)
+		mmgr.EXPECT().GetAllTaskGroupStatuses(ctx).Return(statuses, nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "running-1", false).Return(nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "running-2", false).Return(nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, [][][]byte{{[]byte("running-1")}, {[]byte("running-2")}}, tts.Raw)
+	})
+
+	t.Run("all error groups returns no rows", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		groups := map[string]*tasks.MoveTaskGroup{
+			"error-1": {ID: "error-1"},
+			"error-2": {ID: "error-2"},
+		}
+		statuses := map[string]*tasks.MoveTaskGroupStatus{
+			"error-1": {State: tasks.TaskGroupError},
+			"error-2": {State: tasks.TaskGroupError},
+		}
+
+		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(groups, nil)
+		mmgr.EXPECT().GetAllTaskGroupStatuses(ctx).Return(statuses, nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.Empty(t, tts.Raw)
+	})
+
+	t.Run("all stops a group with no recorded status", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		groups := map[string]*tasks.MoveTaskGroup{
+			"unrecorded": {ID: "unrecorded"},
+		}
+
+		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(groups, nil)
+		mmgr.EXPECT().GetAllTaskGroupStatuses(ctx).Return(map[string]*tasks.MoveTaskGroupStatus{}, nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "unrecorded", false).Return(nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, [][][]byte{{[]byte("unrecorded")}}, tts.Raw)
+	})
+
+	t.Run("explicit error group is still stopped", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		group := &tasks.MoveTaskGroup{ID: "error-group"}
+
+		mmgr.EXPECT().GetMoveTaskGroup(ctx, "error-group").Return(group, nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "error-group", true).Return(nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "error-group", Immediate: true}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, [][][]byte{{[]byte("error-group")}}, tts.Raw)
+	})
+
+	t.Run("all propagates status lookup error before stopping", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		groups := map[string]*tasks.MoveTaskGroup{
+			"running": {ID: "running"},
+		}
+
+		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(groups, nil)
+		mmgr.EXPECT().GetAllTaskGroupStatuses(ctx).Return(nil, fmt.Errorf("status lookup failed"))
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.Nil(t, tts)
+		assert.EqualError(t, err, "status lookup failed")
+	})
 }
 
 func TestCreateReferenceRelation(t *testing.T) {
