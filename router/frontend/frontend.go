@@ -193,7 +193,7 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 		} else {
 			if sErr, ok := err.(*spqrerror.SpqrError); ok {
 				/* For simple query, set explicit query string in error message */
-				sErr = sErr.Query(q.String)
+				err = sErr.Query(q.String)
 			}
 		}
 
