@@ -193,14 +193,19 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 		} else {
 			if sErr, ok := err.(*spqrerror.SpqrError); ok {
 				/* For simple query, set explicit query string in error message */
-				_ = sErr.Query(q.String)
+				sErr = sErr.Query(q.String)
 			}
 		}
 
-		spqrlog.Zero.Info().
-			Uint("client", rst.Client().ID()).Str("query", q.String).TimeDiff("time", time.Now(), tm).Msg("executed query")
-
 		rst.Client().ClosePreparedStatement("")
+
+		if config.RouterConfig().LogQuery {
+			spqrlog.Zero.Info().
+				Uint("client", rst.Client().ID()).Str("query", q.String).TimeDiff("time", time.Now(), tm).Msg("executed query")
+		} else {
+			spqrlog.Zero.Info().
+				Uint("client", rst.Client().ID()).TimeDiff("time", time.Now(), tm).Msg("executed query")
+		}
 
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */

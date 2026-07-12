@@ -37,6 +37,7 @@ var cfgRouter Router
 
 type Router struct {
 	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
+	LogQuery      bool   `json:"log_query" toml:"log_query" yaml:"log_query"`
 	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 
 	// TimeQuantiles is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
