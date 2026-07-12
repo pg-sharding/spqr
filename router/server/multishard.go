@@ -334,9 +334,10 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 	return nil
 }
 
-var ErrMultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
+var ErrMultiShardSyncBroken = spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+
 	switch m.multistate {
 	case ServerErrorState:
 		m.multistate = InitialState
@@ -445,13 +446,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					continue
 
 				case *pgproto3.ErrorResponse:
+
 					if m.multistate != InitialState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, ErrMultiShardSyncBroken.
+							Detail(retMsg.Detail).
+							Code(retMsg.Code).
+							Context(retMsg.Where).
+							Hint(retMsg.Hint)
 					}
-					spqrlog.Zero.Error().
-						Uint("client", spqrlog.GetPointer(m)).
-						Str("message", retMsg.Message).
-						Msg("multishard server received error")
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
 					return msg, uint(i), nil
@@ -533,6 +535,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			}
 
 			switch mTpd := msg.(type) {
+			case *pgproto3.ErrorResponse:
+				m.states[i] = ErrorState
+				m.multistate = ServerErrorState
+				return msg, uint(i), nil
 			case *pgproto3.DataRow:
 				m.dataRowCnt += 1
 
