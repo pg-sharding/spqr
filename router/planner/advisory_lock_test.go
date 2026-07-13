@@ -29,7 +29,7 @@ func TestMetadataVirtualFunctionCallBlocksSessionAdvisoryLocksInTransactionPool(
 
 			_, err := MetadataVirtualFunctionCall(
 				context.Background(),
-				advisoryLockRoutingMetadata(config.PoolModeTransaction),
+				advisoryLockRoutingMetadata(t, config.PoolModeTransaction),
 				nil,
 				fname,
 				nil,
@@ -49,7 +49,7 @@ func TestMetadataVirtualFunctionCallAllowsTransactionAdvisoryLocksInTransactionP
 
 	p, err := MetadataVirtualFunctionCall(
 		context.Background(),
-		advisoryLockRoutingMetadata(config.PoolModeTransaction),
+		advisoryLockRoutingMetadata(t, config.PoolModeTransaction),
 		nil,
 		virtual.PGAdvisoryXactLock,
 		nil,
@@ -74,7 +74,7 @@ func TestMetadataVirtualFunctionCallAllowsSessionAdvisoryLocksInSessionPool(t *t
 
 			p, err := MetadataVirtualFunctionCall(
 				context.Background(),
-				advisoryLockRoutingMetadata(config.PoolModeSession),
+				advisoryLockRoutingMetadata(t, config.PoolModeSession),
 				nil,
 				fname,
 				nil,
@@ -86,14 +86,14 @@ func TestMetadataVirtualFunctionCallAllowsSessionAdvisoryLocksInSessionPool(t *t
 	}
 }
 
-func advisoryLockRoutingMetadata(poolMode config.PoolMode) *rmeta.RoutingMetadataContext {
+func advisoryLockRoutingMetadata(t *testing.T, poolMode config.PoolMode) *rmeta.RoutingMetadataContext {
+	t.Helper()
+
 	sph := session.NewSimpleHandler("", false, "", "")
 	sph.SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, true)
 
 	guc, err := sph.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	guc.Set(sph, session.VirtualParamLevelStatement, string(config.AdvisoryLockBehaviourScatter))
 
 	return &rmeta.RoutingMetadataContext{
