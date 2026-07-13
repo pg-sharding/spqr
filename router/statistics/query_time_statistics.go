@@ -52,11 +52,6 @@ var QueryStatistics = Statistics{
 	lock:            sync.RWMutex{},
 }
 
-func InitStatistics(q []float64) {
-	quantiles := append([]float64(nil), q...)
-	initStatsCommon(quantiles, nil)
-}
-
 func InitStatisticsStr(q []string) error {
 	quantilesStr := append([]string(nil), q...)
 	quantiles := make([]float64, len(q))
