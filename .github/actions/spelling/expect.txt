@@ -425,6 +425,7 @@ pgxconn
 pgxpool
 pgxv
 PIDs
+pids
 pitr
 pkgclient
 podman
