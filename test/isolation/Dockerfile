@@ -30,7 +30,7 @@ WORKDIR /postgres/src/test/isolation
 RUN make
 
 COPY ./ /regress/
-RUN chmod a+x /regress/run_tests.sh
+RUN chmod a+x /regress/run_tests.sh /regress/pg_regress_to_junit
 WORKDIR /regress
 
 ENTRYPOINT "./run_tests.sh"

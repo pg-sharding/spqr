@@ -60,3 +60,5 @@ test: auto_linearize
 test: spqrguard_kr_meta
 test: aliasing
 test: flux
+test: autoprotect_2pc
+test: pg_advisory_lock

@@ -343,7 +343,7 @@ Feature: Proxy console
 
         When I run SQL on host "router-admin"
         """
-        ALTER SHARD sh5 OPTIONS (ADD sslmode 'verify-full');
+        ALTER SHARD sh5 OPTIONS (ADD sslmode 'verify-full', drop host 'spqr_shard_1:6432:spqr', add host 'spqr_shard_2:6432:spqr');
         """
         Then command return code should be "0"
 
@@ -365,7 +365,7 @@ Feature: Proxy console
             },
             {
                 "shard":"sh5",
-                "options": "{host=spqr_shard_1:6432:spqr,sslmode=verify-full}"
+                "options": "{host=spqr_shard_2:6432:spqr,sslmode=verify-full}"
             }
         ]
         """

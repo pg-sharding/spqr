@@ -343,23 +343,31 @@ func TSAVirtualRelationScan(cacheEntries map[pool.TsaKey]pool.CachedEntry) *tupl
 }
 
 // TODO refactor it to make more user-friendly
-func InstanceVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) *tupleslot.TupleTableSlot {
+func InstanceVirtualRelationScan(ci connmgr.ConnectionMgr) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader(
+			"start_time",
+			"reload_time",
 			"total_tcp_connection_count",
 			"total_cancel_requests",
 			"active_tcp_connections",
+			"failed_auth",
+			"failed_init",
 			"total_requests",
+			"non_virtual_requests",
 		)}
 
-	stats := statistics.GetTotalRequests()
-
 	tts.WriteDataRow(
+		fmt.Sprintf("%v", ci.StartTime()),
+		fmt.Sprintf("%v", ci.LastReloadTime()),
 		fmt.Sprintf("%v", ci.TotalTCPCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
 		fmt.Sprintf("%v", ci.ActiveTCPCount()),
-		fmt.Sprintf("%d", stats),
+		fmt.Sprintf("%v", ci.FailedAuthCount()),
+		fmt.Sprintf("%v", ci.FailedInitCount()),
+		fmt.Sprintf("%d", statistics.GetTotalRequests()),
+		fmt.Sprintf("%d", statistics.GetTotalNonVirtualRequests()),
 	)
 
 	return tts

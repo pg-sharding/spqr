@@ -16,7 +16,7 @@ type ShardingSchemaKeeper interface {
 	// UpdateKeyRangeMoveStatus marks the key range move as complete
 	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error
 	// DeleteKeyRangeMove removes information about key range moves
-	DeleteKeyRangeMove(ctx context.Context, moveId string) error
+	DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error
 }
 
 type TopologyKeeper interface {

@@ -105,7 +105,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	/* TODO: deploy tx status on each gang. */
 
 	for _, sh := range serv.Datashards() {
-		st, err := shard.DeployTxOnShard(sh, q, expTx)
+		st, err := shard.DeployTxOnShard(sh, q, "deploy tx internal", expTx)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
@@ -128,6 +128,8 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 	if len(routes) == 0 {
 		return ErrMatchShardError
 	}
+
+	statistics.IncTotalNonVirtualRequest()
 
 	if len(s.ActiveShards()) != 0 {
 		spqrlog.Zero.Debug().
@@ -760,7 +762,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 	}
 
 	if txt != s.cl.Server().TxStatus() {
-		return rerrors.ErrExecutorSyncLost
+		return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 	}
 	s.SetTxStatus(txt)
 
@@ -813,7 +815,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 			}
 
 			if txt != s.cl.Server().TxStatus() {
-				return rerrors.ErrExecutorSyncLost
+				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 			}
 			s.SetTxStatus(txt)
 
@@ -1023,8 +1025,9 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 
 		spqrlog.Zero.Debug().
 			Str("server", serv.Name()).
+			Uint("client", s.Client().ID()).
 			Type("msg-type", msg).
-			Msg("received message from server")
+			Msg("received message from server in execute")
 
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:
@@ -1052,6 +1055,12 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		portalLoop:
 			for {
 				msg, err := s.Client().Peek()
+
+				spqrlog.Zero.Trace().
+					Str("server", serv.Name()).
+					Type("msg-type", msg).
+					Msg("peek in portalLoop")
+
 				if err != nil {
 					return err
 				}
@@ -1079,6 +1088,8 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					if err := serv.Send(msg); err != nil {
 						return err
 					}
+				case *pgproto3.Close, *pgproto3.Bind, *pgproto3.Describe, *pgproto3.Parse:
+					return nil
 				}
 
 			}
@@ -1134,7 +1145,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return rerrors.ErrExecutorSyncLost.Detail("unexpected row description in slice deploy")
+				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */

@@ -3,6 +3,7 @@ package kr
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -59,10 +60,10 @@ type KeyRangeMgr interface {
 	UnlockKeyRange(ctx context.Context, krid string) error
 	Split(ctx context.Context, split *SplitKeyRange) error
 	Unite(ctx context.Context, unite *UniteKeyRange) error
-	Move(ctx context.Context, move *MoveKeyRange) error
+	Move(ctx context.Context, move *MoveKeyRange, ch icp.ICPContextHolder) error
 	DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error)
 	DropKeyRangeAll(ctx context.Context) error
-	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error
-	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
+	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error
+	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange, ch icp.ICPContextHolder) error
 	RenameKeyRange(ctx context.Context, krid, kridNew string) error
 }

@@ -19,7 +19,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v6
+       uses: actions/checkout@v7
 
      - name: unit tests
        run: make unittest
@@ -29,7 +29,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v6
+       uses: actions/checkout@v7
 
      - name: etcdqdb_integration tests
        run: make etcdqdb_test
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install test deps
         run: |
@@ -66,7 +66,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: stress tests
         run: make stress
@@ -86,22 +86,30 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: |
              if [[ ${{ matrix.version }} == *"-mdb" ]]; then 
                 version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }'); 
-                if !(make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress); then
+                if !(REGRESS_REPORT_DIR=/regress/test-reports/regress/${{ matrix.os-version }}-${{ matrix.version }} make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress); then
                   docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | awk 'tolower($0) ~ /unhealthy/ {print $1}' | xargs -r -n 1 docker logs;
                   exit 1;
                 fi
              else 
-                if !(make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; ); then
+                if !(REGRESS_REPORT_DIR=/regress/test-reports/regress/${{ matrix.os-version }}-${{ matrix.version }} make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; ); then
                   docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | awk 'tolower($0) ~ /unhealthy/ {print $1}' | xargs -r -n 1 docker logs;
                   exit 1;
                 fi
              fi
+
+      - name: Upload regress test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-regress-${{ matrix.os-version }}-${{ matrix.version }}
+          path: test-reports/regress/**/*.xml
+          if-no-files-found: ignore
 
   regress-clustered-pgdg:
     name: regress-clustered
@@ -115,14 +123,22 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: |
-              if !(make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress_coord; ); then
+              if !(REGRESS_REPORT_DIR=/regress/test-reports/regress-coord/${{ matrix.os-version }}-${{ matrix.version }} make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress_coord; ); then
                 docker compose -f test/regress/docker-compose-coord.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | awk 'tolower($0) ~ /unhealthy/ {print $1}' | xargs -r -n 1 docker logs;
                 exit 1;
               fi
+
+      - name: Upload regress clustered test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-regress-coord-${{ matrix.os-version }}-${{ matrix.version }}
+          path: test-reports/regress-coord/**/*.xml
+          if-no-files-found: ignore
 
   isolation-regress:
     name: isolation-tests
@@ -132,7 +148,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: |
@@ -141,13 +157,21 @@ jobs:
             exit 1;
           fi
 
+      - name: Upload isolation test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-isolation
+          path: test-reports/isolation/**/*.xml
+          if-no-files-found: ignore
+
   gorm-regress:
     name: drivers_gorm
     runs-on: ubuntu-latest
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: make gorm_regress
@@ -158,7 +182,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run tests
         run: make jdbc_regress
@@ -168,7 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Simple proto
         run: PROTO_TEST_TAG=simple make xproto_regress
 
@@ -177,7 +201,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Extended proto
         run: PROTO_TEST_TAG=xproto make xproto_regress
 
@@ -186,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Extended proto with portal suspend
         run: PROTO_TEST_TAG=xproto_suspend make xproto_regress
 
@@ -195,7 +219,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Copy proto
         run: PROTO_TEST_TAG=copy make xproto_regress
 
@@ -210,7 +234,7 @@ jobs:
         run: docker --version
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - id: step1
         run: |
@@ -235,7 +259,7 @@ jobs:
       #  use cache to pass docker images to the test jobs
       - name: Docker shard image caching
         id: cache-shard-image
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}
@@ -268,7 +292,7 @@ jobs:
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Update env
         run: |
@@ -286,7 +310,7 @@ jobs:
       # load docker images
       - name: Load shard image
         id: cache-shard-image
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}
@@ -294,3 +318,117 @@ jobs:
 
       - name: feature tests
         run: ${{ matrix.command }}
+        env:
+          GODOG_JUNIT_REPORT: ../../test-reports/feature/feature-${{ strategy.job-index }}.xml
+
+      - name: Upload feature test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-feature-${{ strategy.job-index }}
+          path: test-reports/feature/**/*.xml
+          if-no-files-found: ignore
+
+  test-report:
+    name: test-report
+    runs-on: ubuntu-latest
+    needs:
+      - feature
+      - regress-pgdg
+      - regress-clustered-pgdg
+      - isolation-regress
+    if: always()
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Download test reports
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: test-reports-*
+          path: test-reports
+          merge-multiple: true
+
+      - name: Convert JUnit reports to CTRF
+        continue-on-error: true
+        run: |
+          if [ -d test-reports ] && find test-reports -name '*.xml' -print -quit | grep -q .; then
+            mkdir -p ctrf-reports
+            npx --yes junit-to-ctrf "test-reports/**/*.xml" \
+              -o ctrf-reports/ctrf-report.json \
+              -t SPQR
+          else
+            echo "No JUnit XML reports found"
+          fi
+
+      - name: Upload CTRF report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ctrf-report-${{ github.run_id }}
+          path: ctrf-reports/*.json
+          if-no-files-found: ignore
+
+      - name: Generate test history candidates
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d test-reports ] && find test-reports -name '*.xml' -print -quit | grep -q .; then
+            go run ./test/tools/test_history \
+              --input-dir test-reports \
+              --history-output test-history/test-history.jsonl \
+              --candidates-output test-history/failure-candidates.json \
+              --summary-output test-history/failure-candidates.md \
+              --run-id "${{ github.run_id }}" \
+              --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --workflow "${{ github.workflow }}" \
+              --branch "${{ github.ref_name }}" \
+              --sha "${{ github.sha }}" \
+              --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          else
+            echo "No JUnit XML reports found"
+          fi
+
+      - name: Upload test history artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-history-${{ github.run_id }}
+          path: test-history/**
+          if-no-files-found: ignore
+
+      - name: Add failure candidates to summary
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -f test-history/failure-candidates.md ]; then
+            cat test-history/failure-candidates.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Publish CTRF test report
+        uses: ctrf-io/github-test-reporter@v1
+        continue-on-error: true
+        with:
+          report-path: 'ctrf-reports/*.json'
+          summary-report: true
+          failed-report: true
+          fail-rate-report: true
+          flaky-rate-report: true
+          slowest-report: true
+          insights-report: true
+          upload-artifact: true
+          exit-on-fail: false
+          exit-on-no-files: false
+          exit-on-empty: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

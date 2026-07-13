@@ -8,6 +8,7 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -412,9 +413,12 @@ func AnalyzeQueryV1(
 	modifyRelAnalyze := func(tr lyx.FromClauseNode, routable bool) error {
 		switch q := tr.(type) {
 		case *lyx.RangeVar:
+
 			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
-			if _, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
 				return err
+			} else if d.Id == distributions.REPLICATED {
+				rm.HasReferenceRelUpdate = true
 			}
 		default:
 			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail("non-range var in modify relation target")
@@ -545,7 +549,6 @@ func AnalyzeQueryV1(
 					for _, c := range stmt.SetClause {
 						switch cc := c.(type) {
 						case *lyx.ResTarget:
-							spqrlog.Zero.Info().Msgf("HERE : %+v %+v", cc, cc.Value)
 							switch targ := cc.Value.(type) {
 							case *lyx.ColumnRef:
 

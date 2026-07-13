@@ -142,7 +142,7 @@ func (m *MultiShardServer) expandGangUtil(clid uint,
 	if deployTX {
 		retst, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
 			String: "BEGIN",
-		}, txstatus.TXACT)
+		}, "multishard gang dispatch", txstatus.TXACT)
 
 		if err != nil {
 			return err
@@ -193,7 +193,11 @@ func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRul
 }
 
 func (m *MultiShardServer) Name() string {
-	return "multishard"
+	var inp []string
+	for _, sh := range m.activeShards {
+		inp = append(inp, fmt.Sprintf("%d", sh.ID()))
+	}
+	return strings.Join(inp, ",")
 }
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
@@ -208,6 +212,40 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 		}
 	}
 
+	return nil
+}
+
+func (m *MultiShardServer) PrefetchUntilCommandComplete(shkey kr.ShardKey) error {
+	anyShard := false
+	for _, shard := range m.activeShards {
+		if shard.SHKey().Name != shkey.Name {
+			continue
+		}
+		for {
+			msg, err := shard.Receive()
+			if err != nil {
+				return err
+			}
+
+			cpQ, err := xproto.CopyBackendMsg(msg)
+			if err != nil {
+				return err
+			}
+
+			m.prefetchMp[shkey.Name] = append(m.prefetchMp[shkey.Name],
+				cpQ)
+
+			switch msg.(type) {
+			case *pgproto3.CommandComplete:
+				return nil
+			default:
+				// ok
+			}
+		}
+	}
+	if !anyShard {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%s\"", shkey.Name)
+	}
 	return nil
 }
 
@@ -247,6 +285,7 @@ func (m *MultiShardServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
 	}
 	return nil
 }
+
 func (m *MultiShardServer) internalShardSync(i int) int64 {
 	b := int64(0)
 	if msgs, ok := m.prefetchMp[m.activeShards[i].Name()]; ok {
@@ -295,9 +334,10 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 	return nil
 }
 
-var ErrMultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
+var ErrMultiShardSyncBroken = spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+
 	switch m.multistate {
 	case ServerErrorState:
 		m.multistate = InitialState
@@ -406,13 +446,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					continue
 
 				case *pgproto3.ErrorResponse:
+
 					if m.multistate != InitialState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, ErrMultiShardSyncBroken.
+							Detail(retMsg.Detail).
+							Code(retMsg.Code).
+							Context(retMsg.Where).
+							Hint(retMsg.Hint)
 					}
-					spqrlog.Zero.Error().
-						Uint("client", spqrlog.GetPointer(m)).
-						Str("message", retMsg.Message).
-						Msg("multishard server received error")
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
 					return msg, uint(i), nil
@@ -455,8 +496,12 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		}
 
 		m.multistate = RunningState
-		return saveRd, 0, nil
-
+		if saveRd != nil {
+			return saveRd, 0, nil
+		}
+		return &pgproto3.ReadyForQuery{
+			TxStatus: byte(m.TxStatus()),
+		}, 0, nil
 	case CopyInState:
 		fallthrough
 	case CopyOutState:
@@ -490,6 +535,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			}
 
 			switch mTpd := msg.(type) {
+			case *pgproto3.ErrorResponse:
+				m.states[i] = ErrorState
+				m.multistate = ServerErrorState
+				return msg, uint(i), nil
 			case *pgproto3.DataRow:
 				m.dataRowCnt += 1
 
@@ -596,7 +645,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		switch cntTXAct {
 		case 0:
 			return &pgproto3.ReadyForQuery{
-				TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
+				TxStatus: byte(m.TxStatus()), // XXX : fix this
 			}, 0, nil
 		case cntUnSync:
 			return &pgproto3.ReadyForQuery{

@@ -211,9 +211,12 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 //
 // TODO : unit tests
 func (h *shardHostPool) Discard(sh shard.ShardHostInstance) error {
-	spqrlog.Zero.Info().Uint("pool", spqrlog.GetPointer(h)).
+	spqrlog.Zero.Error().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
+		Str("shard name", sh.Instance().ShardName()).
+		Str("tx status", sh.TxStatus().String()).
+		Int64("sync count", sh.Sync()).
 		Msg("discard connection to hostname from pool")
 
 	h.discardCount++

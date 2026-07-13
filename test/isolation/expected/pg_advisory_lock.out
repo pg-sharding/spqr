@@ -1,0 +1,194 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1_ev2 s2_ev2 s1_adv_lock s2_try_lock_sh1 s2_try_lock_sh2 s2_try_lock_sh3 s2_try_lock_sh4 s1_adv_unlock s2_try_lock_sh1 s2_try_lock_sh2 s2_try_lock_sh3 s2_try_lock_sh4 s2_adv_unlock
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s2_ev2: SET __spqr__engine_v2 TO on;
+step s1_adv_lock: SELECT pg_advisory_lock(2);
+pg_advisory_lock
+----------------
+                
+                
+                
+                
+(4 rows)
+
+step s2_try_lock_sh1: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh1 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh2: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh2 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh3: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh3 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh4: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh4 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s1_adv_unlock: SELECT pg_advisory_unlock(2);
+pg_advisory_unlock
+------------------
+t                 
+t                 
+t                 
+t                 
+(4 rows)
+
+step s2_try_lock_sh1: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh1 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_try_lock_sh2: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh2 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_try_lock_sh3: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh3 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_try_lock_sh4: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh4 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_adv_unlock: SELECT pg_advisory_unlock(2);
+pg_advisory_unlock
+------------------
+t                 
+t                 
+t                 
+t                 
+(4 rows)
+
+
+starting permutation: s1_ev2 s2_ev2 s1_begin s1_adv_lock s2_try_lock_sh1 s2_try_lock_sh2 s2_try_lock_sh3 s2_try_lock_sh4 s1_rollback s2_try_lock_sh1 s2_try_lock_sh2 s2_try_lock_sh3 s2_try_lock_sh4 s2_adv_unlock s1_adv_unlock s2_try_lock_sh1 s2_try_lock_sh2 s2_try_lock_sh3 s2_try_lock_sh4 s2_adv_unlock
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s2_ev2: SET __spqr__engine_v2 TO on;
+step s1_begin: BEGIN;
+step s1_adv_lock: SELECT pg_advisory_lock(2);
+pg_advisory_lock
+----------------
+                
+                
+                
+                
+(4 rows)
+
+step s2_try_lock_sh1: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh1 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh2: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh2 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh3: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh3 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh4: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh4 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s1_rollback: ROLLBACK;
+step s2_try_lock_sh1: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh1 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh2: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh2 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh3: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh3 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_try_lock_sh4: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh4 */;
+pg_try_advisory_lock
+--------------------
+f                   
+(1 row)
+
+step s2_adv_unlock: SELECT pg_advisory_unlock(2);
+pg_advisory_unlock
+------------------
+f                 
+f                 
+f                 
+f                 
+(4 rows)
+
+step s1_adv_unlock: SELECT pg_advisory_unlock(2);
+pg_advisory_unlock
+------------------
+t                 
+t                 
+t                 
+t                 
+(4 rows)
+
+step s2_try_lock_sh1: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh1 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_try_lock_sh2: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh2 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_try_lock_sh3: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh3 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_try_lock_sh4: SELECT pg_try_advisory_lock(2) /* __spqr__execute_on: sh4 */;
+pg_try_advisory_lock
+--------------------
+t                   
+(1 row)
+
+step s2_adv_unlock: SELECT pg_advisory_unlock(2);
+pg_advisory_unlock
+------------------
+t                 
+t                 
+t                 
+t                 
+(4 rows)
+

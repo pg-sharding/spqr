@@ -1,7 +1,7 @@
 package tsa
 
 import (
-	"maps"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -9,19 +9,19 @@ import (
 )
 
 type CachedTSAChecker struct {
-	mu            sync.Mutex
 	recheckPeriod time.Duration
-	cache         map[string]CachedCheckResult
+	cache         sync.Map
 	innerChecker  *NetChecker
 }
 
 // InstanceHealthChecks implements CachedTSAChecker.
 func (ctsa *CachedTSAChecker) InstanceHealthChecks() map[string]CachedCheckResult {
-	ctsa.mu.Lock()
-	defer ctsa.mu.Unlock()
 
 	cp := map[string]CachedCheckResult{}
-	maps.Copy(cp, ctsa.cache)
+	ctsa.cache.Range(func(k, v any) bool {
+		cp[k.(string)] = v.(CachedCheckResult)
+		return true
+	})
 
 	return cp
 }
@@ -33,18 +33,16 @@ func (ctsa *CachedTSAChecker) InstanceHealthChecks() map[string]CachedCheckResul
 //   - TSAChecker: A new instance of TSAChecker.
 func NewCachedTSAChecker() *CachedTSAChecker {
 	return &CachedTSAChecker{
-		mu:            sync.Mutex{},
 		recheckPeriod: time.Second,
-		cache:         map[string]CachedCheckResult{},
+		cache:         sync.Map{},
 		innerChecker:  &NetChecker{},
 	}
 }
 
 func NewCachedTSACheckerWithDuration(tsaRecheckDuration time.Duration) *CachedTSAChecker {
 	return &CachedTSAChecker{
-		mu:            sync.Mutex{},
 		recheckPeriod: tsaRecheckDuration,
-		cache:         map[string]CachedCheckResult{},
+		cache:         sync.Map{},
 		innerChecker:  &NetChecker{},
 	}
 }
@@ -60,14 +58,22 @@ func NewCachedTSACheckerWithDuration(tsaRecheckDuration time.Duration) *CachedTS
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
 func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error) {
-	ctsa.mu.Lock()
-	defer ctsa.mu.Unlock()
 
 	n := time.Now()
-	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n.UnixNano()-e.LastCheckTime.UnixNano() < ctsa.recheckPeriod.Nanoseconds() {
-		return e, nil
+	if v, ok := ctsa.cache.Load(sh.Instance().Hostname()); ok {
+		e := v.(CachedCheckResult)
+		dff := n.UnixNano() - e.LastCheckTime.UnixNano()
+		/* Randomize expiration time here to avoid "check spike" */
+		coef := 1 + rand.Float64()
+		if float64(dff) < coef*float64(ctsa.recheckPeriod.Nanoseconds()) {
+			return e, nil
+		}
 	}
 
+	/* There is a room for race, where two (or more) checkers
+	* will end up running innerChecker.
+	* However, a concurrent protocol to avoid this is too
+	* much for troubles here, so we are fine. */
 	cr, err := ctsa.innerChecker.CheckTSA(sh)
 	if err != nil {
 		return CachedCheckResult{}, err
@@ -76,6 +82,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (CachedCheckR
 		LastCheckTime: n,
 		CR:            cr,
 	}
-	ctsa.cache[sh.Instance().Hostname()] = tcr
+
+	ctsa.cache.Store(sh.Instance().Hostname(), tcr)
 	return tcr, nil
 }

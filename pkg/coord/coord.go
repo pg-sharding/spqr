@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -221,7 +222,7 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
+func (lc *Coordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 
@@ -438,7 +439,7 @@ func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, err
 }
 
 // Move implements meta.EntityMgr.
-func (lc *Coordinator) Move(_ context.Context, _ *kr.MoveKeyRange) error {
+func (lc *Coordinator) Move(_ context.Context, _ *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 
@@ -459,7 +460,7 @@ func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 
@@ -498,7 +499,7 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) error {
+func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 

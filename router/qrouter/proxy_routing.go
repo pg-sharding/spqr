@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/twopc"
 	"github.com/pg-sharding/spqr/router/virtual"
 	"github.com/pg-sharding/spqr/router/xproto"
 
@@ -788,7 +789,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		if len(qs.FromClause) == 0 {
 			if len(qs.TargetList) == 1 {
 
-				tts, err := planner.RetrieveTuples(
+				p, err := planner.RetrieveTuples(
 					ctx,
 					rm,
 					qr,
@@ -797,10 +798,8 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 					return nil, err
 				}
 
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			}
 		} else if len(qs.FromClause) == 1 {
@@ -808,14 +807,12 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 			switch q := qs.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
+				p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
 				if err != nil {
 					return nil, err
 				}
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			default:
 				break
@@ -1715,6 +1712,17 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	if len(rm.RecheckKeyRange) != 0 {
 		if err := planner.AdjustPlanStateForFluxAccess(rm, p); err != nil {
 			return nil, err
+		}
+	}
+
+	/* Should we use 2pc? */
+	if rm.HasReferenceRelUpdate {
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_AUTOPROTECT_2PC)
+		if err != nil {
+			return nil, err
+		}
+		if guc.Get(rm.SPH) {
+			rm.SPH.SetCommitStrategy(twopc.CommitStrategy2pc)
 		}
 	}
 

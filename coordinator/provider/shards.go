@@ -69,7 +69,11 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos
 	protoShards := make([]*protos.Shard, 0, len(shardList))
 
 	for _, sh := range shardList {
-		protoShards = append(protoShards, topology.DataShardToProto(sh, false))
+		protoShard, err := topology.DataShardToProto(sh, false)
+		if err != nil {
+			return nil, err
+		}
+		protoShards = append(protoShards, protoShard)
 	}
 
 	return &protos.ListShardsReply{
@@ -84,8 +88,12 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 		return nil, err
 	}
 
+	protoShard, err := topology.DataShardToProto(sh, false)
+	if err != nil {
+		return nil, err
+	}
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh, false),
+		Shard: protoShard,
 	}, nil
 }
 

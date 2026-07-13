@@ -60,7 +60,10 @@ build_spqrdump:
 build_monitor:
 	go build -pgo=auto -o spqr-monitor ./cmd/monitor
 
-build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor
+build_redistributor:
+	go build -pgo=auto -o spqr-redistributor ./cmd/redistributor
+
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor build_redistributor
 
 build_images:
 	docker compose build spqr-base-image
@@ -127,16 +130,20 @@ regress_local_4sh: proxy_4sh_run
 regress_pooler_local: pooler_d_run
 	./script/regress_pooler_local.sh
 
-regress_pooler: build_images
+regress_pooler: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
 mdb-branch ?= MDB_${POSTGRES_VERSION}
 shard-image ?= spqr-shard-image
 
-regress: build_images
+build_pg_regress_junit_tool:
+	go build -o test/regress/pg_regress_to_junit ./test/tools/pg_regress_to_junit
+	go build -o test/isolation/pg_regress_to_junit ./test/tools/pg_regress_to_junit
+
+regress: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
 
-regress_coord: build_images
+regress_coord: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose-coord.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-coord.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-coord.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
@@ -152,7 +159,7 @@ xproto_regress: build_images
 	docker compose -f test/xproto/docker-compose.yaml down && \
 	docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build -e TEST_TAG=$(PROTO_TEST_TAG) regress
 
-isolation_regress: build_images
+isolation_regress: build_images build_pg_regress_junit_tool
 	docker compose -f test/isolation/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/isolation/docker-compose.yaml build && docker compose -f test/isolation/docker-compose.yaml run --remove-orphans regress
 
 stress: build_images
@@ -168,6 +175,8 @@ split_feature_test:
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
+FEATURE_TEST_ENV = GODOG_FEATURE_DIR=$${GODOG_FEATURE_DIR:-generatedFeatures} GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature/feature.xml}
+
 feature_test_ci:
 	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
 		echo "Rebuild";\
@@ -178,14 +187,14 @@ feature_test_ci:
 	docker compose build spqr-base-image
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
-	(cd test/feature; go test -timeout 150m)
+	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
 
 feature_test: clean_feature_test build_images
 	make split_feature_test
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
-	(cd test/feature; GODOG_FEATURE_DIR=generatedFeatures go test -timeout 150m)
+	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
 
 ####################### LINTERS #######################
 

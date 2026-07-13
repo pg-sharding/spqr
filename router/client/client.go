@@ -813,6 +813,10 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 
 func (cl *PsqlClient) Peek() (pgproto3.FrontendMessage, error) {
 	if cl.peekMsg != nil {
+		spqrlog.Zero.Debug().
+			Uint("client", cl.ID()).
+			Interface("message", cl.peekMsg).
+			Msg("peek message from client")
 		return cl.peekMsg, nil
 	}
 	msg, err := cl.be.Receive()

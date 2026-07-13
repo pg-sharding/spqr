@@ -507,7 +507,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 	}
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
-			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' response parts insufficient count=%d",
 				keyRangeId, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
@@ -515,26 +515,30 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 		}
 		spqrlog.Zero.Debug().
 			Str("id", keyRangeId).
-			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
+			Str("key range id", keyRangeId).
+			Str("response first key", resp.Responses[0].String()).
+			Str("response second key", resp.Responses[1].String()).
+			Msg("unsuccessful lock")
+
 		return nil, retry.RetryableError(
 			spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range is locked").Detail(fmt.Sprintf("Key range id is \"%v\"", keyRangeId)))
 	} else {
 		if len(resp.Responses) != 3 {
-			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' response parts insufficient count=%d",
 				keyRangeId, len(resp.Responses))
 		} else {
 			rng := resp.Responses[1].GetResponseRange()
 			if len(rng.Kvs) != 1 {
-				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' insufficient key-value pairs count=%d",
 					keyRangeId, len(rng.Kvs))
 			}
 			if rng.Kvs[0] == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' invalid key range value  (case 0)",
 					keyRangeId)
 			}
 			kv := rng.Kvs[0].Value
 			if kv == nil {
-				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' invalid key range value  (case 1)",
 					keyRangeId)
 			}
 
@@ -551,6 +555,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
 			}
+			statistics.LockStats.RecordLockKeyRange(keyRangeId, time.Now())
 			return keyRangeFromInternal(keyRange, true, ver), nil
 		}
 	}
@@ -566,17 +571,18 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, idKeyRange string) error {
+func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	spqrlog.Zero.Debug().
-		Str("id", idKeyRange).
+		Str("id", keyRangeID).
 		Msg("etcdqdb: unlock key range")
 
 	t := time.Now()
-	_, err := q.cli.Delete(ctx, LockPath(keyRangeNodePath(idKeyRange)))
+	_, err := q.cli.Delete(ctx, LockPath(keyRangeNodePath(keyRangeID)))
 	if err != nil {
 		return retry.RetryableError(err)
 	}
 	statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
+	statistics.LockStats.RecordUnlockKeyRange(keyRangeID, time.Now())
 	return err
 }
 
@@ -2636,12 +2642,17 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	return nil
 }
 
-func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
 		Msg("etcdqdb: delete key range move")
 	t := time.Now()
 
+	if force {
+		_, err := q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+		statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
+		return err
+	}
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
@@ -2656,10 +2667,18 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	if moveKr.Status != MoveKeyRangeComplete {
 		return fmt.Errorf("cannot remove non-completed key range move")
 	}
-	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(keyRangeMovesNodePath(moveId)), "=", resp.Kvs[0].Version)).Then(clientv3.OpDelete(keyRangeMovesNodePath(moveId))).Commit()
+
+	if err != nil {
+		return err
+	}
+
+	if !txResp.Succeeded {
+		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("key range move updated concurrently")
+	}
 
 	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
-	return err
+	return nil
 }
 
 func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relationFQN *rfqn.RelationFQN, colName string) error {

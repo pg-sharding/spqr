@@ -696,6 +696,89 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS shard1, shard2, shard3;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"shard1", "shard2", "shard3"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS shard1, shard2, shard3;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"shard1", "shard2", "shard3"},
+					DataKeyRange: &spqrparser.CustomDistributionRange{
+						LowerBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+						UpperBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0xD0, 0x0F, 0, 0, 0, 0, 0, 0, 0, 0}}},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+					DataKeyRange: &spqrparser.CustomDistributionRange{
+						LowerBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+						UpperBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0xD0, 0x0F, 0, 0, 0, 0, 0, 0, 0, 0}}},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
 			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),
@@ -1749,6 +1832,20 @@ func TestShard(t *testing.T) {
 						{Name: "host", Arg: "localhost:6432"},
 						{Name: "host", Arg: "other_hosts:6432"},
 					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: `CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432', HOST 'other_hosts:6432') FORCE;`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id: "sh1",
+					Options: []spqrparser.GenericOption{
+						{Name: "host", Arg: "localhost:6432"},
+						{Name: "host", Arg: "other_hosts:6432"},
+					},
+					Force: true,
 				},
 			},
 			err: nil,

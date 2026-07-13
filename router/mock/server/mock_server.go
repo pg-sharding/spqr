@@ -174,6 +174,20 @@ func (mr *MockServerMockRecorder) PrefetchResult(shkey, syncCnt any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrefetchResult", reflect.TypeOf((*MockServer)(nil).PrefetchResult), shkey, syncCnt)
 }
 
+// PrefetchUntilCommandComplete mocks base method.
+func (m *MockServer) PrefetchUntilCommandComplete(shkey kr.ShardKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrefetchUntilCommandComplete", shkey)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PrefetchUntilCommandComplete indicates an expected call of PrefetchUntilCommandComplete.
+func (mr *MockServerMockRecorder) PrefetchUntilCommandComplete(shkey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrefetchUntilCommandComplete", reflect.TypeOf((*MockServer)(nil).PrefetchUntilCommandComplete), shkey)
+}
+
 // Receive mocks base method.
 func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	m.ctrl.T.Helper()

@@ -2,6 +2,8 @@
 set -x 
 
 ERR_OUTPUT_DIR=/tmp/regress_diffs
+REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress}
+RUN_TESTS_SEQ=0
 
 save_diffs() {
     mkdir -p $ERR_OUTPUT_DIR
@@ -20,6 +22,7 @@ run_tests () {
     DIR=$1  # router
     HOST=$2 # regress_router
     PORT=$3 # 6432
+    RUN_TESTS_SEQ=$((RUN_TESTS_SEQ + 1))
 
     pg_regress \
         --inputdir /regress/tests/$DIR \
@@ -32,6 +35,12 @@ run_tests () {
         --schedule=/regress/schedule/$DIR \
         --use-existing \
         --debug || status=$?
+
+    ./pg_regress_to_junit \
+        --suite "$DIR-$HOST-$PORT" \
+        --regression-out "/regress/tests/$DIR/regression.out" \
+        --diffs "/regress/tests/$DIR/regression.diffs" \
+        --output "$REGRESS_REPORT_DIR/$(printf "%02d" "$RUN_TESTS_SEQ")-$DIR-$HOST-$PORT.xml"
 
     save_diffs /regress/tests/$DIR
 }

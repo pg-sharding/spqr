@@ -12,6 +12,7 @@ package mock
 import (
 	net "net"
 	reflect "reflect"
+	time "time"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	client "github.com/pg-sharding/spqr/pkg/client"
@@ -115,6 +116,34 @@ func (mr *MockRuleRouterMockRecorder) ErrorCounts() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ErrorCounts", reflect.TypeOf((*MockRuleRouter)(nil).ErrorCounts))
 }
 
+// FailedAuthCount mocks base method.
+func (m *MockRuleRouter) FailedAuthCount() int64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FailedAuthCount")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+// FailedAuthCount indicates an expected call of FailedAuthCount.
+func (mr *MockRuleRouterMockRecorder) FailedAuthCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FailedAuthCount", reflect.TypeOf((*MockRuleRouter)(nil).FailedAuthCount))
+}
+
+// FailedInitCount mocks base method.
+func (m *MockRuleRouter) FailedInitCount() int64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FailedInitCount")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+// FailedInitCount indicates an expected call of FailedInitCount.
+func (mr *MockRuleRouterMockRecorder) FailedInitCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FailedInitCount", reflect.TypeOf((*MockRuleRouter)(nil).FailedInitCount))
+}
+
 // ForEach mocks base method.
 func (m *MockRuleRouter) ForEach(cb func(shard.ShardHostCtl) error) error {
 	m.ctrl.T.Helper()
@@ -143,6 +172,18 @@ func (mr *MockRuleRouterMockRecorder) ForEachPool(cb any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockRuleRouter)(nil).ForEachPool), cb)
 }
 
+// GracShutdown mocks base method.
+func (m *MockRuleRouter) GracShutdown() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GracShutdown")
+}
+
+// GracShutdown indicates an expected call of GracShutdown.
+func (mr *MockRuleRouterMockRecorder) GracShutdown() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GracShutdown", reflect.TypeOf((*MockRuleRouter)(nil).GracShutdown))
+}
+
 // InstanceHealthChecks mocks base method.
 func (m *MockRuleRouter) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	m.ctrl.T.Helper()
@@ -155,6 +196,20 @@ func (m *MockRuleRouter) InstanceHealthChecks() map[string]tsa.CachedCheckResult
 func (mr *MockRuleRouterMockRecorder) InstanceHealthChecks() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHealthChecks", reflect.TypeOf((*MockRuleRouter)(nil).InstanceHealthChecks))
+}
+
+// LastReloadTime mocks base method.
+func (m *MockRuleRouter) LastReloadTime() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LastReloadTime")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// LastReloadTime indicates an expected call of LastReloadTime.
+func (mr *MockRuleRouterMockRecorder) LastReloadTime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastReloadTime", reflect.TypeOf((*MockRuleRouter)(nil).LastReloadTime))
 }
 
 // Pop mocks base method.
@@ -263,6 +318,20 @@ func (m *MockRuleRouter) Shutdown() error {
 func (mr *MockRuleRouterMockRecorder) Shutdown() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockRuleRouter)(nil).Shutdown))
+}
+
+// StartTime mocks base method.
+func (m *MockRuleRouter) StartTime() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartTime")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// StartTime indicates an expected call of StartTime.
+func (mr *MockRuleRouterMockRecorder) StartTime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartTime", reflect.TypeOf((*MockRuleRouter)(nil).StartTime))
 }
 
 // TotalCancelCount mocks base method.

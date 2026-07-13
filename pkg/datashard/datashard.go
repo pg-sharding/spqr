@@ -86,6 +86,11 @@ func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor
 // Returns:
 // - error: An error if the connection could not be closed.
 func (sh *Conn) Close() error {
+	spqrlog.Zero.Error().
+		Uint("id", sh.ID()).
+		Int64("tx served", sh.TxServed()).
+		Str("hostname", sh.Instance().Hostname()).
+		Msg("closing backend connection")
 	return sh.dedicated.Close()
 }
 

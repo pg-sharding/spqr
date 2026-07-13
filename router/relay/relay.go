@@ -571,6 +571,9 @@ func (rst *RelayStateImpl) relayParsePrepared(
 		ParameterOIDs: parameterOIDs,
 	}
 
+	/* From now, our cached portal description is stale */
+	delete(rst.savedPortalDesc, name)
+
 	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
 	* or select __spqr__virtual_func()? ?*/
 	switch parsed := stmt.(type) {

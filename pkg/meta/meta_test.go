@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	"github.com/pg-sharding/spqr/pkg/models/acl"
@@ -227,10 +228,11 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	cl.EXPECT().Rule().Return((*config.FrontendRule)(nil)).AnyTimes()
 
 	mmgr.EXPECT().
-		Move(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange) error {
+		Move(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange, icpCH icp.ICPContextHolder) error {
 			assert.Equal(t, "krid3", move.KeyRangeID)
 			assert.Equal(t, "sh2", move.ShardID)
+			assert.Equal(t, nil, icpCH)
 			return nil
 		})
 
@@ -252,7 +254,7 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false, nil)
 	assert.NoError(t, err)
 
 	cli := clientinteractor.NewPSQLInteractor(cl)
@@ -386,7 +388,7 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, tts)
 }
@@ -427,7 +429,7 @@ func TestRenameDistributionColumnNotFound(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
 }
@@ -462,7 +464,7 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
 }

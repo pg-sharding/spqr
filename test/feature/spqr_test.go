@@ -1571,12 +1571,20 @@ func TestSpqr(t *testing.T) {
 		debug = true
 	}
 
+	format := "pretty"
+	if junitReport, ok := os.LookupEnv("GODOG_JUNIT_REPORT"); ok && junitReport != "" {
+		if err := os.MkdirAll(filepath.Dir(junitReport), 0755); err != nil {
+			t.Fatalf("create godog junit report directory: %v", err)
+		}
+		format = fmt.Sprintf("%s,junit:%s", format, junitReport)
+	}
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
 			InitializeScenario(s, t, debug)
 		},
 		Options: &godog.Options{
-			Format:        "pretty",
+			Format:        format,
 			Paths:         paths,
 			Strict:        true,
 			NoColors:      false,

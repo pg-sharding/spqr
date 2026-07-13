@@ -29,7 +29,7 @@ step s1_spqr_ctid      { SELECT __spqr__ctid('r'); }
 
 
 session s2
-step s2_redistribute_sh2_nw  { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid NOWAIT') /*__spqr__preferred_engine: v2 */; }
+step s2_redistribute_sh2_nw  { select __spqr__remote_execute('host=regress_coordinator port=7002 user=regress dbname=regress', 'ATTACH CONTROL POINT before_insert_cp WAIT; REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid NOWAIT') /* __spqr__preferred_engine: v2 */; }
 step s2_show_tg              { select __spqr__console_execute('SHOW task_groups(task_group_id, destination_shard_id, source_key_range_id, state);') /*__spqr__preferred_engine: v2 */; }
 step s2_await_planning       { SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; }
 step s2_await_task           { SELECT __spqr__await_task('zid') /* __spqr__preferred_engine: v2 */; }
@@ -40,18 +40,17 @@ step s3_clean             { select __spqr__console_execute('drop distribution al
 step s3_clean_tg          { /* TODO: fix */ select __spqr__console_execute('drop task group zid');}
 
 session s4
-step s4_attach_cp            { select __spqr__console_execute('ATTACH CONTROL POINT after_move_keys_cp WAIT;')}
-step s4_detach_cp            { select __spqr__console_execute('DETACH CONTROL POINT after_move_keys_cp;')}
-step s4_check_guard_sh1      { select * FROM spqr_metadata.spqr_local_key_ranges /* __spqr__execute_on: sh1 */}
+step s4_detach_cp            { select __spqr__remote_execute('host=regress_coordinator port=7002 user=regress dbname=regress', 'DETACH CONTROL POINT "before_insert_cp"') /* __spqr__preferred_engine: v2 */;}
+step s4_check_guard_sh1_all  { select count(*) FROM spqr_metadata.spqr_local_key_ranges /* __spqr__execute_on: sh1 */}
+step s4_check_guard_sh1_k0   { select count(*) FROM spqr_metadata.spqr_local_key_ranges WHERE key_range_id = 'k0' /* __spqr__execute_on: sh1 */}
 step s4_check_guard_sh2      { select * FROM spqr_metadata.spqr_local_key_ranges /* __spqr__execute_on: sh2 */}
-
 
 # ok
 permutation s1_report s1_ev2 s1_i s1_spqr_ctid
-            s4_attach_cp s2_redistribute_sh2_nw s2_await_planning
+            s2_redistribute_sh2_nw s2_await_planning
             s2_show_kr s2_show_tg s1_spqr_ctid
             s1_s
-            s4_check_guard_sh1 s4_check_guard_sh2
+            s4_check_guard_sh1_all s4_check_guard_sh1_k0 s4_check_guard_sh2
             s4_detach_cp
             s2_await_task
             s3_clean s3_clean_tg

@@ -238,7 +238,7 @@ func (q *MemQDB) UpdateKeyRangeMoveStatus(_ context.Context, _ string, _ MoveKey
 	return nil
 }
 
-func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string) error {
+func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string, _ bool) error {
 	// TODO implement
 	return nil
 }

@@ -9,8 +9,17 @@ type BoolGUC interface {
 	Reset()
 }
 
+type StrGUC interface {
+	ShortName() string
+	Get(sph SessionParamsHolder) string
+	Set(sph SessionParamsHolder, level string, val string)
+	Reset()
+}
+
 type SessionParamsHolder interface {
 	ResolveVirtualBoolParam(name string, defaultVal bool) bool
+	ResolveVirtualStringParam(name string, defaultVal string) string
+
 	RecordVirtualParam(level string, name string, val string)
 
 	GetCatalogSeed() int
@@ -21,6 +30,7 @@ type SessionParamsHolder interface {
 	ResetTsa()
 
 	FindBoolGUC(string) (BoolGUC, error)
+	FindStrGUC(string) (StrGUC, error)
 
 	Usr() string
 	SetUsr(string)
@@ -137,8 +147,11 @@ const (
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
 
-	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
-	SPQR_ALLOW_FLUX_ACCESS  = "__spqr__flux_access"
+	SPQR_LINEARIZE_DISPATCH    = "__spqr__linearize_dispatch"
+	SPQR_ALLOW_AUTOPROTECT_2PC = "__spqr__allow_autoprotect_2pc"
+	SPQR_ALLOW_FLUX_ACCESS     = "__spqr__flux_access"
+
+	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
 )
 
 //revive:enable:var-naming
@@ -146,7 +159,18 @@ const (
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH, SPQR_ALLOW_FLUX_ACCESS:
+	case SPQR_ALLOW_SPLIT_UPDATE,
+		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
+		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC:
+		return true
+	default:
+		return false
+	}
+}
+
+func ParamIsString(n string) bool {
+	switch n {
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR:
 		return true
 	default:
 		return false

@@ -93,11 +93,11 @@ func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTa
 }
 
 func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.RetryMoveTaskGroup(ctx, req.ID, false)
+	return nil, t.impl.RetryMoveTaskGroup(ctx, req.ID, false, nil)
 }
 
 func (t TasksServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, t.impl.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
+	return nil, t.impl.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait, nil)
 }
 
 func (t TasksServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {

@@ -1,6 +1,8 @@
 package connmgr
 
 import (
+	"time"
+
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -18,9 +20,14 @@ type ConnectionStatMgr interface {
 	TotalTCPCount() int64
 	ActiveTCPCount() int64
 	TotalCancelCount() int64
+	FailedInitCount() int64
+	FailedAuthCount() int64
 }
 
 type ConnectionMgr interface {
 	ConnectionIterator
 	ConnectionStatMgr
+
+	StartTime() time.Time
+	LastReloadTime() time.Time
 }

@@ -43,6 +43,8 @@ type Pool interface {
 	Put(client Client) error
 	Pop(id uint) (bool, error)
 
+	/* Same as Shutdown(), but does not immediately kill user */
+	GracShutdown()
 	Shutdown() error
 }
 
@@ -125,6 +127,12 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 
 // TODO : unit tests
 
+func (c *PoolImpl) GracShutdown() {
+	if c.healthCheckCancel != nil {
+		c.healthCheckCancel()
+	}
+}
+
 // Shutdown shuts down the client pool by closing all clients and releasing associated resources.
 //
 // It iterates over all clients in the pool, closes each client, and then clears the pool.
@@ -135,6 +143,8 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 // Returns:
 //   - error: An error if any occurred during the shutdown process.
 func (c *PoolImpl) Shutdown() error {
+
+	c.GracShutdown()
 
 	c.pool.Range(func(_, value any) bool {
 		cl, ok := value.(Client)
@@ -150,10 +160,6 @@ func (c *PoolImpl) Shutdown() error {
 
 		return true
 	})
-
-	if c.healthCheckCancel != nil {
-		c.healthCheckCancel()
-	}
 
 	return nil
 }

@@ -1,0 +1,100 @@
+name: test-history
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Number of recent tests workflow runs to inspect
+        required: false
+        default: "50"
+      min_failures:
+        description: Minimum failures with the same fingerprint before emitting a candidate
+        required: false
+        default: "3"
+      sync_issues:
+        description: Create or update GitHub issues for emitted failure candidates
+        required: false
+        default: "false"
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  test-history:
+    name: test-history
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Download recent test report artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIMIT: ${{ inputs.limit || '50' }}
+        run: |
+          set -euo pipefail
+          mkdir -p downloaded-reports
+          gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow tests.yaml \
+            --branch master \
+            --limit "$LIMIT" \
+            --json databaseId,status,conclusion,headSha,headBranch,createdAt,url,workflowName \
+            --jq '.[] | select(.status == "completed") | @base64' |
+          while IFS= read -r encoded_run; do
+            run_json="$(printf '%s' "$encoded_run" | base64 --decode)"
+            run_id="$(printf '%s' "$run_json" | jq -r '.databaseId')"
+            run_dir="downloaded-reports/$run_id"
+            mkdir -p "$run_dir"
+            printf '%s\n' "$run_json" > "$run_dir/run-metadata.json"
+            gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern 'test-reports-*' \
+              --dir "$run_dir" || true
+          done
+
+      - name: Generate test history
+        env:
+          MIN_FAILURES: ${{ inputs.min_failures || '3' }}
+        run: |
+          set -euo pipefail
+          go run ./test/tools/test_history \
+            --input-dir downloaded-reports \
+            --history-output test-history/test-history.jsonl \
+            --candidates-output test-history/failure-candidates.json \
+            --summary-output test-history/failure-candidates.md \
+            --min-failures "$MIN_FAILURES"
+
+      - name: Add failure candidates to summary
+        if: always()
+        run: |
+          if [ -f test-history/failure-candidates.md ]; then
+            cat test-history/failure-candidates.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Create or update failure candidate issues
+        if: github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || inputs.sync_issues == 'true')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          go run ./test/tools/test_history_issues \
+            --candidates-input test-history/failure-candidates.json \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload test history artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-history-${{ github.run_id }}
+          path: test-history/**
+          if-no-files-found: error

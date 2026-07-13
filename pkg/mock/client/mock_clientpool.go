@@ -369,6 +369,21 @@ func (mr *MockClientInfoMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockClientInfo)(nil).FindBoolGUC), arg0)
 }
 
+// FindStrGUC mocks base method.
+func (m *MockClientInfo) FindStrGUC(arg0 string) (session.StrGUC, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStrGUC", arg0)
+	ret0, _ := ret[0].(session.StrGUC)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStrGUC indicates an expected call of FindStrGUC.
+func (mr *MockClientInfoMockRecorder) FindStrGUC(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStrGUC", reflect.TypeOf((*MockClientInfo)(nil).FindStrGUC), arg0)
+}
+
 // Flush mocks base method.
 func (m *MockClientInfo) Flush() error {
 	m.ctrl.T.Helper()
@@ -847,6 +862,20 @@ func (m *MockClientInfo) ResolveVirtualBoolParam(name string, defaultVal bool) b
 func (mr *MockClientInfoMockRecorder) ResolveVirtualBoolParam(name, defaultVal any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualBoolParam", reflect.TypeOf((*MockClientInfo)(nil).ResolveVirtualBoolParam), name, defaultVal)
+}
+
+// ResolveVirtualStringParam mocks base method.
+func (m *MockClientInfo) ResolveVirtualStringParam(name, defaultVal string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveVirtualStringParam", name, defaultVal)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ResolveVirtualStringParam indicates an expected call of ResolveVirtualStringParam.
+func (mr *MockClientInfoMockRecorder) ResolveVirtualStringParam(name, defaultVal any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualStringParam", reflect.TypeOf((*MockClientInfo)(nil).ResolveVirtualStringParam), name, defaultVal)
 }
 
 // Rollback mocks base method.
@@ -1361,6 +1390,18 @@ func (m *MockPool) ErrorCounts() map[string]uint64 {
 func (mr *MockPoolMockRecorder) ErrorCounts() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ErrorCounts", reflect.TypeOf((*MockPool)(nil).ErrorCounts))
+}
+
+// GracShutdown mocks base method.
+func (m *MockPool) GracShutdown() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GracShutdown")
+}
+
+// GracShutdown indicates an expected call of GracShutdown.
+func (mr *MockPoolMockRecorder) GracShutdown() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GracShutdown", reflect.TypeOf((*MockPool)(nil).GracShutdown))
 }
 
 // Pop mocks base method.

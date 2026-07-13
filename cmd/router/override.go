@@ -19,6 +19,7 @@ type Overrides struct {
 	AdminPort                    *int
 	GrpcPort                     *int
 	DefaultRouteBehaviour        *string
+	PGAdvisoryLockBehaviour      *string
 	ShowNoticeMessages           *bool
 	PgprotoDebug                 *bool
 	PrettyLogging                *bool
@@ -51,6 +52,9 @@ func collectOverrides(cmd *cobra.Command) Overrides {
 	}
 	if cmd.Flags().Changed("default-route-behaviour") {
 		ov.DefaultRouteBehaviour = &defaultRouteBehaviour
+	}
+	if cmd.Flags().Changed("advisory-lock-behaviour") {
+		ov.PGAdvisoryLockBehaviour = &pgAdvisoryLockBehaviour
 	}
 	if cmd.Flags().Changed("show-notice-messages") {
 		ov.ShowNoticeMessages = &showNoticeMessages
@@ -129,6 +133,12 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 		} else {
 			cfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
 		}
+	}
+
+	if ov.PGAdvisoryLockBehaviour != nil && *ov.PGAdvisoryLockBehaviour != "" {
+		cfg.Qr.AdvisoryLockBehaviour = config.AdvisoryLockBehaviour(*ov.PGAdvisoryLockBehaviour)
+	} else {
+		cfg.Qr.AdvisoryLockBehaviour = config.AdvisoryLockBehaviour(config.AdvisoryLockBehaviourScatter)
 	}
 
 	if ov.EnhancedMultiShardProcessing != nil {

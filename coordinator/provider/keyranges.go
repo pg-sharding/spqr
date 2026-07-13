@@ -140,7 +140,7 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
 		KeyRangeID: request.Id,
 		ShardID:    request.ToShardId,
-	}); err != nil {
+	}, nil); err != nil {
 		return nil, err
 	}
 
@@ -187,7 +187,7 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 				panic("incorrect split type")
 			}
 		}(),
-	}, tasks.TaskGroupIssuerFromProto(request.Issuer))
+	}, tasks.TaskGroupIssuerFromProto(request.Issuer), nil)
 }
 
 // TODO: unit tests
@@ -200,7 +200,7 @@ func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *
 		Check:       request.Check,
 		Apply:       request.Apply,
 		NoWait:      request.NoWait,
-	})
+	}, nil)
 }
 
 // TODO: unit tests

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -171,7 +172,7 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 //
 // Returns:
 // - error: an error if the move operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
 	var krmv *qdb.KeyRange
 	var err error
 	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
@@ -204,12 +205,12 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 }
 
 // BatchMoveKeyRange is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
+func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator
 }
 
 // RedistributeKeyRange is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator
 }
 
@@ -499,7 +500,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) error {
+func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ string, _ bool, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator
 }
 

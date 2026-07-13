@@ -24,6 +24,7 @@ type RoutePool interface {
 	) (*route.Route, error)
 
 	Obsolete(key route.Key)
+	GracShutdown()
 	Shutdown() error
 	NotifyRoutes(func(route *route.Route) (bool, error)) error
 }
@@ -85,9 +86,14 @@ func (r *RoutePoolImpl) Obsolete(key route.Key) {
 
 		/* Stop watchdogs, if any */
 		rt.MultiShardPool().StopCacheWatchdog()
-		/* XXX: do not .Close() or Shutdown client pool here, we
+		/* XXX: do not .Close() or .Shutdown() client pool here, we
 		* do not want to reset still active client connections */
+		rt.ClientPool().GracShutdown()
 	}
+}
+
+func (r *RoutePoolImpl) GracShutdown() {
+	/* nop */
 }
 
 // TODO : unit tests

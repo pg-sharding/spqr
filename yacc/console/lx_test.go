@@ -302,6 +302,23 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
+			query: `CREATE SHARD sh1 OPTIONS (HOST "localhost:6432", HOST "other_host:7432") FORCE`,
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.SHARD,
+				spqrparser.IDENT,
+				spqrparser.OPTIONS,
+				spqrparser.TOPENBR,
+				spqrparser.IDENT,
+				spqrparser.IDENT,
+				spqrparser.TCOMMA,
+				spqrparser.IDENT,
+				spqrparser.IDENT,
+				spqrparser.TCLOSEBR,
+				spqrparser.FORCE,
+			},
+		},
+		{
 			query: `ALTER SHARD sh1 OPTIONS (HOST "other_host:6432")`,
 			exp: []int{
 				spqrparser.ALTER,

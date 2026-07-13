@@ -129,10 +129,10 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(_ context.Context, txid string) (bo
 func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Str("gid", txid).Str("state", string(state)).Msg("pg dc state keeper: change tx state")
 	tx, err := q.getTx(ctx, txid)
-	defer func() { _ = (*tx).Rollback(ctx) }()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = (*tx).Rollback(ctx) }()
 	pgState := ""
 	switch state {
 	case TwoPhaseInitState:

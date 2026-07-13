@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	icp "github.com/pg-sharding/spqr/pkg/icp"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -206,17 +207,17 @@ func (mr *MockEntityMgrMockRecorder) AlterShardOptions(ctx, shardID, options any
 }
 
 // BatchMoveKeyRange mocks base method.
-func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer)
+	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchMoveKeyRange indicates an expected call of BatchMoveKeyRange.
-func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req, issuer any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req, issuer)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req, issuer, ch)
 }
 
 // BeginTran mocks base method.
@@ -984,17 +985,17 @@ func (mr *MockEntityMgrMockRecorder) LockKeyRange(ctx, krid any) *gomock.Call {
 }
 
 // Move mocks base method.
-func (m *MockEntityMgr) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (m *MockEntityMgr) Move(ctx context.Context, move *kr.MoveKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Move", ctx, move)
+	ret := m.ctrl.Call(m, "Move", ctx, move, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Move indicates an expected call of Move.
-func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) Move(ctx, move, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockEntityMgr)(nil).Move), ctx, move)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockEntityMgr)(nil).Move), ctx, move, ch)
 }
 
 // NextRange mocks base method.
@@ -1027,17 +1028,17 @@ func (mr *MockEntityMgrMockRecorder) QDB() *gomock.Call {
 }
 
 // RedistributeKeyRange mocks base method.
-func (m *MockEntityMgr) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (m *MockEntityMgr) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RedistributeKeyRange", ctx, req)
+	ret := m.ctrl.Call(m, "RedistributeKeyRange", ctx, req, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RedistributeKeyRange indicates an expected call of RedistributeKeyRange.
-func (mr *MockEntityMgrMockRecorder) RedistributeKeyRange(ctx, req any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) RedistributeKeyRange(ctx, req, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RedistributeKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RedistributeKeyRange), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RedistributeKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RedistributeKeyRange), ctx, req, ch)
 }
 
 // RegisterRouter mocks base method.
@@ -1069,17 +1070,17 @@ func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krid, kridNew any) *gom
 }
 
 // RetryMoveTaskGroup mocks base method.
-func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, icpCH icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait)
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait, icpCH)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
-func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id, nowait)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
 }
 
 // SetShardOptions mocks base method.

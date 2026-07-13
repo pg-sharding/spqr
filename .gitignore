@@ -11,12 +11,16 @@ spqr-mover
 spqr-workloadreplay
 spqr-dump
 spqr-monitor
+spqr-redistributor
 y.output
 *.swp
 *.swo
 memqdb.json
 test/feature/generatedFeatures
 test/feature/logs
+test/regress/pg_regress_to_junit
+test/isolation/pg_regress_to_junit
+test-reports
 yacc/console/gram.y.save
 .DS_Store
 *.log

@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -423,7 +424,7 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 		}
 		*/
 		switch tstmt.Cmd {
-		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr:
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MeanKRLockTimeStr:
 			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
 			if err != nil {
 				return nil, err
@@ -444,7 +445,7 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 	}
 
 	return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
-		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false, nil)
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
 				return nil, retry.RetryableError(err)
@@ -455,15 +456,14 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 	})
 }
 
-func MetadataVirtualFunctionCall(ctx context.Context,
+func ConsoleFunctionCall(
+	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
-
-	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
-
 	switch fname {
+
 	case virtual.VirtualAwaitTask:
 
 		if len(args) != 1 {
@@ -952,17 +952,61 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	}
 }
 
+func MetadataVirtualFunctionCall(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
+	fname string,
+	args []lyx.Node) (plan.Plan, error) {
+
+	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
+
+	switch fname {
+	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
+		fallthrough
+	case virtual.PGAdvisoryLock:
+		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
+		if err != nil {
+			return nil, err
+		}
+		/* For now, only scatter-out and reject is supported */
+		switch strings.ToUpper(g.Get(rm.SPH)) {
+		case string(config.AdvisoryLockBehaviourBlock):
+			return nil, spqrerror.
+				Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+				Detail("advisory_lock_behaviour is BLOCK").
+				Hint("try to switch advisory_lock_behaviour")
+		case string(config.AdvisoryLockBehaviourScatter):
+			if !rm.SPH.EnhancedMultiShardProcessing() {
+				return nil, spqrerror.
+					Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+					Detail("engine V2 is OFF").
+					Hint("try to turn engine V2 to ON")
+			}
+			return &plan.ScatterPlan{}, nil
+		default:
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_COMPLEX_QUERY)
+		}
+	default:
+		tts, err := ConsoleFunctionCall(ctx, rm, plr, fname, args)
+		if err != nil {
+			return nil, err
+		}
+		return &plan.VirtualPlan{
+			TTS: tts,
+		}, nil
+	}
+}
+
 func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
-	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
+	n lyx.Node) (plan.Plan, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
-			tts, err := MetadataVirtualFunctionCall(ctx,
+			return MetadataVirtualFunctionCall(ctx,
 				rm, plr, q.Name, q.Args)
-			return tts, err
 		}
 	}
 	/* XXX: we should error out here */
@@ -995,15 +1039,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
+				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
 				if err != nil {
 					return nil, err
 				}
 
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			}
 
@@ -1029,17 +1071,15 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := RetrieveTuples(
+				p, err := RetrieveTuples(
 					ctx,
 					rm,
 					p, q.Arg)
 				if err != nil {
 					return nil, err
 				}
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			default:
 				break

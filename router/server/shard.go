@@ -14,13 +14,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
-	pool  pool.MultiShardTSAPool
-	shard atomic.Pointer[shard.ShardHostInstance]
+	pool     pool.MultiShardTSAPool
+	shard    atomic.Pointer[shard.ShardHostInstance]
+	prefetch []pgproto3.BackendMessage
 }
 
 // ToMultishard implements Server.
@@ -74,7 +76,7 @@ func (srv *ShardServer) Sync() int64 {
 	if v == nil {
 		return 0
 	}
-	return (*v).Sync()
+	return (*v).Sync() + int64(len(srv.prefetch))
 }
 
 // TODO : unit tests
@@ -163,8 +165,45 @@ func (srv *ShardServer) PrefetchResult(_ kr.ShardKey, _ uint) error {
 	return nil
 }
 
+func (srv *ShardServer) PrefetchUntilCommandComplete(_ kr.ShardKey) error {
+	for {
+
+		msg, err := (*srv.shard.Load()).Receive()
+		if err != nil {
+			return err
+		}
+
+		cpQ, err := xproto.CopyBackendMsg(msg)
+		if err != nil {
+			return err
+		}
+
+		srv.prefetch = append(srv.prefetch,
+			cpQ)
+
+		switch msg.(type) {
+		case *pgproto3.PortalSuspended, *pgproto3.CommandComplete:
+
+			srv.prefetch = append(srv.prefetch,
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(srv.TxStatus()),
+				})
+
+			return nil
+		default:
+			// ok
+		}
+	}
+}
+
 // TODO : unit tests
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+	var msg pgproto3.BackendMessage
+
+	if len(srv.prefetch) != 0 {
+		msg, srv.prefetch = srv.prefetch[0], srv.prefetch[1:]
+		return msg, 0, nil
+	}
 
 	msg, err := (*srv.shard.Load()).Receive()
 	spqrlog.Zero.Trace().
