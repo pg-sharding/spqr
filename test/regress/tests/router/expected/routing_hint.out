@@ -285,7 +285,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__default_route_behaviour to 'sh2';
 SHOW __spqr__default_route_behaviour;
  default route behaviour 
