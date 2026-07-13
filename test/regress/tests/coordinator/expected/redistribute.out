@@ -16,7 +16,7 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  bound -> 1
 (1 row)
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 1           | false
@@ -30,7 +30,7 @@ REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE 100;
  batch size           -> 100
 (3 rows)
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 1           | false
@@ -44,7 +44,7 @@ REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 100;
  batch size           -> 100
 (3 rows)
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh2      | ds1             | 1           | false
@@ -60,7 +60,7 @@ REDISTRIBUTE KEY RANGE krid1 TO sh2;
  batch size           -> 500
 (3 rows)
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh2      | ds1             | 1           | false

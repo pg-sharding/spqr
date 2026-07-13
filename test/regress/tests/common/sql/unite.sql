@@ -11,7 +11,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 UNITE KEY RANGE krid1 WITH krid3;
 
 UNITE KEY RANGE krid1 WITH krid2;
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 -- locked key range
 LOCK KEY RANGE krid1;

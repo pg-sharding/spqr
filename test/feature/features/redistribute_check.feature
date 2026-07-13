@@ -576,7 +576,7 @@ Scenario: REDISTRIBUTE KEY RANGE fails if no replicated relation on destination 
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
