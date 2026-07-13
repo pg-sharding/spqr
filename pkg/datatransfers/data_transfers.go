@@ -14,7 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"f
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/sethvargo/go-retry"
