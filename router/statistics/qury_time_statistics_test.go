@@ -14,6 +14,16 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 )
 
+type noopStatHolder struct{}
+
+func (noopStatHolder) Add(statistics.StatisticsType, float64) error { return nil }
+
+func (noopStatHolder) RecordStartTime(statistics.StatisticsType, time.Time) {}
+
+func (noopStatHolder) GetTimeQuantile(statistics.StatisticsType, float64) float64 { return 0 }
+
+func (noopStatHolder) GetTimeData() *statistics.StartTimes { return nil }
+
 func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
 	timeInit := tim
 
@@ -182,4 +192,41 @@ func TestStatisticsInit(t *testing.T) {
 	assert.Equal(q[1], 0.999)
 
 	assert.ErrorContains(statistics.InitStatisticsStr([]string{"erroneous_str"}), "could not parse time quantile to float")
+	assert.Equal([]float64{0.5, 0.999}, *statistics.GetQuantiles())
+	assert.Equal([]string{"0.5", ".999"}, *statistics.GetQuantilesStr())
+}
+
+func TestStatisticsConcurrentInitAndRead(t *testing.T) {
+	assert.NoError(t, statistics.InitStatisticsStr([]string{"0.5"}))
+
+	start := make(chan struct{})
+	mismatchedSnapshot := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			<-start
+			for range 1000 {
+				_ = statistics.InitStatisticsStr([]string{"0.5", "0.99"})
+				_ = statistics.InitStatisticsStr(nil)
+			}
+		})
+		wg.Go(func() {
+			<-start
+			for range 1000 {
+				_ = statistics.GetQuantiles()
+				_ = statistics.GetQuantilesStr()
+				quantiles, quantilesStr := statistics.GetQuantilesSnapshot()
+				if len(quantiles) != len(quantilesStr) {
+					mismatchedSnapshot <- struct{}{}
+					return
+				}
+				_ = statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, noopStatHolder{})
+				statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), noopStatHolder{})
+			}
+		})
+	}
+
+	close(start)
+	wg.Wait()
+	assert.Empty(t, mismatchedSnapshot)
 }

@@ -2118,16 +2118,15 @@ func processShowInner(ctx context.Context,
 			Desc: engine.GetVPHeader("quantile_type", "time_ms"),
 		}
 
-		quantiles := sts.GetQuantiles()
-		quantilesStr := sts.GetQuantilesStr()
+		quantiles, quantilesStr := sts.GetQuantilesSnapshot()
 		spqrlog.Zero.Debug().Str("quantiles", fmt.Sprintf("%#v", quantiles)).Msg("Got quantiles")
-		if len(*quantiles) != len(*quantilesStr) {
+		if len(quantiles) != len(quantilesStr) {
 			return nil, fmt.Errorf("malformed configuration for quantilesStr")
 		}
 
-		for i := range *quantiles {
-			q := (*quantiles)[i]
-			qStr := (*quantilesStr)[i]
+		for i := range quantiles {
+			q := quantiles[i]
+			qStr := quantilesStr[i]
 			if qStr == "" {
 				qStr = fmt.Sprintf("%.2f", q)
 			}

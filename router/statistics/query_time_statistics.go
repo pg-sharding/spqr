@@ -53,32 +53,43 @@ var QueryStatistics = Statistics{
 }
 
 func InitStatistics(q []float64) {
-	QueryStatistics.Quantiles = q
-	initStatsCommon()
+	quantiles := append([]float64(nil), q...)
+	initStatsCommon(quantiles, nil)
 }
 
 func InitStatisticsStr(q []string) error {
-	QueryStatistics.QuantilesStr = q
-	QueryStatistics.Quantiles = make([]float64, len(q))
+	quantilesStr := append([]string(nil), q...)
+	quantiles := make([]float64, len(q))
 	for i, qStr := range q {
 		var err error
-		QueryStatistics.Quantiles[i], err = strconv.ParseFloat(qStr, 64)
+		quantiles[i], err = strconv.ParseFloat(qStr, 64)
 		if err != nil {
 			return fmt.Errorf("could not parse time quantile to float: \"%s\"", qStr)
 		}
 	}
-	initStatsCommon()
+	initStatsCommon(quantiles, quantilesStr)
 	return nil
 }
 
-func initStatsCommon() {
+func initStatsCommon(quantiles []float64, quantilesStr []string) {
+	routerTimeTotal, _ := tdigest.New()
+	shardTimeTotal, _ := tdigest.New()
+
 	QueryStatistics.lock.Lock()
 	defer QueryStatistics.lock.Unlock()
-	QueryStatistics.NeedToCollectData = len(QueryStatistics.Quantiles) > 0
-	QueryStatistics.RouterTimeTotal, _ = tdigest.New()
+	QueryStatistics.Quantiles = quantiles
+	QueryStatistics.QuantilesStr = quantilesStr
+	QueryStatistics.NeedToCollectData = len(quantiles) > 0
+	QueryStatistics.RouterTimeTotal = routerTimeTotal
 	atomic.StoreInt64(&QueryStatistics.RouterTimeTotalSum, 0)
-	QueryStatistics.ShardTimeTotal, _ = tdigest.New()
+	QueryStatistics.ShardTimeTotal = shardTimeTotal
 	atomic.StoreInt64(&QueryStatistics.ShardTimeTotalSum, 0)
+}
+
+func needToCollectData() bool {
+	QueryStatistics.lock.RLock()
+	defer QueryStatistics.lock.RUnlock()
+	return QueryStatistics.NeedToCollectData
 }
 
 func GetQuantiles() *[]float64 {
@@ -97,8 +108,16 @@ func GetQuantilesStr() *[]string {
 	return &copySlice
 }
 
+func GetQuantilesSnapshot() ([]float64, []string) {
+	QueryStatistics.lock.RLock()
+	defer QueryStatistics.lock.RUnlock()
+	quantiles := append([]float64(nil), QueryStatistics.Quantiles...)
+	quantilesStr := append([]string(nil), QueryStatistics.QuantilesStr...)
+	return quantiles, quantilesStr
+}
+
 func GetTimeQuantile(statType StatisticsType, q float64, h StatHolder) float64 {
-	if !QueryStatistics.NeedToCollectData {
+	if !needToCollectData() {
 		return 0
 	}
 
@@ -164,7 +183,7 @@ func GetTotalNonVirtualRequests() uint64 {
 }
 
 func RecordStartTime(statType StatisticsType, t time.Time, clientH StatHolder) {
-	if !QueryStatistics.NeedToCollectData {
+	if !needToCollectData() {
 		return
 	}
 
@@ -172,12 +191,11 @@ func RecordStartTime(statType StatisticsType, t time.Time, clientH StatHolder) {
 }
 
 func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
 	if !QueryStatistics.NeedToCollectData {
 		return
 	}
-
-	QueryStatistics.lock.Lock()
-	defer QueryStatistics.lock.Unlock()
 
 	clientST := clientH.GetTimeData()
 	if clientST == nil {
