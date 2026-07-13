@@ -961,9 +961,16 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
 	switch fname {
-	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
-		fallthrough
-	case virtual.PGAdvisoryLock:
+	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock, virtual.PGAdvisoryLock:
+		if rm.ClientRule != nil && rm.ClientRule.PoolMode == config.PoolModeTransaction {
+			switch fname {
+			case virtual.PGAdvisoryUnlock, virtual.PgTryAdvisoryLock, virtual.PGAdvisoryLock:
+				return nil, spqrerror.
+					Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+					Detail("session-level advisory locks are unsafe in TRANSACTION pool mode").
+					Hint("use pg_advisory_xact_lock or a route with session pooling")
+			}
+		}
 		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
 		if err != nil {
 			return nil, err
