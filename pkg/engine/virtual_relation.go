@@ -42,7 +42,13 @@ func KeyRangeVirtualRelationScan(
 	krs []*kr.KeyRange,
 	locks []string) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "locked"),
+		Desc: GetVPHeader("key_range_id",
+			"shard_id",
+			"distribution_id",
+			"lower_bound",
+			"locked",
+			"version",
+			"updated_at"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -62,6 +68,9 @@ func KeyRangeVirtualRelationScan(
 			[]byte(keyRange.Distribution),
 			[]byte(strings.Join(keyRange.SendRaw(), ",")),
 			[]byte(isLocked),
+
+			[]byte(fmt.Appendf(nil, "%v", keyRange.Version)),
+			[]byte(fmt.Appendf(nil, "%v", keyRange.UpdatedAt)),
 		})
 	}
 

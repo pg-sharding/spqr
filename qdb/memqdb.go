@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -34,6 +35,7 @@ type MemQDBState struct {
 	Freq                        map[string]bool                     `json:"freq"`
 	Krs                         map[string]*internalKeyRange        `json:"krs"`
 	KrVersions                  map[string]int                      `json:"kr_versions"`
+	KrMeta                      map[string]*KeyRangeMeta            `json:"kr_meta"`
 	Shards                      map[string]*Shard                   `json:"shards"`
 	Distributions               map[string]*Distribution            `json:"distributions"`
 	RelationDistribution        map[string]string                   `json:"relation_distribution"`
@@ -81,6 +83,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 			Freq:                        map[string]bool{},
 			Krs:                         map[string]*internalKeyRange{},
 			KrVersions:                  map[string]int{},
+			KrMeta:                      map[string]*KeyRangeMeta{},
 			Locks:                       map[string]*sync.RWMutex{},
 			Shards:                      map[string]*Shard{},
 			Distributions:               map[string]*Distribution{},
@@ -211,6 +214,10 @@ func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
 }
 
 func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
+	q.State.KrMeta[keyRange.KeyRangeID] = &KeyRangeMeta{
+		Version:   1,
+		UpdatedAt: time.Now(),
+	}
 	return []Command{
 		NewUpdateCommand(q.State.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
 		NewUpdateCommand(q.State.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
@@ -269,6 +276,11 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 			return nil, err
 		}
 		commands[3] = *cmd
+
+		q.State.KrMeta[keyRange.KeyRangeID] = &KeyRangeMeta{
+			Version:   1,
+			UpdatedAt: time.Now(),
+		}
 	}
 	return commands, nil
 }
@@ -309,6 +321,7 @@ func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 		} else {
 			commands[1] = *cmd
 		}
+		q.State.KrMeta[keyRange.KeyRangeID].UpdatedAt = time.Now()
 	}
 	return commands, nil
 }
@@ -344,7 +357,7 @@ func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 		isLocked = v
 	}
 
-	return keyRangeFromInternal(kRangeInt, isLocked, q.State.KrVersions[id]), nil
+	return keyRangeFromInternal(kRangeInt, isLocked, q.State.KrVersions[id], q.State.KrMeta[id].UpdatedAt), nil
 }
 
 // TODO : unit tests
@@ -398,7 +411,7 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 	}
 	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
 
-	return ExecuteCommands(q.DumpState, NewDropCommand(q.State.Krs), NewDropCommand(q.State.Locks), NewDropCommand(q.State.KrVersions))
+	return ExecuteCommands(q.DumpState, NewDropCommand(q.State.Krs), NewDropCommand(q.State.Locks), NewDropCommand(q.State.KrVersions), NewDropCommand(q.State.KrMeta))
 }
 
 // TODO : unit tests
@@ -417,7 +430,10 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRa
 			if v, ok := q.State.Freq[el.KeyRangeID]; ok {
 				isLocked = v
 			}
-			ret = append(ret, keyRangeFromInternal(el, isLocked, q.State.KrVersions[el.KeyRangeID]))
+			ret = append(ret, keyRangeFromInternal(el,
+				isLocked,
+				q.State.KrVersions[el.KeyRangeID],
+				q.State.KrMeta[el.KeyRangeID].UpdatedAt))
 		}
 	}
 
@@ -440,7 +456,10 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 		if v, ok := q.State.Freq[el.KeyRangeID]; ok {
 			isLocked = v
 		}
-		ret = append(ret, keyRangeFromInternal(el, isLocked, q.State.KrVersions[el.KeyRangeID]))
+		ret = append(ret, keyRangeFromInternal(el,
+			isLocked,
+			q.State.KrVersions[el.KeyRangeID],
+			q.State.KrMeta[el.KeyRangeID].UpdatedAt))
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -496,7 +515,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 		return nil, err
 	}
 
-	return keyRangeFromInternal(krs, true, q.State.KrVersions[id]), nil
+	return keyRangeFromInternal(krs, true, q.State.KrVersions[id], q.State.KrMeta[id].UpdatedAt), nil
 }
 
 // TODO : unit tests
@@ -523,6 +542,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
+
 func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
@@ -598,7 +618,7 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	kr.KeyRangeID = krIdNew
 	commands := make([]Command, 0)
 	commands = append(commands, q.dropKeyRangeCommands(krId)...)
-	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1))...)
+	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1, time.Now()))...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
 

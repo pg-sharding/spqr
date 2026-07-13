@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -31,6 +32,7 @@ type KeyRange struct {
 	IsLocked     bool
 	ColumnTypes  []string
 	Version      int
+	UpdatedAt    time.Time
 }
 
 /*

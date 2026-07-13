@@ -21,6 +21,7 @@ type KeyRange struct {
 	DistributionId string
 	Locked         bool
 	Version        int
+	UpdatedAt      time.Time
 }
 
 // Do not marshal Locked field
@@ -284,7 +285,7 @@ func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
 	}
 }
 
-func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) *KeyRange {
+func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int, updatedAt time.Time) *KeyRange {
 	return &KeyRange{
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
@@ -292,6 +293,7 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 		DistributionId: keyRange.DistributionId,
 		Locked:         locked,
 		Version:        version,
+		UpdatedAt:      updatedAt,
 	}
 }
 

@@ -301,6 +301,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, erro
 	isLocked := resp.Responses[1].GetResponseRange().Count > 0 && string(resp.Responses[1].GetResponseRange().Kvs[0].Value) == "locked"
 
 	version := 0
+	updatedAt := time.Time{}
 	// TODO fail if meta not found(will break compatibility)
 	if resp.Responses[2].GetResponseRange().Count > 0 {
 		var meta *KeyRangeMeta
@@ -308,9 +309,10 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, erro
 			return nil, err
 		}
 		version = meta.Version
+		updatedAt = meta.UpdatedAt
 	}
 
-	return keyRangeFromInternal(kRange, isLocked, version), nil
+	return keyRangeFromInternal(kRange, isLocked, version, updatedAt), nil
 }
 
 // TODO : unit tests
@@ -449,10 +451,16 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		spqrlog.Zero.Debug().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("got lock")
 	}
 
-	versions := make(map[string]int)
+	versions := make(map[string]*KeyRangeMeta)
 	for _, kv := range resp.Responses[2].GetResponseRange().Kvs {
+
 		id := strings.TrimPrefix(string(kv.Key), keyRangesMetadataNamespace)
-		versions[id] = int(kv.Version)
+
+		var meta *KeyRangeMeta
+		if err := json.Unmarshal(kv.Value, &meta); err != nil {
+			return nil, err
+		}
+		versions[id] = meta
 	}
 
 	keyRanges := make([]*KeyRange, 0, len(krDbs))
@@ -469,11 +477,13 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 			krLocked = v
 		}
 		version := 0
-		ver, ok := versions[kRange.KeyRangeID]
+		updatedAt := time.Time{}
+		m, ok := versions[kRange.KeyRangeID]
 		if !ok {
-			version = ver
+			version = m.Version
+			updatedAt = m.UpdatedAt
 		}
-		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version))
+		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version, updatedAt))
 	}
 
 	spqrlog.Zero.Debug().
@@ -544,19 +554,21 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 
 			rng = resp.Responses[2].GetResponseRange()
 			ver := 0
+			updatedAt := time.Time{}
 			if rng.Count > 0 {
 				var meta *KeyRangeMeta
 				if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
 					return nil, err
 				}
 				ver = meta.Version
+				updatedAt = meta.UpdatedAt
 			}
 			keyRange := &internalKeyRange{}
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
 			}
 			statistics.LockStats.RecordLockKeyRange(keyRangeId, time.Now())
-			return keyRangeFromInternal(keyRange, true, ver), nil
+			return keyRangeFromInternal(keyRange, true, ver, updatedAt), nil
 		}
 	}
 }
