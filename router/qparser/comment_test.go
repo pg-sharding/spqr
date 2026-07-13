@@ -75,6 +75,13 @@ func TestParseComment(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			sample: "random comment in random format , __spqr__execute_on: sh3 ",
+			exp: map[string]string{
+				"__spqr__execute_on": "sh3",
+			},
+			err: nil,
+		},
 	} {
 
 		mp, err := ParseComment(tt.sample)
@@ -85,6 +92,5 @@ func TestParseComment(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.exp, mp)
 		}
-
 	}
 }

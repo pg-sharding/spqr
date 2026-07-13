@@ -21,6 +21,9 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__
 CREATE TABLE test_h(id TEXT, age int);
 INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
 SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT /* random comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT /* random: comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT /* random: comment */ * FROM test_h /* __spqr__execute_on: sh2  */;
 
 INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
 SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;

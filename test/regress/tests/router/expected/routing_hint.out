@@ -52,7 +52,6 @@ CREATE DISTRIBUTED RELATION test_h DISTRIBUTION KEY id HASH FUNCTION MURMUR IN d
 \c regress
 CREATE TABLE test(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- TODO: specify distribution as well as sharding_key
 INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh1
@@ -71,6 +70,26 @@ NOTICE: send query to shard(s) : sh1
 -------+-----
  a1210 |  16
 (1 row)
+
+SELECT /* random comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+NOTICE: send query to shard(s) : sh1
+  id   | age 
+-------+-----
+ a1210 |  16
+(1 row)
+
+SELECT /* random: comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+NOTICE: send query to shard(s) : sh1
+  id   | age 
+-------+-----
+ a1210 |  16
+(1 row)
+
+SELECT /* random: comment */ * FROM test_h /* __spqr__execute_on: sh2  */;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+(0 rows)
 
 INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
 NOTICE: send query to shard(s) : sh2
@@ -264,6 +283,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (2 rows)
 
 CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__default_route_behaviour to 'sh2';
 SHOW __spqr__default_route_behaviour;
