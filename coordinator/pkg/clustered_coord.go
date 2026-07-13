@@ -1035,6 +1035,9 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 	}
 
 	for move != nil {
+
+		spqrlog.Zero.Debug().Time("time", time.Now()).Str("key range id", req.KeyRangeID).Str("tx status", string(move.Status)).Msg("Move iteration")
+
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
 			// lock the key range
@@ -1160,7 +1163,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			}
 			move = nil
 		default:
-			return fmt.Errorf("unknown key range move status: \"%s\"", move.Status)
+			return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unknown key range move status: \"%s\"", move.Status)
 		}
 	}
 	return nil
