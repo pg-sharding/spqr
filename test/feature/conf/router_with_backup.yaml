@@ -6,8 +6,8 @@ router_mode: PROXY
 log_level: debug
 memqdb_backup_path: memqdb.backup
 
-time_quantiles:
-  - 0.75
+time_quantiles_str:
+  - "0.75"
 world_shard_fallback: true
 show_notice_messages: true
 query_routing:

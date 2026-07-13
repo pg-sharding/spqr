@@ -8,8 +8,8 @@ log_level: debug
 init_sql: /spqr/test/feature/conf/init.sql
 use_init_sql: true
 
-time_quantiles:
-  - 0.75
+time_quantiles_str:
+  - "0.75"
 world_shard_fallback: true
 show_notice_messages: true
 query_routing:

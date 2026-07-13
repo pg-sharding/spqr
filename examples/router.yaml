@@ -9,9 +9,9 @@ workload_file: myworkloadlog.txt
 workload_batch_size: 500000
 
 router_mode: PROXY
-time_quantiles:
-  - 0.5
-  - 0.9
+time_quantiles_str:
+  - "0.5"
+  - "0.9"
 
 init_sql: "examples/init.sql"
 use_init_sql: false
