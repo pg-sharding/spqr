@@ -87,22 +87,6 @@ func needToCollectData() bool {
 	return QueryStatistics.NeedToCollectData
 }
 
-func GetQuantiles() *[]float64 {
-	QueryStatistics.lock.RLock()
-	defer QueryStatistics.lock.RUnlock()
-	copySlice := make([]float64, len(QueryStatistics.Quantiles))
-	_ = copy(copySlice, QueryStatistics.Quantiles)
-	return &copySlice
-}
-
-func GetQuantilesStr() *[]string {
-	QueryStatistics.lock.RLock()
-	defer QueryStatistics.lock.RUnlock()
-	copySlice := make([]string, len(QueryStatistics.QuantilesStr))
-	_ = copy(copySlice, QueryStatistics.QuantilesStr)
-	return &copySlice
-}
-
 func GetQuantilesSnapshot() ([]float64, []string) {
 	QueryStatistics.lock.RLock()
 	defer QueryStatistics.lock.RUnlock()

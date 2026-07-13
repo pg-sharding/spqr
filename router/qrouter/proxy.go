@@ -182,10 +182,9 @@ func NewProxyRouter(tmgr topology.TopologyMgr,
 }
 
 func getTimeBuckets(statType statistics.StatisticsType) map[float64]float64 {
-	quantiles := statistics.GetQuantiles()
-	result := make(map[float64]float64, len(*quantiles))
-	for i := range *quantiles {
-		q := (*quantiles)[i]
+	quantiles, _ := statistics.GetQuantilesSnapshot()
+	result := make(map[float64]float64, len(quantiles))
+	for _, q := range quantiles {
 		result[q] = statistics.GetTotalTimeQuantile(statType, q)
 	}
 	return result

@@ -507,11 +507,11 @@ func BackendConnectionsVirtualRelationScan(shs []shard.ShardHostCtl) (*tupleslot
 // - error: An error if any occurred during the operation.
 func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) (*tupleslot.TupleTableSlot, error) {
 
-	quantiles := statistics.GetQuantiles()
+	quantiles, _ := statistics.GetQuantilesSnapshot()
 	headers := []string{
 		"client_id", "cancel_pid", "user", "dbname", "server_id", "router_address", "is_alive",
 	}
-	for _, el := range *quantiles {
+	for _, el := range quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
 		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
 	}
@@ -523,7 +523,6 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 	}
 
 	getRow := func(cl client.Client, hostname string, rAddr string) [][]byte {
-		quantiles := statistics.GetQuantiles()
 		rowData := [][]byte{
 			fmt.Appendf(nil, "%d", cl.ID()),
 			fmt.Appendf(nil, "%d", cl.CancelPID()),
@@ -533,7 +532,7 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 			[]byte(rAddr),
 			fmt.Appendf(nil, "%v", netutil.TCPCheckAliveness(cl.Conn()))}
 
-		for _, el := range *quantiles {
+		for _, el := range quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
 				statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",

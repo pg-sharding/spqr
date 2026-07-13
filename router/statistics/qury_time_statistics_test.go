@@ -181,19 +181,22 @@ func TestStatisticsInit(t *testing.T) {
 	assert := assert.New(t)
 
 	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
-	q := *(statistics.GetQuantiles())
+	q, qStr := statistics.GetQuantilesSnapshot()
 	assert.Len(q, 1)
 	assert.Equal(q[0], 0.5)
+	assert.Equal([]string{"0.5"}, qStr)
 
 	assert.NoError(statistics.InitStatisticsStr([]string{"0.5", ".999"}))
-	q = *(statistics.GetQuantiles())
+	q, qStr = statistics.GetQuantilesSnapshot()
 	assert.Len(q, 2)
 	assert.Equal(q[0], 0.5)
 	assert.Equal(q[1], 0.999)
+	assert.Equal([]string{"0.5", ".999"}, qStr)
 
 	assert.ErrorContains(statistics.InitStatisticsStr([]string{"erroneous_str"}), "could not parse time quantile to float")
-	assert.Equal([]float64{0.5, 0.999}, *statistics.GetQuantiles())
-	assert.Equal([]string{"0.5", ".999"}, *statistics.GetQuantilesStr())
+	q, qStr = statistics.GetQuantilesSnapshot()
+	assert.Equal([]float64{0.5, 0.999}, q)
+	assert.Equal([]string{"0.5", ".999"}, qStr)
 }
 
 func TestStatisticsConcurrentInitAndRead(t *testing.T) {
@@ -213,8 +216,6 @@ func TestStatisticsConcurrentInitAndRead(t *testing.T) {
 		wg.Go(func() {
 			<-start
 			for range 1000 {
-				_ = statistics.GetQuantiles()
-				_ = statistics.GetQuantilesStr()
 				quantiles, quantilesStr := statistics.GetQuantilesSnapshot()
 				if len(quantiles) != len(quantilesStr) {
 					mismatchedSnapshot <- struct{}{}
