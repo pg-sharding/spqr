@@ -14,8 +14,8 @@ use_spqrguard: true
 # Sic! This is intended to be debug-only option
 enable_icp: true
 
-time_quantiles:
-  - 0.75
+time_quantiles_str:
+  - "0.75"
 
 notice_message_format: '{shard}'
 
@@ -117,5 +117,3 @@ schema_cache_backend_rule:
   db: regress
   pool_discard: true
   pool_rollback: true
-
-
