@@ -14,7 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"f
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/sethvargo/go-retry"
@@ -441,7 +441,7 @@ func SetupFDW(
 	serverNameHash := hasher.Sum64()
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	// create postgres_fdw server on receiving shard
-	_, err = to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', '-c idle_in_transaction_session_timeout=0,idle_session_timeout=0'))`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
+	_, err = to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', options '-c idle_in_transaction_session_timeout=0,idle_session_timeout=0'))`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
 	if err != nil {
 		return err
 	}
