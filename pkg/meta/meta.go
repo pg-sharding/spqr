@@ -1086,7 +1086,7 @@ func ProcMetadataCommand(ctx context.Context,
 			Desc: engine.GetVPHeader("stop trace messages"),
 			Raw: [][][]byte{
 				{
-					[]byte("STOP TRASCE MESSAGES"),
+					[]byte("STOP TRACE MESSAGES"),
 				},
 			},
 		}
@@ -1272,15 +1272,15 @@ func ProcMetadataCommand(ctx context.Context,
 				return nil, err
 			}
 		}
-		acknowledgement := "STOP TASK GROUP"
+		cmdTag := "STOP TASK GROUP"
 		if stmt.ID == "*" {
-			acknowledgement += " ALL"
+			cmdTag += " ALL"
 		}
 
 		return &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("task group"),
 			Raw: [][][]byte{{
-				[]byte(acknowledgement),
+				[]byte(cmdTag),
 			}},
 		}, nil
 	case *spqrparser.RetryMoveTaskGroup:
