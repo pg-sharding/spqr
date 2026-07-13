@@ -1272,11 +1272,15 @@ func ProcMetadataCommand(ctx context.Context,
 				return nil, err
 			}
 		}
+		acknowledgement := "STOP TASK GROUP"
+		if stmt.ID == "*" {
+			acknowledgement += " ALL"
+		}
 
 		return &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("task group"),
 			Raw: [][][]byte{{
-				[]byte("STOP TASK GROUP"),
+				[]byte(acknowledgement),
 			}},
 		}, nil
 	case *spqrparser.RetryMoveTaskGroup:

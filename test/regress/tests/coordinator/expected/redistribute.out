@@ -89,9 +89,9 @@ STOP TASK GROUP tgid;
 (1 row)
 
 STOP TASK GROUP ALL;
-   task group    
------------------
- STOP TASK GROUP
+     task group      
+---------------------
+ STOP TASK GROUP ALL
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

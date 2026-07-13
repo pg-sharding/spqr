@@ -284,7 +284,7 @@ func TestStopMoveTaskGroupReply(t *testing.T) {
 		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, tupleslot.TupleDesc(engine.GetVPHeader("task group")), tts.Desc)
-		assert.Equal(t, [][][]byte{{[]byte("STOP TASK GROUP")}}, tts.Raw)
+		assert.Equal(t, [][][]byte{{[]byte("STOP TASK GROUP ALL")}}, tts.Raw)
 	})
 
 	t.Run("all returns command acknowledgement when there are no task groups", func(t *testing.T) {
@@ -297,6 +297,23 @@ func TestStopMoveTaskGroupReply(t *testing.T) {
 		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(map[string]*tasks.MoveTaskGroup{}, nil)
 
 		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, tupleslot.TupleDesc(engine.GetVPHeader("task group")), tts.Desc)
+		assert.Equal(t, [][][]byte{{[]byte("STOP TASK GROUP ALL")}}, tts.Raw)
+	})
+
+	t.Run("explicit selector returns command acknowledgement without all", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		group := &tasks.MoveTaskGroup{ID: "tg1"}
+
+		mmgr.EXPECT().GetMoveTaskGroup(ctx, "tg1").Return(group, nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "tg1", false).Return(nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "tg1"}, mmgr, nil, nil, nil, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, tupleslot.TupleDesc(engine.GetVPHeader("task group")), tts.Desc)
 		assert.Equal(t, [][][]byte{{[]byte("STOP TASK GROUP")}}, tts.Raw)
