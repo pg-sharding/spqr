@@ -77,19 +77,22 @@ RETRY TASK GROUP tgid;
 (0 rows)
 
 STOP MOVE TASK GROUP tgid;
- Move task group ID 
---------------------
-(0 rows)
+   task group    
+-----------------
+ STOP TASK GROUP
+(1 row)
 
 STOP TASK GROUP tgid;
- Move task group ID 
---------------------
-(0 rows)
+   task group    
+-----------------
+ STOP TASK GROUP
+(1 row)
 
 STOP TASK GROUP ALL;
- Move task group ID 
---------------------
-(0 rows)
+   task group    
+-----------------
+ STOP TASK GROUP
+(1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

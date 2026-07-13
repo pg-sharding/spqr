@@ -1267,18 +1267,18 @@ func ProcMetadataCommand(ctx context.Context,
 			return nil, err
 		}
 
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("Move task group ID"),
-		}
-
 		for id := range tgs {
 			if err := mgr.StopMoveTaskGroup(ctx, id, stmt.Immediate); err != nil {
 				return nil, err
 			}
-			tts.WriteDataRow(id)
 		}
 
-		return tts, nil
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("task group"),
+			Raw: [][][]byte{{
+				[]byte("STOP TASK GROUP"),
+			}},
+		}, nil
 	case *spqrparser.RetryMoveTaskGroup:
 		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
 		if err != nil {

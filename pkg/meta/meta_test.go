@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -262,6 +263,44 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
 	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
+}
+
+func TestStopMoveTaskGroupReply(t *testing.T) {
+	t.Run("all returns command acknowledgement instead of task group IDs", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+		groups := map[string]*tasks.MoveTaskGroup{
+			"tg1": {ID: "tg1"},
+			"tg2": {ID: "tg2"},
+		}
+
+		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(groups, nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "tg1", false).Return(nil)
+		mmgr.EXPECT().StopMoveTaskGroup(ctx, "tg2", false).Return(nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, tupleslot.TupleDesc(engine.GetVPHeader("task group")), tts.Desc)
+		assert.Equal(t, [][][]byte{{[]byte("STOP TASK GROUP")}}, tts.Raw)
+	})
+
+	t.Run("all returns command acknowledgement when there are no task groups", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		mmgr.EXPECT().ListMoveTaskGroups(ctx).Return(map[string]*tasks.MoveTaskGroup{}, nil)
+
+		tts, err := meta.ProcMetadataCommand(ctx, &spqrparser.StopMoveTaskGroup{ID: "*"}, mmgr, nil, nil, nil, false, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, tupleslot.TupleDesc(engine.GetVPHeader("task group")), tts.Desc)
+		assert.Equal(t, [][][]byte{{[]byte("STOP TASK GROUP")}}, tts.Raw)
+	})
 }
 
 func TestCreateReferenceRelation(t *testing.T) {
