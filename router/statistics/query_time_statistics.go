@@ -52,11 +52,6 @@ var QueryStatistics = Statistics{
 	lock:            sync.RWMutex{},
 }
 
-func InitStatistics(q []float64) {
-	QueryStatistics.Quantiles = q
-	initStatsCommon()
-}
-
 func InitStatisticsStr(q []string) error {
 	QueryStatistics.QuantilesStr = q
 	QueryStatistics.Quantiles = make([]float64, len(q))

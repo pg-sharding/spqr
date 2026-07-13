@@ -55,7 +55,7 @@ func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
 func TestStatisticsForOneUser(t *testing.T) {
 	assert := assert.New(t)
 
-	statistics.InitStatistics([]float64{0.5})
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
 	tim := time.Unix(11, 0)
 	ca := genTestClient(t, tim)
 
@@ -87,7 +87,7 @@ func TestStatisticsForOneUser(t *testing.T) {
 func TestStatisticsForDifferentUsers(t *testing.T) {
 	assert := assert.New(t)
 
-	statistics.InitStatistics([]float64{0.5})
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
 
 	tim := time.Unix(11, 0)
 
@@ -123,7 +123,7 @@ func TestStatisticsForDifferentUsers(t *testing.T) {
 func TestNoStatisticsWhenNotNeeded(t *testing.T) {
 	assert := assert.New(t)
 
-	statistics.InitStatistics([]float64{})
+	assert.NoError(statistics.InitStatisticsStr(nil))
 	tim := time.Now()
 
 	ca := genTestClient(t, tim)
@@ -139,7 +139,7 @@ func TestNoStatisticsWhenNotNeeded(t *testing.T) {
 func TestCheckMultithreading(t *testing.T) {
 	assert := assert.New(t)
 
-	statistics.InitStatistics([]float64{0.5})
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
 
 	var wg sync.WaitGroup
 	for range 100 {
@@ -170,7 +170,7 @@ func TestCheckMultithreading(t *testing.T) {
 func TestStatisticsInit(t *testing.T) {
 	assert := assert.New(t)
 
-	statistics.InitStatistics([]float64{0.5})
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
 	q := *(statistics.GetQuantiles())
 	assert.Len(q, 1)
 	assert.Equal(q[0], 0.5)
