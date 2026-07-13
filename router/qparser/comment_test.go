@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -78,7 +79,7 @@ func TestParseComment(t *testing.T) {
 		{
 			sample: "random comment in random format , __spqr__execute_on: sh3 ",
 			exp:    nil,
-			err:    nil,
+			err:    spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: expected colon after option name"),
 		},
 	} {
 
