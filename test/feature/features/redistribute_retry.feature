@@ -1420,3 +1420,128 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     no key range found at /keyranges/kr1
     """
+
+  Scenario: REDISTRIBUTE KEY RANGE is retryable after fail to await pids within timeout
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    ATTACH CONTROL POINT await_pid_cp SLEEP 70 SECONDS;
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    timeout waiting for vxid locks to release
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "bound": "900",
+        "state": "SPLIT"
+      }
+    ]
+    """
+    And key range moves in qdb should match json
+    """
+    [
+      {
+        "shard_id": "sh2",
+        "status": "PLANNED"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
