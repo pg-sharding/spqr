@@ -45,7 +45,7 @@ UNITE KEY RANGE krid1 WITH krid2;
  merge key range "krid2" into "krid1"
 (1 row)
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 0           | false

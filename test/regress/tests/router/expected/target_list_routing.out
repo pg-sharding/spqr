@@ -77,7 +77,14 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 /* test quoted sconsts. XXX: find a better place for that */
+SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''';
+        ?column?        |      ?column?       
+------------------------+---------------------
+ a=b, "a=b", ' c ' ' '  | a=b, "a=b", ' c '''
+(1 row)
+
 SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
         ?column?        |      ?column?       
 ------------------------+---------------------
  a=b, "a=b", ' c ' ' '  | a=b, "a=b", ' c '''

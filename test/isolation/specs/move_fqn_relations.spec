@@ -61,7 +61,7 @@ step s1_sh3_spqr_ctid      { SELECT __spqr__ctid('sh3.r'); }
 session s2
 step s2_redistribute_sh2     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2') /*__spqr__preferred_engine: v2 */; }
 step s2_redistribute_sh1     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh1') /*__spqr__preferred_engine: v2 */; }
-step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */; }
+step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);') /*__spqr__preferred_engine: v2 */; }
 
 session s3
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}

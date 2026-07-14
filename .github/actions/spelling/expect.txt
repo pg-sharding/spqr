@@ -425,6 +425,7 @@ pgxconn
 pgxpool
 pgxv
 PIDs
+pids
 pitr
 pkgclient
 podman
@@ -677,6 +678,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+vxid
 walreceiver
 Warningf
 workloadlog

@@ -119,7 +119,7 @@ func getconn() (*pgproto3.Frontend, error) {
 
 // TODO : unit tests
 func DumpKeyRangesPsql() error {
-	return dumpPsql("SHOW key_ranges;", func(v *pgproto3.DataRow) (string, error) {
+	return dumpPsql("SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);", func(v *pgproto3.DataRow) (string, error) {
 		l := v.Values[2]
 		id := string(v.Values[0])
 		shard := string(v.Values[1])

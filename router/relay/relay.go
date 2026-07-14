@@ -49,7 +49,7 @@ type RelayStateMgr interface {
 	Reset() error
 	ResetWithError(err error) error
 
-	Parse(query string, doCaching bool) ([]lyx.Node, string, error)
+	Parse(query string, doCaching bool) ([]lyx.Node, []string, error)
 
 	Cache() *rmeta.MetadataCache
 	Parser() *qparser.QParser
@@ -84,7 +84,7 @@ type PortalDesc struct {
 
 type ParseCacheEntry struct {
 	ps   []lyx.Node
-	comm string
+	comm []string
 	stmt lyx.Node
 }
 
@@ -1135,7 +1135,7 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, string, error) {
+func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, []string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
 		rst.qp.SetOriginQuery(query)
@@ -1145,7 +1145,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, stri
 	stmts, comm, err := rst.qp.Parse(query)
 
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 
 	/* XXX remove from here */

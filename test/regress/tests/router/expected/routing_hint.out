@@ -72,6 +72,26 @@ NOTICE: send query to shard(s) : sh1
  a1210 |  16
 (1 row)
 
+SELECT /* random comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+NOTICE: send query to shard(s) : sh1
+  id   | age 
+-------+-----
+ a1210 |  16
+(1 row)
+
+SELECT /* random: comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+NOTICE: send query to shard(s) : sh1
+  id   | age 
+-------+-----
+ a1210 |  16
+(1 row)
+
+SELECT /* random: comment */ * FROM test_h /* __spqr__execute_on: sh2  */;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+(0 rows)
+
 INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
 NOTICE: send query to shard(s) : sh2
 SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;

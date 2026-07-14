@@ -2,19 +2,19 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 DROP SHARD sh1;
 DROP SHARD sh1 CASCADE;
 
 SHOW shards_extended;
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 CREATE SHARD sh1 OPTIONS (HOST "spqr_shard_1:6432", HOST "spqr_shard_1_replica:6432");
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 DROP KEY RANGE ALL;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 DROP DISTRIBUTION ALL CASCADE;

@@ -28,6 +28,7 @@ select  coalesce((select sum(j) from sh2.tlt1 where i = 1), 0), coalesce((select
 
 /* test quoted sconsts. XXX: find a better place for that */
 
+SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''';
 SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execute_on: sh3 */;
 
 DROP SCHEMA sh2 CASCADE;

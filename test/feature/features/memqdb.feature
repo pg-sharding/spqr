@@ -98,7 +98,7 @@ Feature: MemQDB save state into a file
     And host "router" is started
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly

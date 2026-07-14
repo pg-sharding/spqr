@@ -47,7 +47,7 @@ destination shard id -> sh2
 batch size           -> 500
 (3 rows)
 
-step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
+step s2_show_kr: select __spqr__console_execute('SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);') /*__spqr__preferred_engine: v2 */;
 key_range_id|shard_id|distribution_id|lower_bound|locked
 ------------+--------+---------------+-----------+------
 k0          |sh2     |d              |          0|false 
@@ -69,7 +69,7 @@ destination shard id -> sh1
 batch size           -> 500
 (3 rows)
 
-step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
+step s2_show_kr: select __spqr__console_execute('SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);') /*__spqr__preferred_engine: v2 */;
 key_range_id|shard_id|distribution_id|lower_bound|locked
 ------------+--------+---------------+-----------+------
 k0          |sh1     |d              |          0|false 

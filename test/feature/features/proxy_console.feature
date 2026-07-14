@@ -129,7 +129,7 @@ Feature: Proxy console
 
         When I run SQL on host "router2-admin"
         """
-        SHOW key_ranges;
+        SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
         """
         Then SQL result should match json_exactly
         """

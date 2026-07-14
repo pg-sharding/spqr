@@ -149,12 +149,14 @@ l:
 	return pd, err
 }
 
-func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error {
-	mp, err := qparser.ParseComment(comment)
+func (rst *RelayStateImpl) queryProc(comments []string, binderQ func() error) error {
+	for _, comment := range comments {
+		mp, err := qparser.ParseComment(comment)
 
-	if err == nil {
-		if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
-			return err
+		if err == nil {
+			if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -173,7 +175,7 @@ var (
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, _ bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comments []string, binderQ func() error, _ bool) (*PortalDesc, error) {
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
@@ -205,18 +207,20 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
-			if mp, err := qparser.ParseComment(comment); err == nil {
+			for _, comment := range comments {
+				if mp, err := qparser.ParseComment(comment); err == nil {
 
-				if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
-					switch val {
-					case twopc.CommitStrategy2pc:
-						fallthrough
-					case twopc.CommitStrategy1pc:
-						fallthrough
-					case twopc.CommitStrategyBestEffort:
-						rst.Client().SetCommitStrategy(val)
-					default:
-						/*should error-out*/
+					if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
+						switch val {
+						case twopc.CommitStrategy2pc:
+							fallthrough
+						case twopc.CommitStrategy1pc:
+							fallthrough
+						case twopc.CommitStrategyBestEffort:
+							rst.Client().SetCommitStrategy(val)
+						default:
+							/*should error-out*/
+						}
 					}
 				}
 			}
@@ -514,7 +518,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				} else {
 					/* If router does dot have any info about param, fire query to random shard. */
 					if _, ok := rst.Client().Params()[param]; !ok {
-						err := rst.queryProc(comment, binderQ)
+						err := rst.queryProc(comments, binderQ)
 						return pd, err
 					}
 
@@ -612,7 +616,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return nil, nil
 		} else {
 			// process like regular query
-			err := rst.queryProc(comment, binderQ)
+			err := rst.queryProc(comments, binderQ)
 			return nil, err
 		}
 	case *lyx.ExecuteStmt:
@@ -654,11 +658,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return nil, nil
 		} else {
 			// process like regular query
-			err := rst.queryProc(comment, binderQ)
+			err := rst.queryProc(comments, binderQ)
 			return nil, err
 		}
 	default:
-		err := rst.queryProc(comment, binderQ)
+		err := rst.queryProc(comments, binderQ)
 		return nil, err
 	}
 }

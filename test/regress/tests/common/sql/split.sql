@@ -6,7 +6,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 \set VERBOSITY terse
 
 SPLIT KEY RANGE krid3 FROM krid1 BY 5;
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 LOCK KEY RANGE krid1;
 SPLIT KEY RANGE krid4 FROM krid1 BY 5;

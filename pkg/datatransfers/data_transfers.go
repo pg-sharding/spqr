@@ -2,6 +2,7 @@ package datatransfers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -38,6 +39,17 @@ const spqrTransferApplicationName = "spqr-transfer"
 
 // Increment if foreign server/schema setup is changed
 const fdwSetupVersion = 2
+
+type awaitPIDError struct {
+}
+
+func (awaitPIDError) Error() string {
+	return "timeout waiting for vxid locks to release"
+}
+
+var _ error = awaitPIDError{}
+
+var AwaitPIDError = awaitPIDError{}
 
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
@@ -147,7 +159,7 @@ Steps:
 //   - error: an error if the move fails.
 func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string, icpCH icp.ICPContextHolder) error {
 	if toId == fromId {
-		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
 	}
 	tx, err := db.GetTransferTx(ctx, krg.ID)
 	if err != nil {
@@ -176,7 +188,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	}
 	from, err := GetMasterConnection(ctx, fromCfg, executorId)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to source shard")
 		return err
 	}
 	defer func() {
@@ -188,7 +200,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	}
 	to, err := GetMasterConnection(ctx, toCfg, executorId)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to destination shard")
 		return err
 	}
 	defer func() {
@@ -201,12 +213,19 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	}
 
 	for tx != nil {
+
+		spqrlog.Zero.Debug().Time("time", time.Now()).Str("key range id", krg.ID).Str("tx status", string(tx.Status)).Msg("Move keys  iteration")
+
 		switch tx.Status {
 		case qdb.Planned:
 			t := time.Now()
 			// Await all current virtual transactions on source shard to stop
 			if err := awaitPIDs(ctx, from); err != nil {
-				return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
+				if errors.Is(err, context.DeadlineExceeded) {
+					_ = db.RemoveTransferTx(ctx, krg.ID)
+					return AwaitPIDError
+				}
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit: %s", err)
 			}
 			tx.Status = qdb.Locked
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
@@ -236,14 +255,14 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			t := time.Now()
 			ftx, err := from.Begin(ctx)
 			if err != nil {
-				return fmt.Errorf("could not delete data: could not begin transaction: %s", err)
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: could not begin transaction: %s", err)
 			}
 			if _, err := ftx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
-				return fmt.Errorf("could not delete data: error deferring constraints: %s", err)
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: error deferring constraints: %s", err)
 			}
 			if config.CoordinatorConfig().DataMoveDisableTriggers {
 				if _, err := ftx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
-					return fmt.Errorf("failed to disable triggers: %s", err)
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to disable triggers: %s", err)
 				}
 			}
 			for _, rel := range ds.ListRelations() {
@@ -271,7 +290,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				}
 				_, err = ftx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.QualifiedName().String(), cond))
 				if err != nil {
-					return fmt.Errorf("could not delete data: error executing DELETE FROM: %s", err)
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: error executing DELETE FROM: %s", err)
 				}
 			}
 			if config.CoordinatorConfig().UseSPQRGuard {
@@ -280,7 +299,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				}
 			}
 			if err = ftx.Commit(ctx); err != nil {
-				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: could not commit transaction: %s", err)
 			}
 			statistics.RecordShardOperation("dropData", time.Since(t))
 			if config.CoordinatorConfig().EnableICP {
@@ -293,7 +312,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 			tx = nil
 		default:
-			return fmt.Errorf("incorrect data transfer transaction status: %s", tx.Status)
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "incorrect data transfer transaction status: %s", tx.Status)
 		}
 	}
 
@@ -849,7 +868,14 @@ func GetTableColumns(ctx context.Context, db Queryable, relationFQN *rfqn.Relati
 }
 
 func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
-	if _, err := conn.Exec(ctx, getAwaitPIDsQuery()); err != nil {
+	execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
+	defer cancel()
+	if config.CoordinatorConfig().EnableICP {
+		if err := icp.CheckControlPoint(nil, icp.AwaitPidCP); err != nil {
+			spqrlog.Zero.Info().Str("cp", icp.AwaitPidCP).Err(err).Msg("error while checking control point")
+		}
+	}
+	if _, err := conn.Exec(execCtx, getAwaitPIDsQuery()); err != nil {
 		return err
 	}
 	return nil

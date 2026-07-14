@@ -60,7 +60,7 @@ step s2_show_tg              { select __spqr__console_execute('SHOW task_groups;
 step s2_await_planning       { SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; }
 step s2_await_task           { SELECT __spqr__await_task('zid') /* __spqr__preferred_engine: v2 */; }
 
-step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */; }
+step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);') /*__spqr__preferred_engine: v2 */; }
 
 session s3
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}

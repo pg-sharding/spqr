@@ -1035,6 +1035,9 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 	}
 
 	for move != nil {
+
+		spqrlog.Zero.Debug().Time("time", time.Now()).Str("key range id", req.KeyRangeID).Str("tx status", string(move.Status)).Msg("Move iteration")
+
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
 			// lock the key range
@@ -1061,6 +1064,18 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 
 			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId, icpCH)
 			if err != nil {
+				if errors.Is(err, datatransfers.AwaitPIDError) {
+					spqrlog.Zero.Debug().Msg("got AwaitPIDError")
+					if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangePlanned); err != nil {
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update move task status after await PID timeout: %s", err)
+					}
+					move.Status = qdb.MoveKeyRangePlanned
+					if err = qc.UnlockKeyRange(ctx, keyRange.ID); err != nil {
+
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to unlock key range after await PID timeout: %s", err)
+					}
+					return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "timeout waiting for vxid locks to release")
+				}
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
@@ -1148,7 +1163,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			}
 			move = nil
 		default:
-			return fmt.Errorf("unknown key range move status: \"%s\"", move.Status)
+			return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unknown key range move status: \"%s\"", move.Status)
 		}
 	}
 	return nil

@@ -86,7 +86,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -101,7 +101,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -116,7 +116,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -202,7 +202,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -217,7 +217,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -232,7 +232,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -342,7 +342,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -357,7 +357,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -372,7 +372,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -466,7 +466,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -481,7 +481,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -496,7 +496,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -559,7 +559,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -573,7 +573,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -587,7 +587,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -649,7 +649,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -663,7 +663,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -677,7 +677,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -739,7 +739,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -753,7 +753,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -767,7 +767,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -862,7 +862,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -876,7 +876,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -890,7 +890,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -952,7 +952,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -966,7 +966,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -980,7 +980,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1042,7 +1042,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1056,7 +1056,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1070,7 +1070,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1132,7 +1132,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1146,7 +1146,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1160,7 +1160,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1256,7 +1256,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1270,7 +1270,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1284,7 +1284,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1346,7 +1346,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "coordinator2"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1360,7 +1360,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
@@ -1374,7 +1374,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json
