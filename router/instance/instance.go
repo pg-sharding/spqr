@@ -253,7 +253,9 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 				cChan <- nil
 				return
 			}
-			spqrlog.Zero.Info().Str("remote addr", c.RemoteAddr().String()).Msg("new network client connection")
+			spqrlog.Zero.Info().
+				Str("remote addr", c.RemoteAddr().String()).
+				Msg("new network client connection")
 
 			cChan <- c
 		}
@@ -288,13 +290,26 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 						n := time.Now()
 						if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-							spqrlog.Zero.Info().Uint("client id", id).Int64("ms", n.UnixMilli()).TimeDiff("client live time", n, initTime).Err(err).Msg("error serving client")
+							spqrlog.Zero.Info().
+								Uint("client id", id).
+								Int64("ms", n.UnixMilli()).
+								TimeDiff("client live time", n, initTime).
+								Err(err).Msg("error serving client")
 						} else {
-							spqrlog.Zero.Error().Uint("client id", id).Int64("ms", n.UnixMilli()).TimeDiff("client live time", n, initTime).Err(err).Msg("error serving client")
+							spqrlog.Zero.Error().
+								Uint("client id", id).
+								Int64("ms", n.UnixMilli()).
+								TimeDiff("client live time", n, initTime).
+								Err(err).Msg("error serving client")
 						}
 					} else {
 						n := time.Now()
-						spqrlog.Zero.Info().Uint("id", id).Int64("ms", n.UnixMilli()).TimeDiff("client live time", n, initTime).Msg("client disconnected")
+						spqrlog.Zero.Info().
+							Uint("id", id).
+							Int64("ms", n.UnixMilli()).
+							TimeDiff("client live time", n, initTime).
+							Str("remote addr", conn.RemoteAddr().String()).
+							Msg("client disconnected")
 					}
 				}()
 			}
