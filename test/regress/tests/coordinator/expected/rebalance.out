@@ -34,31 +34,89 @@ CREATE KEY RANGE krid1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  bound -> 100
 (1 row)
 
-SHOW KEY_RANGES;
- key_range_id | shard_id | distribution_id | lower_bound | locked 
---------------+----------+-----------------+-------------+--------
- krid1        | sh1      | ds1             | 100         | false
- krid2        | sh3      | ds1             | 200         | false
- krid3        | sh2      | ds1             | 600         | false
- krid4        | sh4      | ds1             | 900         | false
-(4 rows)
-
 REBALANCE DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
      rebalance distribution     
 --------------------------------
  distribution id         -> ds1
 (1 row)
 
-SHOW KEY_RANGES;
- key_range_id | shard_id | distribution_id | lower_bound | locked 
---------------+----------+-----------------+-------------+--------
- krid1        | sh1      | ds1             | 0           | false
- krid2        | sh2      | ds1             | 250         | false
- krid3        | sh3      | ds1             | 500         | false
- krid4        | sh4      | ds1             | 750         | false
+SHOW KEY_RANGES(shard_id, lower_bound);
+ shard_id | lower_bound 
+----------+-------------
+ sh1      | 0
+ sh2      | 250
+ sh3      | 500
+ sh4      | 750
 (4 rows)
 
-SHOW TASK_GROUPS;
+DROP KEY RANGE ALL;
+             key_range_id             
+--------------------------------------
+ 237533b0-64d5-4ddf-baa6-969ac06bc802
+ 60ffd458-7055-4cc6-acfa-9a0dc69eedf7
+ cb9b990d-16fd-46b4-9e3d-a5b53e32668e
+ d412886e-423b-4ceb-9b61-69c35492b34c
+(4 rows)
+
+CREATE KEY RANGE krid3 FROM 600 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 600
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+REBALANCE DISTRIBUTION ds1 USING ALL SHARDS;
+     rebalance distribution     
+--------------------------------
+ distribution id         -> ds1
+(1 row)
+
+SHOW KEY_RANGES(shard_id, lower_bound);
+ shard_id |     lower_bound      
+----------+----------------------
+ sh1      | -9223372036854775808
+ sh2      | -4611686018427387905
+ sh3      | 100
+(3 rows)
+
+DROP KEY RANGE ALL;
+             key_range_id             
+--------------------------------------
+ 72db385e-85d0-48af-9891-30a591357820
+ 83436b97-4ac6-47c5-aadc-1a74201be92a
+ krid1
+(3 rows)
+
+REBALANCE DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+     rebalance distribution     
+--------------------------------
+ distribution id         -> ds1
+(1 row)
+
+SHOW KEY_RANGES;
+             key_range_id             | shard_id | distribution_id |     lower_bound      | locked 
+--------------------------------------+----------+-----------------+----------------------+--------
+ 15c95bf8-db64-46f4-a4f2-1ccc22cc1547 | sh2      | ds1             | -1                   | false
+ 8ca266a7-18c4-4c09-b8b0-280d02c1dd73 | sh1      | ds1             | -9223372036854775808 | false
+(2 rows)
+
+DROP KEY RANGE ALL;
+             key_range_id             
+--------------------------------------
+ 15c95bf8-db64-46f4-a4f2-1ccc22cc1547
+ 8ca266a7-18c4-4c09-b8b0-280d02c1dd73
+(2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

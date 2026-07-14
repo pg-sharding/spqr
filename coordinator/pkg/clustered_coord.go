@@ -2425,23 +2425,31 @@ func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distr
 	tranmngr := meta.NewTranEntityManager(qc)
 	newKrInd := 0
 	batchSize := 128
-	if kr.CmpRangesLess(newKrs[0], existingKRs[0].LowerBound, ds.ColTypes) {
-		if err := tranmngr.BeginTran(ctx); err != nil {
-			return err
+
+	existingKrInd := len(existingKRs) - 1
+	if err := tranmngr.BeginTran(ctx); err != nil {
+		return err
+	}
+	for i := len(newKrs) - 1; i >= 0; i-- {
+		for existingKrInd >= 0 && kr.CmpRangesLess(newKrs[i], existingKRs[existingKrInd].LowerBound, ds.ColTypes) {
+			existingKrInd--
 		}
-		err := tranmngr.CreateKeyRange(ctx, &kr.KeyRange{
-			LowerBound:   newKrs[0],
-			ShardID:      shardIDs[0],
-			Distribution: ds.Id,
-			ColumnTypes:  ds.ColTypes,
-			ID:           uuid.NewString(),
-		}, ds.ColTypes)
-		if err != nil {
-			return err
+
+		if existingKrInd < 0 {
+			err := tranmngr.CreateKeyRange(ctx, &kr.KeyRange{
+				LowerBound:   newKrs[i],
+				ShardID:      shardIDs[i],
+				Distribution: ds.Id,
+				ColumnTypes:  ds.ColTypes,
+				ID:           uuid.NewString(),
+			}, ds.ColTypes)
+			if err != nil {
+				return err
+			}
 		}
-		if err := tranmngr.CommitTran(ctx); err != nil {
-			return err
-		}
+	}
+	if err := tranmngr.CommitTran(ctx); err != nil {
+		return err
 	}
 
 	for i := 0; i < len(existingKRs); {
