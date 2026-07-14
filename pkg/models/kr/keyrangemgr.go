@@ -65,6 +65,6 @@ type KeyRangeMgr interface {
 	DropKeyRangeAll(ctx context.Context) error
 	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error
 	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange, ch icp.ICPContextHolder) error
-	RebalanceDistribution(ctx context.Context, distributionID string, shards []string) error
+	RebalanceDistribution(ctx context.Context, distributionID string, datarange *CustomDataTypeRange, shards []string) error
 	RenameKeyRange(ctx context.Context, krid, kridNew string) error
 }

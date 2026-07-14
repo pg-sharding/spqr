@@ -2345,7 +2345,15 @@ func processRebalanceDistribution(
 		Str("distribution id", stmt.Distribution.ID).
 		Msg("process rebalance distribution")
 
-	if err := mngr.RebalanceDistribution(ctx, stmt.Distribution.ID, stmt.Shards); err != nil {
+	dist, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
+	if err != nil {
+		return nil, err
+	}
+	customDataTypeRange, err := kr.CustomDataTypeRangeFromSQL(dist.ColTypes, stmt.DataKeyRange)
+	if err != nil {
+		return nil, err
+	}
+	if err := mngr.RebalanceDistribution(ctx, stmt.Distribution.ID, customDataTypeRange, stmt.Shards); err != nil {
 		return nil, err
 	}
 

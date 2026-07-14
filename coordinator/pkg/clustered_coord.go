@@ -2369,8 +2369,240 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 	}
 }
 
-func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, shards []string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+// RebalanceDistribution recalculates key ranges for the given distribution,
+// splitting the whole data range into even key ranges and distributing them
+// among the provided shards. If shards contains "*", all available shards are used.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the operation.
+//   - distributionID (string): The ID of the distribution to rebalance.
+//   - shards ([]string): The shard IDs to distribute key ranges among. Use ["*"] for all shards.
+//
+// Returns:
+//   - error: An error if the rebalance fails.
+func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, dataRange *kr.CustomDataTypeRange, shards []string) error {
+	ds, err := qc.GetDistribution(ctx, distributionID)
+	if err != nil {
+		return fmt.Errorf("failed to get distribution: %s", err)
+	}
+
+	var shardIDs []string
+	if len(shards) == 1 && shards[0] == "*" {
+		allShards, err := qc.ListShards(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list shards: %s", err)
+		}
+		for _, sh := range allShards {
+			shardIDs = append(shardIDs, sh.ID)
+		}
+	} else {
+		shardIDs = shards
+	}
+
+	if len(shardIDs) == 0 {
+		return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "no shards available for rebalance")
+	}
+
+	sort.Strings(shardIDs)
+
+	existingKRs, err := qc.ListKeyRanges(ctx, distributionID)
+	if err != nil {
+		return fmt.Errorf("failed to list key ranges: %s", err)
+	}
+
+	newKrs, err := meta.SplitEqualFullKeyRange(ds.ColTypes, len(shardIDs), dataRange)
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(existingKRs, func(i, j int) bool {
+		return kr.CmpRangesLess(existingKRs[i].LowerBound, existingKRs[j].LowerBound, ds.ColTypes)
+	})
+	sort.Slice(newKrs, func(i, j int) bool {
+		return kr.CmpRangesLess(newKrs[i], newKrs[j], ds.ColTypes)
+	})
+
+	tranmngr := meta.NewTranEntityManager(qc)
+	newKrInd := 0
+	batchSize := 128
+	if kr.CmpRangesLess(newKrs[0], existingKRs[0].LowerBound, ds.ColTypes) {
+		if err := tranmngr.BeginTran(ctx); err != nil {
+			return err
+		}
+		err := tranmngr.CreateKeyRange(ctx, &kr.KeyRange{
+			LowerBound:   newKrs[0],
+			ShardID:      shardIDs[0],
+			Distribution: ds.Id,
+			ColumnTypes:  ds.ColTypes,
+			ID:           uuid.NewString(),
+		}, ds.ColTypes)
+		if err != nil {
+			return err
+		}
+		if err := tranmngr.CommitTran(ctx); err != nil {
+			return err
+		}
+	}
+
+	for i := 0; i < len(existingKRs); {
+		lowerBound := existingKRs[i].LowerBound
+
+		for newKrInd < len(newKrs) {
+			if kr.CmpRangesLess(lowerBound, newKrs[newKrInd], ds.ColTypes) {
+				break
+			}
+			newKrInd++
+		}
+
+		k := i
+		if newKrInd < len(newKrs) {
+			for ; k < len(existingKRs); k++ {
+				if kr.CmpRangesLess(newKrs[newKrInd], existingKRs[k].LowerBound, ds.ColTypes) {
+					break
+				}
+			}
+		} else {
+			k = len(existingKRs)
+		}
+
+		for ; i < k-1; i++ {
+			if err := qc.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+				KeyRangeID: existingKRs[i].ID,
+				ShardID:    shardIDs[newKrInd-1],
+				BatchSize:  batchSize,
+				Apply:      true,
+				NoWait:     false,
+			}, nil); err != nil {
+				return err
+			}
+		}
+
+		if k < len(existingKRs) {
+			id := uuid.NewString()
+			splitBoundKr := kr.KeyRange{
+				LowerBound:  newKrs[newKrInd],
+				ColumnTypes: ds.ColTypes,
+			}
+			if err := qc.Split(ctx, &kr.SplitKeyRange{
+				Bound:      splitBoundKr.Raw(),
+				SourceID:   existingKRs[k-1].ID,
+				KeyRangeID: id,
+			}); err != nil {
+				return err
+			}
+
+			existingKRs = slices.Insert(existingKRs, k, &kr.KeyRange{
+				LowerBound:   newKrs[newKrInd],
+				ShardID:      shardIDs[newKrInd],
+				ID:           id,
+				Distribution: ds.Id,
+				ColumnTypes:  ds.ColTypes,
+			})
+		}
+
+		if err := qc.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+			KeyRangeID: existingKRs[k-1].ID,
+			ShardID:    shardIDs[newKrInd-1],
+			BatchSize:  batchSize,
+			Apply:      true,
+			NoWait:     false,
+		}, nil); err != nil {
+			return err
+		}
+		i++
+	}
+
+	resultKrs, err := qc.ListAllKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+	sort.Slice(resultKrs, func(i, j int) bool {
+		return kr.CmpRangesLess(resultKrs[i].LowerBound, resultKrs[j].LowerBound, ds.ColTypes)
+	})
+	for i := 0; i < len(resultKrs)-1; i++ {
+		baseKr := resultKrs[i]
+		for ; i < len(resultKrs)-1 && baseKr.ShardID == resultKrs[i+1].ShardID; i++ {
+			if err := qc.Unite(ctx, &kr.UniteKeyRange{
+				BaseKeyRangeID:      baseKr.ID,
+				AppendageKeyRangeID: resultKrs[i+1].ID,
+			}); err != nil {
+				return err
+			}
+			spqrlog.Zero.Debug().Msg("here8.1")
+		}
+	}
+
+	return nil
+}
+
+// calculateEvenBoundaries computes N evenly-spaced boundaries between minBound and maxBound
+// for the given column types. Supports integer, uint64-based (uinteger, uuid-hashed, varchar-hashed) types.
+//
+// Parameters:
+//   - minBound: The lower boundary of the key space.
+//   - maxBound: The upper anchor of the key space (last key range's lower bound).
+//   - n: Number of shards (produces n boundaries, one per shard).
+//   - colTypes: Column types of the distribution.
+//
+// Returns:
+//   - []kr.KeyRangeBound: Slice of n boundaries, one for each shard.
+func calculateEvenBoundaries(minBound, maxBound kr.KeyRangeBound, n int, colTypes []string) []kr.KeyRangeBound {
+	boundaries := make([]kr.KeyRangeBound, n)
+
+	// Calculate the range for each dimension
+	// For simplicity, we only split on the first column (primary sharding key).
+	// Multi-column distributions are less common and can be extended later.
+
+	// Compute step for the first column
+	var minVal, maxVal int64
+	switch colTypes[0] {
+	case qdb.ColumnTypeInteger:
+		minVal = minBound[0].(int64)
+		maxVal = maxBound[0].(int64)
+	case qdb.ColumnTypeUinteger:
+		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
+		fallthrough
+	case qdb.ColumnTypeVarcharHashed:
+		minVal = int64(minBound[0].(uint64))
+		maxVal = int64(maxBound[0].(uint64))
+	default:
+		// Fallback: each shard gets the same min bound (should not happen if allNumeric check passed)
+		for i := 0; i < n; i++ {
+			boundaries[i] = make(kr.KeyRangeBound, len(minBound))
+			copy(boundaries[i], minBound)
+		}
+		return boundaries
+	}
+
+	// Ensure maxVal >= minVal
+	if maxVal < minVal {
+		maxVal = minVal
+	}
+
+	totalRange := maxVal - minVal
+	step := totalRange / int64(n)
+	if step < 0 {
+		step = 0
+	}
+
+	for i := 0; i < n; i++ {
+		boundaries[i] = make(kr.KeyRangeBound, len(minBound))
+		copy(boundaries[i], minBound)
+
+		switch colTypes[0] {
+		case qdb.ColumnTypeInteger:
+			boundaries[i][0] = minVal + step*int64(i)
+		case qdb.ColumnTypeUinteger:
+			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
+			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			boundaries[i][0] = uint64(minVal + step*int64(i))
+		}
+	}
+
+	return boundaries
 }
 
 // TODO : unit tests

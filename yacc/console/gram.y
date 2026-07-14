@@ -1811,21 +1811,24 @@ redistribute_stmt:
 	}
 
 rebalance_stmt:
-	REBALANCE distribution_select_stmt
+	REBALANCE distribution_select_stmt opt_custom_distr_range
 	{
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
+			DataKeyRange: $3,
 			Shards: []string{"*"},
 		}
-	} | REBALANCE distribution_select_stmt USING ALL SHARDS {
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING ALL SHARDS {
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
+			DataKeyRange: $3,
 			Shards: []string{"*"},
 		}
-	} | REBALANCE distribution_select_stmt USING SHARDS any_id_list {
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING SHARDS any_id_list {
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
-			Shards: $5,
+			DataKeyRange: $3,
+			Shards: $6,
 		}
 	}
 
