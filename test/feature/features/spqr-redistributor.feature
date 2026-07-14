@@ -308,3 +308,73 @@ Feature: spqr-redistributor test
         """
         []
         """
+
+    Scenario: spqr-redistributor generate-task run works
+        When I run SQL on host "router"
+        """
+        CREATE TABLE xMove(w_id INT, s TEXT);
+        SET __spqr__execute_on TO sh1;
+        INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text data';
+        """
+        Then command return code should be "0"
+        When I run command on host "coordinator" with timeout "60" seconds
+        """
+        /spqr/spqr-redistributor generate-task run --coordinator-addr regress_coordinator:7003 --etcd-addr regress_qdb_0_1:2379 --chunk-size 200 --batch-size 100 --key-range-id krid1 --shard-id sh2 --max-tasks 1 --interval 5s 2&> output.txt
+        """
+        Then command return code should be "0"
+        When I run command on host "coordinator"
+        """
+        cat output.txt
+        """
+        Then command output should match regexp
+        """
+.*splitting key range .* by 800
+.*redistributing key range .*
+.*splitting key range .* by 600
+.*redistributing key range .*
+.*splitting key range .* by 400
+.*redistributing key range .*
+.*splitting key range .* by 200
+.*redistributing key range .*
+.*redistributing key range .*
+        """
+        When I run SQL on host "coordinator"
+        """
+        SHOW key_ranges ORDER BY lower_bound;
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "distribution_id":"ds1",
+                "lower_bound":"800",
+                "shard_id":"sh1",
+                "locked":"false"
+            },
+            {
+                "distribution_id":"ds1",
+                "lower_bound":"600",
+                "shard_id":"sh1",
+                "locked":"false"
+            },
+            {
+                "distribution_id":"ds1",
+                "lower_bound":" 400",
+                "shard_id":"sh1",
+                "locked":"false"
+            },
+            {
+                "distribution_id":"ds1",
+                "lower_bound":"200",
+                "shard_id":"sh1",
+                "locked":"false"
+            },
+            {
+                "distribution_id":"ds1",
+                "lower_bound":"0",
+                "shard_id":"sh1",
+                "locked":"false"
+            }
+        ]
+        """
