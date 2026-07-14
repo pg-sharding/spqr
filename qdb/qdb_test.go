@@ -30,7 +30,7 @@ func TestPackToEtcdCommands(t *testing.T) {
 			{CmdType: CmdDelete, Key: "test3"},
 		}
 		_, err := packEtcdCommands(statements)
-		is.EqualError(err, "not found operation type: 7")
+		is.EqualError(err, "malformed operation type: 7")
 
 	})
 }
