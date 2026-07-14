@@ -1540,8 +1540,9 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
       }
     ]
     """
-    When I run SQL on host "coordinator2"
+    When I run SQL on host "coordinator"
     """
+    DETACH CONTROL POINT await_pid_cp;
     RETRY TASK GROUP tg1;
     """
     Then command return code should be "0"
