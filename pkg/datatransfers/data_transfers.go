@@ -456,12 +456,10 @@ func SetupFDW(
 	if err != nil {
 		return err
 	}
-	hasher := murmur3.New64()
-	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s_%d", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost, fdwSetupVersion)); err != nil {
+	serverName, err := getForeignServerName(fromShardId, toShardId, dbName, fromHost, toShard)
+	if err != nil {
 		return err
 	}
-	serverNameHash := hasher.Sum64()
-	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	// create postgres_fdw server on receiving shard
 	_, err = to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', options '-c idle_in_transaction_session_timeout=0 -c idle_session_timeout=0')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
 	if err != nil {
@@ -507,6 +505,16 @@ func SetupFDW(
 		}
 	}
 	return err
+}
+
+func getForeignServerName(fromShardId, toShardId, dbName, fromHost string, toShard *config.ShardConnect) (string, error) {
+	hasher := murmur3.New64()
+	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s_%d", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost, fdwSetupVersion)); err != nil {
+		return "", err
+	}
+	serverNameHash := hasher.Sum64()
+	return fmt.Sprintf("spqr_transfer_server_%x", serverNameHash), nil
+
 }
 
 func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
@@ -622,12 +630,10 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	if err != nil {
 		return err
 	}
-	hasher := murmur3.New64()
-	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost)); err != nil {
+	serverName, err := getForeignServerName(fromShardId, toShardId, dbName, fromHost, toShard)
+	if err != nil {
 		return err
 	}
-	serverNameHash := hasher.Sum64()
-	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 
 	fromTx, err := from.Begin(ctx)
 	if err != nil {
@@ -766,12 +772,10 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	if err != nil {
 		return err
 	}
-	hasher := murmur3.New64()
-	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromId, fromHost)); err != nil {
+	serverName, err := getForeignServerName(fromId, toId, dbName, fromHost, toShard)
+	if err != nil {
 		return err
 	}
-	serverNameHash := hasher.Sum64()
-	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 
 	// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 	// TODO get actual schema
