@@ -214,7 +214,7 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 	return ErrNotCoordinator
 }
 
-func (lc *LocalInstanceMetadataMgr) RebalanceDistribution(ctx context.Context, distributionID string, datarange *kr.CustomDataTypeRange, shards []string) error {
+func (lc *LocalInstanceMetadataMgr) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
 	return ErrNotCoordinator
 }
 

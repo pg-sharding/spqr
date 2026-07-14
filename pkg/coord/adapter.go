@@ -551,7 +551,7 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return spqrerror.CleanGrpcError(err)
 }
 
-func (a *Adapter) RebalanceDistribution(ctx context.Context, distributionID string, datarange *kr.CustomDataTypeRange, shards []string) error {
+func (a *Adapter) RebalanceDistribution(ctx context.Context, distributionID string, _ *kr.CustomDataTypeRange, shards []string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RebalanceDistribution(ctx, &proto.RebalanceDistributionRequest{
 		DistributionId: distributionID,

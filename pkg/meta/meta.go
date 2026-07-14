@@ -1249,7 +1249,7 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.RedistributeKeyRange:
 		return processRedistribute(ctx, stmt, mgr, icpCH)
 	case *spqrparser.RebalanceDistribution:
-		return processRebalanceDistribution(ctx, stmt, mgr, icpCH)
+		return processRebalanceDistribution(ctx, stmt, mgr)
 	case *spqrparser.Invalidate:
 
 		tts := &tupleslot.TupleTableSlot{
@@ -2339,8 +2339,7 @@ func processRedistribute(ctx context.Context,
 func processRebalanceDistribution(
 	ctx context.Context,
 	stmt *spqrparser.RebalanceDistribution,
-	mngr EntityMgr,
-	icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
+	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().
 		Str("distribution id", stmt.Distribution.ID).
 		Msg("process rebalance distribution")

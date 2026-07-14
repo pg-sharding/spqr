@@ -464,7 +464,7 @@ func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.Redistribut
 	panic("unimplemented")
 }
 
-func (lc *Coordinator) RebalanceDistribution(ctx context.Context, distributionID string, datarange *kr.CustomDataTypeRange, shards []string) error {
+func (lc *Coordinator) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
 	panic("unimplemneted")
 }
 
