@@ -1959,8 +1959,9 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err != nil {
 				return err
 			}
+		} else {
+			return err
 		}
-		return err
 	}
 	// Get connection to source shard's master
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
