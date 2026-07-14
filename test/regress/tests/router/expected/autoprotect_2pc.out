@@ -5,6 +5,30 @@ SELECT __spqr__console_execute('CREATE REFERENCE RELATION ref_2pc');
  shard id -> sh1,sh2,sh3,sh4
 (2 rows)
 
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ relname 
+---------
+(0 rows)
+
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ relname 
+---------
+(0 rows)
+
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ relname 
+---------
+(0 rows)
+
+SELECT relname FROM spqr_metadata.spqr_reference_relations m join pg_class c on c.oid = m.reloid /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ relname 
+---------
+(0 rows)
+
 CREATE TABLE ref_2pc(i INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
