@@ -1954,6 +1954,12 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	}
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KridFrom)
 	if err != nil {
+		if taskGroup.CurrentTask != nil {
+			keyRange, err = qc.GetKeyRange(ctx, taskGroup.CurrentTask.KridTemp)
+			if err != nil {
+				return err
+			}
+		}
 		return err
 	}
 	// Get connection to source shard's master
