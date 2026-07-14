@@ -1,18 +1,73 @@
 REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+          register router           
+------------------------------------
+ router -> r1-[regress_router]:7000
+(1 row)
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-CREATE KEY RANGE krid1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid2 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid4 FROM 900 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 900
+(1 row)
+
 CREATE KEY RANGE krid3 FROM 600 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid1 FROM 900 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 600
+(1 row)
 
-SHOW key_ranges;
+CREATE KEY RANGE krid2 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
 
-REBALANCE DISTRIBUTION ds1 USING ALL SHARDS;
+CREATE KEY RANGE krid1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
 
-SHOW key_ranges;
+SHOW KEY_RANGES;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 100         | false
+ krid2        | sh3      | ds1             | 200         | false
+ krid3        | sh2      | ds1             | 600         | false
+ krid4        | sh4      | ds1             | 900         | false
+(4 rows)
 
-SHOW TASK GROUPS;
+REBALANCE DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+     rebalance distribution     
+--------------------------------
+ distribution id         -> ds1
+(1 row)
+
+SHOW KEY_RANGES;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 0           | false
+ krid2        | sh2      | ds1             | 250         | false
+ krid3        | sh3      | ds1             | 500         | false
+ krid4        | sh4      | ds1             | 750         | false
+(4 rows)
+
+SHOW TASK_GROUPS;
 
 DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
 UNREGISTER ROUTER ALL;
+ unregister router 
+-------------------
+ router id -> *
+(1 row)

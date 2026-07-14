@@ -219,6 +219,7 @@ type RedistributeKeyRange struct {
 type RebalanceDistribution struct {
 	Distribution *DistributionSelector
 	Shards       []string
+	DataKeyRange *CustomDistributionRange
 }
 
 type KeyRangeSelector struct {
