@@ -36,6 +36,9 @@ const (
 
 const spqrTransferApplicationName = "spqr-transfer"
 
+// Increment if foreign server/schema setup is changed
+const fdwSetupVersion = 2
+
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
 	TableName   string `db:"table_name"`
@@ -435,7 +438,7 @@ func SetupFDW(
 		return err
 	}
 	hasher := murmur3.New64()
-	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost)); err != nil {
+	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s_%s", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost, fdwSetupVersion)); err != nil {
 		return err
 	}
 	serverNameHash := hasher.Sum64()
