@@ -336,11 +336,12 @@ Feature: spqr-redistributor test
 .*redistributing key range .*
 .*splitting key range .* by 200
 .*redistributing key range .*
-.*redistributing key range .*
+.*redistributing key range .krid1.*
+.*key range .krid1. is already on shard .sh2., not doing anything: key range already moved
         """
         When I run SQL on host "coordinator"
         """
-        SHOW key_ranges ORDER BY lower_bound;
+        SHOW key_ranges ORDER BY lower_bound DESC;
         """
         Then command return code should be "0"
         And SQL result should match json
@@ -349,31 +350,32 @@ Feature: spqr-redistributor test
             {
                 "distribution_id":"ds1",
                 "lower_bound":"800",
-                "shard_id":"sh1",
+                "shard_id":"sh2",
                 "locked":"false"
             },
             {
                 "distribution_id":"ds1",
                 "lower_bound":"600",
-                "shard_id":"sh1",
+                "shard_id":"sh2",
                 "locked":"false"
             },
             {
                 "distribution_id":"ds1",
-                "lower_bound":" 400",
-                "shard_id":"sh1",
+                "lower_bound":"400",
+                "shard_id":"sh2",
                 "locked":"false"
             },
             {
                 "distribution_id":"ds1",
                 "lower_bound":"200",
-                "shard_id":"sh1",
+                "shard_id":"sh2",
                 "locked":"false"
             },
             {
+                "key_range_id": "krid1",
                 "distribution_id":"ds1",
                 "lower_bound":"0",
-                "shard_id":"sh1",
+                "shard_id":"sh2",
                 "locked":"false"
             }
         ]

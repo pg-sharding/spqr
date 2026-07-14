@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -45,7 +46,16 @@ var (
 	generateTaskCmd = &cobra.Command{
 		Use:   "generate-task --coordinator-addr `coordinator grpc address` --etcd-addr `etcd address`... --chunk-size size --batch-size size --key-range-id id --shard-id id --max-tasks count [--dry-run]",
 		Short: "split a number of keys and redistribute them to a given shard",
-		RunE:  generateTask,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if err := generateTask(nil, nil); err != nil {
+				if errors.Is(err, AlreadyDoneError{}) {
+					log.Printf("%s\n", err)
+					return nil
+				}
+				return err
+			}
+			return nil
+		},
 	}
 
 	runCmd = &cobra.Command{
@@ -57,7 +67,11 @@ var (
 
 			for range ticker.C {
 				if err := generateTask(nil, nil); err != nil {
-					log.Printf("error generating task, exiting: %s", err)
+					if errors.Is(err, AlreadyDoneError{}) {
+						log.Printf("%s\n", err)
+						return nil
+					}
+					log.Printf("error generating task, exiting: %s\n", err)
 					return err
 				}
 			}
@@ -115,8 +129,7 @@ func generateTask(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if keyRange.ShardID == shardToID {
-		log.Printf("key range \"%s\" is already on shard \"%s\", not doing anything\n", keyRangeID, shardToID)
-		return nil
+		return fmt.Errorf("key range \"%s\" is already on shard \"%s\", not doing anything: %w", keyRangeID, shardToID, AlreadyDoneError{})
 	}
 	ds, err := c.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
@@ -186,4 +199,12 @@ func generateTask(_ *cobra.Command, _ []string) error {
 		Apply:     true,
 	})
 	return err
+}
+
+type AlreadyDoneError struct{}
+
+var _ error = AlreadyDoneError{}
+
+func (e AlreadyDoneError) Error() string {
+	return "key range already moved"
 }
