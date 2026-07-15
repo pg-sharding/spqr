@@ -220,7 +220,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		case qdb.Planned:
 			t := time.Now()
 			// Await all current virtual transactions on source shard to stop
-			if err := awaitPIDs(ctx, from); err != nil {
+			execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
+			defer cancel()
+			if err := awaitPIDsInternal(execCtx, from); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					_ = db.RemoveTransferTx(ctx, krg.ID)
 					return AwaitPIDError
@@ -871,15 +873,29 @@ func GetTableColumns(ctx context.Context, db Queryable, relationFQN *rfqn.Relati
 	return cols, nil
 }
 
-func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
-	execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
-	defer cancel()
+func AwaitPIDs(ctx context.Context, shardId string, executorId string) error {
+	connCfg, ok := shards.ShardsData[shardId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", shardId)
+	}
+	conn, err := GetMasterConnection(ctx, connCfg, executorId)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to source shard")
+		return err
+	}
+	defer func() {
+		_ = conn.Close(ctx)
+	}()
+	return awaitPIDsInternal(ctx, conn)
+}
+
+func awaitPIDsInternal(ctx context.Context, conn *pgx.Conn) error {
 	if config.CoordinatorConfig().EnableICP {
 		if err := icp.CheckControlPoint(nil, icp.AwaitPidCP); err != nil {
 			spqrlog.Zero.Info().Str("cp", icp.AwaitPidCP).Err(err).Msg("error while checking control point")
 		}
 	}
-	if _, err := conn.Exec(execCtx, getAwaitPIDsQuery()); err != nil {
+	if _, err := conn.Exec(ctx, getAwaitPIDsQuery()); err != nil {
 		return err
 	}
 	return nil
