@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -105,8 +106,15 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 		return r.params, nil
 	}
 
+	shardSnap := r.mShardPool.ShardMapping().Snap()
+	if len(shardSnap) == 0 {
+		return shard.ParameterSet{}, spqrerror.New(spqrerror.SPQR_NO_DATASHARD,
+			"no shards configured in the cluster: cannot serve client requests").
+			Hint("Add at least one shard using 'ADD SHARD' or configure shards in the router config file. Run 'SHOW shards' to verify.")
+	}
+
 	var anyK kr.ShardKey
-	for k := range r.mShardPool.ShardMapping().Snap() {
+	for k := range shardSnap {
 		anyK.Name = k
 		break
 	}
