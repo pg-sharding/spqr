@@ -741,7 +741,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			}
 		}
 		if err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to insert %s relation data: %s", relFullName, err)
 		}
 
 	}
