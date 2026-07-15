@@ -163,6 +163,27 @@ DROP KEY RANGE ALL;
  ds1-1
 (2 rows)
 
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN -1 AND 1 USING SHARDS sh1, sh2;
+ add key range 
+---------------
+ bound -> 0
+ bound -> -1
+(2 rows)
+
+SHOW key_ranges;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ ds1-0        | sh1      | ds1             | 0           | false
+ ds1-1        | sh2      | ds1             | -1          | false
+(2 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ ds1-0
+ ds1-1
+(2 rows)
+
 CREATE KEY RANGE kr1 FROM 100 ROUTE TO sh4 FOR DISTRIBUTION ds1;
  add key range 
 ---------------

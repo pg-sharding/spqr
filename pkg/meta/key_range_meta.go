@@ -326,8 +326,14 @@ func SplitEqualFullKeyRange(colTypes []string, shardsNumber int, customRange *kr
 					maxValue = upperBound[i].(int64)
 				}
 
-				delta := maxValue/int64(shardsNumber) - minValue/int64(shardsNumber)
-				lowerBound := minValue + delta*int64(shardsNumber-1-shInd)
+				const signBit = uint64(1) << 63
+				uMin := uint64(minValue) ^ signBit
+				uMax := uint64(maxValue) ^ signBit
+				span := uMax - uMin
+				step := span / uint64(shardsNumber)
+				uLower := uMin + step*uint64(shardsNumber-1-shInd)
+				lowerBound := int64(uLower ^ signBit)
+
 				bound[i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(bound[i], lowerBound)
 			default:
