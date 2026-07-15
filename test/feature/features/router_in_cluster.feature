@@ -78,3 +78,53 @@ Feature: Router in cluster test
       }
     ]
     """
+
+  Scenario: Rebootstrap works
+    When I run SQL on host "router-admin"
+    """
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTED RELATION test_table (id) IN ds1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW SHARDS_EXTENDED;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh1",
+        "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+      },
+      {
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+      }
+    ]
+    """
+
+    When I run SQL on host "router-admin"
+    """
+    ALTER SYSTEM REBOOTSTRAP;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW SHARDS_EXTENDED;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh1",
+        "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+      },
+      {
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+      }
+    ]
+    """
