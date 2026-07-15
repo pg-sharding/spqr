@@ -2,6 +2,11 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 CREATE DISTRIBUTION compositeds COLUMN TYPES integer, integer;
 CREATE DISTRIBUTION varchards COLUMN TYPES varchar;
 
+-- create key ranges for all shards by default
+CREATE KEY RANGES FOR DISTRIBUTION ds1;
+SHOW key_ranges;
+DROP KEY RANGE ALL;
+
 -- create key ranges for all shards
 CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
 SHOW key_ranges;
