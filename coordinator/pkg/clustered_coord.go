@@ -300,7 +300,7 @@ func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
 var _ connmgr.ConnectionMgr = &grpcConnMgr{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("router-id", r.ID).
 		Msg("dialing router")
 
@@ -482,7 +482,6 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 				switch resp.Status {
 				case proto.RouterStatus_CLOSED:
-					spqrlog.Zero.Debug().Msg("router is closed")
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
@@ -494,8 +493,6 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					}
 
 				case proto.RouterStatus_OPENED:
-					spqrlog.Zero.Debug().Msg("router is opened")
-
 					/* TODO: check router metadata consistency */
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
@@ -2692,7 +2689,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRouter *topology.Router) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
 
@@ -2871,11 +2868,6 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 				continue
 			}
 
-			spqrlog.Zero.Info().
-				Str("query", v.String).
-				Type("type", tstmt).
-				Msg("parsed statement is")
-
 			for _, stmt := range tstmt {
 				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
 				if err != nil {
@@ -2886,7 +2878,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 					if err := cli.ReplyTTS(tts); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("processing error")
 					} else {
-						spqrlog.Zero.Debug().Msg("processed OK")
+						spqrlog.Zero.Trace().Msg("processed OK")
 					}
 				}
 			}

@@ -214,7 +214,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 
 	for tx != nil {
 
-		spqrlog.Zero.Debug().Time("time", time.Now()).Str("key range id", krg.ID).Str("tx status", string(tx.Status)).Msg("Move keys  iteration")
+		spqrlog.Zero.Info().Time("time", time.Now()).Str("key range id", krg.ID).Str("tx status", string(tx.Status)).Msg("Move keys iteration")
 
 		switch tx.Status {
 		case qdb.Planned:
@@ -292,6 +292,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if err != nil {
 					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: error executing DELETE FROM: %s", err)
 				}
+				spqrlog.Zero.Info().Str("relation", rel.QualifiedName().String()).Msg("deleted data from dest shard")
 			}
 			if config.CoordinatorConfig().UseSPQRGuard {
 				if _, err := ftx.Exec(ctx, DeleteKeyRangeMeta, krg.ID); err != nil {
@@ -744,6 +745,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to insert %s relation data: %s", relFullName, err)
 		}
 
+		spqrlog.Zero.Info().Str("key range id", krg.ID).Str("relation", relFullName).Msg("copied relation data for key range move")
 	}
 	if config.CoordinatorConfig().UseSPQRGuard {
 		if _, err := tx.Exec(ctx, InsertKeyRangeMeta, krg.ID); err != nil {
