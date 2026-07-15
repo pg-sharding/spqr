@@ -33,6 +33,11 @@ type KeyRange struct {
 	Version      int
 }
 
+type CustomDataTypeRange struct {
+	LowerBound KeyRangeBound
+	UpperBound KeyRangeBound
+}
+
 /*
 * Old style key ranges comparison
  */
@@ -575,4 +580,33 @@ func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, up
 		}
 	}
 	return strings.Join(buf, " AND "), nil
+}
+
+func CustomDataTypeRangeFromSQL(colTypes []string, customRange *spqrparser.CustomDistributionRange) (*CustomDataTypeRange, error) {
+	if customRange == nil {
+		return nil, nil
+	}
+
+	lowerBound := KeyRange{
+		ColumnTypes: colTypes,
+		LowerBound:  make(KeyRangeBound, len(colTypes)),
+	}
+	upperBound := KeyRange{
+		ColumnTypes: colTypes,
+		LowerBound:  make(KeyRangeBound, len(colTypes)),
+	}
+
+	for i := range colTypes {
+		if err := lowerBound.InFuncSQL(i, customRange.LowerBound.Pivots[i]); err != nil {
+			return nil, err
+		}
+		if err := upperBound.InFuncSQL(i, customRange.UpperBound.Pivots[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	return &CustomDataTypeRange{
+		LowerBound: lowerBound.LowerBound,
+		UpperBound: upperBound.LowerBound,
+	}, nil
 }
