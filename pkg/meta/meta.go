@@ -1978,7 +1978,7 @@ func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
+	spqrlog.Zero.Trace().Str("cmd", stmt.Cmd).Msg("process virtual show statement")
 
 	tts, err := processShowInner(ctx, stmt, mngr, ci, ro)
 	if err != nil {
@@ -2020,7 +2020,6 @@ func processShowInner(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:
