@@ -306,6 +306,7 @@ libldap
 libp
 libpam
 libpq
+libprotobuf
 libreadline
 Linting
 localrouter
@@ -629,7 +630,6 @@ tpcc
 tracelog
 tran
 transferworker
-TRASCE
 truncatable
 tsa
 TSEMICOLON
@@ -687,7 +687,6 @@ worldmock
 wrongpassword
 xact
 XDC
-xerrors
 xjoin
 xmove
 xmovestr
