@@ -34,6 +34,8 @@ SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execu
 DROP TABLE sh2.tlt1;
 DROP SCHEMA sh2;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 

@@ -155,5 +155,7 @@ DROP TABLE ui3;
 -- XXX: fix
 DROP TABLE ch3;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

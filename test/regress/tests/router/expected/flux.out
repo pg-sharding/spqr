@@ -83,6 +83,12 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM spqr_metadata.spqr_local_key_ranges  /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 SELECT __spqr__console_execute('UNLOCK KEY RANGE k0; DROP DISTRIBUTION ALL CASCADE');
  distribution_id 
 -----------------

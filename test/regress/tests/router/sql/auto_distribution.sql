@@ -63,6 +63,8 @@ DROP TABLE zz2;
 DROP TABLE d_zz;
 DROP TABLE d_zz2;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
 \c spqr-console
 
 DROP DISTRIBUTION ALL CASCADE;

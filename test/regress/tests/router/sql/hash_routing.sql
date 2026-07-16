@@ -68,5 +68,7 @@ SELECT * FROM xxhashuuid ORDER BY id /* __spqr__execute_on: sh2 */;
 --TEARDOWN
 DROP TABLE xxhash;
 DROP TABLE xxhashuuid;
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

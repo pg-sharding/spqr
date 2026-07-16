@@ -102,5 +102,7 @@ RESET __spqr__target_session_attrs;
 
 DROP TABLE tsa_test;
 
+DELETE FROM spqr_metadata.spqr_distributed_relations;
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

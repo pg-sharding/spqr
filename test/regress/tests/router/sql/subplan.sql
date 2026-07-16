@@ -31,6 +31,8 @@ SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 t WHERE t.i = 201;
 DROP TABLE table1;
 DROP TABLE ref_rel_1;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 

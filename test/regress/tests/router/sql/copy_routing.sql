@@ -150,5 +150,7 @@ DROP TABLE copy_test;
 DROP TABLE copy_test_mult;
 DROP TABLE copy_test_multi_multi;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

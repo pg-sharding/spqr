@@ -120,5 +120,7 @@ SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh4*/;
 DROP TABLE mcol_sh;
 DROP TABLE mcol_dt;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

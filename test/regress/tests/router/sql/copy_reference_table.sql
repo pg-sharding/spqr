@@ -32,6 +32,8 @@ TABLE test_ref_rel_2 /* __spqr__execute_on: sh2 */;
 DROP TABLE test_ref_rel;
 DROP TABLE test_ref_rel_2;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 

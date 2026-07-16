@@ -82,6 +82,8 @@ WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
 
 DROP TABLE table1 CASCADE;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 

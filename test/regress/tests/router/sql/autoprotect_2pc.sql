@@ -37,4 +37,6 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 SELECT __spqr__set_next_2pc_gid('drop_table_gid');
 DROP TABLE ref_2pc;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');

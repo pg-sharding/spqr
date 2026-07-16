@@ -20,5 +20,6 @@ DROP TABLE sh1.r, sh1.r2, sh2.r;
 DROP SCHEMA sh1;
 DROP SCHEMA sh2;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');

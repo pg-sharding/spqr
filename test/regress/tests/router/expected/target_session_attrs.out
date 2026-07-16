@@ -241,6 +241,14 @@ SHOW __spqr__target_session_attrs;
 RESET __spqr__target_session_attrs;
 DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1
+DELETE FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

@@ -159,6 +159,7 @@ DROP SCHEMA sh1;
 DROP TABLE test_ref_rel_part;
 DROP TABLE test_distr_ref_rel;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_reference_relations;
 
 \c spqr-console
 SHOW reference_relations;

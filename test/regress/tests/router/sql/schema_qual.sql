@@ -57,6 +57,7 @@ DROP SCHEMA sh2;
 SET __spqr__maintain_params TO false;
 SET search_path TO 'public';
 
-\c spqr-console
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 
+\c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
