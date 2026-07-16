@@ -4,8 +4,7 @@ NAME
     to a distribution in a single statement.
 
 SYNTAX
-    CREATE [DISTRIBUTED] TABLE [schema.]<table_name> (<keys>)
-      [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
+    CREATE [DISTRIBUTED] TABLE [schema.]<table_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
 
 DESCRIPTION
     This command is a shorthand for [ALTER DISTRIBUTION ATTACH
@@ -34,8 +33,7 @@ EXAMPLES
     Schema-qualified table name:
         CREATE DISTRIBUTED TABLE sh1.r (i) IN d;
     DISTRIBUTION KEY syntax:
-        CREATE DISTRIBUTED TABLE xx DISTRIBUTION KEY col1, col2
-          HASH FUNCTION MURMUR IN ds1;
+        CREATE DISTRIBUTED TABLE xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
     Composite key without hash using DISTRIBUTION KEY syntax:
         CREATE DISTRIBUTED TABLE copy_test (id1, id2) IN ds2;
 
