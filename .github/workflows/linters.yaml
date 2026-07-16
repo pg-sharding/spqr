@@ -35,10 +35,6 @@ jobs:
         with:
           fetch-depth: 1
           submodules: true
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.26.0'
-          cache: true
       - name: check proto generated code
         run: make generate && git diff --exit-code
 
