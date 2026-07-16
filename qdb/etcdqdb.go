@@ -430,7 +430,6 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*Ke
 
 // TODO : unit tests
 func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
 	t := time.Now()
 
@@ -446,7 +445,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	for _, kv := range resp.Responses[1].GetResponseRange().Kvs {
 		id := string(kv.Key[len(keyRangeLockNamespace())+1:])
 		locks[id] = string(kv.Value) == "locked"
-		spqrlog.Zero.Debug().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("got lock")
+		spqrlog.Zero.Trace().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("acquire lock")
 	}
 
 	versions := make(map[string]int)
@@ -476,7 +475,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version))
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Interface("response", resp).
 		Msg("etcdqdb: list all key ranges")
 
@@ -599,7 +598,7 @@ func (q *EtcdQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 	for _, v := range resp.Kvs {
 		etcdKey := string(v.Key)
 		if strings.Index(etcdKey, krLockNs+"/") != 0 {
-			return nil, fmt.Errorf("invalid key in etcd lock namespace:%s", etcdKey)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid key in etcd lock namespace:%s", etcdKey)
 		}
 		result = append(result, etcdKey[len(krLockNs)+1:])
 	}
@@ -801,7 +800,7 @@ func (q *EtcdQDB) UpdateCoordinator(_ context.Context, _ string) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Msg("etcdqdb: get coordinator addr")
 
 	resp, err := q.cli.Get(ctx, coordLockKey)
@@ -825,7 +824,7 @@ func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
 
 // TODO : unit tests
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("id", r.ID).
 		Str("address", r.Address).
 		Str("state", string(r.State)).
@@ -867,7 +866,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("id", id).
 		Msg("etcdqdb: drop router")
 
@@ -888,15 +887,13 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) DeleteRouterAll(ctx context.Context) error {
-	spqrlog.Zero.Debug().
-		Msg("etcdqdb: unregister all routers")
 
 	resp, err := q.cli.Delete(ctx, routerNodePath(""), clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Interface("response", resp).
 		Msg("etcdqdb: unregister all routers")
 
@@ -905,7 +902,7 @@ func (q *EtcdQDB) DeleteRouterAll(ctx context.Context) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("id", id).
 		Msg("etcdqdb: open router")
 	getResp, err := q.cli.Get(ctx, routerNodePath(id))
@@ -933,8 +930,6 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	}
 
 	if routers[0].State == OPENED {
-		spqrlog.Zero.Debug().
-			Msg("etcdqdb: router already opened, nothing to do here")
 		return nil
 	}
 
@@ -949,7 +944,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 		return err
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Interface("response", resp).
 		Msg("etcdqdb: put router to qdb")
 
@@ -984,8 +979,6 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 	}
 
 	if routers[0].State == CLOSED {
-		spqrlog.Zero.Debug().
-			Msg("etcdqdb: router already closed, nothing to do here")
 		return nil
 	}
 
@@ -1009,7 +1002,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
-	spqrlog.Zero.Trace().Msg("etcdqdb: list routers")
+
 	t := time.Now()
 	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())
 	if err != nil {
@@ -1047,10 +1040,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 
 // TODO : unit tests
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
-	spqrlog.Zero.Trace().
-		Str("id", shard.ID).
-		Strs("hosts", shard.RawHosts).
-		Msg("etcdqdb: add shard")
+
 	t := time.Now()
 
 	bytes, err := json.Marshal(shard)
