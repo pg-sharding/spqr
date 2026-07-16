@@ -307,9 +307,12 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  insufficient data in routing tuple
 DROP TABLE copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE copy_test_mult;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE copy_test_multi_multi;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

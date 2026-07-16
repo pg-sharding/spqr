@@ -74,8 +74,18 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
  auto_zzz5 | Done
 (4 rows)
 
+SELECT __spqr__set_next_2pc_gid('drop_table_gid');
 DROP TABLE ref_2pc;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: prepare tx drop_table_gid on spqr_shard_1:6432
+NOTICE: prepare tx drop_table_gid on spqr_shard_2:6432
+NOTICE: prepare tx drop_table_gid on spqr_shard_3:6432
+NOTICE: prepare tx drop_table_gid on spqr_shard_4:6432
+NOTICE: commit prepared tx drop_table_gid on spqr_shard_1:6432
+NOTICE: commit prepared tx drop_table_gid on spqr_shard_2:6432
+NOTICE: commit prepared tx drop_table_gid on spqr_shard_3:6432
+NOTICE: commit prepared tx drop_table_gid on spqr_shard_4:6432
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');
  distribution_id 
 -----------------

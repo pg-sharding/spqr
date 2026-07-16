@@ -153,6 +153,7 @@ ERROR:  failed to match key with ranges
 QUERY:  SELECT * FROM nr_table1 WHERE i = -100;
 DROP TABLE nr_table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

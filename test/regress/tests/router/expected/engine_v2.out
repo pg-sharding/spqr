@@ -121,6 +121,7 @@ ERROR:  too complex query to route
 QUERY:  WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
 DROP TABLE table1 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

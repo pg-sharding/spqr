@@ -127,7 +127,7 @@ SELECT 1 FROM test_unmatch;
 
 DROP TABLE test;
 DROP TABLE test_h;
-DROP TABLE test_unmatch;
+DROP TABLE test_unmatch /* __spqr__scatter_query: true */;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

@@ -117,9 +117,12 @@ NOTICE: send query to shard(s) : sh2
  11
 (1 row)
 
-DROP SCHEMA sh1 CASCADE;
+DROP TABLE sh1.r, sh2.r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-DROP SCHEMA sh2 CASCADE;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP SCHEMA sh1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP SCHEMA sh2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__maintain_params TO false;
 SET search_path TO 'public';

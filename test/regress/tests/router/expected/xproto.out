@@ -74,7 +74,9 @@ NOTICE: send query to shard(s) : sh1
 
 DROP TABLE d_p_exec;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ref_p_exec;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');
  distribution_id 

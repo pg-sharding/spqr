@@ -466,13 +466,17 @@ SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
 
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE sh1.test_ref_rel_rel;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP SCHEMA sh1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test_ref_rel_part;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test_distr_ref_rel;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 SHOW reference_relations;

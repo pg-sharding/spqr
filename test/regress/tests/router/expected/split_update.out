@@ -141,6 +141,7 @@ ERROR:  expression is not const
 QUERY:  UPDATE r SET i = i + 1 WHERE i = 10;
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

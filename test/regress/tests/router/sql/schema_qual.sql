@@ -49,8 +49,10 @@ SELECT * FROM r WHERE i = 11;
 SELECT * FROM sh1.r WHERE i = 1;
 SELECT * FROM sh2.r WHERE i = 11;
 
-DROP SCHEMA sh1 CASCADE;
-DROP SCHEMA sh2 CASCADE;
+DROP TABLE sh1.r, sh2.r;
+
+DROP SCHEMA sh1;
+DROP SCHEMA sh2;
 
 SET __spqr__maintain_params TO false;
 SET search_path TO 'public';

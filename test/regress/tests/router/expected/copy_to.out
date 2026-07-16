@@ -18,5 +18,5 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 8
 9
 12
-DROP TABLE copy_to_test;
+DROP TABLE copy_to_test /* __spqr__scatter_query: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

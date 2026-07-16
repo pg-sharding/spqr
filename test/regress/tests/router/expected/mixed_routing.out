@@ -135,6 +135,7 @@ NOTICE: send query to shard(s) : sh2
 
 DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 -- check that uuid type works
 CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
@@ -216,6 +217,7 @@ INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
 ERROR:  invalid UUID format
 QUERY:  INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
 DROP TABLE xxmixeduuid;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

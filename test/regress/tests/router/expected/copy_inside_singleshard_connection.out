@@ -88,6 +88,7 @@ NOTICE: send query to shard(s) : sh2
 
 DROP TABLE IF EXISTS copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

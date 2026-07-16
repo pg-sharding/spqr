@@ -108,6 +108,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 DROP TABLE r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
