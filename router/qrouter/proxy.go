@@ -58,7 +58,7 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 
 	rm.SetRO(ro)
 
-	/* If were not asked for actual query routing, exit */
+	/* If we were not asked for actual query routing, exit */
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		mp := qr.tmgr.Snap()
 		if len(mp) == 1 {
