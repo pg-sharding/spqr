@@ -10,6 +10,7 @@ frontend_rules:
     auth_rule:
       auth_method: ok
 
+data_move_optimistic_pid_await: false
 forbid_direct_shard_queries: true
 use_spqrguard: true
 enable_icp: true
