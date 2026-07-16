@@ -1560,7 +1560,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Issuer: issuer,
 		}
 	}
-	spqrlog.Zero.Trace().Str("taskGroup", taskGroup.ID).Str("key range", taskGroup.CurrentTask.KridTemp).Msg("batch move key range from task group")
+	spqrlog.Zero.Trace().Str("taskGroup", taskGroup.ID).Interface("key range", taskGroup.CurrentTask).Msg("batch move key range from task group")
 
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
