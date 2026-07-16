@@ -1248,6 +1248,8 @@ func ProcMetadataCommand(ctx context.Context,
 		return processAlter(ctx, stmt.Element, mgr)
 	case *spqrparser.RedistributeKeyRange:
 		return processRedistribute(ctx, stmt, mgr, icpCH)
+	case *spqrparser.RebalanceDistribution:
+		return processRebalanceDistribution(ctx, stmt, mgr)
 	case *spqrparser.Invalidate:
 
 		tts := &tupleslot.TupleTableSlot{
@@ -2330,6 +2332,37 @@ func processRedistribute(ctx context.Context,
 		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID))
 	tts.WriteDataRow(
 		fmt.Sprintf("batch size           -> %d", stmt.BatchSize))
+
+	return tts, nil
+}
+
+func processRebalanceDistribution(
+	ctx context.Context,
+	stmt *spqrparser.RebalanceDistribution,
+	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().
+		Str("distribution id", stmt.Distribution.ID).
+		Strs("shards", stmt.Shards).
+		Msg("process rebalance distribution")
+
+	dist, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
+	if err != nil {
+		return nil, err
+	}
+	customDataTypeRange, err := kr.CustomDataTypeRangeFromSQL(dist.ColTypes, stmt.DataKeyRange)
+	if err != nil {
+		return nil, err
+	}
+	if err := mngr.RebalanceDistribution(ctx, stmt.Distribution.ID, customDataTypeRange, stmt.Shards); err != nil {
+		return nil, err
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("rebalance distribution"),
+	}
+
+	tts.WriteDataRow(
+		fmt.Sprintf("distribution id         -> %s", stmt.Distribution.ID))
 
 	return tts, nil
 }

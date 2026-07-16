@@ -1,0 +1,134 @@
+REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+          register router           
+------------------------------------
+ router -> r1-[regress_router]:7000
+(1 row)
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid4 FROM 900 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 900
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 600 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 600
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+REBALANCE DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+     rebalance distribution     
+--------------------------------
+ distribution id         -> ds1
+(1 row)
+
+SHOW KEY_RANGES(shard_id, lower_bound);
+ shard_id | lower_bound 
+----------+-------------
+ sh1      | 0
+ sh2      | 250
+ sh3      | 500
+ sh4      | 750
+(4 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr-ds1-0
+ kr-ds1-1
+ kr-ds1-2
+ kr-ds1-3
+(4 rows)
+
+CREATE KEY RANGE krid3 FROM 600 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 600
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+REBALANCE DISTRIBUTION ds1 USING ALL SHARDS;
+     rebalance distribution     
+--------------------------------
+ distribution id         -> ds1
+(1 row)
+
+SHOW KEY_RANGES(shard_id, lower_bound);
+ shard_id |     lower_bound      
+----------+----------------------
+ sh1      | -9223372036854775808
+ sh2      | -4611686018427387905
+ sh3      | -2
+ sh4      | 4611686018427387901
+(4 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr-ds1-0
+ kr-ds1-1
+ kr-ds1-2
+ kr-ds1-3
+(4 rows)
+
+REBALANCE DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+     rebalance distribution     
+--------------------------------
+ distribution id         -> ds1
+(1 row)
+
+SHOW KEY_RANGES;
+ key_range_id | shard_id | distribution_id |     lower_bound      | locked 
+--------------+----------+-----------------+----------------------+--------
+ kr-ds1-0     | sh1      | ds1             | -9223372036854775808 | false
+ kr-ds1-1     | sh2      | ds1             | -1                   | false
+(2 rows)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr-ds1-0
+ kr-ds1-1
+(2 rows)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
+UNREGISTER ROUTER ALL;
+ unregister router 
+-------------------
+ router id -> *
+(1 row)
+

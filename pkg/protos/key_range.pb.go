@@ -1092,6 +1092,58 @@ func (x *RedistributeKeyRangeRequest) GetTaskGroupId() string {
 	return ""
 }
 
+type RebalanceDistributionRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	DistributionId string                 `protobuf:"bytes,1,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
+	Shards         []string               `protobuf:"bytes,2,rep,name=shards,proto3" json:"shards,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RebalanceDistributionRequest) Reset() {
+	*x = RebalanceDistributionRequest{}
+	mi := &file_protos_key_range_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RebalanceDistributionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RebalanceDistributionRequest) ProtoMessage() {}
+
+func (x *RebalanceDistributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_key_range_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RebalanceDistributionRequest.ProtoReflect.Descriptor instead.
+func (*RebalanceDistributionRequest) Descriptor() ([]byte, []int) {
+	return file_protos_key_range_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RebalanceDistributionRequest) GetDistributionId() string {
+	if x != nil {
+		return x.DistributionId
+	}
+	return ""
+}
+
+func (x *RebalanceDistributionRequest) GetShards() []string {
+	if x != nil {
+		return x.Shards
+	}
+	return nil
+}
+
 type RenameKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyRangeId    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
@@ -1102,7 +1154,7 @@ type RenameKeyRangeRequest struct {
 
 func (x *RenameKeyRangeRequest) Reset() {
 	*x = RenameKeyRangeRequest{}
-	mi := &file_protos_key_range_proto_msgTypes[18]
+	mi := &file_protos_key_range_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1114,7 +1166,7 @@ func (x *RenameKeyRangeRequest) String() string {
 func (*RenameKeyRangeRequest) ProtoMessage() {}
 
 func (x *RenameKeyRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[18]
+	mi := &file_protos_key_range_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1127,7 +1179,7 @@ func (x *RenameKeyRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameKeyRangeRequest.ProtoReflect.Descriptor instead.
 func (*RenameKeyRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{18}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RenameKeyRangeRequest) GetKeyRangeId() string {
@@ -1210,7 +1262,10 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\x05check\x18\x04 \x01(\bR\x05check\x12\x14\n" +
 	"\x05apply\x18\x05 \x01(\bR\x05apply\x12\x16\n" +
 	"\x06noWait\x18\x06 \x01(\bR\x06noWait\x12 \n" +
-	"\vtaskGroupId\x18\a \x01(\tR\vtaskGroupId\"m\n" +
+	"\vtaskGroupId\x18\a \x01(\tR\vtaskGroupId\"f\n" +
+	"\x1cRebalanceDistributionRequest\x12.\n" +
+	"\x0edistributionId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0edistributionId\x12\x16\n" +
+	"\x06shards\x18\x02 \x03(\tR\x06shards\"m\n" +
 	"\x15RenameKeyRangeRequest\x12&\n" +
 	"\n" +
 	"keyRangeId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -1222,7 +1277,7 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\tAVAILABLE\x10\x01*K\n" +
 	"\x15RedistributeLimitType\x12\x17\n" +
 	"\x13RedistributeAllKeys\x10\x00\x12\x19\n" +
-	"\x15RedistributeKeysLimit\x10\x012\xf5\b\n" +
+	"\x15RedistributeKeysLimit\x10\x012\xcc\t\n" +
 	"\x0fKeyRangeService\x12>\n" +
 	"\vGetKeyRange\x12\x18.spqr.GetKeyRangeRequest\x1a\x13.spqr.KeyRangeReply\"\x00\x12@\n" +
 	"\fListKeyRange\x12\x19.spqr.ListKeyRangeRequest\x1a\x13.spqr.KeyRangeReply\"\x00\x12A\n" +
@@ -1238,7 +1293,8 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\fMoveKeyRange\x12\x19.spqr.MoveKeyRangeRequest\x1a\x11.spqr.ModifyReply\"\x00\x12M\n" +
 	"\x0fResolveKeyRange\x12\x1c.spqr.ResolveKeyRangeRequest\x1a\x1a.spqr.ResolveKeyRangeReply\"\x00\x12M\n" +
 	"\x11BatchMoveKeyRange\x12\x1e.spqr.BatchMoveKeyRangeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12S\n" +
-	"\x14RedistributeKeyRange\x12!.spqr.RedistributeKeyRangeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n" +
+	"\x14RedistributeKeyRange\x12!.spqr.RedistributeKeyRangeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12U\n" +
+	"\x15RebalanceDistribution\x12\".spqr.RebalanceDistributionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n" +
 	"\x0eRenameKeyRange\x12\x1b.spqr.RenameKeyRangeRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
 	"spqr/protob\x06proto3"
 
@@ -1255,50 +1311,51 @@ func file_protos_key_range_proto_rawDescGZIP() []byte {
 }
 
 var file_protos_key_range_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_protos_key_range_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_protos_key_range_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_protos_key_range_proto_goTypes = []any{
-	(KeyRangeStatus)(0),                 // 0: spqr.KeyRangeStatus
-	(RedistributeLimitType)(0),          // 1: spqr.RedistributeLimitType
-	(*KeyRangeInfo)(nil),                // 2: spqr.KeyRangeInfo
-	(*ListKeyRangeRequest)(nil),         // 3: spqr.ListKeyRangeRequest
-	(*CreateKeyRangeRequest)(nil),       // 4: spqr.CreateKeyRangeRequest
-	(*SplitKeyRangeRequest)(nil),        // 5: spqr.SplitKeyRangeRequest
-	(*MergeKeyRangeRequest)(nil),        // 6: spqr.MergeKeyRangeRequest
-	(*MoveKeyRangeRequest)(nil),         // 7: spqr.MoveKeyRangeRequest
-	(*DropKeyRangeRequest)(nil),         // 8: spqr.DropKeyRangeRequest
-	(*DropAllKeyRangesResponse)(nil),    // 9: spqr.DropAllKeyRangesResponse
-	(*LockKeyRangeRequest)(nil),         // 10: spqr.LockKeyRangeRequest
-	(*UnlockKeyRangeRequest)(nil),       // 11: spqr.UnlockKeyRangeRequest
-	(*KeyRangeReply)(nil),               // 12: spqr.KeyRangeReply
-	(*KeyRangeLocksReply)(nil),          // 13: spqr.KeyRangeLocksReply
-	(*ModifyReply)(nil),                 // 14: spqr.ModifyReply
-	(*ResolveKeyRangeRequest)(nil),      // 15: spqr.ResolveKeyRangeRequest
-	(*ResolveKeyRangeReply)(nil),        // 16: spqr.ResolveKeyRangeReply
-	(*GetKeyRangeRequest)(nil),          // 17: spqr.GetKeyRangeRequest
-	(*BatchMoveKeyRangeRequest)(nil),    // 18: spqr.BatchMoveKeyRangeRequest
-	(*RedistributeKeyRangeRequest)(nil), // 19: spqr.RedistributeKeyRangeRequest
-	(*RenameKeyRangeRequest)(nil),       // 20: spqr.RenameKeyRangeRequest
-	(*KeyRangeBound)(nil),               // 21: spqr.KeyRangeBound
-	(SplitType)(0),                      // 22: spqr.SplitType
-	(*MoveTaskGroupIssuer)(nil),         // 23: spqr.MoveTaskGroupIssuer
-	(*emptypb.Empty)(nil),               // 24: google.protobuf.Empty
+	(KeyRangeStatus)(0),                  // 0: spqr.KeyRangeStatus
+	(RedistributeLimitType)(0),           // 1: spqr.RedistributeLimitType
+	(*KeyRangeInfo)(nil),                 // 2: spqr.KeyRangeInfo
+	(*ListKeyRangeRequest)(nil),          // 3: spqr.ListKeyRangeRequest
+	(*CreateKeyRangeRequest)(nil),        // 4: spqr.CreateKeyRangeRequest
+	(*SplitKeyRangeRequest)(nil),         // 5: spqr.SplitKeyRangeRequest
+	(*MergeKeyRangeRequest)(nil),         // 6: spqr.MergeKeyRangeRequest
+	(*MoveKeyRangeRequest)(nil),          // 7: spqr.MoveKeyRangeRequest
+	(*DropKeyRangeRequest)(nil),          // 8: spqr.DropKeyRangeRequest
+	(*DropAllKeyRangesResponse)(nil),     // 9: spqr.DropAllKeyRangesResponse
+	(*LockKeyRangeRequest)(nil),          // 10: spqr.LockKeyRangeRequest
+	(*UnlockKeyRangeRequest)(nil),        // 11: spqr.UnlockKeyRangeRequest
+	(*KeyRangeReply)(nil),                // 12: spqr.KeyRangeReply
+	(*KeyRangeLocksReply)(nil),           // 13: spqr.KeyRangeLocksReply
+	(*ModifyReply)(nil),                  // 14: spqr.ModifyReply
+	(*ResolveKeyRangeRequest)(nil),       // 15: spqr.ResolveKeyRangeRequest
+	(*ResolveKeyRangeReply)(nil),         // 16: spqr.ResolveKeyRangeReply
+	(*GetKeyRangeRequest)(nil),           // 17: spqr.GetKeyRangeRequest
+	(*BatchMoveKeyRangeRequest)(nil),     // 18: spqr.BatchMoveKeyRangeRequest
+	(*RedistributeKeyRangeRequest)(nil),  // 19: spqr.RedistributeKeyRangeRequest
+	(*RebalanceDistributionRequest)(nil), // 20: spqr.RebalanceDistributionRequest
+	(*RenameKeyRangeRequest)(nil),        // 21: spqr.RenameKeyRangeRequest
+	(*KeyRangeBound)(nil),                // 22: spqr.KeyRangeBound
+	(SplitType)(0),                       // 23: spqr.SplitType
+	(*MoveTaskGroupIssuer)(nil),          // 24: spqr.MoveTaskGroupIssuer
+	(*emptypb.Empty)(nil),                // 25: google.protobuf.Empty
 }
 var file_protos_key_range_proto_depIdxs = []int32{
-	21, // 0: spqr.KeyRangeInfo.bound:type_name -> spqr.KeyRangeBound
+	22, // 0: spqr.KeyRangeInfo.bound:type_name -> spqr.KeyRangeBound
 	2,  // 1: spqr.CreateKeyRangeRequest.key_range_info:type_name -> spqr.KeyRangeInfo
 	2,  // 2: spqr.DropAllKeyRangesResponse.key_range:type_name -> spqr.KeyRangeInfo
 	2,  // 3: spqr.KeyRangeReply.key_ranges_info:type_name -> spqr.KeyRangeInfo
 	1,  // 4: spqr.BatchMoveKeyRangeRequest.limitType:type_name -> spqr.RedistributeLimitType
-	22, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
-	23, // 6: spqr.BatchMoveKeyRangeRequest.issuer:type_name -> spqr.MoveTaskGroupIssuer
+	23, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
+	24, // 6: spqr.BatchMoveKeyRangeRequest.issuer:type_name -> spqr.MoveTaskGroupIssuer
 	17, // 7: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
 	3,  // 8: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
-	24, // 9: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
-	24, // 10: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
+	25, // 9: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
+	25, // 10: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
 	10, // 11: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
 	4,  // 12: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
 	8,  // 13: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
-	24, // 14: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
+	25, // 14: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
 	11, // 15: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
 	5,  // 16: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
 	6,  // 17: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
@@ -1306,25 +1363,27 @@ var file_protos_key_range_proto_depIdxs = []int32{
 	15, // 19: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
 	18, // 20: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
 	19, // 21: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
-	20, // 22: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
-	12, // 23: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
-	12, // 24: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
-	12, // 25: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
-	13, // 26: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
-	14, // 27: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
-	14, // 28: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
-	14, // 29: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
-	9,  // 30: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
-	14, // 31: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
-	14, // 32: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
-	14, // 33: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
-	14, // 34: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
-	16, // 35: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
-	24, // 36: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
-	24, // 37: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
-	24, // 38: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
-	23, // [23:39] is the sub-list for method output_type
-	7,  // [7:23] is the sub-list for method input_type
+	20, // 22: spqr.KeyRangeService.RebalanceDistribution:input_type -> spqr.RebalanceDistributionRequest
+	21, // 23: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
+	12, // 24: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
+	12, // 25: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
+	12, // 26: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
+	13, // 27: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
+	14, // 28: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
+	14, // 29: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
+	14, // 30: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
+	9,  // 31: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
+	14, // 32: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
+	14, // 33: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
+	14, // 34: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
+	14, // 35: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
+	16, // 36: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
+	25, // 37: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
+	25, // 38: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
+	25, // 39: spqr.KeyRangeService.RebalanceDistribution:output_type -> google.protobuf.Empty
+	25, // 40: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
+	24, // [24:41] is the sub-list for method output_type
+	7,  // [7:24] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name
@@ -1342,7 +1401,7 @@ func file_protos_key_range_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_key_range_proto_rawDesc), len(file_protos_key_range_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

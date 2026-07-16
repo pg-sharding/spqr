@@ -540,6 +540,36 @@ func TestRedistribute(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards: []string{"*"},
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING ALL SHARDS",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards: []string{"*"},
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING SHARDS sh1, sh2",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards: []string{"sh1", "sh2"},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

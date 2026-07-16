@@ -2369,6 +2369,183 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 	}
 }
 
+// RebalanceDistribution recalculates key ranges for the given distribution,
+// splitting the whole data range into even key ranges and distributing them
+// among the provided shards. If shards contains "*", all available shards are used.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the operation.
+//   - distributionID (string): The ID of the distribution to rebalance.
+//   - shards ([]string): The shard IDs to distribute key ranges among. Use ["*"] for all shards.
+//
+// Returns:
+//   - error: An error if the rebalance fails.
+func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, dataRange *kr.CustomDataTypeRange, shards []string) error {
+	ds, err := qc.GetDistribution(ctx, distributionID)
+	if err != nil {
+		return fmt.Errorf("failed to get distribution: %s", err)
+	}
+
+	var shardIDs []string
+	if len(shards) == 1 && shards[0] == "*" {
+		allShards, err := qc.ListShards(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list shards: %s", err)
+		}
+		for _, sh := range allShards {
+			shardIDs = append(shardIDs, sh.ID)
+		}
+	} else {
+		shardIDs = shards
+	}
+
+	if len(shardIDs) == 0 {
+		return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "no shards available for rebalance")
+	}
+
+	sort.Strings(shardIDs)
+
+	existingKRs, err := qc.ListKeyRanges(ctx, distributionID)
+	if err != nil {
+		return fmt.Errorf("failed to list key ranges: %s", err)
+	}
+
+	newKrs, err := meta.SplitEqualFullKeyRange(ds.ColTypes, len(shardIDs), dataRange)
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(existingKRs, func(i, j int) bool {
+		return kr.CmpRangesLess(existingKRs[i].LowerBound, existingKRs[j].LowerBound, ds.ColTypes)
+	})
+	sort.Slice(newKrs, func(i, j int) bool {
+		return kr.CmpRangesLess(newKrs[i], newKrs[j], ds.ColTypes)
+	})
+
+	krId := func(i int) string {
+		return fmt.Sprintf("kr-%s-%d", ds.Id, i)
+	}
+
+	tranmngr := meta.NewTranEntityManager(qc)
+	newKrInd := 0
+	batchSize := 128
+
+	existingKrInd := len(existingKRs) - 1
+	if err := tranmngr.BeginTran(ctx); err != nil {
+		return err
+	}
+	for i := len(newKrs) - 1; i >= 0; i-- {
+		for existingKrInd >= 0 && kr.CmpRangesLess(newKrs[i], existingKRs[existingKrInd].LowerBound, ds.ColTypes) {
+			existingKrInd--
+		}
+
+		if existingKrInd < 0 {
+			err := tranmngr.CreateKeyRange(ctx, &kr.KeyRange{
+				LowerBound:   newKrs[i],
+				ShardID:      shardIDs[i],
+				Distribution: ds.Id,
+				ColumnTypes:  ds.ColTypes,
+				ID:           krId(i),
+			}, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if err := tranmngr.CommitTran(ctx); err != nil {
+		return err
+	}
+
+	for i := 0; i < len(existingKRs); {
+		lowerBound := existingKRs[i].LowerBound
+
+		for newKrInd < len(newKrs) {
+			if kr.CmpRangesLess(lowerBound, newKrs[newKrInd], ds.ColTypes) {
+				break
+			}
+			newKrInd++
+		}
+
+		k := i
+		if newKrInd < len(newKrs) {
+			for ; k < len(existingKRs); k++ {
+				if kr.CmpRangesLess(newKrs[newKrInd], existingKRs[k].LowerBound, ds.ColTypes) {
+					break
+				}
+			}
+		} else {
+			k = len(existingKRs)
+		}
+
+		for ; i < k-1; i++ {
+			if err := qc.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+				KeyRangeID: existingKRs[i].ID,
+				ShardID:    shardIDs[newKrInd-1],
+				BatchSize:  batchSize,
+				Apply:      true,
+				NoWait:     false,
+			}, nil); err != nil {
+				return err
+			}
+		}
+
+		if newKrInd < len(newKrs) {
+			id := krId(newKrInd)
+			splitBoundKr := kr.KeyRange{
+				LowerBound:  newKrs[newKrInd],
+				ColumnTypes: ds.ColTypes,
+			}
+			if err := qc.Split(ctx, &kr.SplitKeyRange{
+				Bound:      splitBoundKr.Raw(),
+				SourceID:   existingKRs[k-1].ID,
+				KeyRangeID: id,
+			}); err != nil {
+				return err
+			}
+
+			existingKRs = slices.Insert(existingKRs, k, &kr.KeyRange{
+				LowerBound:   newKrs[newKrInd],
+				ShardID:      shardIDs[newKrInd],
+				ID:           id,
+				Distribution: ds.Id,
+				ColumnTypes:  ds.ColTypes,
+			})
+		}
+
+		if err := qc.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+			KeyRangeID: existingKRs[k-1].ID,
+			ShardID:    shardIDs[newKrInd-1],
+			BatchSize:  batchSize,
+			Apply:      true,
+			NoWait:     false,
+		}, nil); err != nil {
+			return err
+		}
+		i++
+	}
+
+	resultKrs, err := qc.ListAllKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+	sort.Slice(resultKrs, func(i, j int) bool {
+		return kr.CmpRangesLess(resultKrs[i].LowerBound, resultKrs[j].LowerBound, ds.ColTypes)
+	})
+	for i := 0; i < len(resultKrs)-1; i++ {
+		baseKr := resultKrs[i]
+		for ; i < len(resultKrs)-1 && baseKr.ShardID == resultKrs[i+1].ShardID; i++ {
+			if err := qc.Unite(ctx, &kr.UniteKeyRange{
+				BaseKeyRangeID:      baseKr.ID,
+				AppendageKeyRangeID: resultKrs[i+1].ID,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // TODO : unit tests
 
 // RenameKeyRange renames a key range.
