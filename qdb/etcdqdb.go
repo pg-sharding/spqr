@@ -1946,8 +1946,6 @@ func (q *EtcdQDB) listRelationIndexesWithVersion(ctx context.Context, relationFQ
 // ==============================================================================
 
 func (q *EtcdQDB) ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error) {
-	spqrlog.Zero.Trace().
-		Msg("etcdqdb: list task groups")
 
 	t := time.Now()
 	res := make(map[string]*MoveTaskGroup)
@@ -1962,7 +1960,7 @@ func (q *EtcdQDB) ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup
 		if err := json.Unmarshal(kv.Value, &task); err != nil {
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Str("id", id).Msg("got task group")
+		spqrlog.Zero.Trace().Str("id", id).Msg("list task group")
 		res[id] = task
 	}
 

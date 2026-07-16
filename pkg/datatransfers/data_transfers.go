@@ -292,7 +292,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if err != nil {
 					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: error executing DELETE FROM: %s", err)
 				}
-				spqrlog.Zero.Info().Str("relation", rel.QualifiedName().String()).Msg("deleted data from dest shard")
+				spqrlog.Zero.Info().Str("relation", rel.QualifiedName().String()).Msg("deleted data from source shard")
 			}
 			if config.CoordinatorConfig().UseSPQRGuard {
 				if _, err := ftx.Exec(ctx, DeleteKeyRangeMeta, krg.ID); err != nil {
