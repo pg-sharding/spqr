@@ -2342,6 +2342,7 @@ func processRebalanceDistribution(
 	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().
 		Str("distribution id", stmt.Distribution.ID).
+		Strs("shards", stmt.Shards).
 		Msg("process rebalance distribution")
 
 	dist, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)

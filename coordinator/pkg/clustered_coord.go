@@ -2422,6 +2422,10 @@ func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distr
 		return kr.CmpRangesLess(newKrs[i], newKrs[j], ds.ColTypes)
 	})
 
+	krId := func(i int) string {
+		return fmt.Sprintf("kr-%s-%d", ds.Id, i)
+	}
+
 	tranmngr := meta.NewTranEntityManager(qc)
 	newKrInd := 0
 	batchSize := 128
@@ -2441,7 +2445,7 @@ func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distr
 				ShardID:      shardIDs[i],
 				Distribution: ds.Id,
 				ColumnTypes:  ds.ColTypes,
-				ID:           uuid.NewString(),
+				ID:           krId(i),
 			}, ds.ColTypes)
 			if err != nil {
 				return err
@@ -2485,8 +2489,8 @@ func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distr
 			}
 		}
 
-		if k < len(existingKRs) {
-			id := uuid.NewString()
+		if newKrInd < len(newKrs) {
+			id := krId(newKrInd)
 			splitBoundKr := kr.KeyRange{
 				LowerBound:  newKrs[newKrInd],
 				ColumnTypes: ds.ColTypes,
@@ -2536,7 +2540,6 @@ func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distr
 			}); err != nil {
 				return err
 			}
-			spqrlog.Zero.Debug().Msg("here8.1")
 		}
 	}
 
