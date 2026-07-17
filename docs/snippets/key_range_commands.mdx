@@ -67,9 +67,13 @@ CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
 -- Create key ranges for a subset of shards
 CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
 -- Split a bounded interval across all shards
-CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+CREATE KEY RANGES FOR DISTRIBUTION ds1 
+BETWEEN 0 AND 1000 USING ALL SHARDS;
+
 -- Split a bounded interval across selected shards
-CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+CREATE KEY RANGES FOR DISTRIBUTION ds1 
+BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+
 ```
 
 ### DROP KEY RANGE
@@ -111,7 +115,7 @@ LOCK KEY RANGE <keyRangeID>
 ### MOVE KEY RANGE
 
 Updates the routing metadata to assign a key range to a different shard.
-This only changes where new queries for this key range are routed — it does NOT
+This only changes where new queries for this key range are routed - it does NOT
 migrate the actual data between shards.
 
 

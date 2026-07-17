@@ -41,9 +41,13 @@ examples:
   - description: Create key ranges for a subset of shards
     code: CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
   - description: Split a bounded interval across all shards
-    code: CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+    code: |
+      CREATE KEY RANGES FOR DISTRIBUTION ds1 
+      BETWEEN 0 AND 1000 USING ALL SHARDS;
   - description: Split a bounded interval across selected shards
-    code: CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+    code: |
+      CREATE KEY RANGES FOR DISTRIBUTION ds1 
+      BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
 
 tips:
   - The number of generated key ranges equals the number of selected shards
