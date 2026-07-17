@@ -27,21 +27,21 @@ DROP SHARD sh2;
 
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 ERROR:  shard is not ready
-HINT: relation public.ref_table does not exist on shard
+HINT:  relation public.ref_table does not exist on shard
 \c regress
 CREATE TABLE ref_table(ref_id int) /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
 \c spqr-console
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 ERROR:  shard is not ready
-HINT: relation public.test_table does not exist on shard
+HINT:  relation public.test_table does not exist on shard
 \c regress
 CREATE TABLE test_table(name text) /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
 \c spqr-console
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 ERROR:  shard is not ready
-HINT: column id does not exist in relation public.test_table on shard
+HINT:  column id does not exist in relation public.test_table on shard
 \c regress
 DROP TABLE test_table /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2

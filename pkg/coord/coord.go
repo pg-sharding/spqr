@@ -1521,6 +1521,10 @@ func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.
 	if err != nil {
 		return err
 	}
+	connConfig.TLSConfig, err = shard.TLS().Init(host)
+	if err != nil {
+		return err
+	}
 	conn, err := pgx.ConnectConfig(ctx, connConfig)
 	if err != nil {
 		return err
@@ -1543,18 +1547,20 @@ func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.
 
 			if len(shardColumns) == 0 {
 				return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
-					"shard is not ready\nHINT: relation %s.%s does not exist on shard",
-					rel.Relation.GetSchema(), rel.Relation.RelationName,
-				)
+					"shard is not ready").
+					Hint(fmt.Sprintf("relation %s.%s does not exist on shard",
+						rel.Relation.GetSchema(), rel.Relation.RelationName,
+					))
 			}
 
 			key := rel.DistributionKey
 			for _, part := range key {
 				if _, ok := shardColumns[part.Column]; !ok {
 					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
-						"shard is not ready\nHINT: column %s does not exist in relation %s.%s on shard",
-						part.Column, rel.Relation.GetSchema(), rel.Relation.RelationName,
-					)
+						"shard is not ready").
+						Hint(fmt.Sprintf("column %s does not exist in relation %s.%s on shard",
+							part.Column, rel.Relation.GetSchema(), rel.Relation.RelationName,
+						))
 				}
 			}
 		}
@@ -1574,9 +1580,10 @@ func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.
 
 		if len(shardColumns) == 0 {
 			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
-				"shard is not ready\nHINT: relation %s.%s does not exist on shard",
-				refRel.RelationName.GetSchema(), refRel.RelationName.RelationName,
-			)
+				"shard is not ready").
+				Hint(fmt.Sprintf("relation %s.%s does not exist on shard",
+					refRel.RelationName.GetSchema(), refRel.RelationName.RelationName,
+				))
 		}
 	}
 
@@ -1603,5 +1610,5 @@ func listShardColumns(ctx context.Context, conn *pgx.Conn, relation *rfqn.Relati
 		cols[colName] = dataType
 	}
 
-	return cols, err
+	return cols, nil
 }
