@@ -13,13 +13,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
+
+var redistTLSFlags grpccreds.CLITLSFlags
 
 var (
 	chunkSize            int
@@ -81,6 +83,7 @@ var (
 )
 
 func init() {
+	redistTLSFlags.RegisterFlags(rootCmd)
 	runCmd.Flags().DurationVar(&interval, "interval", 10*time.Second, "interval between iterations")
 
 	generateTaskCmd.AddCommand(runCmd)
@@ -113,7 +116,11 @@ func generateTask(_ *cobra.Command, _ []string) error {
 	if chunkSize <= 0 {
 		return fmt.Errorf("chunk size must be more than zero")
 	}
-	conn, err := grpc.NewClient(coordinatorAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOpt, err := grpccreds.DialOption(redistTLSFlags.ToClientTLSConfig())
+	if err != nil {
+		return fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordinatorAddr, err)
+	}
+	conn, err := grpc.NewClient(coordinatorAddr, dialOpt)
 	if err != nil {
 		return err
 	}

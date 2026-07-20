@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -55,7 +56,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -316,8 +316,13 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		PermitWithoutStream: true,             // Allow pings even when no active RPCs
 	}
 
+	dialOpt, err := grpccreds.DialOption(config.CoordinatorConfig().RouterGrpcTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init router gRPC TLS for %q: %w", r.Address, err)
+	}
+
 	return grpc.NewClient(r.Address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		dialOpt,
 		grpc.WithKeepaliveParams(keepaliveParams),
 		grpc.WithDefaultServiceConfig(getRouterConnRetryPolicy()),
 	)
@@ -536,6 +541,10 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
+	if err := grpccreds.ValidateClient(config.CoordinatorConfig().RouterGrpcTLS); err != nil {
+		return nil, fmt.Errorf("init router gRPC client TLS: %w", err)
+	}
+
 	return &ClusteredCoordinator{
 		Coordinator:         coord.NewCoordinator(db, nil, maxTxnBatch),
 		db:                  db,

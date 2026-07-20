@@ -122,5 +122,6 @@ The router will automatically route queries to the appropriate shard based on th
 - Configuration changes require updating the `init.sql` file and restarting the router
 - No dynamic updates are possible while the router is running
 - For persistence you may set `memqdb_backup_path`. This feature is deprecated and may be removed in a future release — use at your own risk.
+- A bare router does not make router-to-coordinator gRPC connections. Leave `coordinator_grpc_tls` disabled. Configure `grpc_api_tls` only if another trusted component or tool needs the router gRPC API.
 
 For configuration reference, see the [Router Configuration](/configuration/router) reference.

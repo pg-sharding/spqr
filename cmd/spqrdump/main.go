@@ -10,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
@@ -21,9 +21,14 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
+var dumpTLSFlags grpccreds.CLITLSFlags
+
 func Dial(addr string) (*grpc.ClientConn, error) {
-	// TODO: add creds
-	return grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOpt, err := grpccreds.DialOption(dumpTLSFlags.ToClientTLSConfig())
+	if err != nil {
+		return nil, fmt.Errorf("init gRPC TLS for %q: %w", addr, err)
+	}
+	return grpc.NewClient(addr, dialOpt)
 }
 
 var rootCmd = &cobra.Command{
@@ -307,6 +312,7 @@ var dump = &cobra.Command{
 }
 
 func init() {
+	dumpTLSFlags.RegisterFlags(rootCmd)
 	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7000", "endpoint for dump metadata")
 
 	rootCmd.PersistentFlags().StringVarP(&proto, "proto", "t", "grpc", "protocol to use for communication")

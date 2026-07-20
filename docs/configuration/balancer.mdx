@@ -9,3 +9,5 @@ spqr-balancer run --config ./examples/balancer.yaml
 ```
 
 Work in progress. Refer to the [pkg/config/balancer.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/balancer.go) file for the most up-to-date configuration options.
+
+The optional `coordinator_grpc_tls` block authenticates and encrypts balancer connections to the coordinator. See [Internal gRPC TLS](./grpc_tls). The default is `disabled` for backward compatibility.

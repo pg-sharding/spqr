@@ -1,0 +1,67 @@
+---
+title: Internal gRPC TLS
+description: TLS and mutual TLS for communication between SPQR components
+---
+
+SPQR can authenticate and encrypt its internal gRPC connections independently in each direction. This configuration is separate from `frontend_tls`, which protects PostgreSQL protocol connections.
+
+## Modes
+
+| Mode | Behavior |
+|------|----------|
+| `disabled` | Plaintext gRPC. This is the default for backward compatibility. |
+| `tls` | The client verifies the server certificate. |
+| `mtls` | The client verifies the server and the server requires a trusted client certificate. |
+
+TLS modes enforce certificate verification and TLS 1.2 or newer. There is no skip-verification mode.
+
+## Server configuration
+
+Router and coordinator gRPC servers use `grpc_api_tls`:
+
+```yaml
+grpc_api_tls:
+  mode: mtls
+  cert_file: /etc/spqr/tls/server.crt
+  key_file: /etc/spqr/tls/server.key
+  client_ca_file: /etc/spqr/tls/client-ca.crt
+```
+
+`cert_file` and `key_file` are required for `tls` and `mtls`. `client_ca_file` is required for `mtls` and defines which client certificates the server trusts.
+
+## Client configuration
+
+Router connections to the coordinator use `coordinator_grpc_tls`. Coordinator connections to routers use `router_grpc_tls`. The balancer also uses `coordinator_grpc_tls`.
+
+```yaml
+coordinator_grpc_tls:
+  mode: mtls
+  root_ca_file: /etc/spqr/tls/server-ca.crt
+  cert_file: /etc/spqr/tls/client.crt
+  key_file: /etc/spqr/tls/client.key
+  server_name: coordinator.internal
+```
+
+`root_ca_file` is optional when the server certificate chains to a system trust root. `cert_file` and `key_file` are required in `mtls` mode. When `server_name` is omitted, grpc-go verifies the identity derived from the connection target.
+
+The certificate SAN must match the advertised coordinator or registered router address unless `server_name` supplies a stable certificate identity. Avoid relying on the deprecated certificate Common Name.
+
+## Command-line clients
+
+SPQR gRPC command-line clients accept:
+
+```text
+--grpc-tls-mode disabled|tls|mtls
+--grpc-root-ca-file PATH
+--grpc-cert-file PATH
+--grpc-key-file PATH
+--grpc-server-name NAME
+```
+
+## Deployment and migration
+
+New configurations default to plaintext so a software upgrade does not enable TLS automatically. A plaintext and TLS peer cannot communicate on the same gRPC port, so enabling TLS requires a coordinated restart or a blue/green deployment. Upgrade all binaries first with TLS disabled, provision certificates, then activate matching server and client blocks together.
+
+For SPQR Infra, every instance needs both router and coordinator server/client configuration. Use a shared internal trust root with unique leaf certificates. Certificates must cover every address that an instance advertises through QDB. Coordinator leader failover succeeds only when every possible leader presents a certificate trusted by every router.
+
+Certificate files are loaded during startup. Restart the affected process to rotate certificates.

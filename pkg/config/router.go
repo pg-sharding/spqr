@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -78,13 +79,15 @@ type Router struct {
 	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
 	UseMetrics                bool   `json:"use_metrics" toml:"use_metrics" yaml:"use_metrics"`
 
-	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
-	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	Qr               QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
-	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
+	MemqdbBackupPath   string               `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
+	RouterMode         string               `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
+	FrontendRules      []*FrontendRule      `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	Qr                 QRouter              `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
+	FrontendTLS        *TLSConfig           `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	GrpcAPITLS         *GRPCServerTLSConfig `json:"grpc_api_tls" yaml:"grpc_api_tls" toml:"grpc_api_tls"`
+	CoordinatorGrpcTLS *GRPCClientTLSConfig `json:"coordinator_grpc_tls" yaml:"coordinator_grpc_tls" toml:"coordinator_grpc_tls"`
+	BackendRules       []*BackendRule       `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	ShardMapping       map[string]*Shard    `json:"shards" toml:"shards" yaml:"shards"`
 
 	SchemaCacheBackendRule *BackendRule `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
 
@@ -141,6 +144,12 @@ func (r *Router) ApplyDefaults() {
 }
 
 func (r *Router) PostProcess() error {
+	if err := r.GrpcAPITLS.Validate(); err != nil {
+		return fmt.Errorf("invalid grpc_api_tls: %w", err)
+	}
+	if err := r.CoordinatorGrpcTLS.Validate(); err != nil {
+		return fmt.Errorf("invalid coordinator_grpc_tls: %w", err)
+	}
 	if err := validateRouterConfig(r); err != nil {
 		cfgRouter = *r
 		return err

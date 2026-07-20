@@ -2,12 +2,13 @@ package coord
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func DistributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.EntityMgr, func(), error) {
@@ -21,7 +22,12 @@ func DistributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.
 		return nil, nil, err
 	}
 
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOpt, err := grpccreds.DialOption(config.RouterConfig().CoordinatorGrpcTLS)
+	if err != nil {
+		return nil, nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+	}
+
+	conn, err := grpc.NewClient(coordAddr, dialOpt)
 	if err != nil {
 		return nil, nil, err
 	}

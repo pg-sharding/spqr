@@ -33,6 +33,17 @@ grpc_api_port: '7003'
 qdb_addr: 'localhost:2379'
 log_level: info
 
+# Coordinator gRPC server
+grpc_api_tls:
+  mode: tls
+  cert_file: /etc/spqr/tls/coordinator.crt
+  key_file: /etc/spqr/tls/coordinator.key
+
+# Coordinator client connections to registered routers
+router_grpc_tls:
+  mode: tls
+  root_ca_file: /etc/spqr/tls/ca.crt
+
 frontend_rules:
   - db: spqr_console
     usr: admin
@@ -80,9 +91,21 @@ router_port: '6432'
 admin_console_port: '7432'
 grpc_api_port: '7010'
 
-with_coordinator: true
+use_coordinator_init: true
 router_mode: PROXY
 log_level: info
+
+# Router gRPC server
+grpc_api_tls:
+  mode: tls
+  cert_file: /etc/spqr/tls/router.crt
+  key_file: /etc/spqr/tls/router.key
+
+# Router client connections to the elected coordinator
+coordinator_grpc_tls:
+  mode: tls
+  root_ca_file: /etc/spqr/tls/ca.crt
+  server_name: coordinator.internal
 
 frontend_rules:
   - db: mydb
@@ -105,8 +128,10 @@ backend_rules:
 ### 6. Start the Router
 
 ```bash
-spqr-router run --config router.yaml
+spqr-router run --config router.yaml --coordinator-config coordinator.yaml
 ```
+
+The coordinator certificate must contain `coordinator.internal` in its DNS SAN. Router certificates must match the addresses used by `REGISTER ROUTER`. For mutual TLS, change all four blocks to `mode: mtls`, add `client_ca_file` to both server blocks, and add client `cert_file`/`key_file` pairs to both client blocks. See [Internal gRPC TLS](/configuration/grpc_tls).
 
 ### 7. Register the Router
 

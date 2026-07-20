@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/randutil"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -24,9 +24,14 @@ var (
 	shardHosts []string
 )
 
+var coordctlTLSFlags grpccreds.CLITLSFlags
+
 func DialCoordinator(r *topology.Router) (*grpc.ClientConn, error) {
-	// TODO: add creds
-	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOpt, err := grpccreds.DialOption(coordctlTLSFlags.ToClientTLSConfig())
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", r.Address, err)
+	}
+	return grpc.NewClient(r.Address, dialOpt)
 }
 
 var rootCmd = &cobra.Command{
@@ -204,6 +209,7 @@ var listShardCmd = &cobra.Command{
 }
 
 func init() {
+	coordctlTLSFlags.RegisterFlags(rootCmd)
 	rootCmd.PersistentFlags().StringVarP(&coordinatorEndpoint, "endpoint", "e", "localhost:7003", "coordinator endpoint")
 
 	addRouterCmd.PersistentFlags().StringVarP(&routerEndpoint, "router-endpoint", "", "", "router endpoint to add")

@@ -1,11 +1,14 @@
 package config
 
+import "fmt"
+
 const defaultBalancerTimeout = 60
 
 type Balancer struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
 
-	CoordinatorAddress string `json:"coordinator_address" toml:"coordinator_address" yaml:"coordinator_address"`
+	CoordinatorAddress string               `json:"coordinator_address" toml:"coordinator_address" yaml:"coordinator_address"`
+	CoordinatorGrpcTLS *GRPCClientTLSConfig `json:"coordinator_grpc_tls" yaml:"coordinator_grpc_tls" toml:"coordinator_grpc_tls"`
 
 	ShardsConfig string `json:"shards_config" yaml:"shards_config" toml:"shards_config"`
 
@@ -30,6 +33,9 @@ func (b *Balancer) ApplyDefaults() {
 }
 
 func (b *Balancer) PostProcess() error {
+	if err := b.CoordinatorGrpcTLS.Validate(); err != nil {
+		return fmt.Errorf("invalid coordinator_grpc_tls: %w", err)
+	}
 	if b.TimeoutSec == 0 {
 		b.TimeoutSec = defaultBalancerTimeout
 	}

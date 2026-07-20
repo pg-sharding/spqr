@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 
@@ -28,19 +29,25 @@ import (
 )
 
 type App struct {
-	coordinator coordinator.Coordinator
-	sem         *semaphore.Weighted
+	coordinator       coordinator.Coordinator
+	sem               *semaphore.Weighted
+	grpcServerOptions []grpc.ServerOption
 }
 
 const (
 	maxWorkers = 50
 )
 
-func NewApp(c coordinator.Coordinator) *App {
-	return &App{
-		coordinator: c,
-		sem:         semaphore.NewWeighted(int64(maxWorkers)),
+func NewApp(c coordinator.Coordinator) (*App, error) {
+	serverOptions, err := grpccreds.ServerOptions(config.CoordinatorConfig().GrpcAPITLS)
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC server TLS: %w", err)
 	}
+	return &App{
+		coordinator:       c,
+		sem:               semaphore.NewWeighted(int64(maxWorkers)),
+		grpcServerOptions: serverOptions,
+	}, nil
 }
 
 func (app *App) Run(withPsql bool) error {
@@ -150,12 +157,15 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 		return err
 	}
 
-	serv := grpc.NewServer(
+	serverOpts := append([]grpc.ServerOption{}, app.grpcServerOptions...)
+	serverOpts = append(serverOpts,
 		grpc.ChainUnaryInterceptor(
 			spqrErrorUnaryServerInterceptor,
 			protovalidate_middleware.UnaryServerInterceptor(validator),
 		),
 	)
+
+	serv := grpc.NewServer(serverOpts...)
 	reflection.Register(serv)
 
 	krServ := provider.NewKeyRangeService(app.coordinator)
