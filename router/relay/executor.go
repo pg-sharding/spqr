@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -52,6 +53,29 @@ type QueryStateExecutorImpl struct {
 	d qdb.DCStateKeeper
 
 	es ExecutorState
+}
+
+// CleanupConnection implements [poolmgr.GangMgr].
+func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v shard.ShardHostInstance) error {
+	/* Standard connection cleanup util.
+	* TODO: extend with pseudo-cache */
+
+	if config.RouterConfig().ForceConnectionCleanup {
+		return v.Close()
+	}
+
+	if v.Sync() != 0 {
+		/* will automatically discard connection,
+		but we will not perform cleanup, which may stuck forever */
+		if err := p.Put(v); err != nil {
+			return err
+		}
+	}
+
+	if err := v.Cleanup(s.Client().Rule()); err != nil {
+		return err
+	}
+	return p.Put(v)
 }
 
 // ActiveShards implements [QueryStateExecutor].
@@ -137,7 +161,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			Int("len", len(s.ActiveShards())).
 			Msg("unroute previous connections")
 
-		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(s, s.Client(), s.ActiveShards()); err != nil {
 			return err
 		}
 		s.es.activeShards = nil

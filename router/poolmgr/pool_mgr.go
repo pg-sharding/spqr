@@ -6,6 +6,8 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -21,6 +23,8 @@ type GangMgr interface {
 
 	DataPending() bool
 
+	CleanupConnection(pool.MultiShardTSAPool, shard.ShardHostInstance) error
+
 	Client() client.RouterClient
 }
 
@@ -33,6 +37,7 @@ type PoolMgr interface {
 
 // TODO : unit tests
 func UnrouteCommon(
+	gmgr GangMgr,
 	cl client.RouterClient,
 	sh []kr.ShardKey) error {
 	var anyerr error
@@ -59,8 +64,20 @@ func UnrouteCommon(
 			Uint("shardn", spqrlog.GetPointer(serv)).
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
-		if err := serv.UnRouteShard(shkey, cl.Rule()); err != nil {
+		if v, err := serv.UnRouteShard(shkey); err != nil {
 			anyerr = err
+		} else {
+			if err := gmgr.CleanupConnection(serv.Pool(), v); err != nil {
+
+				spqrlog.Zero.Error().
+					Uint("client", cl.ID()).
+					Uint("shardn", spqrlog.GetPointer(serv)).
+					Str("key", shkey.Name).
+					Err(err).
+					Msg("error returning connection to pool")
+
+				anyerr = err
+			}
 		}
 	}
 
@@ -105,7 +122,7 @@ func (t *TxConnManager) TXEndCB(rst GangMgr) error {
 		Msg("client end of transaction, unrouting from active shards")
 	rst.ActiveShardsReset()
 
-	return UnrouteCommon(rst.Client(), ash)
+	return UnrouteCommon(rst, rst.Client(), ash)
 }
 
 type SessConnManager struct {
