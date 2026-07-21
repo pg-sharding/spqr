@@ -82,7 +82,7 @@ EXAMPLES
     Attach table with single distribution key:
         ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
     Attach table with composite key and hash function:
-        ALTER DISTRIBUTION ds2 ATTACH TABLE users
+        ALTER DISTRIBUTION ds2 ATTACH TABLE users 
           DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
     Detach table:
         ALTER DISTRIBUTION ds1 DETACH TABLE orders;
@@ -91,7 +91,7 @@ EXAMPLES
     Change table schema:
         ALTER DISTRIBUTION ds1 ALTER TABLE orders SCHEMA my_schema;
     Fix column name casing in metadata (w_id vs W_ID):
-        ALTER DISTRIBUTION ds1 ALTER TABLE rc_test
+        ALTER DISTRIBUTION ds1 ALTER TABLE rc_test 
           RENAME DISTRIBUTION COLUMN W_ID TO w_id;
     Set default shard:
         ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;

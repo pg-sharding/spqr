@@ -1068,7 +1068,6 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 					}
 					move.Status = qdb.MoveKeyRangePlanned
 					if err = qc.UnlockKeyRange(ctx, keyRange.ID); err != nil {
-
 						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to unlock key range after await PID timeout: %s", err)
 					}
 					return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "timeout waiting for vxid locks to release")
@@ -1561,7 +1560,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Issuer: issuer,
 		}
 	}
-	spqrlog.Zero.Debug().Str("taskGroup", fmt.Sprintf("%#v", taskGroup)).Msg("got task group")
+	spqrlog.Zero.Trace().Str("taskGroup", taskGroup.ID).Interface("key range", taskGroup.CurrentTask).Msg("batch move key range from task group")
 
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
@@ -2674,7 +2673,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			}
 			return err
 		} else {
-			spqrlog.Zero.Debug().
+			spqrlog.Zero.Trace().
 				Interface("response", resp).
 				Msg("open router response")
 		}
@@ -2727,7 +2726,7 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 			}
 			return err
 		} else {
-			spqrlog.Zero.Debug().
+			spqrlog.Zero.Trace().
 				Interface("response", resp).
 				Msg("open router response")
 		}

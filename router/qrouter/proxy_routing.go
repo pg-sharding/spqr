@@ -828,7 +828,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
 
 		for rqfn := range rm.Rels {
-			if strings.HasPrefix(rqfn.RelationName, "pg_") {
+			if strings.HasPrefix(strings.ToLower(rqfn.RelationName), "pg_") {
 				anyCatalog = true
 			} else {
 				onlyCatalog = false

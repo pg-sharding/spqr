@@ -72,6 +72,7 @@ colref
 coltypes
 commodi
 commodo
+compositeds
 confrelid
 connectiterator
 connmgr
@@ -671,6 +672,7 @@ unsync
 usermd
 uuidv
 valgrind
+varchards
 vasya
 velit
 vguoyguoygoyy
