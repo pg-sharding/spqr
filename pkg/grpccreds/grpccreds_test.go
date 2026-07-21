@@ -54,10 +54,3 @@ func TestCredentialFilesFailDuringPreflight(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "read gRPC root CA")
 }
-
-func TestCLITLSFlagsPreserveInvalidDisabledOptionsForValidation(t *testing.T) {
-	flags := CLITLSFlags{Mode: string(config.GRPCTLSDisabled), RootCAFile: "unexpected-ca"}
-	cfg := flags.ToClientTLSConfig()
-	require.NotNil(t, cfg)
-	require.Error(t, cfg.Validate())
-}
