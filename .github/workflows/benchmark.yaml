@@ -41,8 +41,6 @@ jobs:
         with:
           filters: |
             benchmark:
-              - '!**/*_test.go'
-              - '!**/*.md'
               - 'router/qrouter/**'
               - 'router/relay/**'
               - 'router/poolmgr/**'
@@ -51,6 +49,8 @@ jobs:
               - 'pkg/pool/**'
               - '.github/actions/benchmarks/**'
               - '.github/workflows/benchmark.yaml'
+              - '!**/*_test.go'
+              - '!**/*.md'
 
   build:
     needs: collect_changes
