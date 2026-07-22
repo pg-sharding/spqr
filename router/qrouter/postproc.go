@@ -268,7 +268,7 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 	p plan.Plan,
 ) (plan.Plan, error) {
 
-	/* Immidiately return if no actual work to do*/
+	/* Immediately return if no actual work to do*/
 	if len(p.ExecutionTargets()) <= 1 {
 		return p, nil
 	}
