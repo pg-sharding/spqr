@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -175,21 +176,16 @@ func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA,
 	return nil
 }
 
-func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
-	// map?
-	for _, activeShard := range m.activeShards {
+/* Unattach shard server connection pointed by shard key. */
+func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error) {
+	for i, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
-			err := activeShard.Cleanup(rule)
-
-			if err := m.pool.Put(activeShard); err != nil {
-				return err
-			}
-
-			return err
+			m.activeShards = slices.Delete(m.activeShards, i, i)
+			return activeShard, nil
 		}
 	}
 
-	return fmt.Errorf("unrouted datashard does not match any of active")
+	return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unrouted datashard does not match any of active")
 }
 
 func (m *MultiShardServer) Name() string {
@@ -733,6 +729,10 @@ func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
 
 func (m *MultiShardServer) Datashards() []shard.ShardHostInstance {
 	return m.activeShards
+}
+
+func (m *MultiShardServer) Pool() pool.MultiShardTSAPool {
+	return m.pool
 }
 
 var _ Server = &MultiShardServer{}

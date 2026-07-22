@@ -2,8 +2,8 @@ package server
 
 import (
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -30,10 +30,12 @@ type Server interface {
 
 	ToMultishard() Server
 
-	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
+	UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error)
 	Datashards() []shard.ShardHostInstance
 	PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
 	PrefetchUntilCommandComplete(shkey kr.ShardKey) error
+
+	Pool() pool.MultiShardTSAPool
 
 	Cancel() error
 	CancellableIDs() []uint32

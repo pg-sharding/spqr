@@ -13,8 +13,8 @@ import (
 	reflect "reflect"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
-	config "github.com/pg-sharding/spqr/pkg/config"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	pool "github.com/pg-sharding/spqr/pkg/pool"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
@@ -158,6 +158,20 @@ func (m *MockServer) Name() string {
 func (mr *MockServerMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockServer)(nil).Name))
+}
+
+// Pool mocks base method.
+func (m *MockServer) Pool() pool.MultiShardTSAPool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Pool")
+	ret0, _ := ret[0].(pool.MultiShardTSAPool)
+	return ret0
+}
+
+// Pool indicates an expected call of Pool.
+func (mr *MockServerMockRecorder) Pool() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pool", reflect.TypeOf((*MockServer)(nil).Pool))
 }
 
 // PrefetchResult mocks base method.
@@ -330,15 +344,16 @@ func (mr *MockServerMockRecorder) TxStatus() *gomock.Call {
 }
 
 // UnRouteShard mocks base method.
-func (m *MockServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
+func (m *MockServer) UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteShard", sh, rule)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "UnRouteShard", sh)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // UnRouteShard indicates an expected call of UnRouteShard.
-func (mr *MockServerMockRecorder) UnRouteShard(sh, rule any) *gomock.Call {
+func (mr *MockServerMockRecorder) UnRouteShard(sh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteShard", reflect.TypeOf((*MockServer)(nil).UnRouteShard), sh, rule)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteShard", reflect.TypeOf((*MockServer)(nil).UnRouteShard), sh)
 }

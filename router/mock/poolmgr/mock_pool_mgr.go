@@ -13,6 +13,8 @@ import (
 	reflect "reflect"
 
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	pool "github.com/pg-sharding/spqr/pkg/pool"
+	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	client "github.com/pg-sharding/spqr/router/client"
 	poolmgr "github.com/pg-sharding/spqr/router/poolmgr"
@@ -67,6 +69,20 @@ func (m *MockGangMgr) ActiveShardsReset() {
 func (mr *MockGangMgrMockRecorder) ActiveShardsReset() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShardsReset", reflect.TypeOf((*MockGangMgr)(nil).ActiveShardsReset))
+}
+
+// CleanupConnection mocks base method.
+func (m *MockGangMgr) CleanupConnection(arg0 pool.MultiShardTSAPool, arg1 shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CleanupConnection", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CleanupConnection indicates an expected call of CleanupConnection.
+func (mr *MockGangMgrMockRecorder) CleanupConnection(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupConnection", reflect.TypeOf((*MockGangMgr)(nil).CleanupConnection), arg0, arg1)
 }
 
 // Client mocks base method.
