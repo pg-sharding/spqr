@@ -37,7 +37,7 @@ type PoolMgr interface {
 
 // TODO : unit tests
 func UnrouteCommon(
-	gmgr GangMgr,
+	g GangMgr,
 	cl client.RouterClient,
 	sh []kr.ShardKey) error {
 	var anyerr error
@@ -67,7 +67,7 @@ func UnrouteCommon(
 		if v, err := serv.UnRouteShard(shkey); err != nil {
 			anyerr = err
 		} else {
-			if err := gmgr.CleanupConnection(serv.Pool(), v); err != nil {
+			if err := g.CleanupConnection(serv.Pool(), v); err != nil {
 
 				spqrlog.Zero.Error().
 					Uint("client", cl.ID()).
