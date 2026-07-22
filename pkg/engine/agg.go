@@ -62,7 +62,7 @@ func EngineV2AggregateFunction(n string) bool {
 	}
 }
 
-func CreateAggregate(name string, args []lyx.Node) (AggregateState, error) {
+func CreateAggregate(name string, _ []lyx.Node) (AggregateState, error) {
 	switch name {
 	case CountAgg:
 		return &CountAggregate{}, nil
