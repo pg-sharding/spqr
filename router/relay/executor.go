@@ -60,6 +60,10 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	/* Standard connection cleanup util.
 	* TODO: extend with pseudo-cache */
 
+	if v == nil {
+		return nil
+	}
+
 	if config.RouterConfig().ForceConnectionCleanup {
 		return v.Close()
 	}
@@ -67,9 +71,7 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	if v.Sync() != 0 {
 		/* will automatically discard connection,
 		but we will not perform cleanup, which may stuck forever */
-		if err := p.Put(v); err != nil {
-			return err
-		}
+		return p.Put(v)
 	}
 
 	if err := v.Cleanup(s.Client().Rule()); err != nil {
