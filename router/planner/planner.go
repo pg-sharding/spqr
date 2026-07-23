@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -156,6 +157,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	switch subPlan.(type) {
 	case *plan.VirtualPlan:
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -163,6 +169,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		}, nil
 	case *plan.ScatterPlan:
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -197,6 +208,11 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	}
 
 	return &plan.ScatterPlan{
+		BasePlan: plan.BasePlan{
+			H: planopts.PlanOpts{
+				ResultRelationIsRef: true,
+			},
+		},
 		OverwriteQuery: mp,
 		ExecTargets:    rel.ListStorageRoutes(),
 	}, nil
@@ -1187,6 +1203,11 @@ func (p *PlannerV2) PlanDistributedQuery(
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: false,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},
@@ -1219,6 +1240,11 @@ func (p *PlannerV2) PlanDistributedQuery(
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: false,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},

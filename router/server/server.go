@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -21,7 +22,7 @@ type Server interface {
 
 	/* XXX: remove two methods below and derive next message in executor */
 	/* message, gang source index, error */
-	Receive() (pgproto3.BackendMessage, uint, error)
+	Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error)
 	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
 
 	/* TODO: add and support gang id here. */

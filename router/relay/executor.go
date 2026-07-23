@@ -1044,7 +1044,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	}
 
 	for {
-		msg, recvIndex, err := serv.Receive()
+		msg, recvIndex, err := serv.Receive(topPlan.Opts())
 		if err != nil {
 			return err
 		}
