@@ -1,0 +1,154 @@
+name: Retry failed tests
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  pull-requests: write
+
+jobs:
+  retry-failed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find new failed workflow runs
+        id: find-failed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const targetWorkflows = ['tests'];
+            const now = new Date();
+            const cutoff = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+            const failedRuns = [];
+
+            for (const workflowName of targetWorkflows) {
+              const workflowId = await github.rest.actions
+                .listRepoWorkflows({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                })
+                .then(response => {
+                  const workflow = response.data.workflows.find(w => w.name === workflowName);
+                  return workflow ? workflow.id : null;
+                });
+
+              if (!workflowId) {
+                core.warning(`Workflow "${workflowName}" not found`);
+                continue;
+              }
+
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                status: 'failure',
+                per_page: 100,
+              });
+
+              for (const run of runs.data.workflow_runs) {
+                if (run.event === 'workflow_dispatch' && run.run_number === context.runNumber) {
+                  continue;
+                }
+
+                const failedTime = new Date(run.updated_at);
+                if (failedTime < cutoff) {
+                  continue;
+                }
+
+                const currentAttempt = run.run_attempt || 1;
+                if (currentAttempt !== 1) {
+                  continue;
+                }
+
+                failedRuns.push({
+                  id: run.id,
+                  name: run.name,
+                  run_id: run.id,
+                  run_number: run.run_number,
+                  attempt: currentAttempt,
+                  workflow_name: workflowName,
+                  head_sha: run.head_sha,
+                  head_branch: run.head_branch,
+                  url: run.html_url,
+                });
+              }
+            }
+
+            const uniqueRuns = [];
+            const seenIds = new Set();
+            for (const run of failedRuns) {
+              if (!seenIds.has(run.run_id)) {
+                seenIds.add(run.run_id);
+                uniqueRuns.push(run);
+              }
+            }
+
+            core.info(`Found ${uniqueRuns.length} new failed runs to retry (since ${cutoff.toISOString()})`);
+            core.setOutput('count', uniqueRuns.length);
+            require('fs').writeFileSync(
+              '/tmp/failed_runs.json',
+              JSON.stringify(uniqueRuns, null, 2)
+            );
+
+      - name: Retry failed runs
+        if: steps.find-failed.outputs.count > '0'
+        id: retry
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const failedRuns = JSON.parse(fs.readFileSync('/tmp/failed_runs.json', 'utf8'));
+
+            console.log(`Retrying ${failedRuns.length} failed workflow runs...`);
+
+            const results = [];
+
+            for (const run of failedRuns) {
+              try {
+                await github.rest.actions.reRunWorkflow({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.run_id
+                });
+
+                results.push({
+                  run_id: run.run_id,
+                  run_number: run.run_number,
+                  workflow_name: run.workflow_name,
+                  status: 'retried',
+                  url: run.url,
+                  message: `Retried run #${run.run_number} (attempt will increment)`
+                });
+
+                core.info(`Successfully queued retry for run #${run.run_number}`);
+              } catch (error) {
+                results.push({
+                  run_id: run.run_id,
+                  run_number: run.run_number,
+                  workflow_name: run.workflow_name,
+                  status: 'failed',
+                  url: run.url,
+                  message: `Failed to retry: ${error.message}`
+                });
+                core.error(`Failed to retry run #${run.run_number}: ${error.message}`);
+              }
+            }
+
+            let summary = '## Retry Results\n\n';
+            for (const result of results) {
+              const statusIcon = result.status === 'retried' ? '✅' : '❌';
+              summary += `${statusIcon} [${result.workflow_name} #${result.run_number}](${result.url}): ${result.message}\n`;
+            }
+
+            console.log(summary);
+            require('fs').writeFileSync(process.env.GITHUB_STEP_SUMMARY, summary, { append: true });
+
+      - name: No failed runs found
+        if: steps.find-failed.outputs.count == '0'
+        run: |
+          echo "## Retry Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No recently failed workflow runs found that need retrying." >> $GITHUB_STEP_SUMMARY
