@@ -1387,8 +1387,13 @@ func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 }
 
 func (tctx *testContext) stepWaitForTaskGroupToEnterErrorState(id string) error {
+	if tctx.qdb == nil {
+		return fmt.Errorf("qdb is not initialized")
+	}
 	if !testutil.Retry(func() bool {
-		status, err := tctx.qdb.GetTaskGroupStatus(context.TODO(), id)
+		ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
+		defer cancel()
+		status, err := tctx.qdb.GetTaskGroupStatus(ctx, id)
 		return err == nil && status != nil && status.State == string(tasks.TaskGroupError)
 	}, time.Minute, time.Second) {
 		return fmt.Errorf("timed out waiting for task group %q to enter error state", id)
