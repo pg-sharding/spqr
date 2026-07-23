@@ -143,6 +143,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 
 	if subquery == nil {
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
