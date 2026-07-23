@@ -476,7 +476,9 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 		}
 
 		if anyCCTag != nil {
-			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
+			if rewriteCCTag {
+				anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
+			}
 			saveCC.CommandTag = anyCCTag
 		}
 
