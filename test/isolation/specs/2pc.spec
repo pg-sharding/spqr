@@ -38,7 +38,7 @@ setup
 
 teardown
 {
-    DROP TABLE r_2pc_aux;
+    DROP TABLE r_2pc_aux /* __spqr__scatter_query: true */;
 }
 
 

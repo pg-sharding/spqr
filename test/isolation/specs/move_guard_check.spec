@@ -16,7 +16,7 @@ setup
 
 teardown
 {
-    DROP TABLE r;
+    DROP TABLE r /* __spqr__scatter_query: true */;
 }
 
 

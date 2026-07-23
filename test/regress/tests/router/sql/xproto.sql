@@ -34,4 +34,6 @@ EXECUTE p5 ('aaaa');
 DROP TABLE d_p_exec;
 DROP TABLE ref_p_exec;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');

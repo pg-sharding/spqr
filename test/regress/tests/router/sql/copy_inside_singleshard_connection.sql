@@ -49,5 +49,7 @@ SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
 
 DROP TABLE IF EXISTS copy_test;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
