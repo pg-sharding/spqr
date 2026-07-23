@@ -670,6 +670,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					return nil, err
 				}
 				p = plan.Combine(p, tmp)
+				p.Opts().ResultRelationIsRef = true
 				return p, nil
 			}
 
@@ -720,6 +721,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						return nil, err
 					}
 					p = plan.Combine(p, tmp)
+					p.Opts().ResultRelationIsRef = true
 					return p, nil
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
