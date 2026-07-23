@@ -1409,6 +1409,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And I wait for coordinator "regress_coordinator_2" to take control    
     And I delete key "/task_group_locks/tg1" from etcd
+    And I wait for task group "tg1" to enter error state
 
     When I run SQL on host "coordinator2"
     """

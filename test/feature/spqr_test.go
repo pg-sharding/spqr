@@ -1386,6 +1386,16 @@ func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 	return nil
 }
 
+func (tctx *testContext) stepWaitForTaskGroupToEnterErrorState(id string) error {
+	if !testutil.Retry(func() bool {
+		status, err := tctx.qdb.GetTaskGroupStatus(context.TODO(), id)
+		return err == nil && status != nil && status.State == string(tasks.TaskGroupError)
+	}, time.Minute, time.Second) {
+		return fmt.Errorf("timed out waiting for task group %q to enter error state", id)
+	}
+	return nil
+}
+
 func (tctx *testContext) stepIKillHostAfterQuery(host string, delay int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
@@ -1554,6 +1564,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I wait for coordinator address on router "([^"]*)" to become "([^"]*)"$`, tctx.stepWaitForCoordinatorAddressToBe)
 	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
+	s.Step(`^I wait for task group "([^"]*)" to enter error state$`, tctx.stepWaitForTaskGroupToEnterErrorState)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
 	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
 	s.Step(`^I wait for host "([^"]*)" to finish startup$`, tctx.stepWaitForHostToFinishStartup)
