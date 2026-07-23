@@ -95,29 +95,18 @@ func (srv *ShardServer) Reset() error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
+func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) (shard.ShardHostInstance, error) {
 	v := srv.shard.Load()
 	if v == nil {
-		return nil
+		return nil, nil
 	}
 
 	srv.shard.Store(nil)
 
 	if (*v).SHKey().Name != shkey.Name {
-		return fmt.Errorf("active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
+		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
 	}
-
-	if (*v).Sync() != 0 {
-		/* will automatically discard connection,
-		but we will not perform cleanup, which may stuck forever */
-		return srv.pool.Put((*v))
-	}
-
-	if err := srv.cleanupLockFree(*v, rule); err != nil {
-		return err
-	}
-
-	return srv.pool.Put(*v)
+	return *v, nil
 }
 
 // TODO : unit tests
@@ -284,6 +273,10 @@ func (srv *ShardServer) Datashards() []shard.ShardHostInstance {
 	}
 
 	return rv
+}
+
+func (srv *ShardServer) Pool() pool.MultiShardTSAPool {
+	return srv.pool
 }
 
 var _ Server = &ShardServer{}

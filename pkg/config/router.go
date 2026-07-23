@@ -109,6 +109,8 @@ type Router struct {
 	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
+	ForceConnectionCleanup bool `json:"force_connection_cleanup" toml:"force_connection_cleanup" yaml:"force_connection_cleanup"`
+
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
 	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
 

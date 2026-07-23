@@ -238,7 +238,7 @@ func (rst *RelayStateImpl) Close() error {
 }
 
 func (rst *RelayStateImpl) Cleanup() error {
-	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+	err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 
 	if err != nil {
 		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
@@ -1271,7 +1271,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 	if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return err
 		}
 		rst.QueryExecutor().ActiveShardsReset()
@@ -1307,7 +1307,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	cf := func() error {
 		/* Active shards should be same as p.ExecutionTargets */
-		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+		err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 		rst.QueryExecutor().ActiveShardsReset()
 		return err
 	}
@@ -1316,7 +1316,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if len(rst.QueryExecutor().ActiveShards()) == 1 {
 		return currentPlan, cf, nil
 	} else if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return nil, noopCloseRouteFunc, err
 		}
 		rst.QueryExecutor().ActiveShardsReset()

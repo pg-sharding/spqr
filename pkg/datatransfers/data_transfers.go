@@ -676,12 +676,14 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
 	}
+
+	defer func() { _ = fromTx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring constraints: %s", err)
 	}
 	if config.CoordinatorConfig().DataMoveDisableTriggers {
 		if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
-			return fmt.Errorf("failed to disable triggers: %s", err)
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to disable triggers: %w", err)
 		}
 	}
 
@@ -704,7 +706,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		if !toTableExists {
-			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Relation)
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation %s does not exist on receiving shard", rel.Relation)
 		}
 		relFullName := rel.QualifiedName().String()
 		toCount, err := GetEntriesCount(ctx, tx, relFullName, krCondition)
@@ -717,7 +719,8 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 		// if data is inconsistent, fail
 		if toCount > 0 && fromCount != 0 {
-			return fmt.Errorf("key count on sender & receiver mismatch")
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range data exists on both shards").
+				Detail(fmt.Sprintf("receiver shard as %d data rows for %s relation, while source shard has %d", toCount, rel.Relation, fromCount)).Hint("Manually resolve data inconsistencies and retry")
 		}
 		cols, err := GetTableColumns(ctx, tx, rel.Relation)
 		if err != nil {
@@ -749,11 +752,11 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	}
 	if config.CoordinatorConfig().UseSPQRGuard {
 		if _, err := tx.Exec(ctx, InsertKeyRangeMeta, krg.ID); err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not update key range metadata on shard: %s", err)
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
 		}
 	}
 	if err = tx.Commit(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not execute transaction: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to commit transfer transaction: %s", err)
 	}
 	return nil
 }

@@ -428,7 +428,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
-	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
+	if left == nil || right == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
 	}
 
@@ -443,6 +443,10 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
 			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
 		}
+	}
+
+	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "wrong bound ordering: right < left")
 	}
 
 	c := proto.NewKeyRangeServiceClient(a.conn)

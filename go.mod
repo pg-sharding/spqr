@@ -23,8 +23,8 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/pg-sharding/lyx v0.0.0-20260716103321-b7fd6d6d4679
 	github.com/rs/zerolog v1.35.1
-	github.com/sethvargo/go-retry v0.3.0
-	github.com/sevlyar/go-daemon v0.1.6
+	github.com/sethvargo/go-retry v0.4.0
+	github.com/sevlyar/go-daemon v0.1.7
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -52,9 +52,8 @@ require (
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.5 // indirect
-	github.com/prometheus/procfs v0.16.1 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	github.com/prometheus/common v0.70.0 // indirect
+	github.com/prometheus/procfs v0.21.1 // indirect
 	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 )
 
@@ -102,7 +101,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/client_golang v1.24.0
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
