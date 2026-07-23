@@ -449,6 +449,7 @@ protoc
 protovalidate
 psswd
 pstmt
+planopts
 PYTHONUNBUFFERED
 qcfg
 qdb
