@@ -88,3 +88,10 @@ SELECT __spqr__console_execute('UNLOCK KEY RANGE k0; DROP DISTRIBUTION ALL CASCA
  d
 (1 row)
 
+SELECT set_config('spqrguard.prevent_distributed_table_modify', 'off', false) /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ set_config 
+------------
+ off
+(1 row)
+

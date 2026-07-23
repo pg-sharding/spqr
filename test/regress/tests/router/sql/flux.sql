@@ -30,3 +30,5 @@ DROP TABLE flux_access_t1;
 DELETE FROM spqr_metadata.spqr_local_key_ranges  /* __spqr__execute_on: sh1 */;
 
 SELECT __spqr__console_execute('UNLOCK KEY RANGE k0; DROP DISTRIBUTION ALL CASCADE');
+
+SELECT set_config('spqrguard.prevent_distributed_table_modify', 'off', false) /* __spqr__execute_on: sh1 */;
