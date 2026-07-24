@@ -19,6 +19,7 @@ aliquip
 amet
 anyerr
 AOk
+APITLS
 appdefaults
 APREQ
 argexpr
@@ -60,6 +61,7 @@ clid
 clientinteractor
 clientpool
 clientv
+CLITLS
 clmp
 cmds
 cmngr
@@ -207,6 +209,10 @@ gorm
 goyacc
 Grac
 Greenplum
+grpccreds
+GRPCTLS
+GRPCTLSMTLS
+GRPCTLSTLS
 gss
 gssapi
 GSSREQ
@@ -343,6 +349,7 @@ mollit
 Msgf
 msgroup
 msgtype
+mtls
 mtran
 multiclient
 multicoordinator
