@@ -33,3 +33,26 @@ QUERY:  SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
 ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
 QUERY:  SELECT pg_advisory_xact_lock(11);
+SET __spqr__advisory_lock_behaviour TO SCATTER;
+BEGIN;
+SELECT pg_advisory_lock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_lock 
+------------------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SELECT pg_advisory_unlock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_unlock 
+--------------------
+ t
+ t
+ t
+ t
+(4 rows)
+
+ROLLBACK;
