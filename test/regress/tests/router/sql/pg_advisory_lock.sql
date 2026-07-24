@@ -19,3 +19,9 @@ SET __spqr__engine_v2 TO on;
 
 SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
+
+SET __spqr__advisory_lock_behaviour TO SCATTER;
+BEGIN;
+SELECT pg_advisory_lock(12);
+SELECT pg_advisory_unlock(12);
+ROLLBACK;
