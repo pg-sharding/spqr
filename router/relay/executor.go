@@ -62,7 +62,7 @@ type QueryStateExecutorImpl struct {
 // Close implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) Close() {
 	for _, sh := range s.localConn {
-		s.Client().Route().MultiShardPool().Put(sh)
+		_ = s.Client().Route().MultiShardPool().Put(sh)
 	}
 }
 
