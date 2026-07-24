@@ -2,9 +2,11 @@ package meta_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -138,6 +140,7 @@ func TestTranGetDistribution(t *testing.T) {
 		is.Equal(ds0, actualQdb)
 	})
 }
+
 func TestTranGetKeyRange(t *testing.T) {
 	is := assert.New(t)
 	t.Run("test with save changes", func(_ *testing.T) {
@@ -214,7 +217,9 @@ func TestTranGetKeyRange(t *testing.T) {
 
 		//check Get
 		_, err = tranMngr.GetKeyRange(ctx, "kr1DOUBLE")
-		is.EqualError(err, "there is no key range kr1DOUBLE")
+		var spqrErr *spqrerror.SpqrError
+		is.True(errors.As(err, &spqrErr))
+		is.Equal(spqrerror.SPQR_OBJECT_NOT_EXIST, spqrErr.ErrorCode)
 		_, err = tranMngr.GetKeyRange(ctx, "kr1")
 		is.NoError(err)
 		_, err = tranMngr.GetKeyRange(ctx, "kr2")

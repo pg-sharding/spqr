@@ -289,7 +289,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, erro
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range at \"%s\": failed to commit transaction: %s", krNodePath, err)
 	}
 	if !resp.Succeeded {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "no key range found at %v", krNodePath)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range %s does not exist", id)
 	}
 	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to fetch key range at \"%s\": unexpected etcd response count %d", krNodePath, len(resp.Responses))
@@ -510,7 +510,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 				keyRangeId, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", keyRangeId)
+			return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range %s does not exist", keyRangeId)
 		}
 		spqrlog.Zero.Debug().
 			Str("id", keyRangeId).

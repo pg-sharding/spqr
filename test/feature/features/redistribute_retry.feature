@@ -301,7 +301,7 @@ Feature: Redistribution retries test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    no key range found at /keyranges/kr_temp
+    key range kr_temp does not exist
     """
 
     # move task can be finished manually
@@ -1204,7 +1204,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And SQL error on host "coordinator2" should match regexp
     """
-    no key range found at /keyranges/kr1
+    key range kr1 does not exist
     """
   
   Scenario: redistribute is retryable after fail to update MoveTask status to TaskSplit in QDB when transferring by multiple moves
@@ -1418,7 +1418,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And SQL error on host "coordinator2" should match regexp
     """
-    no key range found at /keyranges/kr1
+    key range kr1 does not exist
     """
 
   Scenario: REDISTRIBUTE KEY RANGE is retryable after fail to await pids within timeout

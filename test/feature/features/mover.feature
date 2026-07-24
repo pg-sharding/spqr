@@ -209,5 +209,5 @@ Feature: Mover test
     Then command return code should be "1"
     And command output should match regexp
     """
-    no key range found at /keyranges/krid3
+    key range krid3 does not exist
     """

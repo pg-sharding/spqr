@@ -1122,6 +1122,17 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeID).Str("appendage id", uniteKeyRange.AppendageKeyRangeID).Msg("unite key ranges")
+
+	/* Fast-out for trivial cases: ensure both key ranges exist before locking */
+	if _, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.BaseKeyRangeID); err != nil {
+		return err
+	}
+	if _, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeID); err != nil {
+		return err
+	}
+
+	/* This is racy with previous check, but the worst thing here -
+	* not so pretty error message. (No key range found at /keyranges/xxx instead of object does not exist) */
 	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeID)
 	if err != nil {
 		return err

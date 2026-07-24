@@ -21,6 +21,12 @@ UNLOCK KEY RANGE krid1;
 -- reverse order
 UNITE KEY RANGE krid3 WITH krid1;
 
+-- base key range does not exists
+UNITE KEY RANGE krid3xx WITH krid4;
+
+-- appendage key range does not exists
+UNITE KEY RANGE krid3 WITH krid4xx;
+
 -- routing to different shards
 UNITE KEY RANGE krid3 WITH krid4;
 

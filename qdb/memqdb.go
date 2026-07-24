@@ -337,7 +337,7 @@ func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 	kRangeInt, ok := q.State.Krs[id]
 	if !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range %s does not exist", id)
 	}
 	isLocked := false
 	if v, ok := q.State.Freq[id]; ok {
