@@ -335,11 +335,7 @@ var ErrMultiShardSyncBroken = spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multisha
 
 func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 
-	rewriteCCTag := true
-
-	if o != nil && o.ResultRelationIsRef {
-		rewriteCCTag = false
-	}
+	rewriteCCTag := o == nil || !o.ResultRelationIsRef
 
 	switch m.multistate {
 	case ServerErrorState:
