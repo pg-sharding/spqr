@@ -38,6 +38,15 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `data_move_query_log_level` | Log level for data move operations.                                                          | `debug`, `info`, `warning`, `error`, `fatal`  | `"debug"` |
 | `data_move_await_pid_exception` | Whether to await PID exception during data moves.                                           | `"true"`, `"false"` (as strings)              | `"true"` |
 
+## Internal gRPC TLS
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `grpc_api_tls` | Server credentials for the coordinator gRPC API used by routers and tools. | `disabled` |
+| `router_grpc_tls` | Client trust and identity for coordinator-to-router gRPC connections. | `disabled` |
+
+These settings are independent because the coordinator is a server in one direction and a client in the other. See [Internal gRPC TLS](./grpc_tls) for modes, certificate requirements, and migration guidance.
+
 ## Coordinator Timing Settings
 
 ### Iteration Timeout

@@ -19,6 +19,20 @@ use_spqrguard: true
 # router_keepalive_time: 30s      # How often to send keepalive pings (default: 30s)
 # router_keepalive_timeout: 20s   # How long to wait for ping response (default: 20s)
 
+# TLS for the coordinator gRPC API used by routers and tools
+# grpc_api_tls:
+#   mode: tls                  # disabled, tls, mtls
+#   cert_file: /path/to/grpc/coordinator-server.crt
+#   key_file: /path/to/grpc/coordinator-server.key
+#   # client_ca_file is required in mtls mode
+
+# TLS for coordinator connections to router gRPC APIs
+# router_grpc_tls:
+#   mode: tls                  # disabled, tls, mtls
+#   root_ca_file: /path/to/grpc/ca.crt
+#   # server_name may override the registered router address for certificate checks
+#   # cert_file and key_file are required in mtls mode
+
 frontend_rules:
   - pool_default: true
     auth_rule:

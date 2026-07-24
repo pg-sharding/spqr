@@ -38,6 +38,15 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `metric_path`        | The path for prometheus metric exporter           | Any valid HTTP path   | `/metric` |
 | `metric_port`        | The port for prometheus metric exporter           | Any valid port number | (none) |
 
+## Internal gRPC TLS
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `grpc_api_tls` | Server credentials for the router gRPC API used by coordinators. | `disabled` |
+| `coordinator_grpc_tls` | Client trust and identity for router-to-coordinator gRPC connections. | `disabled` |
+
+These settings are directional and may use different certificates or trust roots. See [Internal gRPC TLS](./grpc_tls) for modes, fields, CLI options, and rollout guidance.
+
 ## Frontend Rules
 
 Frontend rule is a specification of how clients connect to the router.

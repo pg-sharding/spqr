@@ -28,6 +28,47 @@ In SPQR Infra mode:
 
 <EtcdExampleSetup />
 
+### 2. Configure internal gRPC TLS
+
+Each SPQR Infra process contains a router gRPC server and client as well as an embedded coordinator gRPC server and client. Configure both files supplied to `spqr-router`:
+
+```yaml router.yaml
+with_coordinator: true
+use_coordinator_init: true
+
+grpc_api_tls:
+  mode: mtls
+  cert_file: /etc/spqr/tls/router.crt
+  key_file: /etc/spqr/tls/router.key
+  client_ca_file: /etc/spqr/tls/ca.crt
+
+coordinator_grpc_tls:
+  mode: mtls
+  root_ca_file: /etc/spqr/tls/ca.crt
+  cert_file: /etc/spqr/tls/router-client.crt
+  key_file: /etc/spqr/tls/router-client.key
+```
+
+```yaml coordinator.yaml
+grpc_api_tls:
+  mode: mtls
+  cert_file: /etc/spqr/tls/coordinator.crt
+  key_file: /etc/spqr/tls/coordinator.key
+  client_ca_file: /etc/spqr/tls/ca.crt
+
+router_grpc_tls:
+  mode: mtls
+  root_ca_file: /etc/spqr/tls/ca.crt
+  cert_file: /etc/spqr/tls/coordinator-client.crt
+  key_file: /etc/spqr/tls/coordinator-client.key
+```
+
+Use unique leaf certificates per instance and a shared internal CA. The server certificate SANs must match the router and coordinator addresses that the instance advertises through QDB. Test coordinator failover before production rollout: every possible leader must be trusted by every router. See [Internal gRPC TLS](/configuration/grpc_tls).
+
+### 3. Roll out TLS
+
+Upgrade all SPQR Infra binaries while TLS remains disabled. Provision credentials on every instance, then activate all matching client and server blocks using a coordinated restart or blue/green deployment. TLS and plaintext cannot share the same gRPC port.
+
 
 
 

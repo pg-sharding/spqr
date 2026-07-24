@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
@@ -21,8 +22,9 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
+
+var monitorTLSFlags grpccreds.CLITLSFlags
 
 var (
 	shardDataFilePath string
@@ -135,7 +137,11 @@ var (
 				}
 				lockedKeyRanges[id] = keyRange
 			}
-			conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			dialOpt, err := grpccreds.DialOption(monitorTLSFlags.ToClientTLSConfig())
+			if err != nil {
+				return fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+			}
+			conn, err := grpc.NewClient(coordAddr, dialOpt)
 			if err != nil {
 				return err
 			}
@@ -218,6 +224,7 @@ func init() {
 
 	verifyKeyRangeCmd.Flags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
 
+	monitorTLSFlags.RegisterFlags(rootCmd)
 	rootCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
 	rootCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
 	rootCmd.AddCommand(checkCmd)

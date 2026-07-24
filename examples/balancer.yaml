@@ -2,6 +2,13 @@ log_level: debug
 
 coordinator_address: "localhost:7003"
 
+# TLS for balancer connections to the coordinator gRPC API
+# coordinator_grpc_tls:
+#   mode: tls                  # disabled, tls, mtls
+#   root_ca_file: /path/to/grpc/ca.crt
+#   server_name: coordinator.internal
+#   # cert_file and key_file are required in mtls mode
+
 shards_config: "examples/shard_data.yaml"
 
 cpu_threshold: 1000

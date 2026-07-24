@@ -11,6 +11,7 @@ import (
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
@@ -21,13 +22,16 @@ import (
 )
 
 type App struct {
-	spqr *instance.InstanceImpl
+	spqr              *instance.InstanceImpl
+	grpcServerOptions []grpc.ServerOption
 }
 
-func NewApp(sg *instance.InstanceImpl) *App {
-	return &App{
-		spqr: sg,
+func NewApp(sg *instance.InstanceImpl) (*App, error) {
+	serverOptions, err := grpccreds.ServerOptions(config.RouterConfig().GrpcAPITLS)
+	if err != nil {
+		return nil, fmt.Errorf("init router gRPC server TLS: %w", err)
 	}
+	return &App{spqr: sg, grpcServerOptions: serverOptions}, nil
 }
 
 func (app *App) ServeRouter(ctx context.Context) error {
@@ -105,7 +109,7 @@ func (app *App) ServeGrpcAPI(ctx context.Context) error {
 		return err
 	}
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(app.grpcServerOptions...)
 	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr, app.spqr.RuleRouter)
 	spqrlog.Zero.Info().
 		Str("address", address).

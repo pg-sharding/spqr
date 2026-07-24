@@ -92,6 +92,7 @@
                         "configuration/router",
                         "configuration/coordinator",
                         "configuration/balancer",
+                        "configuration/grpc_tls",
                         "configuration/auth",
                         "configuration/roles"
                     ]

@@ -180,7 +180,7 @@ services:
       - "7032:7002"
       - "7033:7003"
     environment:
-      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator2.yaml
+      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG_2:-/spqr/test/feature/conf/coordinator2.yaml}
     hostname: regress_coordinator_2
     container_name: regress_coordinator_2
     depends_on:
