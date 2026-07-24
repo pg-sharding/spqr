@@ -317,6 +317,87 @@ func (mr *MockShardHostsPoolMockRecorder) View() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockShardHostsPool)(nil).View))
 }
 
+// MockConnectionProvider is a mock of ConnectionProvider interface.
+type MockConnectionProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockConnectionProviderMockRecorder
+	isgomock struct{}
+}
+
+// MockConnectionProviderMockRecorder is the mock recorder for MockConnectionProvider.
+type MockConnectionProviderMockRecorder struct {
+	mock *MockConnectionProvider
+}
+
+// NewMockConnectionProvider creates a new mock instance.
+func NewMockConnectionProvider(ctrl *gomock.Controller) *MockConnectionProvider {
+	mock := &MockConnectionProvider{ctrl: ctrl}
+	mock.recorder = &MockConnectionProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConnectionProvider) EXPECT() *MockConnectionProviderMockRecorder {
+	return m.recorder
+}
+
+// ConnectionWithTSA mocks base method.
+func (m *MockConnectionProvider) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConnectionWithTSA", clid, key, targetSessionAttrs)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConnectionWithTSA indicates an expected call of ConnectionWithTSA.
+func (mr *MockConnectionProviderMockRecorder) ConnectionWithTSA(clid, key, targetSessionAttrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockConnectionProvider)(nil).ConnectionWithTSA), clid, key, targetSessionAttrs)
+}
+
+// Discard mocks base method.
+func (m *MockConnectionProvider) Discard(sh shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Discard", sh)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Discard indicates an expected call of Discard.
+func (mr *MockConnectionProviderMockRecorder) Discard(sh any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockConnectionProvider)(nil).Discard), sh)
+}
+
+// Put mocks base method.
+func (m *MockConnectionProvider) Put(host shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Put", host)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Put indicates an expected call of Put.
+func (mr *MockConnectionProviderMockRecorder) Put(host any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockConnectionProvider)(nil).Put), host)
+}
+
+// View mocks base method.
+func (m *MockConnectionProvider) View() pool.Statistics {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "View")
+	ret0, _ := ret[0].(pool.Statistics)
+	return ret0
+}
+
+// View indicates an expected call of View.
+func (mr *MockConnectionProviderMockRecorder) View() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockConnectionProvider)(nil).View))
+}
+
 // MockMultiShardTSAPool is a mock of MultiShardTSAPool interface.
 type MockMultiShardTSAPool struct {
 	ctrl     *gomock.Controller

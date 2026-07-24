@@ -50,7 +50,7 @@ type MultiShardServer struct {
 
 	dataRowCnt int
 
-	pool pool.MultiShardTSAPool
+	pool pool.ConnectionProvider
 
 	status txstatus.TXStatus
 
@@ -64,7 +64,7 @@ func (m *MultiShardServer) ToMultishard() Server {
 	return m
 }
 
-func NewMultiShardServer(pool pool.MultiShardTSAPool) (Server, error) {
+func NewMultiShardServer(pool pool.ConnectionProvider) (Server, error) {
 	ret := &MultiShardServer{
 		pool:         pool,
 		activeShards: []shard.ShardHostInstance{},
@@ -74,7 +74,7 @@ func NewMultiShardServer(pool pool.MultiShardTSAPool) (Server, error) {
 	return ret, nil
 }
 
-func NewMultiShardServerFromShard(pool pool.MultiShardTSAPool, sh shard.ShardHostInstance) Server {
+func NewMultiShardServerFromShard(pool pool.ConnectionProvider, sh shard.ShardHostInstance) Server {
 	return &MultiShardServer{
 		pool: pool,
 		activeShards: []shard.ShardHostInstance{
@@ -740,10 +740,6 @@ func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
 
 func (m *MultiShardServer) Datashards() []shard.ShardHostInstance {
 	return m.activeShards
-}
-
-func (m *MultiShardServer) Pool() pool.MultiShardTSAPool {
-	return m.pool
 }
 
 var _ Server = &MultiShardServer{}

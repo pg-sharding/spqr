@@ -15,7 +15,6 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	planopts "github.com/pg-sharding/spqr/pkg/planopts"
-	pool "github.com/pg-sharding/spqr/pkg/pool"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
@@ -159,20 +158,6 @@ func (m *MockServer) Name() string {
 func (mr *MockServerMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockServer)(nil).Name))
-}
-
-// Pool mocks base method.
-func (m *MockServer) Pool() pool.MultiShardTSAPool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Pool")
-	ret0, _ := ret[0].(pool.MultiShardTSAPool)
-	return ret0
-}
-
-// Pool indicates an expected call of Pool.
-func (mr *MockServerMockRecorder) Pool() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pool", reflect.TypeOf((*MockServer)(nil).Pool))
 }
 
 // PrefetchResult mocks base method.

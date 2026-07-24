@@ -23,6 +23,7 @@ const (
 	PGAdvisoryXactLock              = "pg_advisory_xact_lock"
 	PGAdvisoryLock                  = "pg_advisory_lock"
 	PGAdvisoryUnlock                = "pg_advisory_unlock"
+	PGAdvisoryUnlockAll             = "pg_advisory_unlock_all"
 	PgTryAdvisoryLock               = "pg_try_advisory_lock"
 )
 
@@ -33,7 +34,7 @@ func IsVirtualFuncName(n string) bool {
 		VirtualRouteKey, VirtualRemoteExecute, VirtualRun2PCRecover,
 		VirtualClear2PCData, VirtualCleanOutdated2PCData,
 		PGIsolationTestSessionIsBlocked,
-		PGAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock, PgTryAdvisoryLock,
+		PGAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock, PgTryAdvisoryLock, PGAdvisoryUnlockAll,
 		VirtualSetNextTwoPhaseCommitGID:
 		return true
 	default:

@@ -982,9 +982,14 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
 	switch fname {
-	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
-		fallthrough
 	case virtual.PGAdvisoryLock:
+		/* Pin connections */
+		fallthrough
+	case virtual.PGAdvisoryUnlockAll:
+		/* Unpin connections */
+		fallthrough
+	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
+
 		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
 		if err != nil {
 			return nil, err

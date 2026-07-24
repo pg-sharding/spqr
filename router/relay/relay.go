@@ -233,6 +233,7 @@ func pstmtDoesNotExistsErr(name string) error {
 
 func (rst *RelayStateImpl) Close() error {
 	_ = rst.Reset()
+	rst.QueryExecutor().Close()
 
 	return rst.Cl.Close()
 }
