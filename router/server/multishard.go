@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -332,7 +333,9 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 
 var ErrMultiShardSyncBroken = spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
 
-func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
+
+	rewriteCCTag := o == nil || !o.ResultRelationIsRef
 
 	switch m.multistate {
 	case ServerErrorState:
@@ -406,22 +409,26 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					m.states[i] = ShardCCState
 					saveCC = retMsg
 
-					if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "UPDATE"); ok {
-						cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
-						if err != nil {
-							return nil, 0, err
-						}
-						modifyCnt += cnt
-						anyCCTag = []byte("UPDATE")
-					} else {
-						if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "DELETE"); ok {
+					if rewriteCCTag {
+						if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "UPDATE"); ok {
 							cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
 							if err != nil {
 								return nil, 0, err
 							}
 							modifyCnt += cnt
-							anyCCTag = []byte("DELETE")
+							anyCCTag = []byte("UPDATE")
+						} else {
+							if p, ok := strings.CutPrefix(string(retMsg.CommandTag), "DELETE"); ok {
+								cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+								if err != nil {
+									return nil, 0, err
+								}
+								modifyCnt += cnt
+								anyCCTag = []byte("DELETE")
+							}
 						}
+					} else {
+						anyCCTag = retMsg.CommandTag
 					}
 				case *pgproto3.RowDescription:
 					m.states[i] = DatarowState
@@ -465,7 +472,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 		}
 
 		if anyCCTag != nil {
-			anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
+			if rewriteCCTag {
+				anyCCTag = fmt.Appendf(anyCCTag, " %d", modifyCnt)
+			}
 			saveCC.CommandTag = anyCCTag
 		}
 
@@ -543,25 +552,27 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				//
 				anyCCTag = mTpd.CommandTag
 
-				ccSelect = strings.HasPrefix(string(mTpd.CommandTag), "SELECT")
+				if rewriteCCTag {
+					ccSelect = strings.HasPrefix(string(mTpd.CommandTag), "SELECT")
 
-				if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "UPDATE"); ok {
-					cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
-					if err != nil {
-						return nil, 0, err
-					}
-					modifyCnt += cnt
-					ccRewrite = true
-					anyCCTag = []byte("UPDATE")
-				} else {
-					if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "DELETE"); ok {
+					if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "UPDATE"); ok {
 						cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
 						if err != nil {
 							return nil, 0, err
 						}
 						modifyCnt += cnt
 						ccRewrite = true
-						anyCCTag = []byte("DELETE")
+						anyCCTag = []byte("UPDATE")
+					} else {
+						if p, ok := strings.CutPrefix(string(mTpd.CommandTag), "DELETE"); ok {
+							cnt, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+							if err != nil {
+								return nil, 0, err
+							}
+							modifyCnt += cnt
+							ccRewrite = true
+							anyCCTag = []byte("DELETE")
+						}
 					}
 				}
 

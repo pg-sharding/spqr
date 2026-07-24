@@ -225,12 +225,20 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 
+				&pgproto3.Query{
+					String: "UPDATE xproto_ref SET a = -a",
+				},
+
 				&pgproto3.Parse{
 					Query: "TRUNCATE xproto_ref",
 				},
 				&pgproto3.Bind{},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "UPDATE xproto_ref SET a = -a",
+				},
 
 				&pgproto3.Query{
 					String: "ROLLBACK",
@@ -265,12 +273,28 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.BindComplete{},
 
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("TRUNCATE TABLE"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 0"),
 				},
 
 				&pgproto3.ReadyForQuery{

@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -748,6 +749,11 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
 					"sh2": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
@@ -836,6 +842,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				Plan: &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: true,
+						},
+					},
 					OverwriteQuery: map[string]string{
 						"sh1": "INSERT INTO test_ref_rel VALUES(1) returning *;",
 						"sh2": "INSERT INTO test_ref_rel VALUES(1) returning *;",
@@ -854,6 +865,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				OverwriteQuery: map[string]string{
 					"sh1": "INSERT INTO test_ref_rel VALUES(1) ;",
 					"sh2": "INSERT INTO test_ref_rel VALUES(1) ;",
@@ -873,6 +889,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: true,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: []kr.ShardKey{
 							{
@@ -907,6 +928,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				SubPlan: &plan.ModifyTable{
 					ExecTargets: []kr.ShardKey{
 						{
@@ -930,6 +956,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				SubPlan: &plan.ModifyTable{
 					ExecTargets: []kr.ShardKey{
 						{

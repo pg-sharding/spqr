@@ -169,8 +169,8 @@ func TestFrontendSimple(t *testing.T) {
 
 	srv.EXPECT().SendShard(query, gomock.Any()).Times(1).Return(nil)
 
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{}, uint(0), nil)
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.DataRow{
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.RowDescription{}, uint(0), nil)
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.DataRow{
 		Values: [][]byte{
 			[]byte(
 				"1",
@@ -178,10 +178,10 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, uint(0), nil)
 
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.CommandComplete{
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.CommandComplete{
 		CommandTag: []byte("SELECT"),
 	}, uint(0), nil)
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, uint(0), nil)
 

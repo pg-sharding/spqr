@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -186,7 +187,7 @@ func (srv *ShardServer) PrefetchUntilCommandComplete(_ kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+func (srv *ShardServer) Receive(*planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 	var msg pgproto3.BackendMessage
 
 	if len(srv.prefetch) != 0 {
@@ -211,7 +212,7 @@ func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, err
 	if (*srv.shard.Load()).ID() != shardId {
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
-	msg, _, err := srv.Receive()
+	msg, _, err := srv.Receive(nil)
 	return msg, err
 }
 

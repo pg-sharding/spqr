@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -1044,7 +1045,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	}
 
 	for {
-		msg, recvIndex, err := serv.Receive()
+		var o *planopts.PlanOpts
+		if topPlan != nil {
+			o = topPlan.Opts()
+		}
+		msg, recvIndex, err := serv.Receive(o)
 		if err != nil {
 			return err
 		}
