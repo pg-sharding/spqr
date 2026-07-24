@@ -133,6 +133,7 @@ type Router struct {
 	StoreTxDataPostgresql    bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
 	TxDataTTL                time.Duration `json:"tx_data_ttl" toml:"tx_data_ttl" yaml:"tx_data_ttl"`
 	AllowAutoprotectTwoPhase bool          `json:"allow_autoprotect_two_phase" yaml:"allow_autoprotect_two_phase" toml:"allow_autoprotect_two_phase"`
+	SessionConnectionsPin    bool          `json:"session_connections_pin" yaml:"session_connections_pin" toml:"session_connections_pin"`
 
 	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }

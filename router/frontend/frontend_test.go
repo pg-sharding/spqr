@@ -103,8 +103,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-	srv.EXPECT().Pool().AnyTimes()
-
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -231,8 +229,6 @@ func TestFrontendXProto(t *testing.T) {
 	srv.EXPECT().TxStatus().AnyTimes()
 	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(sh, nil)
 	srv.EXPECT().Reset().AnyTimes()
-
-	srv.EXPECT().Pool().AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
 		sh,

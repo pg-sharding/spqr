@@ -21,7 +21,7 @@ import (
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
-	pool     pool.MultiShardTSAPool
+	pool     pool.ConnectionProvider
 	shard    atomic.Pointer[shard.ShardHostInstance]
 	prefetch []pgproto3.BackendMessage
 }
@@ -45,7 +45,7 @@ func (srv *ShardServer) DataPending() bool {
 	return sh.DataPending()
 }
 
-func NewShardServer(spool pool.MultiShardTSAPool) *ShardServer {
+func NewShardServer(spool pool.ConnectionProvider) *ShardServer {
 	return &ShardServer{
 		pool:  spool,
 		shard: atomic.Pointer[shard.ShardHostInstance]{},
@@ -274,10 +274,6 @@ func (srv *ShardServer) Datashards() []shard.ShardHostInstance {
 	}
 
 	return rv
-}
-
-func (srv *ShardServer) Pool() pool.MultiShardTSAPool {
-	return srv.pool
 }
 
 var _ Server = &ShardServer{}

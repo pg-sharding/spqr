@@ -555,6 +555,14 @@ var BoolGUCs = []BoolGUCimpl{
 			return config.RouterConfig().Qr.AllowFluxChunkAccess
 		},
 	},
+
+	{
+		n:         SPQR_SESSION_CONNECTIONS_PIN,
+		shortName: "Session connections pinned",
+		def: func() bool {
+			return config.RouterConfig().AllowAutoprotectTwoPhase
+		},
+	},
 }
 
 var StrGUCs = []StrGUCimpl{
