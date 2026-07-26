@@ -305,10 +305,10 @@ github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5t
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
 go.etcd.io/etcd/api/v3 v3.7.1 h1:KJG0/DcWGfe3Y1otDf/fsBf0TSSgpxZ5RO/L8SFt73E=
 go.etcd.io/etcd/api/v3 v3.7.1/go.mod h1:8bXIpCMeV7E3/XL0Ix123ATn3dB+0V7d9zklHbB0m78=
-go.etcd.io/etcd/client/pkg/v3 v3.7.0 h1:sW9njJzS3vXKcAJjjLQ4nk+avNUJ12Bcijcx8ehUskE=
-go.etcd.io/etcd/client/pkg/v3 v3.7.0/go.mod h1:cnzZGIUzSfjEwLC6UBVsSXlEK1eepS/JUD7wE6PLRT0=
-go.etcd.io/etcd/client/v3 v3.7.0 h1:5MHO37VbPB87VRPKUXEcicjeQWiTSjpPv3Ume8xPx20=
-go.etcd.io/etcd/client/v3 v3.7.0/go.mod h1:DJ382WuwjmbowjPDyaaQ0idWXy4dh91XRhe4FOrb9vM=
+go.etcd.io/etcd/client/pkg/v3 v3.7.1 h1:rKYsj3pRkR0eK3yjT3XOgrhqfmIfj9pzNgxjh7mfFv4=
+go.etcd.io/etcd/client/pkg/v3 v3.7.1/go.mod h1:cnzZGIUzSfjEwLC6UBVsSXlEK1eepS/JUD7wE6PLRT0=
+go.etcd.io/etcd/client/v3 v3.7.1 h1:0PEMMC0KuZmVIN+RAbdqfkZ45pYTgKVtmBEbRCvZFUg=
+go.etcd.io/etcd/client/v3 v3.7.1/go.mod h1:ffNqALa8tRCYhYo1F9oR489y23K39Gz+BSR3ApAGYq0=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.47.0 h1:sv9kVfal0MK0wBMCOGr+HeJm9v803BkJxGrk2au7j08=
