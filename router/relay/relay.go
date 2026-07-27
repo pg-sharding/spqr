@@ -664,6 +664,59 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	return retMsg, nil
 }
 
+func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string, dMsg *pgproto3.Describe, p plan.Plan) error {
+
+	/* SingleShard or random shard plans */
+
+	err := rst.PrepareTargetDispatchExecutionSlice(p)
+	if err != nil {
+		return err
+	}
+
+	rst.routingDecisionPlan = p
+
+	if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
+		return err
+	}
+
+	var bnd *pgproto3.Bind
+
+	if name == "" {
+		bnd = &rst.saveBind
+	} else {
+		bnd = rst.saveBindNamed[name]
+	}
+
+	/* XXX: maybe optimize allocation here */
+
+	if dMsg == nil {
+		dMsg = &pgproto3.Describe{
+			ObjectType: objType,
+			Name:       name,
+		}
+	}
+
+	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
+	if err != nil {
+		return err
+	}
+	if cachedPd.rd != nil {
+		// send to the client
+		if err := rst.Client().Send(cachedPd.rd); err != nil {
+			return err
+		}
+	}
+	if cachedPd.nodata != nil {
+		// send to the client
+		if err := rst.Client().Send(cachedPd.nodata); err != nil {
+			return err
+		}
+	}
+
+	rst.savedPortalDesc[rst.lastBindName] = cachedPd
+	return nil
+}
+
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
 	// save txstatus because it may be overwritten if we have no backend connection
 	saveTxStat := rst.qse.TxStatus()
@@ -708,62 +761,24 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			case *plan.VirtualPlan:
 				// skip deploy
 
-				// send to the client
-				if err := rst.Client().Send(&pgproto3.RowDescription{
-					Fields: q.TTS.Desc,
-				}); err != nil {
-					return err
+				if q.SubPlan == nil {
+					// send to the client
+					if err := rst.Client().Send(&pgproto3.RowDescription{
+						Fields: q.TTS.Desc,
+					}); err != nil {
+						return err
+					}
+				} else {
+					// like default
+					if err := rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+						return err
+					}
 				}
 
 			default:
-				/* SingleShard or random shard plans */
-
-				err := rst.PrepareTargetDispatchExecutionSlice(p)
-				if err != nil {
+				if err := rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 					return err
 				}
-
-				rst.routingDecisionPlan = p
-
-				if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
-					return err
-				}
-
-				var bnd *pgproto3.Bind
-
-				if name == "" {
-					bnd = &rst.saveBind
-				} else {
-					bnd = rst.saveBindNamed[name]
-				}
-
-				/* XXX: maybe optimize allocation here */
-
-				if dMsg == nil {
-					dMsg = &pgproto3.Describe{
-						ObjectType: objType,
-						Name:       name,
-					}
-				}
-
-				cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
-				if err != nil {
-					return err
-				}
-				if cachedPd.rd != nil {
-					// send to the client
-					if err := rst.Client().Send(cachedPd.rd); err != nil {
-						return err
-					}
-				}
-				if cachedPd.nodata != nil {
-					// send to the client
-					if err := rst.Client().Send(cachedPd.nodata); err != nil {
-						return err
-					}
-				}
-
-				rst.savedPortalDesc[rst.lastBindName] = cachedPd
 			}
 		}
 	} else {
