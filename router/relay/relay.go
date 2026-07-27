@@ -768,10 +768,11 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 					}); err != nil {
 						return err
 					}
-				}
-				// like default
-				if err := rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
-					return err
+				} else {
+					// like default
+					if err := rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+						return err
+					}
 				}
 
 			default:
