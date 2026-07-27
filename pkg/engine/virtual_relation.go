@@ -85,7 +85,7 @@ func KeyRangeVirtualRelationScanExtended(
 	distMap := make(map[string]*distributions.Distribution)
 	for _, d := range dists {
 		distMap[d.Id] = d
-		if len(d.ColTypes) == 0 {
+		if len(d.ColTypes) == 0 && d.Id != distributions.REPLICATED {
 			return nil, fmt.Errorf("malformed distribution %v", d.Id)
 		}
 	}
