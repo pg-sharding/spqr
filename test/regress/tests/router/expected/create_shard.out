@@ -69,10 +69,10 @@ CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6
 \c regress
 DROP TABLE test_table;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  table "test_table" does not exist
+ERROR:  relation "test_table" does not exist
 DROP TABLE ref_table;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  table "ref_table" does not exist
+ERROR:  relation "ref_table" does not exist
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
