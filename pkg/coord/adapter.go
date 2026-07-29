@@ -695,13 +695,16 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 //
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
-func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
 	client := proto.NewShardServiceClient(a.conn)
 	protoShard, err := topology.DataShardToProto(shard, true)
 	if err != nil {
 		return err
 	}
-	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{Shard: protoShard})
+	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{
+		Shard: protoShard,
+		Force: force,
+	})
 	return spqrerror.CleanGrpcError(err)
 }
 

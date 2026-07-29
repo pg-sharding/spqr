@@ -651,7 +651,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.AddDataShard(context.TODO(), shard); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard, true); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -2442,7 +2442,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			if err != nil {
 				return err
 			}
-			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: protoShard})
+			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{
+				Shard: protoShard,
+				Force: true,
+			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2887,8 +2890,8 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 	}
 }
 
-func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.db.AddShard(ctx, topology.DataShardToDB(shard)); err != nil {
+func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+	if err := qc.Coordinator.AddDataShard(ctx, shard, force); err != nil {
 		return err
 	}
 
@@ -2900,6 +2903,7 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 		}
 		_, err = c.AddDataShard(ctx, &proto.AddShardRequest{
 			Shard: protoShard,
+			Force: true,
 		})
 		return err
 	}); err != nil {
