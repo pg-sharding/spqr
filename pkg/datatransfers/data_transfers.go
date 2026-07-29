@@ -41,11 +41,10 @@ const spqrTransferApplicationName = "spqr-transfer"
 const fdwSetupVersion = 2
 
 type recoverableMoveError struct {
-	reason error
 }
 
 func (r recoverableMoveError) Error() string {
-	return r.reason.Error()
+	return "recoverable transfer error occured"
 }
 
 var _ error = recoverableMoveError{}
