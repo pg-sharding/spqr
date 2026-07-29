@@ -40,16 +40,17 @@ const spqrTransferApplicationName = "spqr-transfer"
 // Increment if foreign server/schema setup is changed
 const fdwSetupVersion = 2
 
-type awaitPIDError struct {
+type recoverableMoveError struct {
+	reason error
 }
 
-func (awaitPIDError) Error() string {
-	return "timeout waiting for vxid locks to release"
+func (r recoverableMoveError) Error() string {
+	return r.reason.Error()
 }
 
-var _ error = awaitPIDError{}
+var _ error = recoverableMoveError{}
 
-var AwaitPIDError = awaitPIDError{}
+var RecoverableMoveError = recoverableMoveError{}
 
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
@@ -223,7 +224,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err := awaitPIDs(ctx, from); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					_ = db.RemoveTransferTx(ctx, krg.ID)
-					return AwaitPIDError
+					return RecoverableMoveError
 				}
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit: %s", err)
 			}
