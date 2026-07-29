@@ -1385,7 +1385,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 
 	execCtx, cancel := context.WithCancel(ctx)
 
-	ch := make(chan error)
+	ch := make(chan error, 1)
 	qc.dataTransferWorkers.Store(taskGroup.ID, &transferworker.TaskGroupWorkerState{
 		Cancel: cancel,
 	})
@@ -1393,6 +1393,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	qc.moveTaskWatcherInit.Do(qc.bootstrapWatcher(context.TODO()))
 
 	go func() {
+		defer cancel()
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup, icpCH)
 		qc.dataTransferWorkers.Delete(taskGroup.ID)
 	}()
@@ -2300,7 +2301,7 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 
 	defer cancel()
 
-	ch := make(chan error)
+	ch := make(chan error, 1)
 	go func() {
 		ch <- qc.executeRedistributeTask(execCtx, task, icpCH)
 	}()
