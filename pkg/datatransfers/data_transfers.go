@@ -44,7 +44,7 @@ type recoverableMoveError struct {
 }
 
 func (r recoverableMoveError) Error() string {
-	return "recoverable transfer error occured"
+	return "recoverable transfer error occurred"
 }
 
 var _ error = recoverableMoveError{}
