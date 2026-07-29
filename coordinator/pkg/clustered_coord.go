@@ -1394,8 +1394,12 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 
 	go func() {
 		defer cancel()
-		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup, icpCH)
-		qc.dataTransferWorkers.Delete(taskGroup.ID)
+		defer qc.dataTransferWorkers.Delete(taskGroup.ID)
+		err := qc.executeMoveTaskGroup(execCtx, taskGroup, icpCH)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Str("task-group", taskGroup.ID).Msg("move task group failed")
+		}
+		ch <- err
 	}()
 
 	if !nowait {
