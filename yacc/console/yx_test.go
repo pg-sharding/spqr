@@ -94,6 +94,56 @@ func TestSimple(t *testing.T) {
 	}
 }
 
+// TestEmptyQuery verifies empty-query (nil statement) semantics.
+//
+// Each semicolon terminates a statement; the segment before a semicolon is an
+// empty query (nil) when it contains no command. A trailing semicolon does not
+// produce a spurious empty query, but an intermediate/leading semicolon does.
+func TestEmptyQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	// showClients and showPools are the exact statements produced for the
+	// corresponding queries (see TestSimpleShow).
+	showClients := func() *spqrparser.Show {
+		return &spqrparser.Show{
+			Cmd:     spqrparser.ClientsStr,
+			Where:   &lyx.AExprEmpty{},
+			GroupBy: spqrparser.GroupByClauseEmpty{},
+		}
+	}
+	showPools := func() *spqrparser.Show {
+		return &spqrparser.Show{
+			Cmd:     spqrparser.PoolsStr,
+			Where:   &lyx.AExprEmpty{},
+			GroupBy: spqrparser.GroupByClauseEmpty{},
+		}
+	}
+
+	type tcase struct {
+		query string
+		exp   []spqrparser.Statement
+	}
+
+	for _, tt := range []tcase{
+		{query: "", exp: []spqrparser.Statement{nil}},
+		{query: ";", exp: []spqrparser.Statement{nil}},
+		{query: ";;", exp: []spqrparser.Statement{nil, nil}},
+		{query: ";;;", exp: []spqrparser.Statement{nil, nil, nil}},
+		{query: "   ", exp: []spqrparser.Statement{nil}},
+		{query: " ; ", exp: []spqrparser.Statement{nil}},
+		{query: "SHOW clients", exp: []spqrparser.Statement{showClients()}},
+		{query: "SHOW clients;", exp: []spqrparser.Statement{showClients()}},
+		{query: "SHOW clients;;", exp: []spqrparser.Statement{showClients(), nil}},
+		{query: "; SHOW clients", exp: []spqrparser.Statement{nil, showClients()}},
+		{query: "SHOW clients; SHOW pools", exp: []spqrparser.Statement{showClients(), showPools()}},
+		{query: "SHOW clients;; SHOW pools", exp: []spqrparser.Statement{showClients(), nil, showPools()}},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+		assert.NoError(err, "query %q", tt.query)
+		assert.Equal(tt.exp, tmp, "query %q", tt.query)
+	}
+}
+
 func TestSimpleTrace(t *testing.T) {
 	assert := assert.New(t)
 

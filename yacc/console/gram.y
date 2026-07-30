@@ -197,7 +197,7 @@ func randomHex(n int) (string, error) {
 // CMDS
 %type <statement> command
 
-%type <statementList> multiStmt
+%type <statementList> multiStmt terminated_stmt_list
 
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
@@ -354,28 +354,55 @@ func randomHex(n int) (string, error) {
 
 %%
 
-root: multiStmt semicolon_opt {
+root: multiStmt {
 	setParseTree(yylex, $1)
 }
 
 
-
-multiStmt: 
+/*
+ * A query string is a sequence of statements. Each semicolon terminates a
+ * statement; the segment before a semicolon is an empty query (nil) if it
+ * contains no command. The final segment (after the last semicolon) is only
+ * added to the result if it is non-empty, so that trailing semicolons do not
+ * produce a spurious empty query.
+ *
+ * Examples:
+ *   ""            -> [nil]
+ *   ";"           -> [nil]
+ *   ";;"          -> [nil, nil]
+ *   "SHOW x"      -> [Show]
+ *   "SHOW x;"     -> [Show]
+ *   "SHOW x;;"    -> [Show, nil]
+ *   ";SHOW x"     -> [nil, Show]
+ */
+multiStmt:
 			command {
+				/* No terminating semicolon: single segment. */
 				$$ = []Statement{$1}
-			} | 
-			multiStmt TSEMICOLON command {
-				$$ = append($1, $3)
+			}
+			| terminated_stmt_list command {
+				if $2 != nil {
+					$$ = append($1, $2)
+				} else {
+					/* Trailing semicolon: drop the empty final segment. */
+					$$ = $1
+				}
+			}
+	;
+
+/* one or more semicolon-terminated statements */
+terminated_stmt_list:
+			command TSEMICOLON {
+				$$ = []Statement{$1}
+			}
+			| terminated_stmt_list command TSEMICOLON {
+				$$ = append($1, $2)
 			}
 	;
 
 
-semicolon_opt:
-	/*empty*/ {}
-	| TSEMICOLON {}
-
-
 command:
+	/* empty query */
 	{
 		$$ = nil
 	}
@@ -800,10 +827,6 @@ drop_stmt:
 	DROP key_range_stmt
 	{
 		$$ = &Drop{Element: $2}
-	}
-	| DROP KEY RANGE ALL
-	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
 	| DROP distribution_select_stmt opt_cascade
 	{
