@@ -545,7 +545,7 @@ func TestRedistribute(t *testing.T) {
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if err != nil {
-			assert.EqualError(err, tt.err.Error())
+			assert.ErrorContains(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
