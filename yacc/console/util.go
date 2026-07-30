@@ -36,10 +36,7 @@ func setParseTree(yylex any, stmt []Statement) {
 func Parse(sql string) ([]Statement, error) {
 	tokenizer := NewStringTokenizer(sql)
 	if yyParse(tokenizer) != 0 {
-		if tokenizer.LastError == "" {
-			return nil, fmt.Errorf("failed to parse query: %q", sql)
-		}
-		return nil, fmt.Errorf("%s: %q", tokenizer.LastError, sql)
+		return nil, errors.New(tokenizer.LastError)
 	}
 	ast := tokenizer.ParseTree
 	return ast, nil
