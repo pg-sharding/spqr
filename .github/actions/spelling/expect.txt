@@ -166,6 +166,7 @@ exercitationem
 expd
 extldflags
 extversion
+EQR
 FAFBFF
 fdw
 feda
