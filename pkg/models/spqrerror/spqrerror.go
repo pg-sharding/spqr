@@ -209,6 +209,10 @@ func (e *SpqrError) Error() string {
 	return e.Err.Error()
 }
 
+func (e *SpqrError) Unwrap() error {
+	return e.Err
+}
+
 func ToGrpcError(err error) error {
 	if err == nil {
 		return nil
@@ -302,4 +306,11 @@ func ErrorMsgFromErr(
 		Hint:     hint,
 		Position: pos,
 	}
+}
+
+type RedistributeTaskDependentObjectError struct {
+}
+
+func (RedistributeTaskDependentObjectError) Error() string {
+	return "cannot drop redistribute task because other objects depend on it"
 }

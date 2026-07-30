@@ -903,7 +903,7 @@ func (lc *Coordinator) DropRedistributeTask(ctx context.Context, id string, casc
 	if taskGroup, err := lc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
 		return err
 	} else if taskGroup != nil && !cascade {
-		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "%w", spqrerror.RedistributeTaskDependentObjectError{}).Detail(fmt.Sprintf("redistribute task id: \"%s\", move task group id: \"%s\"", id, taskGroupId)).Hint("Use DROP ... CASCADE to drop task group automatically")
 	}
 
 	// TODO use meta transactions
