@@ -2,7 +2,6 @@ package datatransfers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -39,17 +38,6 @@ const spqrTransferApplicationName = "spqr-transfer"
 
 // Increment if foreign server/schema setup is changed
 const fdwSetupVersion = 2
-
-type recoverableMoveError struct {
-}
-
-func (recoverableMoveError) Error() string {
-	return "recoverable transfer error occurred"
-}
-
-var _ error = recoverableMoveError{}
-
-var RecoverableMoveError = recoverableMoveError{}
 
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
@@ -221,11 +209,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			t := time.Now()
 			// Await all current virtual transactions on source shard to stop
 			if err := awaitPIDs(ctx, from); err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					_ = db.RemoveTransferTx(ctx, krg.ID)
-					return RecoverableMoveError
-				}
-				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit: %s", err)
+				_ = db.RemoveTransferTx(ctx, krg.ID)
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
 			tx.Status = qdb.Locked
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
