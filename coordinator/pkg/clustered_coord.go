@@ -1261,13 +1261,13 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 
 	exists, err := qc.QDB().CheckDistribution(ctx, distributions.REPLICATED)
 	if err != nil {
-		return fmt.Errorf("error checking for replicated distribution: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for replicated distribution: %s", err)
 	}
 	replRels := []string{}
 	if exists {
 		replDs, err := qc.GetDistribution(ctx, distributions.REPLICATED)
 		if err != nil {
-			return fmt.Errorf(
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 				"error getting replicated distribution: %s", err)
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
@@ -1276,17 +1276,17 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 
 			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation)
 			if err != nil {
-				return fmt.Errorf(
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 					"failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
 			}
 			if relExists {
 				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation)
 				if err != nil {
-					return fmt.Errorf(
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 						"failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
 				}
 				if !destRelExists {
-					return fmt.Errorf(
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 						"replicated relation \"%s\" exists on source shard, but not on destination shard", r.QualifiedName())
 				}
 				replRels = append(replRels, r.QualifiedName().String())
@@ -1337,7 +1337,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 
 	if err := datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardID, schemas); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
-		return err
+		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "failed to setup move data FDW").Detail("setup failed on destination shard")
 	}
 	return nil
 }
