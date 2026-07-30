@@ -1031,6 +1031,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		}
 	}
 
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
+
 	for move != nil {
 
 		spqrlog.Zero.Debug().Time("time", time.Now()).Str("key range id", req.KeyRangeID).Str("tx status", string(move.Status)).Msg("Move iteration")
@@ -1053,26 +1058,31 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			move.Status = qdb.MoveKeyRangeLocked
 
 		case qdb.MoveKeyRangeLocked:
-			// move the data
-			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-			if err != nil {
-				return err
-			}
+			// Physically move the data
 
 			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId, icpCH)
 			if err != nil {
 				spqrlog.Zero.Error().Str("move id", move.MoveId).Str("key range", keyRange.ID).Err(err).Msg("failed to move rows")
 				if spqrErr, ok := err.(*spqrerror.SpqrError); ok && spqrErr.ErrorCode == spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR {
-					txErr := err
-					spqrlog.Zero.Info().Str("move id", move.MoveId).Str("key range", keyRange.ID).Msg("move task failed with recoverable error, unlocking key range")
+					spqrlog.Zero.Info().Err(spqrErr).
+						Str("move id", move.MoveId).Str("key range", keyRange.ID).
+						Msg("move task failed with recoverable error, unlocking key range")
+
 					if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangePlanned); err != nil {
+						/* Things bad un-sync, unrecoverable */
 						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update move task status after await PID timeout: %s", err)
 					}
+
 					move.Status = qdb.MoveKeyRangePlanned
 					if err = qc.UnlockKeyRange(ctx, keyRange.ID); err != nil {
-						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to unlock key range after recoverable error: %s", err)
+						/* Things bad un-sync, unrecoverable */
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
+							"failed to unlock key range after recoverable error: %s", err)
 					}
-					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to move keys: %s", txErr.Error())
+
+					/* Return original error, note that we deliberately keep SPQR_RECOVERABLE_TRANSFER_ERROR
+					* error code */
+					return spqrErr
 				}
 				return err
 			}
@@ -1087,10 +1097,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			move.Status = qdb.MoveKeyRangeDataMoved
 		case qdb.MoveKeyRangeDataMoved:
 			keyRange.ShardID = req.ShardID
-			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-			if err != nil {
-				return err
-			}
+
 			// TODO: move check to meta layer
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
