@@ -1365,6 +1365,19 @@ func (qc *ClusteredCoordinator) TaskState(id string) (*transferworker.TaskGroupW
 	return nil, fmt.Errorf("no such task \"%v\"", id)
 }
 
+func (qc *ClusteredCoordinator) awaitMoveTaskGroupResult(ctx context.Context, taskGroupID string, resultCh <-chan error) error {
+	select {
+	case <-ctx.Done():
+		return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+	case err := <-resultCh:
+		if err != nil {
+			_ = qc.db.DropTaskGroupLock(ctx, taskGroupID)
+			_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroupID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+		}
+		return err
+	}
+}
+
 /*
 * Workhorse for all move data operations
  */
@@ -1383,7 +1396,12 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 		qc.invalidateTaskGroupCache(taskGroup.ID)
 	}
 
-	execCtx, cancel := context.WithCancel(ctx)
+	taskCtx := ctx
+	if nowait {
+		// Keep the task alive after the request returns; it remains cancelable through TaskState.
+		taskCtx = context.WithoutCancel(ctx)
+	}
+	execCtx, cancel := context.WithCancel(taskCtx)
 
 	ch := make(chan error, 1)
 	qc.dataTransferWorkers.Store(taskGroup.ID, &transferworker.TaskGroupWorkerState{
@@ -1395,29 +1413,20 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	go func() {
 		defer cancel()
 		defer qc.dataTransferWorkers.Delete(taskGroup.ID)
-		err := qc.executeMoveTaskGroup(execCtx, taskGroup, icpCH)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Str("task-group", taskGroup.ID).Msg("move task group failed")
-		}
-		ch <- err
+		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup, icpCH)
 	}()
 
-	if !nowait {
-		defer cancel()
-		for {
-			select {
-			case <-ctx.Done():
-				return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
-			case err := <-ch:
-				if err != nil {
-					_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
-					_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
-				}
-				return err
+	if nowait {
+		go func() {
+			if err := qc.awaitMoveTaskGroupResult(taskCtx, taskGroup.ID, ch); err != nil {
+				spqrlog.Zero.Error().Err(err).Str("task-group", taskGroup.ID).Msg("background move task group failed")
 			}
-		}
+		}()
+		return nil
 	}
-	return nil
+
+	defer cancel()
+	return qc.awaitMoveTaskGroupResult(taskCtx, taskGroup.ID, ch)
 }
 
 func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
