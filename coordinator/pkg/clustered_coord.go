@@ -2872,6 +2872,14 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 			}
 
 			for _, stmt := range tstmt {
+				/* ProcMetadataCommand can be called inside router's planned, so it
+				* will normally reject nil statement. Handle this ourselves */
+				if stmt == nil {
+					if err := cli.ReplyEQR(); err != nil {
+						return err
+					}
+					continue
+				}
 				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
 				if err != nil {
 					if err := cli.ReportError(err); err != nil {
