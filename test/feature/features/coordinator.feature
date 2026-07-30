@@ -1043,7 +1043,7 @@ Feature: Coordinator test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    cannot drop redistribute task .*rt1.* because other objects depend on it
+    cannot drop redistribute task because other objects depend on it
     """
     When I run SQL on host "coordinator"
     """
@@ -1284,10 +1284,14 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{
-      "redistribute_task_id": "rt2",
-      "redistribute_task_id": "rt3"
-    }]
+    [
+      {
+        "redistribute_task_id": "rt2"
+      },
+      {
+        "redistribute_task_id": "rt3"
+      }
+    ]
     """
     When I run SQL on host "coordinator"
     """

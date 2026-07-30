@@ -207,6 +207,10 @@ func (e *SpqrError) Error() string {
 	return e.Err.Error()
 }
 
+func (e *SpqrError) Unwrap() error {
+	return e.Err
+}
+
 func ToGrpcError(err error) error {
 	if err == nil {
 		return nil
