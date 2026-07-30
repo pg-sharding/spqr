@@ -741,7 +741,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 	}
 	if err = tx.Commit(ctx); err != nil {
-		/* Beware of SPQR_RECOVERABLE_TRANSFER_ERROR here, because we don't know actaul tx status here.
+		/* Beware of SPQR_RECOVERABLE_TRANSFER_ERROR here, because we don't know actual tx status here.
 		* e.g. network partition happened just here. */
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to commit transfer transaction: %s", err)
 	}

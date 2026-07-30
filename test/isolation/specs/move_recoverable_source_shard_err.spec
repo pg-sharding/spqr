@@ -49,7 +49,7 @@ step s1_i              { INSERT INTO r (i, c) VALUES (11, 1); }
 step s1_sh1            { SELECT * FROM r /* __spqr__execute_on: sh1 */; }
 step s1_sh2            { SELECT * FROM r /* __spqr__execute_on: sh2 */; }
 step s1_spqr_ctid      { SELECT __spqr__ctid('r'); }
-step s1_hazadous_ddl     { ALTER TABLE r DROP COLUMN c /* __spqr__execute_on: sh1 */; } # insert some in-between hazardous DDL which will cause transfer error
+step s1_hazardous_ddl     { ALTER TABLE r DROP COLUMN c /* __spqr__execute_on: sh1 */; } # insert some in-between hazardous DDL which will cause transfer error
 
 
 session s2
@@ -66,7 +66,7 @@ step s3_clean_tg          { /* TODO: fix */ select __spqr__console_execute('drop
 permutation 
     s1_report s1_ev2 
     s1_i s1_i s1_i s1_spqr_ctid 
-    s1_hazadous_ddl
+    s1_hazardous_ddl
     s1_sh1 s1_sh2
     s2_redistribute_sh2 s2_show_kr s2_show_tg 
     s2_show_kr s2_show_tg 
