@@ -75,6 +75,12 @@ UNITE KEY RANGE krid3 WITH krid1;
  merge key range "krid1" into "krid3"
 (1 row)
 
+-- base key range does not exists
+UNITE KEY RANGE krid3xx WITH krid4;
+ERROR:  key range krid3xx does not exist
+-- appendage key range does not exists
+UNITE KEY RANGE krid3 WITH krid4xx;
+ERROR:  key range krid4xx does not exist
 -- routing to different shards
 UNITE KEY RANGE krid3 WITH krid4;
 ERROR:  failed to unite key ranges routing different shards

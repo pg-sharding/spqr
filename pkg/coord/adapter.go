@@ -428,14 +428,20 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
-	if left == nil || right == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
+	/* Fast-out for trivial cases */
+	if left == nil {
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range %s does not exist", unite.BaseKeyRangeID)
+	}
+
+	if right == nil {
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range %s does not exist", unite.AppendageKeyRangeID)
 	}
 
 	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
 		left, right = right, left
 	}
 
+	/* Simple sanity check to get well-formed error and save some network */
 	for _, krCurr := range krs {
 		if krCurr.ID == unite.BaseKeyRangeID || krCurr.ID == unite.AppendageKeyRangeID {
 			continue
@@ -445,11 +451,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
-	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "wrong bound ordering: right < left")
-	}
-
 	c := proto.NewKeyRangeServiceClient(a.conn)
+	/* Actual check performed here */
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
 		BaseId:      unite.BaseKeyRangeID,
 		AppendageId: unite.AppendageKeyRangeID,
