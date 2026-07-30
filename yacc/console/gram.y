@@ -850,6 +850,15 @@ drop_stmt:
 			CascadeDelete: $5,
 		}
 	}
+	| DROP REDISTRIBUTE TASK ALL
+	{
+		$$ = &Drop{
+			Element: &RedistributeTaskSelector{
+				ID: "*",
+			},
+			CascadeDelete: false,
+		}
+	}
 	| DROP MOVE TASK any_id
 	{
 		$$ = &Drop{

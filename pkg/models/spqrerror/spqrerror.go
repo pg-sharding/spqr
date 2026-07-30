@@ -301,3 +301,10 @@ func ErrorMsgFromErr(
 		Position: pos,
 	}
 }
+
+type RedistributeTaskDependentObjectError struct {
+}
+
+func (RedistributeTaskDependentObjectError) Error() string {
+	return "cannot drop redistribute task because other objects depend on it"
+}

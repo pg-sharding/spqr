@@ -1190,3 +1190,119 @@ Feature: Coordinator test
         "storage": "sh1"
     }]
     """
+
+  Scenario: DROP REDISTRIBUTE TASK ALL works
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt1",
+      "KeyRangeId": "kr1",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt2",
+      "KeyRangeId": "kr2",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt3",
+      "KeyRangeId": "kr3",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+            "id":            "tgid1",
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "krid1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "task_group_id": "tgid1"
+            },
+            "issuer": {
+              "type": 1,
+              "id": "rt1"
+            }
+        }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id":"rt1",
+        "key_range_id":"kr1",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":"tgid1"
+      },
+      {
+        "redistribute_task_id":"rt2",
+        "key_range_id":"kr2",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":""
+      },
+      {
+        "redistribute_task_id":"rt3",
+        "key_range_id":"kr3",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":""
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP REDISTRIBUTE TASK ALL;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "redistribute_task_id": "rt2",
+      "redistribute_task_id": "rt3"
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id":"rt1",
+        "key_range_id":"kr1",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":"tgid1"
+      }
+    ]
+    """
