@@ -1063,6 +1063,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			if err != nil {
 				spqrlog.Zero.Error().Str("move id", move.MoveId).Str("key range", keyRange.ID).Err(err).Msg("failed to move rows")
 				if errors.Is(err, datatransfers.RecoverableMoveError) {
+					txErr := err
 					spqrlog.Zero.Info().Str("move id", move.MoveId).Str("key range", keyRange.ID).Msg("move task failed with recoverable error, unlocking key range")
 					if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangePlanned); err != nil {
 						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update move task status after await PID timeout: %s", err)
@@ -1071,7 +1072,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 					if err = qc.UnlockKeyRange(ctx, keyRange.ID); err != nil {
 						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to unlock key range after recoverable error: %s", err)
 					}
-					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to move keys: %s", err.Error())
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to move keys: %s", txErr.Error())
 				}
 				return err
 			}

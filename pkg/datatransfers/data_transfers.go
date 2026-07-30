@@ -43,7 +43,7 @@ const fdwSetupVersion = 2
 type recoverableMoveError struct {
 }
 
-func (r recoverableMoveError) Error() string {
+func (recoverableMoveError) Error() string {
 	return "recoverable transfer error occurred"
 }
 
