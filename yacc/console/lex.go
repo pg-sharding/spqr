@@ -25,8 +25,6 @@ type Lexer struct {
 	data         []byte
 	p, pe, cs    int
 	ts, te, act  int
-
-	result []string
 }
 
 func NewLexer(data []byte) *Lexer {
