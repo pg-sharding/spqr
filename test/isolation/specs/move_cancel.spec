@@ -59,6 +59,7 @@ step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges(k
 
 session s3
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}
+step s3_clean_tg          { select __spqr__console_execute('DROP TASK GROUP zid') /*__spqr__preferred_engine: v2 */;}
 step s3_clean_lock        { /* TODO: fix */ select __spqr__console_execute('UNLOCK KEY RANGE ALL')}
 
 session s4
@@ -83,4 +84,5 @@ permutation
 
     s3_clean_lock
     s3_clean
+    s3_clean_tg
 

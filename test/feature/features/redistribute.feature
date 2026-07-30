@@ -1879,7 +1879,7 @@ Feature: Redistribution test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    timeout waiting for vxid locks to release
+    "ERROR: failed to move keys: recoverable transfer error occurred (SQLSTATE SPQRT)
     """
     When I run SQL on host "coordinator"
     """
