@@ -1,7 +1,7 @@
 package spqrparser
 
 import (
-	"fmt"
+	"errors"
 )
 
 // Tokenizer is the struct used to generate SQL
