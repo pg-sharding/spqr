@@ -56,12 +56,17 @@ type ShardHostsPool interface {
 	SetRule(rule *config.BackendRule)
 }
 
+type ConnectionProvider interface {
+	ConnectionKeeper
+	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
+}
+
 type MultiShardTSAPool interface {
 	ShardHostsPool
+	ConnectionProvider
 
 	ShardMapping() topology.TopologyMgr
 
-	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry
 

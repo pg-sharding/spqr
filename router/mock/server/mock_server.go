@@ -14,7 +14,7 @@ import (
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
-	pool "github.com/pg-sharding/spqr/pkg/pool"
+	planopts "github.com/pg-sharding/spqr/pkg/planopts"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
@@ -160,20 +160,6 @@ func (mr *MockServerMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockServer)(nil).Name))
 }
 
-// Pool mocks base method.
-func (m *MockServer) Pool() pool.MultiShardTSAPool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Pool")
-	ret0, _ := ret[0].(pool.MultiShardTSAPool)
-	return ret0
-}
-
-// Pool indicates an expected call of Pool.
-func (mr *MockServerMockRecorder) Pool() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pool", reflect.TypeOf((*MockServer)(nil).Pool))
-}
-
 // PrefetchResult mocks base method.
 func (m *MockServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error {
 	m.ctrl.T.Helper()
@@ -203,9 +189,9 @@ func (mr *MockServerMockRecorder) PrefetchUntilCommandComplete(shkey any) *gomoc
 }
 
 // Receive mocks base method.
-func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
+func (m *MockServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Receive")
+	ret := m.ctrl.Call(m, "Receive", o)
 	ret0, _ := ret[0].(pgproto3.BackendMessage)
 	ret1, _ := ret[1].(uint)
 	ret2, _ := ret[2].(error)
@@ -213,9 +199,9 @@ func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
 }
 
 // Receive indicates an expected call of Receive.
-func (mr *MockServerMockRecorder) Receive() *gomock.Call {
+func (mr *MockServerMockRecorder) Receive(o any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockServer)(nil).Receive))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockServer)(nil).Receive), o)
 }
 
 // ReceiveShard mocks base method.

@@ -19,6 +19,7 @@ aliquip
 amet
 anyerr
 AOk
+APITLS
 appdefaults
 APREQ
 argexpr
@@ -60,6 +61,7 @@ clid
 clientinteractor
 clientpool
 clientv
+CLITLS
 clmp
 cmds
 cmngr
@@ -164,6 +166,7 @@ exercitationem
 expd
 extldflags
 extversion
+EQR
 FAFBFF
 fdw
 feda
@@ -207,6 +210,10 @@ gorm
 goyacc
 Grac
 Greenplum
+grpccreds
+GRPCTLS
+GRPCTLSMTLS
+GRPCTLSTLS
 gss
 gssapi
 GSSREQ
@@ -343,6 +350,7 @@ mollit
 Msgf
 msgroup
 msgtype
+mtls
 mtran
 multiclient
 multicoordinator
@@ -449,6 +457,7 @@ protoc
 protovalidate
 psswd
 pstmt
+planopts
 PYTHONUNBUFFERED
 qcfg
 qdb
@@ -573,6 +582,7 @@ SPQRU
 SPQRV
 SPQRX
 SPQRZ
+SPQRt
 SQLF
 sqlfile
 SQLIn
@@ -711,3 +721,4 @@ yylex
 zerolog
 zjoin
 zzz
+zid

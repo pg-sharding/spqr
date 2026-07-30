@@ -16,10 +16,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
@@ -52,7 +54,50 @@ type QueryStateExecutorImpl struct {
 
 	d qdb.DCStateKeeper
 
+	localConn map[string]shard.ShardHostInstance
+
 	es ExecutorState
+}
+
+// Close implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) Close() {
+	for _, sh := range s.localConn {
+		_ = s.Client().Route().MultiShardPool().Put(sh)
+	}
+}
+
+// Discard implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) Discard(sh shard.ShardHostInstance) error {
+	delete(s.localConn, sh.ShardKeyName())
+	return s.Client().Route().MultiShardPool().Discard(sh)
+}
+
+// Put implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) Put(v shard.ShardHostInstance) error {
+	return s.Client().Route().MultiShardPool().Put(v)
+}
+
+// View implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) View() pool.Statistics {
+	return s.Client().Route().MultiShardPool().View()
+}
+
+// ConnectionWithTSA implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+
+	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+	if err != nil {
+		return nil, err
+	}
+
+	/* Connection are pinned - try to lookup local cache */
+	if guc.Get(s.Client()) {
+		if c, ok := s.localConn[key.Name]; ok {
+			return c, nil
+		}
+	}
+
+	return s.Client().Route().MultiShardPool().ConnectionWithTSA(clid, key, targetSessionAttrs)
 }
 
 // CleanupConnection implements [poolmgr.GangMgr].
@@ -66,6 +111,25 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 
 	if config.RouterConfig().ForceConnectionCleanup {
 		return v.Close()
+	}
+
+	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+	if err != nil {
+		if err := s.Client().Route().MultiShardPool().Discard(v); err != nil {
+			return err
+		}
+		if err := v.Close(); err != nil {
+			return err
+		}
+
+		return err
+	}
+
+	/* Connection are pinned - save to local cache */
+	if guc.Get(s.Client()) {
+		s.localConn[v.ShardKeyName()] = v
+
+		return nil
 	}
 
 	if v.Sync() != 0 {
@@ -184,12 +248,12 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 	/* Traverse and create gang for each slice. */
 
 	if len(s.ActiveShards()) > 1 || p.Subplan() != nil {
-		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
+		serv, err = server.NewMultiShardServer(s)
 		if err != nil {
 			return err
 		}
 	} else {
-		serv = server.NewShardServer(s.Client().Route().MultiShardPool())
+		serv = server.NewShardServer(s)
 	}
 
 	/* Assign top-level gang (output slice) to client */
@@ -1044,7 +1108,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	}
 
 	for {
-		msg, recvIndex, err := serv.Receive()
+		var o *planopts.PlanOpts
+		if topPlan != nil {
+			o = topPlan.Opts()
+		}
+		msg, recvIndex, err := serv.Receive(o)
 		if err != nil {
 			return err
 		}
@@ -1311,10 +1379,11 @@ var _ QueryStateExecutor = &QueryStateExecutorImpl{}
 
 func NewQueryStateExecutor(d qdb.DCStateKeeper, mgr meta.EntityMgr, poolMgr poolmgr.PoolMgr, cl client.RouterClient) QueryStateExecutor {
 	return &QueryStateExecutorImpl{
-		cl:       cl,
-		d:        d,
-		poolMgr:  poolMgr,
-		mgr:      mgr,
-		txStatus: txstatus.TXIDLE,
+		cl:        cl,
+		d:         d,
+		localConn: map[string]shard.ShardHostInstance{},
+		poolMgr:   poolMgr,
+		mgr:       mgr,
+		txStatus:  txstatus.TXIDLE,
 	}
 }

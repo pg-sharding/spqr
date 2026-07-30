@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -212,12 +213,22 @@ func (qr *ProxyQrouter) planInsertV1(
 					if stmt.Returning != nil {
 						return &plan.DataRowFilter{
 							Plan: &plan.ScatterPlan{
+								BasePlan: plan.BasePlan{
+									H: planopts.PlanOpts{
+										ResultRelationIsRef: false,
+									},
+								},
 								ExecTargets: rel.ListStorageRoutes(),
 							},
 							FilterIndex: 0,
 						}, nil
 					}
 					return &plan.ScatterPlan{
+						BasePlan: plan.BasePlan{
+							H: planopts.PlanOpts{
+								ResultRelationIsRef: false,
+							},
+						},
 						ExecTargets: rel.ListStorageRoutes(),
 					}, nil
 				default:
@@ -659,6 +670,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					return nil, err
 				}
 				p = plan.Combine(p, tmp)
+				p.Opts().ResultRelationIsRef = true
 				return p, nil
 			}
 
@@ -709,6 +721,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						return nil, err
 					}
 					p = plan.Combine(p, tmp)
+					p.Opts().ResultRelationIsRef = true
 					return p, nil
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)

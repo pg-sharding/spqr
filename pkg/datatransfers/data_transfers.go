@@ -2,7 +2,6 @@ package datatransfers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -39,17 +38,6 @@ const spqrTransferApplicationName = "spqr-transfer"
 
 // Increment if foreign server/schema setup is changed
 const fdwSetupVersion = 2
-
-type awaitPIDError struct {
-}
-
-func (awaitPIDError) Error() string {
-	return "timeout waiting for vxid locks to release"
-}
-
-var _ error = awaitPIDError{}
-
-var AwaitPIDError = awaitPIDError{}
 
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
@@ -221,11 +209,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			t := time.Now()
 			// Await all current virtual transactions on source shard to stop
 			if err := awaitPIDs(ctx, from); err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					_ = db.RemoveTransferTx(ctx, krg.ID)
-					return AwaitPIDError
-				}
-				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit: %s", err)
+				_ = db.RemoveTransferTx(ctx, krg.ID)
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
 			tx.Status = qdb.Locked
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
@@ -622,7 +607,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	}
 	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
-		return err
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to setup move data FDW: %v", err)
 	}
 	fromShard := shards.ShardsData[fromShardId]
 	toShard := shards.ShardsData[toShardId]
@@ -638,7 +623,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 
 	fromTx, err := from.Begin(ctx)
 	if err != nil {
-		return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR).Detail("failed to begin transaction on the source shard")
+		return spqrerror.NewByCode(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR).Detail("failed to begin transaction on the source shard")
 	}
 	defer func() { _ = fromTx.Rollback(ctx) }()
 	rels := make([]struct {
@@ -674,16 +659,16 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 
 	tx, err := to.Begin(ctx)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
 	}
 
 	defer func() { _ = fromTx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring constraints: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "could not move the data: error deferring constraints: %s", err)
 	}
 	if config.CoordinatorConfig().DataMoveDisableTriggers {
 		if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to disable triggers: %w", err)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to disable triggers: %w", err)
 		}
 	}
 
@@ -706,7 +691,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		if !toTableExists {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation %s does not exist on receiving shard", rel.Relation)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on receiving shard", rel.Relation)
 		}
 		relFullName := rel.QualifiedName().String()
 		toCount, err := GetEntriesCount(ctx, tx, relFullName, krCondition)
@@ -719,7 +704,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 		// if data is inconsistent, fail
 		if toCount > 0 && fromCount != 0 {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range data exists on both shards").
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "key range data exists on both shards").
 				Detail(fmt.Sprintf("receiver shard as %d data rows for %s relation, while source shard has %d", toCount, rel.Relation, fromCount)).Hint("Manually resolve data inconsistencies and retry")
 		}
 		cols, err := GetTableColumns(ctx, tx, rel.Relation)
@@ -745,17 +730,19 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			}
 		}
 		if err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to insert %s relation data: %s", relFullName, err)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to insert %s relation data: %s", relFullName, err)
 		}
 
 		spqrlog.Zero.Info().Str("key range id", krg.ID).Str("relation", relFullName).Msg("copied relation data for key range move")
 	}
 	if config.CoordinatorConfig().UseSPQRGuard {
 		if _, err := tx.Exec(ctx, InsertKeyRangeMeta, krg.ID); err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
 		}
 	}
 	if err = tx.Commit(ctx); err != nil {
+		/* Beware of SPQR_RECOVERABLE_TRANSFER_ERROR here, because we don't know actual tx status here.
+		* e.g. network partition happened just here. */
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to commit transfer transaction: %s", err)
 	}
 	return nil

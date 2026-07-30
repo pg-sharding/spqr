@@ -47,7 +47,7 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 		}
 		/* Add shards from coordinator */
 		for _, sh := range shards {
-			if err := mngr.AddDataShard(ctx, topology.DataShardFromDB(sh)); err != nil {
+			if err := mngr.AddDataShard(ctx, topology.DataShardFromDB(sh), true); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 				return err
 			}

@@ -67,7 +67,7 @@ func UnrouteCommon(
 		if v, err := serv.UnRouteShard(shkey); err != nil {
 			anyerr = err
 		} else {
-			if err := g.CleanupConnection(serv.Pool(), v); err != nil {
+			if err := g.CleanupConnection(cl.Route().MultiShardPool(), v); err != nil {
 
 				spqrlog.Zero.Error().
 					Uint("client", cl.ID()).

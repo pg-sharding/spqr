@@ -37,5 +37,7 @@ SELECT count(id), i FROM r_pp GROUP BY i;
 
 DROP TABLE r_pp;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

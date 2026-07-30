@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -56,7 +57,13 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 
 func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
 
-	p := &plan.ScatterPlan{}
+	p := &plan.ScatterPlan{
+		BasePlan: plan.BasePlan{
+			H: planopts.PlanOpts{
+				ResultRelationIsRef: false,
+			},
+		},
+	}
 	if !ro {
 		p.SubPlan = &plan.ModifyTable{}
 	}

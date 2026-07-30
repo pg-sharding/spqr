@@ -11,4 +11,6 @@ INSERT INTO copy_to_test(id) VALUES (7), (8),(9),(12)/* __spqr__execute_on: sh4 
 
 COPY copy_to_test TO STDOUT;
 
-DROP TABLE copy_to_test;
+DROP TABLE copy_to_test /* __spqr__scatter_query: true */;
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;

@@ -52,7 +52,7 @@ func DispatchSlice(qd *QueryDesc,
 			* This is only execution path for non-top level slice
 			 */
 			if p != nil {
-				forceLinearize = p.Hints().AutoLinearize
+				forceLinearize = p.Opts().AutoLinearize
 				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
 					/* Uh, oh, this is very ugly hack */
 

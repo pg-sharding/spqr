@@ -7,21 +7,18 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-type PlanHints struct {
-	AutoLinearize bool
-}
-
 type BasePlan struct {
-	H PlanHints
+	H planopts.PlanOpts
 }
 
-func (b *BasePlan) Hints() *PlanHints {
+func (b *BasePlan) Opts() *planopts.PlanOpts {
 	return &b.H
 }
 
@@ -29,7 +26,7 @@ type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
 
-	Hints() *PlanHints
+	Opts() *planopts.PlanOpts
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string

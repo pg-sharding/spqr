@@ -40,5 +40,8 @@ SELECT * FROM xxhash_part ORDER BY d /* __spqr__execute_on: sh2 */;
 
 --TEARDOWN
 DROP TABLE xxhash_part;
+DELETE FROM spqr_metadata.spqr_distributed_relations /* __spqr__scatter_query: true */;
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
