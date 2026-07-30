@@ -2084,6 +2084,62 @@ func TestStopMoveTaskGroup(t *testing.T) {
 			exp:   &spqrparser.StopMoveTaskGroup{ID: "tg_id"},
 			err:   nil,
 		},
+		{
+			query: "STOP TASK GROUP ALL",
+			exp:   &spqrparser.StopMoveTaskGroup{ID: `*`},
+			err:   nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.Error(err, "query %s", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
+	}
+}
+
+func TestDropTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "DROP MOVE TASK GROUP",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "DROP TASK GROUP",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "DROP TASK GROUP tg_id",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.TaskGroupSelector{
+					ID: `tg_id`,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "DROP TASK GROUP tg_id CASCADE",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.TaskGroupSelector{
+					ID: `tg_id`,
+				},
+				CascadeDelete: true,
+			},
+			err: nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -2440,6 +2496,15 @@ func TestRedistributeTasks(t *testing.T) {
 			exp: &spqrparser.Drop{
 				Element: &spqrparser.RedistributeTaskSelector{
 					ID: "rt1",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "DROP REDISTRIBUTE TASK ALL",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.RedistributeTaskSelector{
+					ID: "*",
 				},
 			},
 			err: nil,
