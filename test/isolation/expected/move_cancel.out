@@ -83,9 +83,9 @@ STOP TASK GROUP
 
 step s2_await_task: SELECT __spqr__await_task('zid') /* __spqr__preferred_engine: v2 */;
 step s4_show_tg: select __spqr__console_execute('SHOW task_groups(task_group_id, source_key_range_id, state, message);') /*__spqr__preferred_engine: v2 */;
-task_group_id|source_key_range_id|state|message                                                       
--------------+-------------------+-----+--------------------------------------------------------------
-zid          |k0                 |ERROR|failed to await virtual transactions to exit: context canceled
+task_group_id|source_key_range_id|state|message                                                                    
+-------------+-------------------+-----+---------------------------------------------------------------------------
+zid          |k0                 |ERROR|failed to update move task status after await PID timeout: context canceled
 (1 row)
 
 s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

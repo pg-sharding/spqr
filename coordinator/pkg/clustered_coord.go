@@ -1062,7 +1062,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId, icpCH)
 			if err != nil {
 				spqrlog.Zero.Error().Str("move id", move.MoveId).Str("key range", keyRange.ID).Err(err).Msg("failed to move rows")
-				if errors.Is(err, datatransfers.RecoverableMoveError) {
+				if spqrErr, ok := err.(*spqrerror.SpqrError); ok && spqrErr.ErrorCode == spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR {
 					txErr := err
 					spqrlog.Zero.Info().Str("move id", move.MoveId).Str("key range", keyRange.ID).Msg("move task failed with recoverable error, unlocking key range")
 					if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangePlanned); err != nil {
