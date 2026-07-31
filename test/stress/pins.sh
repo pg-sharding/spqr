@@ -10,7 +10,7 @@ function tester {
 				echo 'SET __spqr__session_connections_pin TO on;';
 			else
 				echo 'select pg_backend_pid() /*__spqr__execute_on: sh1 */;';
-			fi; done 2>&1 | psql "host=stress_router port=6432 dbname=db1 user=user1" -t | sort | uniq -d | wc  -l)
+			fi; done 2>&1 | psql "host=stress_router port=6432 dbname=stress user=stress" -t | sort | uniq -d | wc  -l)
 	echo $n
 
 	if [[ n -ne 2 ]]; then 
