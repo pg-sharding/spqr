@@ -242,6 +242,7 @@ func randomHex(n int) (string, error) {
 
 %type<key_range_selector> key_range_stmt
 %type<distribution_selector> distribution_select_stmt
+%type<statement> distribution_drop_selector redistribute_task_drop_selector
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -801,17 +802,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2}
 	}
-	| DROP KEY RANGE ALL
-	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
-	}
-	| DROP distribution_select_stmt opt_cascade
+	| DROP distribution_drop_selector opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
-	}
-	| DROP DISTRIBUTION ALL opt_cascade
-	{
-		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
 	}
 	| DROP SHARD any_id opt_cascade
 	{
@@ -841,23 +834,9 @@ drop_stmt:
 			},
 		}
 	}
-	| DROP REDISTRIBUTE TASK any_id opt_cascade
+	| DROP redistribute_task_drop_selector opt_cascade
 	{
-		$$ = &Drop{
-			Element: &RedistributeTaskSelector{
-				ID: $4,
-			},
-			CascadeDelete: $5,
-		}
-	}
-	| DROP REDISTRIBUTE TASK ALL
-	{
-		$$ = &Drop{
-			Element: &RedistributeTaskSelector{
-				ID: "*",
-			},
-			CascadeDelete: false,
-		}
+		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
 	| DROP MOVE TASK any_id
 	{
@@ -866,6 +845,29 @@ drop_stmt:
 				ID: $4,
 			},
 		}
+	}
+
+/*
+ * Selectors used by DROP that accept either a concrete id or ALL ("*").
+ */
+distribution_drop_selector:
+	DISTRIBUTION any_id
+	{
+		$$ = &DistributionSelector{ID: $2}
+	}
+	| DISTRIBUTION ALL
+	{
+		$$ = &DistributionSelector{ID: `*`}
+	}
+
+redistribute_task_drop_selector:
+	REDISTRIBUTE TASK any_id
+	{
+		$$ = &RedistributeTaskSelector{ID: $3}
+	}
+	| REDISTRIBUTE TASK ALL
+	{
+		$$ = &RedistributeTaskSelector{ID: `*`}
 	}
 
 add_stmt:
