@@ -40,6 +40,9 @@ echo "======== RUN CONNECTION PIN TEST ========"
     exit 1
 }
 
+echo "======== RUN ADVISORY LOCK TEST ========"
+./advisory.sh
+
 # TODO
 # run select-only script
 # pgbench --show-script simple-update
