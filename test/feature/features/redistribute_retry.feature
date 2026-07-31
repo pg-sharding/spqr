@@ -1742,3 +1742,37 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
       "locked":"false"
     }]
     """
+
+  Scenario: redistribute checks that key range is locked before deleting keys from source shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_move_keys_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE kr1
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .kr1. is not locked
+    """
