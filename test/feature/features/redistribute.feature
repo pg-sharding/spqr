@@ -1991,10 +1991,12 @@ Feature: Redistribution test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
     """
     Then command return code should be "0"
-    # Insert overlapping data on receiving shard to create an inconsistency
+    # Insert overlapping data on receiving shard to create an inconsistency.
+    # Make number of records different, bacause SPQR does not reject data move
+    # when number of record matches (we do not inspect records deeply here)
     When I run SQL on host "shard2"
     """
-    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 998), 'sample text value';
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds
@@ -2022,7 +2024,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    999
     """
     When I run SQL on host "coordinator"
     """
