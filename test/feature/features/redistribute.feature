@@ -1992,7 +1992,7 @@ Feature: Redistribution test
     """
     Then command return code should be "0"
     # Insert overlapping data on receiving shard to create an inconsistency.
-    # Make number of records different, bacause SPQR does not reject data move
+    # Make number of records different, because SPQR does not reject data move
     # when number of record matches (we do not inspect records deeply here)
     When I run SQL on host "shard2"
     """
