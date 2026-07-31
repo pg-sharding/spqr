@@ -56,3 +56,64 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 ROLLBACK;
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ true
+(1 row)
+
+RESET __spqr__session_connections_pin;
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ false
+(1 row)
+
+SELECT pg_advisory_lock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_lock 
+------------------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ true
+(1 row)
+
+SELECT pg_advisory_unlock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_unlock 
+--------------------
+ t
+ t
+ t
+ t
+(4 rows)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ true
+(1 row)
+
+SELECT pg_advisory_unlock_all();
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_unlock_all 
+------------------------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ false
+(1 row)
+

@@ -25,3 +25,14 @@ BEGIN;
 SELECT pg_advisory_lock(12);
 SELECT pg_advisory_unlock(12);
 ROLLBACK;
+
+SHOW __spqr__session_connections_pin;
+RESET __spqr__session_connections_pin;
+SHOW __spqr__session_connections_pin;
+
+SELECT pg_advisory_lock(12);
+SHOW __spqr__session_connections_pin;
+SELECT pg_advisory_unlock(12);
+SHOW __spqr__session_connections_pin;
+SELECT pg_advisory_unlock_all();
+SHOW __spqr__session_connections_pin;

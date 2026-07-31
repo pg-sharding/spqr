@@ -991,7 +991,6 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true)
-		fallthrough
 	case virtual.PGAdvisoryUnlockAll:
 		/* Unpin connections */
 		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
@@ -1000,9 +999,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false)
+	}
 
-		fallthrough
-	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
+	switch fname {
+	case virtual.PGAdvisoryLock, virtual.PGAdvisoryUnlockAll,
+		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
 
 		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
 		if err != nil {
