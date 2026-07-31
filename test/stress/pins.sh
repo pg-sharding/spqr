@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -u
+
 export CLIENTS=10
 
 function tester {
