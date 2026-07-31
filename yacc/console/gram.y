@@ -236,7 +236,7 @@ func randomHex(n int) (string, error) {
 /* ICP */
 %token<str> CONTROL POINT
 
-/* any operator (multi-character / user-defined), produced by the lexer */
+/* any operator multi-character, produced by the lexer */
 %token<str> OP
 
 
@@ -345,7 +345,7 @@ func randomHex(n int) (string, error) {
 %left		AND
 %right		NOT
 %nonassoc	TLESS TGREATER TEQ
-%left		OP		/* multi-character and user-defined operators */
+%left		OP		/* multi-character operator */
 %left		TPLUS TMINUS
 %left		TMUL 
 %left		TOPENSQBR TCLOSESQBR
