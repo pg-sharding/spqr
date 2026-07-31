@@ -34,11 +34,13 @@ pgbench -f f.sql -c $NUM_CLIENTS -T $TEST_DURATION -n -h stress_router -U $PGUSE
 
 
 echo "======== RUN CONNECTION PIN TEST ========"
-./pins.sh
+
+./pins.sh || {
+    echo "pins.sh failed" >&2
+    exit 1
+}
 
 # TODO
 # run select-only script
 # pgbench --show-script simple-update
 # pgbench --builtin simple-update -c $NUM_CLIENTS -T $TEST_DURATION -n -h $PGHOST -p $PGPORT -U $PGUSER $PGDATABASE
-
-exit 0
