@@ -240,7 +240,7 @@ func randomHex(n int) (string, error) {
 %token<str> OP
 
 
-%type<key_range_selector> key_range_stmt
+%type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
 %type<statement> distribution_drop_selector redistribute_task_drop_selector
 
@@ -845,6 +845,22 @@ drop_stmt:
 				ID: $4,
 			},
 		}
+	}
+
+
+/*
+ * General-use selectors (do not accept ALL)
+ */
+key_range_select_stmt:
+	KEY RANGE any_id
+	{
+		$$ = &KeyRangeSelector{KeyRangeID: $3}
+	}
+	
+distribution_select_stmt:
+	DISTRIBUTION any_id
+	{
+		$$ = &DistributionSelector{ID: $2}
 	}
 
 /*
@@ -1491,7 +1507,7 @@ help_word:
 	| SCHEMA { $$ = "SCHEMA" }
 
 lock_stmt:
-	LOCK key_range_stmt
+	LOCK key_range_select_stmt
 	{
 		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
 	}
@@ -1726,6 +1742,7 @@ any_id_list:
 	} 
 
 unlock_stmt:
+	/* We accept ALL here */
 	UNLOCK key_range_stmt
 	{
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
@@ -1741,14 +1758,8 @@ key_range_stmt:
 		$$ = &KeyRangeSelector{KeyRangeID: `*`}
 	}
 
-distribution_select_stmt:
-	DISTRIBUTION any_id
-	{
-		$$ = &DistributionSelector{ID: $2}
-	}
-
 split_key_range_stmt:
-	SPLIT key_range_stmt FROM any_id BY key_range_bound
+	SPLIT key_range_select_stmt FROM any_id BY key_range_bound
 	{
 		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: $6}
 	}
@@ -1819,7 +1830,7 @@ opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }
 			| /*EMPTY*/						{ $$ = -1 }
 
 unite_key_range_stmt:
-	UNITE key_range_stmt WITH any_id
+	UNITE key_range_select_stmt WITH any_id
 	{
 		$$ = &UniteKeyRange{KeyRangeIDL: $2.KeyRangeID, KeyRangeIDR: $4}
 	}

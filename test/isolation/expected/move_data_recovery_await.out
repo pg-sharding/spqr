@@ -92,9 +92,9 @@ sh4     |d              |        300|false
 (4 rows)
 
 step s2_show_tg: select __spqr__console_execute('SHOW task_groups(task_group_id, state, message);') /*__spqr__preferred_engine: v2 */;
-task_group_id  |state|message                                                                                              
----------------+-----+-----------------------------------------------------------------------------------------------------
-zid_await_fails|ERROR|failed to move keys: failed to await virtual transactions to exit: timeout: context deadline exceeded
+task_group_id  |state|message                                                                         
+---------------+-----+--------------------------------------------------------------------------------
+zid_await_fails|ERROR|failed to await virtual transactions to exit: timeout: context deadline exceeded
 (1 row)
 
 step s1_rollback: ROLLBACK;
