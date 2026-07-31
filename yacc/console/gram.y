@@ -1781,7 +1781,7 @@ kill_stmt:
 
 
 move_key_range_stmt:
-	MOVE key_range_stmt TO any_id
+	MOVE key_range_select_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
@@ -1791,7 +1791,7 @@ opt_redistr_id:
 
 /* All of this is kinda uggly, refactor to make it more Postgresy */
 redistribute_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id
+	REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id
 	{
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
@@ -1801,7 +1801,7 @@ redistribute_stmt:
 			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1809,7 +1809,7 @@ redistribute_stmt:
 			Id: $6,
 			Check: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1817,7 +1817,7 @@ redistribute_stmt:
 			Id: $6,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -2004,7 +2004,7 @@ icp_stmt:
 	}
 
 rename_stmt:
-	RENAME key_range_stmt TO any_id 
+	RENAME key_range_select_stmt TO any_id 
 	{
 		$$ = &Rename {
 			Element: $2,

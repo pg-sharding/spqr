@@ -590,12 +590,53 @@ func TestRedistribute(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "REDISTRIBUTE KEY RANGE ALL TO sh2",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if err != nil {
 			assert.ErrorContains(err, tt.err.Error())
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
+	}
+}
+
+func TestMoveKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "MOVE KEY RANGE kr1 TO sh2",
+			exp: &spqrparser.MoveKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+			},
+			err: nil,
+		},
+		{
+			query: "MOVE KEY RANGE ALL TO sh2",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.EqualError(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
@@ -2793,6 +2834,10 @@ func TestRename(t *testing.T) {
 				NewID: "kr_new",
 			},
 			err: nil,
+		},
+		{
+			query: "RENAME KEY RANGE ALL TO kr_new",
+			err:   fmt.Errorf("syntax error"),
 		},
 	} {
 
