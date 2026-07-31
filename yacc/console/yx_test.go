@@ -1020,13 +1020,61 @@ func TestSplitKeyRange(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "SPLIT KEY RANGE ALL FROM krid1 BY 5;",
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.EqualError(err, tt.err.Error())
+		} else {
 
-		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
+	}
+}
+
+func TestUniteKeyRange(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "UNITE KEY RANGE k1 WITH k2;",
+			exp: &spqrparser.UniteKeyRange{
+				KeyRangeIDL: "k1",
+				KeyRangeIDR: "k2",
+			},
+			err: nil,
+		},
+		{
+			query: "UNITE KEY RANGE ALL WITH k2;",
+
+			err: fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.EqualError(err, tt.err.Error())
+		} else {
+
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
 	}
 }
 
