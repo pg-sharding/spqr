@@ -67,7 +67,7 @@ i|c
 (0 rows)
 
 step s2_redistribute_sh2: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k00err TO sh2 TASK GROUP zid_await_fails_on_source_shard') /*__spqr__preferred_engine: v2 */;
-ERROR:  failed to move keys: failed to insert r relation data: ERROR: column "c" does not exist (SQLSTATE 42703)
+ERROR:  failed to insert r relation data: ERROR: column "c" does not exist (SQLSTATE 42703)
 step s2_show_kr: select __spqr__console_execute('SHOW key_ranges(shard_id, distribution_id, lower_bound, locked);') /*__spqr__preferred_engine: v2 */;
 shard_id|distribution_id|lower_bound|locked
 --------+---------------+-----------+------
@@ -78,9 +78,9 @@ sh4     |d              |        300|false
 (4 rows)
 
 step s2_show_tg: select __spqr__console_execute('SHOW task_groups(task_group_id, state, message);') /*__spqr__preferred_engine: v2 */;
-task_group_id                  |state|message                                                                                                 
--------------------------------+-----+--------------------------------------------------------------------------------------------------------
-zid_await_fails_on_source_shard|ERROR|failed to move keys: failed to insert r relation data: ERROR: column "c" does not exist (SQLSTATE 42703)
+task_group_id                  |state|message                                                                            
+-------------------------------+-----+-----------------------------------------------------------------------------------
+zid_await_fails_on_source_shard|ERROR|failed to insert r relation data: ERROR: column "c" does not exist (SQLSTATE 42703)
 (1 row)
 
 step s2_show_kr: select __spqr__console_execute('SHOW key_ranges(shard_id, distribution_id, lower_bound, locked);') /*__spqr__preferred_engine: v2 */;
@@ -93,9 +93,9 @@ sh4     |d              |        300|false
 (4 rows)
 
 step s2_show_tg: select __spqr__console_execute('SHOW task_groups(task_group_id, state, message);') /*__spqr__preferred_engine: v2 */;
-task_group_id                  |state|message                                                                                                 
--------------------------------+-----+--------------------------------------------------------------------------------------------------------
-zid_await_fails_on_source_shard|ERROR|failed to move keys: failed to insert r relation data: ERROR: column "c" does not exist (SQLSTATE 42703)
+task_group_id                  |state|message                                                                            
+-------------------------------+-----+-----------------------------------------------------------------------------------
+zid_await_fails_on_source_shard|ERROR|failed to insert r relation data: ERROR: column "c" does not exist (SQLSTATE 42703)
 (1 row)
 
 step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
