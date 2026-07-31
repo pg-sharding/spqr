@@ -1336,8 +1336,8 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	}
 
 	if err := datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardID, schemas); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
-		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "failed to setup move data FDW").Detail("setup failed on destination shard")
+		spqrlog.Zero.Error().Str("shard-id", req.ShardID).Err(err).Msg("failed to setup move data FDW")
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to setup move data FDW: %v", err).Detail("setup failed on destination shard")
 	}
 	return nil
 }
