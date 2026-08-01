@@ -33,6 +33,13 @@ codename ?= jammy
 POSTGRES_VERSION ?= 17
 PROTO_TEST_TAG ?= all
 
+# Prebuilt SPQR base image (Go binaries: router, coordinator, ...). Compiling
+# these takes ~30s and happens in every CI job that builds images. In CI
+# SPQR_BASE_IMAGE points to a prebuilt image in a registry (e.g.
+# ghcr.io/pg-sharding/spqr-base:<tag>) so jobs pull it instead of recompiling.
+# Locally it defaults to the image name that all downstream Dockerfiles use.
+SPQR_BASE_IMAGE ?= spqr-base-image
+
 build_balancer:
 	go build -pgo=auto -o spqr-balancer $(LDFLAGS) $(GCFLAGS) ./cmd/balancer
 
@@ -65,8 +72,31 @@ build_redistributor:
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor build_redistributor
 
-build_images:
-	docker compose build spqr-base-image
+# Build the SPQR base image (Go binaries) under the name $(SPQR_BASE_IMAGE).
+build_spqr_base:
+	docker build -f docker/spqr/Dockerfile -t ${SPQR_BASE_IMAGE} .
+
+# Push a prebuilt SPQR base image to its registry (used by the CI prepare job).
+push_spqr_base:
+	docker push ${SPQR_BASE_IMAGE}
+
+# Ensure the SPQR base image is available locally under the tag that downstream
+# Dockerfiles expect (spqr-base-image). If SPQR_BASE_IMAGE points at a registry
+# image, pull it and re-tag; otherwise build it. This lets CI reuse a prebuilt
+# image instead of recompiling the Go binaries in every job.
+ensure_spqr_base:
+	@if [ "${SPQR_BASE_IMAGE}" = "spqr-base-image" ]; then \
+		echo "building spqr base image locally"; \
+		$(MAKE) build_spqr_base; \
+	elif docker pull ${SPQR_BASE_IMAGE} >/dev/null 2>&1; then \
+		echo "pulled spqr base image ${SPQR_BASE_IMAGE}"; \
+		docker tag ${SPQR_BASE_IMAGE} spqr-base-image; \
+	else \
+		echo "spqr base image ${SPQR_BASE_IMAGE} not found, building locally"; \
+		SPQR_BASE_IMAGE=spqr-base-image $(MAKE) build_spqr_base; \
+	fi
+
+build_images: ensure_spqr_base
 	docker compose build spqr-base-image-debug
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
@@ -184,7 +214,7 @@ feature_test_ci:
 	else\
 		docker load -i ${CACHE_FILE_SHARD};\
 	fi
-	docker compose build spqr-base-image
+	$(MAKE) ensure_spqr_base
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
 	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
