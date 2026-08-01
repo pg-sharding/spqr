@@ -1,4 +1,5 @@
 .*
+vendor
 test/feature/features
 test/feature/testutil
 test/feature/spqr_test.go

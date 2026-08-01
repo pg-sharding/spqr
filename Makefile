@@ -21,6 +21,11 @@ deps:
 	go mod download
 	go mod vendor
 
+# Used in CI. Avoids vendoring
+deps_download:
+	go mod download
+
+
 #################### GENERATION ####################
 
 # Generate help .txt files and MDX docs from YAML command definitions
