@@ -33,6 +33,19 @@ codename ?= jammy
 POSTGRES_VERSION ?= 17
 PROTO_TEST_TAG ?= all
 
+# Base image for the shard container. It carries the heavy apt deps and the
+# external PostgreSQL extensions, so it is built once and reused instead of
+# being recompiled by every CI job. In CI SHARD_BASE_IMAGE points to a prebuilt
+# image in the registry (e.g. ghcr.io/pg-sharding/spqr-shard-base:<tag>); by
+# default it is built locally under the name below.
+SHARD_BASE_IMAGE ?= spqr-shard-base
+
+# Pinned refs for the auxiliary extensions baked into the base image.
+PG_COMMENT_STATS_REF ?= master
+SPQRGUARD_REF ?= master
+SPQRHASH_REF ?= master
+TWOPC_AUX_TESTER_REF ?= master
+
 build_balancer:
 	go build -pgo=auto -o spqr-balancer $(LDFLAGS) $(GCFLAGS) ./cmd/balancer
 
@@ -65,19 +78,51 @@ build_redistributor:
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor build_redistributor
 
-build_images:
+# Build the heavy shard base image locally (apt deps + external extensions).
+# Only needed when SHARD_BASE_IMAGE is not already available (e.g. not pulled
+# from a registry). Tagged as $(SHARD_BASE_IMAGE) so downstream builds can use
+# it as BASE_IMAGE.
+build_shard_base:
+	docker build \
+		-f docker/shard/Dockerfile.base \
+		--build-arg POSTGRES_VERSION=${POSTGRES_VERSION} \
+		--build-arg codename=${codename} \
+		--build-arg PG_COMMENT_STATS_REF=${PG_COMMENT_STATS_REF} \
+		--build-arg SPQRGUARD_REF=${SPQRGUARD_REF} \
+		--build-arg SPQRHASH_REF=${SPQRHASH_REF} \
+		--build-arg TWOPC_AUX_TESTER_REF=${TWOPC_AUX_TESTER_REF} \
+		-t ${SHARD_BASE_IMAGE} .
+
+# Push a prebuilt shard base image to its registry (used by CI prepare job).
+push_shard_base:
+	docker push ${SHARD_BASE_IMAGE}
+
+# Ensure the shard base image is present locally: if SHARD_BASE_IMAGE points at
+# a registry, pull it; otherwise build it. This is a no-op fast path when the
+# image already exists (e.g. was pulled by a previous CI step).
+ensure_shard_base:
+	@if docker image inspect ${SHARD_BASE_IMAGE} >/dev/null 2>&1; then \
+		echo "using existing shard base image ${SHARD_BASE_IMAGE}"; \
+	elif docker pull ${SHARD_BASE_IMAGE} >/dev/null 2>&1; then \
+		echo "pulled shard base image ${SHARD_BASE_IMAGE}"; \
+	else \
+		echo "building shard base image ${SHARD_BASE_IMAGE} locally"; \
+		$(MAKE) build_shard_base; \
+	fi
+
+build_images: ensure_shard_base
 	docker compose build spqr-base-image
 	docker compose build spqr-base-image-debug
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
-		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} spqr-shard-image;\
+		docker compose build --build-arg BASE_IMAGE=${SHARD_BASE_IMAGE} --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} spqr-shard-image;\
 	else\
-		docker compose build --build-arg codename=${codename} spqr-shard-image;\
+		docker compose build --build-arg BASE_IMAGE=${SHARD_BASE_IMAGE} --build-arg codename=${codename} spqr-shard-image;\
 	fi
 
-save_shard_image:
+save_shard_image: ensure_shard_base
 	sudo rm -f spqr-shard-image-*
-	docker compose build ${IMAGE_SHARD};\
+	docker compose build --build-arg BASE_IMAGE=${SHARD_BASE_IMAGE} --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} ${IMAGE_SHARD};\
 	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
 clean: clean_feature_test

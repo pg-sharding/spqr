@@ -4,6 +4,9 @@ services:
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
+            args:
+                BASE_IMAGE: ${BASE_IMAGE:-spqr-shard-base}
+                POSTGRES_VERSION: ${POSTGRES_VERSION:-15}
     spqr-base-image:
         image: spqr-base-image
         build:

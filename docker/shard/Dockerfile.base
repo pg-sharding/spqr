@@ -1,0 +1,80 @@
+# syntax=docker/dockerfile:1
+#
+# Base image for SPQR shard containers.
+#
+# This layer contains everything that changes rarely: the heavy apt
+# dependencies (postgresql-server-dev, build-essential, cmake, ...) and the
+# four external PostgreSQL extensions that otherwise get cloned and compiled
+# from GitHub on every single CI job.
+#
+# It is built once per (POSTGRES_VERSION, codename) pair and published to a
+# registry (GHCR). The thin `docker/shard/Dockerfile` then does
+# `FROM <this image>` so regular CI jobs only need to `docker pull` it instead
+# of recompiling the extensions 20+ times per pipeline run.
+#
+# The extension versions are pinned via *_REF build args so that the content
+# of this image is fully reproducible: bumping an extension changes the build
+# arg (and therefore the image tag hash), which forces exactly one rebuild.
+
+ARG codename=jammy
+FROM ubuntu:${codename}
+
+ARG POSTGRES_VERSION=15
+ENV POSTGRES_VERSION=$POSTGRES_VERSION
+
+# Pinned refs for the auxiliary extensions. Bump these to update an extension;
+# the CI image tag is derived from a hash over this Dockerfile, so a bump
+# triggers a single rebuild that is then reused by every downstream job.
+ARG PG_COMMENT_STATS_REF=master
+ARG SPQRGUARD_REF=master
+ARG SPQRHASH_REF=master
+ARG TWOPC_AUX_TESTER_REF=master
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt update && apt install -y ca-certificates
+
+RUN apt-get update -o Acquire::AllowInsecureRepositories=true && apt-get install -y --no-install-recommends --allow-unauthenticated \
+    curl \
+    lsb-release \
+    ca-certificates \
+    libssl-dev \
+    libldap-common \
+    gnupg \
+    openssl
+
+RUN install -d /usr/share/postgresql-common/pgdg && \
+    curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    sudo postgresql-$POSTGRES_VERSION \
+    build-essential \
+    cmake \
+    gcc \
+    gdb \
+    libpam0g-dev \
+    valgrind \
+    libpq5 \
+    libpq-dev \
+    vim \
+    postgresql-common \
+    postgresql-server-dev-$POSTGRES_VERSION \
+    postgresql-${POSTGRES_VERSION}-pg-stat-kcache \
+    git \
+    python3-docutils
+
+RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
+    cd pg_comment_stats && git checkout ${PG_COMMENT_STATS_REF} && \
+    make && make install && \
+    cd .. && git clone https://github.com/pg-sharding/spqrguard.git && \
+    cd spqrguard && git checkout ${SPQRGUARD_REF} && \
+    make USE_PGXS=1 install && \
+    cd .. && git clone https://github.com/pg-sharding/spqrhash.git && \
+    cd spqrhash && git checkout ${SPQRHASH_REF} && \
+    make USE_PGXS=1 install && \
+    cd .. && git clone https://github.com/pg-sharding/twopc_aux_tester.git && \
+    cd twopc_aux_tester && git checkout ${TWOPC_AUX_TESTER_REF} && \
+    make USE_PGXS=1 install

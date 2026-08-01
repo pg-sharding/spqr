@@ -10,6 +10,10 @@ env:
   IMAGE_SHARD: spqr-shard-image
   SHARD_CACHE_KEY: sha256sum-of-docker-shard
   CACHE_FILE_SHARD: ~/spqr-shard-image-shard-cache-key.tgz
+  # Registry repo for the prebuilt shard base image (heavy apt deps + external
+  # PG extensions). Built once per (codename, pg-version) by the shard-base job
+  # and pulled by every downstream job instead of recompiling the extensions.
+  SHARD_BASE_REPO: ghcr.io/${{ github.repository_owner }}/spqr-shard-base
 
 jobs:
 
@@ -71,10 +75,68 @@ jobs:
       - name: stress tests
         run: make stress
 
+  # Build the heavy shard base image (apt deps + external PG extensions) once
+  # per (codename, pg-version) and push it to GHCR. The image tag embeds a hash
+  # of docker/shard/Dockerfile.base, so a change to the base (e.g. bumping an
+  # extension) produces a new tag and triggers exactly one rebuild that is then
+  # reused by every downstream job. If the tag already exists in the registry
+  # the build is skipped and we only pay for a metadata check.
+  shard-base:
+    name: shard-base
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os-version: ['jammy', 'noble']
+        version: ['14', '15', '16', '17', '18']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute base image tag
+        id: tag
+        run: |
+          BASE_HASH="${{ hashFiles('docker/shard/Dockerfile.base') }}"
+          TAG="${{ matrix.os-version }}-pg${{ matrix.version }}-${BASE_HASH:0:16}"
+          IMAGE="${SHARD_BASE_REPO}:${TAG}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push base image if missing
+        run: |
+          set -euo pipefail
+          IMAGE="${{ steps.tag.outputs.image }}"
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "Base image $IMAGE already exists, skipping build."
+            exit 0
+          fi
+          echo "Building base image $IMAGE"
+          docker buildx build \
+            --file docker/shard/Dockerfile.base \
+            --build-arg POSTGRES_VERSION=${{ matrix.version }} \
+            --build-arg codename=${{ matrix.os-version }} \
+            --tag "$IMAGE" \
+            --cache-from type=gha,scope=shard-base-${{ matrix.os-version }}-${{ matrix.version }} \
+            --cache-to type=gha,mode=max,scope=shard-base-${{ matrix.os-version }}-${{ matrix.version }} \
+            --push \
+            .
+
   regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
-    needs: ['unit', 'gorm-regress', 'jdbc-regress']
+    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'shard-base']
 
     strategy:
       matrix:
@@ -87,6 +149,19 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve shard base image
+        id: base
+        run: |
+          BASE_HASH="${{ hashFiles('docker/shard/Dockerfile.base') }}"
+          echo "SHARD_BASE_IMAGE=${SHARD_BASE_REPO}:${{ matrix.os-version }}-pg${{ matrix.version }}-${BASE_HASH:0:16}" >> "$GITHUB_ENV"
 
       - name: Run tests
         run: |
@@ -114,7 +189,7 @@ jobs:
   regress-clustered-pgdg:
     name: regress-clustered
     runs-on: ubuntu-latest
-    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
+    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'regress-pgdg', 'shard-base']
 
     strategy:
       matrix:
@@ -124,6 +199,18 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve shard base image
+        run: |
+          BASE_HASH="${{ hashFiles('docker/shard/Dockerfile.base') }}"
+          echo "SHARD_BASE_IMAGE=${SHARD_BASE_REPO}:${{ matrix.os-version }}-pg${{ matrix.version }}-${BASE_HASH:0:16}" >> "$GITHUB_ENV"
 
       - name: Run tests
         run: |
@@ -143,12 +230,24 @@ jobs:
   isolation-regress:
     name: isolation-tests
     runs-on: ubuntu-latest
-    needs: ['unit', 'gorm-regress', 'jdbc-regress']
+    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'shard-base']
 
     steps:
 
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve shard base image
+        run: |
+          BASE_HASH="${{ hashFiles('docker/shard/Dockerfile.base') }}"
+          echo "SHARD_BASE_IMAGE=${SHARD_BASE_REPO}:jammy-pg17-${BASE_HASH:0:16}" >> "$GITHUB_ENV"
 
       - name: Run tests
         run: |
@@ -226,7 +325,10 @@ jobs:
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
-    needs: ['unit', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress']
+    needs: ['unit', 'regress-pgdg', 'regress-clustered-pgdg', 'gorm-regress', 'jdbc-regress', 'shard-base']
+    permissions:
+      contents: read
+      packages: read
     outputs:
       output1: ${{ steps.step1.outputs.features }}
     steps:
@@ -235,6 +337,18 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve shard base image
+        run: |
+          BASE_HASH="${{ hashFiles('docker/shard/Dockerfile.base') }}"
+          echo "SHARD_BASE_IMAGE=${SHARD_BASE_REPO}:jammy-pg17-${BASE_HASH:0:16}" >> "$GITHUB_ENV"
 
       - id: step1
         run: |
