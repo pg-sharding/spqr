@@ -555,20 +555,6 @@ func (mr *MockClientInfoMockRecorder) Peek() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockClientInfo)(nil).Peek))
 }
 
-// PreferredEngine mocks base method.
-func (m *MockClientInfo) PreferredEngine() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreferredEngine")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// PreferredEngine indicates an expected call of PreferredEngine.
-func (mr *MockClientInfoMockRecorder) PreferredEngine() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreferredEngine", reflect.TypeOf((*MockClientInfo)(nil).PreferredEngine))
-}
-
 // RAddr mocks base method.
 func (m *MockClientInfo) RAddr() string {
 	m.ctrl.T.Helper()
@@ -1096,18 +1082,6 @@ func (m *MockClientInfo) SetParamFormatCodes(arg0 []int16) {
 func (mr *MockClientInfoMockRecorder) SetParamFormatCodes(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockClientInfo)(nil).SetParamFormatCodes), arg0)
-}
-
-// SetPreferredEngine mocks base method.
-func (m *MockClientInfo) SetPreferredEngine(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPreferredEngine", level, val)
-}
-
-// SetPreferredEngine indicates an expected call of SetPreferredEngine.
-func (mr *MockClientInfoMockRecorder) SetPreferredEngine(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPreferredEngine", reflect.TypeOf((*MockClientInfo)(nil).SetPreferredEngine), level, val)
 }
 
 // SetScatterQuery mocks base method.

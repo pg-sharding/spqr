@@ -195,7 +195,8 @@ func TestMultiShardRouting(t *testing.T) {
 
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
-		dh.SetPreferredEngine("", "")
+		peGuc, _ := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+		peGuc.Set(dh, "", "")
 		dh.SetSeed(67)
 		stmt := parserRes[0]
 
@@ -311,7 +312,8 @@ func TestCreateTable(t *testing.T) {
 
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
-		dh.SetPreferredEngine("", "")
+		peGuc, _ := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+		peGuc.Set(dh, "", "")
 		dh.SetSeed(67)
 		stmt := parserRes[0]
 

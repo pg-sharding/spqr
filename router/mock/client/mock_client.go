@@ -668,20 +668,6 @@ func (mr *MockRouterClientMockRecorder) Peek() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockRouterClient)(nil).Peek))
 }
 
-// PreferredEngine mocks base method.
-func (m *MockRouterClient) PreferredEngine() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreferredEngine")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// PreferredEngine indicates an expected call of PreferredEngine.
-func (mr *MockRouterClientMockRecorder) PreferredEngine() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreferredEngine", reflect.TypeOf((*MockRouterClient)(nil).PreferredEngine))
-}
-
 // PreparedStatementDefinitionByName mocks base method.
 func (m *MockRouterClient) PreparedStatementDefinitionByName(name string) *prepstatement.PreparedStatementDefinition {
 	m.ctrl.T.Helper()
@@ -1321,18 +1307,6 @@ func (m *MockRouterClient) SetParamFormatCodes(arg0 []int16) {
 func (mr *MockRouterClientMockRecorder) SetParamFormatCodes(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).SetParamFormatCodes), arg0)
-}
-
-// SetPreferredEngine mocks base method.
-func (m *MockRouterClient) SetPreferredEngine(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPreferredEngine", level, val)
-}
-
-// SetPreferredEngine indicates an expected call of SetPreferredEngine.
-func (mr *MockRouterClientMockRecorder) SetPreferredEngine(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPreferredEngine", reflect.TypeOf((*MockRouterClient)(nil).SetPreferredEngine), level, val)
 }
 
 // SetScatterQuery mocks base method.

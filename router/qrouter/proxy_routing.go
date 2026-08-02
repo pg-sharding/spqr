@@ -1469,7 +1469,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return qr.planSplitUpdate(ctx, rm)
 	}
 
-	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
+	peGuc, _ := rm.SPH.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+	if peGuc.Get(rm.SPH) == planner.EnhancedEngineVersion {
 
 		plr := planner.PlannerV2{}
 
