@@ -270,20 +270,6 @@ func (mr *MockClientInfoMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockClientInfo)(nil).DefaultReply))
 }
 
-// DefaultRouteBehaviour mocks base method.
-func (m *MockClientInfo) DefaultRouteBehaviour() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DefaultRouteBehaviour")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DefaultRouteBehaviour indicates an expected call of DefaultRouteBehaviour.
-func (mr *MockClientInfoMockRecorder) DefaultRouteBehaviour() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultRouteBehaviour", reflect.TypeOf((*MockClientInfo)(nil).DefaultRouteBehaviour))
-}
-
 // DistributedRelation mocks base method.
 func (m *MockClientInfo) DistributedRelation() string {
 	m.ctrl.T.Helper()
@@ -990,18 +976,6 @@ func (m *MockClientInfo) SetCommitStrategy(value string) {
 func (mr *MockClientInfoMockRecorder) SetCommitStrategy(value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommitStrategy", reflect.TypeOf((*MockClientInfo)(nil).SetCommitStrategy), value)
-}
-
-// SetDefaultRouteBehaviour mocks base method.
-func (m *MockClientInfo) SetDefaultRouteBehaviour(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDefaultRouteBehaviour", level, val)
-}
-
-// SetDefaultRouteBehaviour indicates an expected call of SetDefaultRouteBehaviour.
-func (mr *MockClientInfoMockRecorder) SetDefaultRouteBehaviour(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockClientInfo)(nil).SetDefaultRouteBehaviour), level, val)
 }
 
 // SetDistributedRelation mocks base method.
