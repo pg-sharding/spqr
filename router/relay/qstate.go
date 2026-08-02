@@ -709,7 +709,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				return err
 			}
 
-			guc.Set(rst.Client(), lvl, value)
+			guc.Set(rst.Client(), lvl, hintVal)
 		} else {
 
 			switch name {
