@@ -67,8 +67,8 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 	}
 
 	if sph.ExecuteOn() == "" && !sph.ScatterQuery() {
-		if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+		if planErr := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); planErr != nil {
+			spqrlog.Zero.Debug().Err(planErr).Err(planErr).Msg("failed to analyze query")
 
 			/* XXX: below is very hacky. We allow to set DRB to shard-name
 			* to force execution on specific shard. If so, skip analyze to allow
@@ -84,7 +84,7 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 				}
 			}
 
-			return nil, err
+			return nil, planErr
 		}
 	}
 	return rm, nil
