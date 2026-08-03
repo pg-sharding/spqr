@@ -182,6 +182,7 @@ type UniteKeyRange struct {
 type MoveKeyRange struct {
 	DestShardID string
 	KeyRangeID  string
+	MetaOnly    bool
 }
 
 type RedistributeKeyRange struct {
