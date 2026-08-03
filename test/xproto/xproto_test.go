@@ -6593,7 +6593,7 @@ func TestNamedPortalClearedOnTransactionEnd(t *testing.T) {
 				},
 				&pgproto3.Parse{
 					Name:  "stmt",
-					Query: "select 42",
+					Query: "select 42/*__spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Parse{
 					Query: "BEGIN",
