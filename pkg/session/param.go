@@ -75,10 +75,6 @@ type SessionParamsHolder interface {
 	SetEnhancedMultiShardProcessing(level string, val bool)
 	EnhancedMultiShardProcessing() bool
 
-	/*  XXX: developer option */
-	SetPreferredEngine(level string, val string)
-	PreferredEngine() string
-
 	/* Distributed transactions */
 
 	/* route hint always tx-block-level */
@@ -167,7 +163,7 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE:
 		return true
 	default:
 		return false

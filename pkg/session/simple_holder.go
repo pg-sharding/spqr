@@ -187,17 +187,7 @@ func (cl *SimpleSessionParamHandler) Distribution() string {
 	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTION, "")
 }
 
-// PreferredEngine implements client.Client.
-func (cl *SimpleSessionParamHandler) PreferredEngine() string {
-	return cl.ResolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
-}
-
-// SetPreferredEngine implements client.Client.
-func (cl *SimpleSessionParamHandler) SetPreferredEngine(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_PREFERRED_ENGINE, val)
-}
-
-// SetDistributedRelation implements RouterClient.
+// SetCommitStrategy implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val string) {
 	cl.RecordVirtualParam(level, SPQR_DISTRIBUTED_RELATION, val)
 }
@@ -568,6 +558,13 @@ var StrGUCs = []StrGUCimpl{
 		shortName: "default route behaviour",
 		def: func() string {
 			return string(config.RouterConfig().Qr.DefaultRouteBehaviour)
+		},
+	},
+	{
+		n:         SPQR_PREFERRED_ENGINE,
+		shortName: "preferred engine",
+		def: func() string {
+			return ""
 		},
 	},
 }

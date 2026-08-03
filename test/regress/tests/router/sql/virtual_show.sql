@@ -41,3 +41,10 @@ SHOW __spqr__allow_postprocessing;
 
 SET __spqr__allow_split_update TO true;
 SHOW __spqr__allow_split_update;
+
+
+SHOW __spqr__preferred_engine;
+SET __spqr__preferred_engine TO v2;
+SHOW __spqr__preferred_engine;
+SET __spqr__preferred_engine TO '';
+SHOW __spqr__preferred_engine;

@@ -476,9 +476,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_PREFERRED_ENGINE:
-				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
-
 			case session.SPQR_COMMIT_STRATEGY:
 
 				tts := tupleslot.TupleTableSlot{
@@ -712,8 +709,6 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				rst.Client().SetDistributedRelation(lvl, hintVal)
 			case session.SPQR_SHARDING_KEY:
 				rst.Client().SetShardingKey(lvl, hintVal)
-			case session.SPQR_PREFERRED_ENGINE:
-				rst.Client().SetPreferredEngine(lvl, hintVal)
 
 			case session.SPQR_REPLY_NOTICE:
 				if value == "on" || value == "true" {
