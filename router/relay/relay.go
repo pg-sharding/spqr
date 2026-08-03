@@ -1069,13 +1069,16 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 
 func (rst *RelayStateImpl) PipelineCleanup() {
 	rst.bindQueryPlan = nil
-	/* XXX: normally these two map should be either both empty
-	* either both not */
-	if len(rst.bindQueryPlanMP) > 0 {
-		rst.bindQueryPlanMP = map[string]plan.Plan{}
-	}
-	if len(rst.executeMp) > 0 {
-		rst.executeMp = map[string]func(maxrows uint32) error{}
+
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		/* XXX: normally these two map should be either both empty
+		* either both not */
+		if len(rst.bindQueryPlanMP) > 0 {
+			rst.bindQueryPlanMP = map[string]plan.Plan{}
+		}
+		if len(rst.executeMp) > 0 {
+			rst.executeMp = map[string]func(maxrows uint32) error{}
+		}
 	}
 	rst.WaitSync = false
 }
