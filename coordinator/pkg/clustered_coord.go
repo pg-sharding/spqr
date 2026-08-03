@@ -1138,6 +1138,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 					Id:        keyRange.ID,
 					ToShardId: keyRange.ShardID,
+					MetaOnly:  true,
 				})
 				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).

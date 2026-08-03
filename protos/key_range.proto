@@ -66,6 +66,7 @@ message MergeKeyRangeRequest {
 message MoveKeyRangeRequest {
   string id = 1 [(buf.validate.field).required = true];
   string toShardId = 2 [(buf.validate.field).required = true];
+  bool metaOnly = 3;
 }
 
 message DropKeyRangeRequest {

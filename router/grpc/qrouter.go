@@ -352,7 +352,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId}, nil)
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId, MetaOnly: request.MetaOnly}, nil)
 	if err != nil {
 		return nil, err
 	}
