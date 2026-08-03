@@ -18,6 +18,7 @@ type SplitKeyRange struct {
 type MoveKeyRange struct {
 	ShardID    string
 	KeyRangeID string
+	MetaOnly   bool
 }
 
 type UniteKeyRange struct {

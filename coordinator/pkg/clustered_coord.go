@@ -1003,6 +1003,10 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		Str("shard-id", req.ShardID).
 		Msg("qdb coordinator move key range")
 
+	if req.MetaOnly {
+		return qc.Coordinator.Move(ctx, req, icpCH)
+	}
+
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
 	if err != nil {
 		return err

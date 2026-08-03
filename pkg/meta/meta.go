@@ -1123,6 +1123,7 @@ func ProcMetadataCommand(ctx context.Context,
 		move := &kr.MoveKeyRange{
 			ShardID:    stmt.DestShardID,
 			KeyRangeID: stmt.KeyRangeID,
+			MetaOnly:   stmt.MetaOnly,
 		}
 
 		if err := mgr.Move(ctx, move, icpCH); err != nil {
@@ -1133,7 +1134,6 @@ func ProcMetadataCommand(ctx context.Context,
 			Desc: engine.GetVPHeader("move key range"),
 			Raw: [][][]byte{
 				{fmt.Appendf(nil, "move key range %v to shard %v", move.KeyRangeID, move.ShardID)},
-				{[]byte("HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")},
 			},
 		}
 
