@@ -45,7 +45,7 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 \c spqr-console
-MOVE KEY RANGE kr1 TO sh2;
+MOVE KEY RANGE kr1 TO sh2 META ONLY;
 ERROR:  key range kr1 not locked
 \c regress
 SET __spqr__execute_on=sh1;
