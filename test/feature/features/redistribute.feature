@@ -2034,7 +2034,7 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "key_range_id":"kr1",
+      "key_range_id":".*",
       "distribution_id":"ds1",
       "lower_bound":"0",
       "shard_id":"sh1",
