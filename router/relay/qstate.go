@@ -359,23 +359,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTED_RELATION)
 
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("default route behaviour"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(rst.Client().DefaultRouteBehaviour())
-
-				/* XXX: move this call out of this function */
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
 			case session.SPQR_SHARDING_KEY:
 
 				tts := tupleslot.TupleTableSlot{
@@ -492,9 +475,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				tts.WriteDataRow(string(rst.Client().GetTsa()))
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
-			case session.SPQR_PREFERRED_ENGINE:
-				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
 
 			case session.SPQR_COMMIT_STRATEGY:
 
@@ -709,7 +689,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				return err
 			}
 
-			guc.Set(rst.Client(), lvl, value)
+			guc.Set(rst.Client(), lvl, hintVal)
 		} else {
 
 			switch name {
@@ -727,12 +707,8 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				rst.Client().SetDistributionKey(hintVal)
 			case session.SPQR_DISTRIBUTED_RELATION:
 				rst.Client().SetDistributedRelation(lvl, hintVal)
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
 			case session.SPQR_SHARDING_KEY:
 				rst.Client().SetShardingKey(lvl, hintVal)
-			case session.SPQR_PREFERRED_ENGINE:
-				rst.Client().SetPreferredEngine(lvl, hintVal)
 
 			case session.SPQR_REPLY_NOTICE:
 				if value == "on" || value == "true" {

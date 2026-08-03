@@ -590,12 +590,53 @@ func TestRedistribute(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "REDISTRIBUTE KEY RANGE ALL TO sh2",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if err != nil {
 			assert.ErrorContains(err, tt.err.Error())
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
+	}
+}
+
+func TestMoveKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "MOVE KEY RANGE kr1 TO sh2",
+			exp: &spqrparser.MoveKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+			},
+			err: nil,
+		},
+		{
+			query: "MOVE KEY RANGE ALL TO sh2",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.EqualError(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
@@ -1020,13 +1061,61 @@ func TestSplitKeyRange(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "SPLIT KEY RANGE ALL FROM krid1 BY 5;",
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.EqualError(err, tt.err.Error())
+		} else {
 
-		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
+	}
+}
+
+func TestUniteKeyRange(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "UNITE KEY RANGE k1 WITH k2;",
+			exp: &spqrparser.UniteKeyRange{
+				KeyRangeIDL: "k1",
+				KeyRangeIDR: "k2",
+			},
+			err: nil,
+		},
+		{
+			query: "UNITE KEY RANGE ALL WITH k2;",
+
+			err: fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.EqualError(err, tt.err.Error())
+		} else {
+
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
 	}
 }
 
@@ -2745,6 +2834,10 @@ func TestRename(t *testing.T) {
 				NewID: "kr_new",
 			},
 			err: nil,
+		},
+		{
+			query: "RENAME KEY RANGE ALL TO kr_new",
+			err:   fmt.Errorf("syntax error"),
 		},
 	} {
 
