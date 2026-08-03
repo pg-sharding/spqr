@@ -6542,15 +6542,15 @@ func TestDescribePortalAfterBindDeallocateByXproto(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "dealloc",
+					Name:       "deallocate",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "dealloc",
+					Name:  "deallocate",
 					Query: "DEALLOCATE ALL",
 				},
 				&pgproto3.Bind{
-					PreparedStatement: "dealloc",
+					PreparedStatement: "deallocate",
 				},
 				&pgproto3.Describe{
 					ObjectType: 'P',
@@ -6588,11 +6588,11 @@ func TestNamedPortalClearedOnTransactionEnd(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "txstmt",
+					Name:       "stmt",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "txstmt",
+					Name:  "stmt",
 					Query: "select 42",
 				},
 				&pgproto3.Parse{
@@ -6603,7 +6603,7 @@ func TestNamedPortalClearedOnTransactionEnd(t *testing.T) {
 				/* bind named portal inside the transaction */
 				&pgproto3.Bind{
 					DestinationPortal: "txp",
-					PreparedStatement: "txstmt",
+					PreparedStatement: "stmt",
 				},
 				&pgproto3.Execute{
 					Portal: "txp",
@@ -6669,41 +6669,37 @@ func TestClosePortalByXproto(t *testing.T) {
 	}()
 
 	tt := []MessageGroup{
-		/*cCreate named portal, describe, close, re-create, execute */
+		/* create named portal, describe, close, re-create, execute */
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "cpstmt",
+					Name:       "stmt",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "cpstmt",
+					Name:  "stmt",
 					Query: "select 42",
 				},
-				/* BEGIN — named portals require an explicit transaction */
 				&pgproto3.Parse{
 					Query: "BEGIN",
 				},
 				&pgproto3.Bind{},
 				&pgproto3.Execute{},
-				/* Bind named portal */
 				&pgproto3.Bind{
 					DestinationPortal: "cp1",
-					PreparedStatement: "cpstmt",
+					PreparedStatement: "stmt",
 				},
 				&pgproto3.Describe{
 					ObjectType: 'P',
 					Name:       "cp1",
 				},
-				/* Close it — frees the name */
 				&pgproto3.Close{
 					ObjectType: 'P',
 					Name:       "cp1",
 				},
-				/* re-create with the same name and execute */
 				&pgproto3.Bind{
 					DestinationPortal: "cp1",
-					PreparedStatement: "cpstmt",
+					PreparedStatement: "stmt",
 				},
 				&pgproto3.Execute{
 					Portal: "cp1",
