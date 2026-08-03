@@ -12,7 +12,7 @@ type BoolGUC interface {
 type StrGUC interface {
 	ShortName() string
 	Get(sph SessionParamsHolder) string
-	Set(sph SessionParamsHolder, level string, val string)
+	Set(sph SessionParamsHolder, level string, val string) error
 	Reset()
 }
 
