@@ -29,6 +29,8 @@ import (
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 )
 
+const maxAcceptErrors = 1000
+
 type RouterInstance interface {
 	Addr() string
 	ID() string
@@ -246,15 +248,23 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	cChan := make(chan net.Conn, max(config.RouterConfig().AcceptorBufferSize, 1))
 
 	accept := func(l net.Listener, cChan chan net.Conn) {
+		errCount := 0
 		for {
 			c, err := l.Accept()
 			if err != nil {
+				errCount++
 				spqrlog.Zero.Error().
 					Err(err).
 					Msg("failed to accept a new client connection")
-				close(cChan)
-				return
+				if errCount >= maxAcceptErrors {
+					spqrlog.Zero.Error().
+						Msg("acceptor reached max consecutive errors, shutting down")
+					close(cChan)
+					return
+				}
+				continue
 			}
+			errCount = 0
 			spqrlog.Zero.Info().
 				Str("remote addr", c.RemoteAddr().String()).
 				Msg("new network client connection")
@@ -336,12 +346,23 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 	cChan := make(chan net.Conn)
 
 	accept := func(l net.Listener, cChan chan net.Conn) {
+		errCount := 0
 		for {
 			c, err := l.Accept()
 			if err != nil {
-				close(cChan)
-				return
+				errCount++
+				spqrlog.Zero.Error().
+					Err(err).
+					Msg("failed to accept a new admin connection")
+				if errCount >= maxAcceptErrors {
+					spqrlog.Zero.Error().
+						Msg("acceptor reached max consecutive errors, shutting down")
+					close(cChan)
+					return
+				}
+				continue
 			}
+			errCount = 0
 			cChan <- c
 		}
 	}
