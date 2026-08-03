@@ -1043,13 +1043,20 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
 			// lock the key range
-			_, err = qc.LockKeyRange(ctx, req.KeyRangeID)
+			kr, err := qc.GetKeyRange(ctx, req.KeyRangeID)
 			if err != nil {
 				return err
 			}
-			if config.CoordinatorConfig().EnableICP {
-				if err := icp.CheckControlPoint(nil, icp.AfterLockKeyRangeCP); err != nil {
-					spqrlog.Zero.Info().Str("cp", icp.AfterLockKeyRangeCP).Err(err).Msg("error while checking control point")
+			if !kr.IsLocked {
+				_, err = qc.LockKeyRange(ctx, req.KeyRangeID)
+				if err != nil {
+					return err
+				}
+
+				if config.CoordinatorConfig().EnableICP {
+					if err := icp.CheckControlPoint(nil, icp.AfterLockKeyRangeCP); err != nil {
+						spqrlog.Zero.Info().Str("cp", icp.AfterLockKeyRangeCP).Err(err).Msg("error while checking control point")
+					}
 				}
 			}
 			fallthrough
