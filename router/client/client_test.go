@@ -44,7 +44,7 @@ func TestCancel(t *testing.T) {
 			return 12, nil
 		}).Times(1)
 
-	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, "BLOCK", false, "")
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
 
 	err := client.Init(nil)
 	assert.Equal(uint32(7), client.CancelMsg().ProcessID)
@@ -104,7 +104,7 @@ func TestPeek(t *testing.T) {
 			return len(bytesQ2), nil
 		}).Times(1)
 
-	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, "BLOCK", false, "")
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
 
 	err := client.Init(nil)
 	assert.NoError(err)
@@ -166,7 +166,7 @@ func TestNoGSSAPI(t *testing.T) {
 		return 4, nil
 	}).Times(1)
 
-	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, "BLOCK", false, "")
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
 
 	err := client.Init(nil)
 	assert.Equal(exprErr, err)

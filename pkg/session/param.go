@@ -35,11 +35,8 @@ type SessionParamsHolder interface {
 	Usr() string
 	SetUsr(string)
 
-	// Get current session DRB
-	DefaultRouteBehaviour() string
-	SetDefaultRouteBehaviour(level string, val string)
+	// Get current session distribution
 
-	/* Only statement-level */
 	SetAutoDistribution(val string)
 	AutoDistribution() string
 
@@ -47,8 +44,7 @@ type SessionParamsHolder interface {
 	SetDistributionKey(val string)
 	DistributionKey() string
 
-	// Get current session distribution
-
+	/* Only statement-level */
 	SetDistribution(level string, val string)
 	Distribution() string
 
@@ -171,7 +167,7 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 		return true
 	default:
 		return false

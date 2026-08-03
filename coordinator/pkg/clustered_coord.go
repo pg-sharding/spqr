@@ -2789,7 +2789,7 @@ func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(nconn, pt, "", false, "")
+	cl := rclient.NewPsqlClient(nconn, pt, false, "")
 
 	tlsconfig := qc.tlsconfig
 	if pt == port.UnixSocketPortType {

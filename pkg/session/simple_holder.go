@@ -309,17 +309,7 @@ func (cl *SimpleSessionParamHandler) ShardingKey() string {
 	return cl.ResolveVirtualStringParam(SPQR_SHARDING_KEY, "")
 }
 
-// SetDefaultRouteBehaviour implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetDefaultRouteBehaviour(level string, b string) {
-	cl.RecordVirtualParam(level, SPQR_DEFAULT_ROUTE_BEHAVIOUR, b)
-}
-
-// DefaultRouteBehaviour implements RouterClient.
-func (cl *SimpleSessionParamHandler) DefaultRouteBehaviour() string {
-	return cl.ResolveVirtualStringParam(SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
-}
-
-// ScatterQuery implements RouterClient.
+// SetShardingKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
 	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
 }
@@ -573,6 +563,13 @@ var StrGUCs = []StrGUCimpl{
 			return string(config.RouterConfig().Qr.AdvisoryLockBehaviour)
 		},
 	},
+	{
+		n:         SPQR_DEFAULT_ROUTE_BEHAVIOUR,
+		shortName: "default route behaviour",
+		def: func() string {
+			return string(config.RouterConfig().Qr.DefaultRouteBehaviour)
+		},
+	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
@@ -595,7 +592,7 @@ func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
+func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder {
 	seed := rand.IntN(math.MaxInt)
 
 	return &SimpleSessionParamHandler{
@@ -606,8 +603,7 @@ func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviou
 		startupParameters: map[string]string{},
 
 		activeParamSet: map[string]string{
-			SPQR_DISTRIBUTION:            "default",
-			SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
+			SPQR_DISTRIBUTION: "default",
 		},
 		defaultTsa:            t,
 		showNoticeMessages:    showNotice,

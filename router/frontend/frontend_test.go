@@ -138,8 +138,6 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
-	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
-
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
 

@@ -15,7 +15,7 @@ import (
 func TestCalculateRoutingListTupleItemValueEmptyBindParams(t *testing.T) {
 	t.Parallel()
 
-	sph := session.NewSimpleHandler("", false, "", "")
+	sph := session.NewSimpleHandler("", false, "")
 	rm := &rmeta.RoutingMetadataContext{SPH: sph}
 
 	_, err := CalculateRoutingListTupleItemValue(
@@ -30,7 +30,7 @@ func TestCalculateRoutingListTupleItemValueEmptyBindParams(t *testing.T) {
 func TestCalculateRoutingListTupleItemValueEmptyFormatCodes(t *testing.T) {
 	t.Parallel()
 
-	sph := session.NewSimpleHandler("", false, "", "")
+	sph := session.NewSimpleHandler("", false, "")
 	rm := &rmeta.RoutingMetadataContext{SPH: sph}
 
 	_, err := CalculateRoutingListTupleItemValue(
@@ -45,7 +45,7 @@ func TestCalculateRoutingListTupleItemValueEmptyFormatCodes(t *testing.T) {
 func TestCalculateRoutingListTupleItemValueInvalidParamNumber(t *testing.T) {
 	t.Parallel()
 
-	sph := session.NewSimpleHandler("", false, "", "")
+	sph := session.NewSimpleHandler("", false, "")
 	rm := &rmeta.RoutingMetadataContext{SPH: sph}
 
 	_, err := CalculateRoutingListTupleItemValue(
@@ -60,7 +60,7 @@ func TestCalculateRoutingListTupleItemValueInvalidParamNumber(t *testing.T) {
 func TestCalculateRoutingListTupleItemValueValidBind(t *testing.T) {
 	t.Parallel()
 
-	sph := session.NewSimpleHandler("", false, "", "")
+	sph := session.NewSimpleHandler("", false, "")
 	sph.SetBindParams([][]byte{[]byte("42")})
 	sph.SetParamFormatCodes([]int16{xproto.FormatCodeText})
 
