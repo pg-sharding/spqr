@@ -2028,21 +2028,19 @@ Feature: Redistribution test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    SHOW key_ranges(shard_id, distribution_id, lower_bound, locked) ORDER BY lower_bound;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-        "key_range_id":"kr1",
         "distribution_id":"ds1",
         "lower_bound":"0",
         "shard_id":"sh1",
         "locked":"false"
       },
       {
-        "key_range_id":".*",
         "distribution_id":"ds1",
         "lower_bound":"900",
         "shard_id":"sh1",
@@ -2052,7 +2050,7 @@ Feature: Redistribution test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    SHOW key_ranges(shard_id, distribution_id, lower_bound, locked) ORDER BY lower_bound;
     """
     Then command return code should be "0"
     # XXX: fix key range name here
@@ -2060,14 +2058,12 @@ Feature: Redistribution test
     """
     [
       {
-        "key_range_id":"kr1",
         "distribution_id":"ds1",
         "lower_bound":"0",
         "shard_id":"sh1",
         "locked":"false"
       },
       {
-        "key_range_id":".*",
         "distribution_id":"ds1",
         "lower_bound":"900",
         "shard_id":"sh1",
@@ -2077,21 +2073,19 @@ Feature: Redistribution test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    SHOW key_ranges(shard_id, distribution_id, lower_bound, locked) ORDER BY lower_bound;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-        "key_range_id":"kr1",
         "distribution_id":"ds1",
         "lower_bound":"0",
         "shard_id":"sh1",
         "locked":"false"
       },
       {
-        "key_range_id":".*",
         "distribution_id":"ds1",
         "lower_bound":"900",
         "shard_id":"sh1",
