@@ -202,9 +202,9 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
-%token <str> SHARDS ROUTERS SHARD RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
+%token <str> SHARDS SHARD COLUMNS HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
 %token <str> CLIENT
 %token <str> BATCH SIZE NOWAIT
@@ -236,7 +236,7 @@ func randomHex(n int) (string, error) {
 /* ICP */
 %token<str> CONTROL POINT
 
-/* any operator */
+/* any operator multi-character, produced by the lexer */
 %token<str> OP
 
 
@@ -345,10 +345,10 @@ func randomHex(n int) (string, error) {
 %left		AND
 %right		NOT
 %nonassoc	TLESS TGREATER TEQ
-%left		OP OPERATOR	/* multi-character ops and user-defined operators */
+%left		OP		/* multi-character operator */
 %left		TPLUS TMINUS
 %left		TMUL 
-%left		TSQOPENBR TSQCLOSEBR
+%left		TOPENSQBR TCLOSESQBR
 %left		TOPENBR TCLOSEBR
 
 %start root
@@ -602,8 +602,11 @@ AexprConst:
 		}
 	} |
 	ICONST {
+		/*
+		 * Integer literals are intentionally represented as string constants.
+		 */
 		$$ = &lyx.AExprSConst{
-			Value: fmt.Sprintf("%+v", $1),
+			Value: fmt.Sprintf("%d", $1),
 		}
 	}
 
@@ -1778,7 +1781,7 @@ kill_stmt:
 
 
 move_key_range_stmt:
-	MOVE key_range_stmt TO any_id
+	MOVE key_range_select_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
@@ -1788,7 +1791,7 @@ opt_redistr_id:
 
 /* All of this is kinda uggly, refactor to make it more Postgresy */
 redistribute_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id
+	REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id
 	{
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
@@ -1798,7 +1801,7 @@ redistribute_stmt:
 			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1806,7 +1809,7 @@ redistribute_stmt:
 			Id: $6,
 			Check: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1814,7 +1817,7 @@ redistribute_stmt:
 			Id: $6,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -2001,7 +2004,7 @@ icp_stmt:
 	}
 
 rename_stmt:
-	RENAME key_range_stmt TO any_id 
+	RENAME key_range_select_stmt TO any_id 
 	{
 		$$ = &Rename {
 			Element: $2,

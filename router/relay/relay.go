@@ -327,15 +327,14 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Str("drb", rst.Client().DefaultRouteBehaviour()).
-		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("create plan for current statement")
-
 	var queryPlan plan.Plan
 
 	if v := rst.Client().ExecuteOn(); v != "" {
+
+		spqrlog.Zero.Debug().
+			Str("exec_on", rst.Client().ExecuteOn()).
+			Msg("forcing current statement to execute on dedicated shard")
+
 		queryPlan = &plan.ShardDispatchPlan{
 			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{
@@ -752,7 +751,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 				if _, ok := rst.executeMp[name]; !ok {
 					return spqrerror.New(
 						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
-						fmt.Sprintf("portal \"%s\" does not exists", name))
+						fmt.Sprintf("portal \"%s\" does not exist", name))
 				}
 				p = rst.bindQueryPlanMP[name]
 			}
@@ -1044,7 +1043,14 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 		rst.execute = nil
 		rst.bindQueryPlan = nil
 	} else {
-		err = rst.executeMp[portal](maxrows)
+		f, ok := rst.executeMp[portal]
+		if !ok {
+			return spqrerror.New(
+				spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
+				fmt.Sprintf("portal \"%s\" does not exist", portal))
+		}
+
+		err = f(maxrows)
 		/* Note we do not delete from executeMP, this is intentional */
 		rst.bindQueryPlanMP[portal] = nil
 	}
@@ -1063,6 +1069,17 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 
 func (rst *RelayStateImpl) PipelineCleanup() {
 	rst.bindQueryPlan = nil
+
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		/* XXX: normally these two map should be either both empty
+		* either both not */
+		if len(rst.bindQueryPlanMP) > 0 {
+			rst.bindQueryPlanMP = map[string]plan.Plan{}
+		}
+		if len(rst.executeMp) > 0 {
+			rst.executeMp = map[string]func(maxrows uint32) error{}
+		}
+	}
 	rst.WaitSync = false
 }
 
@@ -1282,7 +1299,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	}
 
 	if bindPlan == nil {
-		return fmt.Errorf("failed to use hint route")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "failed to use hint route")
 	}
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")

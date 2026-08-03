@@ -232,7 +232,6 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	cl := rclient.NewPsqlClient(conn,
 		pt,
-		string(config.RouterConfig().Qr.DefaultRouteBehaviour),
 		config.RouterConfig().ShowNoticeMessages,
 		config.RouterConfig().Qr.DefaultTSA)
 
