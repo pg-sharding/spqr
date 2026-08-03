@@ -672,8 +672,29 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	return retMsg, nil
 }
 
+var localCache = map[uint64]*PortalDesc{}
 func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 	dMsg *pgproto3.Describe, p plan.Plan) (*PortalDesc, error) {
+
+	hash := rst.Client().PreparedStatementQueryHashByName(rst.lastBindName)
+	if cachedPd, ok := localCache[hash]; ok {
+
+		if cachedPd.rd != nil {
+			// send to the client
+			if err := rst.Client().Send(cachedPd.rd); err != nil {
+				return err
+			}
+		}
+		if cachedPd.nodata != nil {
+			// send to the client
+			if err := rst.Client().Send(cachedPd.nodata); err != nil {
+				return err
+			}
+		}
+
+		rst.savedPortalDesc[rst.lastBindName] = cachedPd
+		return nil
+	}
 
 	/* SingleShard or random shard plans */
 
@@ -711,6 +732,7 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 	}
 
 	rst.savedPortalDesc[rst.lastBindName] = cachedPd
+	localCache[hash] = cachedPd
 	return cachedPd, nil
 }
 
@@ -737,9 +759,9 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			p := rst.bindQueryPlan
 			if name != "" {
 				if _, ok := rst.executeMp[name]; !ok {
-					return spqrerror.New(
+					return spqrerror.Newf(
 						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
-						fmt.Sprintf("portal \"%s\" does not exist", name))
+						"portal \"%s\" does not exist", name)
 				}
 				p = rst.bindQueryPlanMP[name]
 			}
