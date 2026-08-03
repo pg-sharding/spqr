@@ -1052,11 +1052,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 					spqrlog.Zero.Info().Str("cp", icp.AfterLockKeyRangeCP).Err(err).Msg("error while checking control point")
 				}
 			}
-			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeLocked); err != nil {
-				return err
-			}
-			move.Status = qdb.MoveKeyRangeLocked
-
+			fallthrough
 		case qdb.MoveKeyRangeLocked:
 			// Physically move the data
 

@@ -813,7 +813,7 @@ Feature: Redistribution retries test
     key range is locked
     """
 
-Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKeyRangeLocked in QDB 
+Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKeyRangeDataMoved in QDB 
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
