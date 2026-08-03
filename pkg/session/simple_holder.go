@@ -69,10 +69,18 @@ type StrGUCimpl struct {
 	n         string
 	shortName string
 	def       func() string
+	assign    func(sph SessionParamsHolder, level string, val string) error
 }
 
-func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) {
+func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
+	if guc.assign != nil {
+		if err := guc.assign(cl, level, val); err != nil {
+			return err
+		}
+		return nil
+	}
 	cl.RecordVirtualParam(level, guc.n, val)
+	return nil
 }
 
 func (guc StrGUCimpl) ShortName() string {

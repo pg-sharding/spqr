@@ -689,7 +689,9 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				return err
 			}
 
-			guc.Set(rst.Client(), lvl, hintVal)
+			if err := guc.Set(rst.Client(), lvl, hintVal); err != nil {
+				return err
+			}
 		} else {
 
 			switch name {
