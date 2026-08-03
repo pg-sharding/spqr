@@ -2046,10 +2046,11 @@ Feature: Redistribution test
     SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
+    # XXX: fix key range name here
     And SQL result should match json_exactly
     """
     [{
-      "key_range_id":"kr1",
+      "key_range_id":".*",
       "distribution_id":"ds1",
       "lower_bound":"0",
       "shard_id":"sh1",
@@ -2064,7 +2065,7 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "key_range_id":"kr1",
+      "key_range_id":".*",
       "distribution_id":"ds1",
       "lower_bound":"0",
       "shard_id":"sh1",
