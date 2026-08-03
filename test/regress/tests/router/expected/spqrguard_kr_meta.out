@@ -47,11 +47,10 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 \c spqr-console
-MOVE KEY RANGE kr1 TO sh2;
+MOVE KEY RANGE kr1 TO sh2 META ONLY;
                                         move key range                                        
 ----------------------------------------------------------------------------------------------
  move key range kr1 to shard sh2
- HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.
 (2 rows)
 
 \c regress

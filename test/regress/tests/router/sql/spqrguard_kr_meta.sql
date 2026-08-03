@@ -15,7 +15,7 @@ SET __spqr__execute_on=sh2;
 SELECT * FROM spqr_metadata.spqr_local_key_ranges;
 
 \c spqr-console
-MOVE KEY RANGE kr1 TO sh2;
+MOVE KEY RANGE kr1 TO sh2 META ONLY;
 
 \c regress
 SET __spqr__execute_on=sh1;
