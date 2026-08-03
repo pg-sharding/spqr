@@ -698,7 +698,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				rst.Client().SetScatterQuery(hintVal != "")
 			case session.SPQR_EXECUTE_ON:
 				if _, err := topology.TopMgr.ShardById(hintVal); err != nil {
-					return errAbortedTx
+					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "shard %s does not exist", hintVal)
 				}
 				rst.Client().SetExecuteOn(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION:

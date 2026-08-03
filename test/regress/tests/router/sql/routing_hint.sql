@@ -100,6 +100,8 @@ SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
 -- After stmt select from sh1, not sh2
 SELECT * FROM test ORDER BY id;
 
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+
 SHOW __spqr__scatter_query; -- error
 SHOW __spqr__default_route_behaviour;
 
