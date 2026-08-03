@@ -327,15 +327,14 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Str("drb", rst.Client().DefaultRouteBehaviour()).
-		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("create plan for current statement")
-
 	var queryPlan plan.Plan
 
 	if v := rst.Client().ExecuteOn(); v != "" {
+
+		spqrlog.Zero.Debug().
+			Str("exec_on", rst.Client().ExecuteOn()).
+			Msg("forcing current statement to execute on dedicated shard")
+
 		queryPlan = &plan.ShardDispatchPlan{
 			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{

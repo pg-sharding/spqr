@@ -956,7 +956,12 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.
 		 */
-		switch strings.ToUpper(rm.SPH.DefaultRouteBehaviour()) {
+		guc, err := rm.SPH.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+		if err != nil {
+			return nil, err
+		}
+
+		switch strings.ToUpper(guc.Get(rm.SPH)) {
 		case "BLOCK":
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_QUERY_BLOCKED)
 		case "ALLOW":
@@ -1464,7 +1469,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return qr.planSplitUpdate(ctx, rm)
 	}
 
-	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
+	peGuc, _ := rm.SPH.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+	if peGuc.Get(rm.SPH) == planner.EnhancedEngineVersion {
 
 		plr := planner.PlannerV2{}
 
@@ -1533,9 +1539,15 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	}
 
-	/* Last chance, try to match DRH on some of existing shards */
+	/* Last chance, try to match DRH on some of existing shards.
+	* NB: if you change this, make sure AnalyzeQuery() takes same changes */
+	drbGuc, err := rm.SPH.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+	if err != nil {
+		return nil, err
+	}
+	drb := drbGuc.Get(rm.SPH)
 	for _, sh := range qr.DataShardsRoutes() {
-		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+		if sh.Name == drb {
 			return &plan.ShardDispatchPlan{
 				ExecTarget: sh,
 			}, nil
@@ -1553,12 +1565,16 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
+
 		mp := qr.tmgr.Snap()
 		if len(mp) == 1 {
 			firstShard := ""
 			for s := range mp {
 				firstShard = s
 			}
+			spqrlog.Zero.Debug().
+				Str("shard", firstShard).
+				Msg("forcing single-shard execution for statement")
 
 			return &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
