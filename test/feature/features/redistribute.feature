@@ -2033,13 +2033,22 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{
-      "key_range_id":".*",
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh1",
-      "locked":"false"
-    }]
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "key_range_id":".*",
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      } 
+    ]
     """
     When I run SQL on host "router-admin"
     """
@@ -2049,13 +2058,22 @@ Feature: Redistribution test
     # XXX: fix key range name here
     And SQL result should match json_exactly
     """
-    [{
-      "key_range_id":".*",
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh1",
-      "locked":"false"
-    }]
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "key_range_id":".*",
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      } 
+    ]
     """
     When I run SQL on host "router2-admin"
     """
@@ -2064,11 +2082,20 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{
-      "key_range_id":".*",
-      "distribution_id":"ds1",
-      "lower_bound":"0",
-      "shard_id":"sh1",
-      "locked":"false"
-    }]
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "key_range_id":".*",
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      } 
+    ]
     """
