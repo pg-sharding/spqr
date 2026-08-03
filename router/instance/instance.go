@@ -249,8 +249,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 		for {
 			c, err := l.Accept()
 			if err != nil {
-				// handle error (and then for example indicate acceptor is down)
-				cChan <- nil
+				spqrlog.Zero.Error().
+					Err(err).
+					Msg("failed to accept a new client connection")
+				close(cChan)
 				return
 			}
 			spqrlog.Zero.Info().
@@ -277,7 +279,12 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	for {
 		select {
-		case conn := <-cChan:
+		case conn, ok := <-cChan:
+			if !ok {
+				_ = r.RuleRouter.Shutdown()
+				_ = listener.Close()
+				return fmt.Errorf("acceptor is down, stopping router")
+			}
 
 			initTime := time.Now()
 			if !r.Initialized() {
@@ -332,8 +339,7 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 		for {
 			c, err := l.Accept()
 			if err != nil {
-				// handle error (and then for example indicate acceptor is down)
-				cChan <- nil
+				close(cChan)
 				return
 			}
 			cChan <- c
@@ -348,7 +354,13 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			_ = listener.Close()
 			spqrlog.Zero.Info().Msg("admin server done")
 			return nil
-		case conn := <-cChan:
+		case conn, ok := <-cChan:
+			if !ok {
+				_ = r.RuleRouter.Shutdown()
+				_ = listener.Close()
+				return fmt.Errorf("acceptor is down, stopping router")
+			}
+
 			go func() {
 				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
 					spqrlog.Zero.Error().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("")
