@@ -243,6 +243,9 @@ NOTICE: send query to shard(s) : sh1
  10 |  10
 (3 rows)
 
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+ERROR:  shard xxxxx does not exist
+QUERY:  SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */;
 SHOW __spqr__scatter_query; -- error
 ERROR:  parameter "__spqr__scatter_query" isn't user accessible
 QUERY:  SHOW __spqr__scatter_query;
