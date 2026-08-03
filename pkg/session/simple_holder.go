@@ -74,10 +74,7 @@ type StrGUCimpl struct {
 
 func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
 	if guc.assign != nil {
-		if err := guc.assign(cl, level, val); err != nil {
-			return err
-		}
-		return nil
+		return guc.assign(cl, level, val)
 	}
 	cl.RecordVirtualParam(level, guc.n, val)
 	return nil
