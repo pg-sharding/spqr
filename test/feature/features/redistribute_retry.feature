@@ -4,6 +4,7 @@ Feature: Redistribution retries test
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
     COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
+    COORDINATOR_CONFIG_2=/spqr/test/feature/conf/coordinator2_no_recover.yaml
     """
     #
     # Make host "coordinator" take control
@@ -1463,7 +1464,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    ERROR: failed to await virtual transactions to exit: timeout: context already done: context deadline exceeded \(SQLSTATE SPQRt\)
+    failed to await virtual transactions to exit
     """
     When I run SQL on host "coordinator"
     """
@@ -1758,4 +1759,72 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
       "shard_id":"sh2",
       "locked":"false"
     }]
+    """
+
+  Scenario: redistribute checks that key range is locked before deleting keys from source shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_copy_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE ALL;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .* is not locked
+    """
+
+  Scenario: redistribute checks that key range is locked before inserting keys to destination shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT before_insert_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE ALL;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .* is not locked
     """

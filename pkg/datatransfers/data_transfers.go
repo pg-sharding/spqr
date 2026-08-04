@@ -220,6 +220,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.Locked:
 			t := time.Now()
+			if _, err := db.CheckLockedKeyRange(ctx, krg.ID); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "cannot copy data because key range \"%s\" is not locked", krg.ID).Hint("possible incorrect move task group recovery")
+			}
 			// copy data of key range to receiving shard
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound, icpCH); err != nil {
 				return err
@@ -238,6 +241,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		case qdb.DataCopied:
 			// drop data from sending shard
 			t := time.Now()
+			if _, err := db.CheckLockedKeyRange(ctx, krg.ID); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "cannot drop data because key range \"%s\" is not locked", krg.ID).Hint("possible incorrect move task group recovery")
+			}
 			ftx, err := from.Begin(ctx)
 			if err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not delete data: could not begin transaction: %s", err)
