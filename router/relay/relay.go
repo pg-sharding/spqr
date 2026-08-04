@@ -668,19 +668,20 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	return retMsg, nil
 }
 
-func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string, dMsg *pgproto3.Describe, p plan.Plan) error {
+func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
+	dMsg *pgproto3.Describe, p plan.Plan) (*PortalDesc, error) {
 
 	/* SingleShard or random shard plans */
 
 	err := rst.PrepareTargetDispatchExecutionSlice(p)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rst.routingDecisionPlan = p
 
 	if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
-		return err
+		return nil, err
 	}
 
 	var bnd *pgproto3.Bind
@@ -702,26 +703,15 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string, dMs
 
 	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
 	if err != nil {
-		return err
-	}
-	if cachedPd.rd != nil {
-		// send to the client
-		if err := rst.Client().Send(cachedPd.rd); err != nil {
-			return err
-		}
-	}
-	if cachedPd.nodata != nil {
-		// send to the client
-		if err := rst.Client().Send(cachedPd.nodata); err != nil {
-			return err
-		}
+		return nil, err
 	}
 
 	rst.savedPortalDesc[rst.lastBindName] = cachedPd
-	return nil
+	return cachedPd, nil
 }
 
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
+	var err error
 	// save txstatus because it may be overwritten if we have no backend connection
 	saveTxStat := rst.qse.TxStatus()
 
@@ -736,20 +726,9 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			Str("last-bind-name", rst.lastBindName).
 			Msg("Describe portal")
 
-		if portDesc, ok := rst.savedPortalDesc[rst.lastBindName]; ok {
-			if portDesc.rd != nil {
-				// send to the client
-				if err := rst.Client().Send(portDesc.rd); err != nil {
-					return err
-				}
-			}
-			if portDesc.nodata != nil {
-				// send to the client
-				if err := rst.Client().Send(portDesc.nodata); err != nil {
-					return err
-				}
-			}
-		} else {
+		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
+
+		if !ok {
 
 			p := rst.bindQueryPlan
 			if name != "" {
@@ -767,22 +746,35 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 
 				if q.SubPlan == nil {
 					// send to the client
-					if err := rst.Client().Send(&pgproto3.RowDescription{
-						Fields: q.TTS.Desc,
-					}); err != nil {
-						return err
+					portDesc = &PortalDesc{
+						rd: &pgproto3.RowDescription{
+							Fields: q.TTS.Desc,
+						},
 					}
 				} else {
 					// like default
-					if err := rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+					if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 						return err
 					}
 				}
 
 			default:
-				if err := rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+				if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 					return err
 				}
+			}
+		}
+
+		if portDesc.rd != nil {
+			// send to the client
+			if err := rst.Client().Send(portDesc.rd); err != nil {
+				return err
+			}
+		}
+		if portDesc.nodata != nil {
+			// send to the client
+			if err := rst.Client().Send(portDesc.nodata); err != nil {
+				return err
 			}
 		}
 	} else {
