@@ -927,7 +927,11 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan,
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
-	s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+	guc, err := s.cl.FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return err
+	}
+	s.es.attachedCopy = guc.Get(s.cl) != "" || s.TxStatus() == txstatus.TXACT
 
 	/* Should be deploy plan (all slices) in implicit transaction block? */
 

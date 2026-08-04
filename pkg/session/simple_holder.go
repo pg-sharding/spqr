@@ -6,6 +6,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -200,16 +202,6 @@ func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val st
 // DistributedRelation implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributedRelation() string {
 	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTED_RELATION, "")
-}
-
-// SetExecuteOn implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetExecuteOn(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
-}
-
-// ExecuteOn implements RouterClient.
-func (cl *SimpleSessionParamHandler) ExecuteOn() string {
-	return cl.ResolveVirtualStringParam(SPQR_EXECUTE_ON, "")
 }
 
 // SetExecuteOn implements RouterClient.
@@ -570,6 +562,22 @@ var StrGUCs = []StrGUCimpl{
 		shortName: "preferred engine",
 		def: func() string {
 			return ""
+		},
+	},
+	{
+		n:         SPQR_EXECUTE_ON,
+		shortName: "execute on",
+		def: func() string {
+			return ""
+		},
+		assign: func(sph SessionParamsHolder, level string, val string) error {
+			if val != "" {
+				if _, err := topology.TopMgr.ShardById(val); err != nil {
+					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "shard %s does not exist", val)
+				}
+			}
+			sph.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
+			return nil
 		},
 	},
 }

@@ -326,20 +326,6 @@ func (mr *MockClientInfoMockRecorder) EnhancedMultiShardProcessing() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnhancedMultiShardProcessing", reflect.TypeOf((*MockClientInfo)(nil).EnhancedMultiShardProcessing))
 }
 
-// ExecuteOn mocks base method.
-func (m *MockClientInfo) ExecuteOn() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteOn")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ExecuteOn indicates an expected call of ExecuteOn.
-func (mr *MockClientInfoMockRecorder) ExecuteOn() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).ExecuteOn))
-}
-
 // FindBoolGUC mocks base method.
 func (m *MockClientInfo) FindBoolGUC(arg0 string) (session.BoolGUC, error) {
 	m.ctrl.T.Helper()
@@ -1022,18 +1008,6 @@ func (m *MockClientInfo) SetErrCounter(arg0 errcounter.ErrCounter) {
 func (mr *MockClientInfoMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockClientInfo)(nil).SetErrCounter), arg0)
-}
-
-// SetExecuteOn mocks base method.
-func (m *MockClientInfo) SetExecuteOn(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetExecuteOn", level, val)
-}
-
-// SetExecuteOn indicates an expected call of SetExecuteOn.
-func (mr *MockClientInfoMockRecorder) SetExecuteOn(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).SetExecuteOn), level, val)
 }
 
 // SetMaintainParams mocks base method.

@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -377,22 +376,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			case session.SPQR_SCATTER_QUERY:
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_SCATTER_QUERY)
-			case session.SPQR_EXECUTE_ON:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("execute on"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(rst.Client().ExecuteOn())
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
 			case session.SPQR_REPLY_NOTICE:
 
 				tts := tupleslot.TupleTableSlot{
@@ -698,11 +681,6 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			case session.SPQR_SCATTER_QUERY:
 				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
 				rst.Client().SetScatterQuery(hintVal != "")
-			case session.SPQR_EXECUTE_ON:
-				if _, err := topology.TopMgr.ShardById(hintVal); err != nil {
-					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "shard %s does not exist", hintVal)
-				}
-				rst.Client().SetExecuteOn(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION_KEY:
