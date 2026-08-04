@@ -698,7 +698,7 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 
 	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rst.savedPortalDesc[rst.lastBindName] = cachedPd
@@ -706,6 +706,7 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 }
 
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
+	var err error
 	// save txstatus because it may be overwritten if we have no backend connection
 	saveTxStat := rst.qse.TxStatus()
 
