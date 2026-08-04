@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/session"
 )
 
 const (
@@ -32,6 +33,11 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	/*
 	* go along first phase
 	 */
+	guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return txstatus.TXERR, err
+	}
+
 	gid := cl.NextGID()
 	if gid == "" {
 		uid7, err := uuid.NewV7()
@@ -80,8 +86,8 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
 			}, "rollback prepared", txstatus.TXIDLE)
 
-			if cl.ShowNoticeMsg() {
-				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %v on %v", gid, dsh.InstanceHostname()))
+			if guc.Get(cl) {
+				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %s on %s", gid, dsh.InstanceHostname()))
 			}
 
 			/* Try next shard */
@@ -104,8 +110,8 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			return txstatus.TXERR, err
 		}
 
-		if cl.ShowNoticeMsg() {
-			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %v on %v", gid, dsh.InstanceHostname()))
+		if guc.Get(cl) {
+			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %s on %s", gid, dsh.InstanceHostname()))
 		}
 
 		retST = st
@@ -160,8 +166,8 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			return txstatus.TXERR, spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "unexpected 2pc member response")
 		}
 
-		if cl.ShowNoticeMsg() {
-			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %v on %v", gid, dsh.InstanceHostname()))
+		if guc.Get(cl) {
+			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %s on %s", gid, dsh.InstanceHostname()))
 		}
 
 		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")

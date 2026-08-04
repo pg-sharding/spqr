@@ -330,38 +330,40 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 
 	var queryPlan plan.Plan
 
-	guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
-	if err != nil {
-		return nil, err
-	}
-	if v := guc.Get(rst.Client()); v != "" {
-
-		spqrlog.Zero.Debug().
-			Str("exec_on", v).
-			Msg("forcing current statement to execute on dedicated shard")
-
-		queryPlan = &plan.ShardDispatchPlan{
-			PStmt: rst.qp.Stmt(),
-			ExecTarget: kr.ShardKey{
-				Name: v,
-			},
-		}
-	} else {
-
-		var err error
-
-		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
-
+	{
+		guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
 		if err != nil {
-			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
+			return nil, err
 		}
+		if v := guc.Get(rst.Client()); v != "" {
 
-		/* XXX: fix this. This behaviour break regression tests */
-		// if rst.Client().ShowNoticeMsg() {
-		// 	if err := rst.Client().ReplyNotice(fmt.Sprintf("selected query plan %T %+v", queryPlan, queryPlan)); err != nil {
-		// 		return nil, err
-		// 	}
-		// }
+			spqrlog.Zero.Debug().
+				Str("exec_on", v).
+				Msg("forcing current statement to execute on dedicated shard")
+
+			queryPlan = &plan.ShardDispatchPlan{
+				PStmt: rst.qp.Stmt(),
+				ExecTarget: kr.ShardKey{
+					Name: v,
+				},
+			}
+		} else {
+
+			var err error
+
+			queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
+
+			if err != nil {
+				return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
+			}
+
+			/* XXX: fix this. This behaviour break regression tests */
+			// if rst.Client().ShowNoticeMsg() {
+			// 	if err := rst.Client().ReplyNotice(fmt.Sprintf("selected query plan %T %+v", queryPlan, queryPlan)); err != nil {
+			// 		return nil, err
+			// 	}
+			// }
+		}
 	}
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
@@ -374,11 +376,15 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	if rm != nil && rm.UsedSelectQueryAdjust && rst.Client().ShowNoticeMsg() {
+	guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return nil, err
+	}
+	if rm != nil && rm.UsedSelectQueryAdjust && guc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
-	if queryPlan.Opts().AutoLinearize && rst.Client().ShowNoticeMsg() {
+	if queryPlan.Opts().AutoLinearize && guc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
@@ -1395,7 +1401,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 			return err
 		}
 
-		if rst.Client().ShowNoticeMsg() {
+		guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+		if err != nil {
+			return err
+		}
+		if guc.Get(rst.Client()) {
 			_ = rst.Client().ReplyNotice("start implicit transaction because of multishard modify plan")
 		}
 	}

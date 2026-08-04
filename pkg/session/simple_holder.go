@@ -121,8 +121,7 @@ type SimpleSessionParamHandler struct {
 
 	paramCodes []int16
 
-	showNoticeMessages bool
-	maintainParams     bool
+	maintainParams bool
 
 	nextGID string
 }
@@ -254,16 +253,6 @@ func (cl *SimpleSessionParamHandler) MaintainParams() bool {
 // SetMaintainParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
 	cl.maintainParams = val
-}
-
-// SetShowNoticeMsg implements client.Client.
-func (cl *SimpleSessionParamHandler) SetShowNoticeMsg(_ string, val bool) {
-	cl.showNoticeMessages = val
-}
-
-// ShowNoticeMsg implements RouterClient.
-func (cl *SimpleSessionParamHandler) ShowNoticeMsg() bool {
-	return cl.showNoticeMessages
 }
 
 // BindParamFormatCodes implements RouterClient.
@@ -540,6 +529,13 @@ var BoolGUCs = []BoolGUCimpl{
 			return config.RouterConfig().AllowAutoprotectTwoPhase
 		},
 	},
+	{
+		n:         SPQR_REPLY_NOTICE,
+		shortName: "show notice messages",
+		def: func() bool {
+			return false
+		},
+	},
 }
 
 var StrGUCs = []StrGUCimpl{
@@ -605,6 +601,11 @@ func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
 func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder {
 	seed := rand.IntN(math.MaxInt)
 
+	noticeVal := "no"
+	if showNotice {
+		noticeVal = "ok"
+	}
+
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
 
@@ -614,9 +615,9 @@ func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder 
 
 		activeParamSet: map[string]string{
 			SPQR_DISTRIBUTION: "default",
+			SPQR_REPLY_NOTICE: noticeVal,
 		},
 		defaultTsa:            t,
-		showNoticeMessages:    showNotice,
 		defaultCommitStrategy: ds,
 	}
 }

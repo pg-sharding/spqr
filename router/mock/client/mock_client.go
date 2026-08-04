@@ -1319,18 +1319,6 @@ func (mr *MockRouterClientMockRecorder) SetShardingKey(level, val any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockRouterClient)(nil).SetShardingKey), level, val)
 }
 
-// SetShowNoticeMsg mocks base method.
-func (m *MockRouterClient) SetShowNoticeMsg(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShowNoticeMsg", level, val)
-}
-
-// SetShowNoticeMsg indicates an expected call of SetShowNoticeMsg.
-func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).SetShowNoticeMsg), level, val)
-}
-
 // SetStartupParams mocks base method.
 func (m *MockRouterClient) SetStartupParams(arg0 map[string]string) {
 	m.ctrl.T.Helper()
@@ -1393,20 +1381,6 @@ func (m *MockRouterClient) Shards() []shard.ShardHostInstance {
 func (mr *MockRouterClientMockRecorder) Shards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shards", reflect.TypeOf((*MockRouterClient)(nil).Shards))
-}
-
-// ShowNoticeMsg mocks base method.
-func (m *MockRouterClient) ShowNoticeMsg() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShowNoticeMsg")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ShowNoticeMsg indicates an expected call of ShowNoticeMsg.
-func (mr *MockRouterClientMockRecorder) ShowNoticeMsg() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).ShowNoticeMsg))
 }
 
 // Shutdown mocks base method.
