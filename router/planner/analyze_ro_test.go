@@ -69,6 +69,11 @@ func TestCheckRoOnlyQuery(t *testing.T) {
 			query: "with a as (select * from xx), b as (select * from yy), c as (insert into ff select * from a, b)  select * from c",
 			exp:   false,
 		},
+
+		{
+			query: "SELECT uuid_id, timezone_id FROM main_event  WHERE id = '1'",
+			exp:   true,
+		},
 	} {
 
 		parserRes, _, err := lyx.Parse(tt.query)
