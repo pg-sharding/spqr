@@ -51,6 +51,7 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 	ro := true
 
 	if config.RouterConfig().Qr.AutoRouteRoOnStandby {
+		sph.SetTsa(session.VirtualParamLevelStatement, config.TargetSessionAttrsPS)
 		ro = planner.CheckRoOnlyQuery(stmt)
 	}
 
