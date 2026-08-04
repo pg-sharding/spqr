@@ -330,41 +330,40 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 
 	var queryPlan plan.Plan
 
-	{
-		guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
-		if err != nil {
-			return nil, err
-		}
-		if v := guc.Get(rst.Client()); v != "" {
-
-			spqrlog.Zero.Debug().
-				Str("exec_on", v).
-				Msg("forcing current statement to execute on dedicated shard")
-
-			queryPlan = &plan.ShardDispatchPlan{
-				PStmt: rst.qp.Stmt(),
-				ExecTarget: kr.ShardKey{
-					Name: v,
-				},
-			}
-		} else {
-
-			var err error
-
-			queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
-
-			if err != nil {
-				return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
-			}
-
-			/* XXX: fix this. This behaviour break regression tests */
-			// if rst.Client().ShowNoticeMsg() {
-			// 	if err := rst.Client().ReplyNotice(fmt.Sprintf("selected query plan %T %+v", queryPlan, queryPlan)); err != nil {
-			// 		return nil, err
-			// 	}
-			// }
-		}
+	guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return nil, err
 	}
+	if v := guc.Get(rst.Client()); v != "" {
+
+		spqrlog.Zero.Debug().
+			Str("exec_on", v).
+			Msg("forcing current statement to execute on dedicated shard")
+
+		queryPlan = &plan.ShardDispatchPlan{
+			PStmt: rst.qp.Stmt(),
+			ExecTarget: kr.ShardKey{
+				Name: v,
+			},
+		}
+	} else {
+
+		var err error
+
+		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
+
+		if err != nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
+		}
+
+		/* XXX: fix this. This behaviour break regression tests */
+		// if rst.Client().ShowNoticeMsg() {
+		// 	if err := rst.Client().ReplyNotice(fmt.Sprintf("selected query plan %T %+v", queryPlan, queryPlan)); err != nil {
+		// 		return nil, err
+		// 	}
+		// }
+	}
+	
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
@@ -376,7 +375,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	guc, err = rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
 	if err != nil {
 		return nil, err
 	}
