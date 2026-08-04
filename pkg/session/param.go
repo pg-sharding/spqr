@@ -55,9 +55,6 @@ type SessionParamsHolder interface {
 	SetShardingKey(level string, val string)
 	ShardingKey() string
 
-	SetExecuteOn(level string, val string)
-	ExecuteOn() string
-
 	SetShowNoticeMsg(level string, val bool)
 	ShowNoticeMsg() bool
 
@@ -163,7 +160,7 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE, SPQR_EXECUTE_ON:
 		return true
 	default:
 		return false

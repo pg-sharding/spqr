@@ -107,6 +107,8 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.StrGUCs[3], nil)
+	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_EXECUTE_ON, gomock.Any()).AnyTimes().Return("")
 	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
@@ -134,9 +136,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
-
-	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
@@ -305,9 +304,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().StorePreparedStatement(def).Times(1)
 	cl.EXPECT().PreparedStatementDefinitionByName("stmtcache_1").AnyTimes().Return(def)
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
-
-	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}

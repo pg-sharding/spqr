@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -329,10 +330,14 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 
 	var queryPlan plan.Plan
 
-	if v := rst.Client().ExecuteOn(); v != "" {
+	guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return nil, err
+	}
+	if v := guc.Get(rst.Client()); v != "" {
 
 		spqrlog.Zero.Debug().
-			Str("exec_on", rst.Client().ExecuteOn()).
+			Str("exec_on", v).
 			Msg("forcing current statement to execute on dedicated shard")
 
 		queryPlan = &plan.ShardDispatchPlan{

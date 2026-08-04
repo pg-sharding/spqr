@@ -102,9 +102,17 @@ SELECT * FROM test ORDER BY id;
 
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
 
+/* ERROR */
+SET __spqr__execute_on TO sh1xxx;
+
+SET __spqr__execute_on TO ''; -- reset
+SHOW __spqr__execute_on;
+
 SHOW __spqr__scatter_query; -- error
 SHOW __spqr__default_route_behaviour;
 
+SET __spqr__execute_on TO sh1;
+SHOW __spqr__execute_on;
 RESET __spqr__execute_on;
 SHOW __spqr__execute_on;
 
