@@ -631,6 +631,8 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 		return true
 	case *lyx.ColumnRef:
 		return true
+	case *lyx.ParamRef:
+		return true
 	case *lyx.AExprOp:
 		return CheckRoOnlyQuery(v.Left) && CheckRoOnlyQuery(v.Right)
 	case *lyx.CommonTableExpr:
