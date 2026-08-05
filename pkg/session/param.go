@@ -55,9 +55,6 @@ type SessionParamsHolder interface {
 	SetShardingKey(level string, val string)
 	ShardingKey() string
 
-	SetShowNoticeMsg(level string, val bool)
-	ShowNoticeMsg() bool
-
 	/* Statement level makes sence? */
 	SetMaintainParams(level string, val bool)
 	MaintainParams() bool
@@ -148,10 +145,11 @@ const (
 
 func ParamIsBoolean(n string) bool {
 	switch n {
-	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
+	/* SPQR_MAINTAIN_PARAMS, SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
 	case SPQR_ALLOW_SPLIT_UPDATE,
 		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
-		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN:
+		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN,
+		SPQR_REPLY_NOTICE:
 		return true
 	default:
 		return false

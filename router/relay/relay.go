@@ -374,11 +374,15 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	if rm != nil && rm.UsedSelectQueryAdjust && rst.Client().ShowNoticeMsg() {
+	rGuc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return nil, err
+	}
+	if rm != nil && rm.UsedSelectQueryAdjust && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
-	if queryPlan.Opts().AutoLinearize && rst.Client().ShowNoticeMsg() {
+	if queryPlan.Opts().AutoLinearize && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
@@ -1395,7 +1399,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 			return err
 		}
 
-		if rst.Client().ShowNoticeMsg() {
+		guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+		if err != nil {
+			return err
+		}
+		if guc.Get(rst.Client()) {
 			_ = rst.Client().ReplyNotice("start implicit transaction because of multishard modify plan")
 		}
 	}

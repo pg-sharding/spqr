@@ -376,27 +376,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			case session.SPQR_SCATTER_QUERY:
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_SCATTER_QUERY)
-			case session.SPQR_REPLY_NOTICE:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("show notice messages"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-
-				if rst.Client().ShowNoticeMsg() {
-					tts.WriteDataRow("true")
-				} else {
-					tts.WriteDataRow("false")
-				}
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
 			case session.SPQR_MAINTAIN_PARAMS:
 
 				tts := tupleslot.TupleTableSlot{
@@ -690,12 +669,6 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			case session.SPQR_SHARDING_KEY:
 				rst.Client().SetShardingKey(lvl, hintVal)
 
-			case session.SPQR_REPLY_NOTICE:
-				if value == "on" || value == "true" {
-					rst.Client().SetShowNoticeMsg(lvl, true)
-				} else {
-					rst.Client().SetShowNoticeMsg(lvl, false)
-				}
 			case session.SPQR_MAINTAIN_PARAMS:
 				if value == "on" || value == "true" {
 					rst.Client().SetMaintainParams(lvl, true)
