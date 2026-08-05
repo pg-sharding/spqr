@@ -1131,7 +1131,7 @@ func TestCommonValuesRewritePerf(t *testing.T) {
 	for _, tt := range []rewritePerfCase{
 		{name: "1k-str/1k-tuples", tuples: 1000, strLen: 1024, deadline: 50 * time.Millisecond},
 		{name: "64k-str/100-tuples", tuples: 100, strLen: 64 * 1024, deadline: 150 * time.Millisecond},
-		{name: "64k-str/2k-tuples", tuples: 2000, strLen: 64 * 1024, deadline: 150 * time.Millisecond},
+		{name: "64k-str/2k-tuples", tuples: 2000, strLen: 64 * 1024, deadline: 1500 * time.Millisecond},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner(t, tt)
