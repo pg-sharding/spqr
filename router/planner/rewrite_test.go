@@ -2,7 +2,9 @@ package planner
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -1018,6 +1020,121 @@ func BenchmarkModifyQuery(b *testing.B) {
 	for b.Loop() {
 		_, _ = RewriteReferenceRelationAutoIncInsert(query, colname, func() (string, error) {
 			return nextval, nil
+		})
+	}
+}
+
+func buildInsertNTuples(n int) (string, []kr.ShardKey) {
+	shards := []string{"sh1", "sh2", "sh3", "sh4"}
+	var b strings.Builder
+	b.WriteString("INSERT INTO t (id, val) VALUES ")
+	shs := make([]kr.ShardKey, n)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%d, 'v%d')", i, i)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	return b.String(), shs
+}
+
+func buildInsertLargeValues(tuples, strLen int) (string, []kr.ShardKey) {
+	shards := []string{"sh1", "sh2"}
+	val := "'" + strings.Repeat("x", strLen) + "'"
+	var b strings.Builder
+	b.Grow(tuples * (strLen + 16))
+	b.WriteString("INSERT INTO t (id, data) VALUES ")
+	shs := make([]kr.ShardKey, tuples)
+	for i := 0; i < tuples; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%d, %s)", i, val)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	return b.String(), shs
+}
+
+func buildInsertWithReturning(n int) (string, []kr.ShardKey) {
+	q, shs := buildInsertNTuples(n)
+	return q + " RETURNING id, val", shs
+}
+
+func BenchmarkCommonValuesRewrite(b *testing.B) {
+	for _, tt := range []struct {
+		name  string
+		build func() (string, []kr.ShardKey)
+	}{
+		{
+			name:  "10-tuples/returning",
+			build: func() (string, []kr.ShardKey) { return buildInsertWithReturning(10) },
+		},
+		{
+			name:  "large-values/512B/10-tuples",
+			build: func() (string, []kr.ShardKey) { return buildInsertLargeValues(10, 512) },
+		},
+		{
+			name:  "large-values/64KB/4-tuples",
+			build: func() (string, []kr.ShardKey) { return buildInsertLargeValues(4, 64*1024) },
+		},
+	} {
+		b.Run(tt.name, func(b *testing.B) {
+			query, shs := tt.build()
+			b.SetBytes(int64(len(query)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				_, _ = CommonValuesRewrite(query, 0, shs, false)
+			}
+		})
+	}
+}
+
+const perfRuns = 5
+
+type rewritePerfCase struct {
+	name     string
+	tuples   int
+	strLen   int
+	deadline time.Duration
+}
+
+func runner(t *testing.T, tt rewritePerfCase) {
+	t.Helper()
+	query, shs := buildInsertLargeValues(tt.tuples, tt.strLen)
+
+	// warm up
+	if _, err := CommonValuesRewrite(query, 0, shs, false); err != nil {
+		t.Fatalf("rewrite failed: %v", err)
+	}
+
+	var total time.Duration
+	for i := 0; i < perfRuns; i++ {
+		start := time.Now()
+		if _, err := CommonValuesRewrite(query, 0, shs, false); err != nil {
+			t.Fatalf("rewrite failed: %v", err)
+		}
+		total += time.Since(start)
+	}
+	avg := total / perfRuns
+
+	if avg >= tt.deadline {
+		t.Fatalf("rewriting %d tuples (strLen=%d): avg over %d runs = %s, want < %s",
+			tt.tuples, tt.strLen, perfRuns, avg, tt.deadline)
+	}
+	t.Logf("rewritten %d tuples (strLen=%d): avg %s over %d runs (limit %s)",
+		tt.tuples, tt.strLen, avg, perfRuns, tt.deadline)
+}
+
+func TestCommonValuesRewritePerf(t *testing.T) {
+	for _, tt := range []rewritePerfCase{
+		{name: "1k-str/1k-tuples", tuples: 1000, strLen: 1024, deadline: 50 * time.Millisecond},
+		{name: "64k-str/100-tuples", tuples: 100, strLen: 64 * 1024, deadline: 150 * time.Millisecond},
+		{name: "64k-str/2k-tuples", tuples: 2000, strLen: 64 * 1024, deadline: 150 * time.Millisecond},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner(t, tt)
 		})
 	}
 }
