@@ -363,7 +363,6 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		// 	}
 		// }
 	}
-	
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
@@ -375,15 +374,15 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	guc, err = rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	rGuc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
 	if err != nil {
 		return nil, err
 	}
-	if rm != nil && rm.UsedSelectQueryAdjust && guc.Get(rst.Client()) {
+	if rm != nil && rm.UsedSelectQueryAdjust && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
-	if queryPlan.Opts().AutoLinearize && guc.Get(rst.Client()) {
+	if queryPlan.Opts().AutoLinearize && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
