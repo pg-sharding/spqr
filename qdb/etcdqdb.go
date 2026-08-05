@@ -2276,7 +2276,6 @@ func (q *EtcdQDB) DropMoveTask(ctx context.Context, id string) error {
 	_, err = q.cli.Txn(ctx).Then(
 		clientv3.OpDelete(moveTaskNodePath(id)),
 		clientv3.OpDelete(moveTaskByGroupNodePath(task.TaskGroupID)),
-		clientv3.OpDelete(keyRangeMovesNodePath(id)),
 	).Commit()
 	return err
 }

@@ -20,7 +20,7 @@ type TaskMgr interface {
 
 	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)
 	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
-	DropMoveTask(ctx context.Context, id string) error
+	DropMoveTask(ctx context.Context, id string, isCascade bool) error
 
 	ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error)
 	DropRedistributeTask(ctx context.Context, id string, cascade bool) error

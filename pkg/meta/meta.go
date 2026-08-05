@@ -397,7 +397,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("move_task_id"),
 		}
 		if task != nil {
-			if err = mngr.DropMoveTask(ctx, task.ID); err != nil {
+			if err = mngr.DropMoveTask(ctx, task.ID, stmt.CascadeDelete); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(task.ID)
