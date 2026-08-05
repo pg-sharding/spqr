@@ -1091,6 +1091,70 @@ func BenchmarkCommonValuesRewrite(b *testing.B) {
 	}
 }
 
+func buildCTEInsertNTuples(n int) (string, []kr.ShardKey) {
+	var b strings.Builder
+	b.WriteString("with vals (i) as (VALUES ")
+	shs := make([]kr.ShardKey, n)
+	shards := []string{"sh1", "sh2", "sh3", "sh4"}
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%d)", i)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	b.WriteString(") INSERT INTO t SELECT i FROM vals")
+	return b.String(), shs
+}
+
+func buildCTEInsertLargeValues(tuples, strLen int) (string, []kr.ShardKey) {
+	val := "'" + strings.Repeat("x", strLen) + "'"
+	var b strings.Builder
+	b.Grow(tuples * (strLen + 32))
+	b.WriteString("with vals (i) as (VALUES ")
+	shs := make([]kr.ShardKey, tuples)
+	shards := []string{"sh1", "sh2"}
+	for i := 0; i < tuples; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%s)", val)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	b.WriteString(") INSERT INTO t SELECT i FROM vals")
+	return b.String(), shs
+}
+
+func BenchmarkRewriteDistributedRelWithValues(b *testing.B) {
+	for _, tt := range []struct {
+		name  string
+		build func() (string, []kr.ShardKey)
+	}{
+		{
+			name:  "10-tuples/4-shards",
+			build: func() (string, []kr.ShardKey) { return buildCTEInsertNTuples(10) },
+		},
+		{
+			name:  "large-values/512B/10-tuples",
+			build: func() (string, []kr.ShardKey) { return buildCTEInsertLargeValues(10, 512) },
+		},
+		{
+			name:  "large-values/64KB/4-tuples",
+			build: func() (string, []kr.ShardKey) { return buildCTEInsertLargeValues(4, 64*1024) },
+		},
+	} {
+		b.Run(tt.name, func(b *testing.B) {
+			query, shs := tt.build()
+			b.SetBytes(int64(len(query)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				_, _ = RewriteDistributedRelWithValues(query, "vals", shs, false)
+			}
+		})
+	}
+}
+
 const perfRuns = 5
 
 type rewritePerfCase struct {
