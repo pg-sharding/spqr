@@ -1004,7 +1004,19 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		Msg("qdb coordinator move key range")
 
 	if req.MetaOnly {
-		return qc.Coordinator.Move(ctx, req, icpCH)
+		if err := qc.Coordinator.Move(ctx, req, icpCH); err != nil {
+			return err
+		}
+		if config.CoordinatorConfig().UseSPQRGuard {
+			if err := coord.UpdateKeyRangeMeta(ctx,
+				[]*proto.MetaTransactionGossipCommand{
+					{DropKeyRange: &proto.DropKeyRangeGossip{Id: []string{req.KeyRangeID}}},
+					{CreateKeyRange: &proto.CreateKeyRangeGossip{KeyRangeInfo: &proto.KeyRangeInfo{Krid: req.KeyRangeID, ShardId: req.ShardID}}},
+				}); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
+			}
+		}
+		return nil
 	}
 
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
