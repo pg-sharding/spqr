@@ -537,7 +537,7 @@ var BoolGUCs = []BoolGUCimpl{
 		n:         SPQR_SESSION_CONNECTIONS_PIN,
 		shortName: "Session connections pinned",
 		def: func() bool {
-			return config.RouterConfig().AllowAutoprotectTwoPhase
+			return config.RouterConfig().SessionConnectionsPin
 		},
 	},
 }
