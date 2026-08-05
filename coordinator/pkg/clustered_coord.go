@@ -1016,7 +1016,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
 			}
 		}
-		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 			cl := proto.NewKeyRangeServiceClient(cc)
 			moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 				Id:        req.KeyRangeID,
@@ -1027,10 +1027,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				Interface("response", moveResp).
 				Msg("move key range response")
 			return err
-		}); err != nil {
-			return err
-		}
-		return nil
+		})
 	}
 
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
