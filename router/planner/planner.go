@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -142,6 +143,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 
 	if subquery == nil {
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -156,6 +162,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	switch subPlan.(type) {
 	case *plan.VirtualPlan:
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -163,6 +174,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		}, nil
 	case *plan.ScatterPlan:
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -197,6 +213,11 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	}
 
 	return &plan.ScatterPlan{
+		BasePlan: plan.BasePlan{
+			H: planopts.PlanOpts{
+				ResultRelationIsRef: true,
+			},
+		},
 		OverwriteQuery: mp,
 		ExecTargets:    rel.ListStorageRoutes(),
 	}, nil
@@ -961,9 +982,29 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
 	switch fname {
-	case virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
-		fallthrough
 	case virtual.PGAdvisoryLock:
+		/* Pin connections */
+
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+		if err != nil {
+			return nil, err
+		}
+
+		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true)
+	case virtual.PGAdvisoryUnlockAll:
+		/* Unpin connections */
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+		if err != nil {
+			return nil, err
+		}
+
+		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false)
+	}
+
+	switch fname {
+	case virtual.PGAdvisoryLock, virtual.PGAdvisoryUnlockAll,
+		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
+
 		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
 		if err != nil {
 			return nil, err
@@ -1187,6 +1228,11 @@ func (p *PlannerV2) PlanDistributedQuery(
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: false,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},
@@ -1219,6 +1265,11 @@ func (p *PlannerV2) PlanDistributedQuery(
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: false,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},

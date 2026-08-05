@@ -13,8 +13,8 @@ import (
 	reflect "reflect"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
-	config "github.com/pg-sharding/spqr/pkg/config"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	planopts "github.com/pg-sharding/spqr/pkg/planopts"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
@@ -189,9 +189,9 @@ func (mr *MockServerMockRecorder) PrefetchUntilCommandComplete(shkey any) *gomoc
 }
 
 // Receive mocks base method.
-func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
+func (m *MockServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Receive")
+	ret := m.ctrl.Call(m, "Receive", o)
 	ret0, _ := ret[0].(pgproto3.BackendMessage)
 	ret1, _ := ret[1].(uint)
 	ret2, _ := ret[2].(error)
@@ -199,9 +199,9 @@ func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
 }
 
 // Receive indicates an expected call of Receive.
-func (mr *MockServerMockRecorder) Receive() *gomock.Call {
+func (mr *MockServerMockRecorder) Receive(o any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockServer)(nil).Receive))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockServer)(nil).Receive), o)
 }
 
 // ReceiveShard mocks base method.
@@ -330,15 +330,16 @@ func (mr *MockServerMockRecorder) TxStatus() *gomock.Call {
 }
 
 // UnRouteShard mocks base method.
-func (m *MockServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
+func (m *MockServer) UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteShard", sh, rule)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "UnRouteShard", sh)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // UnRouteShard indicates an expected call of UnRouteShard.
-func (mr *MockServerMockRecorder) UnRouteShard(sh, rule any) *gomock.Call {
+func (mr *MockServerMockRecorder) UnRouteShard(sh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteShard", reflect.TypeOf((*MockServer)(nil).UnRouteShard), sh, rule)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteShard", reflect.TypeOf((*MockServer)(nil).UnRouteShard), sh)
 }

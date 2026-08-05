@@ -270,20 +270,6 @@ func (mr *MockClientInfoMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockClientInfo)(nil).DefaultReply))
 }
 
-// DefaultRouteBehaviour mocks base method.
-func (m *MockClientInfo) DefaultRouteBehaviour() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DefaultRouteBehaviour")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DefaultRouteBehaviour indicates an expected call of DefaultRouteBehaviour.
-func (mr *MockClientInfoMockRecorder) DefaultRouteBehaviour() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultRouteBehaviour", reflect.TypeOf((*MockClientInfo)(nil).DefaultRouteBehaviour))
-}
-
 // DistributedRelation mocks base method.
 func (m *MockClientInfo) DistributedRelation() string {
 	m.ctrl.T.Helper()
@@ -338,20 +324,6 @@ func (m *MockClientInfo) EnhancedMultiShardProcessing() bool {
 func (mr *MockClientInfoMockRecorder) EnhancedMultiShardProcessing() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnhancedMultiShardProcessing", reflect.TypeOf((*MockClientInfo)(nil).EnhancedMultiShardProcessing))
-}
-
-// ExecuteOn mocks base method.
-func (m *MockClientInfo) ExecuteOn() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteOn")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ExecuteOn indicates an expected call of ExecuteOn.
-func (mr *MockClientInfoMockRecorder) ExecuteOn() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).ExecuteOn))
 }
 
 // FindBoolGUC mocks base method.
@@ -567,20 +539,6 @@ func (m *MockClientInfo) Peek() (pgproto3.FrontendMessage, error) {
 func (mr *MockClientInfoMockRecorder) Peek() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockClientInfo)(nil).Peek))
-}
-
-// PreferredEngine mocks base method.
-func (m *MockClientInfo) PreferredEngine() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreferredEngine")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// PreferredEngine indicates an expected call of PreferredEngine.
-func (mr *MockClientInfoMockRecorder) PreferredEngine() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreferredEngine", reflect.TypeOf((*MockClientInfo)(nil).PreferredEngine))
 }
 
 // RAddr mocks base method.
@@ -992,18 +950,6 @@ func (mr *MockClientInfoMockRecorder) SetCommitStrategy(value any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommitStrategy", reflect.TypeOf((*MockClientInfo)(nil).SetCommitStrategy), value)
 }
 
-// SetDefaultRouteBehaviour mocks base method.
-func (m *MockClientInfo) SetDefaultRouteBehaviour(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDefaultRouteBehaviour", level, val)
-}
-
-// SetDefaultRouteBehaviour indicates an expected call of SetDefaultRouteBehaviour.
-func (mr *MockClientInfoMockRecorder) SetDefaultRouteBehaviour(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockClientInfo)(nil).SetDefaultRouteBehaviour), level, val)
-}
-
 // SetDistributedRelation mocks base method.
 func (m *MockClientInfo) SetDistributedRelation(level, val string) {
 	m.ctrl.T.Helper()
@@ -1064,18 +1010,6 @@ func (mr *MockClientInfoMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockClientInfo)(nil).SetErrCounter), arg0)
 }
 
-// SetExecuteOn mocks base method.
-func (m *MockClientInfo) SetExecuteOn(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetExecuteOn", level, val)
-}
-
-// SetExecuteOn indicates an expected call of SetExecuteOn.
-func (mr *MockClientInfoMockRecorder) SetExecuteOn(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).SetExecuteOn), level, val)
-}
-
 // SetMaintainParams mocks base method.
 func (m *MockClientInfo) SetMaintainParams(level string, val bool) {
 	m.ctrl.T.Helper()
@@ -1122,18 +1056,6 @@ func (m *MockClientInfo) SetParamFormatCodes(arg0 []int16) {
 func (mr *MockClientInfoMockRecorder) SetParamFormatCodes(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockClientInfo)(nil).SetParamFormatCodes), arg0)
-}
-
-// SetPreferredEngine mocks base method.
-func (m *MockClientInfo) SetPreferredEngine(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPreferredEngine", level, val)
-}
-
-// SetPreferredEngine indicates an expected call of SetPreferredEngine.
-func (mr *MockClientInfoMockRecorder) SetPreferredEngine(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPreferredEngine", reflect.TypeOf((*MockClientInfo)(nil).SetPreferredEngine), level, val)
 }
 
 // SetScatterQuery mocks base method.

@@ -50,5 +50,7 @@ explain (COSTS OFF ) SELECT * FROM xx_insert_rel WHERE a = 1 ORDER BY 1,2,3;
 
 DROP TABLE xx_insert_rel;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

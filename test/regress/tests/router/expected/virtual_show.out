@@ -133,3 +133,23 @@ SHOW __spqr__allow_split_update;
  true
 (1 row)
 
+SHOW __spqr__preferred_engine;
+ preferred engine 
+------------------
+ 
+(1 row)
+
+SET __spqr__preferred_engine TO v2;
+SHOW __spqr__preferred_engine;
+ preferred engine 
+------------------
+ v2
+(1 row)
+
+SET __spqr__preferred_engine TO '';
+SHOW __spqr__preferred_engine;
+ preferred engine 
+------------------
+ 
+(1 row)
+

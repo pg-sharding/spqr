@@ -100,9 +100,19 @@ SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
 -- After stmt select from sh1, not sh2
 SELECT * FROM test ORDER BY id;
 
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+
+/* ERROR */
+SET __spqr__execute_on TO sh1xxx;
+
+SET __spqr__execute_on TO ''; -- reset
+SHOW __spqr__execute_on;
+
 SHOW __spqr__scatter_query; -- error
 SHOW __spqr__default_route_behaviour;
 
+SET __spqr__execute_on TO sh1;
+SHOW __spqr__execute_on;
 RESET __spqr__execute_on;
 SHOW __spqr__execute_on;
 
@@ -127,7 +137,9 @@ SELECT 1 FROM test_unmatch;
 
 DROP TABLE test;
 DROP TABLE test_h;
-DROP TABLE test_unmatch;
+DROP TABLE test_unmatch /* __spqr__scatter_query: true */;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

@@ -16,8 +16,10 @@ select * from sh1.r join sh1.r2 on true where r.i = 11;
 
 select * from sh1.r join sh2.r on true where r.i = 11;
 
-DROP SCHEMA sh1 CASCADE;
-DROP SCHEMA sh2 CASCADE;
+DROP TABLE sh1.r, sh1.r2, sh2.r;
+DROP SCHEMA sh1;
+DROP SCHEMA sh2;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');

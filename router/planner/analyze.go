@@ -629,6 +629,8 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 
 	case *lyx.AExprBConst, *lyx.AExprIConst, *lyx.EmptyQuery, *lyx.AExprNConst:
 		return true
+	case *lyx.ParamRef:
+		return true
 	case *lyx.ColumnRef:
 		return true
 	case *lyx.AExprOp:

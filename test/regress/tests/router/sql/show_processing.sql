@@ -48,5 +48,7 @@ SELECT * from xxtest_sw WHERE id <= 2;
 
 DROP TABLE xxtest_sw;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

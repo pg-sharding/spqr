@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -78,13 +79,14 @@ type Router struct {
 	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
 	UseMetrics                bool   `json:"use_metrics" toml:"use_metrics" yaml:"use_metrics"`
 
-	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
-	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	Qr               QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
-	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
+	MemqdbBackupPath   string               `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
+	RouterMode         string               `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
+	FrontendRules      []*FrontendRule      `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	Qr                 QRouter              `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
+	FrontendTLS        *TLSConfig           `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	CoordinatorGrpcTLS *GRPCClientTLSConfig `json:"coordinator_grpc_tls" yaml:"coordinator_grpc_tls" toml:"coordinator_grpc_tls"`
+	BackendRules       []*BackendRule       `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	ShardMapping       map[string]*Shard    `json:"shards" toml:"shards" yaml:"shards"`
 
 	SchemaCacheBackendRule *BackendRule `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
 
@@ -109,6 +111,8 @@ type Router struct {
 	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
+	ForceConnectionCleanup bool `json:"force_connection_cleanup" toml:"force_connection_cleanup" yaml:"force_connection_cleanup"`
+
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
 	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
 
@@ -129,6 +133,7 @@ type Router struct {
 	StoreTxDataPostgresql    bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
 	TxDataTTL                time.Duration `json:"tx_data_ttl" toml:"tx_data_ttl" yaml:"tx_data_ttl"`
 	AllowAutoprotectTwoPhase bool          `json:"allow_autoprotect_two_phase" yaml:"allow_autoprotect_two_phase" toml:"allow_autoprotect_two_phase"`
+	SessionConnectionsPin    bool          `json:"session_connections_pin" yaml:"session_connections_pin" toml:"session_connections_pin"`
 
 	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }
@@ -141,6 +146,10 @@ func (r *Router) ApplyDefaults() {
 }
 
 func (r *Router) PostProcess() error {
+	if err := r.CoordinatorGrpcTLS.Validate(); err != nil {
+		return fmt.Errorf("invalid coordinator_grpc_tls: %w", err)
+	}
+
 	if err := validateRouterConfig(r); err != nil {
 		cfgRouter = *r
 		return err

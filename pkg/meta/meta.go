@@ -374,12 +374,17 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("redistribute_task_id"),
 		}
 		for _, task := range tasks {
-			if task.ID == stmt.ID {
-				if err := mngr.DropRedistributeTask(ctx, stmt.ID, isCascade); err != nil {
+			if task.ID == stmt.ID || stmt.ID == "*" {
+				if err := mngr.DropRedistributeTask(ctx, task.ID, isCascade); err != nil {
+					if stmt.ID == "*" && errors.Is(err, spqrerror.RedistributeTaskDependentObjectError{}) {
+						continue
+					}
 					return nil, err
 				}
-				tts.WriteDataRow(stmt.ID)
-				break
+				tts.WriteDataRow(task.ID)
+				if stmt.ID != "*" {
+					break
+				}
 			}
 		}
 		return tts, nil
@@ -637,7 +642,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
+		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force); err != nil {
 			return nil, err
 		}
 

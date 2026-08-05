@@ -64,5 +64,7 @@ DELETE FROM xxmultish /* __spqr__engine_v2: true */;
 
 DROP TABLE xxmultish;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

@@ -347,15 +347,26 @@ NOTICE: send query to shard(s) : sh2,sh3
 
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xjoin2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE zjoin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE rf;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 RESET __spqr__engine_v2;
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

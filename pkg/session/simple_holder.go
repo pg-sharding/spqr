@@ -6,6 +6,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -69,10 +71,15 @@ type StrGUCimpl struct {
 	n         string
 	shortName string
 	def       func() string
+	assign    func(sph SessionParamsHolder, level string, val string) error
 }
 
-func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) {
+func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
+	if guc.assign != nil {
+		return guc.assign(cl, level, val)
+	}
 	cl.RecordVirtualParam(level, guc.n, val)
+	return nil
 }
 
 func (guc StrGUCimpl) ShortName() string {
@@ -187,17 +194,7 @@ func (cl *SimpleSessionParamHandler) Distribution() string {
 	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTION, "")
 }
 
-// PreferredEngine implements client.Client.
-func (cl *SimpleSessionParamHandler) PreferredEngine() string {
-	return cl.ResolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
-}
-
-// SetPreferredEngine implements client.Client.
-func (cl *SimpleSessionParamHandler) SetPreferredEngine(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_PREFERRED_ENGINE, val)
-}
-
-// SetDistributedRelation implements RouterClient.
+// SetCommitStrategy implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val string) {
 	cl.RecordVirtualParam(level, SPQR_DISTRIBUTED_RELATION, val)
 }
@@ -205,16 +202,6 @@ func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val st
 // DistributedRelation implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributedRelation() string {
 	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTED_RELATION, "")
-}
-
-// SetExecuteOn implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetExecuteOn(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
-}
-
-// ExecuteOn implements RouterClient.
-func (cl *SimpleSessionParamHandler) ExecuteOn() string {
-	return cl.ResolveVirtualStringParam(SPQR_EXECUTE_ON, "")
 }
 
 // SetExecuteOn implements RouterClient.
@@ -309,17 +296,7 @@ func (cl *SimpleSessionParamHandler) ShardingKey() string {
 	return cl.ResolveVirtualStringParam(SPQR_SHARDING_KEY, "")
 }
 
-// SetDefaultRouteBehaviour implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetDefaultRouteBehaviour(level string, b string) {
-	cl.RecordVirtualParam(level, SPQR_DEFAULT_ROUTE_BEHAVIOUR, b)
-}
-
-// DefaultRouteBehaviour implements RouterClient.
-func (cl *SimpleSessionParamHandler) DefaultRouteBehaviour() string {
-	return cl.ResolveVirtualStringParam(SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
-}
-
-// ScatterQuery implements RouterClient.
+// SetShardingKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
 	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
 }
@@ -555,6 +532,14 @@ var BoolGUCs = []BoolGUCimpl{
 			return config.RouterConfig().Qr.AllowFluxChunkAccess
 		},
 	},
+
+	{
+		n:         SPQR_SESSION_CONNECTIONS_PIN,
+		shortName: "Session connections pinned",
+		def: func() bool {
+			return config.RouterConfig().SessionConnectionsPin
+		},
+	},
 }
 
 var StrGUCs = []StrGUCimpl{
@@ -563,6 +548,36 @@ var StrGUCs = []StrGUCimpl{
 		shortName: "advisory lock behaviour",
 		def: func() string {
 			return string(config.RouterConfig().Qr.AdvisoryLockBehaviour)
+		},
+	},
+	{
+		n:         SPQR_DEFAULT_ROUTE_BEHAVIOUR,
+		shortName: "default route behaviour",
+		def: func() string {
+			return string(config.RouterConfig().Qr.DefaultRouteBehaviour)
+		},
+	},
+	{
+		n:         SPQR_PREFERRED_ENGINE,
+		shortName: "preferred engine",
+		def: func() string {
+			return ""
+		},
+	},
+	{
+		n:         SPQR_EXECUTE_ON,
+		shortName: "execute on",
+		def: func() string {
+			return ""
+		},
+		assign: func(sph SessionParamsHolder, level string, val string) error {
+			if val != "" {
+				if _, err := topology.TopMgr.ShardById(val); err != nil {
+					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "shard %s does not exist", val)
+				}
+			}
+			sph.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
+			return nil
 		},
 	},
 }
@@ -587,7 +602,7 @@ func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
+func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder {
 	seed := rand.IntN(math.MaxInt)
 
 	return &SimpleSessionParamHandler{
@@ -598,8 +613,7 @@ func NewSimpleHandler(t string, showNotice bool, ds string, defaultRouteBehaviou
 		startupParameters: map[string]string{},
 
 		activeParamSet: map[string]string{
-			SPQR_DISTRIBUTION:            "default",
-			SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
+			SPQR_DISTRIBUTION: "default",
 		},
 		defaultTsa:            t,
 		showNoticeMessages:    showNotice,

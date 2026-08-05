@@ -85,4 +85,7 @@ type QueryStateExecutor interface {
 	ExpandRoutes(routes []kr.ShardKey) error
 
 	Reset()
+
+	/* Release session cache */
+	Close()
 }

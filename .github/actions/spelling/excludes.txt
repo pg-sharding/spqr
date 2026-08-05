@@ -1,8 +1,8 @@
 [^/]\.png$
-^.sourcecraft/ci.yaml
-^.github/actions/spelling/excludes.txt
 ^.git/
 ^.github/actions/benchmarks/
+^.github/actions/spelling/
+^.sourcecraft/ci.yaml
 ^\Q.github/actions/spelling/
 ^\Q.github/actions/spelling/expect.txt\E$
 ^\Q.github/actions/workflows/spelling.yaml\E?$
@@ -14,6 +14,7 @@
 ^go.sum$
 ^pkg/datatransfers/queries.go
 ^pkg/protos/
+^test/regress/pg_regress_to_junit$
 ^tests$
 ^yacc/console/gram.go$
 ^yacc/console/gram.y$

@@ -187,7 +187,7 @@ func (cl *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
 	var targetSessionAttrs string
 	if instanceDefaultTsa != "" {
 		targetSessionAttrs = instanceDefaultTsa
@@ -200,7 +200,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		targetSessionAttrs = config.TargetSessionAttrsPS
 	}
 
-	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, twopc.CommitStrategy1pc, defaultRouteBehaviour)
+	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, twopc.CommitStrategy1pc)
 
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,

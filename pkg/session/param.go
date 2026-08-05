@@ -12,7 +12,7 @@ type BoolGUC interface {
 type StrGUC interface {
 	ShortName() string
 	Get(sph SessionParamsHolder) string
-	Set(sph SessionParamsHolder, level string, val string)
+	Set(sph SessionParamsHolder, level string, val string) error
 	Reset()
 }
 
@@ -35,11 +35,8 @@ type SessionParamsHolder interface {
 	Usr() string
 	SetUsr(string)
 
-	// Get current session DRB
-	DefaultRouteBehaviour() string
-	SetDefaultRouteBehaviour(level string, val string)
+	// Get current session distribution
 
-	/* Only statement-level */
 	SetAutoDistribution(val string)
 	AutoDistribution() string
 
@@ -47,8 +44,7 @@ type SessionParamsHolder interface {
 	SetDistributionKey(val string)
 	DistributionKey() string
 
-	// Get current session distribution
-
+	/* Only statement-level */
 	SetDistribution(level string, val string)
 	Distribution() string
 
@@ -58,9 +54,6 @@ type SessionParamsHolder interface {
 
 	SetShardingKey(level string, val string)
 	ShardingKey() string
-
-	SetExecuteOn(level string, val string)
-	ExecuteOn() string
 
 	SetShowNoticeMsg(level string, val bool)
 	ShowNoticeMsg() bool
@@ -78,10 +71,6 @@ type SessionParamsHolder interface {
 	/* Check if we apply engine v2 routing for query */
 	SetEnhancedMultiShardProcessing(level string, val bool)
 	EnhancedMultiShardProcessing() bool
-
-	/*  XXX: developer option */
-	SetPreferredEngine(level string, val string)
-	PreferredEngine() string
 
 	/* Distributed transactions */
 
@@ -147,9 +136,10 @@ const (
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
 
-	SPQR_LINEARIZE_DISPATCH    = "__spqr__linearize_dispatch"
-	SPQR_ALLOW_AUTOPROTECT_2PC = "__spqr__allow_autoprotect_2pc"
-	SPQR_ALLOW_FLUX_ACCESS     = "__spqr__flux_access"
+	SPQR_LINEARIZE_DISPATCH      = "__spqr__linearize_dispatch"
+	SPQR_ALLOW_AUTOPROTECT_2PC   = "__spqr__allow_autoprotect_2pc"
+	SPQR_ALLOW_FLUX_ACCESS       = "__spqr__flux_access"
+	SPQR_SESSION_CONNECTIONS_PIN = "__spqr__session_connections_pin"
 
 	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
 )
@@ -161,7 +151,7 @@ func ParamIsBoolean(n string) bool {
 	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
 	case SPQR_ALLOW_SPLIT_UPDATE,
 		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
-		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC:
+		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN:
 		return true
 	default:
 		return false
@@ -170,7 +160,7 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE, SPQR_EXECUTE_ON:
 		return true
 	default:
 		return false

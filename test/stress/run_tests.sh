@@ -33,9 +33,17 @@ echo "======== RUN DEADLOCK TEST ========"
 pgbench -f f.sql -c $NUM_CLIENTS -T $TEST_DURATION -n -h stress_router -U $PGUSER $PGDATABASE --progress 1
 
 
+echo "======== RUN CONNECTION PIN TEST ========"
+
+./pins.sh || {
+    echo "pins.sh failed" >&2
+    exit 1
+}
+
+echo "======== RUN ADVISORY LOCK TEST ========"
+./advisory.sh
+
 # TODO
 # run select-only script
 # pgbench --show-script simple-update
 # pgbench --builtin simple-update -c $NUM_CLIENTS -T $TEST_DURATION -n -h $PGHOST -p $PGPORT -U $PGUSER $PGDATABASE
-
-exit 0
