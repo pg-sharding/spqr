@@ -578,12 +578,16 @@ func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTa
 }
 
 func (l *LocalQrouterServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
+}
+
+func (l *LocalQrouterServer) DropMoveTaskV2(ctx context.Context, req *protos.MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, req.Cascade)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {

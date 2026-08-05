@@ -219,8 +219,7 @@ type TaskGroupSelector struct {
 }
 
 type MoveTaskSelector struct {
-	ID            string
-	CascadeDelete bool
+	ID string
 }
 
 type RedistributeTaskSelector struct {

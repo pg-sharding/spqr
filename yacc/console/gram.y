@@ -846,8 +846,8 @@ drop_stmt:
 		$$ = &Drop{
 			Element: &MoveTaskSelector{
 				ID: $4,
-				CascadeDelete: $5,
 			},
+			CascadeDelete: $5,
 		}
 	}
 

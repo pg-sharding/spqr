@@ -1802,9 +1802,9 @@ yydefault:
 		{
 			yyVAL.drop = &Drop{
 				Element: &MoveTaskSelector{
-					ID:            yyDollar[4].str,
-					CascadeDelete: yyDollar[5].bool,
+					ID: yyDollar[4].str,
 				},
+				CascadeDelete: yyDollar[5].bool,
 			}
 		}
 	case 93:
