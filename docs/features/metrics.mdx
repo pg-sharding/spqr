@@ -9,12 +9,12 @@ Exporter HTTP-endpoint can be enabled by `use_metrics` router configuration para
 
 | Name                                        | Type           | Description                                          | Labels      |
 |---------------------------------------------|----------------|------------------------------------------------------|-------------|
-| `spqr_reloads_total`                        | Gauge          | Config reloads count                                 | []          |
-| `spqr_inbound_queries_total`                | Gauge          | Total number of incoming queries since start         | []          |
-| `spqr_router_client_conn_tcp_total`         | Gauge          | Current number of client tcp connections             | []          |
+| `spqr_reloads_total`                        | Counter        | Config reloads count                                 | []          |
+| `spqr_inbound_queries_total`                | Counter        | Total number of incoming queries since start         | []          |
+| `spqr_router_client_conn_tcp_total`         | Counter        | Current number of client tcp connections             | []          |
 | `spqr_router_client_conn_active_tcp_total`  | Gauge          | Total number of client tcp connections since start   | []          |
 | `spqr_router_time`                          | Summary        | Routing latency time quantile                        | []          |
 | `spqr_shard_time`                           | Summary        | Shard latency time quantile                          | []          |
-| `spqr_canceled_requests_total`              | Gauge          | Number of requests canceled from client side         | []          |
-| `spqr_client_init_fail_count_total`         | Gauge          | Failed client connection initialisation count        | []          |
-| `spqr_client_auth_fail_count_total`         | Gauge          | Failed client connection authentication count        | []          |
+| `spqr_canceled_requests_total`              | Counter        | Number of requests canceled from client side         | []          |
+| `spqr_client_init_fail_count_total`         | Counter        | Failed client connection initialisation count        | []          |
+| `spqr_client_auth_fail_count_total`         | Counter        | Failed client connection authentication count        | []          |
