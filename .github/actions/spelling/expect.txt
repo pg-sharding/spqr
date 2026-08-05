@@ -31,6 +31,7 @@ bda
 bebc
 bemp
 benchbase
+benchmem
 Benro
 berule
 BOOLOID
@@ -334,6 +335,7 @@ netchecker
 netconn
 netutil
 Newf
+NTuples
 nolint
 nonexistentshard
 NOSHARD
