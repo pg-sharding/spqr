@@ -106,13 +106,16 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
-	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
-	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
+	cl.EXPECT().FindBoolGUC(gomock.Any()).AnyTimes().Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.StrGUCs[3], nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_SHARDING_KEY).AnyTimes().Return(session.StrGUCs[4], nil)
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).AnyTimes().Return(false)
+	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_EXECUTE_ON, gomock.Any()).AnyTimes().Return("")
+	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_SHARDING_KEY, gomock.Any()).AnyTimes().Return("")
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
-	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
@@ -120,9 +123,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().BindParams().AnyTimes()
 
-	cl.EXPECT().ShardingKey().AnyTimes()
 	cl.EXPECT().EnhancedMultiShardProcessing().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -134,9 +135,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
-
-	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
@@ -238,7 +236,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
-	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
 	cl.EXPECT().Unroute().AnyTimes()
 
@@ -252,9 +249,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().BindParams().AnyTimes()
-
-	cl.EXPECT().ShardingKey().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -305,9 +299,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().StorePreparedStatement(def).Times(1)
 	cl.EXPECT().PreparedStatementDefinitionByName("stmtcache_1").AnyTimes().Return(def)
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
-
-	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}

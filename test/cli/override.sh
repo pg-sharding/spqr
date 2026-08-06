@@ -44,16 +44,16 @@ echo "[i] Logs:          $LOG"
 
 # --- Helpers ---
 
-# Count how many times the log contains the "Running config:" marker
+# Count how many times the log contains the "running config" marker
 count_configs() {
   if [[ -f "$LOG" ]]; then
-    grep -c 'Running config:' "$LOG" || echo 0
+    grep -c 'running config' "$LOG" || echo 0
   else
     echo 0
   fi
 }
 
-# Wait until the number of "Running config:" occurrences reaches target_count
+# Wait until the number of "running config" occurrences reaches target_count
 # Arguments:
 #   $1 target_count
 #   $2 timeout_s (optional, default 10s)
@@ -73,33 +73,24 @@ wait_for_new_config() {
     fi
     sleep 0.2
   done
-  echo "[!] Timeout waiting for Running config (#$target_count)" >&2
+  echo "[!] Timeout waiting for running config (#$target_count)" >&2
   cat $LOG
   return 1
 }
 
-# Extract the JSON blob printed after the latest "Running config:" entry.
+# Extract the config JSON from the latest "running config" structured log entry.
+# Handles both JSON log format and pretty-log (console) format.
+# Strips ANSI escape codes before parsing.
 extract_last_config_json() {
-    awk '
-    /Running config:/ {
-    # стартуем с первой "{" в этой строке
-    p = index($0, "{")
-    if (p) {
-        out = 1; depth = 0
-        s = substr($0, p)
-        print s
-        depth += gsub(/\{/, "&", s)
-        depth -= gsub(/\}/, "&", s)
-        next
-    }
-    }
-    out {
-    print
-    depth += gsub(/\{/, "&")
-    depth -= gsub(/\}/, "&")
-    if (depth == 0) exit
-    }
-    ' "$LOG"
+    local line
+    line="$(grep 'running config' "$LOG" | tail -1 | sed 's/\x1b\[[0-9;]*m//g')"
+    if echo "$line" | jq -e '.config' >/dev/null 2>&1; then
+        # JSON log format: {"level":"info","config":{...},"message":"running config"}
+        echo "$line" | jq -r '.config'
+    else
+        # Pretty-log format: 5:09PM INF running config config={...}
+        echo "$line" | sed 's/.*config=//'
+    fi
 }
 
 assert_eq() {
@@ -154,9 +145,9 @@ PID=$!
 set -e
 echo "$PID" >"$PID_FILE"
 
-# 1) Wait for the first "Running config" occurrence (startup)
+# 1) Wait for the first "running config" occurrence (startup)
 target=1
-echo "[i] Waiting for Running config #$target..."
+echo "[i] Waiting for running config #$target..."
 wait_for_new_config "$target" 15
 
 # Parse and assert startup effective config
@@ -168,12 +159,12 @@ fi
 echo "[i] Asserting startup effective config..."
 check_effective_config "$JSON"
 
-# 2) Send SIGHUP and expect another "Running config" (reload)
+# 2) Send SIGHUP and expect another "running config" (reload)
 echo "[i] Sending SIGHUP..."
 kill -HUP "$PID" 2>/dev/null || true
 
 target=$((target+1))
-wait_for_new_config "$target" 10
+wait_for_new_config "$target" 15
 
 # Parse and assert post-SIGHUP effective config (overrides should persist)
 JSON2="$(extract_last_config_json)"

@@ -4,6 +4,7 @@ Feature: Redistribution retries test
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
     COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
+    COORDINATOR_CONFIG_2=/spqr/test/feature/conf/coordinator2_no_recover.yaml
     """
     #
     # Make host "coordinator" take control
@@ -1390,21 +1391,38 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
   Scenario: redistribute is not retryable after fail do drop MoveTask from QDB
     When I execute SQL on host "coordinator"
     """
+    CREATE KEY RANGE kr_to FROM 800 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ATTACH CONTROL POINT after_unite_key_range_cp PANIC;
     """`
     Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tg1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "kr1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         1,
+      "bound_rel":     "xMove",
+      "total_keys":    500,
+      "batch_size":    200
+    }
+    """
 
     When I run SQL on host "router"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
-    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 799), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    INSERT INTO xMove (w_id, s) SELECT generate_series(800, 999), 'sample text value' /* __spqr__execute_on: sh2 */; 
     """
     Then command return code should be "0"
 
     When I run SQL on host "coordinator"
     """
-    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 10000 TASK GROUP tg1;
+    RETRY TASK GROUP tg1;
     """
     Then command return code should be "1"
     And I wait for coordinator "regress_coordinator_2" to take control    
@@ -1418,7 +1436,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And SQL error on host "coordinator2" should match regexp
     """
-    no key range found at /keyranges/kr1
+    no key range found at /keyranges/.*
     """
 
   Scenario: REDISTRIBUTE KEY RANGE is retryable after fail to await pids within timeout
@@ -1446,7 +1464,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    "ERROR: failed to move keys: recoverable transfer error occurred (SQLSTATE SPQRT)
+    failed to await virtual transactions to exit
     """
     When I run SQL on host "coordinator"
     """
@@ -1741,4 +1759,72 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
       "shard_id":"sh2",
       "locked":"false"
     }]
+    """
+
+  Scenario: redistribute checks that key range is locked before deleting keys from source shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_copy_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE ALL;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .* is not locked
+    """
+
+  Scenario: redistribute checks that key range is locked before inserting keys to destination shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT before_insert_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE ALL;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .* is not locked
     """

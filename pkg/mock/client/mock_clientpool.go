@@ -326,20 +326,6 @@ func (mr *MockClientInfoMockRecorder) EnhancedMultiShardProcessing() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnhancedMultiShardProcessing", reflect.TypeOf((*MockClientInfo)(nil).EnhancedMultiShardProcessing))
 }
 
-// ExecuteOn mocks base method.
-func (m *MockClientInfo) ExecuteOn() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteOn")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ExecuteOn indicates an expected call of ExecuteOn.
-func (mr *MockClientInfoMockRecorder) ExecuteOn() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).ExecuteOn))
-}
-
 // FindBoolGUC mocks base method.
 func (m *MockClientInfo) FindBoolGUC(arg0 string) (session.BoolGUC, error) {
 	m.ctrl.T.Helper()
@@ -1024,18 +1010,6 @@ func (mr *MockClientInfoMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockClientInfo)(nil).SetErrCounter), arg0)
 }
 
-// SetExecuteOn mocks base method.
-func (m *MockClientInfo) SetExecuteOn(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetExecuteOn", level, val)
-}
-
-// SetExecuteOn indicates an expected call of SetExecuteOn.
-func (mr *MockClientInfoMockRecorder) SetExecuteOn(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).SetExecuteOn), level, val)
-}
-
 // SetMaintainParams mocks base method.
 func (m *MockClientInfo) SetMaintainParams(level string, val bool) {
 	m.ctrl.T.Helper()
@@ -1108,30 +1082,6 @@ func (mr *MockClientInfoMockRecorder) SetSeed(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockClientInfo)(nil).SetSeed), arg0)
 }
 
-// SetShardingKey mocks base method.
-func (m *MockClientInfo) SetShardingKey(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShardingKey", level, val)
-}
-
-// SetShardingKey indicates an expected call of SetShardingKey.
-func (mr *MockClientInfoMockRecorder) SetShardingKey(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockClientInfo)(nil).SetShardingKey), level, val)
-}
-
-// SetShowNoticeMsg mocks base method.
-func (m *MockClientInfo) SetShowNoticeMsg(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShowNoticeMsg", level, val)
-}
-
-// SetShowNoticeMsg indicates an expected call of SetShowNoticeMsg.
-func (mr *MockClientInfoMockRecorder) SetShowNoticeMsg(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockClientInfo)(nil).SetShowNoticeMsg), level, val)
-}
-
 // SetStartupParams mocks base method.
 func (m *MockClientInfo) SetStartupParams(arg0 map[string]string) {
 	m.ctrl.T.Helper()
@@ -1168,20 +1118,6 @@ func (mr *MockClientInfoMockRecorder) SetUsr(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUsr", reflect.TypeOf((*MockClientInfo)(nil).SetUsr), arg0)
 }
 
-// ShardingKey mocks base method.
-func (m *MockClientInfo) ShardingKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShardingKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ShardingKey indicates an expected call of ShardingKey.
-func (mr *MockClientInfoMockRecorder) ShardingKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardingKey", reflect.TypeOf((*MockClientInfo)(nil).ShardingKey))
-}
-
 // Shards mocks base method.
 func (m *MockClientInfo) Shards() []shard.ShardHostInstance {
 	m.ctrl.T.Helper()
@@ -1194,20 +1130,6 @@ func (m *MockClientInfo) Shards() []shard.ShardHostInstance {
 func (mr *MockClientInfoMockRecorder) Shards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shards", reflect.TypeOf((*MockClientInfo)(nil).Shards))
-}
-
-// ShowNoticeMsg mocks base method.
-func (m *MockClientInfo) ShowNoticeMsg() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShowNoticeMsg")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ShowNoticeMsg indicates an expected call of ShowNoticeMsg.
-func (mr *MockClientInfoMockRecorder) ShowNoticeMsg() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowNoticeMsg", reflect.TypeOf((*MockClientInfo)(nil).ShowNoticeMsg))
 }
 
 // Shutdown mocks base method.

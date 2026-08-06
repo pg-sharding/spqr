@@ -6,6 +6,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -69,10 +71,15 @@ type StrGUCimpl struct {
 	n         string
 	shortName string
 	def       func() string
+	assign    func(sph SessionParamsHolder, level string, val string) error
 }
 
-func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) {
+func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
+	if guc.assign != nil {
+		return guc.assign(cl, level, val)
+	}
 	cl.RecordVirtualParam(level, guc.n, val)
+	return nil
 }
 
 func (guc StrGUCimpl) ShortName() string {
@@ -114,8 +121,7 @@ type SimpleSessionParamHandler struct {
 
 	paramCodes []int16
 
-	showNoticeMessages bool
-	maintainParams     bool
+	maintainParams bool
 
 	nextGID string
 }
@@ -198,16 +204,6 @@ func (cl *SimpleSessionParamHandler) DistributedRelation() string {
 }
 
 // SetExecuteOn implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetExecuteOn(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
-}
-
-// ExecuteOn implements RouterClient.
-func (cl *SimpleSessionParamHandler) ExecuteOn() string {
-	return cl.ResolveVirtualStringParam(SPQR_EXECUTE_ON, "")
-}
-
-// SetExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetEnhancedMultiShardProcessing(level string, val bool) {
 	if val {
 		cl.RecordVirtualParam(level, SPQR_ENGINE_V2, "ok")
@@ -259,16 +255,6 @@ func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
 	cl.maintainParams = val
 }
 
-// SetShowNoticeMsg implements client.Client.
-func (cl *SimpleSessionParamHandler) SetShowNoticeMsg(_ string, val bool) {
-	cl.showNoticeMessages = val
-}
-
-// ShowNoticeMsg implements RouterClient.
-func (cl *SimpleSessionParamHandler) ShowNoticeMsg() bool {
-	return cl.showNoticeMessages
-}
-
 // BindParamFormatCodes implements RouterClient.
 func (cl *SimpleSessionParamHandler) BindParamFormatCodes() []int16 {
 	return cl.paramCodes
@@ -289,17 +275,7 @@ func (cl *SimpleSessionParamHandler) SetBindParams(p [][]byte) {
 	cl.bindParams = p
 }
 
-// SetShardingKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetShardingKey(level string, k string) {
-	cl.RecordVirtualParam(level, SPQR_SHARDING_KEY, k)
-}
-
-// ShardingKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) ShardingKey() string {
-	return cl.ResolveVirtualStringParam(SPQR_SHARDING_KEY, "")
-}
-
-// SetShardingKey implements RouterClient.
+// ScatterQuery implements RouterClient.
 func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
 	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
 }
@@ -540,7 +516,14 @@ var BoolGUCs = []BoolGUCimpl{
 		n:         SPQR_SESSION_CONNECTIONS_PIN,
 		shortName: "Session connections pinned",
 		def: func() bool {
-			return config.RouterConfig().AllowAutoprotectTwoPhase
+			return config.RouterConfig().SessionConnectionsPin
+		},
+	},
+	{
+		n:         SPQR_REPLY_NOTICE,
+		shortName: "show notice messages",
+		def: func() bool {
+			return false
 		},
 	},
 }
@@ -563,6 +546,29 @@ var StrGUCs = []StrGUCimpl{
 	{
 		n:         SPQR_PREFERRED_ENGINE,
 		shortName: "preferred engine",
+		def: func() string {
+			return ""
+		},
+	},
+	{
+		n:         SPQR_EXECUTE_ON,
+		shortName: "execute on",
+		def: func() string {
+			return ""
+		},
+		assign: func(sph SessionParamsHolder, level string, val string) error {
+			if val != "" {
+				if _, err := topology.TopMgr.ShardById(val); err != nil {
+					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "shard %s does not exist", val)
+				}
+			}
+			sph.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
+			return nil
+		},
+	},
+	{
+		n:         SPQR_SHARDING_KEY,
+		shortName: "sharding key",
 		def: func() string {
 			return ""
 		},
@@ -592,6 +598,11 @@ func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
 func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder {
 	seed := rand.IntN(math.MaxInt)
 
+	noticeVal := "no"
+	if showNotice {
+		noticeVal = "ok"
+	}
+
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
 
@@ -601,9 +612,9 @@ func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder 
 
 		activeParamSet: map[string]string{
 			SPQR_DISTRIBUTION: "default",
+			SPQR_REPLY_NOTICE: noticeVal,
 		},
 		defaultTsa:            t,
-		showNoticeMessages:    showNotice,
 		defaultCommitStrategy: ds,
 	}
 }

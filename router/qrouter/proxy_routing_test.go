@@ -196,7 +196,7 @@ func TestMultiShardRouting(t *testing.T) {
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		peGuc, _ := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
-		peGuc.Set(dh, "", "")
+		_ = peGuc.Set(dh, "", "")
 		dh.SetSeed(67)
 		stmt := parserRes[0]
 
@@ -313,7 +313,7 @@ func TestCreateTable(t *testing.T) {
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		peGuc, _ := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
-		peGuc.Set(dh, "", "")
+		_ = peGuc.Set(dh, "", "")
 		dh.SetSeed(67)
 		stmt := parserRes[0]
 
@@ -2337,7 +2337,7 @@ func TestCopySingleShard(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
-		guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
+		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
 
 		stmt := parserRes[0]
 		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
@@ -2435,7 +2435,7 @@ func TestCopyMultiShard(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
-		guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
+		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
 		dh.SetScatterQuery(false)
 
 		stmt := parserRes[0]
