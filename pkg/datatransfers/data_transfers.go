@@ -211,10 +211,6 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
 			defer cancel()
 			if err := awaitPIDsInternal(execCtx, from); err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					_ = db.RemoveTransferTx(ctx, krg.ID)
-					return AwaitPIDError
-				}
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
 			tx.Status = qdb.Locked
