@@ -13,7 +13,8 @@ func MarshalRedactedJSON(v any) ([]byte, error) {
 	return json.Marshal(redactedValue(v))
 }
 
-func marshalRedactedJSONIndent(v any, prefix, indent string) ([]byte, error) {
+// MarshalRedactedJSONIndent is the indented form of MarshalRedactedJSON.
+func MarshalRedactedJSONIndent(v any, prefix, indent string) ([]byte, error) {
 	return json.MarshalIndent(redactedValue(v), prefix, indent)
 }
 
