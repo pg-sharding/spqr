@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
@@ -31,9 +32,11 @@ func (ctsa *CachedTSAChecker) InstanceHealthChecks() map[string]CachedCheckResul
 //
 // Returns:
 //   - TSAChecker: A new instance of TSAChecker.
+const defaultTSARecheckPeriod = time.Second
+
 func NewCachedTSAChecker() *CachedTSAChecker {
 	return &CachedTSAChecker{
-		recheckPeriod: time.Second,
+		recheckPeriod: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolTSARecheckPeriod, defaultTSARecheckPeriod),
 		cache:         sync.Map{},
 		innerChecker:  &NetChecker{},
 	}

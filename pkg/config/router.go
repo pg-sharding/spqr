@@ -95,6 +95,7 @@ type Router struct {
 	DbpoolCacheTTL             time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
 	DbpoolCheckInterval        time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
 	DbpoolDeadCheckInterval    time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
+	DbpoolTSARecheckPeriod     time.Duration `json:"dbpool_tsa_recheck_period" toml:"dbpool_tsa_recheck_period" yaml:"dbpool_tsa_recheck_period"`
 	DbpoolAcquireRetryCount    int           `json:"dbpool_acquire_retry_count" toml:"dbpool_acquire_retry_count" yaml:"dbpool_acquire_retry_count"`
 	DefaultRecheckTCPAliveness bool          `json:"dbpool_recheck_tcp" toml:"dbpool_recheck_tcp" yaml:"dbpool_recheck_tcp"`
 
