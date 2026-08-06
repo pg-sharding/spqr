@@ -526,7 +526,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				val = q.Value[0]
 			}
 
-			/* Direct comparation with def tx ro is dummy, but we dont expect other such cases
+			/* Direct comparison with def tx ro is dummy, but we dont expect other such cases
 			 */
 			if strings.HasPrefix(name, "__spqr__") || name == session.PG_DEFAULT_TRANSACTION_READ_ONLY {
 				ctx := context.TODO()
