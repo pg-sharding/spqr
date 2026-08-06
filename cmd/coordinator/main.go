@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -49,14 +50,14 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:  false,
+	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
 		if err != nil {
 			return err
 		}
-		spqrlog.Zero.Info().Str("config", cfgStr).Msg("running config")
+		log.Println("Running config:", cfgStr)
 
 		if config.CoordinatorConfig().EnableRoleSystem {
 			if config.CoordinatorConfig().RolesFile == "" {
@@ -66,7 +67,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			spqrlog.Zero.Info().Str("config", rolesCfgStr).Msg("running roles config")
+			log.Println("Running roles config:", rolesCfgStr)
 		}
 
 		if logLevel != "" {
@@ -123,9 +124,7 @@ var rootCmd = &cobra.Command{
 		app := app.NewApp(coordinator)
 		// run pprof without wait group
 		go func() {
-			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
-			}
+			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 		return app.Run(true)
 	},

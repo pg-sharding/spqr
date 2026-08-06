@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/pg-sharding/spqr/balancer/app"
 	"github.com/pg-sharding/spqr/balancer/provider"
@@ -23,14 +24,14 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:  false,
+	SilenceErrors: false,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadBalancerCfg(cfgPath)
 		if err != nil {
 			return err
 		}
-		spqrlog.Zero.Info().Str("config", cfgStr).Msg("running config")
+		log.Println("Running config:", cfgStr)
 
 		// TODO add config.BalancerConfig().LogFileName
 		spqrlog.ReloadLogger("", config.BalancerConfig().LogLevel, false, false)
