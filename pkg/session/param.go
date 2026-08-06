@@ -139,6 +139,10 @@ const (
 	SPQR_SESSION_CONNECTIONS_PIN = "__spqr__session_connections_pin"
 
 	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
+
+	/* Special case for default_transaction_read_only */
+
+	PG_DEFAULT_TRANSACTION_READ_ONLY = "default_transaction_read_only"
 )
 
 //revive:enable:var-naming

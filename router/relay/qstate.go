@@ -526,7 +526,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				val = q.Value[0]
 			}
 
-			if strings.HasPrefix(name, "__spqr__") {
+			/* Direct comparison with def tx ro is dummy, but we dont expect other such cases
+			 */
+			if strings.HasPrefix(name, "__spqr__") || name == session.PG_DEFAULT_TRANSACTION_READ_ONLY {
 				ctx := context.TODO()
 				if err := rst.processSpqrHint(ctx, map[string]string{
 					name: val,
@@ -681,6 +683,14 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
 				rst.Client().SetTsa(lvl, hintVal)
+				/* We also accept pg default tx ro GUC as alias  */
+			case session.PG_DEFAULT_TRANSACTION_READ_ONLY:
+				switch value {
+				case "true", "on", "ok":
+					rst.Client().SetTsa(lvl, config.TargetSessionAttrsPR)
+				case "false", "off", "no":
+					rst.Client().SetTsa(lvl, config.TargetSessionAttrsRW)
+				}
 			case session.SPQR_ENGINE_V2:
 				/* Ignore statement level here */
 				switch value {
