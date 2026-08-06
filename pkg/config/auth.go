@@ -18,7 +18,7 @@ const (
 
 type AuthCfg struct {
 	Method     AuthMethod `json:"auth_method" yaml:"auth_method" toml:"auth_method"`
-	Password   string     `json:"password" yaml:"password" toml:"password"`
+	Password   string     `json:"password" yaml:"password" toml:"password" secret:"true"`
 	LDAPConfig *LDAPCfg   `json:"ldap_config" yaml:"ldap_config" toml:"ldap_config"`
 	GssConfig  *GssCfg    `json:"gss_config" yaml:"gss_config" toml:"gss_config"`
 }

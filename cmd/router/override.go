@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -154,7 +153,7 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 }
 
 func logEffectiveConfig(cfg *config.Router) error {
-	configBytes, err := json.Marshal(cfg)
+	configBytes, err := config.MarshalRedactedJSON(cfg)
 	if err != nil {
 		return err
 	}

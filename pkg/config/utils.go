@@ -74,7 +74,7 @@ func LoadConfig(path string, cfg Config) (string, error) {
 		return "", err
 	}
 
-	configBytes, err := json.MarshalIndent(&cfg, "", "  ")
+	configBytes, err := marshalRedactedJSONIndent(cfg, "", "  ")
 	if err != nil {
 		return "", err
 	}
