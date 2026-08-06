@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"log"
 	"strconv"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
@@ -153,17 +152,10 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 }
 
 func logEffectiveConfig(cfg *config.Router) error {
-	configBytes, err := config.MarshalRedactedJSON(cfg)
+	configBytes, err := config.MarshalRedactedJSONIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-	// Write synchronously to os.Stderr, bypassing the global spqrlog.Zero logger.
-	// After SIGHUP, spqrlog.Zero uses an async diode writer that may delay output
-	// indefinitely, breaking tools that watch the log for this message.
-	var w = zerolog.New(os.Stderr).With().Timestamp().Logger()
-	if cfg.PrettyLogging {
-		w = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
-	}
-	w.Info().RawJSON("config", configBytes).Msg("running config")
+	log.Println("Running config:", string(configBytes))
 	return nil
 }

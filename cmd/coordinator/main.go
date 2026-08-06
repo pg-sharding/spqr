@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -56,7 +57,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		spqrlog.Zero.Info().Str("config", cfgStr).Msg("running config")
+		log.Println("Running config:", cfgStr)
 
 		if config.CoordinatorConfig().EnableRoleSystem {
 			if config.CoordinatorConfig().RolesFile == "" {
@@ -66,7 +67,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			spqrlog.Zero.Info().Str("config", rolesCfgStr).Msg("running roles config")
+			log.Println("Running roles config:", rolesCfgStr)
 		}
 
 		if logLevel != "" {

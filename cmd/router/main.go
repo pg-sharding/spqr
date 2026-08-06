@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	_ "net/http/pprof"
@@ -176,7 +177,7 @@ var runCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			spqrlog.Zero.Info().Str("config", rolesCfgStr).Msg("running roles config")
+			log.Println("Running roles config:", rolesCfgStr)
 		}
 
 		startupOverrides = collectOverrides(rootCmd)
@@ -205,7 +206,7 @@ var runCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			spqrlog.Zero.Info().Str("config", cfgStr).Msg("running coordinator config")
+			log.Println("Running coordinator config:", cfgStr)
 		}
 
 		if console && daemonize {
