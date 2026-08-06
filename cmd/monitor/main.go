@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"slices"
 	"strings"
@@ -39,8 +40,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage:  false,
+		SilenceErrors: false,
 	}
 
 	checkCmd = &cobra.Command{
@@ -202,7 +203,7 @@ var (
 			if err := checkUnlockKeyRange(ctx, db, keyRange, ds, shardToConn, shardFromConn); err != nil {
 				return err
 			}
-			spqrlog.Zero.Info().Str("key_range_id", keyRangeId).Msg("key range is safe to unlock")
+			log.Printf("key range \"%s\" is safe to unlock\n", keyRangeId)
 			return nil
 		},
 	}
@@ -481,15 +482,15 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRangeService proto
 		return fmt.Errorf("distribution \"%s\" not found in map", keyRange.Distribution)
 	}
 	if err := checkUnlockKeyRange(ctx, db, keyRange, ds, toConnCfg, fromConnCfg); err != nil {
-		spqrlog.Zero.Warn().Err(err).Msg("key range not safe to unlock")
+		log.Printf("key range not safe to unlock: %s", err)
 		return nil
 	}
 	if dryRun {
-		spqrlog.Zero.Info().Str("key_range_id", keyRange.ID).Msg("key range to unlock (dry run)")
+		log.Printf("key range to unlock: \"%s\"", keyRange.ID)
 		return nil
 	}
 	if err := db.TryTaskGroupLock(ctx, taskGroupId, "spqr-monitor recover"); err != nil {
-		spqrlog.Zero.Warn().Str("task_group_id", taskGroupId).Msg("failed to lock task group, skipping")
+		log.Printf("failed to lock task group \"%s\", skipping...\n", taskGroupId)
 		return nil
 	}
 	if _, err := keyRangeService.UnlockKeyRange(ctx, &protos.UnlockKeyRangeRequest{Id: []string{keyRange.ID}}); err != nil {
@@ -527,12 +528,6 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRangeService proto
 		return err
 	}
 
-	spqrlog.Zero.Info().
-		Str("task_group_id", taskGroupId).
-		Str("source_key_range", taskGroup.KrIdFrom).
-		Str("dest_key_range", taskGroup.KrIdTo).
-		Str("state", status.State).
-		Str("error_msg", status.Message).
-		Msg("deleting task group")
+	log.Printf("deleting task group \"%s\". source key range: \"%s\", dest key range: \"%s\", state: \"%s\", error msg: \"%s\"", taskGroupId, taskGroup.KrIdFrom, taskGroup.KrIdTo, status.State, status.Message)
 	return db.DropMoveTaskGroup(ctx, taskGroupId)
 }
