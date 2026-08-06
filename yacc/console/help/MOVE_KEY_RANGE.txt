@@ -1,15 +1,19 @@
 NAME
-    MOVE KEY RANGE - Moves key range data to a different shard
+    MOVE KEY RANGE - Moves the data belonging to a key range to the specified
+    shard.
 
 SYNTAX
     MOVE KEY RANGE <keyRangeID> TO <shardID> [META ONLY]
 
 DESCRIPTION
-    Moves the data belonging to a key range to the specified shard. If META ONLY key word is given,
-    then the command only updates the metadata i.e. changes query routing, NOT the data placement.
+    Moves the data belonging to a key range to the specified shard.
+    If META ONLY key word is given, then the command only updates the metadata
+    i.e. changes query routing, NOT the data placement.
     MOVE KEY RANGE ... META ONLY requires the key range to be locked prior.
-    Non-META ONLY version locks all the data for update & lacks pre-run checks, so it's discouraged to use
-    in favour of REDISTRIBUTE KEY RANGE. This version is only available in installations with SPQR-coordinator.
+    Non-META ONLY version locks all the data for update & lacks pre-run checks,
+    so it's discouraged to use
+    in favour of REDISTRIBUTE KEY RANGE. This version is only available in
+    installations with SPQR-coordinator.
 
 PARAMETERS
     <keyRangeID> - Identifier of the key range to move
