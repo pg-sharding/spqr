@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -39,8 +39,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  false,
-		SilenceErrors: false,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	generateTaskCmd = &cobra.Command{
@@ -49,7 +49,7 @@ var (
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := generateTask(nil, nil); err != nil {
 				if errors.Is(err, AlreadyDoneError{}) {
-					log.Printf("%s\n", err)
+					spqrlog.Zero.Info().Err(err).Msg("task already done")
 					return nil
 				}
 				return err
@@ -68,10 +68,10 @@ var (
 			for range ticker.C {
 				if err := generateTask(nil, nil); err != nil {
 					if errors.Is(err, AlreadyDoneError{}) {
-						log.Printf("%s\n", err)
+						spqrlog.Zero.Info().Err(err).Msg("task already done")
 						return nil
 					}
-					log.Printf("error generating task, exiting: %s\n", err)
+					spqrlog.Zero.Error().Err(err).Msg("error generating task, exiting")
 					return err
 				}
 			}
@@ -148,7 +148,7 @@ func generateTask(_ *cobra.Command, _ []string) error {
 	taskCount := 0
 	for _, task := range tasks {
 		if task.KeyRangeID == keyRangeID {
-			log.Printf("key range \"%s\" is already being redistributed, not doing anything\n", keyRangeID)
+			spqrlog.Zero.Info().Str("key_range_id", keyRangeID).Msg("key range is already being redistributed, not doing anything")
 			return nil
 		}
 		if task.ShardID == shardToID {
@@ -156,7 +156,7 @@ func generateTask(_ *cobra.Command, _ []string) error {
 		}
 	}
 	if taskCount >= maxRedistributeTasks {
-		log.Println("redistribute tasks limit reached, not doing anything")
+		spqrlog.Zero.Info().Msg("redistribute tasks limit reached, not doing anything")
 		return nil
 	}
 	nextBound, err := datatransfers.ResolveNextBound(ctx, keyRange, &c)
@@ -169,7 +169,7 @@ func generateTask(_ *cobra.Command, _ []string) error {
 	keyRangeToRedistribute := keyRange.ID
 	newBound := max(nextBoundInt-int64(chunkSize), curBound)
 	if dryRun {
-		log.Printf("redistribute key range with bound %d\n", newBound)
+		spqrlog.Zero.Info().Int64("bound", newBound).Msg("redistribute key range (dry run)")
 		return nil
 	}
 
@@ -179,7 +179,7 @@ func generateTask(_ *cobra.Command, _ []string) error {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, newBound)
 		newKeyRangeID := uuid.NewString()
-		log.Printf("splitting key range \"%s\" by %d\n", newKeyRangeID, newBound)
+		spqrlog.Zero.Info().Str("key_range_id", newKeyRangeID).Int64("bound", newBound).Msg("splitting key range")
 		if _, err := krService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
 			NewId:    newKeyRangeID,
 			SourceId: keyRange.ID,
@@ -189,7 +189,7 @@ func generateTask(_ *cobra.Command, _ []string) error {
 		}
 		keyRangeToRedistribute = newKeyRangeID
 	}
-	log.Printf("redistributing key range \"%s\"\n", keyRangeToRedistribute)
+	spqrlog.Zero.Info().Str("key_range_id", keyRangeToRedistribute).Msg("redistributing key range")
 	_, err = krService.RedistributeKeyRange(ctx, &protos.RedistributeKeyRangeRequest{
 		Krid:      keyRangeToRedistribute,
 		BatchSize: int64(batchSize),
