@@ -82,6 +82,17 @@ func TestParseComment(t *testing.T) {
 			exp:    nil,
 			err:    spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: expected colon after option name"),
 		},
+		// values with spaces are not supported (no quoting mechanism)
+		{
+			sample: "lol: hello world",
+			exp:    nil,
+			err:    spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: expected comma after not-last key-value pair"),
+		},
+		{
+			sample: "lol: hello world, lol2: kek",
+			exp:    nil,
+			err:    spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: expected comma after not-last key-value pair"),
+		},
 	} {
 
 		mp, err := ParseComment(tt.sample)
