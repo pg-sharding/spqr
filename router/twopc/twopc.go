@@ -98,23 +98,22 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	}()
 
 	for _, dsh := range s.Datashards() {
-		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
+		/* st is guaranteed TXIDLE when err == nil; DeployTxOnShard validates expTx */
+		_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
 		}, "prepare tx", txstatus.TXIDLE)
 
-		/* err may we a purely network error  */
+		/* err may be a purely network error  */
 		undoShards = append(undoShards, dsh)
 
 		if err != nil {
-			/* assert st == txtstatus.TXERR? */
+			/* TODO: assert st == txstatus.TXERR? */
 			return txstatus.TXERR, err
 		}
 
 		if guc.Get(cl) {
 			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %s on %s", gid, dsh.InstanceHostname()))
 		}
-
-		retST = st
 	}
 
 	if config.RouterConfig().EnableICP {
@@ -153,13 +152,13 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}, "commit prepared", txstatus.TXIDLE)
 
 		if err != nil {
-			/* assert st == txtstatus.TXERR? */
+			/* TODO: assert st == txstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
 			return txstatus.TXERR, err
 		}
 
-		if txstatus.TXStatus(st) != txstatus.TXIDLE {
+		if st != txstatus.TXIDLE {
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
@@ -170,9 +169,9 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %s on %s", gid, dsh.InstanceHostname()))
 		}
 
-		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", st.String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
 
-		retST = txstatus.TXStatus(st)
+		retST = st
 	}
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
