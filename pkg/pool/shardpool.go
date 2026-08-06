@@ -137,7 +137,7 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 					Msg("still waiting for backend connection to host")
 			case <-h.queue:
 				// Normally you dont need to stop
-				// short-lived timer (which this timer is). 
+				// short-lived timer (which this timer is).
 				// But for sake of tidiness, we anyway will do it.
 				// Also prevents memory leakage for very badly
 				// misconfigured servers
