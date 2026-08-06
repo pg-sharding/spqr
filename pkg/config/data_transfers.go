@@ -25,7 +25,7 @@ type ShardConnect struct {
 	Hosts    []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
 	DB       string     `json:"db" toml:"db" yaml:"db"`
 	User     string     `json:"usr" toml:"usr" yaml:"usr"`
-	Password string     `json:"pwd" toml:"pwd" yaml:"pwd"`
+	Password string     `json:"pwd" toml:"pwd" yaml:"pwd" secret:"true"`
 	TLS      *TLSConfig `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty"`
 }
 
