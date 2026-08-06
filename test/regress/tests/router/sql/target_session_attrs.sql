@@ -100,6 +100,13 @@ SHOW __spqr__target_session_attrs;
 
 RESET __spqr__target_session_attrs;
 
+SHOW default_transaction_read_only;
+
+SET default_transaction_read_only TO true;
+SHOW default_transaction_read_only;
+SHOW __spqr__target_session_attrs;
+
+
 DROP TABLE tsa_test;
 
 DELETE FROM spqr_metadata.spqr_distributed_relations;
