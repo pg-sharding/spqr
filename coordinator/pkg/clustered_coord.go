@@ -1003,6 +1003,33 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		Str("shard-id", req.ShardID).
 		Msg("qdb coordinator move key range")
 
+	if req.MetaOnly {
+		if err := qc.Coordinator.Move(ctx, req, icpCH); err != nil {
+			return err
+		}
+		if config.CoordinatorConfig().UseSPQRGuard {
+			if err := coord.UpdateKeyRangeMeta(ctx,
+				[]*proto.MetaTransactionGossipCommand{
+					{DropKeyRange: &proto.DropKeyRangeGossip{Id: []string{req.KeyRangeID}}},
+					{CreateKeyRange: &proto.CreateKeyRangeGossip{KeyRangeInfo: &proto.KeyRangeInfo{Krid: req.KeyRangeID, ShardId: req.ShardID}}},
+				}); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
+			}
+		}
+		return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			cl := proto.NewKeyRangeServiceClient(cc)
+			moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
+				Id:        req.KeyRangeID,
+				ToShardId: req.ShardID,
+				MetaOnly:  req.MetaOnly,
+			})
+			spqrlog.Zero.Debug().Err(err).
+				Interface("response", moveResp).
+				Msg("move key range response")
+			return err
+		})
+	}
+
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
 	if err != nil {
 		return err
@@ -1134,6 +1161,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 					Id:        keyRange.ID,
 					ToShardId: keyRange.ShardID,
+					MetaOnly:  true,
 				})
 				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).

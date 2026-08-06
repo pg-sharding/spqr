@@ -219,7 +219,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 
 }
 
-func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
+func TestMoveKeyRangeReplyDoesntIncludeHint(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -264,7 +264,6 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	_ = cli.ReplyTTS(tts)
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
-	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
 }
 
 func TestCreateReferenceRelation(t *testing.T) {

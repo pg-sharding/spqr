@@ -404,6 +404,7 @@ type MoveKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ToShardId     string                 `protobuf:"bytes,2,opt,name=toShardId,proto3" json:"toShardId,omitempty"`
+	MetaOnly      bool                   `protobuf:"varint,3,opt,name=metaOnly,proto3" json:"metaOnly,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -450,6 +451,13 @@ func (x *MoveKeyRangeRequest) GetToShardId() string {
 		return x.ToShardId
 	}
 	return ""
+}
+
+func (x *MoveKeyRangeRequest) GetMetaOnly() bool {
+	if x != nil {
+		return x.MetaOnly
+	}
+	return false
 }
 
 type DropKeyRangeRequest struct {
@@ -1167,10 +1175,11 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"split_left\x18\x04 \x01(\bR\tsplitLeft\"b\n" +
 	"\x14MergeKeyRangeRequest\x12\x1f\n" +
 	"\abase_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06baseId\x12)\n" +
-	"\fappendage_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vappendageId\"S\n" +
+	"\fappendage_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vappendageId\"o\n" +
 	"\x13MoveKeyRangeRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12$\n" +
-	"\ttoShardId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ttoShardId\"%\n" +
+	"\ttoShardId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ttoShardId\x12\x1a\n" +
+	"\bmetaOnly\x18\x03 \x01(\bR\bmetaOnly\"%\n" +
 	"\x13DropKeyRangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x03(\tR\x02id\"K\n" +
 	"\x18DropAllKeyRangesResponse\x12/\n" +

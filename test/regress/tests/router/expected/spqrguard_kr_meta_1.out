@@ -45,8 +45,24 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 \c spqr-console
-MOVE KEY RANGE kr1 TO sh2;
-ERROR:  key range kr1 not locked
+LOCK KEY RANGE kr1;
+   lock key range    
+---------------------
+ key range id -> kr1
+(1 row)
+
+MOVE KEY RANGE kr1 TO sh2 META ONLY;
+         move key range          
+---------------------------------
+ move key range kr1 to shard sh2
+(1 row)
+
+UNLOCK KEY RANGE kr1;
+  unlock key range   
+---------------------
+ key range id -> kr1
+(1 row)
+
 \c regress
 SET __spqr__execute_on=sh1;
 SELECT * FROM spqr_metadata.spqr_local_key_ranges;

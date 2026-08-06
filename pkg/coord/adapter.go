@@ -479,6 +479,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange, _ icp.ICPCont
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 				Id:        keyRange.ID,
 				ToShardId: move.ShardID,
+				MetaOnly:  move.MetaOnly,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
