@@ -25,6 +25,7 @@ const (
 	CommitStrategy2pc        = "2pc"
 )
 
+/* This function accept nil as DCStateKeeper for some configurations */
 func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	cl client.Client,
 	s server.Server) (txstatus.TXStatus, error) {
@@ -47,20 +48,23 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		gid = uid7.String()
 	}
 
-	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
-		return txstatus.TXERR, err
-	} else if !ok {
-		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
+	if q != nil {
+		if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+			return txstatus.TXERR, err
+		} else if !ok {
+			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
+		}
 	}
 
 	/* Store our intentions in state keeper */
-	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	shs := []string{}
 
 	for _, dsh := range s.Datashards() {
 		shs = append(shs, dsh.SHKey().Name)
 	}
 
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
 		if err := q.RecordTwoPhaseMembers(ctx, gid, shs); err != nil {
 			return txstatus.TXERR, err
