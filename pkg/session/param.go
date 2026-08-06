@@ -52,9 +52,6 @@ type SessionParamsHolder interface {
 	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
 
-	SetShardingKey(level string, val string)
-	ShardingKey() string
-
 	/* Statement level makes sence? */
 	SetMaintainParams(level string, val bool)
 	MaintainParams() bool
@@ -162,7 +159,7 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE, SPQR_EXECUTE_ON:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE, SPQR_EXECUTE_ON, SPQR_SHARDING_KEY:
 		return true
 	default:
 		return false

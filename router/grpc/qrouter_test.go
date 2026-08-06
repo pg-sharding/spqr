@@ -149,7 +149,6 @@ func setupMockClient(ctrl *gomock.Controller, id uint, usr, db string) *mockClie
 	m.EXPECT().ID().Return(id).AnyTimes()
 	m.EXPECT().Usr().Return(usr).AnyTimes()
 	m.EXPECT().DB().Return(db).AnyTimes()
-	m.EXPECT().ShardingKey().Return("shard_key_1").AnyTimes()
 	m.EXPECT().RAddr().Return("127.0.0.1:54321").AnyTimes()
 	m.EXPECT().Shards().Return(nil).AnyTimes()
 	return m

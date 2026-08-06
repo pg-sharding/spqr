@@ -1082,18 +1082,6 @@ func (mr *MockClientInfoMockRecorder) SetSeed(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockClientInfo)(nil).SetSeed), arg0)
 }
 
-// SetShardingKey mocks base method.
-func (m *MockClientInfo) SetShardingKey(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShardingKey", level, val)
-}
-
-// SetShardingKey indicates an expected call of SetShardingKey.
-func (mr *MockClientInfoMockRecorder) SetShardingKey(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockClientInfo)(nil).SetShardingKey), level, val)
-}
-
 // SetStartupParams mocks base method.
 func (m *MockClientInfo) SetStartupParams(arg0 map[string]string) {
 	m.ctrl.T.Helper()
@@ -1128,20 +1116,6 @@ func (m *MockClientInfo) SetUsr(arg0 string) {
 func (mr *MockClientInfoMockRecorder) SetUsr(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUsr", reflect.TypeOf((*MockClientInfo)(nil).SetUsr), arg0)
-}
-
-// ShardingKey mocks base method.
-func (m *MockClientInfo) ShardingKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShardingKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ShardingKey indicates an expected call of ShardingKey.
-func (mr *MockClientInfoMockRecorder) ShardingKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardingKey", reflect.TypeOf((*MockClientInfo)(nil).ShardingKey))
 }
 
 // Shards mocks base method.

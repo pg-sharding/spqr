@@ -275,17 +275,7 @@ func (cl *SimpleSessionParamHandler) SetBindParams(p [][]byte) {
 	cl.bindParams = p
 }
 
-// SetShardingKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetShardingKey(level string, k string) {
-	cl.RecordVirtualParam(level, SPQR_SHARDING_KEY, k)
-}
-
-// ShardingKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) ShardingKey() string {
-	return cl.ResolveVirtualStringParam(SPQR_SHARDING_KEY, "")
-}
-
-// SetShardingKey implements RouterClient.
+// ScatterQuery implements RouterClient.
 func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
 	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
 }
@@ -574,6 +564,13 @@ var StrGUCs = []StrGUCimpl{
 			}
 			sph.RecordVirtualParam(level, SPQR_EXECUTE_ON, val)
 			return nil
+		},
+	},
+	{
+		n:         SPQR_SHARDING_KEY,
+		shortName: "sharding key",
+		def: func() string {
+			return ""
 		},
 	},
 }

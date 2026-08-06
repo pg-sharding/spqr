@@ -440,7 +440,11 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			Forced: true,
 		}, nil
 	}
-	if val := rm.SPH.ShardingKey(); val != "" {
+	guc, err := rm.SPH.FindStrGUC(session.SPQR_SHARDING_KEY)
+	if err != nil {
+		return nil, err
+	}
+	if val := guc.Get(rm.SPH); val != "" {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
 		dsId := rm.SPH.Distribution()
