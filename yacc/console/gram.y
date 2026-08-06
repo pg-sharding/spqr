@@ -842,12 +842,13 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
-	| DROP MOVE TASK any_id
+	| DROP MOVE TASK any_id opt_cascade
 	{
 		$$ = &Drop{
 			Element: &MoveTaskSelector{
 				ID: $4,
 			},
+			CascadeDelete: $5,
 		}
 	}
 

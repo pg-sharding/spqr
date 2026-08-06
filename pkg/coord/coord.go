@@ -668,7 +668,7 @@ func (lc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 	return res, nil
 }
 
-func (lc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
+func (lc *Coordinator) DropMoveTask(ctx context.Context, id string, isCascade bool) error {
 	task, err := lc.GetMoveTask(ctx, id)
 	if err != nil {
 		return err
@@ -679,6 +679,20 @@ func (lc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
 	}
 	if status != nil && status.State != tasks.TaskGroupError {
 		return fmt.Errorf("cannot remove move task: it's forbidden to remove move tasks when its task group is being executed")
+	}
+	if isCascade {
+		krmoves, err := lc.qdb.ListKeyRangeMoves(ctx)
+		if err != nil {
+			return err
+		}
+		for _, move := range krmoves {
+			if move.KeyRangeID == task.KridTemp {
+				if err := lc.qdb.DeleteKeyRangeMove(ctx, move.MoveId, false); err != nil {
+					return err
+				}
+				break
+			}
+		}
 	}
 	return lc.qdb.DropMoveTask(ctx, id)
 }
@@ -861,7 +875,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 		return err
 	}
 	if task != nil {
-		if err := lc.qdb.DropMoveTask(ctx, task.ID); err != nil {
+		if err := lc.DropMoveTask(ctx, task.ID, cascade); err != nil {
 			return err
 		}
 	}
