@@ -108,3 +108,14 @@ jobs:
             exit 1
           fi
           echo "✓ No new panic() calls"
+
+  docs-check:
+    name: check generated help
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: check proto generated code
+        run: make generate_help && git diff --exit-code
