@@ -96,6 +96,11 @@ message DropMoveTaskGroupRequest {
   bool cascade = 2;
 }
 
+message MoveTaskRequest {
+  string ID = 1 [(buf.validate.field).required = true];
+  bool cascade = 2;
+}
+
 message MoveTaskGroupStatus {
   string state = 1;
   string message = 2; 
@@ -117,6 +122,7 @@ service MoveTasksService {
     option deprecated = true;
   }
   rpc DropMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {}
+  rpc DropMoveTaskV2(MoveTaskRequest) returns (google.protobuf.Empty) {}
 
   rpc ListMoveTaskGroups(google.protobuf.Empty) returns (ListMoveTaskGroupsReply) {}
   rpc GetMoveTaskGroup(MoveTaskGroupSelector) returns (GetMoveTaskGroupReply) {}

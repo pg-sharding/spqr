@@ -408,17 +408,17 @@ func (mr *MockEntityMgrMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 }
 
 // DropMoveTask mocks base method.
-func (m *MockEntityMgr) DropMoveTask(ctx context.Context, id string) error {
+func (m *MockEntityMgr) DropMoveTask(ctx context.Context, id string, isCascade bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropMoveTask", ctx, id)
+	ret := m.ctrl.Call(m, "DropMoveTask", ctx, id, isCascade)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropMoveTask indicates an expected call of DropMoveTask.
-func (mr *MockEntityMgrMockRecorder) DropMoveTask(ctx, id any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) DropMoveTask(ctx, id, isCascade any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTask", reflect.TypeOf((*MockEntityMgr)(nil).DropMoveTask), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTask", reflect.TypeOf((*MockEntityMgr)(nil).DropMoveTask), ctx, id, isCascade)
 }
 
 // DropMoveTaskGroup mocks base method.

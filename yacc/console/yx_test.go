@@ -2256,6 +2256,26 @@ func TestDropTaskGroup(t *testing.T) {
 			err:   fmt.Errorf("syntax error"),
 		},
 		{
+			query: "DROP MOVE TASK mt_id",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `mt_id`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
+		},
+		{
+			query: "DROP MOVE TASK mt_id CASCADE",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `mt_id`,
+				},
+				CascadeDelete: true,
+			},
+			err: nil,
+		},
+		{
 			query: "DROP TASK GROUP",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),
