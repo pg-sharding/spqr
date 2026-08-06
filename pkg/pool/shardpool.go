@@ -124,16 +124,19 @@ var (
 // TODO : unit tests
 func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
 	if err := func() error {
-		// TODO refactor
+		// TODO: remove this wait under separate setting
 		for range h.connectionRetries {
-			select {
 			// TODO: configure waits using backend rule
-			case <-time.After(time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))):
+			jitter := time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))
+			timer := time.NewTimer(jitter)
+			select {
+			case <-timer.C:
 				spqrlog.Zero.Info().
 					Uint("client", clid).
 					Str("host", h.host).
 					Msg("still waiting for backend connection to host")
 			case <-h.queue:
+				timer.Stop()
 				return nil
 			}
 		}
