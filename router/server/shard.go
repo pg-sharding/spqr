@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -20,7 +21,7 @@ import (
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
-	pool     pool.MultiShardTSAPool
+	pool     pool.ConnectionProvider
 	shard    atomic.Pointer[shard.ShardHostInstance]
 	prefetch []pgproto3.BackendMessage
 }
@@ -44,7 +45,7 @@ func (srv *ShardServer) DataPending() bool {
 	return sh.DataPending()
 }
 
-func NewShardServer(spool pool.MultiShardTSAPool) *ShardServer {
+func NewShardServer(spool pool.ConnectionProvider) *ShardServer {
 	return &ShardServer{
 		pool:  spool,
 		shard: atomic.Pointer[shard.ShardHostInstance]{},
@@ -95,29 +96,18 @@ func (srv *ShardServer) Reset() error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
+func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) (shard.ShardHostInstance, error) {
 	v := srv.shard.Load()
 	if v == nil {
-		return nil
+		return nil, nil
 	}
 
 	srv.shard.Store(nil)
 
 	if (*v).SHKey().Name != shkey.Name {
-		return fmt.Errorf("active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
+		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
 	}
-
-	if (*v).Sync() != 0 {
-		/* will automatically discard connection,
-		but we will not perform cleanup, which may stuck forever */
-		return srv.pool.Put((*v))
-	}
-
-	if err := srv.cleanupLockFree(*v, rule); err != nil {
-		return err
-	}
-
-	return srv.pool.Put(*v)
+	return *v, nil
 }
 
 // TODO : unit tests
@@ -197,7 +187,7 @@ func (srv *ShardServer) PrefetchUntilCommandComplete(_ kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+func (srv *ShardServer) Receive(*planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 	var msg pgproto3.BackendMessage
 
 	if len(srv.prefetch) != 0 {
@@ -222,7 +212,7 @@ func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, err
 	if (*srv.shard.Load()).ID() != shardId {
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
-	msg, _, err := srv.Receive()
+	msg, _, err := srv.Receive(nil)
 	return msg, err
 }
 

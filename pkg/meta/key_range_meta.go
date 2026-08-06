@@ -2,13 +2,18 @@ package meta
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/sethvargo/go-retry"
 )
@@ -128,9 +133,11 @@ func CreateKeyRangeStrict(ctx context.Context, mngr *TranEntityManager, keyRange
 // Returns:
 // - *kr.KeyRange: created key range.
 // - error: An error if the creation encounters any issues.
-func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrparser.KeyRangeDefinition) (*kr.KeyRange, error) {
-	if err := mngr.BeginTran(ctx); err != nil {
-		return nil, err
+func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrparser.KeyRangeDefinition, beginTran bool) (*kr.KeyRange, error) {
+	if beginTran {
+		if err := mngr.BeginTran(ctx); err != nil {
+			return nil, err
+		}
 	}
 	if stmt.Distribution.ID == "default" {
 		list, err := mngr.ListDistributions(ctx)
@@ -167,10 +174,71 @@ func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrpars
 		spqrlog.Zero.Error().Err(err).Msg("CreateKeyRangeStrict failed while createKeyRange")
 		return nil, err
 	}
-	if err = mngr.CommitTran(ctx); err != nil {
-		return nil, err
+	if beginTran {
+		if err = mngr.CommitTran(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return keyRange, nil
+}
+
+func createKeyRangesForDistribution(ctx context.Context, mngr *TranEntityManager, stmt *spqrparser.KeyRangesForDistributionDefinition) ([]*kr.KeyRange, error) {
+	selectedShards := make([]*topology.DataShard, 0)
+	if len(stmt.Shards) == 1 && stmt.Shards[0] == "*" {
+		shards, err := mngr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		selectedShards = shards
+	} else {
+		for _, sh := range stmt.Shards {
+			shard, err := mngr.GetShard(ctx, sh)
+			if err != nil {
+				return nil, err
+			}
+			selectedShards = append(selectedShards, shard)
+		}
+	}
+
+	distr, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	dataTypeRange, err := kr.CustomDataTypeRangeFromSQL(distr.ColTypes, stmt.DataKeyRange)
+	if err != nil {
+		return nil, err
+	}
+	bounds, err := SplitEqualFullKeyRange(distr.ColTypes, len(selectedShards), dataTypeRange)
+	if err != nil {
+		return nil, err
+	}
+
+	createdKrs := make([]*kr.KeyRange, 0, len(selectedShards))
+	if err := mngr.BeginTran(ctx); err != nil {
+		return nil, err
+	}
+	for i, bound := range bounds {
+		tmp := kr.KeyRange{
+			LowerBound:  bound,
+			ColumnTypes: distr.ColTypes,
+		}
+		newKr, err := createKeyRange(ctx, mngr, &spqrparser.KeyRangeDefinition{
+			Distribution: stmt.Distribution,
+			ShardID:      selectedShards[i].ID,
+			LowerBound:   &spqrparser.KeyRangeBound{Pivots: tmp.Raw()},
+			KeyRangeID:   fmt.Sprintf("%s-%d", stmt.Distribution.ID, i),
+		}, false)
+		if err != nil {
+			return nil, err
+		}
+		createdKrs = append(createdKrs, newKr)
+	}
+	if err := mngr.CommitTran(ctx); err != nil {
+		return nil, err
+	}
+
+	return createdKrs, nil
 }
 
 func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error {
@@ -207,4 +275,76 @@ func LockKeyRange(ctx context.Context, mngr EntityMgr, keyRangeID string) (*kr.K
 		return kr, nil
 	}
 
+}
+
+func SplitEqualFullKeyRange(colTypes []string, shardsNumber int, customRange *kr.CustomDataTypeRange) ([]kr.KeyRangeBound, error) {
+	if len(colTypes) > 1 {
+		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "cannot determine key ranges for composite keys").Hint("Use CREATE KEY RANGE...")
+	}
+
+	bounds := make([]kr.KeyRangeBound, 0, shardsNumber)
+	for shInd := range shardsNumber {
+		lowerBound := make(kr.KeyRangeBound, len(colTypes))
+		upperBound := make(kr.KeyRangeBound, len(colTypes))
+
+		if customRange != nil {
+			lowerBound = customRange.LowerBound
+			upperBound = customRange.UpperBound
+		}
+
+		bound := make([][]byte, len(colTypes))
+		for i, t := range colTypes {
+			switch t {
+			case qdb.ColumnTypeVarcharDeprecated:
+				fallthrough
+			case qdb.ColumnTypeUUID:
+				fallthrough
+			case qdb.ColumnTypeVarchar:
+				return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "cannot determine key ranges for non-hashable distributions").Hint("Use CREATE KEY RANGE...")
+			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
+			case qdb.ColumnTypeUUIDHashed:
+				fallthrough
+			case qdb.ColumnTypeUinteger:
+				minValue := uint64(0)
+				maxValue := uint64(math.MaxUint64)
+
+				if customRange != nil {
+					minValue = lowerBound[i].(uint64)
+					maxValue = upperBound[i].(uint64)
+				}
+
+				delta := maxValue/uint64(shardsNumber) - minValue/uint64(shardsNumber)
+				lowerBound := minValue + delta*uint64(shardsNumber-1-shInd)
+				bound[i] = hashfunction.EncodeUInt64(lowerBound)
+			case qdb.ColumnTypeInteger:
+				minValue := int64(math.MinInt64)
+				maxValue := int64(math.MaxInt64)
+
+				if customRange != nil {
+					minValue = lowerBound[i].(int64)
+					maxValue = upperBound[i].(int64)
+				}
+
+				const signBit = uint64(1) << 63
+				uMin := uint64(minValue) ^ signBit
+				uMax := uint64(maxValue) ^ signBit
+				span := uMax - uMin
+				step := span / uint64(shardsNumber)
+				uLower := uMin + step*uint64(shardsNumber-1-shInd)
+				lowerBound := int64(uLower ^ signBit)
+
+				bound[i] = make([]byte, binary.MaxVarintLen64)
+				binary.PutVarint(bound[i], lowerBound)
+			default:
+				return nil, fmt.Errorf("unknown column type: %s", t)
+			}
+		}
+		kr, err := kr.KeyRangeFromBytes(bound, colTypes)
+		if err != nil {
+			return nil, err
+		}
+		bounds = append(bounds, kr.LowerBound)
+	}
+	return bounds, nil
 }

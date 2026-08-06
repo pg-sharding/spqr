@@ -184,6 +184,8 @@ DROP TABLE table1;
 DROP TABLE table2;
 DROP TABLE ref_rel_1;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 

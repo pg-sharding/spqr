@@ -100,7 +100,16 @@ SHOW __spqr__target_session_attrs;
 
 RESET __spqr__target_session_attrs;
 
+SHOW default_transaction_read_only;
+
+SET default_transaction_read_only TO true;
+SHOW default_transaction_read_only;
+SHOW __spqr__target_session_attrs;
+RESET __spqr__target_session_attrs;
+
 DROP TABLE tsa_test;
 
+DELETE FROM spqr_metadata.spqr_distributed_relations;
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

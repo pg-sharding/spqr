@@ -72,7 +72,9 @@ examples:
   - description: Attach table with single distribution key
     code: ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
   - description: Attach table with composite key and hash function
-    code: ALTER DISTRIBUTION ds2 ATTACH TABLE users DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
+    code: |
+      ALTER DISTRIBUTION ds2 ATTACH TABLE users 
+        DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
   - description: Detach table
     code: ALTER DISTRIBUTION ds1 DETACH TABLE orders;
   - description: Replace table distribution key
@@ -80,7 +82,9 @@ examples:
   - description: Change table schema
     code: ALTER DISTRIBUTION ds1 ALTER TABLE orders SCHEMA my_schema;
   - description: Fix column name casing in metadata (w_id vs W_ID)
-    code: ALTER DISTRIBUTION ds1 ALTER TABLE rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+    code: |
+      ALTER DISTRIBUTION ds1 ALTER TABLE rc_test 
+        RENAME DISTRIBUTION COLUMN W_ID TO w_id;
   - description: Set default shard
     code: ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
   - description: Remove default shard
@@ -113,7 +117,8 @@ subcommands:
 
       For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> [, <tableName> ...]
+      ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+        [, <tableName> ...]
         DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
       where keys is a comma-separated list of column names
@@ -121,11 +126,17 @@ subcommands:
       where hashFunction is one of: IDENTITY, MURMUR, CITY
     examples:
       - description: Single column sharding key
-        code: ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
+        code: |
+          ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+           DISTRIBUTION KEY order_id;
       - description: Composite sharding key with two columns
-        code: ALTER DISTRIBUTION ds2 ATTACH TABLE users DISTRIBUTION KEY tenant_id, user_id;
+        code: |
+          ALTER DISTRIBUTION ds2 ATTACH TABLE users 
+           DISTRIBUTION KEY tenant_id, user_id;
       - description: Composite key with hash function
-        code: ALTER DISTRIBUTION ds3 ATTACH TABLE events DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+        code: |
+          ALTER DISTRIBUTION ds3 ATTACH TABLE events 
+           DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
 
   - name: CREATE TABLE
     description: |
@@ -136,7 +147,8 @@ subcommands:
 
       **Parenthesized syntax** — column names and optional hash functions are listed inside parentheses:
     syntax: |
-      CREATE [DISTRIBUTED] TABLE [schema.]<table_name> (<keys>) [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
+      CREATE [DISTRIBUTED] TABLE [schema.]<table_name> (<keys>)
+        [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]
     notes:
       - "**DISTRIBUTION KEY syntax** — uses explicit `DISTRIBUTION KEY` clause: `CREATE [DISTRIBUTED] TABLE [schema.]<table_name> DISTRIBUTION KEY <keys> [IN <distribution_id> | FOR DISTRIBUTION <distribution_id>]`"
     examples:
@@ -155,7 +167,9 @@ subcommands:
       - description: Schema-qualified table name
         code: CREATE DISTRIBUTED TABLE sh1.r (i) IN d;
       - description: DISTRIBUTION KEY syntax
-        code: CREATE DISTRIBUTED TABLE xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
+        code: |
+          CREATE DISTRIBUTED TABLE xx DISTRIBUTION KEY col1, col2
+            HASH FUNCTION MURMUR IN ds1;
       - description: Composite key without hash using DISTRIBUTION KEY syntax
         code: CREATE DISTRIBUTED TABLE copy_test (id1, id2) IN ds2;
 
@@ -178,11 +192,17 @@ subcommands:
       where hashFunction is one of: IDENTITY, MURMUR, CITY
     examples:
       - description: Replace the distribution key with a new column name
-        code: ALTER DISTRIBUTION ds1 ALTER TABLE orders DISTRIBUTION KEY customer_id;
+        code: |
+          ALTER DISTRIBUTION ds1 ALTER TABLE orders 
+          DISTRIBUTION KEY customer_id;
       - description: Replace with a composite key
-        code: ALTER DISTRIBUTION ds1 ALTER TABLE events DISTRIBUTION KEY region_id, event_id;
+        code: |
+          ALTER DISTRIBUTION ds1 ALTER TABLE events 
+            DISTRIBUTION KEY region_id, event_id;
       - description: Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
-        code: "ALTER DISTRIBUTION ds1 ALTER TABLE tr DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];"
+        code: | 
+          ALTER DISTRIBUTION ds1 ALTER TABLE tr 
+            DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
     warnings:
       - This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
 
@@ -209,7 +229,9 @@ subcommands:
         RENAME DISTRIBUTION COLUMN <oldColumnName> TO <newColumnName>
     examples:
       - description: Fix column name casing in metadata
-        code: ALTER DISTRIBUTION ds1 ALTER TABLE rc_test RENAME DISTRIBUTION COLUMN W_ID TO w_id;
+        code: |
+          ALTER DISTRIBUTION ds1 ALTER TABLE rc_test 
+           RENAME DISTRIBUTION COLUMN W_ID TO w_id;
     warnings:
       - This command does not have well-defined behavior with concurrent read-write operations. Use it during setup or maintenance windows only.
 

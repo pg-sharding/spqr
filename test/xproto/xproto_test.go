@@ -6302,3 +6302,452 @@ func TestPortalDescReuse(t *testing.T) {
 
 	protoTestRunner(t, frontend, tt)
 }
+
+func TestPostProcess(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			SkipCheckCommandTag: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET LOCAL __spqr__.allow_postprocessing TO true",
+				},
+
+				&pgproto3.Query{
+					String: "SET LOCAL __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Parse{
+					Query: "SELECT count(1) FROM t",
+				},
+
+				&pgproto3.Bind{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("count"),
+							DataTypeOID:  catalog.INT8OID,
+							DataTypeSize: 8,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{{'0'}},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestDeallocateAllInBatchByXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* DEALLOCATE ALL pipelined with a preceding select — no Sync between them */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "remover",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "remover",
+					Query: "DEALLOCATE ALL",
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt",
+					Query: "select 42",
+				},
+				/* batch: Bind+Execute pstmt, then Bind+Execute remover, one Sync */
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "remover",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				/* pstmt was deallocated — Bind must fail */
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("DEALLOCATE ALL"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "prepared statement \"pstmt\" does not exist",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		/* DEALLOCATE <name> pipelined with a preceding select — no Sync between them */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "remover",
+					Query: "DEALLOCATE pstmt",
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt",
+					Query: "select 42",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "remover",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("DEALLOCATE"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "prepared statement \"pstmt\" does not exist",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestDescribePortalAfterBindDeallocateByXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* Bind for DEALLOCATE ALL must create a real portal — Describe P returns NoData */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "deallocate",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "deallocate",
+					Query: "DEALLOCATE ALL",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "deallocate",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("DEALLOCATE ALL"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestNamedPortalClearedOnTransactionEnd(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "stmt",
+					Query: "select 42/*__spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				/* bind named portal inside the transaction */
+				&pgproto3.Bind{
+					DestinationPortal: "txp",
+					PreparedStatement: "stmt",
+				},
+				&pgproto3.Execute{
+					Portal: "txp",
+				},
+				/* COMMIT — destroys all portals */
+				&pgproto3.Parse{
+					Query: "COMMIT",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				/* portal "txp" no longer exists */
+				&pgproto3.Execute{
+					Portal: "txp",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "portal \"txp\" does not exist",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestClosePortalByXproto(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* create named portal, describe, close, re-create, execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "stmt",
+					Query: "select 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					DestinationPortal: "cp1",
+					PreparedStatement: "stmt",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "cp1",
+				},
+				&pgproto3.Close{
+					ObjectType: 'P',
+					Name:       "cp1",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "cp1",
+					PreparedStatement: "stmt",
+				},
+				&pgproto3.Execute{
+					Portal: "cp1",
+				},
+				&pgproto3.Parse{
+					Query: "COMMIT",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}

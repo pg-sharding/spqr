@@ -4,7 +4,7 @@ NAME
     ATTACH TABLE clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
+    ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
       [, <tableName> ...]
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
@@ -21,10 +21,11 @@ DESCRIPTION
 
 EXAMPLES
     Single column sharding key:
-        ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
+        ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+         DISTRIBUTION KEY order_id;
     Composite sharding key with two columns:
-        ALTER DISTRIBUTION ds2 ATTACH TABLE users
-          DISTRIBUTION KEY tenant_id, user_id;
+        ALTER DISTRIBUTION ds2 ATTACH TABLE users 
+         DISTRIBUTION KEY tenant_id, user_id;
     Composite key with hash function:
-        ALTER DISTRIBUTION ds3 ATTACH TABLE events
-          DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+        ALTER DISTRIBUTION ds3 ATTACH TABLE events 
+         DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;

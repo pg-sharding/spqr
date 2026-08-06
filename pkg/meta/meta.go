@@ -374,12 +374,17 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("redistribute_task_id"),
 		}
 		for _, task := range tasks {
-			if task.ID == stmt.ID {
-				if err := mngr.DropRedistributeTask(ctx, stmt.ID, isCascade); err != nil {
+			if task.ID == stmt.ID || stmt.ID == "*" {
+				if err := mngr.DropRedistributeTask(ctx, task.ID, isCascade); err != nil {
+					if stmt.ID == "*" && errors.Is(err, spqrerror.RedistributeTaskDependentObjectError{}) {
+						continue
+					}
 					return nil, err
 				}
-				tts.WriteDataRow(stmt.ID)
-				break
+				tts.WriteDataRow(task.ID)
+				if stmt.ID != "*" {
+					break
+				}
 			}
 		}
 		return tts, nil
@@ -586,7 +591,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 	case *spqrparser.KeyRangeDefinition:
 		tranMngr := NewTranEntityManager(mngr)
-		createdKr, err := createKeyRange(ctx, tranMngr, stmt)
+		createdKr, err := createKeyRange(ctx, tranMngr, stmt, true)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return nil, err
@@ -597,6 +602,24 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				{fmt.Appendf(nil, "bound -> %s", createdKr.SendRaw()[0])},
 			},
 		}
+		return tts, nil
+	case *spqrparser.KeyRangesForDistributionDefinition:
+		tranMngr := NewTranEntityManager(mngr)
+		createdKrs, err := createKeyRangesForDistribution(ctx, tranMngr, stmt)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("add key range"),
+		}
+
+		for _, createdKr := range createdKrs {
+			tts.WriteDataRow(
+				fmt.Sprintf("bound -> %s", createdKr.SendRaw()[0]),
+			)
+		}
+
 		return tts, nil
 	case *spqrparser.ShardDefinition:
 		_, err := mngr.GetShard(ctx, stmt.Id)
@@ -619,7 +642,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
+		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force); err != nil {
 			return nil, err
 		}
 
@@ -1978,7 +2001,7 @@ func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
+	spqrlog.Zero.Trace().Str("cmd", stmt.Cmd).Msg("process virtual show statement")
 
 	tts, err := processShowInner(ctx, stmt, mngr, ci, ro)
 	if err != nil {
@@ -2020,7 +2043,6 @@ func processShowInner(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:

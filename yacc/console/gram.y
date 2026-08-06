@@ -202,9 +202,9 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
-%token <str> SHARDS ROUTERS SHARD RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
+%token <str> SHARDS SHARD COLUMNS HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
 %token <str> CLIENT
 %token <str> BATCH SIZE NOWAIT
@@ -236,12 +236,13 @@ func randomHex(n int) (string, error) {
 /* ICP */
 %token<str> CONTROL POINT
 
-/* any operator */
+/* any operator multi-character, produced by the lexer */
 %token<str> OP
 
 
-%type<key_range_selector> key_range_stmt
+%type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
+%type<statement> distribution_drop_selector redistribute_task_drop_selector
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -344,10 +345,10 @@ func randomHex(n int) (string, error) {
 %left		AND
 %right		NOT
 %nonassoc	TLESS TGREATER TEQ
-%left		OP OPERATOR	/* multi-character ops and user-defined operators */
+%left		OP		/* multi-character operator */
 %left		TPLUS TMINUS
 %left		TMUL 
-%left		TSQOPENBR TSQCLOSEBR
+%left		TOPENSQBR TCLOSESQBR
 %left		TOPENBR TCLOSEBR
 
 %start root
@@ -601,8 +602,11 @@ AexprConst:
 		}
 	} |
 	ICONST {
+		/*
+		 * Integer literals are intentionally represented as string constants.
+		 */
 		$$ = &lyx.AExprSConst{
-			Value: fmt.Sprintf("%+v", $1),
+			Value: fmt.Sprintf("%d", $1),
 		}
 	}
 
@@ -801,17 +805,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2}
 	}
-	| DROP KEY RANGE ALL
-	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
-	}
-	| DROP distribution_select_stmt opt_cascade
+	| DROP distribution_drop_selector opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
-	}
-	| DROP DISTRIBUTION ALL opt_cascade
-	{
-		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
 	}
 	| DROP SHARD any_id opt_cascade
 	{
@@ -841,14 +837,9 @@ drop_stmt:
 			},
 		}
 	}
-	| DROP REDISTRIBUTE TASK any_id opt_cascade
+	| DROP redistribute_task_drop_selector opt_cascade
 	{
-		$$ = &Drop{
-			Element: &RedistributeTaskSelector{
-				ID: $4,
-			},
-			CascadeDelete: $5,
-		}
+		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
 	| DROP MOVE TASK any_id
 	{
@@ -857,6 +848,45 @@ drop_stmt:
 				ID: $4,
 			},
 		}
+	}
+
+
+/*
+ * General-use selectors (do not accept ALL)
+ */
+key_range_select_stmt:
+	KEY RANGE any_id
+	{
+		$$ = &KeyRangeSelector{KeyRangeID: $3}
+	}
+	
+distribution_select_stmt:
+	DISTRIBUTION any_id
+	{
+		$$ = &DistributionSelector{ID: $2}
+	}
+
+/*
+ * Selectors used by DROP that accept either a concrete id or ALL ("*").
+ */
+distribution_drop_selector:
+	DISTRIBUTION any_id
+	{
+		$$ = &DistributionSelector{ID: $2}
+	}
+	| DISTRIBUTION ALL
+	{
+		$$ = &DistributionSelector{ID: `*`}
+	}
+
+redistribute_task_drop_selector:
+	REDISTRIBUTE TASK any_id
+	{
+		$$ = &RedistributeTaskSelector{ID: $3}
+	}
+	| REDISTRIBUTE TASK ALL
+	{
+		$$ = &RedistributeTaskSelector{ID: `*`}
 	}
 
 add_stmt:
@@ -1480,7 +1510,7 @@ help_word:
 	| SCHEMA { $$ = "SCHEMA" }
 
 lock_stmt:
-	LOCK key_range_stmt
+	LOCK key_range_select_stmt
 	{
 		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
 	}
@@ -1715,6 +1745,7 @@ any_id_list:
 	} 
 
 unlock_stmt:
+	/* We accept ALL here */
 	UNLOCK key_range_stmt
 	{
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
@@ -1730,14 +1761,8 @@ key_range_stmt:
 		$$ = &KeyRangeSelector{KeyRangeID: `*`}
 	}
 
-distribution_select_stmt:
-	DISTRIBUTION any_id
-	{
-		$$ = &DistributionSelector{ID: $2}
-	}
-
 split_key_range_stmt:
-	SPLIT key_range_stmt FROM any_id BY key_range_bound
+	SPLIT key_range_select_stmt FROM any_id BY key_range_bound
 	{
 		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: $6}
 	}
@@ -1756,7 +1781,7 @@ kill_stmt:
 
 
 move_key_range_stmt:
-	MOVE key_range_stmt TO any_id
+	MOVE key_range_select_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
@@ -1766,7 +1791,7 @@ opt_redistr_id:
 
 /* All of this is kinda uggly, refactor to make it more Postgresy */
 redistribute_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id
+	REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id
 	{
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
@@ -1776,7 +1801,7 @@ redistribute_stmt:
 			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1784,7 +1809,7 @@ redistribute_stmt:
 			Id: $6,
 			Check: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1792,7 +1817,7 @@ redistribute_stmt:
 			Id: $6,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1808,7 +1833,7 @@ opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }
 			| /*EMPTY*/						{ $$ = -1 }
 
 unite_key_range_stmt:
-	UNITE key_range_stmt WITH any_id
+	UNITE key_range_select_stmt WITH any_id
 	{
 		$$ = &UniteKeyRange{KeyRangeIDL: $2.KeyRangeID, KeyRangeIDR: $4}
 	}
@@ -1979,7 +2004,7 @@ icp_stmt:
 	}
 
 rename_stmt:
-	RENAME key_range_stmt TO any_id 
+	RENAME key_range_select_stmt TO any_id 
 	{
 		$$ = &Rename {
 			Element: $2,

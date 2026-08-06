@@ -58,19 +58,37 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 
 	rm.SetRO(ro)
 
-	if sph.ExecuteOn() == "" && !sph.ScatterQuery() {
-		if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+	/* If we were not asked for actual query routing, exit */
+	if !config.RouterConfig().Qr.AlwaysCheckRules {
+		mp := qr.tmgr.Snap()
+		if len(mp) == 1 {
+			return rm, nil
+		}
+	}
 
-			/* XXX: below is very hacky */
-			/* Does DRH force any executions? */
+	guc, err := sph.FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return nil, err
+	}
+	if guc.Get(sph) == "" && !sph.ScatterQuery() {
+		if planErr := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); planErr != nil {
+			spqrlog.Zero.Debug().Err(planErr).Err(planErr).Msg("failed to analyze query")
+
+			/* XXX: below is very hacky. We allow to set DRB to shard-name
+			* to force execution on specific shard. If so, skip analyze to allow
+			* query planner to pin-plan this query. */
+			guc, err := rm.SPH.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+			if err != nil {
+				return nil, err
+			}
+			drb := guc.Get(rm.SPH)
 			for _, sh := range qr.DataShardsRoutes() {
-				if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+				if sh.Name == drb {
 					return rm, nil
 				}
 			}
 
-			return nil, err
+			return nil, planErr
 		}
 	}
 	return rm, nil
@@ -172,7 +190,7 @@ func NewProxyRouter(tmgr topology.TopologyMgr,
 	/* XXX: fix this */
 	for k, v := range tmgr.Snap() {
 		if _, ok := skipMp[k]; !ok {
-			if err := mgr.AddDataShard(ctx, v); err != nil {
+			if err := mgr.AddDataShard(ctx, v, true); err != nil {
 				return nil, err
 			}
 		}

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"net/http"
 	_ "net/http/pprof"
@@ -73,8 +72,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  false,
-		SilenceErrors: false,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	startupOverrides Overrides
@@ -177,7 +176,7 @@ var runCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			log.Println("Running roles config:", rolesCfgStr)
+			spqrlog.Zero.Info().Str("config", rolesCfgStr).Msg("running roles config")
 		}
 
 		startupOverrides = collectOverrides(rootCmd)
@@ -206,7 +205,7 @@ var runCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			log.Println("Running coordinator config:", cfgStr)
+			spqrlog.Zero.Info().Str("config", cfgStr).Msg("running coordinator config")
 		}
 
 		if console && daemonize {
@@ -224,7 +223,7 @@ var runCmd = &cobra.Command{
 
 			d, err := ctx.Reborn()
 			if err != nil {
-				log.Fatal("Unable to run: ", err)
+				spqrlog.Zero.Fatal().Err(err).Msg("unable to run")
 			}
 			if d != nil {
 				return nil
@@ -491,7 +490,9 @@ var runCmd = &cobra.Command{
 
 		// run pprof without wait group
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
+			}
 		}()
 
 		wg.Wait()

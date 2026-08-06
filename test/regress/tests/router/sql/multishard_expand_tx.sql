@@ -68,5 +68,7 @@ DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
 
 DROP TABLE xxm_expd;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

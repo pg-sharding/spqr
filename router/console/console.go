@@ -80,7 +80,12 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	var cf func()
 	var err error
 
+	cli := clientinteractor.NewPSQLInteractor(rc)
 	switch tstmt := tstmt.(type) {
+	case nil:
+		/* ProcMetadataCommand can be called inside router's planned, so it
+		* will normally reject nil statement. Handle this ourselves */
+		return cli.ReplyEQR()
 	case *spqrparser.Show:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
@@ -137,8 +142,6 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		defer cf()
 	}
 
-	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	cli := clientinteractor.NewPSQLInteractor(rc)
 	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false, rc)
 	if err != nil {
 		return cli.ReportError(err)
@@ -154,10 +157,9 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		return fmt.Errorf("failed to parse query \"%s\": %w", q, err)
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("query", q).
-		Type("type", tstmt).
-		Msg("processQueryInternal: parsed query with type")
+		Msg("processQueryInternal: parsed query")
 
 	for _, stmt := range tstmt {
 		if err := l.ExecuteMetadataQuery(ctx, stmt, rc, gc); err != nil {

@@ -428,6 +428,10 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
+	if left == nil || right == nil {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
+	}
+
 	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
 		left, right = right, left
 	}
@@ -441,8 +445,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
-	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
+	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "wrong bound ordering: right < left")
 	}
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
@@ -691,13 +695,16 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 //
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
-func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
 	client := proto.NewShardServiceClient(a.conn)
 	protoShard, err := topology.DataShardToProto(shard, true)
 	if err != nil {
 		return err
 	}
-	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{Shard: protoShard})
+	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{
+		Shard: protoShard,
+		Force: force,
+	})
 	return spqrerror.CleanGrpcError(err)
 }
 

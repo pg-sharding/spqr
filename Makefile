@@ -118,6 +118,9 @@ unittest:
 	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
 	go test -race -count 20 -timeout 30s ./qdb/...
 
+bench:
+	go test -run '^$$' -bench . -benchmem ./router/planner/... ./router/qparser/...
+
 etcdqdb_test:
 	go test -timeout 120s ./test/etcdqdb_integration/... 
 
@@ -238,7 +241,7 @@ yaccgen:
 
 gen: gogen yaccgen mockgen
 
-generate: build_images
+generate:
 	docker build -f docker/generator/Dockerfile -t spqr-generator .
 	docker run --name spqr-generator-1 spqr-generator
 	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos

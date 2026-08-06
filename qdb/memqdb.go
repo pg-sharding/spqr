@@ -960,7 +960,7 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 		ds.Version++
 
 		for _, r := range rels {
-			/* Do not use public iface function, because we already got lock. */
+			/* Do not use public iface function, because we already acquired lock. */
 			if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
 				/* Well, okay. We already have distribution for relation with
 				* this exact relname. What about schema?

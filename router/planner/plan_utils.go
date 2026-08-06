@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -227,7 +228,146 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			IsDDL: true,
 		}, nil
 
-	case *lyx.Alter, *lyx.Drop, *lyx.DropTable, *lyx.Truncate:
+	case *lyx.DropTable:
+		if !setUpSpqrguard {
+			return &plan.ScatterPlan{
+				IsDDL: true,
+			}, nil
+		}
+		// DROP TABLE, need to modify spqr_metadata
+
+		p := &plan.ScatterPlan{
+			IsDDL: true,
+		}
+		isReferenceRel := false
+		tmpPlan := &plan.ScatterPlan{
+			IsDDL:    true,
+			SubSlice: p,
+			OverwriteCC: &pgproto3.CommandComplete{
+				CommandTag: []byte("DROP TABLE"),
+			},
+		}
+
+		/* TODO: do we need this? */
+		p.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level drop table slice")
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("%s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		/* TODO: do we need this? */
+		tmpPlan.RunF = func(serv server.Server) error {
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run DROP TABLE outer slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						/* TODO: add setting for ignoring this error */
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		oq := make([]string, 0, len(node.TableRv))
+
+		for _, dsRel := range node.TableRv {
+			rv, ok := dsRel.(*lyx.RangeVar)
+			if !ok {
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
+			}
+			relname := rfqn.RelationFQNFromRangeRangeVar(rv)
+			iis, err := rm.Mgr.ListUniqueIndexes(ctx)
+			if err != nil {
+				return nil, err
+			}
+			found := false
+			for _, is := range iis {
+				if is.ID == relname.String() {
+					/* this is an index table */
+					found = true
+					break
+				}
+			}
+			if !found {
+				ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+				if err != nil {
+					return nil, err
+				}
+				if ds.Id == distributions.REPLICATED {
+					isReferenceRel = true
+				}
+			}
+			relFQN := rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName)
+			tmpPlan.OverwriteQuery = make(map[string]string)
+			p.OverwriteQuery = make(map[string]string)
+			relType := "distributed"
+			if isReferenceRel {
+				relType = "reference"
+			}
+			if node.MissingOk {
+				oq = append(oq, fmt.Sprintf("DELETE FROM spqr_metadata.spqr_%s_relations WHERE reloid in (SELECT c.oid FROM pg_class c JOIN pg_namespace n ON c.oid = n.oid WHERE c.relname = '%s' AND n.nspname = '%s')", relType, relFQN.RelationName, relFQN.GetSchema()))
+			} else {
+				oq = append(oq, fmt.Sprintf("SELECT spqr_metadata.unmark_%s_relation('%s')", relType, relFQN.String()))
+			}
+		}
+
+		shards, err := rm.Mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		targets := make([]kr.ShardKey, len(shards))
+		for i, sh := range shards {
+			p.OverwriteQuery[sh.ID] = strings.Join(oq, ";")
+			tmpPlan.OverwriteQuery[sh.ID] = rm.Query
+			targets[i] = kr.ShardKey{
+				Name: sh.ID,
+			}
+		}
+		p.ExecTargets = targets
+
+		return tmpPlan, nil
+
+	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return &plan.ScatterPlan{

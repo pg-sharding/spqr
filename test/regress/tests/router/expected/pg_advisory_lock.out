@@ -3,7 +3,7 @@ SET __spqr__advisory_lock_behaviour TO SCATTER;
 SHOW __spqr__advisory_lock_behaviour;
  advisory lock behaviour 
 -------------------------
- scatter
+ SCATTER
 (1 row)
 
 SET __spqr__engine_v2 TO off;
@@ -17,7 +17,7 @@ SET __spqr__advisory_lock_behaviour TO BLOCK;
 SHOW __spqr__advisory_lock_behaviour;
  advisory lock behaviour 
 -------------------------
- block
+ BLOCK
 (1 row)
 
 SELECT pg_advisory_lock(11);
@@ -33,3 +33,87 @@ QUERY:  SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
 ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
 QUERY:  SELECT pg_advisory_xact_lock(11);
+SET __spqr__advisory_lock_behaviour TO SCATTER;
+BEGIN;
+SELECT pg_advisory_lock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_lock 
+------------------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SELECT pg_advisory_unlock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_unlock 
+--------------------
+ t
+ t
+ t
+ t
+(4 rows)
+
+ROLLBACK;
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ true
+(1 row)
+
+RESET __spqr__session_connections_pin;
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ false
+(1 row)
+
+SELECT pg_advisory_lock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_lock 
+------------------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ true
+(1 row)
+
+SELECT pg_advisory_unlock(12);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_unlock 
+--------------------
+ t
+ t
+ t
+ t
+(4 rows)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ true
+(1 row)
+
+SELECT pg_advisory_unlock_all();
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ pg_advisory_unlock_all 
+------------------------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ false
+(1 row)
+

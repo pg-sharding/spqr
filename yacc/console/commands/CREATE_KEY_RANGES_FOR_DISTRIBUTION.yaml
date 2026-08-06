@@ -1,0 +1,64 @@
+name: CREATE KEY RANGES FOR DISTRIBUTION
+snippet: key_range_commands
+description: |
+  Automatically creates a set of uniformly distributed key ranges for a distribution.
+  Instead of defining each key range manually, this command inspects the distribution's
+  column type, splits the whole key space (or an explicitly supplied range) into equal
+  parts, and creates one key range per target shard.
+
+  The key space is divided evenly across the selected shards, and each resulting key
+  range is assigned to one shard in order. Generated key ranges are named
+  `<distributionID>-<index>`, where index starts at 0.
+
+  By default the command uses the full value range of the distribution column type.
+  Use the optional BETWEEN clause to bound the generated key ranges to a specific
+  interval. When no shard selection is given, key ranges are created for all shards.
+
+  This command only supports distributions with a single, hashable (numeric) sharding
+  column. Composite keys and non-hashable types such as varchar or uuid are not
+  supported; use CREATE KEY RANGE to define those ranges manually.
+
+syntax: |
+  CREATE KEY RANGES FOR DISTRIBUTION <distributionID>
+    [ BETWEEN <lowerBound> AND <upperBound> ]
+    [ USING ALL SHARDS | USING SHARDS <shardID> [, ...] ]
+
+parameters:
+  - name: distributionID
+    description: Distribution ID the generated key ranges belong to
+  - name: lowerBound
+    description: Optional lower boundary (inclusive) of the value interval to split. Requires the BETWEEN clause
+  - name: upperBound
+    description: Optional upper boundary of the value interval to split. Requires the BETWEEN clause
+  - name: shardID
+    description: Shard ID to place a generated key range on. Multiple shards are comma-separated
+
+examples:
+  - description: Create key ranges for all shards (default)
+    code: CREATE KEY RANGES FOR DISTRIBUTION ds1;
+  - description: Create key ranges explicitly for all shards
+    code: CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+  - description: Create key ranges for a subset of shards
+    code: CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+  - description: Split a bounded interval across all shards
+    code: |
+      CREATE KEY RANGES FOR DISTRIBUTION ds1 
+      BETWEEN 0 AND 1000 USING ALL SHARDS;
+  - description: Split a bounded interval across selected shards
+    code: |
+      CREATE KEY RANGES FOR DISTRIBUTION ds1 
+      BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+
+tips:
+  - The number of generated key ranges equals the number of selected shards
+  - Only single-column distributions with hashable numeric types are supported
+  - The command fails if a generated key range would intersect an existing one; drop conflicting key ranges first
+  - Use SHOW KEY RANGES to inspect the boundaries produced by the command
+  - Use CREATE KEY RANGE for composite keys or non-hashable column types
+
+related_commands:
+  - CREATE KEY RANGE
+  - SHOW KEY RANGES
+  - DROP KEY RANGE
+  - SPLIT KEY RANGE
+  - UNITE KEY RANGE

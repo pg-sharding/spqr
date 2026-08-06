@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -233,12 +234,13 @@ func pstmtDoesNotExistsErr(name string) error {
 
 func (rst *RelayStateImpl) Close() error {
 	_ = rst.Reset()
+	rst.QueryExecutor().Close()
 
 	return rst.Cl.Close()
 }
 
 func (rst *RelayStateImpl) Cleanup() error {
-	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+	err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 
 	if err != nil {
 		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
@@ -326,15 +328,18 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Str("drb", rst.Client().DefaultRouteBehaviour()).
-		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("create plan for current statement")
-
 	var queryPlan plan.Plan
 
-	if v := rst.Client().ExecuteOn(); v != "" {
+	guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return nil, err
+	}
+	if v := guc.Get(rst.Client()); v != "" {
+
+		spqrlog.Zero.Debug().
+			Str("exec_on", v).
+			Msg("forcing current statement to execute on dedicated shard")
+
 		queryPlan = &plan.ShardDispatchPlan{
 			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{
@@ -369,11 +374,15 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	if rm != nil && rm.UsedSelectQueryAdjust && rst.Client().ShowNoticeMsg() {
+	rGuc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return nil, err
+	}
+	if rm != nil && rm.UsedSelectQueryAdjust && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
-	if queryPlan.Hints().AutoLinearize && rst.Client().ShowNoticeMsg() {
+	if queryPlan.Opts().AutoLinearize && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
@@ -663,7 +672,50 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	return retMsg, nil
 }
 
+func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
+	dMsg *pgproto3.Describe, p plan.Plan) (*PortalDesc, error) {
+
+	/* SingleShard or random shard plans */
+
+	err := rst.PrepareTargetDispatchExecutionSlice(p)
+	if err != nil {
+		return nil, err
+	}
+
+	rst.routingDecisionPlan = p
+
+	if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
+		return nil, err
+	}
+
+	var bnd *pgproto3.Bind
+
+	if name == "" {
+		bnd = &rst.saveBind
+	} else {
+		bnd = rst.saveBindNamed[name]
+	}
+
+	/* XXX: maybe optimize allocation here */
+
+	if dMsg == nil {
+		dMsg = &pgproto3.Describe{
+			ObjectType: objType,
+			Name:       name,
+		}
+	}
+
+	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
+	if err != nil {
+		return nil, err
+	}
+
+	rst.savedPortalDesc[rst.lastBindName] = cachedPd
+	return cachedPd, nil
+}
+
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
+	var err error
 	// save txstatus because it may be overwritten if we have no backend connection
 	saveTxStat := rst.qse.TxStatus()
 
@@ -678,27 +730,16 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			Str("last-bind-name", rst.lastBindName).
 			Msg("Describe portal")
 
-		if portDesc, ok := rst.savedPortalDesc[rst.lastBindName]; ok {
-			if portDesc.rd != nil {
-				// send to the client
-				if err := rst.Client().Send(portDesc.rd); err != nil {
-					return err
-				}
-			}
-			if portDesc.nodata != nil {
-				// send to the client
-				if err := rst.Client().Send(portDesc.nodata); err != nil {
-					return err
-				}
-			}
-		} else {
+		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
+
+		if !ok {
 
 			p := rst.bindQueryPlan
 			if name != "" {
 				if _, ok := rst.executeMp[name]; !ok {
 					return spqrerror.New(
 						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
-						fmt.Sprintf("portal \"%s\" does not exists", name))
+						fmt.Sprintf("portal \"%s\" does not exist", name))
 				}
 				p = rst.bindQueryPlanMP[name]
 			}
@@ -707,62 +748,37 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			case *plan.VirtualPlan:
 				// skip deploy
 
-				// send to the client
-				if err := rst.Client().Send(&pgproto3.RowDescription{
-					Fields: q.TTS.Desc,
-				}); err != nil {
-					return err
+				if q.SubPlan == nil {
+					// send to the client
+					portDesc = &PortalDesc{
+						rd: &pgproto3.RowDescription{
+							Fields: q.TTS.Desc,
+						},
+					}
+				} else {
+					// like default
+					if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+						return err
+					}
 				}
 
 			default:
-				/* SingleShard or random shard plans */
-
-				err := rst.PrepareTargetDispatchExecutionSlice(p)
-				if err != nil {
+				if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 					return err
 				}
+			}
+		}
 
-				rst.routingDecisionPlan = p
-
-				if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
-					return err
-				}
-
-				var bnd *pgproto3.Bind
-
-				if name == "" {
-					bnd = &rst.saveBind
-				} else {
-					bnd = rst.saveBindNamed[name]
-				}
-
-				/* XXX: maybe optimize allocation here */
-
-				if dMsg == nil {
-					dMsg = &pgproto3.Describe{
-						ObjectType: objType,
-						Name:       name,
-					}
-				}
-
-				cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
-				if err != nil {
-					return err
-				}
-				if cachedPd.rd != nil {
-					// send to the client
-					if err := rst.Client().Send(cachedPd.rd); err != nil {
-						return err
-					}
-				}
-				if cachedPd.nodata != nil {
-					// send to the client
-					if err := rst.Client().Send(cachedPd.nodata); err != nil {
-						return err
-					}
-				}
-
-				rst.savedPortalDesc[rst.lastBindName] = cachedPd
+		if portDesc.rd != nil {
+			// send to the client
+			if err := rst.Client().Send(portDesc.rd); err != nil {
+				return err
+			}
+		}
+		if portDesc.nodata != nil {
+			// send to the client
+			if err := rst.Client().Send(portDesc.nodata); err != nil {
+				return err
 			}
 		}
 	} else {
@@ -1028,7 +1044,14 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 		rst.execute = nil
 		rst.bindQueryPlan = nil
 	} else {
-		err = rst.executeMp[portal](maxrows)
+		f, ok := rst.executeMp[portal]
+		if !ok {
+			return spqrerror.New(
+				spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
+				fmt.Sprintf("portal \"%s\" does not exist", portal))
+		}
+
+		err = f(maxrows)
 		/* Note we do not delete from executeMP, this is intentional */
 		rst.bindQueryPlanMP[portal] = nil
 	}
@@ -1047,6 +1070,17 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 
 func (rst *RelayStateImpl) PipelineCleanup() {
 	rst.bindQueryPlan = nil
+
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		/* XXX: normally these two map should be either both empty
+		* either both not */
+		if len(rst.bindQueryPlanMP) > 0 {
+			rst.bindQueryPlanMP = map[string]plan.Plan{}
+		}
+		if len(rst.executeMp) > 0 {
+			rst.executeMp = map[string]func(maxrows uint32) error{}
+		}
+	}
 	rst.WaitSync = false
 }
 
@@ -1266,12 +1300,12 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	}
 
 	if bindPlan == nil {
-		return fmt.Errorf("failed to use hint route")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "failed to use hint route")
 	}
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 	if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return err
 		}
 		rst.QueryExecutor().ActiveShardsReset()
@@ -1307,7 +1341,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	cf := func() error {
 		/* Active shards should be same as p.ExecutionTargets */
-		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+		err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 		rst.QueryExecutor().ActiveShardsReset()
 		return err
 	}
@@ -1316,7 +1350,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if len(rst.QueryExecutor().ActiveShards()) == 1 {
 		return currentPlan, cf, nil
 	} else if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return nil, noopCloseRouteFunc, err
 		}
 		rst.QueryExecutor().ActiveShardsReset()
@@ -1365,7 +1399,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 			return err
 		}
 
-		if rst.Client().ShowNoticeMsg() {
+		guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+		if err != nil {
+			return err
+		}
+		if guc.Get(rst.Client()) {
 			_ = rst.Client().ReplyNotice("start implicit transaction because of multishard modify plan")
 		}
 	}

@@ -68,6 +68,9 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl := mockcl.NewMockRouterClient(ctrl)
 	srv := mocksrv.NewMockServer(ctrl)
+
+	sh := mocksh.NewMockShardHostInstance(ctrl)
+
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
@@ -79,15 +82,22 @@ func TestFrontendSimple(t *testing.T) {
 		Usr: "user1",
 	}
 
+	/* Misc test init */
 	_ = statistics.InitStatisticsStr(nil)
+	config.RouterConfig().ForceConnectionCleanup = true
+	defer func() {
+		config.RouterConfig().ForceConnectionCleanup = false
+	}()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 
 	srv.EXPECT().TxStatus().AnyTimes()
-	srv.EXPECT().UnRouteShard(gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(sh, nil)
 	srv.EXPECT().Reset().AnyTimes()
+
+	sh.EXPECT().Close().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
@@ -96,13 +106,14 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
-	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
-	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
+	cl.EXPECT().FindBoolGUC(gomock.Any()).AnyTimes().Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.StrGUCs[3], nil)
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).AnyTimes().Return(false)
+	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_EXECUTE_ON, gomock.Any()).AnyTimes().Return("")
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
-	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
@@ -124,11 +135,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
-
-	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
-
-	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
@@ -157,8 +163,8 @@ func TestFrontendSimple(t *testing.T) {
 
 	srv.EXPECT().SendShard(query, gomock.Any()).Times(1).Return(nil)
 
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{}, uint(0), nil)
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.DataRow{
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.RowDescription{}, uint(0), nil)
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.DataRow{
 		Values: [][]byte{
 			[]byte(
 				"1",
@@ -166,10 +172,10 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, uint(0), nil)
 
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.CommandComplete{
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.CommandComplete{
 		CommandTag: []byte("SELECT"),
 	}, uint(0), nil)
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
+	srv.EXPECT().Receive(gomock.Any()).Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, uint(0), nil)
 
@@ -202,6 +208,12 @@ func TestFrontendXProto(t *testing.T) {
 		PoolMode: config.PoolModeTransaction,
 	}
 
+	/* Misc test init */
+	config.RouterConfig().ForceConnectionCleanup = true
+	defer func() {
+		config.RouterConfig().ForceConnectionCleanup = false
+	}()
+
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
@@ -211,7 +223,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 	srv.EXPECT().TxStatus().AnyTimes()
-	srv.EXPECT().UnRouteShard(gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(sh, nil)
 	srv.EXPECT().Reset().AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
@@ -224,7 +236,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
-	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
 	cl.EXPECT().Unroute().AnyTimes()
 
@@ -292,9 +303,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().PreparedStatementDefinitionByName("stmtcache_1").AnyTimes().Return(def)
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
-	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
-
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}
 
@@ -348,6 +356,8 @@ func TestFrontendXProto(t *testing.T) {
 	sh.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
+
+	sh.EXPECT().Close().AnyTimes()
 
 	// receive this 4 msgs
 	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)

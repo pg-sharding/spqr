@@ -31,6 +31,51 @@ CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
     ROUTE TO shard3 FOR DISTRIBUTION ds3;
 ```
 
+### CREATE KEY RANGES FOR DISTRIBUTION
+
+Automatically creates a set of uniformly distributed key ranges for a distribution.
+Instead of defining each key range manually, this command inspects the distribution's
+column type, splits the whole key space (or an explicitly supplied range) into equal
+parts, and creates one key range per target shard.
+
+The key space is divided evenly across the selected shards, and each resulting key
+range is assigned to one shard in order. Generated key ranges are named
+`<distributionID>-<index>`, where index starts at 0.
+
+By default the command uses the full value range of the distribution column type.
+Use the optional BETWEEN clause to bound the generated key ranges to a specific
+interval. When no shard selection is given, key ranges are created for all shards.
+
+This command only supports distributions with a single, hashable (numeric) sharding
+column. Composite keys and non-hashable types such as varchar or uuid are not
+supported; use CREATE KEY RANGE to define those ranges manually.
+
+
+```sql
+CREATE KEY RANGES FOR DISTRIBUTION <distributionID>
+  [ BETWEEN <lowerBound> AND <upperBound> ]
+  [ USING ALL SHARDS | USING SHARDS <shardID> [, ...] ]
+```
+
+**Examples:**
+
+```sql
+-- Create key ranges for all shards (default)
+CREATE KEY RANGES FOR DISTRIBUTION ds1;
+-- Create key ranges explicitly for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+-- Create key ranges for a subset of shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+-- Split a bounded interval across all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 
+BETWEEN 0 AND 1000 USING ALL SHARDS;
+
+-- Split a bounded interval across selected shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 
+BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+
+```
+
 ### DROP KEY RANGE
 
 Removes a key range from the cluster. This deletes the key range metadata
@@ -70,7 +115,7 @@ LOCK KEY RANGE <keyRangeID>
 ### MOVE KEY RANGE
 
 Updates the routing metadata to assign a key range to a different shard.
-This only changes where new queries for this key range are routed — it does NOT
+This only changes where new queries for this key range are routed - it does NOT
 migrate the actual data between shards.
 
 

@@ -282,3 +282,112 @@ func TestValidateKeyRangeForModify_unknownShardReturnsHint(t *testing.T) {
 		is.Equal("Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
 	}
 }
+
+func TestSplitEqualFullKeyRange(t *testing.T) {
+	tests := []struct {
+		name     string
+		colTypes []string
+		shards   int
+		rng      *kr.CustomDataTypeRange
+		expected []kr.KeyRangeBound
+	}{
+		{
+			"uinteger with 1 shard [0-100]",
+			[]string{qdb.ColumnTypeUinteger},
+			1,
+			&kr.CustomDataTypeRange{
+				LowerBound: kr.KeyRangeBound{uint64(0)},
+				UpperBound: kr.KeyRangeBound{uint64(100)},
+			},
+			[]kr.KeyRangeBound{{uint64(0)}},
+		},
+		{
+			"uinteger with 2 shards [0-100]",
+			[]string{qdb.ColumnTypeUinteger},
+			2,
+			&kr.CustomDataTypeRange{
+				LowerBound: kr.KeyRangeBound{uint64(0)},
+				UpperBound: kr.KeyRangeBound{uint64(100)},
+			},
+			[]kr.KeyRangeBound{
+				{uint64(50)},
+				{uint64(0)},
+			},
+		},
+		{
+			"uinteger with 4 shards [0-100]",
+			[]string{qdb.ColumnTypeUinteger},
+			4,
+			&kr.CustomDataTypeRange{
+				LowerBound: kr.KeyRangeBound{uint64(0)},
+				UpperBound: kr.KeyRangeBound{uint64(100)},
+			},
+			[]kr.KeyRangeBound{
+				{uint64(75)},
+				{uint64(50)},
+				{uint64(25)},
+				{uint64(0)},
+			},
+		},
+		{
+			"uinteger with 4 shards",
+			[]string{qdb.ColumnTypeUinteger},
+			4,
+			nil,
+			[]kr.KeyRangeBound{
+				{uint64(13835058055282163709)},
+				{uint64(9223372036854775806)},
+				{uint64(4611686018427387903)},
+				{uint64(0)},
+			},
+		},
+
+		{
+			"integer with 1 shard [0-100]",
+			[]string{qdb.ColumnTypeInteger},
+			1,
+			&kr.CustomDataTypeRange{
+				LowerBound: kr.KeyRangeBound{int64(0)},
+				UpperBound: kr.KeyRangeBound{int64(100)},
+			},
+			[]kr.KeyRangeBound{
+				{int64(0)},
+			},
+		},
+		{
+			"integer with 4 shards [-100 - 100]",
+			[]string{qdb.ColumnTypeInteger},
+			4,
+			&kr.CustomDataTypeRange{
+				LowerBound: kr.KeyRangeBound{int64(-100)},
+				UpperBound: kr.KeyRangeBound{int64(100)},
+			},
+			[]kr.KeyRangeBound{
+				{int64(50)},
+				{int64(0)},
+				{int64(-50)},
+				{int64(-100)},
+			},
+		},
+		{
+			"integer with 4 shards",
+			[]string{qdb.ColumnTypeInteger},
+			4,
+			nil,
+			[]kr.KeyRangeBound{
+				{int64(4611686018427387901)},
+				{int64(-2)},
+				{int64(-4611686018427387905)},
+				{int64(-9223372036854775808)},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			krs, err := meta.SplitEqualFullKeyRange(tc.colTypes, tc.shards, tc.rng)
+			assert.NoError(t, err)
+			assert.EqualValues(t, tc.expected, krs)
+		})
+	}
+}

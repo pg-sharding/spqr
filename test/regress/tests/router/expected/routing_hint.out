@@ -243,6 +243,21 @@ NOTICE: send query to shard(s) : sh1
  10 |  10
 (3 rows)
 
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+ERROR:  shard xxxxx does not exist
+QUERY:  SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */;
+/* ERROR */
+SET __spqr__execute_on TO sh1xxx;
+ERROR:  shard sh1xxx does not exist
+QUERY:  /* ERROR */
+SET __spqr__execute_on TO sh1xxx;
+SET __spqr__execute_on TO ''; -- reset
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ 
+(1 row)
+
 SHOW __spqr__scatter_query; -- error
 ERROR:  parameter "__spqr__scatter_query" isn't user accessible
 QUERY:  SHOW __spqr__scatter_query;
@@ -250,6 +265,13 @@ SHOW __spqr__default_route_behaviour;
  default route behaviour 
 -------------------------
  
+(1 row)
+
+SET __spqr__execute_on TO sh1;
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ sh1
 (1 row)
 
 RESET __spqr__execute_on;
@@ -303,10 +325,18 @@ NOTICE: send query to shard(s) : sh2
 \c regress
 DROP TABLE test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test_h;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-DROP TABLE test_unmatch;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE test_unmatch /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
