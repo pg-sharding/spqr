@@ -210,7 +210,7 @@ func getTimeBuckets(statType statistics.StatisticsType) map[float64]float64 {
 }
 
 func (qr *ProxyQrouter) registerMetrics() {
-	totalConnectionsMetric := &metrics.DynamicGauge{
+	totalConnectionsMetric := &metrics.DynamicCounter{
 		Name: metrics.ClientConnectionsTCPTotalName,
 		Help: "Current number of client tcp connections",
 		Getter: func() float64 {
@@ -219,7 +219,41 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Value: 0,
 	}
 
-	inboundQueriesTotalMetric := &metrics.DynamicGauge{
+	activeConnectionsMetric := &metrics.DynamicGauge{
+		Name: metrics.ActiveTCPCountName,
+		Help: "Current number of active client tcp connections",
+		Getter: func() float64 {
+			return float64(qr.csm.ActiveTCPCount())
+		},
+		Value: 0,
+	}
+
+	totalCancelCount := &metrics.DynamicCounter{
+		Name: metrics.CancelRequestCountName,
+		Help: "Number of requests canceled from client side",
+		Getter: func() float64 {
+			return float64(qr.csm.TotalCancelCount())
+		},
+		Value: 0,
+	}
+	failedInitCount := &metrics.DynamicCounter{
+		Name: metrics.ClientInitFailCountName,
+		Help: "Failed client connection initialisation count",
+		Getter: func() float64 {
+			return float64(qr.csm.FailedInitCount())
+		},
+		Value: 0,
+	}
+	failedAuthCount := &metrics.DynamicCounter{
+		Name: metrics.ClientAuthFailCountName,
+		Help: "Failed client connection authentication count",
+		Getter: func() float64 {
+			return float64(qr.csm.FailedAuthCount())
+		},
+		Value: 0,
+	}
+
+	inboundQueriesTotalMetric := &metrics.DynamicCounter{
 		Name: metrics.InboundQueriesTotalName,
 		Help: "Number of incoming queries",
 		Getter: func() float64 {
@@ -228,8 +262,8 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Value: 0,
 	}
 	routerTimeMetric := &metrics.DynamicSummary{
-		Name: metrics.RouterTimeSummary,
-		Help: "routing latency time quantiles",
+		Name: metrics.RouterTimeSummaryName,
+		Help: "Routing latency time quantiles",
 		GetSum: func() float64 {
 			return statistics.GetRouterTimeTotalSum()
 		},
@@ -239,8 +273,8 @@ func (qr *ProxyQrouter) registerMetrics() {
 		GetQuantiles: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeRouter) },
 	}
 	shardTimeMetric := &metrics.DynamicSummary{
-		Name: metrics.ShardTimeSummary,
-		Help: "shard latency time quantiles",
+		Name: metrics.ShardTimeSummaryName,
+		Help: "Shard latency time quantiles",
 		GetSum: func() float64 {
 			return statistics.GetShardTimeTotalSum()
 		},
@@ -250,8 +284,12 @@ func (qr *ProxyQrouter) registerMetrics() {
 		GetQuantiles: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeShard) },
 	}
 
-	qr.metricRegistry.RegisterDynamicGauge(totalConnectionsMetric)
-	qr.metricRegistry.RegisterDynamicGauge(inboundQueriesTotalMetric)
+	qr.metricRegistry.RegisterDynamicCounter(totalConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicGauge(activeConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicCounter(totalCancelCount)
+	qr.metricRegistry.RegisterDynamicCounter(failedInitCount)
+	qr.metricRegistry.RegisterDynamicCounter(failedAuthCount)
+	qr.metricRegistry.RegisterDynamicCounter(inboundQueriesTotalMetric)
 	qr.metricRegistry.RegisterDynamicSummary(routerTimeMetric)
 	qr.metricRegistry.RegisterDynamicSummary(shardTimeMetric)
 }
