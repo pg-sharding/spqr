@@ -1007,7 +1007,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 	opsLockCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	if _, err := qc.LockKeyRangeOps(opsLockCtx, req.KeyRangeID); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to aquire key range operation lock", err)
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to aquire key range operation lock: %w", err)
 	}
 	// ??: maybe redundant, cancellation of the context may suffice
 	defer func() {
