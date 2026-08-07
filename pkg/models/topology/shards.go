@@ -178,7 +178,7 @@ func parseHosts(rawHosts []string) (parsedHosts []config.Host, parsedAddresses [
 
 func (ds *DataShard) infos() *HostsInfo {
 	hi := ds.HostsInfo.Load()
-	/* XXX: hi == nil shouldn't happend */
+	/* XXX: hi == nil shouldn't happen */
 	if hi == nil {
 		return nil
 	}
