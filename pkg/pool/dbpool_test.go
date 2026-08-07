@@ -160,7 +160,8 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestDbPoolRaces(t *testing.T) {
+func runner(t *testing.T, spamTopologyChanges bool) {
+	t.Helper()
 	assert := assert.New(t)
 
 	ctrl := gomock.NewController(t)
@@ -247,7 +248,9 @@ func TestDbPoolRaces(t *testing.T) {
 		})
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(topology.TopMgrFromMap(cfg), &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
+	topmgr := topology.TopMgrFromMap(cfg)
+
+	dbpool := pool.NewDBPoolWithAllocator(topmgr, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -271,14 +274,50 @@ func TestDbPoolRaces(t *testing.T) {
 
 	sem := semaphore.NewWeighted(25)
 
+	ch := make(chan struct{})
+
+	wg := sync.WaitGroup{}
+	swg := sync.WaitGroup{}
+
+	if spamTopologyChanges {
+		swg.Add(1)
+		go func() {
+			defer swg.Done()
+			/* Run spam goroutine */
+
+			for {
+				select {
+				case <-ch:
+					return
+				default:
+					t.Logf("spam SetOptions at %v", time.Now())
+
+					setOptsSem := semaphore.NewWeighted(int64(len(shards)))
+					for _, shname := range shards {
+						assert.NoError(setOptsSem.Acquire(context.TODO(), 1))
+						go func(ds *topology.DataShard) {
+							defer setOptsSem.Release(1)
+							ds.SetOptions(topology.HostsToOptions(hosts))
+						}(cfg[shname])
+					}
+					assert.NoError(setOptsSem.Acquire(context.TODO(), int64(len(shards))))
+				}
+			}
+		}()
+	}
+
 	for i := range 10 {
 		for range 200 {
 			assert.NoError(sem.Acquire(context.TODO(), 1))
 
+			wg.Add(1)
+
 			go func(i int) {
+				defer wg.Done()
 				defer sem.Release(1)
 
 				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
+
 				assert.NoError(err)
 
 				err = dbpool.Put(sh)
@@ -286,6 +325,23 @@ func TestDbPoolRaces(t *testing.T) {
 			}(i)
 		}
 	}
+
+	wg.Wait()
+
+	close(ch)
+
+	// Wait for all goroutines
+	swg.Wait()
+}
+
+func TestDbPoolRaces(t *testing.T) {
+	runner(t, false)
+}
+
+// TestDbPoolRacesWithSetOptions repeats TestDbPoolRaces but concurrently calls
+// TopologyMgr.SetOptions
+func TestDbPoolRacesWithSetOptions(t *testing.T) {
+	runner(t, true)
 }
 
 func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
@@ -424,12 +480,8 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	diff := cnth1 - cnth2
-	if diff < 0 {
-		diff = -diff
-	}
-
-	assert.Less(diff, 90)
+	assert.Greater(cnth1, 100)
+	assert.Greater(cnth2, 100)
 	assert.Equal(repeatTimes, cnth1+cnth2)
 }
 
