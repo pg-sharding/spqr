@@ -114,16 +114,15 @@ LOCK KEY RANGE <keyRangeID>
 
 ### MOVE KEY RANGE
 
-Updates the routing metadata to assign a key range to a different shard.
-This only changes where new queries for this key range are routed - it does NOT
-migrate the actual data between shards.
-
-
-<Warning>MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.</Warning>
+Moves the data belonging to a key range to the specified shard.
+If META ONLY key word is given, then the command only updates the metadata i.e. changes query routing, NOT the data placement.
+MOVE KEY RANGE ... META ONLY requires the key range to be locked prior.
+Non-META ONLY version locks all the data for update & lacks pre-run checks, so it's discouraged to use
+in favour of REDISTRIBUTE KEY RANGE. This version is only available in installations with SPQR-coordinator.
 
 
 ```sql
-MOVE KEY RANGE <keyRangeID> TO <shardID>
+MOVE KEY RANGE <keyRangeID> TO <shardID> [META ONLY]
 ```
 
 **Examples:**
