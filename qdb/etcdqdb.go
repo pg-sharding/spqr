@@ -585,6 +585,14 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	return err
 }
 
+func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, error) {
+	panic("not implemented")
+}
+
+func (q *EtcdQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	panic("not implemented")
+}
+
 func (q *EtcdQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").

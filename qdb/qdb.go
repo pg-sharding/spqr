@@ -81,6 +81,8 @@ type QDB interface {
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
+	LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, error)
+	UnlockKeyRangeOps(ctx context.Context, id string) error
 	UnlockKeyRange(ctx context.Context, id string) error
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ListLockedKeyRanges(ctx context.Context) ([]string, error)

@@ -523,6 +523,15 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
+
+func (q *MemQDB) LockKeyRangeOps(_ context.Context, id string) (*KeyRange, error) {
+	panic("not implemented")
+}
+
+func (q *MemQDB) UnlockKeyRangeOps(_ context.Context, id string) error {
+	panic("not implemented")
+}
+
 func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
