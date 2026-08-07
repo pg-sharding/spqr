@@ -76,6 +76,27 @@ func TestDBPool_CacheCleanupGoroutine(t *testing.T) {
 	// Test passes if no panic occurs during cleanup stop
 }
 
+// TestDBPool_StopCacheWatchdog verifies that StopWatchdog stops the cleanup
+// goroutine: entries added after the stop are NOT evicted by the background worker.
+func TestDBPool_StopCacheWatchdog(t *testing.T) {
+	const ttl = 20 * time.Millisecond
+	const tick = 5 * time.Millisecond
+
+	cache := NewDbpoolCacheWithCleanup(ttl, tick)
+	cache.StopWatchdog()
+
+	// Wait long enough that, if the goroutine were still running, it would have fired.
+	time.Sleep(ttl + 3*tick)
+
+	cache.MarkMatched(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
+
+	// Since the goroutine is stopped, the entry must still be present
+	// (Match respects TTL, but GetAllEntries does not filter by TTL).
+	if got := len(cache.GetAllEntries()); got != 1 {
+		t.Errorf("expected 1 entry to survive after watchdog was stopped, got %d", got)
+	}
+}
+
 func TestCacheCleanupIntegration(t *testing.T) {
 	cache := NewDbpoolCache()
 
