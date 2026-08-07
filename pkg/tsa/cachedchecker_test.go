@@ -56,7 +56,7 @@ func TestTSA_RW(t *testing.T) {
 	instance.EXPECT().Hostname().AnyTimes().Return("host1")
 	sh.EXPECT().Name().Return("sh1").AnyTimes()
 
-	cr, err := checker.CheckTSA(sh)
+	cr, err := checker.CheckTSA(sh, 0)
 	assert.NoError(err)
 	assert.True(cr.CR.Alive)
 	assert.True(cr.CR.RW)
@@ -83,7 +83,7 @@ func TestTSA_HostNotAlive(t *testing.T) {
 	instance.EXPECT().Hostname().AnyTimes().Return("host2")
 	sh.EXPECT().Name().Return("sh2").AnyTimes()
 
-	cr, err := checker.CheckTSA(sh)
+	cr, err := checker.CheckTSA(sh, 0)
 	assert.Error(err)
 	assert.False(cr.CR.Alive)
 }
@@ -120,7 +120,7 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	sh.EXPECT().Name().Return("sh3").AnyTimes()
 
 	// First check
-	cr1, err1 := checker.CheckTSA(sh)
+	cr1, err1 := checker.CheckTSA(sh, 0)
 	assert.NoError(err1)
 	assert.True(cr1.CR.Alive)
 	assert.True(cr1.CR.RW)
@@ -129,7 +129,7 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	time.Sleep(time.Second + time.Millisecond)
 
 	// Second check should trigger a new TSA check ()
-	cr2, err2 := checker.CheckTSA(sh)
+	cr2, err2 := checker.CheckTSA(sh, 0)
 	assert.EqualError(err2, "network timeout")
 	assert.False(cr2.CR.Alive)
 	assert.False(cr2.CR.RW)
@@ -164,13 +164,13 @@ func TestTSA_CacheHit(t *testing.T) {
 	sh.EXPECT().Name().Return("sh4").AnyTimes()
 
 	// First check
-	cr1, err1 := checker.CheckTSA(sh)
+	cr1, err1 := checker.CheckTSA(sh, 0)
 	assert.NoError(err1)
 	assert.True(cr1.CR.Alive)
 	assert.False(cr1.CR.RW)
 
 	// Second check should hit cache
-	cr2, err2 := checker.CheckTSA(sh)
+	cr2, err2 := checker.CheckTSA(sh, 0)
 	assert.NoError(err2)
 	assert.True(cr2.CR.Alive)
 	assert.False(cr2.CR.RW)

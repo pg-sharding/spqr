@@ -301,6 +301,7 @@ mintlify
 mmgr
 mngr
 mockcl
+mockconn
 mockcmgr
 mockgen
 mockinst
