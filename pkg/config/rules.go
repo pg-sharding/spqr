@@ -11,11 +11,14 @@ type BackendRule struct {
 
 	ServerLifetime time.Duration `json:"server_lifetime" yaml:"server_lifetime" toml:"server_lifetime"`
 
+	DisableJitter bool `json:"disable_jitter" yaml:"disable_jitter" toml:"disable_jitter"`
+
 	ConnectionLimit   int           `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
 	ConnectionRetries int           `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
 	ConnectionTimeout time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
-	KeepAlive         time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
-	TCPUserTimeout    time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
+
+	KeepAlive      time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
+	TCPUserTimeout time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
 }
 
 type FrontendRule struct {

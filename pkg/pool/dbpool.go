@@ -85,7 +85,8 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 			_ = s.ForEach(func(sh shard.ShardHostCtl) error {
 				serverLifetime := sh.ServerLifetime()
 				if serverLifetime != 0 && n.Sub(sh.CreatedAt()) > serverLifetime {
-					spqrlog.Zero.Info().Dur("lifetime", serverLifetime).Uint("id", sh.ID()).Str("hostname", sh.InstanceHostname()).Msg("marking connection stale because of lifetime exceeded.")
+					spqrlog.Zero.
+						Info().Dur("lifetime", serverLifetime).Uint("id", sh.ID()).Str("hostname", sh.InstanceHostname()).Msg("marking connection stale because of lifetime exceeded.")
 					sh.MarkStale()
 				}
 				return nil

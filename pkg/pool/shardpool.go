@@ -35,6 +35,7 @@ type shardHostPool struct {
 
 	connectionLimit            int
 	connectionRetries          int
+	disableJitter              bool
 	connectionRetrySleepSlice  int
 	connectionRetryRandomSleep int
 }
@@ -67,6 +68,7 @@ func NewShardHostPool(allocFn ConnectionAllocFn, host config.Host, beRule *confi
 
 		connectionLimit:            connLimit,
 		connectionRetries:          connRetries,
+		disableJitter:              beRule.DisableJitter,
 		connectionRetrySleepSlice:  50,
 		connectionRetryRandomSleep: 10,
 	}
@@ -124,6 +126,13 @@ var (
 // TODO : unit tests
 func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
 	if err := func() error {
+
+		/* If jitter-based wait is not configured, skip */
+		if h.disableJitter {
+			<-h.queue
+			return nil
+		}
+
 		// TODO: remove this wait under separate setting
 		for range h.connectionRetries {
 			// TODO: configure waits using backend rule

@@ -2,8 +2,8 @@ package pool_test
 
 import (
 	"context"
-	"math/rand"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -169,7 +169,7 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 	sz := 50
 
 	mp := map[string]map[string][]shard.ShardHostInstance{}
-	var mu sync.Mutex
+	mpCntr := map[string]map[string]*atomic.Uint32{}
 
 	hosts := []string{
 		"h1:6432",
@@ -185,8 +185,12 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 
 	for i, shname := range shards {
 		mp[shname] = map[string][]shard.ShardHostInstance{}
+		mpCntr[shname] = map[string]*atomic.Uint32{}
 
 		for hi, hst := range hosts {
+
+			mpCntr[shname][hst] = &atomic.Uint32{}
+			mpCntr[shname][hst].Store(uint32(0))
 
 			for j := range sz {
 				sh := mockshard.NewMockShardHostInstance(ctrl)
@@ -209,11 +213,13 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
 
 				counter := 0
+				rwCouner := 0
 
 				sh.EXPECT().Receive().DoAndReturn(func() (pgproto3.BackendMessage, error) {
+					rwCouner++
 					if counter == 0 {
 						counter = 1
-						if rand.Intn(100)%2 == 0 {
+						if rwCouner%2 == 0 {
 							return &pgproto3.DataRow{
 								Values: [][]byte{
 									{'o', 'n'},
@@ -251,14 +257,16 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 	topmgr := topology.TopMgrFromMap(cfg)
 
 	dbpool := pool.NewDBPoolWithAllocator(topmgr, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
-		mu.Lock()
-		defer mu.Unlock()
 
-		if len(mp[shardKey.Name][host.Address]) == 0 {
+		/* XXX: fetch and add */
+		val :=
+			mpCntr[shardKey.Name][host.Address].Add(1) - 1
+
+		if val >= uint32(sz) {
 			panic("exceeded!")
 		}
-		var sh shard.ShardHostInstance
-		sh, mp[shardKey.Name][host.Address] = mp[shardKey.Name][host.Address][0], mp[shardKey.Name][host.Address][1:]
+
+		sh := mp[shardKey.Name][host.Address][val]
 
 		spqrlog.Zero.Debug().Str("shard", shardKey.Name).Str("host", host.Address).Uint("id", sh.ID()).Msg("test allocation")
 
@@ -266,6 +274,7 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 	})
 
 	dbpool.SetRule(&config.BackendRule{
+		DisableJitter:   true,
 		ConnectionLimit: sz,
 	})
 
@@ -290,7 +299,6 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				case <-ch:
 					return
 				default:
-					t.Logf("spam SetOptions at %v", time.Now())
 
 					setOptsSem := semaphore.NewWeighted(int64(len(shards)))
 					for _, shname := range shards {
