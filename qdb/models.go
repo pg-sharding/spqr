@@ -41,6 +41,7 @@ type MoveKeyRangeStatus string
 
 const (
 	MoveKeyRangePlanned              = MoveKeyRangeStatus("PLANNED")
+	MoveKeyRangeAwaited              = MoveKeyRangeStatus("AWAITED")
 	MoveKeyRangeLocked               = MoveKeyRangeStatus("LOCKED")
 	MoveKeyRangeDataMoved            = MoveKeyRangeStatus("DATA_MOVED")
 	MoveKeyRangeDataCoordMetaUpdated = MoveKeyRangeStatus("COORD_META_UPDATED")

@@ -1069,6 +1069,14 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
+			if config.CoordinatorConfig().DataMoveOptimisticPIDAwait {
+				if err := datatransfers.AwaitPIDs(ctx, keyRange.ShardID, "key_range_move_"+move.MoveId); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to await virual transactions before move")
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
+				}
+			}
+			move.Status = qdb.MoveKeyRangeAwaited
+		case qdb.MoveKeyRangeAwaited:
 			// lock the key range
 			_, err = qc.LockKeyRange(ctx, req.KeyRangeID)
 			if err != nil {
