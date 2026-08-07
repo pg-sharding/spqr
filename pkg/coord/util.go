@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 func UpdateKeyRangeMeta(ctx context.Context, gossipRequests []*proto.MetaTransactionGossipCommand) error {
@@ -84,4 +86,14 @@ func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail(fmt.Sprintf("failed to update key range metadata on shard: %s", strings.Join(errs, "; ")))
 	}
 	return nil
+}
+
+func GetNewKeyRangeId(ctx context.Context, db qdb.QDB) string {
+	id := uuid.NewString()
+	_, err := db.GetKeyRange(ctx, id)
+	for err == nil {
+		id = uuid.NewString()
+		_, err = db.GetKeyRange(ctx, id)
+	}
+	return id
 }

@@ -1954,7 +1954,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
-	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: coord.GetNewKeyRangeId(ctx, qc.QDB()), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
 		task.KridTemp = taskGroup.KridTo
 	}
@@ -2297,7 +2297,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 			ShardID:        req.ShardID,
 			BatchSize:      req.BatchSize,
 			Limit:          -1,
-			DestKeyRangeID: uuid.NewString(),
+			DestKeyRangeID: coord.GetNewKeyRangeId(ctx, qc.QDB()),
 			Type:           tasks.SplitRight,
 		}); err != nil {
 			return err
@@ -2310,7 +2310,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		KeyRangeID:  req.KeyRangeID,
 		ShardID:     req.ShardID,
 		BatchSize:   req.BatchSize,
-		TempKrID:    uuid.NewString(),
+		TempKrID:    coord.GetNewKeyRangeId(ctx, qc.QDB()),
 		State:       tasks.RedistributeTaskPlanned,
 	}, false, icpCH)
 }
