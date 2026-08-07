@@ -286,6 +286,11 @@ func TestDbPoolRaces(t *testing.T) {
 			}(i)
 		}
 	}
+
+	// Wait for all goroutines to finish before the test exits.
+	// Acquiring the full semaphore weight is only possible once every goroutine
+	// has released its slot, so this acts as a barrier.
+	assert.NoError(sem.Acquire(context.TODO(), 25))
 }
 
 func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
