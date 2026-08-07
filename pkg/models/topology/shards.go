@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -68,7 +69,7 @@ func (t *TopologyMgrImpl) ShardById(id string) (*DataShard, error) {
 }
 
 func (t *TopologyMgrImpl) AddShard(sh *DataShard) {
-	sh.SetOptions(sh.options)
+	sh.SetOptions(sh.Options())
 	_, _ = t.shardMapping.LoadOrStore(sh.ID, sh)
 }
 
@@ -85,8 +86,11 @@ func (t *TopologyMgrImpl) SetOptions(id string, opt []GenericOption) {
 
 	sh := shRaw.(*DataShard)
 
-	shCopy := *sh
 	/* TODO: better copy */
+	shCopy := DataShard{
+		ID:   sh.ID,
+		Type: sh.Type,
+	}
 	shCopy.SetOptions(opt)
 
 	t.shardMapping.Store(id, &shCopy)
@@ -106,14 +110,19 @@ func InitShardMapping(shardMapping map[string]*DataShard) {
 	TopMgr = TopMgrFromMap(shardMapping)
 }
 
-type DataShard struct {
-	ID      string
-	Type    config.ShardType
-	options []GenericOption
+type HostsInfo struct {
+	options   []GenericOption
+	Hosts     []config.Host
+	Addresses []string
+}
 
-	parsedHosts     []config.Host
-	parsedAddresses []string
-	tls             *config.TLSConfig
+type DataShard struct {
+	ID   string
+	Type config.ShardType
+
+	HostsInfo atomic.Pointer[HostsInfo]
+
+	tls atomic.Pointer[config.TLSConfig]
 }
 
 type ShardsMgr interface {
@@ -127,14 +136,20 @@ type ShardsMgr interface {
 }
 
 func (ds *DataShard) Options() []GenericOption {
-	return ds.options
+	hi := ds.HostsInfo.Load()
+	if hi == nil {
+		return nil
+	}
+	return hi.options
 }
 
 func (ds *DataShard) SetOptions(options []GenericOption) {
-	ds.options = options
-	ds.parsedAddresses = nil
-	ds.parsedHosts = nil
-	ds.tls = nil
+	/* XXX: refactor */
+	info := HostsInfo{
+		options: options,
+	}
+	ds.HostsInfo.Store(&info)
+	ds.tls.Store(nil)
 }
 
 // parseHosts parses the raw hosts into a slice of Hosts.
@@ -161,18 +176,36 @@ func parseHosts(rawHosts []string) (parsedHosts []config.Host, parsedAddresses [
 	return
 }
 
-func (ds *DataShard) Hosts() []string {
-	if ds.parsedAddresses == nil {
-		ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(ds.options)
+func (ds *DataShard) infos() *HostsInfo {
+	hi := ds.HostsInfo.Load()
+	/* XXX: hi == nil shouldn't happen */
+	if hi == nil {
+		return nil
 	}
-	return ds.parsedAddresses
+	if hi.Hosts == nil || hi.Addresses == nil {
+		/* There is a possibility of concurrent parsing, we don't care though */
+		parsedHosts, parsedAddresses := retrieveHostsFromOptions(hi.options)
+		info := &HostsInfo{
+			options:   hi.options,
+			Hosts:     parsedHosts,
+			Addresses: parsedAddresses,
+		}
+
+		ds.HostsInfo.CompareAndSwap(hi, info)
+
+		/* XXX: note that we dont care of reading not-too-stale data */
+		return info
+	} else {
+		return hi
+	}
+}
+
+func (ds *DataShard) Hosts() []string {
+	return ds.infos().Addresses
 }
 
 func (ds *DataShard) HostsAZ() []config.Host {
-	if ds.parsedHosts == nil {
-		ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(ds.options)
-	}
-	return ds.parsedHosts
+	return ds.infos().Hosts
 }
 
 func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, []string) {
@@ -191,10 +224,13 @@ func retrieveRawHostsFromOptions(options []GenericOption) []string {
 }
 
 func (ds *DataShard) TLS() *config.TLSConfig {
-	if ds.tls == nil {
-		ds.tls = TLSConfigFromOptions(ds.options)
+	if t := ds.tls.Load(); t == nil {
+		tp := TLSConfigFromOptions(ds.Options())
+		ds.tls.CompareAndSwap(t, tp)
+		return tp
+	} else {
+		return t
 	}
-	return ds.tls
 }
 
 // NewDataShard creates a new DataShard instance with the given name and configuration.
@@ -223,7 +259,7 @@ func NewDataShard(name string, t config.ShardType, options []GenericOption) *Dat
 // Returns:
 //   - *proto.Shard: The converted proto.Shard object.
 func DataShardToProto(shard *DataShard, hostsWithAZ bool) (*proto.Shard, error) {
-	options, err := GenericOptionsToProto(shard.options, hostsWithAZ)
+	options, err := GenericOptionsToProto(shard.Options(), hostsWithAZ)
 	if err != nil {
 		return nil, err
 	}
@@ -353,14 +389,14 @@ func DataShardFromDB(shard *qdb.Shard) *DataShard {
 			Arg:  opt.Value,
 		})
 	}
-	options = append(options, hostsToOptions(shard.RawHosts)...)
+	options = append(options, HostsToOptions(shard.RawHosts)...)
 	return NewDataShard(shard.ID, config.DataShard, options)
 }
 
 func DataShardToDB(shard *DataShard) *qdb.Shard {
 	return &qdb.Shard{
 		ID:      shard.ID,
-		Options: GenericOptionsToDB(shard.options),
+		Options: GenericOptionsToDB(shard.Options()),
 	}
 }
 
@@ -374,7 +410,7 @@ func DataShardMapFromConfig(shards map[string]*config.Shard) map[string]*DataSha
 
 func DataShardFromConfig(id string, cfg *config.Shard) *DataShard {
 	options := make([]GenericOption, 0)
-	options = append(options, hostsToOptions(cfg.RawHosts)...)
+	options = append(options, HostsToOptions(cfg.RawHosts)...)
 	options = append(options, TLSConfigToOptions(cfg.TLS)...)
 
 	return NewDataShard(
@@ -394,7 +430,7 @@ func DataShardMapFromShardConnectConfig(shards map[string]*config.ShardConnect) 
 
 func DataShardFromShardConnectConfig(id string, cfg *config.ShardConnect) *DataShard {
 	options := make([]GenericOption, 0)
-	options = append(options, hostsToOptions(cfg.Hosts)...)
+	options = append(options, HostsToOptions(cfg.Hosts)...)
 	options = append(options, TLSConfigToOptions(cfg.TLS)...)
 	options = append(options, []GenericOption{
 		{Name: "db", Arg: cfg.DB},
@@ -414,7 +450,7 @@ func ShardConfigEqual(a, b *DataShard) bool {
 	if a.ID != b.ID {
 		return false
 	}
-	return reflect.DeepEqual(a.options, b.options)
+	return reflect.DeepEqual(a.Options(), b.Options())
 }
 
 type GenericOptionAction int
@@ -515,7 +551,7 @@ func TLSConfigToOptions(tls *config.TLSConfig) []GenericOption {
 	return options
 }
 
-func hostsToOptions(hosts []string) []GenericOption {
+func HostsToOptions(hosts []string) []GenericOption {
 	options := make([]GenericOption, 0, len(hosts))
 	for _, host := range hosts {
 		options = append(options, GenericOption{

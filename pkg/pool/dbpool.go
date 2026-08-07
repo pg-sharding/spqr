@@ -604,6 +604,9 @@ func (s *DBPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 //
 // TODO : unit tests
 func (s *DBPool) Put(sh shard.ShardHostInstance) error {
+	if sh == nil {
+		return fmt.Errorf("unable to put malformed connection to pool")
+	}
 	if sh.Sync() != 0 || sh.IsStale() {
 		spqrlog.Zero.Error().
 			Uint("shard", spqrlog.GetPointer(sh)).
