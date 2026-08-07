@@ -45,7 +45,8 @@ type DBPool struct {
 
 	AcquireRetryCount int
 
-	recheckTCP bool
+	recheckTCP   bool
+	CheckTimeout time.Duration
 
 	// Background health checking
 	healthCheckCtx    context.Context
@@ -162,7 +163,7 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 	}()
 
 	// Perform TSA check using existing checker
-	tcr, err := s.checker.CheckTSA(shardInstance)
+	tcr, err := s.checker.CheckTSA(shardInstance, tsa.DefaultTSATimeout)
 	if err != nil {
 		spqrlog.Zero.Warn().
 			Str("host", tsaKey.Host).
@@ -363,25 +364,25 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 //     during the selection process.
 //
 // // TODO : unit tests
-func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA, primary bool) (shard.ShardHostInstance, error) {
+func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsaAttrs tsa.TSA, primary bool) (shard.ShardHostInstance, error) {
 	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.ShardHostInstance) bool {
-		tcr, err := s.checker.CheckTSA(shard)
+		tcr, err := s.checker.CheckTSA(shard, s.CheckTimeout)
 		good := tcr.CR.RW == primary
 
 		if err != nil {
 			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
-			s.cache.MarkUnmatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
+			s.cache.MarkUnmatched(tsaAttrs, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
 
 			return false
 		}
 
 		if good {
-			s.cache.MarkMatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+			s.cache.MarkMatched(tsaAttrs, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
 		} else {
-			s.cache.MarkUnmatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+			s.cache.MarkUnmatched(tsaAttrs, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
 		}
 
 		if tcr.CR.Alive && good {
@@ -393,7 +394,7 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 		_ = s.Put(shard)
 		return false
 
-	}, tsa)
+	}, tsaAttrs)
 	if sh != nil {
 		return sh, nil
 	}
@@ -701,6 +702,7 @@ func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, 
 		PreferAZ:          preferAZ,
 		AcquireRetryCount: config.ValueOrDefaultInt(config.RouterConfig().DbpoolAcquireRetryCount, DefaultAcquireRetryCount),
 		recheckTCP:/* default is false */ config.RouterConfig().DefaultRecheckTCPAliveness,
+		CheckTimeout: tsa.DefaultTSATimeout,
 
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolDeadCheckInterval, DefaultDeadCheckInterval),
