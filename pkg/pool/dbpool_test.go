@@ -169,7 +169,7 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 	sz := 50
 
 	mp := map[string]map[string][]shard.ShardHostInstance{}
-	mpCntr := map[string]map[string]*atomic.Uint32{}
+	mpCounters := map[string]map[string]*atomic.Uint32{}
 
 	hosts := []string{
 		"h1:6432",
@@ -185,12 +185,12 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 
 	for i, shname := range shards {
 		mp[shname] = map[string][]shard.ShardHostInstance{}
-		mpCntr[shname] = map[string]*atomic.Uint32{}
+		mpCounters[shname] = map[string]*atomic.Uint32{}
 
 		for hi, hst := range hosts {
 
-			mpCntr[shname][hst] = &atomic.Uint32{}
-			mpCntr[shname][hst].Store(uint32(0))
+			mpCounters[shname][hst] = &atomic.Uint32{}
+			mpCounters[shname][hst].Store(uint32(0))
 
 			for j := range sz {
 				sh := mockshard.NewMockShardHostInstance(ctrl)
@@ -260,7 +260,7 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 
 		/* XXX: fetch and add */
 		val :=
-			mpCntr[shardKey.Name][host.Address].Add(1) - 1
+			mpCounters[shardKey.Name][host.Address].Add(1) - 1
 
 		if val >= uint32(sz) {
 			panic("exceeded!")
