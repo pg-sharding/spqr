@@ -213,13 +213,13 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
 
 				counter := 0
-				rwCouner := 0
+				rwCounter := 0
 
 				sh.EXPECT().Receive().DoAndReturn(func() (pgproto3.BackendMessage, error) {
-					rwCouner++
+					rwCounter++
 					if counter == 0 {
 						counter = 1
-						if rwCouner%2 == 0 {
+						if rwCounter%2 == 0 {
 							return &pgproto3.DataRow{
 								Values: [][]byte{
 									{'o', 'n'},
