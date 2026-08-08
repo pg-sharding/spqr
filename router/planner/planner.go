@@ -901,12 +901,12 @@ func ConsoleFunctionCall(
 			}
 			gid := strVal.Value
 
-			if err := wd.LockAndRecover2PhaseCommitTX(gid); err != nil {
+			if err := wd.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(gid)
 		} else {
-			gids, err := wd.RecoverDistributedTx()
+			gids, err := wd.RecoverDistributedTx(ctx)
 			if err != nil {
 				return nil, err
 			}

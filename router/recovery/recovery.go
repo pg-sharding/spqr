@@ -46,9 +46,10 @@ func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPC
 	return wd, nil
 }
 
-func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
-	ctx := context.TODO()
-
+/* Attempt tot recover every not-finisehd GID.
+* On any failure, first encountered error is returned.
+*/
+func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]struct{}, error) {
 	shs, err := d.d.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -63,8 +64,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 			Name: sh.ID,
 		}, tsa.TSA(config.TargetSessionAttrsRW))
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return nil, err
+			return nil, spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc recovery: %v", sh.ID, err)
 		}
 
 		if err := serv.Instance().Send(&pgproto3.Query{
@@ -119,6 +119,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 		}
 	}
 
+	var recoverErr error
 	for gid := range gids {
 		/* Try to acquire lock on this GID lifecycle
 		* management. We expecting failure here if
@@ -129,17 +130,22 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() (map[string]struct{}, error) {
 		* when DCStateKeeper in router-local mem-QDB, not etcd)
 		* 3) another recovery routine raced with us and won the race.
 		*/
-		if err := d.LockAndRecover2PhaseCommitTX(gid); err != nil {
-			return nil, err
+		if err := d.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
+			spqrlog.Zero.Error().Str("gid", gid).Err(err).Msg("failed to recover unfinished distributed tx")
+			if recoverErr == nil {
+				recoverErr = err
+			}
 		}
+	}
+
+	if recoverErr != nil {
+		return nil, recoverErr
 	}
 
 	return gids, nil
 }
 
-func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(gid string) error {
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string) error {
 	acq, err := d.d.AcquireTxOwnership(ctx, gid)
 	if err != nil {
 		return err
@@ -147,7 +153,7 @@ func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(gid string) error {
 	if acq {
 		/* Try to fix things  */
 		if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
-			spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
+			return spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to recover unfinished distributed tx %q: %v", gid, err)
 		}
 	}
 	return nil
@@ -183,13 +189,13 @@ func (d *TwoPCWatchDog) FinalizeTxStatus(sh string, gid string, q string) error 
 		Name: sh,
 	}, tsa.TSA(config.TargetSessionAttrsRW))
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
+		spqrlog.Zero.Error().Err(err).Str("shard", sh).Str("gid", gid).Msg("failed to acquire connection for 2pc finalize")
+		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc finalize of gid %q: %v", sh, gid, err)
 	}
 
 	defer func() {
 		if err := d.p.Put(serv); err != nil {
-			spqrlog.Zero.Error().Str(gid, "gid").Err(err).Msg("failed to release cleanup connection")
+			spqrlog.Zero.Error().Str("gid", gid).Err(err).Msg("failed to release cleanup connection")
 		}
 	}()
 
