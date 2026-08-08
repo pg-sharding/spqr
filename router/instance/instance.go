@@ -29,6 +29,8 @@ import (
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 )
 
+const maxAcceptErrors = 1000
+
 type RouterInstance interface {
 	Addr() string
 	ID() string
@@ -246,13 +248,23 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	cChan := make(chan net.Conn, max(config.RouterConfig().AcceptorBufferSize, 1))
 
 	accept := func(l net.Listener, cChan chan net.Conn) {
+		errCount := 0
 		for {
 			c, err := l.Accept()
 			if err != nil {
-				// handle error (and then for example indicate acceptor is down)
-				cChan <- nil
-				return
+				errCount++
+				spqrlog.Zero.Error().
+					Err(err).
+					Msg("failed to accept a new client connection")
+				if errCount >= maxAcceptErrors {
+					spqrlog.Zero.Error().
+						Msg("acceptor reached max consecutive errors, shutting down")
+					close(cChan)
+					return
+				}
+				continue
 			}
+			errCount = 0
 			spqrlog.Zero.Info().
 				Str("remote addr", c.RemoteAddr().String()).
 				Msg("new network client connection")
@@ -277,7 +289,12 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	for {
 		select {
-		case conn := <-cChan:
+		case conn, ok := <-cChan:
+			if !ok {
+				_ = r.RuleRouter.Shutdown()
+				_ = listener.Close()
+				return fmt.Errorf("acceptor is down, stopping router")
+			}
 
 			initTime := time.Now()
 			if !r.Initialized() {
@@ -329,13 +346,23 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 	cChan := make(chan net.Conn)
 
 	accept := func(l net.Listener, cChan chan net.Conn) {
+		errCount := 0
 		for {
 			c, err := l.Accept()
 			if err != nil {
-				// handle error (and then for example indicate acceptor is down)
-				cChan <- nil
-				return
+				errCount++
+				spqrlog.Zero.Error().
+					Err(err).
+					Msg("failed to accept a new admin connection")
+				if errCount >= maxAcceptErrors {
+					spqrlog.Zero.Error().
+						Msg("acceptor reached max consecutive errors, shutting down")
+					close(cChan)
+					return
+				}
+				continue
 			}
+			errCount = 0
 			cChan <- c
 		}
 	}
@@ -348,7 +375,13 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			_ = listener.Close()
 			spqrlog.Zero.Info().Msg("admin server done")
 			return nil
-		case conn := <-cChan:
+		case conn, ok := <-cChan:
+			if !ok {
+				_ = r.RuleRouter.Shutdown()
+				_ = listener.Close()
+				return fmt.Errorf("acceptor is down, stopping router")
+			}
+
 			go func() {
 				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
 					spqrlog.Zero.Error().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("")
