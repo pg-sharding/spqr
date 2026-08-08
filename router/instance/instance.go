@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	spqrerror "github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -278,6 +279,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	for {
 		select {
 		case conn := <-cChan:
+			if conn == nil {
+				/* acceptor is down */
+				return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "acceptor failed")
+			}
 
 			initTime := time.Now()
 			if !r.Initialized() {
@@ -349,6 +354,10 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			spqrlog.Zero.Info().Msg("admin server done")
 			return nil
 		case conn := <-cChan:
+			if conn == nil {
+				/* acceptor is down */
+				return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "acceptor failed")
+			}
 			go func() {
 				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
 					spqrlog.Zero.Error().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("")
