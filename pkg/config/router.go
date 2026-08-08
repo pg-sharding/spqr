@@ -84,6 +84,7 @@ type Router struct {
 	FrontendRules      []*FrontendRule      `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
 	Qr                 QRouter              `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
 	FrontendTLS        *TLSConfig           `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	GrpcAPITLS         *GRPCServerTLSConfig `json:"grpc_api_tls" yaml:"grpc_api_tls" toml:"grpc_api_tls"`
 	CoordinatorGrpcTLS *GRPCClientTLSConfig `json:"coordinator_grpc_tls" yaml:"coordinator_grpc_tls" toml:"coordinator_grpc_tls"`
 	BackendRules       []*BackendRule       `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
 	ShardMapping       map[string]*Shard    `json:"shards" toml:"shards" yaml:"shards"`
@@ -147,6 +148,9 @@ func (r *Router) ApplyDefaults() {
 }
 
 func (r *Router) PostProcess() error {
+	if err := r.GrpcAPITLS.Validate(); err != nil {
+		return fmt.Errorf("invalid grpc_api_tls: %w", err)
+	}
 	if err := r.CoordinatorGrpcTLS.Validate(); err != nil {
 		return fmt.Errorf("invalid coordinator_grpc_tls: %w", err)
 	}

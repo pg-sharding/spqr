@@ -121,14 +121,17 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		app := app.NewApp(coordinator)
+		coordinatorApp, err := app.NewApp(coordinator)
+		if err != nil {
+			return err
+		}
 		// run pprof without wait group
 		go func() {
 			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
 			}
 		}()
-		return app.Run(true)
+		return coordinatorApp.Run(true)
 	},
 }
 
