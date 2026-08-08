@@ -26,8 +26,6 @@ RENAME KEY RANGE krid2 TO krid4;
  krid2        | krid4
 (1 row)
 
-RENAME KEY RANGE krid4 TO krid1;
-ERROR:  key range 'krid1' already exists
 SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
@@ -35,6 +33,8 @@ SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  krid4        | sh2      | ds1             | 11          | false
 (2 rows)
 
+RENAME KEY RANGE krid4 TO krid1;
+ERROR:  key range 'krid1' already exists
 DROP KEY RANGE ALL;
  key_range_id 
 --------------

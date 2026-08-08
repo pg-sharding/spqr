@@ -8,9 +8,8 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid3 FROM 50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 RENAME KEY RANGE krid2 TO krid4;
-RENAME KEY RANGE krid4 TO krid1;
-
 SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+RENAME KEY RANGE krid4 TO krid1;
 
 DROP KEY RANGE ALL;
 
