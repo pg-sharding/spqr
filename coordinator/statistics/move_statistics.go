@@ -2,6 +2,7 @@ package statistics
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -60,18 +61,21 @@ func (s *keyRangeLockStats) GetMeanLockTime() time.Duration {
 }
 
 type statisticsInt struct {
-	CurrentExecTimes     sync.Map
+	// currentExecTimes is swapped atomically on each move start/finish.
+	currentExecTimes     atomic.Pointer[sync.Map]
 	TotalTimes           map[string]*MoveStatisticsElem
 	CurrentMoveStartTime time.Time
 	TotalMoves           int
-	MoveInProgress       bool
+	moveInProgress       atomic.Bool
 	totalTimesMu         sync.Mutex
 }
 
-var moveStatistics = statisticsInt{
-	CurrentExecTimes: sync.Map{},
-	TotalTimes:       make(map[string]*MoveStatisticsElem),
-}
+var moveStatistics = func() statisticsInt {
+	var s statisticsInt
+	s.currentExecTimes.Store(&sync.Map{})
+	s.TotalTimes = make(map[string]*MoveStatisticsElem)
+	return s
+}()
 
 type MoveStatisticsElem struct {
 	TotalDuration time.Duration
@@ -82,21 +86,22 @@ func RecordMoveStart(t time.Time) error {
 	spqrlog.Zero.Debug().Msg("move stats: record move start")
 	moveStatistics.totalTimesMu.Lock()
 	defer moveStatistics.totalTimesMu.Unlock()
-	moveStatistics.MoveInProgress = true
-	moveStatistics.CurrentExecTimes = sync.Map{}
+	moveStatistics.currentExecTimes.Store(&sync.Map{})
 	moveStatistics.CurrentMoveStartTime = t
+	moveStatistics.moveInProgress.Store(true)
 	return nil
 }
 
 func RecordMoveFinish(t time.Time) error {
 	spqrlog.Zero.Debug().Msg("move stats: record move finish")
-	if !moveStatistics.MoveInProgress {
+	if !moveStatistics.moveInProgress.Load() {
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "unable to record move finish: there's no move in progress")
 	}
 	moveStatistics.totalTimesMu.Lock()
 	defer moveStatistics.totalTimesMu.Unlock()
-	moveStatistics.MoveInProgress = false
-	moveStatistics.CurrentExecTimes.Range(func(key, value any) bool {
+	moveStatistics.moveInProgress.Store(false)
+	finishedMap := moveStatistics.currentExecTimes.Swap(&sync.Map{})
+	finishedMap.Range(func(key, value any) bool {
 		stat, ok := key.(string)
 		if !ok {
 			return true
@@ -118,53 +123,55 @@ func RecordMoveFinish(t time.Time) error {
 	moveStatistics.TotalTimes[MoveStatsTotalTime].SampleCount++
 	moveStatistics.TotalTimes[MoveStatsTotalTime].TotalDuration += t.Sub(moveStatistics.CurrentMoveStartTime)
 	moveStatistics.TotalMoves++
-	moveStatistics.CurrentExecTimes = sync.Map{}
 	return nil
 }
 
 func RecordQDBOperation(stat string, duration time.Duration) {
-	if moveStatistics.MoveInProgress {
+	if moveStatistics.moveInProgress.Load() {
+		m := moveStatistics.currentExecTimes.Load()
 		statName := MoveStatsQDBPrefix + "." + stat
-		curValue, ok := moveStatistics.CurrentExecTimes.Load(statName)
+		curValue, ok := m.Load(statName)
 		if ok {
-			moveStatistics.CurrentExecTimes.Store(statName, curValue.(time.Duration)+duration)
+			m.Store(statName, curValue.(time.Duration)+duration)
 		} else {
-			moveStatistics.CurrentExecTimes.Store(statName, duration)
+			m.Store(statName, duration)
 		}
-		curValue, ok = moveStatistics.CurrentExecTimes.Load(MoveStatsQDBTotalTime)
+		curValue, ok = m.Load(MoveStatsQDBTotalTime)
 		if ok {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsQDBTotalTime, curValue.(time.Duration)+duration)
+			m.Store(MoveStatsQDBTotalTime, curValue.(time.Duration)+duration)
 		} else {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsQDBTotalTime, duration)
+			m.Store(MoveStatsQDBTotalTime, duration)
 		}
 	}
 }
 
 func RecordRouterOperation(duration time.Duration) {
-	if moveStatistics.MoveInProgress {
-		curValue, ok := moveStatistics.CurrentExecTimes.Load(MoveStatsRouterTime)
+	if moveStatistics.moveInProgress.Load() {
+		m := moveStatistics.currentExecTimes.Load()
+		curValue, ok := m.Load(MoveStatsRouterTime)
 		if ok {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsRouterTime, curValue.(time.Duration)+duration)
+			m.Store(MoveStatsRouterTime, curValue.(time.Duration)+duration)
 		} else {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsRouterTime, duration)
+			m.Store(MoveStatsRouterTime, duration)
 		}
 	}
 }
 
 func RecordShardOperation(stat string, duration time.Duration) {
-	if moveStatistics.MoveInProgress {
+	if moveStatistics.moveInProgress.Load() {
+		m := moveStatistics.currentExecTimes.Load()
 		statName := MoveStatsShardPrefix + "." + stat
-		curValue, ok := moveStatistics.CurrentExecTimes.Load(statName)
+		curValue, ok := m.Load(statName)
 		if ok {
-			moveStatistics.CurrentExecTimes.Store(statName, curValue.(time.Duration)+duration)
+			m.Store(statName, curValue.(time.Duration)+duration)
 		} else {
-			moveStatistics.CurrentExecTimes.Store(statName, duration)
+			m.Store(statName, duration)
 		}
-		curValue, ok = moveStatistics.CurrentExecTimes.Load(MoveStatsShardTotalTime)
+		curValue, ok = m.Load(MoveStatsShardTotalTime)
 		if ok {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsShardTotalTime, curValue.(time.Duration)+duration)
+			m.Store(MoveStatsShardTotalTime, curValue.(time.Duration)+duration)
 		} else {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsShardTotalTime, duration)
+			m.Store(MoveStatsShardTotalTime, duration)
 		}
 	}
 }
