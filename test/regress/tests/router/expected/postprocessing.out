@@ -120,6 +120,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
     13
 (1 row)
 
+SELECT COUNT(*) FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ count 
+-------
+    13
+(1 row)
+
 SELECT count(i) FROM r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  count 
