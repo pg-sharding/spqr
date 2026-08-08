@@ -69,6 +69,7 @@ func (F *RulesMgrImpl) Reload(frules []*config.FrontendRule, brules []*config.Ba
 				PoolDefault:       defaultBE.PoolDefault,
 				ConnectionLimit:   defaultBE.ConnectionLimit,
 				ConnectionRetries: defaultBE.ConnectionRetries,
+				DisableJitter:     defaultBE.DisableJitter,
 				ConnectionTimeout: defaultBE.ConnectionTimeout,
 				ServerLifetime:    defaultBE.ServerLifetime,
 				KeepAlive:         defaultBE.KeepAlive,
