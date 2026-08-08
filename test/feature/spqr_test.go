@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -74,6 +75,7 @@ type testContext struct {
 	t                 *testing.T
 	debug             bool
 	preparedQueries   map[string]map[string]*sql.Stmt
+	etcdBaselineKeys  map[string]any
 }
 
 func newTestContext(t *testing.T) (*testContext, error) {
@@ -1401,24 +1403,104 @@ func (tctx *testContext) stepIKillHostAfterQuery(host string, delay int, body *g
 	return tctx.stepHostIsStopped(host)
 }
 
-func (tctx *testContext) stepDeleteFromEtcd(key string) error {
+func (tctx *testContext) newEtcdClient() (*clientv3.Client, error) {
 	addr, err := tctx.composer.GetAddr("qdb01", 2379)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	cli, err := clientv3.New(clientv3.Config{
+	return clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
 		DialOptions: []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 	})
+}
+
+func (tctx *testContext) stepDeleteFromEtcd(key string) error {
+	cli, err := tctx.newEtcdClient()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = cli.Close() }()
 	ctx, cancel := context.WithTimeout(context.TODO(), postgresqlQueryTimeout)
 	defer cancel()
 	_, err = cli.Delete(ctx, key)
 	return err
+}
+
+func (tctx *testContext) listEtcdKeys() (map[string]any, error) {
+	cli, err := tctx.newEtcdClient()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = cli.Close() }()
+	ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
+	defer cancel()
+	// Read every key by requesting the whole keyspace ("" with FromKey).
+	resp, err := cli.Get(ctx, "", clientv3.WithFromKey(), clientv3.WithKeysOnly())
+	if err != nil {
+		return nil, err
+	}
+	keys := make(map[string]any, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		keys[string(kv.Key)] = kv.Value
+	}
+	return keys, nil
+}
+
+func (tctx *testContext) stepRememberEtcdState() error {
+	keys, err := tctx.listEtcdKeys()
+	if err != nil {
+		return err
+	}
+	tctx.etcdBaselineKeys = keys
+	return nil
+}
+
+func (tctx *testContext) etcdLeftovers(excludePrefixes []string) ([]string, error) {
+	if tctx.etcdBaselineKeys == nil {
+		return nil, fmt.Errorf(`etcd baseline was not remembered; add a "Given I remember current etcd state" step before creating any objects`)
+	}
+	current, err := tctx.listEtcdKeys()
+	if err != nil {
+		return nil, err
+	}
+	leftovers := make([]string, 0)
+	for key := range current {
+		if _, ok := tctx.etcdBaselineKeys[key]; ok {
+			continue
+		}
+		excluded := false
+		for _, p := range excludePrefixes {
+			if p != "" && strings.HasPrefix(key, p) {
+				excluded = true
+				break
+			}
+		}
+		if !excluded {
+			leftovers = append(leftovers, key)
+		}
+	}
+	sort.Strings(leftovers)
+	return leftovers, nil
+}
+
+func (tctx *testContext) stepEtcdShouldEqualRememberedIgnoringPrefixes(body *godog.DocString) error {
+	excludePrefixes := make([]string, 0)
+	for _, line := range strings.Split(body.Content, "\n") {
+		if p := strings.TrimSpace(line); p != "" {
+			excludePrefixes = append(excludePrefixes, p)
+		}
+	}
+	leftovers, err := tctx.etcdLeftovers(excludePrefixes)
+	if err != nil {
+		return err
+	}
+	if len(leftovers) > 0 {
+		return fmt.Errorf("etcd contains %d leftover key(s) after all drops (excluding %v):\n%s",
+			len(leftovers), excludePrefixes, strings.Join(leftovers, "\n"))
+	}
+	return nil
 }
 
 func (tctx *testContext) stepWaitForHostToFinishStartup(host string) error {
@@ -1556,6 +1638,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
 	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
+	s.Step(`^I remember current etcd state$`, tctx.stepRememberEtcdState)
+	s.Step(`^etcd should equal remembered state ignoring prefixes$`, tctx.stepEtcdShouldEqualRememberedIgnoringPrefixes)
 	s.Step(`^I wait for host "([^"]*)" to finish startup$`, tctx.stepWaitForHostToFinishStartup)
 
 	// variable manipulation
