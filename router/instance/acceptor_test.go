@@ -29,7 +29,7 @@ const (
 
 /*
 * XXX: net listener is not easily cancellable via
-* context, so we have to workaound with aux channel here
+* context, so we have to workaround with aux channel here
  */
 
 func TestAcceptLoopContinuesAfterError(t *testing.T) {

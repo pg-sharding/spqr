@@ -40,7 +40,7 @@ func acceptLoop(l net.Listener, cChan chan net.Conn,
 	kind string, /* To get different log messages for console/non-console clients */
 	maxRetries int, retrySleep, retrySleepMax time.Duration) {
 
-	/* XXX: move this logic somewehre */
+	/* XXX: move this logic somewhere */
 	if maxRetries <= 0 {
 		maxRetries = defaultAcceptorMaxRetries
 	}
@@ -60,7 +60,7 @@ func acceptLoop(l net.Listener, cChan chan net.Conn,
 		c, err := l.Accept()
 
 		/* Most of net error are already filtered out by
-		* go runtime reties. However, not all of possible errcodes are
+		* go runtime reties. However, not all of possible error codes are
 		* handled https://github.com/golang/go/blob/25de5ebd/src/internal/poll/fd_unix.go#L613-L628
 		* accept(2) doc explicitly tells to retry  ENETDOWN,
 		* EPROTO, ENOPROTOOPT, EHOSTDOWN, ENONET, EHOSTUNREACH, EOPNOTSUPP,
