@@ -29,7 +29,82 @@ import (
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 )
 
-const maxAcceptErrors = 1000
+const (
+	defaultAcceptorMaxRetries    = 10
+	defaultAcceptorRetrySleep    = 50 * time.Millisecond
+	defaultAcceptorRetrySleepMax = 1 * time.Second
+)
+
+// Accept connection and send it to channel.
+func acceptLoop(l net.Listener, cChan chan net.Conn,
+	kind string, /* To get different log messages for console/non-console clients */
+	maxRetries int, retrySleep, retrySleepMax time.Duration) {
+
+	/* XXX: move this logic somewehre */
+	if maxRetries <= 0 {
+		maxRetries = defaultAcceptorMaxRetries
+	}
+	if retrySleep <= 0 {
+		retrySleep = defaultAcceptorRetrySleep
+	}
+	if retrySleepMax <= 0 {
+		retrySleepMax = defaultAcceptorRetrySleepMax
+	}
+	if retrySleepMax < retrySleep {
+		retrySleepMax = retrySleep
+	}
+
+	errCount := 0
+	var backoff time.Duration
+	for {
+		c, err := l.Accept()
+
+		/* Most of net error are already filtered out by
+		* go runtime reties. However, not all of possible errcodes are
+		* handled https://github.com/golang/go/blob/25de5ebd/src/internal/poll/fd_unix.go#L613-L628
+		* accept(2) doc explicitly tells to retry  ENETDOWN,
+		* EPROTO, ENOPROTOOPT, EHOSTDOWN, ENONET, EHOSTUNREACH, EOPNOTSUPP,
+		* and ENETUNREACH, so we will simply retry everything, but fail anyway in case of
+		* long enough series of errors. */
+		if err != nil {
+			errCount++
+
+			if backoff == 0 {
+				backoff = retrySleep
+			} else {
+				backoff *= 2
+			}
+			if backoff > retrySleepMax {
+				backoff = retrySleepMax
+			}
+
+			spqrlog.Zero.Error().
+				Err(err).
+				Int("attempt", errCount).
+				Int("max retries", maxRetries).
+				Dur("retry in", backoff).
+				Msgf("failed to accept a new connection")
+			if errCount >= maxRetries {
+				spqrlog.Zero.Error().
+					Str("kind", kind).
+					Msgf("acceptor reached max consecutive errors on listener, shutting down")
+				close(cChan)
+				return
+			}
+			time.Sleep(backoff)
+			continue
+		}
+		errCount = 0
+		backoff = 0
+		spqrlog.Zero.Info().
+			Str("kind", kind).
+			Str("remote addr", c.RemoteAddr().String()).
+			Msg("new network client connection")
+
+		/*  XXX: what if channel is closed? */
+		cChan <- c
+	}
+}
 
 type RouterInstance interface {
 	Addr() string
@@ -247,33 +322,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	cChan := make(chan net.Conn, max(config.RouterConfig().AcceptorBufferSize, 1))
 
-	accept := func(l net.Listener, cChan chan net.Conn) {
-		errCount := 0
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				errCount++
-				spqrlog.Zero.Error().
-					Err(err).
-					Msg("failed to accept a new client connection")
-				if errCount >= maxAcceptErrors {
-					spqrlog.Zero.Error().
-						Msg("acceptor reached max consecutive errors, shutting down")
-					close(cChan)
-					return
-				}
-				continue
-			}
-			errCount = 0
-			spqrlog.Zero.Info().
-				Str("remote addr", c.RemoteAddr().String()).
-				Msg("new network client connection")
-
-			cChan <- c
-		}
-	}
-
-	go accept(listener, cChan)
+	go acceptLoop(listener, cChan, "router",
+		config.RouterConfig().AcceptorMaxRetries,
+		config.RouterConfig().AcceptorRetrySleep,
+		config.RouterConfig().AcceptorRetrySleepMax)
 	go r.watchRouterReadiness(ctx)
 
 	if r.notifier != nil {
@@ -345,29 +397,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 	cChan := make(chan net.Conn)
 
-	accept := func(l net.Listener, cChan chan net.Conn) {
-		errCount := 0
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				errCount++
-				spqrlog.Zero.Error().
-					Err(err).
-					Msg("failed to accept a new admin connection")
-				if errCount >= maxAcceptErrors {
-					spqrlog.Zero.Error().
-						Msg("acceptor reached max consecutive errors, shutting down")
-					close(cChan)
-					return
-				}
-				continue
-			}
-			errCount = 0
-			cChan <- c
-		}
-	}
-
-	go accept(listener, cChan)
+	go acceptLoop(listener, cChan, "admin console",
+		config.RouterConfig().AcceptorMaxRetries,
+		config.RouterConfig().AcceptorRetrySleep,
+		config.RouterConfig().AcceptorRetrySleepMax)
 
 	for {
 		select {
