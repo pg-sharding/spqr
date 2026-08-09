@@ -24,3 +24,7 @@ test: control_point
 test: unique_indexes
 test: help
 test: show_two_phase_tx_metadata_storage
+test: unite
+test: split
+test: key_range
+test: key_range_for_distr
