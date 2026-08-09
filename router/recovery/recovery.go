@@ -48,7 +48,7 @@ func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPC
 
 /* Attempt tot recover every not-finished GID.
 * On any failure, first encountered error is returned.
-*/
+ */
 func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]struct{}, error) {
 	shs, err := d.d.ListShards(ctx)
 	if err != nil {
