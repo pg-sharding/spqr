@@ -108,7 +108,7 @@ func keyRangeMetaNodePath(id string) string {
 }
 
 func keyRangeOpLockNodePath(id string) string {
-	return path.Join(keyRangeOpLockNamespace)
+	return path.Join(keyRangeOpLockNamespace, id)
 }
 
 func routerNodePath(key string) string {

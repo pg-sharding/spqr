@@ -30,11 +30,11 @@ const (
 )
 
 type MemQDBState struct {
-	Locks                       map[string]*sync.RWMutex            `json:"locks"`
-	Freq                        map[string]bool                     `json:"freq"`
-	Krs                         map[string]*internalKeyRange        `json:"krs"`
-	KrVersions                  map[string]int                      `json:"kr_versions"`
-	krOpLocks                   map[string]*sync.Mutex              `json:"kr_op_locks"`
+	Locks                       map[string]*sync.RWMutex     `json:"locks"`
+	Freq                        map[string]bool              `json:"freq"`
+	Krs                         map[string]*internalKeyRange `json:"krs"`
+	KrVersions                  map[string]int               `json:"kr_versions"`
+	krOpLocks                   map[string]*sync.Mutex
 	Shards                      map[string]*Shard                   `json:"shards"`
 	Distributions               map[string]*Distribution            `json:"distributions"`
 	RelationDistribution        map[string]string                   `json:"relation_distribution"`
