@@ -359,7 +359,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range is locked
+    failed to split key range in coordinator: failed to split key range: key range .*krid1.* is locked \(SQLSTATE SPQRU\)
     """
 
     When I run SQL on host "coordinator"
@@ -368,7 +368,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    context deadline exceeded
+    failed to unite key ranges: key range .*krid1.* is locked \(SQLSTATE SPQRU\)
     """
 
     When I run SQL on host "coordinator"

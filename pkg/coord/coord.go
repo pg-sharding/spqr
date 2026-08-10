@@ -526,9 +526,14 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	if err != nil {
 		return err
 	}
-	if _, err := lc.LockKeyRangeOps(ctx, krID); err != nil {
+	lockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := lc.LockKeyRangeOps(lockCtx, krID); err != nil {
 		return err
 	}
+	defer func() {
+		_ = lc.UnlockKeyRangeOps(ctx, krID)
+	}()
 	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
@@ -1228,22 +1233,15 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	opsLockCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	krBase, err := lc.LockKeyRangeOps(opsLockCtx, uniteKeyRange.BaseKeyRangeID)
-	// krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeID)
 	if err != nil {
 		return err
 	}
-	// ??: maybe redundant, cancellation of the context may suffice
 	defer func() {
 		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.BaseKeyRangeID)
 	}()
-
-	defer func() {
-		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
-		// We'll just check existing lock at the start.
-		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeID); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Unite")
-		}
-	}()
+	if krBase.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.BaseKeyRangeID)
+	}
 
 	ds, err := lc.qdb.GetDistribution(ctx, krBase.Distribution)
 	if err != nil {
@@ -1254,10 +1252,13 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if err != nil {
 		return err
 	}
-	// ??: maybe redundant, cancellation of the context may suffice
 	defer func() {
 		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.AppendageKeyRangeID)
 	}()
+
+	if krBase.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.AppendageKeyRangeID)
+	}
 
 	if krBase.ShardID != krAppendage.ShardID {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
@@ -1368,12 +1369,15 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err != nil {
 		return err
 	}
-
 	defer func() {
 		if err := lc.UnlockKeyRangeOps(ctx, req.SourceID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
 		}
 	}()
+
+	if krOld.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to split key range: key range \"%s\" is locked", krOld.ID)
+	}
 
 	ds, err := lc.qdb.GetDistribution(ctx, krOld.Distribution)
 

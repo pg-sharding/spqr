@@ -593,7 +593,7 @@ func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, er
 		Then(
 			clientv3.OpPut(keyRangeOpLockNodePath(id), "lock", clientv3.WithLease(lease.ID)),
 			clientv3.OpGet(keyRangeNodePath(id)),
-			clientv3.OpGet(LockPath(id)),
+			clientv3.OpGet(LockPath(keyRangeNodePath(id))),
 			clientv3.OpGet(keyRangeMetaNodePath(id))).
 		Else(
 			clientv3.OpGet(keyRangeNodePath(id)),
@@ -645,12 +645,12 @@ func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, er
 func (q *EtcdQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key range id", id).Msg("etcdqdb: release key range operation lock")
 
-	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(keyRangeNodePath(id))).Then(clientv3.OpDelete(keyRangeOpLockNodePath(id))).Commit()
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeOpLockNodePath(id))).Commit()
 	if err != nil {
 		return err
 	}
 	if !resp.Succeeded {
-		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to release operation lock for key range \"%s\": key range does not exist", id)
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to release operation lock for key range \"%s\": transaction failed", id)
 	}
 	return nil
 }
