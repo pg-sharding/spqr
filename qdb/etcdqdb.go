@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/clientv3util"
@@ -58,6 +59,7 @@ func NewEtcdQDB(addrs []string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 const (
 	keyRangesNamespace                   = "/keyranges/"
 	keyRangesMetadataNamespace           = "/key_range_meta/"
+	keyRangeOpLockNamespace              = "/key_range_op_lock"
 	distributionNamespace                = "/distributions/"
 	keyRangeMovesNamespace               = "/krmoves/"
 	routersNamespace                     = "/routers/"
@@ -89,8 +91,8 @@ const (
 	sequenceSpace      = "sequence_space"
 	transactionRequest = "transaction_request"
 
-	TaskGroupLeaseTTL = 30 // generous lease
-
+	TaskGroupLeaseTTL      = 30 // generous lease
+	KeyRangeOpLockLeaseTTL = 5
 )
 
 func LockPath(key string) string {
@@ -103,6 +105,10 @@ func keyRangeNodePath(key string) string {
 
 func keyRangeMetaNodePath(id string) string {
 	return path.Join(keyRangesMetadataNamespace, id)
+}
+
+func keyRangeOpLockNodePath(id string) string {
+	return path.Join(keyRangeOpLockNamespace)
 }
 
 func routerNodePath(key string) string {
@@ -294,23 +300,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, erro
 	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to fetch key range at \"%s\": unexpected etcd response count %d", krNodePath, len(resp.Responses))
 	}
-	kRange := &internalKeyRange{}
-	if err := json.Unmarshal(resp.Responses[0].GetResponseRange().Kvs[0].Value, &kRange); err != nil {
-		return nil, err
-	}
-	isLocked := resp.Responses[1].GetResponseRange().Count > 0 && string(resp.Responses[1].GetResponseRange().Kvs[0].Value) == "locked"
-
-	version := 0
-	// TODO fail if meta not found(will break compatibility)
-	if resp.Responses[2].GetResponseRange().Count > 0 {
-		var meta *KeyRangeMeta
-		if err := json.Unmarshal(resp.Responses[2].GetResponseRange().Kvs[0].Value, &meta); err != nil {
-			return nil, err
-		}
-		version = meta.Version
-	}
-
-	return keyRangeFromInternal(kRange, isLocked, version), nil
+	return q.parseKeyRange(resp.Responses[0], resp.Responses[1], resp.Responses[2])
 }
 
 // TODO : unit tests
@@ -526,38 +516,33 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' response parts insufficient count=%d",
 				keyRangeId, len(resp.Responses))
 		} else {
-			rng := resp.Responses[1].GetResponseRange()
-			if len(rng.Kvs) != 1 {
-				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' insufficient key-value pairs count=%d",
-					keyRangeId, len(rng.Kvs))
-			}
-			if rng.Kvs[0] == nil {
-				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' invalid key range value  (case 0)",
-					keyRangeId)
-			}
-			kv := rng.Kvs[0].Value
-			if kv == nil {
-				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' invalid key range value  (case 1)",
-					keyRangeId)
-			}
-
-			rng = resp.Responses[2].GetResponseRange()
-			ver := 0
-			if rng.Count > 0 {
-				var meta *KeyRangeMeta
-				if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
-					return nil, err
-				}
-				ver = meta.Version
-			}
-			keyRange := &internalKeyRange{}
-			if err := json.Unmarshal(kv, &keyRange); err != nil {
+			keyRange, err := q.parseKeyRange(resp.Responses[1], resp.Responses[0], resp.Responses[2])
+			if err != nil {
 				return nil, err
 			}
 			statistics.LockStats.RecordLockKeyRange(keyRangeId, time.Now())
-			return keyRangeFromInternal(keyRange, true, ver), nil
+			return keyRange, nil
 		}
 	}
+}
+
+func (q *EtcdQDB) parseKeyRange(keyRangeResp, lockResp, metaResp *etcdserverpb.ResponseOp) (*KeyRange, error) {
+	kRange := &internalKeyRange{}
+	if err := json.Unmarshal(keyRangeResp.GetResponseRange().Kvs[0].Value, &kRange); err != nil {
+		return nil, err
+	}
+	isLocked := lockResp.GetResponseRange().Count > 0 && string(lockResp.GetResponseRange().Kvs[0].Value) == "locked"
+
+	version := 0
+	if metaResp.GetResponseRange().Count > 0 {
+		var meta *KeyRangeMeta
+		if err := json.Unmarshal(metaResp.GetResponseRange().Kvs[0].Value, &meta); err != nil {
+			return nil, err
+		}
+		version = meta.Version
+	}
+
+	return keyRangeFromInternal(kRange, isLocked, version), nil
 }
 
 // TODO : unit tests
@@ -586,11 +571,88 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 }
 
 func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, error) {
-	panic("not implemented")
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: acquire key range operation lock")
+
+	lease, err := q.cli.Grant(ctx, KeyRangeOpLockLeaseTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	keepAliveCh, err := q.cli.KeepAlive(context.Background(), lease.ID)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
+		return nil, err
+	}
+
+	resp, err := q.cli.
+		Txn(ctx).If(
+		clientv3util.KeyMissing(keyRangeOpLockNodePath(id)),
+		clientv3util.KeyExists(keyRangeNodePath(id))).
+		Then(
+			clientv3.OpPut(keyRangeOpLockNodePath(id), "lock", clientv3.WithLease(lease.ID)),
+			clientv3.OpGet(keyRangeNodePath(id)),
+			clientv3.OpGet(LockPath(id)),
+			clientv3.OpGet(keyRangeMetaNodePath(id))).
+		Else(
+			clientv3.OpGet(keyRangeNodePath(id)),
+			clientv3.OpGet(keyRangeOpLockNodePath(id)),
+		).
+		Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Succeeded {
+		if len(resp.Responses) != 2 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responces while acquiring key range operation lock: expected 2, got %d", len(resp.Responses))
+		}
+		if resp.Responses[1].GetResponseRange().Count == 1 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to acquire key range operation lock for key range \"%s\": lock is already taken", id)
+		}
+		if resp.Responses[0].GetResponseRange().Count == 0 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to acquire key range operation lock for key range \"%s\": key range does not exist", id)
+		}
+	}
+
+	if len(resp.Responses) != 4 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responces while acquiring key range operation lock: expected 4, got %d", len(resp.Responses))
+	}
+
+	if resp.Responses[1].GetResponseRange().Count != 1 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "cannot get key range \"%s\" while acquiring operation lock: unexpected key count %d", id, resp.Responses[1].GetResponseRange().Count)
+	}
+
+	keyRange, err := q.parseKeyRange(resp.Responses[1], resp.Responses[2], resp.Responses[3])
+	if err != nil {
+		return nil, err
+	}
+
+	// okay, we acquired lock, time to spawn keep alive channel
+	go func() {
+		for resp := range keepAliveCh {
+			spqrlog.Zero.Debug().
+				Uint64("raft-term", resp.RaftTerm).
+				Int64("lease-id", int64(resp.ID)).
+				Msg("etcd keep alive channel")
+		}
+	}()
+
+	return keyRange, nil
 }
 
 func (q *EtcdQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
-	panic("not implemented")
+	spqrlog.Zero.Debug().Str("key range id", id).Msg("etcdqdb: release key range operation lock")
+
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(keyRangeNodePath(id))).Then(clientv3.OpDelete(keyRangeOpLockNodePath(id))).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to release operation lock for key range \"%s\": key range does not exist", id)
+	}
+	return nil
 }
 
 func (q *EtcdQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
