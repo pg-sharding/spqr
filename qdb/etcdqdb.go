@@ -516,7 +516,7 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "etcd lock '%s' response parts insufficient count=%d",
 				keyRangeId, len(resp.Responses))
 		} else {
-			keyRange, err := q.parseKeyRange(resp.Responses[1], resp.Responses[0], resp.Responses[2])
+			keyRange, err := q.parseKeyRange(resp.Responses[1], nil, resp.Responses[2])
 			if err != nil {
 				return nil, err
 			}
@@ -531,7 +531,7 @@ func (q *EtcdQDB) parseKeyRange(keyRangeResp, lockResp, metaResp *etcdserverpb.R
 	if err := json.Unmarshal(keyRangeResp.GetResponseRange().Kvs[0].Value, &kRange); err != nil {
 		return nil, err
 	}
-	isLocked := lockResp.GetResponseRange().Count > 0 && string(lockResp.GetResponseRange().Kvs[0].Value) == "locked"
+	isLocked := lockResp != nil && lockResp.GetResponseRange().Count > 0 && string(lockResp.GetResponseRange().Kvs[0].Value) == "locked"
 
 	version := 0
 	if metaResp.GetResponseRange().Count > 0 {

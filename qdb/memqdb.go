@@ -540,7 +540,7 @@ func (q *MemQDB) LockKeyRangeOps(_ context.Context, id string) (*KeyRange, error
 
 	lock, ok := q.State.krOpLocks[id]
 	if !ok {
-		lock := &sync.Mutex{}
+		lock = &sync.Mutex{}
 		q.State.krOpLocks[id] = lock
 	}
 	lock.Lock()
