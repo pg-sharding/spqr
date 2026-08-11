@@ -141,6 +141,7 @@ errtype
 eshkere
 etcdctl
 etcdqdb
+etcdserverpb
 expd
 extldflags
 extversion
