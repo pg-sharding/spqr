@@ -55,15 +55,6 @@ var kr1Locked = &kr.KeyRange{
 	IsLocked:     true,
 }
 
-var kr1NotLocked = &kr.KeyRange{
-	ID:           "kr1",
-	ShardID:      "sh1",
-	Distribution: "ds1",
-	LowerBound:   []any{int64(0)},
-	ColumnTypes:  []string{qdb.ColumnTypeInteger},
-	IsLocked:     false,
-}
-
 func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
 	memqdb, err := qdb.RestoreQDB(MemQDBPath)
 	if err != nil {
