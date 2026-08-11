@@ -682,18 +682,18 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 		if cachedPd.rd != nil {
 			// send to the client
 			if err := rst.Client().Send(cachedPd.rd); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		if cachedPd.nodata != nil {
 			// send to the client
 			if err := rst.Client().Send(cachedPd.nodata); err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		rst.savedPortalDesc[rst.lastBindName] = cachedPd
-		return nil
+		return cachedPd, nil
 	}
 
 	/* SingleShard or random shard plans */
