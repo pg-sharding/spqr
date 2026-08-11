@@ -361,7 +361,7 @@ Feature: Move test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    failed to aquire key range operation lock: failed to acquire key range operation lock for key range .*krid3.*: key range does not exist \(SQLSTATE SPQRt\)
+    failed to caquire key range operation lock: failed to acquire key range operation lock for key range .*krid3.*: key range does not exist \(SQLSTATE SPQRt\)
     """
 
   Scenario: Move fails when table does not exist on receiver

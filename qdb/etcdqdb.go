@@ -606,7 +606,7 @@ func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, er
 
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responces while acquiring key range operation lock: expected 2, got %d", len(resp.Responses))
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responses while acquiring key range operation lock: expected 2, got %d", len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 1 {
 			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to acquire key range operation lock for key range \"%s\": lock is already taken", id)
@@ -617,7 +617,7 @@ func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, er
 	}
 
 	if len(resp.Responses) != 4 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responces while acquiring key range operation lock: expected 4, got %d", len(resp.Responses))
+		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responses while acquiring key range operation lock: expected 4, got %d", len(resp.Responses))
 	}
 
 	if resp.Responses[1].GetResponseRange().Count != 1 {
