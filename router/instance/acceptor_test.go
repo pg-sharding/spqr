@@ -84,9 +84,7 @@ func TestAcceptLoopClosesOnMaxErrors(t *testing.T) {
 
 	select {
 	case _, ok := <-cChan:
-
-		assert.True(t, ok, "channel should be closed")
-
+		assert.False(t, ok, "channel should be closed")
 	case <-time.After(testTimeout):
 		t.Fatal("timed out waiting for channel to be closed")
 	}
