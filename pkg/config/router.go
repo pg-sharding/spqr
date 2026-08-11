@@ -112,6 +112,10 @@ type Router struct {
 	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
+	AcceptorMaxRetries    int           `json:"acceptor_max_retries" toml:"acceptor_max_retries" yaml:"acceptor_max_retries"`
+	AcceptorRetrySleep    time.Duration `json:"acceptor_retry_sleep" toml:"acceptor_retry_sleep" yaml:"acceptor_retry_sleep"`
+	AcceptorRetrySleepMax time.Duration `json:"acceptor_retry_sleep_max" toml:"acceptor_retry_sleep_max" yaml:"acceptor_retry_sleep_max"`
+
 	ForceConnectionCleanup bool `json:"force_connection_cleanup" toml:"force_connection_cleanup" yaml:"force_connection_cleanup"`
 
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
