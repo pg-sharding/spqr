@@ -1213,7 +1213,7 @@ Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKey
     Then command return code should be "1"
     And SQL error on host "coordinator2" should match regexp
     """
-    no key range found at /keyranges/kr1
+    key range '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' already exists
     """
   
   Scenario: redistribute is retryable after fail to update MoveTask status to TaskSplit in QDB when transferring by multiple moves
