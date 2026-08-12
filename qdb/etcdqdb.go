@@ -605,6 +605,11 @@ func (q *EtcdQDB) LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, er
 	}
 
 	if !resp.Succeeded {
+		_, err := q.cli.Revoke(ctx, lease.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		if len(resp.Responses) != 2 {
 			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected number of responses while acquiring key range operation lock: expected 2, got %d", len(resp.Responses))
 		}
