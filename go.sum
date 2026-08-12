@@ -226,8 +226,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.0.2 h1:9yCKha/T5XdGtO0q9Q9a6T5NUCsTn/DrBg0D7ufOcFM=
 github.com/opencontainers/image-spec v1.0.2/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=
-github.com/pg-sharding/lyx v0.0.0-20260811111818-04e169502501 h1:b5+KztIgwzvr+MgeJGjRguh/7TxpLapZ3ROrxZhiN4I=
-github.com/pg-sharding/lyx v0.0.0-20260811111818-04e169502501/go.mod h1:GpoHq0FWCBlBlxAGrzH4R39zu/8sMyzACDEXvrkPThI=
+github.com/pg-sharding/lyx v0.0.0-20260812021445-6c8c45f6c6e2 h1:99BdQ0/uYWrSU1VCtRkm9KtAneDgpQnXNE0eOZcf2Eg=
+github.com/pg-sharding/lyx v0.0.0-20260812021445-6c8c45f6c6e2/go.mod h1:GpoHq0FWCBlBlxAGrzH4R39zu/8sMyzACDEXvrkPThI=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
