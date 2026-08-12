@@ -18,7 +18,7 @@ Feature: spqr-monitor test
     """
     Then command return code should be "0"
 
-  Scenario: monitor works with no corruptions
+  Scenario: spqr-monitor check works with no corruptions
     When I run SQL on host "router"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -36,7 +36,7 @@ Feature: spqr-monitor test
     0;OK
     """
 
-  Scenario: monitor works with corruptions
+  Scenario: spqr-monitor check works with corruptions
     When I run SQL on host "router"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -64,7 +64,7 @@ Feature: spqr-monitor test
     Corruption found: row \[1 001\], rel "xMove" shard "sh2"
     """
 
-  Scenario: monitor works with multiple relations 
+  Scenario: spqr-monitor check works with multiple relations 
     When I run SQL on host "router"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -95,7 +95,7 @@ Feature: spqr-monitor test
     Corruption found: row \[1 001\], rel "xMove2" shard "sh2"
     """
 
-  Scenario: monitor exists if state file found
+  Scenario: spqr-monitor check exists if state file found
     When I run command on host "coordinator" with timeout "30" seconds
     """
     touch /tmp/report.txt && /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
@@ -113,6 +113,40 @@ Feature: spqr-monitor test
     And command output should match regexp
     """
     ^$
+    """
+
+  Scenario: spqr-monitor check works with corruptions when there is a shard with no key ranges
+    When I execute SQL on host "coordinator"
+    """
+    DROP KEY RANGE krid3;
+    DROP KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    2;corruption found, check "/tmp/report.txt" file
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    Corruption found: row \[1 001\], rel "xMove" shard "sh2"
     """
   
   Scenario: spqr-monitor verify fails when no move task in progress
