@@ -522,9 +522,8 @@ func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
 
 // RenameKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew string) error {
-	keyRange, err := lc.GetKeyRange(ctx, krID)
-	if err != nil {
-		return err
+	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
 	lockCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -534,9 +533,6 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	defer func() {
 		_ = lc.UnlockKeyRangeOps(ctx, krID)
 	}()
-	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
-	}
 	keyRange, err := meta.LockKeyRange(ctx, lc, krID)
 	if err != nil {
 		return err
