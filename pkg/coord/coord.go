@@ -537,6 +537,10 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
+	keyRange, err := meta.LockKeyRange(ctx, lc, krID)
+	if err != nil {
+		return err
+	}
 	if !config.CoordinatorConfig().UseSPQRGuard {
 		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
 	}

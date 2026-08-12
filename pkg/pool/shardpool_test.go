@@ -3,11 +3,9 @@ package pool_test
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
@@ -149,6 +147,89 @@ func TestShardPoolAllocFnError(t *testing.T) {
 	assert.Equal(int64(1), statistics.QueueResidualSize)
 }
 
+func runnerPool(t *testing.T, connLimit, clientCount int) {
+	t.Helper()
+
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	conns := make([]shard.ShardHostInstance, 0, connLimit)
+
+	for i := range connLimit {
+		shardconn := mockshard.NewMockShardHostInstance(ctrl)
+
+		ins := mockinst.NewMockDBInstance(ctrl)
+		ins.EXPECT().Hostname().AnyTimes().Return(fmt.Sprintf("h%d", i))
+		shardconn.EXPECT().InstanceHostname().AnyTimes().Return(fmt.Sprintf("h%d", i))
+
+		shardconn.EXPECT().Instance().AnyTimes().Return(ins)
+		shardconn.EXPECT().ID().AnyTimes().Return(uint(1234*100 + i))
+		shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
+		shardconn.EXPECT().IsStale().AnyTimes().Return(false)
+
+		conns = append(conns, shardconn)
+	}
+
+	afterBootstrap := false
+	it := 0
+	shkey := kr.ShardKey{
+		Name: "1",
+	}
+
+	shp := pool.NewShardHostPool(func(_ kr.ShardKey, _ config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
+		if afterBootstrap {
+
+			assert.Fail("connection pool overflow")
+
+			return nil, errors.New("bad")
+		}
+
+		return conns[it], nil
+	}, config.Host{Address: "h1"}, &config.BackendRule{
+		ConnectionLimit: connLimit,
+		DisableJitter:   true,
+	})
+
+	for it = 0; it < connLimit; it++ {
+		_, err := shp.Connection(uint(it+1), shkey)
+		assert.NoError(err)
+	}
+
+	for it = 0; it < connLimit; it++ {
+		assert.NoError(shp.Put(conns[it]))
+	}
+
+	afterBootstrap = true
+
+	var wg sync.WaitGroup
+
+	var cntExec atomic.Uint64
+
+	wg.Add(clientCount)
+
+	for range clientCount {
+		go func() {
+			defer wg.Done()
+
+			for range 100 {
+				conn, err := shp.Connection(1, shkey)
+
+				assert.NoError(err)
+
+				assert.NotNil(conn)
+
+				cntExec.Add(1)
+
+				assert.NoError(shp.Put(conn))
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	assert.Equal(cntExec.Load(), uint64(clientCount*100))
+}
+
 // TestShardPoolConnectionAcquireLimit tests the connection acquisition limit of the ShardPool.
 // It creates a pool of shard connections and simulates multiple goroutines trying to acquire and release connections.
 // The test ensures that the connection acquisition limit is respected and that connections are properly released.
@@ -156,88 +237,24 @@ func TestShardPoolAllocFnError(t *testing.T) {
 // The test expects the connection limit to be set to 10 and checks that at least 15% of the connection acquisition attempts are successful.
 func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
-	connLimit := 10
+	for _, tt := range []struct {
+		connLimit int
+		clients   int
+	}{
+		{
+			connLimit: 1,
+			clients:   2,
+		},
+		{
+			connLimit: 10,
+			clients:   30,
+		},
 
-	assert := assert.New(t)
-	ctrl := gomock.NewController(t)
-
-	conns := make(map[uint]shard.ShardHostInstance, connLimit)
-
-	used := make(map[uint]bool, connLimit)
-
-	for i := range connLimit {
-		shardconn := mockshard.NewMockShardHostInstance(ctrl)
-
-		ins := mockinst.NewMockDBInstance(ctrl)
-		ins.EXPECT().Hostname().AnyTimes().Return(fmt.Sprintf("h%d", i))
-
-		shardconn.EXPECT().Instance().AnyTimes().Return(ins)
-		shardconn.EXPECT().ID().AnyTimes().Return(uint(1234*100 + i))
-		shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
-		shardconn.EXPECT().IsStale().AnyTimes().Return(false)
-
-		conns[shardconn.ID()] = shardconn
-		used[shardconn.ID()] = false
+		{
+			connLimit: 100,
+			clients:   300,
+		},
+	} {
+		runnerPool(t, tt.connLimit, tt.clients)
 	}
-
-	var mu sync.Mutex
-
-	shp := pool.NewShardHostPool(func(_ kr.ShardKey, _ config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
-		mu.Lock()
-		defer mu.Unlock()
-
-		for _, sh := range conns {
-			if !used[sh.ID()] {
-				used[sh.ID()] = true
-				return sh, nil
-			}
-		}
-
-		assert.Fail("connection pool overflow")
-
-		return nil, errors.New("bad")
-	}, config.Host{Address: "h1"}, &config.BackendRule{
-		ConnectionLimit:   connLimit,
-		ConnectionRetries: 1,
-	})
-
-	var wg sync.WaitGroup
-
-	var cntExec atomic.Uint64
-
-	wg.Add(20)
-
-	for range 20 {
-		go func() {
-			defer wg.Done()
-
-			for range 100 {
-				conn, err := shp.Connection(1, kr.ShardKey{
-					Name: "1",
-				})
-				if err != nil {
-					// too much connections
-					continue
-				}
-
-				assert.NotNil(conn)
-
-				// imitate use
-				time.Sleep(time.Duration(1+rand.Uint32()%50) * time.Millisecond)
-
-				cntExec.Add(1)
-
-				_ = shp.Put(conn)
-
-				mu.Lock()
-				used[conn.ID()] = false
-				mu.Unlock()
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	// no more that 25% failure
-	assert.Greater(cntExec.Load(), uint64(15*100))
 }

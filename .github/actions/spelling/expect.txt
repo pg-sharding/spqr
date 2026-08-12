@@ -55,7 +55,6 @@ clid
 clientinteractor
 clientpool
 clientv
-CLITLS
 clmp
 cmds
 cmngr
@@ -134,6 +133,7 @@ elephantsql
 Elts
 emptypb
 epn
+EQR
 errcounter
 errdefs
 errdetails
@@ -145,7 +145,6 @@ etcdserverpb
 expd
 extldflags
 extversion
-EQR
 FAFBFF
 fdw
 feda
@@ -248,6 +247,7 @@ kek
 keyout
 keyrange
 keyrangemgr
+keyspace
 keytab
 keytabdata
 keytabfile
@@ -337,7 +337,6 @@ netchecker
 netconn
 netutil
 Newf
-NTuples
 nolint
 nonexistentshard
 NOSHARD
@@ -347,6 +346,7 @@ nroute
 nsecs
 nselect
 nspname
+NTuples
 Objtype
 odssd
 ogima
@@ -396,6 +396,7 @@ PIDs
 pids
 pitr
 pkgclient
+planopts
 podman
 poolers
 poolmgr
@@ -407,14 +408,12 @@ pppp
 prepstatement
 privs
 procps
-proident
 promhttp
 protobuf
 protoc
 protovalidate
 psswd
 pstmt
-planopts
 PYTHONUNBUFFERED
 qcfg
 qdb
@@ -533,11 +532,11 @@ SPQRQ
 spqrql
 SPQRR
 SPQRT
+SPQRt
 SPQRU
 SPQRV
 SPQRX
 SPQRZ
-SPQRt
 SQLF
 sqlfile
 SQLIn
@@ -639,7 +638,6 @@ vasya
 vguoyguoygoyy
 Vitess
 Volkov
-vxid
 walreceiver
 Warningf
 workloadlog
@@ -668,6 +666,16 @@ yjoin
 YMid
 yylex
 zerolog
+zid
 zjoin
 zzz
 zid
+ENONET
+ENETDOWN
+EPROTO
+ENOPROTOOPT
+EHOSTDOWN
+ENONET
+EHOSTUNREACH
+EOPNOTSUPP
+ENETUNREACH
