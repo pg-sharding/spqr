@@ -62,4 +62,23 @@ SET __spqr__execute_on=sh2;
 SELECT * FROM spqr_metadata.spqr_local_key_ranges;
 
 \c spqr-console
+CREATE KEY RANGE kr4 FROM 10 ROUTE TO sh2;
+CREATE KEY RANGE kr3 FROM 0 ROUTE TO sh1;
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+
+\c spqr-console
+DROP KEY RANGE ALL;
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+
+\c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

@@ -906,18 +906,18 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all key ranges")
 
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	if err := qc.Coordinator.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.DropAllKeyRanges(ctx, nil)
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("drop key range response")
 		return err
-	}); err != nil {
-		return err
-	}
-
-	return qc.Coordinator.DropKeyRangeAll(ctx)
+	})
 }
 
 // TODO : unit tests

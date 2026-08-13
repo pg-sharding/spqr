@@ -168,6 +168,57 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 \c spqr-console
+CREATE KEY RANGE kr4 FROM 10 ROUTE TO sh2;
+ add key range 
+---------------
+ bound -> 10
+(1 row)
+
+CREATE KEY RANGE kr3 FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ kr3
+ kr4
+(2 rows)
+
+\c regress
+SET __spqr__execute_on=sh1;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh1
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+SET __spqr__execute_on=sh2;
+SELECT * FROM spqr_metadata.spqr_local_key_ranges;
+NOTICE: send query to shard(s) : sh2
+ spqr_distribution | key_range_id | lower_bound | n_lower_bound 
+-------------------+--------------+-------------+---------------
+(0 rows)
+
+\c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
