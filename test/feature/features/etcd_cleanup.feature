@@ -92,4 +92,6 @@ Feature: There are no leftovers in ETCD after all DROPs
         And etcd should equal remembered state ignoring prefixes
         """
         /distributions/REPLICATED
+        /relation_mappings/r1
+        /reference_relations/r1
         """
