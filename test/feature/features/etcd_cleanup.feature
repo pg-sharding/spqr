@@ -68,4 +68,3 @@ Feature: There are no leftovers in ETCD after all DROPs
         And etcd should equal remembered state ignoring prefixes
         """
         """
-
