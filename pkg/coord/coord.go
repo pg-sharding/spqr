@@ -342,15 +342,15 @@ func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
 		return err
 	}
 
-	krIds := make([]string, len(krs))
+	krIDs := make([]string, len(krs))
 	for _, kr := range krs {
-		krIds = append(krIds, kr.KeyRangeID)
+		krIDs = append(krIDs, kr.KeyRangeID)
 	}
 
 	if err := UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
 		{
 			DropKeyRange: &proto.DropKeyRangeGossip{
-				Id: krIds,
+				Id: krIDs,
 			},
 		},
 	}); err != nil {
