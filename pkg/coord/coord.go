@@ -333,6 +333,17 @@ func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbSt
 
 // DropKeyRangeAll implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
+	if config.CoordinatorConfig().UseSPQRGuard {
+		shards, err := lc.qdb.ListShards(ctx)
+		if err != nil {
+			return err
+		}
+		for _, shard := range shards {
+			if err := updateKeyRangeMetaOnShard(ctx, shard.ID, datatransfers.DeleteAllKeyRangesMeta); err != nil {
+				return err
+			}
+		}
+	}
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
