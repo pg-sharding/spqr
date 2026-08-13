@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
@@ -333,18 +334,26 @@ func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbSt
 
 // DropKeyRangeAll implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
-	if config.CoordinatorConfig().UseSPQRGuard {
-		shards, err := lc.qdb.ListShards(ctx)
-		if err != nil {
-			return err
-		}
-		for _, shard := range shards {
-			if err := updateKeyRangeMetaOnShard(ctx, shard.ID, datatransfers.DeleteAllKeyRangesMeta); err != nil {
-				return err
-			}
-		}
+	krs, err := lc.qdb.ListAllKeyRanges(ctx)
+	if err != nil {
+		return err
 	}
-	return lc.qdb.DropKeyRangeAll(ctx)
+	if err := lc.qdb.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	krIDs := make([]string, len(krs))
+	for _, kr := range krs {
+		krIDs = append(krIDs, kr.KeyRangeID)
+	}
+
+	return UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
+		{
+			DropKeyRange: &proto.DropKeyRangeGossip{
+				Id: krIDs,
+			},
+		},
+	})
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
