@@ -533,6 +533,7 @@ Feature: Redistribution retries test
     Then command return code should be "1"
     And I wait for coordinator "regress_coordinator_2" to take control    
     And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
 
     When I run SQL on host "coordinator2"
     """
