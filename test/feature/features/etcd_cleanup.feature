@@ -43,3 +43,53 @@ Feature: There are no leftovers in ETCD after all DROPs
         /keyranges/
         /key_range_meta/
         """
+
+    Scenario: DROP REFERENCE RELATION
+        When I run SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        """
+        Then command return code should be "0"
+
+        Given I remember current etcd state
+        When I run SQL on host "coordinator"
+        """
+        CREATE REFERENCE RELATION r1;
+        """
+        Then command return code should be "0"
+
+        And I run SQL on host "coordinator"
+        """
+        DROP REFERENCE RELATION r1;
+        """
+        Then command return code should be "0"
+
+        And etcd should equal remembered state ignoring prefixes
+        """
+        /distributions/REPLICATED
+        """
+
+    Scenario: DROP SEQUENCE
+        When I run SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        """
+        Then command return code should be "0"
+
+        Given I remember current etcd state
+        When I run SQL on host "coordinator"
+        """
+        CREATE REFERENCE TABLE r1 AUTO INCREMENT id START 10;
+        """
+        Then command return code should be "0"
+
+        And I run SQL on host "coordinator"
+        """
+        DROP SEQUENCE r1_id CASCADE;
+        """
+        Then command return code should be "0"
+
+        And etcd should equal remembered state ignoring prefixes
+        """
+        /distributions/REPLICATED
+        """
