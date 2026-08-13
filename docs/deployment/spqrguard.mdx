@@ -10,8 +10,10 @@ connections explicitly disable the guard for their sessions.
 
 This guide describes a staged rollout for an existing cluster that does not
 have `spqrguard` installed. It assumes a deployment with a
-[coordinator](/sharding/cluster_components/coordinator) and a `shard_data`
-configuration file.
+[coordinator](/sharding/cluster_components/coordinator). The coordinator's
+[`shard_data`](/configuration/coordinator#coordinator-settings) setting must
+point to its shard connection file so that the coordinator can traverse shard
+primaries and synchronize `spqrguard` metadata.
 
 <Warning>
 `spqrguard` protects against accidental direct writes; it is not an access
@@ -30,9 +32,19 @@ access and credentials so that applications can connect only through SPQR.
 | Every coordinator | Set `use_spqrguard: true` | Keeps key range metadata correct during topology changes and data moves |
 | Every coordinator | Set `forbid_direct_shard_queries: true` | Enables the global write block for distributed and reference tables |
 
+The global block applies when the session settings
+`spqrguard.prevent_distributed_table_modify` and
+`spqrguard.prevent_reference_table_modify` are `unset`. Fresh direct sessions
+normally keep them `unset` and therefore inherit the global block. Router
+backend sessions explicitly set both values to `off`, which is why routed
+writes remain allowed.
+
 The current SPQR integration recognizes exactly extension version `2.3`.
 The `spqrguard` source tree may advertise a newer default version, so always
-specify `VERSION '2.3'` when creating the extension.
+specify `VERSION '2.3'` when creating the extension. Before upgrading SPQR,
+recheck the accepted versions in
+[`SetUpSPQRGuard`](https://github.com/pg-sharding/spqr/blob/master/pkg/datatransfers/data_transfers.go)
+or the release's deployment artifacts.
 
 ## Before you start
 
@@ -116,9 +128,11 @@ shared_preload_libraries = 'pg_stat_statements,spqrguard'
 
 A configuration reload is not enough. Restart each PostgreSQL instance.
 
-For an HA shard, use the normal rolling procedure: restart replicas first,
-switchover if required, and then restart the former primary. Do not leave an
-instance without the module; it would become unprotected after failover.
+For an HA shard that must remain writable, restart the replicas first,
+switchover to a restarted replica, and then restart the former primary. If an
+outage is acceptable, you can restart the primary without a switchover, but
+writes will be unavailable during its restart. Do not leave an instance
+without the module; it would become unprotected after failover.
 
 After each restart, connect directly to that instance and verify:
 
@@ -166,13 +180,26 @@ ALTER EXTENSION spqrguard UPDATE TO '2.3';
 Do not use `CREATE EXTENSION IF NOT EXISTS ... VERSION '2.3'` as a version
 check. If another version is installed, `IF NOT EXISTS` leaves it unchanged,
 and SPQR will skip `spqrguard` setup on that shard. PostgreSQL extensions
-cannot be downgraded with `ALTER EXTENSION`; stop the rollout and prepare a
-separate recreate or compatibility procedure if a version newer than `2.3`
-is already installed.
+cannot be downgraded with `ALTER EXTENSION`.
+
+If you accidentally created the wrong version in this step, have not yet
+restarted any router or coordinator, and know that `spqrguard` was not present
+before this rollout, it is safe to recreate the still-empty extension:
+
+```sql
+DROP EXTENSION spqrguard;
+CREATE EXTENSION spqrguard VERSION '2.3';
+```
+
+Otherwise, stop the rollout. Do not drop an extension that predates this
+procedure or has already received metadata: dropping it also removes its
+`spqr_metadata` objects. Back up the metadata and prepare a separate recreate
+and resynchronization procedure.
 </Warning>
 
-The extension exists now, but direct writes are not blocked until settings
-`42` and `69` are enabled in step 7.
+The extension exists now, but direct writes are not blocked until global
+setting IDs `42` (distributed tables) and `69` (reference tables) are enabled
+in step 7.
 
 ## 5. Enable metadata maintenance without blocking writes
 
@@ -196,10 +223,11 @@ use_spqrguard: true
 forbid_direct_shard_queries: false
 ```
 
-Roll the routers first. Then restart the coordinator instances so that the
-active coordinator reads the existing SPQR relation metadata and writes it to
-every shard. In an HA coordinator deployment, update all instances, but
-remember that only the instance holding the coordinator lock performs setup.
+Restart the routers one at a time first. Then restart the coordinator instances
+so that the active coordinator reads the existing SPQR relation metadata and
+writes it to every shard. In an HA coordinator deployment, update all
+instances, but remember that only the instance holding the coordinator lock
+performs setup.
 
 Check the active coordinator logs. Do not continue if they contain either of
 these messages:
@@ -275,9 +303,15 @@ FROM (VALUES ('kr1'), ('kr2')) AS ranges(key_range_id)
 ON CONFLICT (key_range_id) DO NOTHING;
 ```
 
-The placeholder values `TODO` and `67` match the values currently written by
-SPQR; current integration logic uses the key range ID. Use a separate values
-list for each shard and do not add a key range to shards that do not own it.
+<Warning>
+Use the literal string `'TODO'` and the literal integer `67` exactly as shown.
+They are not placeholders to replace: SPQR's current integration writes these
+exact values and uses only the `key_range_id` column. Replace only the key range
+IDs in the `VALUES` list.
+</Warning>
+
+Use a separate values list for each shard and do not add a key range to shards
+that do not own it.
 
 Verify the result on every shard:
 
@@ -333,13 +367,14 @@ reused.
 ### A direct write must fail
 
 Connect directly to the primary of each shard. Reset the session override and
-run a no-op write against a distributed table selected in step 1:
+run a no-op write against the distributed table selected in step 1. Replace
+`your_schema.your_distributed_table` with that table's qualified name:
 
 ```sql
 SET spqrguard.prevent_distributed_table_modify TO 'unset';
 
 BEGIN;
-DELETE FROM app.distributed_table WHERE false;
+DELETE FROM your_schema.your_distributed_table WHERE false;
 ROLLBACK;
 ```
 
@@ -349,13 +384,14 @@ The `DELETE` must fail before changing data:
 ERROR: unable to modify SPQR distributed relation within read-only transaction
 ```
 
-Repeat the test for a reference table:
+Repeat the test for the reference table selected in step 1, replacing
+`your_schema.your_reference_table` with its qualified name:
 
 ```sql
 SET spqrguard.prevent_reference_table_modify TO 'unset';
 
 BEGIN;
-DELETE FROM app.reference_table WHERE false;
+DELETE FROM your_schema.your_reference_table WHERE false;
 ROLLBACK;
 ```
 
@@ -373,13 +409,13 @@ that the session setting is `unset`, not `off`.
 
 Connect through every router and run a valid, single-shard write in a
 transaction that is rolled back. Substitute a real shard key and a safe
-non-key column:
+non-key column, and replace all `your_*` identifiers below:
 
 ```sql
 BEGIN;
-UPDATE app.distributed_table
-SET non_key_column = non_key_column
-WHERE distribution_key = <known_key>;
+UPDATE your_schema.your_distributed_table
+SET your_non_key_column = your_non_key_column
+WHERE your_distribution_key = <known_key_value>;
 ROLLBACK;
 ```
 
@@ -447,15 +483,21 @@ Run the final direct and routed write tests again on every shard.
 
 ### Coordinator setup reports a duplicate global setting
 
-The current coordinator setup inserts settings `42` and `69` when
-`forbid_direct_shard_queries` is enabled. A later coordinator restart can
-report a duplicate-key error if those settings already exist. The error does
-not turn off an existing setting, but the setup transaction on that shard is
-rolled back.
+This is a known limitation of the current coordinator implementation, not a
+successful or harmless setup result. The coordinator inserts settings `42` and
+`69` when `forbid_direct_shard_queries` is enabled, so a later restart can
+report a duplicate-key error if those settings already exist.
+
+The error does not turn off an existing setting, but it rolls back the setup
+transaction on that shard and can prevent startup reconciliation from reaching
+the remaining shards. Do not ignore it based only on the fact that application
+traffic still works.
 
 Verify that both settings are still `true`, then repeat the relation and key
 range metadata checks from step 6 on every shard. Do not delete the settings
-on a protected production cluster merely to silence the startup error.
+on a protected production cluster merely to silence the startup error. Treat
+any missing metadata as an incomplete setup and reconcile it before declaring
+the rollout healthy.
 
 ### Router writes receive a spqrguard error
 
