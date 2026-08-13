@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
@@ -333,7 +334,29 @@ func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbSt
 
 // DropKeyRangeAll implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
-	return lc.qdb.DropKeyRangeAll(ctx)
+	krs, err := lc.qdb.ListAllKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+	if err := lc.qdb.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	krIds := make([]string, len(krs))
+	for _, kr := range krs {
+		krIds = append(krIds, kr.KeyRangeID)
+	}
+
+	if err := UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
+		{
+			DropKeyRange: &proto.DropKeyRangeGossip{
+				Id: krIds,
+			},
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
