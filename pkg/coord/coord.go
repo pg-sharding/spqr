@@ -1137,7 +1137,7 @@ func (lc *Coordinator) LockKeyRangeOps(ctx context.Context, keyRangeID string) (
 	}
 	ds, err := lc.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
 	if err != nil {
-		_ = lc.UnlockKeyRange(ctx, keyRangeID)
+		_ = lc.UnlockKeyRangeOps(ctx, keyRangeID)
 		return nil, err
 	}
 
@@ -1256,7 +1256,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.AppendageKeyRangeID)
 	}()
 
-	if krBase.IsLocked {
+	if krAppendage.IsLocked {
 		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.AppendageKeyRangeID)
 	}
 

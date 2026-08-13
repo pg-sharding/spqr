@@ -4,6 +4,12 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
+CREATE KEY RANGE krid5 FROM 60 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 60
+(1 row)
+
 CREATE KEY RANGE krid4 FROM 40 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
@@ -51,7 +57,8 @@ SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  krid1        | sh1      | ds1             | 0           | false
  krid3        | sh1      | ds1             | 20          | false
  krid4        | sh2      | ds1             | 40          | false
-(3 rows)
+ krid5        | sh2      | ds1             | 60          | false
+(4 rows)
 
 -- locked key range
 LOCK KEY RANGE krid1;
@@ -68,12 +75,34 @@ UNLOCK KEY RANGE krid1;
  key range id -> krid1
 (1 row)
 
+LOCK KEY RANGE krid5;
+    lock key range     
+-----------------------
+ key range id -> krid5
+(1 row)
+
+UNITE KEY RANGE krid4 WITH krid5;
+ERROR:  failed to unite key ranges: key range "krid5" is locked
+UNLOCK KEY RANGE krid5;
+   unlock key range    
+-----------------------
+ key range id -> krid5
+(1 row)
+
 -- reverse order
 UNITE KEY RANGE krid3 WITH krid1;
            merge key ranges           
 --------------------------------------
  merge key range "krid1" into "krid3"
 (1 row)
+
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ krid3        | sh1      | ds1             | 0           | false
+ krid4        | sh2      | ds1             | 40          | false
+ krid5        | sh2      | ds1             | 60          | false
+(3 rows)
 
 -- routing to different shards
 UNITE KEY RANGE krid3 WITH krid4;
