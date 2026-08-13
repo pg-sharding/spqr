@@ -43,3 +43,29 @@ Feature: There are no leftovers in ETCD after all DROPs
         /keyranges/
         /key_range_meta/
         """
+
+    Scenario: DROP KEY RANGE
+        When I run SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        """
+        Then command return code should be "0"
+
+        Given I remember current etcd state
+        When I run SQL on host "coordinator"
+        """
+        CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        LOCK KEY RANGE kr1;
+        """
+        Then command return code should be "0"
+
+        And I run SQL on host "coordinator"
+        """
+        DROP KEY RANGE kr1;
+        """
+        Then command return code should be "0"
+
+        And etcd should equal remembered state ignoring prefixes
+        """
+        """
+
