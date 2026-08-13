@@ -347,16 +347,13 @@ func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
 		krIDs = append(krIDs, kr.KeyRangeID)
 	}
 
-	if err := UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
+	return UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
 		{
 			DropKeyRange: &proto.DropKeyRangeGossip{
 				Id: krIDs,
 			},
 		},
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
