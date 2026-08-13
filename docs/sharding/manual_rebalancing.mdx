@@ -33,6 +33,8 @@ Before starting, make sure that:
 - Both [`spqrguard`](https://github.com/pg-sharding/spqrguard) and `postgres_fdw`
   extensions are installed on the source and destination shards.
 - `spqrguard` is added to `shared_preload_libraries` in `postgresql.conf`.
+  For an existing cluster, follow the complete
+  [spqrguard rollout guide](/deployment/spqrguard).
 
 <Note>
 `spqrguard` is optional but strongly recommended. It prevents direct inserts

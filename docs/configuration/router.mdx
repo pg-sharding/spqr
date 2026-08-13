@@ -121,6 +121,8 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `query_routing.enhanced_multishard_processing` | Enables engine V2 with enhanced multishard query processing, including [automatic batch INSERT/COPY](/sharding/bulk) splitting across shards. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes | `false` |
 | `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | No | `false` |
 | `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | No | `false` |
+| `query_routing.use_spqrguard`                  | Maintains [`spqrguard`](/deployment/spqrguard) metadata when SPQR executes DDL.                                          | `true`, `false`  | No | `false` |
+| `query_routing.forbid_direct_shard_queries`    | Deprecated alias for `query_routing.use_spqrguard`.                                                                      | `true`, `false`  | No | `false` |
 
 ## Transaction Settings
 

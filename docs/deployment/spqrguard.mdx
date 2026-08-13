@@ -1,0 +1,495 @@
+---
+title: 'Prevent direct writes to shards'
+description: 'Enable spqrguard on an existing SPQR cluster without interrupting routed writes'
+---
+
+`spqrguard` is a PostgreSQL extension that prevents writes to SPQR-managed
+distributed and reference tables when a client connects directly to a shard.
+Writes sent through an SPQR router continue to work because router backend
+connections explicitly disable the guard for their sessions.
+
+This guide describes a staged rollout for an existing cluster that does not
+have `spqrguard` installed. It assumes a deployment with a
+[coordinator](/sharding/cluster_components/coordinator) and a `shard_data`
+configuration file.
+
+<Warning>
+`spqrguard` protects against accidental direct writes; it is not an access
+control boundary. A direct client can override the guard with the
+`spqrguard.prevent_*` session settings. Continue to restrict shard network
+access and credentials so that applications can connect only through SPQR.
+</Warning>
+
+## How the pieces fit together
+
+| Layer | Setting or action | Purpose |
+|---|---|---|
+| Every PostgreSQL shard instance | Add `spqrguard` to `shared_preload_libraries` | Loads the executor hook into PostgreSQL processes |
+| Every database routed by SPQR | Install `spqrguard` extension version `2.3` | Creates the `spqr_metadata` schema, tables, and functions |
+| Every router | Set `query_routing.use_spqrguard: true` | Keeps relation metadata correct when SPQR executes DDL |
+| Every coordinator | Set `use_spqrguard: true` | Keeps key range metadata correct during topology changes and data moves |
+| Every coordinator | Set `forbid_direct_shard_queries: true` | Enables the global write block for distributed and reference tables |
+
+The current SPQR integration recognizes exactly extension version `2.3`.
+The `spqrguard` source tree may advertise a newer default version, so always
+specify `VERSION '2.3'` when creating the extension.
+
+## Before you start
+
+Plan a maintenance window that allows you to restart every PostgreSQL shard
+instance, router, and coordinator. Application traffic through SPQR can remain
+online if each layer is redundant and restarted one instance at a time.
+
+You need:
+
+- PostgreSQL superuser access to every database routed by SPQR.
+- A `spqrguard` build or package compiled for each PostgreSQL major version in
+  the cluster.
+- Access to the configuration of all shard primaries and replicas, routers,
+  and coordinators.
+- A tested PostgreSQL failover or switchover procedure if the shards use high
+  availability.
+- A backup of the router and coordinator configuration, QDB metadata, and the
+  affected PostgreSQL databases.
+
+<Warning>
+Do not run topology DDL, create or drop distributed/reference tables, or move
+key ranges while enabling the guard. Wait for active move task groups to
+finish before taking the baseline below.
+</Warning>
+
+## 1. Record the cluster baseline
+
+Connect to the coordinator's administrative console and save the output of:
+
+```sql
+SHOW shards;
+SHOW relations;
+SHOW reference_relations;
+SHOW key_ranges (key_range_id, shard_id);
+SHOW task_groups;
+```
+
+The relation lists will be used to verify `spqrguard` metadata. The key range
+list is also needed because enabling metadata maintenance does not backfill
+key ranges that already exist.
+
+Choose one distributed table and, if the cluster has one, one reference table
+for the final write tests. Use tables on which a rolled-back test write is safe.
+
+## 2. Install the extension files on every shard host
+
+Install the same `spqrguard` revision on every PostgreSQL primary and replica.
+If no package is available for your environment, build it with PGXS:
+
+```bash
+git clone https://github.com/pg-sharding/spqrguard.git
+cd spqrguard
+make USE_PGXS=1 PG_CONFIG=/path/to/pg_config
+sudo make USE_PGXS=1 PG_CONFIG=/path/to/pg_config install
+```
+
+Use the `pg_config` binary from the PostgreSQL major version that will load the
+module. Repeat the build for every PostgreSQL major version in the cluster.
+
+Before changing `shared_preload_libraries`, verify on every instance that
+PostgreSQL can see the extension files:
+
+```sql
+SELECT name, default_version, installed_version
+FROM pg_available_extensions
+WHERE name = 'spqrguard';
+```
+
+The query must return one row. `default_version` may be newer than `2.3`; that
+does not change the version that will be installed in step 4.
+
+## 3. Preload the module and restart PostgreSQL
+
+Add `spqrguard` to the existing comma-separated
+`shared_preload_libraries` value in `postgresql.conf`. Preserve every library
+that is already present. For example:
+
+```ini
+shared_preload_libraries = 'pg_stat_statements,spqrguard'
+```
+
+A configuration reload is not enough. Restart each PostgreSQL instance.
+
+For an HA shard, use the normal rolling procedure: restart replicas first,
+switchover if required, and then restart the former primary. Do not leave an
+instance without the module; it would become unprotected after failover.
+
+After each restart, connect directly to that instance and verify:
+
+```sql
+SHOW shared_preload_libraries;
+SHOW spqrguard.prevent_distributed_table_modify;
+SHOW spqrguard.prevent_reference_table_modify;
+```
+
+The library list must include `spqrguard`. Both guard settings normally show
+`unset` at this stage.
+
+<Warning>
+Install the extension files before adding the library to the configuration.
+PostgreSQL will fail to start if `spqrguard.so` is missing or was built for an
+incompatible PostgreSQL major version.
+</Warning>
+
+## 4. Create extension version 2.3 in every routed database
+
+Run the following on the primary of every logical shard, once for every
+database to which SPQR routes connections:
+
+```sql
+CREATE EXTENSION spqrguard VERSION '2.3';
+
+SELECT extname, extversion
+FROM pg_extension
+WHERE extname = 'spqrguard';
+```
+
+The result must show `2.3`. With physical streaming replication, the catalog
+change is replicated to standbys; the module files and preload configuration
+must still be installed on each standby host. For independent or logically
+replicated nodes, create the extension on each node separately.
+
+If an older version is already installed and an update path to `2.3` is
+available, update it explicitly:
+
+```sql
+ALTER EXTENSION spqrguard UPDATE TO '2.3';
+```
+
+<Warning>
+Do not use `CREATE EXTENSION IF NOT EXISTS ... VERSION '2.3'` as a version
+check. If another version is installed, `IF NOT EXISTS` leaves it unchanged,
+and SPQR will skip `spqrguard` setup on that shard. PostgreSQL extensions
+cannot be downgraded with `ALTER EXTENSION`; stop the rollout and prepare a
+separate recreate or compatibility procedure if a version newer than `2.3`
+is already installed.
+</Warning>
+
+The extension exists now, but direct writes are not blocked until settings
+`42` and `69` are enabled in step 7.
+
+## 5. Enable metadata maintenance without blocking writes
+
+First configure the routers and coordinator to maintain `spqrguard` metadata.
+Keep the global block disabled while the metadata is checked.
+
+On every router, add the following under `query_routing`:
+
+```yaml
+query_routing:
+  use_spqrguard: true
+```
+
+`query_routing.forbid_direct_shard_queries` is a deprecated router-side alias;
+new configurations should use `query_routing.use_spqrguard`.
+
+On every coordinator, use:
+
+```yaml
+use_spqrguard: true
+forbid_direct_shard_queries: false
+```
+
+Roll the routers first. Then restart the coordinator instances so that the
+active coordinator reads the existing SPQR relation metadata and writes it to
+every shard. In an HA coordinator deployment, update all instances, but
+remember that only the instance holding the coordinator lock performs setup.
+
+Check the active coordinator logs. Do not continue if they contain either of
+these messages:
+
+```text
+cannot setup spqrguard on shard: extension not present
+failed to set up spqrguard on shards
+```
+
+## 6. Verify and backfill metadata
+
+### Verify the global block is still off
+
+On every routed database on every shard, this query should return no enabled
+rows:
+
+```sql
+SELECT name, enabled
+FROM spqr_metadata.spqr_global_settings
+WHERE name IN (42, 69)
+ORDER BY name;
+```
+
+The setting IDs are:
+
+- `42` — prevent changes to distributed tables.
+- `69` — prevent changes to reference tables.
+
+If either setting is already `true`, direct writes are already being blocked
+on that shard. Set it to `false` until all metadata checks are complete.
+
+### Compare relation metadata
+
+Run this query directly on every routed database on every shard:
+
+```sql
+SELECT 'distributed' AS relation_type,
+       n.nspname AS schema_name,
+       c.relname AS relation_name
+FROM spqr_metadata.spqr_distributed_relations AS r
+JOIN pg_class AS c ON c.oid = r.reloid
+JOIN pg_namespace AS n ON n.oid = c.relnamespace
+UNION ALL
+SELECT 'reference' AS relation_type,
+       n.nspname AS schema_name,
+       c.relname AS relation_name
+FROM spqr_metadata.spqr_reference_relations AS r
+JOIN pg_class AS c ON c.oid = r.reloid
+JOIN pg_namespace AS n ON n.oid = c.relnamespace
+ORDER BY relation_type, schema_name, relation_name;
+```
+
+Compare it with the `SHOW relations` and `SHOW reference_relations` baseline.
+Every SPQR-managed table that physically exists in that database must be in
+the appropriate metadata table. Investigate missing or unexpected entries
+before enabling the block.
+
+### Backfill existing key ranges
+
+`use_spqrguard: true` keeps key range metadata correct for future SPQR
+operations, but it does not add key ranges that existed before the setting was
+enabled. For every row in the saved
+`SHOW key_ranges (key_range_id, shard_id)` output, add the key range ID only to
+the shard named by `shard_id`.
+
+For example, if `kr1` and `kr2` belong to `sh1`, run this on the `sh1` primary:
+
+```sql
+INSERT INTO spqr_metadata.spqr_local_key_ranges
+    (spqr_distribution, key_range_id, lower_bound)
+SELECT 'TODO', key_range_id, 67
+FROM (VALUES ('kr1'), ('kr2')) AS ranges(key_range_id)
+ON CONFLICT (key_range_id) DO NOTHING;
+```
+
+The placeholder values `TODO` and `67` match the values currently written by
+SPQR; current integration logic uses the key range ID. Use a separate values
+list for each shard and do not add a key range to shards that do not own it.
+
+Verify the result on every shard:
+
+```sql
+SELECT key_range_id
+FROM spqr_metadata.spqr_local_key_ranges
+ORDER BY key_range_id;
+```
+
+The result must match the key ranges assigned to that shard in the coordinator
+baseline. Investigate differences rather than deleting metadata blindly.
+
+## 7. Enable the direct-write block
+
+After every metadata check passes, change every coordinator configuration to:
+
+```yaml
+use_spqrguard: true
+forbid_direct_shard_queries: true
+```
+
+Restart the coordinator instances. The active coordinator writes the global
+settings that enable the block. The setup traverses shards one at a time, so
+verify every shard even if coordinator startup appears successful.
+
+On every routed database on every shard, the following query must return
+exactly two enabled rows:
+
+```sql
+SELECT name, enabled
+FROM spqr_metadata.spqr_global_settings
+WHERE name IN (42, 69)
+ORDER BY name;
+```
+
+Expected result:
+
+```text
+ name | enabled
+------+---------
+   42 | t
+   69 | t
+```
+
+Also recheck the coordinator logs for setup errors before returning the
+cluster to normal administrative operation.
+
+## 8. Test both connection paths
+
+Use fresh connections so that session settings from earlier checks are not
+reused.
+
+### A direct write must fail
+
+Connect directly to the primary of each shard. Reset the session override and
+run a no-op write against a distributed table selected in step 1:
+
+```sql
+SET spqrguard.prevent_distributed_table_modify TO 'unset';
+
+BEGIN;
+DELETE FROM app.distributed_table WHERE false;
+ROLLBACK;
+```
+
+The `DELETE` must fail before changing data:
+
+```text
+ERROR: unable to modify SPQR distributed relation within read-only transaction
+```
+
+Repeat the test for a reference table:
+
+```sql
+SET spqrguard.prevent_reference_table_modify TO 'unset';
+
+BEGIN;
+DELETE FROM app.reference_table WHERE false;
+ROLLBACK;
+```
+
+Expected error:
+
+```text
+ERROR: unable to modify SPQR reference relation within read-only transaction
+```
+
+An unregistered ordinary table is not protected. If a managed table can still
+be modified directly, verify its relation OID in `spqr_metadata` and confirm
+that the session setting is `unset`, not `off`.
+
+### A routed write must succeed
+
+Connect through every router and run a valid, single-shard write in a
+transaction that is rolled back. Substitute a real shard key and a safe
+non-key column:
+
+```sql
+BEGIN;
+UPDATE app.distributed_table
+SET non_key_column = non_key_column
+WHERE distribution_key = <known_key>;
+ROLLBACK;
+```
+
+The update must reach PostgreSQL without a `spqrguard` error. A fresh router
+backend connection sets both guard session settings to `off`; direct sessions
+normally inherit the global setting because their values remain `unset`.
+
+If the shards use HA, perform the normal shard failover test and repeat the
+direct-write check on the new primary. This confirms that the module files,
+preload configuration, extension catalog, and global settings are present on
+the failover path.
+
+## Rollback
+
+If application writes through SPQR start failing, disable the global block
+first and investigate without removing the extension. On every routed database
+on every shard primary, run:
+
+```sql
+UPDATE spqr_metadata.spqr_global_settings
+SET enabled = false
+WHERE name IN (42, 69);
+```
+
+Then set this on every coordinator before its next restart:
+
+```yaml
+use_spqrguard: true
+forbid_direct_shard_queries: false
+```
+
+Keep `use_spqrguard` enabled so that SPQR continues maintaining relation and
+key range metadata. Removing the extension or taking it out of
+`shared_preload_libraries` is a separate rolling change and is not required for
+an immediate rollback.
+
+## Troubleshooting
+
+### SPQR reports that the extension is not present
+
+SPQR reports the same message when `spqrguard` is missing and when its version
+is not recognized. Check the database selected by the shard connection:
+
+```sql
+SELECT current_database();
+SELECT extversion
+FROM pg_extension
+WHERE extname = 'spqrguard';
+```
+
+For the current integration, the result must be `2.3`.
+
+### Only some shards have settings 42 and 69
+
+The coordinator enables shards sequentially. Fix the error that stopped setup,
+then ensure both settings exist and are enabled on every affected database:
+
+```sql
+INSERT INTO spqr_metadata.spqr_global_settings (name, enabled)
+VALUES (42, true), (69, true)
+ON CONFLICT (name) DO UPDATE SET enabled = EXCLUDED.enabled;
+```
+
+Run the final direct and routed write tests again on every shard.
+
+### Coordinator setup reports a duplicate global setting
+
+The current coordinator setup inserts settings `42` and `69` when
+`forbid_direct_shard_queries` is enabled. A later coordinator restart can
+report a duplicate-key error if those settings already exist. The error does
+not turn off an existing setting, but the setup transaction on that shard is
+rolled back.
+
+Verify that both settings are still `true`, then repeat the relation and key
+range metadata checks from step 6 on every shard. Do not delete the settings
+on a protected production cluster merely to silence the startup error.
+
+### Router writes receive a spqrguard error
+
+Confirm that the request actually went through the router and reconnect so a
+new backend session is created. Through the router, inspect one shard session:
+
+```sql
+SHOW spqrguard.prevent_distributed_table_modify
+/* __spqr__execute_on: sh1 */;
+
+SHOW spqrguard.prevent_reference_table_modify
+/* __spqr__execute_on: sh1 */;
+```
+
+Both values should be `off`. If they are not, verify the router version and
+restart or drain old backend pools.
+
+### A newly attached table is not protected
+
+Check that `use_spqrguard: true` is present on every router and coordinator and
+that the table exists on every required shard. Compare coordinator relation
+metadata with the `spqr_metadata` query from step 6, then correct the failed
+DDL or setup operation before enabling direct writes to the table.
+
+## Completion checklist
+
+- Every shard primary and replica preloads the `spqrguard` module.
+- Every routed database has extension version `2.3`.
+- Every router has `query_routing.use_spqrguard: true`.
+- Every coordinator has `use_spqrguard: true` and
+  `forbid_direct_shard_queries: true`.
+- Relation metadata matches `SHOW relations` and `SHOW reference_relations`.
+- Existing key ranges are present only on their owning shards.
+- Settings `42` and `69` are enabled on every shard database.
+- Direct writes fail for distributed and reference tables.
+- The same writes succeed through every router.
+- The checks still pass after a shard and coordinator failover.
