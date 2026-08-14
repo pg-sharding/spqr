@@ -23,8 +23,6 @@ session settings. Keep restricting network access and credentials for shards.
 | Every PostgreSQL shard instance | Add `spqrguard` to `shared_preload_libraries` | Loads the executor hook into PostgreSQL processes |
 | Every database routed by SPQR | Install `spqrguard` extension version `2.3` | Creates the `spqr_metadata` schema, tables, and functions |
 | Every router and coordinator | Set `query_routing.use_spqrguard: true` | Keeps relation metadata correct when SPQR executes DDL |
-| Every coordinator | Set `use_spqrguard: true` | Keeps key range and relation metadata correct during topology changes and data moves |
-| Every coordinator | Set `forbid_direct_shard_queries: true` | Enables the global write block for distributed and reference tables |
 
 The write block applies when the session settings
 `spqrguard.prevent_distributed_table_modify` and
