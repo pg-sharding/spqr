@@ -54,7 +54,6 @@ Feature: There are no leftovers in ETCD after all DROPs
         Given I remember current etcd state
         When I run SQL on host "coordinator"
         """
-
         CREATE REFERENCE RELATION r1;
         """
         Then command return code should be "0"
@@ -95,6 +94,7 @@ Feature: There are no leftovers in ETCD after all DROPs
         /distributions/REPLICATED
         /relation_mappings/r1
         /reference_relations/r1
+        """
 
     Scenario: DROP UNIQUE INDEX
         When I run SQL on host "coordinator"
