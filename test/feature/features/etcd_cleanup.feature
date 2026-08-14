@@ -105,6 +105,7 @@ Feature: There are no leftovers in ETCD after all DROPs
         """
         Then command return code should be "0"
 
+        Given I remember current etcd state
         When I run SQL on host "coordinator"
         """
         CREATE UNIQUE INDEX ui1 ON t2 COLUMNS (col_uniq_1 varchar HASH);
