@@ -54,6 +54,7 @@ Feature: There are no leftovers in ETCD after all DROPs
         Given I remember current etcd state
         When I run SQL on host "coordinator"
         """
+
         CREATE REFERENCE RELATION r1;
         """
         Then command return code should be "0"
@@ -94,4 +95,36 @@ Feature: There are no leftovers in ETCD after all DROPs
         /distributions/REPLICATED
         /relation_mappings/r1
         /reference_relations/r1
+
+    Scenario: DROP UNIQUE INDEX
+        When I run SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer HASH;
+        CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        CREATE RELATION t2 (id HASH MURMUR) IN ds1;
+        """
+        Then command return code should be "0"
+
+        When I run SQL on host "coordinator"
+        """
+        CREATE UNIQUE INDEX ui1 ON t2 COLUMNS (col_uniq_1 varchar HASH);
+        DROP UNIQUE INDEX ui1;
+        """
+        Then command return code should be "0"
+
+        # Actually an empty array is stored under this key
+        And etcd should equal remembered state ignoring prefixes
+        """
+        /relation_unique_indexes/t2
+        """
+
+        Given I remember current etcd state
+        When I run SQL on host "coordinator"
+        """
+        CREATE UNIQUE INDEX ui1 ON t2 COLUMNS (col_uniq_1 varchar HASH);
+        DROP UNIQUE INDEX ui1;
+        """
+        Then command return code should be "0"
+        And etcd should equal remembered state ignoring prefixes
+        """
         """
