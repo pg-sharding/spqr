@@ -1428,6 +1428,26 @@ func (tctx *testContext) stepDeleteFromEtcd(key string) error {
 	return err
 }
 
+func (tctx *testContext) stepDeletePrefixFromEtcd(prefix string) error {
+	addr, err := tctx.composer.GetAddr("qdb01", 2379)
+	if err != nil {
+		return err
+	}
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{addr},
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.TODO(), postgresqlQueryTimeout)
+	defer cancel()
+	_, err = cli.Delete(ctx, prefix, clientv3.WithPrefix())
+	return err
+}
+
 func (tctx *testContext) listEtcdKeys() (map[string]any, error) {
 	cli, err := tctx.newEtcdClient()
 	if err != nil {
@@ -1638,6 +1658,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
 	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
+	s.Step(`^I delete keys with prefix "([^"]*)" from etcd$`, tctx.stepDeletePrefixFromEtcd)
 	s.Step(`^I remember current etcd state$`, tctx.stepRememberEtcdState)
 	s.Step(`^etcd should equal remembered state ignoring prefixes$`, tctx.stepEtcdShouldEqualRememberedIgnoringPrefixes)
 	s.Step(`^I wait for host "([^"]*)" to finish startup$`, tctx.stepWaitForHostToFinishStartup)

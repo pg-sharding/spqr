@@ -71,15 +71,6 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRan
 // Returns:
 // - error: an error if validation is not passed
 func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRange *kr.KeyRange) error {
-	krLock, err := mngr.GetKeyRange(ctx, keyRange.ID)
-	if err != nil {
-		return err
-	}
-
-	if !krLock.IsLocked {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange.ID)
-	}
-
 	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}

@@ -1003,6 +1003,16 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		Str("shard-id", req.ShardID).
 		Msg("qdb coordinator move key range")
 
+	// TODO: lock key range for ops for the duration of the move
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := qc.LockKeyRangeOps(opsLockCtx, req.KeyRangeID); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to acquire key range operation lock: %w", err)
+	}
+	defer func() {
+		_ = qc.UnlockKeyRangeOps(ctx, req.KeyRangeID)
+	}()
+
 	if req.MetaOnly {
 		if err := qc.Coordinator.Move(ctx, req, icpCH); err != nil {
 			return err
