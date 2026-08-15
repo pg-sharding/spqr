@@ -276,9 +276,10 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(
 	alias, colname string,
 	expr lyx.Node) (bool, error) {
 	var resolvedRelation *rfqn.RelationFQN
+	var resolvedColname string
 	var err error
 
-	resolvedRelation, err = rm.ResolveRelationByAlias(alias, colname)
+	resolvedRelation, resolvedColname, err = rm.ResolveColumnRef(alias, colname)
 
 	if err != nil {
 		// failed to resolve relation, skip column
@@ -287,7 +288,7 @@ func (rm *RoutingMetadataContext) ProcessConstExpr(
 	if resolvedRelation == nil {
 		return false, nil
 	}
-	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
+	return rm.ProcessConstExprOnRFQN(resolvedRelation, resolvedColname, expr)
 }
 
 func (rm *RoutingMetadataContext) ComputeRoutingExpr(
