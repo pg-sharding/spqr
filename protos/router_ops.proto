@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+import "google/protobuf/empty.proto";
+
+service RouterOpsService {
+  rpc ReBootstrapRouter (google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
