@@ -283,12 +283,19 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 	dc := proto.NewDistributionServiceClient(a.conn)
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
+	dsIdColTypes := make(map[string][]string)
 	for i, keyRange := range reply.KeyRangesInfo {
-		ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
-		if err != nil {
-			return nil, spqrerror.CleanGrpcError(err)
+		colTypes, ok := dsIdColTypes[keyRange.DistributionId]
+		if !ok {
+			getDistrReply, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
+			if err != nil {
+				return nil, spqrerror.CleanGrpcError(err)
+			}
+			colTypes = getDistrReply.Distribution.ColumnTypes
+			dsIdColTypes[keyRange.DistributionId] = colTypes
 		}
-		krs[i], err = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
+
+		krs[i], err = kr.KeyRangeFromProto(keyRange, colTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -323,22 +330,7 @@ func (a *Adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 	_, err := c.LockKeyRange(ctx, &proto.LockKeyRangeRequest{
 		Id: []string{krid},
 	})
-	if err != nil {
-		return nil, spqrerror.CleanGrpcError(err)
-	}
-
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, kr := range krs {
-		if kr.ID == krid {
-			return kr, nil
-		}
-	}
-
-	return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", krid)
+	return nil, spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -374,29 +366,15 @@ func (a *Adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 // Returns:
 // - error: An error if splitting the key range was unsuccessful.
 func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return err
-	}
+	c := proto.NewKeyRangeServiceClient(a.conn)
 
-	for _, keyRange := range krs {
-		if keyRange.ID == split.SourceID {
-			c := proto.NewKeyRangeServiceClient(a.conn)
-
-			nkr := keyRange.ToProto()
-			nkr.Krid = split.KeyRangeID
-
-			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
-				Bound:     split.Bound[0], // fix multidim case
-				SourceId:  split.SourceID,
-				NewId:     split.KeyRangeID,
-				SplitLeft: split.SplitLeft,
-			})
-			return spqrerror.CleanGrpcError(err)
-		}
-	}
-
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.KeyRangeID)
+	_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
+		Bound:     split.Bound[0], // fix multidim case
+		SourceId:  split.SourceID,
+		NewId:     split.KeyRangeID,
+		SplitLeft: split.SplitLeft,
+	})
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -410,47 +388,8 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 // Returns:
 // - error: An error if merging the key ranges was unsuccessful.
 func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return err
-	}
-
-	var left *kr.KeyRange
-	var right *kr.KeyRange
-
-	// Check for in-between key ranges
-	for _, kr := range krs {
-		if kr.ID == unite.BaseKeyRangeID {
-			left = kr
-		}
-		if kr.ID == unite.AppendageKeyRangeID {
-			right = kr
-		}
-	}
-
-	if left == nil || right == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
-	}
-
-	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		left, right = right, left
-	}
-
-	for _, krCurr := range krs {
-		if krCurr.ID == unite.BaseKeyRangeID || krCurr.ID == unite.AppendageKeyRangeID {
-			continue
-		}
-		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
-		}
-	}
-
-	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "wrong bound ordering: right < left")
-	}
-
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
+	_, err := c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
 		BaseId:      unite.BaseKeyRangeID,
 		AppendageId: unite.AppendageKeyRangeID,
 	})
