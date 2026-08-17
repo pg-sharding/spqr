@@ -577,6 +577,8 @@ func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 		if err := sh.fire("DISCARD ALL"); err != nil {
 			return err
 		}
+        sh.stmtDef = map[uint64]*prepstatement.PreparedStatementDefinition{}
+        sh.stmtDesc = map[uint64]*prepstatement.PreparedStatementDescriptor{}
 	}
 
 	return nil
