@@ -28,10 +28,14 @@ frontend_rules:
   - db: regress
     usr: regress
     pool_mode: TRANSACTION
+    pool_discard: true
+    pool_rollback: true
     auth_rule:
       auth_method: ok
   - pool_mode: TRANSACTION
     pool_default: true
+    pool_discard: true
+    pool_rollback: true
     pool_prepared_statement: false
     auth_rule:
       auth_method: ok
@@ -73,8 +77,6 @@ backend_rules:
   - db: regress
     usr: regress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: md5
@@ -91,5 +93,3 @@ backend_rules:
 schema_cache_backend_rule:
   usr: regress
   db: regress
-  pool_discard: true
-  pool_rollback: true

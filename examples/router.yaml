@@ -25,6 +25,8 @@ frontend_rules:
   - usr: user1
     db: db1
     pool_mode: TRANSACTION
+    pool_discard: true
+    pool_rollback: true
     auth_rule:
       auth_method: ok
       password: strong
@@ -33,8 +35,6 @@ backend_rules:
   - usr: user1
     db: db1
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: md5

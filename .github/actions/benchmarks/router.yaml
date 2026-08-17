@@ -14,6 +14,8 @@ frontend_rules:
     db: db1
     pool_default: true
     pool_mode: TRANSACTION
+    pool_discard: true
+    pool_rollback: true
     pool_prepared_statement: false
     auth_rule:
       auth_method: ok
@@ -35,12 +37,8 @@ backend_rules:
   - usr: user1
     db: db1
     connection_limit: 1500
-    pool_discard: true
-    pool_rollback: true
     auth_rule:
       password: password
 schema_cache_backend_rule:
   usr: user1
   db: db1
-  pool_discard: true
-  pool_rollback: true

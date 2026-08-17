@@ -18,6 +18,8 @@ frontend_rules:
   - db: stress
     usr: stress
     pool_mode: TRANSACTION
+    pool_discard: true
+    pool_rollback: true
     auth_rule:
       auth_method: ok
 shards:
@@ -40,5 +42,3 @@ backend_rules:
   - db: stress
     usr: stress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
