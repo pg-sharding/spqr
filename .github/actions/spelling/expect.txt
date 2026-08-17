@@ -388,6 +388,7 @@ pgsharding
 PGSSLMODE
 pgsync
 PGUSER
+PGXS
 pgx
 pgxconn
 pgxpool

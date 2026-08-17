@@ -83,7 +83,8 @@
                         "deployment/overview",
                         "deployment/bare_router",
                         "deployment/router_coordinator",
-                        "deployment/spqrinfra"
+                        "deployment/spqrinfra",
+                        "deployment/spqrguard"
                     ]
                 },
                 {

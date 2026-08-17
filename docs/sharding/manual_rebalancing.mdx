@@ -33,6 +33,11 @@ Before starting, make sure that:
 - Both [`spqrguard`](https://github.com/pg-sharding/spqrguard) and `postgres_fdw`
   extensions are installed on the source and destination shards.
 - `spqrguard` is added to `shared_preload_libraries` in `postgresql.conf`.
+  For an existing cluster, follow the complete
+  [spqrguard rollout guide](/deployment/spqrguard).
+- The coordinator has `use_spqrguard: true`. The
+  `forbid_direct_shard_queries` setting is not required for data transfers;
+  enable it only when direct writes to shards must also be blocked.
 
 <Note>
 `spqrguard` is optional but strongly recommended. It prevents direct inserts
