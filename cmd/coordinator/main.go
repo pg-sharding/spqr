@@ -43,7 +43,7 @@ func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "spqr-coordinator run --config `path-to-config`",
+	Use:   "spqr-coordinator --config `path-to-config`",
 	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
@@ -132,6 +132,12 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "run coordinator",
+	RunE:  rootCmd.RunE,
+}
+
 var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
@@ -155,7 +161,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
 
-	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(runCmd, testCmd)
 }
 
 func main() {

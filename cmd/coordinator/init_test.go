@@ -33,3 +33,12 @@ func TestGetMaxTxnBatchSize(t *testing.T) {
 		is.Equal(uint16(qdb.DefaultMaxTxnSize), actual)
 	})
 }
+
+func TestCoordinatorRunCommand(t *testing.T) {
+	command, args, err := rootCmd.Find([]string{"run"})
+
+	assert.NoError(t, err)
+	assert.Same(t, runCmd, command)
+	assert.Empty(t, args)
+	assert.NotNil(t, rootCmd.RunE, "the root command should keep supporting direct startup")
+}
