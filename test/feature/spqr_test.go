@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -1477,19 +1477,8 @@ func (tctx *testContext) stepRememberEtcdState() error {
 	return nil
 }
 
-func (tctx *testContext) etcdLeftovers(excludePrefixes []string) ([]string, error) {
-	if tctx.etcdBaselineKeys == nil {
-		return nil, fmt.Errorf(`etcd baseline was not remembered; add a "Given I remember current etcd state" step before creating any objects`)
-	}
-	current, err := tctx.listEtcdKeys()
-	if err != nil {
-		return nil, err
-	}
-	leftovers := make([]string, 0)
-	for key := range current {
-		if _, ok := tctx.etcdBaselineKeys[key]; ok {
-			continue
-		}
+func compareMaps(current, remembered map[string]any, excludePrefixes []string) (added, changed, deleted []string) {
+	isExcluded := func(key string) bool {
 		excluded := false
 		for _, p := range excludePrefixes {
 			if p != "" && strings.HasPrefix(key, p) {
@@ -1497,12 +1486,34 @@ func (tctx *testContext) etcdLeftovers(excludePrefixes []string) ([]string, erro
 				break
 			}
 		}
-		if !excluded {
-			leftovers = append(leftovers, key)
+		return excluded
+	}
+
+	for key, currentValue := range current {
+		if isExcluded(key) {
+			continue
+		}
+
+		if v, ok := remembered[key]; ok {
+			if !reflect.DeepEqual(currentValue, v) {
+				changed = append(changed, key)
+			}
+
+			continue
+		}
+
+		added = append(added, key)
+	}
+	for key := range remembered {
+		if isExcluded(key) {
+			continue
+		}
+
+		if _, ok := current[key]; !ok {
+			deleted = append(deleted, key)
 		}
 	}
-	sort.Strings(leftovers)
-	return leftovers, nil
+	return
 }
 
 func (tctx *testContext) stepEtcdShouldEqualRememberedIgnoringPrefixes(body *godog.DocString) error {
@@ -1512,13 +1523,22 @@ func (tctx *testContext) stepEtcdShouldEqualRememberedIgnoringPrefixes(body *god
 			excludePrefixes = append(excludePrefixes, p)
 		}
 	}
-	leftovers, err := tctx.etcdLeftovers(excludePrefixes)
+	currentEtcd, err := tctx.listEtcdKeys()
 	if err != nil {
 		return err
 	}
-	if len(leftovers) > 0 {
-		return fmt.Errorf("etcd contains %d leftover key(s) after all drops (excluding %v):\n%s",
-			len(leftovers), excludePrefixes, strings.Join(leftovers, "\n"))
+	added, changed, deleted := compareMaps(currentEtcd, tctx.etcdBaselineKeys, excludePrefixes)
+	if len(added) > 0 {
+		return fmt.Errorf("etcd contains %d new key(s) after all drops:\n%s",
+			len(added), strings.Join(added, "\n"))
+	}
+	if len(changed) > 0 {
+		return fmt.Errorf("etcd contains %d key(s) with modified values after all drops:\n%s",
+			len(changed), strings.Join(changed, "\n"))
+	}
+	if len(deleted) > 0 {
+		return fmt.Errorf("etcd contains %d deleted key(s) after all drops:\n%s",
+			len(deleted), strings.Join(deleted, "\n"))
 	}
 	return nil
 }
