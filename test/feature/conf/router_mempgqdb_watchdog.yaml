@@ -20,8 +20,6 @@ watchdog_backend_rule:
   db: regress
   usr: regress
   connection_limit: 50
-  pool_discard: true
-  pool_rollback: true
   auth_rules:
     sh1:
       auth_method: md5
@@ -58,8 +56,6 @@ backend_rules:
   - db: regress
     usr: regress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: md5
