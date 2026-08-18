@@ -216,7 +216,6 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Getter: func() float64 {
 			return float64(qr.csm.TotalTCPCount())
 		},
-		Value: 0,
 	}
 
 	activeConnectionsMetric := &metrics.DynamicGauge{
@@ -225,7 +224,6 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Getter: func() float64 {
 			return float64(qr.csm.ActiveTCPCount())
 		},
-		Value: 0,
 	}
 
 	totalCancelCount := &metrics.DynamicCounter{
@@ -234,7 +232,6 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Getter: func() float64 {
 			return float64(qr.csm.TotalCancelCount())
 		},
-		Value: 0,
 	}
 	failedInitCount := &metrics.DynamicCounter{
 		Name: metrics.ClientInitFailCountName,
@@ -242,7 +239,6 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Getter: func() float64 {
 			return float64(qr.csm.FailedInitCount())
 		},
-		Value: 0,
 	}
 	failedAuthCount := &metrics.DynamicCounter{
 		Name: metrics.ClientAuthFailCountName,
@@ -250,7 +246,6 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Getter: func() float64 {
 			return float64(qr.csm.FailedAuthCount())
 		},
-		Value: 0,
 	}
 
 	inboundQueriesTotalMetric := &metrics.DynamicCounter{
@@ -259,7 +254,6 @@ func (qr *ProxyQrouter) registerMetrics() {
 		Getter: func() float64 {
 			return float64(statistics.GetTotalRequests())
 		},
-		Value: 0,
 	}
 	routerTimeMetric := &metrics.DynamicSummary{
 		Name: metrics.RouterTimeSummaryName,

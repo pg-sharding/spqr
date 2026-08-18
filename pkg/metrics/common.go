@@ -80,7 +80,6 @@ type DynamicCounter struct {
 	Name   string
 	Help   string
 	Getter func() float64
-	Value  float64
 }
 
 func (c *DynamicCounter) Desc() *prometheus.Desc {
@@ -100,7 +99,6 @@ type DynamicGauge struct {
 	Name   string
 	Help   string
 	Getter func() float64
-	Value  float64
 }
 
 func (g *DynamicGauge) Desc() *prometheus.Desc {
