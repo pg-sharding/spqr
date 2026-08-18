@@ -41,8 +41,6 @@ backend_rules:
   - usr: md5test
     db: db1
     connection_limit: 50
-    pool_discard: false
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: 'md5'
@@ -52,11 +50,7 @@ backend_rules:
   - usr: user1
     db: db1
     connection_limit: 50
-    pool_discard: false
-    pool_rollback: true
   - pool_default: true
-    pool_discard: false
-    pool_rollback: true
 
 shards:
   sh1:
