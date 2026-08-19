@@ -102,7 +102,7 @@ func DispatchSlice(qd *QueryDesc,
 
 			if p != nil {
 				if p.Opts().AutoLinearize {
-					return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "auto-linearize for extended protocol is not yet supported")
+					// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "auto-linearize for extended protocol is not yet supported")
 				}
 				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
 					/* Uh, oh, this is very ugly hack */
