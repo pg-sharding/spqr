@@ -1202,7 +1202,10 @@ func (a *Adapter) UpdateCoordinator(ctx context.Context, address string) error {
 func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	c := proto.NewTopologyServiceClient(a.conn)
 	resp, err := c.GetCoordinator(ctx, nil)
-	return resp.Address, spqrerror.CleanGrpcError(err)
+	if err != nil {
+		return "", spqrerror.CleanGrpcError(err)
+	}
+	return resp.Address, nil
 }
 
 func (a *Adapter) ListSequences(ctx context.Context) ([]string, error) {
