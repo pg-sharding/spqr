@@ -187,6 +187,7 @@ var runCmd = &cobra.Command{
 		}
 
 		router_util.ReloadRotateLog()
+		defer spqrlog.CloseLogger()
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -296,7 +297,6 @@ var runCmd = &cobra.Command{
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize, metricRegistry)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
-
 		}
 
 		app := app.NewApp(router)
@@ -378,6 +378,7 @@ var runCmd = &cobra.Command{
 					}
 
 				case syscall.SIGINT, syscall.SIGTERM:
+
 					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
@@ -427,6 +428,10 @@ var runCmd = &cobra.Command{
 		go func() {
 			for {
 				<-errCh
+
+				spqrlog.CloseLogger()
+
+				/* XXXX: be slightly tidier here*/
 				os.Exit(1)
 			}
 		}()
