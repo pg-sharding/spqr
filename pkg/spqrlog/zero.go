@@ -18,8 +18,7 @@ var lastDiode *diode.Writer
 
 func CloseLogger() {
 	if lastDiode != nil {
-
-		lastDiode.Close()
+		_ = lastDiode.Close()
 	}
 }
 
