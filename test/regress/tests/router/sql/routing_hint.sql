@@ -114,9 +114,12 @@ SET __spqr__notice_message_format = '{shard}@{host}';
 SET __spqr__execute_on TO sh2;
 SET __spqr__execute_host_filter TO 'spqr_shard_2_replica';
 SELECT * FROM test ORDER BY id;
+SET __spqr__target_session_attrs TO 'any';
+SELECT * FROM test ORDER BY id;
 RESET __spqr__execute_host_filter;
 RESET __spqr__execute_on;
 RESET __spqr__notice_message_format;
+RESET __spqr__target_session_attrs;
 
 SET __spqr__execute_on TO ''; -- reset
 SHOW __spqr__execute_on;
