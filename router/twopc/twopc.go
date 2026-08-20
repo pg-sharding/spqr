@@ -105,10 +105,13 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 			}
 		}
 
-		/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
-		if !anyErr {
-			if err := q.RemoveTXData(ctx, gid); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
+		/* XXX: consider opt-in for doing this unconditionally */
+		if len(undoShards) != 0 {
+			/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
+			if !anyErr {
+				if err := q.RemoveTXData(ctx, gid); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
+				}
 			}
 		}
 	}()

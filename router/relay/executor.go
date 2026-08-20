@@ -379,7 +379,7 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 	serv := s.cl.Server()
 
 	/* XXX: warn user of misconfiguration */
-	/* XXX: check if planner 'guarantees' read-onlyness */
+	/* XXX: check if planner 'guarantees' read-only-ness */
 	if config.RouterConfig().AllowTwoPhaseCommit &&
 		s.cl.CommitStrategy() == twopc.CommitStrategy2pc &&
 		len(serv.Datashards()) > 1 {
