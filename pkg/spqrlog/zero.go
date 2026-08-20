@@ -16,6 +16,13 @@ var Zero = NewZeroLogger("", "info", false, false)
 
 var lastDiode *diode.Writer
 
+func CloseLogger() {
+	if lastDiode != nil {
+
+		lastDiode.Close()
+	}
+}
+
 // NewZeroLogger initializes a zerolog.Logger.
 // If prettyLogging is true, it outputs in a human-readable format.
 // Prints an error message if writer initialization fails.
