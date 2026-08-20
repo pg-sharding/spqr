@@ -85,18 +85,30 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	defer func() {
 		/* If any error, try to happy-path error recovery with simple undo */
 
+		anyErr := false
+
 		for _, dsh := range undoShards {
 			_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
 			}, "rollback prepared", txstatus.TXIDLE)
 
 			if guc.Get(cl) {
-				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %s on %s", gid, dsh.InstanceHostname()))
+				_ = cl.ReplyNotice(
+					fmt.Sprintf("rollback prepared %s on %s",
+						gid, dsh.InstanceHostname()))
 			}
 
 			/* Try next shard */
 			if err != nil {
+				anyErr = true
 				spqrlog.Zero.Error().Err(err).Str("shard", dsh.InstanceHostname()).Msg("happy path error recovery failed on shard")
+			}
+		}
+
+		/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
+		if !anyErr {
+			if err := q.RemoveTXData(ctx, gid); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
 			}
 		}
 	}()
@@ -130,7 +142,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}
 	}
 
-	/* past thos line, there is no way back. We actually can reset undoShards
+	/* past this line, there is no way back. We actually can reset undoShards
 	* after tx state in dcs, but this will require additional tx status re-check, so
 	* don't bother with that */
 	undoShards = nil
