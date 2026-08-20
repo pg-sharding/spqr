@@ -70,11 +70,12 @@ ERROR:  error while deploying shard: prepare tx-cannot PREPARE a transaction tha
 QUERY:  COMMIT;
 ROLLBACK;
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
- gid  | status 
-------+--------
+ gid  |   status    
+------+-------------
  zzz1 | Done
  zzz2 | Done
-(2 rows)
+ zzz3 | TxInitState
+(3 rows)
 
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 NOTICE: send query to shard(s) : sh1
