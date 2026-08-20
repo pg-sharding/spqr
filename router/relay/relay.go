@@ -432,8 +432,13 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 		shardInstanceMap[shardInstance.SHKey().Name] = shardInstance
 	}
 
-	// Get the notice message format from config
-	messageFormat := config.RouterConfig().NoticeMessageFormat
+	// Resolve the notice message format from the per-session GUC
+	var messageFormat string
+	if guc, err := client.FindStrGUC(session.SPQR_NOTICE_MESSAGE_FORMAT); err == nil {
+		messageFormat = guc.Get(client)
+	} else {
+		messageFormat = config.RouterConfig().NoticeMessageFormat
+	}
 
 	// Build shard info with the configured format
 	var shardInfos []string

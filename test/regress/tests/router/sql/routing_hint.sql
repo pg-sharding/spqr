@@ -105,6 +105,10 @@ SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
 /* ERROR */
 SET __spqr__execute_on TO sh1xxx;
 
+SET __spqr__notice_message_format = '{shard}@{host}';
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
+RESET __spqr__notice_message_format;
+
 SET __spqr__execute_on TO ''; -- reset
 SHOW __spqr__execute_on;
 

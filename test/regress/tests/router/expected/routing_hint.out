@@ -251,6 +251,17 @@ SET __spqr__execute_on TO sh1xxx;
 ERROR:  shard sh1xxx does not exist
 QUERY:  /* ERROR */
 SET __spqr__execute_on TO sh1xxx;
+SET __spqr__notice_message_format = '{shard}@{host}';
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
+ id | age 
+----+-----
+ 15 |  15
+ 20 |  20
+ 25 |  25
+(3 rows)
+
+RESET __spqr__notice_message_format;
 SET __spqr__execute_on TO ''; -- reset
 SHOW __spqr__execute_on;
  execute on 

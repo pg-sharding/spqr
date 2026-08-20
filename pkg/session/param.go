@@ -137,6 +137,8 @@ const (
 
 	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
 
+	SPQR_NOTICE_MESSAGE_FORMAT = "__spqr__notice_message_format"
+
 	/* Special case for default_transaction_read_only */
 
 	PG_DEFAULT_TRANSACTION_READ_ONLY = "default_transaction_read_only"
@@ -159,7 +161,12 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE, SPQR_EXECUTE_ON, SPQR_SHARDING_KEY:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR,
+		SPQR_DEFAULT_ROUTE_BEHAVIOUR,
+		SPQR_PREFERRED_ENGINE,
+		SPQR_EXECUTE_ON,
+		SPQR_SHARDING_KEY,
+		SPQR_NOTICE_MESSAGE_FORMAT:
 		return true
 	default:
 		return false
