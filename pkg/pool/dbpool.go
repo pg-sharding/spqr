@@ -487,7 +487,11 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 		return nil, err
 	}
 
-	effectiveParams := ConnAllocParams{Clid: params.Clid, Tsa: effectiveTargetSessionAttrs}
+	effectiveParams := ConnAllocParams{
+		Clid:       params.Clid,
+		Tsa:        effectiveTargetSessionAttrs,
+		HostFilter: params.HostFilter,
+	}
 
 	/* pool.Connection will reorder hosts in such way, that preferred tsa will go first */
 	switch effectiveTargetSessionAttrs {

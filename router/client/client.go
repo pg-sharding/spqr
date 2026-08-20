@@ -422,7 +422,8 @@ func (cl *PsqlClient) AllocParams() pool.ConnAllocParams {
 		Tsa:  cl.GetTsa(),
 	}
 
-	if guc, err := cl.FindStrGUC(session.SPQR_EXECUTE_ON); err == nil && guc.Get(cl) != "" {
+	if guc, err := cl.FindStrGUC(session.SPQR_EXECUTE_ON); err == nil &&
+		guc.Get(cl) != "" {
 		if hfGuc, err := cl.FindStrGUC(session.SPQR_EXECUTE_HOST_FILTER); err == nil {
 			params.HostFilter = hfGuc.Get(cl)
 		}
