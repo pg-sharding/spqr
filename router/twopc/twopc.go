@@ -81,7 +81,6 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	retST := txstatus.TXERR
 
 	undoShards := []shard.ShardHostInstance{}
-	cleanupTxMeta := true
 
 	defer func() {
 		/* If any error, try to happy-path error recovery with simple undo */
@@ -107,7 +106,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}
 
 		/* XXX: consider opt-in for doing this unconditionally */
-		if cleanupTxMeta {
+		if config.RouterConfig().EagerCleanup2PC {
 			/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
 			if !anyErr {
 				if err := q.RemoveTXData(ctx, gid); err != nil {
@@ -150,7 +149,6 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	* after tx state in dcs, but this will require additional tx status re-check, so
 	* don't bother with that */
 	undoShards = nil
-	cleanupTxMeta = false
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
