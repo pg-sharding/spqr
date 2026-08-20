@@ -321,6 +321,7 @@ func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	/* XXX: returning * */
 	_, err = conn.Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status")
 	return err
 }
