@@ -116,6 +116,7 @@ const (
 	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
 	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
+	SPQR_EXECUTE_HOST_FILTER     = "__spqr__execute_host_filter"
 
 	/* backward compatibility */
 	SPQR_TARGET_SESSION_ATTRS_ALIAS   = "target_session_attrs"
@@ -126,6 +127,7 @@ const (
 	SPQR_REPLY_NOTICE    = "__spqr__reply_notice"
 	SPQR_MAINTAIN_PARAMS = "__spqr__maintain_params"
 	SPQR_ENGINE_V2       = "__spqr__engine_v2"
+
 	/* XXX: should we ever disallow? */
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
@@ -165,6 +167,7 @@ func ParamIsString(n string) bool {
 		SPQR_DEFAULT_ROUTE_BEHAVIOUR,
 		SPQR_PREFERRED_ENGINE,
 		SPQR_EXECUTE_ON,
+		SPQR_EXECUTE_HOST_FILTER,
 		SPQR_SHARDING_KEY,
 		SPQR_NOTICE_MESSAGE_FORMAT:
 		return true

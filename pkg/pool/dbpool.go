@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -53,6 +54,14 @@ type DBPool struct {
 	healthCheckCancel context.CancelFunc
 	deadCheckInterval time.Duration
 }
+
+type AcquireHostKind int
+
+const (
+	AcquireHostKindANY = AcquireHostKind(iota)
+	AcquireHostKindRW  = AcquireHostKind(iota)
+	AcquireHostKindRO  = AcquireHostKind(iota)
+)
 
 // StartBackgroundHealthCheck starts background health checking for failed hosts
 func (s *DBPool) StartBackgroundHealthCheck() {
@@ -276,6 +285,18 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, cb func(shard.ShardHostInstance) bool) shard.ShardHostInstance {
 	for _, host := range hosts {
 
+		/* skip	hosts whose hostname does not match the filter. */
+		if params.HostFilter != "" &&
+			!strings.Contains(host.Address, params.HostFilter) {
+			/* XXX : here we loose client context, so nowhere to report notice to... */
+			spqrlog.Zero.Debug().
+				Str("host", host.Address).
+				Str("filter", params.HostFilter).
+				Uint("client", params.Clid).
+				Msg("host does not match execute host filter, skipping")
+			continue
+		}
+
 		/* XXX: Retries? */
 
 		var sh shard.ShardHostInstance
@@ -339,12 +360,12 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 
 // selectReadOnlyShardHost wraps the selectShardHost method to specifically select a read-only shard host.
 func (s *DBPool) selectReadOnlyShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host) (shard.ShardHostInstance, error) {
-	return s.selectShardHost(params, key, hosts, false)
+	return s.selectShardHost(params, key, hosts, AcquireHostKindRO)
 }
 
 // selectReadWriteShardHost wraps the selectShardHost method to specifically select a read-write shard host.
 func (s *DBPool) selectReadWriteShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host) (shard.ShardHostInstance, error) {
-	return s.selectShardHost(params, key, hosts, true)
+	return s.selectShardHost(params, key, hosts, AcquireHostKindRW)
 }
 
 // selectShardHost selects a shard host based on the provided connection allocation
@@ -365,25 +386,41 @@ func (s *DBPool) selectReadWriteShardHost(params ConnAllocParams, key kr.ShardKe
 //     during the selection process.
 //
 // // TODO : unit tests
-func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, primary bool) (shard.ShardHostInstance, error) {
+func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, kind AcquireHostKind) (shard.ShardHostInstance, error) {
 	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(params, key, hosts, func(shard shard.ShardHostInstance) bool {
+		if kind == AcquireHostKindANY {
+			s.cache.MarkMatched(params.Tsa,
+				shard.Instance().Hostname(),
+				shard.Instance().AvailabilityZone(),
+				true, "target session attrs any")
+			return true
+		}
+
 		tcr, err := s.checker.CheckTSA(shard, s.CheckTimeout)
-		good := tcr.CR.RW == primary
+		good := tcr.CR.RW == (kind == AcquireHostKindRW)
 
 		if err != nil {
 			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
-			s.cache.MarkUnmatched(params.Tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
+			s.cache.MarkUnmatched(params.Tsa,
+				shard.Instance().Hostname(),
+				shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
 
 			return false
 		}
 
 		if good {
-			s.cache.MarkMatched(params.Tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+			s.cache.MarkMatched(params.Tsa,
+				shard.Instance().Hostname(),
+				shard.Instance().AvailabilityZone(),
+				tcr.CR.Alive, tcr.CR.Reason)
 		} else {
-			s.cache.MarkUnmatched(params.Tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+			s.cache.MarkUnmatched(params.Tsa,
+				shard.Instance().Hostname(),
+				shard.Instance().AvailabilityZone(),
+				tcr.CR.Alive, tcr.CR.Reason)
 		}
 
 		if tcr.CR.Alive && good {
@@ -406,10 +443,10 @@ func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts 
 	}
 
 	roleType := "replica"
-	if primary {
+	if kind == AcquireHostKindRW {
 		roleType = "primary"
 	}
-	return nil, fmt.Errorf("shard %s: failed to find %s within %s", key.Name, roleType, strings.Join(messages, ";"))
+	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s: failed to find %s within %s", key.Name, roleType, strings.Join(messages, ";"))
 }
 
 // Connection acquires a new instance connection for a client to a shard with target session attributes.
@@ -450,35 +487,20 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 		return nil, err
 	}
 
-	effectiveParams := ConnAllocParams{Clid: params.Clid, Tsa: effectiveTargetSessionAttrs}
+	effectiveParams := ConnAllocParams{
+		Clid:       params.Clid,
+		Tsa:        effectiveTargetSessionAttrs,
+		HostFilter: params.HostFilter,
+	}
 
 	/* pool.Connection will reorder hosts in such way, that preferred tsa will go first */
 	switch effectiveTargetSessionAttrs {
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-		totalMsg := make([]string, 0)
-		for _, host := range hostOrder {
-			shard, err := s.pool.ConnectionHost(effectiveParams.Clid, key, host)
-			if err != nil {
-				totalMsg = append(totalMsg, fmt.Sprintf("host %s: %s", host.Address, err.Error()))
 
-				s.cache.MarkUnmatched(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
+		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindANY)
 
-				spqrlog.Zero.Debug().
-					Err(err).
-					Str("host", host.Address).
-					Str("availability-zone", host.AZ).
-					Uint("client", effectiveParams.Clid).
-					Msg("failed to get connection to host for client")
-				continue
-			}
-
-			s.cache.MarkMatched(config.TargetSessionAttrsAny, host.Address, host.AZ, true, "target session attrs any")
-
-			return shard, nil
-		}
-		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(totalMsg, ", "))
 	case config.TargetSessionAttrsRO:
 		return s.selectReadOnlyShardHost(effectiveParams, key, hostOrder)
 	case config.TargetSessionAttrsPS:
