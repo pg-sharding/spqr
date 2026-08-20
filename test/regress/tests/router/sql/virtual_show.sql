@@ -12,8 +12,10 @@ SHOW __spqr__execute_on;
 SHOW __spqr__engine_v2;
 SHOW __spqr__commit_strategy;
 SHOW __spqr__target_session_attrs;
+SHOW __spqr__session_connections_pin;
+SHOW __spqr__flux_access;
+SHOW __spqr__notice_message_format;
 SHOW target_session_attrs;
-
 
 SET __spqr__engine_v2 TO false;
 SHOW __spqr__engine_v2;

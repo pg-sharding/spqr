@@ -573,6 +573,13 @@ var StrGUCs = []StrGUCimpl{
 			return ""
 		},
 	},
+	{
+		n:         SPQR_NOTICE_MESSAGE_FORMAT,
+		shortName: "notice message format",
+		def: func() string {
+			return config.RouterConfig().NoticeMessageFormat
+		},
+	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
