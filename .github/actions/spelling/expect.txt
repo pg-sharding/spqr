@@ -132,6 +132,7 @@ efef
 elephantsql
 Elts
 emptypb
+ENONET
 epn
 EQR
 errcounter
@@ -259,6 +260,7 @@ krb
 krdb
 krid
 kridi
+krinfo
 krkey
 krmoves
 krmv
@@ -303,8 +305,8 @@ mintlify
 mmgr
 mngr
 mockcl
-mockconn
 mockcmgr
+mockconn
 mockgen
 mockinst
 mockmgr
@@ -588,9 +590,9 @@ tmpfs
 tmpnum
 Toidxs
 topbar
-topmgr
 TOPENBR
 TOPENSQBR
+topmgr
 tpcc
 tracelog
 tran
@@ -670,13 +672,3 @@ zerolog
 zid
 zjoin
 zzz
-zid
-ENONET
-ENETDOWN
-EPROTO
-ENOPROTOOPT
-EHOSTDOWN
-ENONET
-EHOSTUNREACH
-EOPNOTSUPP
-ENETUNREACH
