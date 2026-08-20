@@ -121,8 +121,7 @@ type SimpleSessionParamHandler struct {
 
 	paramCodes []int16
 
-	showNoticeMessages bool
-	maintainParams     bool
+	maintainParams bool
 
 	nextGID string
 }
@@ -256,16 +255,6 @@ func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
 	cl.maintainParams = val
 }
 
-// SetShowNoticeMsg implements client.Client.
-func (cl *SimpleSessionParamHandler) SetShowNoticeMsg(_ string, val bool) {
-	cl.showNoticeMessages = val
-}
-
-// ShowNoticeMsg implements RouterClient.
-func (cl *SimpleSessionParamHandler) ShowNoticeMsg() bool {
-	return cl.showNoticeMessages
-}
-
 // BindParamFormatCodes implements RouterClient.
 func (cl *SimpleSessionParamHandler) BindParamFormatCodes() []int16 {
 	return cl.paramCodes
@@ -286,17 +275,7 @@ func (cl *SimpleSessionParamHandler) SetBindParams(p [][]byte) {
 	cl.bindParams = p
 }
 
-// SetShardingKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetShardingKey(level string, k string) {
-	cl.RecordVirtualParam(level, SPQR_SHARDING_KEY, k)
-}
-
-// ShardingKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) ShardingKey() string {
-	return cl.ResolveVirtualStringParam(SPQR_SHARDING_KEY, "")
-}
-
-// SetShardingKey implements RouterClient.
+// ScatterQuery implements RouterClient.
 func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
 	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
 }
@@ -540,6 +519,13 @@ var BoolGUCs = []BoolGUCimpl{
 			return config.RouterConfig().SessionConnectionsPin
 		},
 	},
+	{
+		n:         SPQR_REPLY_NOTICE,
+		shortName: "show notice messages",
+		def: func() bool {
+			return false
+		},
+	},
 }
 
 var StrGUCs = []StrGUCimpl{
@@ -580,6 +566,20 @@ var StrGUCs = []StrGUCimpl{
 			return nil
 		},
 	},
+	{
+		n:         SPQR_SHARDING_KEY,
+		shortName: "sharding key",
+		def: func() string {
+			return ""
+		},
+	},
+	{
+		n:         SPQR_NOTICE_MESSAGE_FORMAT,
+		shortName: "notice message format",
+		def: func() string {
+			return config.RouterConfig().NoticeMessageFormat
+		},
+	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
@@ -605,6 +605,11 @@ func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
 func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder {
 	seed := rand.IntN(math.MaxInt)
 
+	noticeVal := "no"
+	if showNotice {
+		noticeVal = "ok"
+	}
+
 	return &SimpleSessionParamHandler{
 		params: map[string]ParamVisibility{},
 
@@ -614,9 +619,9 @@ func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder 
 
 		activeParamSet: map[string]string{
 			SPQR_DISTRIBUTION: "default",
+			SPQR_REPLY_NOTICE: noticeVal,
 		},
 		defaultTsa:            t,
-		showNoticeMessages:    showNotice,
 		defaultCommitStrategy: ds,
 	}
 }

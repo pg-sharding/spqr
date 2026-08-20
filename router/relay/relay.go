@@ -374,11 +374,15 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
-	if rm != nil && rm.UsedSelectQueryAdjust && rst.Client().ShowNoticeMsg() {
+	rGuc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return nil, err
+	}
+	if rm != nil && rm.UsedSelectQueryAdjust && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
 	}
 
-	if queryPlan.Opts().AutoLinearize && rst.Client().ShowNoticeMsg() {
+	if queryPlan.Opts().AutoLinearize && rGuc.Get(rst.Client()) {
 		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
 	}
 
@@ -428,8 +432,13 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 		shardInstanceMap[shardInstance.SHKey().Name] = shardInstance
 	}
 
-	// Get the notice message format from config
-	messageFormat := config.RouterConfig().NoticeMessageFormat
+	// Resolve the notice message format from the per-session GUC
+	var messageFormat string
+	if guc, err := client.FindStrGUC(session.SPQR_NOTICE_MESSAGE_FORMAT); err == nil {
+		messageFormat = guc.Get(client)
+	} else {
+		messageFormat = config.RouterConfig().NoticeMessageFormat
+	}
 
 	// Build shard info with the configured format
 	var shardInfos []string
@@ -1395,7 +1404,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 			return err
 		}
 
-		if rst.Client().ShowNoticeMsg() {
+		guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+		if err != nil {
+			return err
+		}
+		if guc.Get(rst.Client()) {
 			_ = rst.Client().ReplyNotice("start implicit transaction because of multishard modify plan")
 		}
 	}

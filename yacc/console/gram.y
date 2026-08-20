@@ -215,6 +215,7 @@ func randomHex(n int) (string, error) {
 %token <str> DEFAULT
 %token <str> STALE CLIENTS
 %token <str> OPTIONS FORCE
+%token <str> META ONLY
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -841,12 +842,13 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
-	| DROP MOVE TASK any_id
+	| DROP MOVE TASK any_id opt_cascade
 	{
 		$$ = &Drop{
 			Element: &MoveTaskSelector{
 				ID: $4,
 			},
+			CascadeDelete: $5,
 		}
 	}
 
@@ -1784,6 +1786,9 @@ move_key_range_stmt:
 	MOVE key_range_select_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
+	} | MOVE key_range_select_stmt TO any_id META ONLY
+	{
+		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, MetaOnly: true }
 	}
 
 opt_redistr_id:

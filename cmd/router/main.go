@@ -73,8 +73,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  false,
-		SilenceErrors: false,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	startupOverrides Overrides
@@ -187,6 +187,7 @@ var runCmd = &cobra.Command{
 		}
 
 		router_util.ReloadRotateLog()
+		defer spqrlog.CloseLogger()
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -224,7 +225,7 @@ var runCmd = &cobra.Command{
 
 			d, err := ctx.Reborn()
 			if err != nil {
-				log.Fatal("Unable to run: ", err)
+				spqrlog.Zero.Fatal().Err(err).Msg("unable to run")
 			}
 			if d != nil {
 				return nil
@@ -296,7 +297,6 @@ var runCmd = &cobra.Command{
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize, metricRegistry)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
-
 		}
 
 		app := app.NewApp(router)
@@ -378,6 +378,7 @@ var runCmd = &cobra.Command{
 					}
 
 				case syscall.SIGINT, syscall.SIGTERM:
+
 					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
@@ -427,6 +428,10 @@ var runCmd = &cobra.Command{
 		go func() {
 			for {
 				<-errCh
+
+				spqrlog.CloseLogger()
+
+				/* XXXX: be slightly tidier here*/
 				os.Exit(1)
 			}
 		}()
@@ -491,7 +496,9 @@ var runCmd = &cobra.Command{
 
 		// run pprof without wait group
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
+			}
 		}()
 
 		wg.Wait()

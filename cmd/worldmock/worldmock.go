@@ -257,7 +257,8 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("error serving client")
 			}
-
+		case *pgproto3.Terminate:
+			return nil
 		default:
 		}
 	}

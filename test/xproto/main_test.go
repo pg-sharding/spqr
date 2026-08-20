@@ -213,6 +213,11 @@ func SetupSharding() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t_types(id) IN ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE RELATION test_3col_table(i) IN ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -286,6 +291,11 @@ func CreateTables() {
 	}
 
 	_, err = conn.Exec(context.Background(), "CREATE TABLE t2 (id int, val int)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+
+	_, err = conn.Exec(context.Background(), "CREATE TABLE t_types (id smallint, val int, value bigint)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}

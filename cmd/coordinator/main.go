@@ -50,8 +50,8 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  false,
-	SilenceErrors: false,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
 		if err != nil {
@@ -124,7 +124,9 @@ var rootCmd = &cobra.Command{
 		app := app.NewApp(coordinator)
 		// run pprof without wait group
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
+			}
 		}()
 		return app.Run(true)
 	},

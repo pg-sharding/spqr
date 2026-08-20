@@ -342,18 +342,18 @@ func (m *MockConnectionProvider) EXPECT() *MockConnectionProviderMockRecorder {
 }
 
 // ConnectionWithTSA mocks base method.
-func (m *MockConnectionProvider) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+func (m *MockConnectionProvider) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConnectionWithTSA", clid, key, targetSessionAttrs)
+	ret := m.ctrl.Call(m, "ConnectionWithTSA", params, key)
 	ret0, _ := ret[0].(shard.ShardHostInstance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ConnectionWithTSA indicates an expected call of ConnectionWithTSA.
-func (mr *MockConnectionProviderMockRecorder) ConnectionWithTSA(clid, key, targetSessionAttrs any) *gomock.Call {
+func (mr *MockConnectionProviderMockRecorder) ConnectionWithTSA(params, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockConnectionProvider)(nil).ConnectionWithTSA), clid, key, targetSessionAttrs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockConnectionProvider)(nil).ConnectionWithTSA), params, key)
 }
 
 // Discard mocks base method.
@@ -438,18 +438,18 @@ func (mr *MockMultiShardTSAPoolMockRecorder) ConnectionHost(clid, shardKey, host
 }
 
 // ConnectionWithTSA mocks base method.
-func (m *MockMultiShardTSAPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+func (m *MockMultiShardTSAPool) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConnectionWithTSA", clid, key, targetSessionAttrs)
+	ret := m.ctrl.Call(m, "ConnectionWithTSA", params, key)
 	ret0, _ := ret[0].(shard.ShardHostInstance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ConnectionWithTSA indicates an expected call of ConnectionWithTSA.
-func (mr *MockMultiShardTSAPoolMockRecorder) ConnectionWithTSA(clid, key, targetSessionAttrs any) *gomock.Call {
+func (mr *MockMultiShardTSAPoolMockRecorder) ConnectionWithTSA(params, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ConnectionWithTSA), clid, key, targetSessionAttrs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ConnectionWithTSA), params, key)
 }
 
 // Discard mocks base method.

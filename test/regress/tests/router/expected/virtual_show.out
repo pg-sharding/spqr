@@ -64,6 +64,24 @@ SHOW __spqr__target_session_attrs;
  smart-read-write
 (1 row)
 
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ false
+(1 row)
+
+SHOW __spqr__flux_access;
+ flux data access 
+------------------
+ false
+(1 row)
+
+SHOW __spqr__notice_message_format;
+ notice message format 
+-----------------------
+ {shard}
+(1 row)
+
 SHOW target_session_attrs;
  target session attrs 
 ----------------------

@@ -352,7 +352,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId}, nil)
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId, MetaOnly: request.MetaOnly}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -578,12 +578,16 @@ func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTa
 }
 
 func (l *LocalQrouterServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
+}
+
+func (l *LocalQrouterServer) DropMoveTaskV2(ctx context.Context, req *protos.MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, req.Cascade)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {

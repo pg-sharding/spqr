@@ -63,7 +63,7 @@ var (
 				_, _ = fmt.Println("2;could not connect to QDB")
 				os.Exit(1)
 			}
-			keyRangeByShardMap, dsMap, err := getQDBData(context.Background(), db)
+			keyRangeByShardMap, dsMap, err := getQDBData(context.Background(), db, shardData)
 			if err != nil {
 				_, _ = fmt.Println("2;error getting data from QDB")
 				os.Exit(1)
@@ -238,7 +238,7 @@ type keyRangeExt struct {
 	UpperBound kr.KeyRangeBound
 }
 
-func getQDBData(ctx context.Context, db *qdb.EtcdQDB) (keyRangesMap map[string]map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, err error) {
+func getQDBData(ctx context.Context, db *qdb.EtcdQDB, shardData *config.DatatransferConnections) (keyRangesMap map[string]map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, err error) {
 	keyRangesMap = make(map[string]map[string][]*keyRangeExt)
 	distributionsMap = make(map[string]*distributions.Distribution)
 	dss, err := db.ListDistributions(ctx)
@@ -247,6 +247,12 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB) (keyRangesMap map[string]m
 	}
 	for _, ds := range dss {
 		distributionsMap[ds.ID] = distributions.DistributionFromDB(ds)
+		for id := range shardData.ShardsData {
+			if _, ok := keyRangesMap[id]; !ok {
+				keyRangesMap[id] = map[string][]*keyRangeExt{}
+			}
+			keyRangesMap[id][ds.ID] = make([]*keyRangeExt, 0)
+		}
 		krs, err := db.ListKeyRanges(ctx, ds.ID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not list key ranges: %w", err)
@@ -329,7 +335,11 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 				}
 				krQueries = append(krQueries, "("+cond+")")
 			}
-			rows, err := tx.Query(ctx, fmt.Sprintf("SELECT * FROM %s TABLESAMPLE SYSTEM(%f) WHERE NOT (%s) LIMIT 1", rel.Relation.String(), tableSampleSize, strings.Join(krQueries, " OR ")))
+			query := fmt.Sprintf("SELECT * FROM %s TABLESAMPLE SYSTEM(%f) WHERE NOT (%s) LIMIT 1", rel.Relation.String(), tableSampleSize, strings.Join(krQueries, " OR "))
+			if len(krs) == 0 {
+				query = fmt.Sprintf("SELECT * FROM %s TABLESAMPLE SYSTEM(%f) LIMIT 1", rel.Relation.String(), tableSampleSize)
+			}
+			rows, err := tx.Query(ctx, query)
 			if err != nil {
 				return nil, "", err
 			}

@@ -86,7 +86,7 @@ func TestSplitKeyRange(t *testing.T) {
 		}
 
 		err = mngr.Split(ctx, splitData)
-		is.EqualError(err, "key range is locked")
+		is.EqualError(err, "failed to split key range: key range \"kr1\" is locked")
 	})
 	t.Run("split happy path", func(t *testing.T) {
 		is := assert.New(t)

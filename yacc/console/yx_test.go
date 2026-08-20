@@ -631,6 +631,15 @@ func TestMoveKeyRange(t *testing.T) {
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),
 		},
+		{
+			query: "MOVE KEY RANGE kr1 TO sh2 META ONLY",
+			exp: &spqrparser.MoveKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				MetaOnly:    true,
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
@@ -2254,6 +2263,26 @@ func TestDropTaskGroup(t *testing.T) {
 			query: "DROP MOVE TASK GROUP",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "DROP MOVE TASK mt_id",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `mt_id`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
+		},
+		{
+			query: "DROP MOVE TASK mt_id CASCADE",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `mt_id`,
+				},
+				CascadeDelete: true,
+			},
+			err: nil,
 		},
 		{
 			query: "DROP TASK GROUP",

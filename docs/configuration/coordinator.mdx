@@ -37,6 +37,8 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `data_move_bound_batch_size` | Maximum number of rows fetched per batch when bounded data moves are executed. | Positive integer                              | `10000` |
 | `data_move_query_log_level` | Log level for data move operations.                                                          | `debug`, `info`, `warning`, `error`, `fatal`  | `"debug"` |
 | `data_move_await_pid_exception` | Whether to await PID exception during data moves.                                           | `"true"`, `"false"` (as strings)              | `"true"` |
+| `use_spqrguard`            | Maintains [`spqrguard`](/deployment/spqrguard) metadata for key ranges and distributed and reference tables during topology changes and data moves. | `true`, `false` | `false` |
+| `forbid_direct_shard_queries` | Enables global `spqrguard` protection against direct writes to distributed and reference tables. | `true`, `false` | `false` |
 
 ## Coordinator Timing Settings
 

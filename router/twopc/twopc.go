@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/session"
 )
 
 const (
@@ -24,6 +25,7 @@ const (
 	CommitStrategy2pc        = "2pc"
 )
 
+/* This function accept nil as DCStateKeeper for some configurations */
 func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	cl client.Client,
 	s server.Server) (txstatus.TXStatus, error) {
@@ -32,6 +34,11 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	/*
 	* go along first phase
 	 */
+	guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return txstatus.TXERR, err
+	}
+
 	gid := cl.NextGID()
 	if gid == "" {
 		uid7, err := uuid.NewV7()
@@ -41,20 +48,23 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		gid = uid7.String()
 	}
 
-	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
-		return txstatus.TXERR, err
-	} else if !ok {
-		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
+	if q != nil {
+		if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+			return txstatus.TXERR, err
+		} else if !ok {
+			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
+		}
 	}
 
 	/* Store our intentions in state keeper */
-	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	shs := []string{}
 
 	for _, dsh := range s.Datashards() {
 		shs = append(shs, dsh.SHKey().Name)
 	}
 
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
 		if err := q.RecordTwoPhaseMembers(ctx, gid, shs); err != nil {
 			return txstatus.TXERR, err
@@ -80,8 +90,8 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
 			}, "rollback prepared", txstatus.TXIDLE)
 
-			if cl.ShowNoticeMsg() {
-				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %v on %v", gid, dsh.InstanceHostname()))
+			if guc.Get(cl) {
+				_ = cl.ReplyNotice(fmt.Sprintf("rollback prepared %s on %s", gid, dsh.InstanceHostname()))
 			}
 
 			/* Try next shard */
@@ -92,23 +102,22 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	}()
 
 	for _, dsh := range s.Datashards() {
-		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
+		/* st is guaranteed TXIDLE when err == nil; DeployTxOnShard validates expTx */
+		_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
 		}, "prepare tx", txstatus.TXIDLE)
 
-		/* err may we a purely network error  */
+		/* err may be a purely network error  */
 		undoShards = append(undoShards, dsh)
 
 		if err != nil {
-			/* assert st == txtstatus.TXERR? */
+			/* TODO: assert st == txstatus.TXERR? */
 			return txstatus.TXERR, err
 		}
 
-		if cl.ShowNoticeMsg() {
-			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %v on %v", gid, dsh.InstanceHostname()))
+		if guc.Get(cl) {
+			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %s on %s", gid, dsh.InstanceHostname()))
 		}
-
-		retST = st
 	}
 
 	if config.RouterConfig().EnableICP {
@@ -147,26 +156,26 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}, "commit prepared", txstatus.TXIDLE)
 
 		if err != nil {
-			/* assert st == txtstatus.TXERR? */
+			/* TODO: assert st == txstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
 			return txstatus.TXERR, err
 		}
 
-		if txstatus.TXStatus(st) != txstatus.TXIDLE {
+		if st != txstatus.TXIDLE {
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
 			return txstatus.TXERR, spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "unexpected 2pc member response")
 		}
 
-		if cl.ShowNoticeMsg() {
-			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %v on %v", gid, dsh.InstanceHostname()))
+		if guc.Get(cl) {
+			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %s on %s", gid, dsh.InstanceHostname()))
 		}
 
-		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", st.String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
 
-		retST = txstatus.TXStatus(st)
+		retST = st
 	}
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */

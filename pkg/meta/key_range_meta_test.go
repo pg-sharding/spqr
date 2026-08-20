@@ -55,15 +55,6 @@ var kr1Locked = &kr.KeyRange{
 	IsLocked:     true,
 }
 
-var kr1NotLocked = &kr.KeyRange{
-	ID:           "kr1",
-	ShardID:      "sh1",
-	Distribution: "ds1",
-	LowerBound:   []any{int64(0)},
-	ColumnTypes:  []string{qdb.ColumnTypeInteger},
-	IsLocked:     false,
-}
-
 func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
 	memqdb, err := qdb.RestoreQDB(MemQDBPath)
 	if err != nil {
@@ -169,31 +160,6 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1Locked))
-}
-
-func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
-	is := assert.New(t)
-	ctx := context.TODO()
-	memqdb, err := prepareDbTestValidate(ctx)
-	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
-
-	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	tranMngr2 := meta.NewTranEntityManager(mngr)
-	err = tranMngr2.CreateKeyRange(ctx, kr2, ds1ColTypes)
-	is.NoError(err)
-	err = tranMngr2.ExecNoTran(ctx)
-	is.NoError(err)
-	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	tranMngr1 := meta.NewTranEntityManager(mngr)
-	err = tranMngr1.CreateKeyRange(ctx, kr1, ds1ColTypes)
-	is.NoError(err)
-	err = tranMngr1.ExecNoTran(ctx)
-	is.NoError(err)
-	//lock unknown
-	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1))
-	//not locked
-	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1NotLocked))
 }
 
 func TestValidateKeyRangeForModify_intersection(t *testing.T) {

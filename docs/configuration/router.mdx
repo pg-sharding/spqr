@@ -121,6 +121,8 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `query_routing.enhanced_multishard_processing` | Enables engine V2 with enhanced multishard query processing, including [automatic batch INSERT/COPY](/sharding/bulk) splitting across shards. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes | `false` |
 | `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | No | `false` |
 | `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | No | `false` |
+| `query_routing.use_spqrguard`                  | Maintains [`spqrguard`](/deployment/spqrguard) metadata when SPQR executes DDL.                                          | `true`, `false`  | No | `false` |
+| `query_routing.forbid_direct_shard_queries`    | Deprecated alias for `query_routing.use_spqrguard`.                                                                      | `true`, `false`  | No | `false` |
 
 ## Transaction Settings
 
@@ -165,4 +167,4 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `init_sql`             | Path to SQL file that router will execute before the start     | Any valid file path   | (none) |
 | `exit_on_init_sql`     | Whether to exit if the parsing of the SQL file fails           | `true`, `false`       | `false` |
 | `memqdb_backup_path`   | MemQDB backup state path. MemQDB's state restored if a file backup exists during the router startup. If there is no file, init.sql will be used | Any valid file path | (none) |
-| `qdb_max_txn_ops`      | Maximum number of subcommands allowed in a single qdb transaction. Default is 128. coordinator param `etcd_max_txn_ops` is stronger  | Integer value in the range 0–65535 |
+| `qdb_max_txn_ops`      | Maximum number of subcommands allowed in a single QDB transaction. `0` uses the QDB default of `128`; a positive coordinator `etcd_max_txn_ops` value overrides this setting. | Integer value in the range 0–65535 | `0` |

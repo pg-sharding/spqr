@@ -81,15 +81,18 @@ func DispatchSlice(qd *QueryDesc,
 			}
 
 			if guc.Get(cl) || forceLinearize {
-				if cl.ShowNoticeMsg() {
-					_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %v", targ.Name))
+				guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+				if err != nil {
+					return err
+				}
+				if guc.Get(cl) {
+					_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
 				}
 
 				if err := serv.PrefetchResult(targ, 1); err != nil {
 					return err
 				}
 			}
-
 		} else {
 			/* this message is actually bind */
 			if err := serv.SendShard(qd.Msg, targ); err != nil {
@@ -137,7 +140,11 @@ func DispatchSlice(qd *QueryDesc,
 		}
 	}
 
-	if cl.ShowNoticeMsg() && replyCl {
+	guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return err
+	}
+	if guc.Get(cl) && replyCl {
 		_ = replyShardMatchesWithHosts(cl, serv, et)
 	}
 	return nil

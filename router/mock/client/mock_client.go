@@ -18,6 +18,7 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
 	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
+	pool "github.com/pg-sharding/spqr/pkg/pool"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	session "github.com/pg-sharding/spqr/pkg/session"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
@@ -65,6 +66,20 @@ func (m *MockRouterClient) Add(statType statistics.StatisticsType, value float64
 func (mr *MockRouterClientMockRecorder) Add(statType, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRouterClient)(nil).Add), statType, value)
+}
+
+// AllocParams mocks base method.
+func (m *MockRouterClient) AllocParams() pool.ConnAllocParams {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllocParams")
+	ret0, _ := ret[0].(pool.ConnAllocParams)
+	return ret0
+}
+
+// AllocParams indicates an expected call of AllocParams.
+func (mr *MockRouterClientMockRecorder) AllocParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocParams", reflect.TypeOf((*MockRouterClient)(nil).AllocParams))
 }
 
 // AssignRoute mocks base method.
@@ -1307,30 +1322,6 @@ func (mr *MockRouterClientMockRecorder) SetSeed(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockRouterClient)(nil).SetSeed), arg0)
 }
 
-// SetShardingKey mocks base method.
-func (m *MockRouterClient) SetShardingKey(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShardingKey", level, val)
-}
-
-// SetShardingKey indicates an expected call of SetShardingKey.
-func (mr *MockRouterClientMockRecorder) SetShardingKey(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockRouterClient)(nil).SetShardingKey), level, val)
-}
-
-// SetShowNoticeMsg mocks base method.
-func (m *MockRouterClient) SetShowNoticeMsg(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShowNoticeMsg", level, val)
-}
-
-// SetShowNoticeMsg indicates an expected call of SetShowNoticeMsg.
-func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).SetShowNoticeMsg), level, val)
-}
-
 // SetStartupParams mocks base method.
 func (m *MockRouterClient) SetStartupParams(arg0 map[string]string) {
 	m.ctrl.T.Helper()
@@ -1367,20 +1358,6 @@ func (mr *MockRouterClientMockRecorder) SetUsr(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUsr", reflect.TypeOf((*MockRouterClient)(nil).SetUsr), arg0)
 }
 
-// ShardingKey mocks base method.
-func (m *MockRouterClient) ShardingKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShardingKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ShardingKey indicates an expected call of ShardingKey.
-func (mr *MockRouterClientMockRecorder) ShardingKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardingKey", reflect.TypeOf((*MockRouterClient)(nil).ShardingKey))
-}
-
 // Shards mocks base method.
 func (m *MockRouterClient) Shards() []shard.ShardHostInstance {
 	m.ctrl.T.Helper()
@@ -1393,20 +1370,6 @@ func (m *MockRouterClient) Shards() []shard.ShardHostInstance {
 func (mr *MockRouterClientMockRecorder) Shards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shards", reflect.TypeOf((*MockRouterClient)(nil).Shards))
-}
-
-// ShowNoticeMsg mocks base method.
-func (m *MockRouterClient) ShowNoticeMsg() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShowNoticeMsg")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ShowNoticeMsg indicates an expected call of ShowNoticeMsg.
-func (mr *MockRouterClientMockRecorder) ShowNoticeMsg() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).ShowNoticeMsg))
 }
 
 // Shutdown mocks base method.

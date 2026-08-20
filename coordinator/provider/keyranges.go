@@ -140,6 +140,7 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
 		KeyRangeID: request.Id,
 		ShardID:    request.ToShardId,
+		MetaOnly:   request.MetaOnly,
 	}, nil); err != nil {
 		return nil, err
 	}

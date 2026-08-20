@@ -47,12 +47,16 @@ func (t *TasksServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelec
 }
 
 func (t *TasksServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropMoveTask(ctx, req.ID)
+	return nil, t.impl.DropMoveTask(ctx, req.ID, false)
+}
+
+func (t *TasksServer) DropMoveTaskV2(ctx context.Context, req *protos.MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, t.impl.DropMoveTask(ctx, req.ID, req.Cascade)
 }
 
 // Deprecated
 func (t *TasksServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropMoveTask(ctx, req.ID)
+	return nil, t.impl.DropMoveTask(ctx, req.ID, false)
 }
 
 func (t *TasksServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {

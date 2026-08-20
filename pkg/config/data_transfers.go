@@ -25,7 +25,7 @@ type ShardConnect struct {
 	Hosts    []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
 	DB       string     `json:"db" toml:"db" yaml:"db"`
 	User     string     `json:"usr" toml:"usr" yaml:"usr"`
-	Password string     `json:"pwd" toml:"pwd" yaml:"pwd"`
+	Password string     `json:"pwd" toml:"pwd" yaml:"pwd" secret:"true"`
 	TLS      *TLSConfig `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty"`
 }
 
@@ -49,11 +49,20 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 	return s, nil
 }
 
+// SplitHostPort splits a "host:port" string into host and port components.
+// If no port is provided, defaults to "5432".
+func SplitHostPort(hostPort string) (host, port string) {
+	parts := strings.SplitN(hostPort, ":", 2)
+	if len(parts) < 2 || parts[1] == "" {
+		return parts[0], "5432"
+	}
+	return parts[0], parts[1]
+}
+
 func (sc *ShardConnect) GetConnStrings() []string {
 	res := make([]string, len(sc.Hosts))
 	for i, h := range sc.Hosts {
-		hostname := strings.Split(h, ":")[0]
-		port := strings.Split(h, ":")[1]
+		hostname, port := SplitHostPort(h)
 		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sc.User, hostname, port, sc.DB, sc.Password)
 	}
 	return res
@@ -63,8 +72,9 @@ func (sc *ShardConnect) GetCombinedConnString() string {
 	hosts := make([]string, len(sc.Hosts))
 	ports := make([]string, len(sc.Hosts))
 	for i, h := range sc.Hosts {
-		hosts[i] = strings.Split(h, ":")[0]
-		ports[i] = strings.Split(h, ":")[1]
+		hostname, port := SplitHostPort(h)
+		hosts[i] = hostname
+		ports[i] = port
 	}
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sc.User, strings.Join(hosts, ","), strings.Join(ports, ","), sc.DB, sc.Password)
 }

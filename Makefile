@@ -114,9 +114,16 @@ test-cli-overrides: build_router
 	@echo ">> Running CLI override e2e test via test/cli/override.sh"
 	@CFG="test/cli/router.yaml" test/cli/override.sh ./spqr-router
 
+unittest-race:
+	go test -race -count 20 -timeout 30s ./qdb/...
+	go test -v -race -count 20 -timeout 120s -run "TestDbPoolRaces|TestShardPoolConnectionAcquireLimit"  ./pkg/pool/
+
 unittest:
 	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
-	go test -race -count 20 -timeout 30s ./qdb/...
+	$(MAKE) unittest-race
+
+bench:
+	go test -run '^$$' -bench . -benchmem ./router/planner/... ./router/qparser/...
 
 etcdqdb_test:
 	go test -timeout 120s ./test/etcdqdb_integration/... 

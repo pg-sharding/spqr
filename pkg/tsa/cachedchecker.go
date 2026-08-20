@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
@@ -31,9 +32,11 @@ func (ctsa *CachedTSAChecker) InstanceHealthChecks() map[string]CachedCheckResul
 //
 // Returns:
 //   - TSAChecker: A new instance of TSAChecker.
+const defaultTSARecheckPeriod = time.Second
+
 func NewCachedTSAChecker() *CachedTSAChecker {
 	return &CachedTSAChecker{
-		recheckPeriod: time.Second,
+		recheckPeriod: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolTSARecheckPeriod, defaultTSARecheckPeriod),
 		cache:         sync.Map{},
 		innerChecker:  &NetChecker{},
 	}
@@ -57,7 +60,7 @@ func NewCachedTSACheckerWithDuration(tsaRecheckDuration time.Duration) *CachedTS
 // Returns:
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error) {
+func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (CachedCheckResult, error) {
 
 	n := time.Now()
 	if v, ok := ctsa.cache.Load(sh.Instance().Hostname()); ok {
@@ -74,7 +77,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (CachedCheckR
 	* will end up running innerChecker.
 	* However, a concurrent protocol to avoid this is too
 	* much for troubles here, so we are fine. */
-	cr, err := ctsa.innerChecker.CheckTSA(sh)
+	cr, err := ctsa.innerChecker.CheckTSA(sh, timeout)
 	if err != nil {
 		return CachedCheckResult{}, err
 	}

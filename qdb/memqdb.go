@@ -30,10 +30,11 @@ const (
 )
 
 type MemQDBState struct {
-	Locks                       map[string]*sync.RWMutex            `json:"locks"`
-	Freq                        map[string]bool                     `json:"freq"`
-	Krs                         map[string]*internalKeyRange        `json:"krs"`
-	KrVersions                  map[string]int                      `json:"kr_versions"`
+	Locks                       map[string]*sync.RWMutex     `json:"locks"`
+	Freq                        map[string]bool              `json:"freq"`
+	Krs                         map[string]*internalKeyRange `json:"krs"`
+	KrVersions                  map[string]int               `json:"kr_versions"`
+	krOpLocks                   map[string]*sync.Mutex
 	Shards                      map[string]*Shard                   `json:"shards"`
 	Distributions               map[string]*Distribution            `json:"distributions"`
 	RelationDistribution        map[string]string                   `json:"relation_distribution"`
@@ -82,6 +83,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 			Krs:                         map[string]*internalKeyRange{},
 			KrVersions:                  map[string]int{},
 			Locks:                       map[string]*sync.RWMutex{},
+			krOpLocks:                   map[string]*sync.Mutex{},
 			Shards:                      map[string]*Shard{},
 			Distributions:               map[string]*Distribution{},
 			RelationDistribution:        map[string]string{},
@@ -523,6 +525,40 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
+
+func (q *MemQDB) LockKeyRangeOps(_ context.Context, id string) (*KeyRange, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: acquire key range operation lock")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	keyRange, err := q.getKeyrangeInternal(id)
+	if err != nil {
+		return nil, err
+	}
+
+	lock, ok := q.State.krOpLocks[id]
+	if !ok {
+		lock = &sync.Mutex{}
+		q.State.krOpLocks[id] = lock
+	}
+	lock.Lock()
+	return keyRange, nil
+}
+
+func (q *MemQDB) UnlockKeyRangeOps(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("key range id", id).Msg("memqdb: release key range operation lock")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	lock, ok := q.State.krOpLocks[id]
+	if ok {
+		lock.Unlock()
+	}
+	return nil
+}
+
 func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").

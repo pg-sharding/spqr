@@ -161,49 +161,6 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 	return nil
 }
 
-// Caller should lock key range
-// TODO : unit tests
-
-// Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - req (*kr.MoveKeyRange): a pointer to a MoveKeyRange object containing the necessary information for the move operation.
-//
-// Returns:
-// - error: an error if the move operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
-	var krmv *qdb.KeyRange
-	var err error
-	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
-		return err
-	}
-
-	ds, err := lc.qdb.GetDistribution(ctx, krmv.DistributionId)
-	if err != nil {
-		return err
-	}
-
-	reqKr, err := kr.KeyRangeFromDB(krmv, ds.ColTypes)
-	if err != nil {
-		return err
-	}
-	reqKr.ShardID = req.ShardID
-
-	// TODO: move check to meta layer
-	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
-		return err
-	}
-	tranMngr := meta.NewTranEntityManager(lc)
-	if err := tranMngr.UpdateKeyRange(ctx, reqKr, ds.ColTypes); err != nil {
-		return err
-	}
-	if err := tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
-	}
-	return nil
-}
-
 // BatchMoveKeyRange is disabled in LocalCoordinator
 func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator

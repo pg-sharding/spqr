@@ -101,30 +101,30 @@ func TestFrontendSimple(t *testing.T) {
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
-	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
-	cl.EXPECT().FindBoolGUC(gomock.Any()).Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().FindBoolGUC(gomock.Any()).AnyTimes().Return(session.BoolGUCs[2], nil)
 	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.StrGUCs[3], nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_SHARDING_KEY).AnyTimes().Return(session.StrGUCs[4], nil)
+	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).AnyTimes().Return(false)
 	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_EXECUTE_ON, gomock.Any()).AnyTimes().Return("")
-	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).Return(false)
+	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_SHARDING_KEY, gomock.Any()).AnyTimes().Return("")
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
-	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
+	cl.EXPECT().AllocParams().AnyTimes()
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
 	cl.EXPECT().BindParams().AnyTimes()
 
-	cl.EXPECT().ShardingKey().AnyTimes()
 	cl.EXPECT().EnhancedMultiShardProcessing().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -231,14 +231,14 @@ func TestFrontendXProto(t *testing.T) {
 		sh,
 	})
 
-	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any()).AnyTimes()
 
 	/* query Router */
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
-	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
+	cl.EXPECT().AllocParams().AnyTimes()
 	cl.EXPECT().Unroute().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
@@ -251,9 +251,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().BindParams().AnyTimes()
-
-	cl.EXPECT().ShardingKey().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 

@@ -24,6 +24,7 @@ const (
 	MoveTasksService_GetMoveTask_FullMethodName                 = "/spqr.MoveTasksService/GetMoveTask"
 	MoveTasksService_RemoveMoveTask_FullMethodName              = "/spqr.MoveTasksService/RemoveMoveTask"
 	MoveTasksService_DropMoveTask_FullMethodName                = "/spqr.MoveTasksService/DropMoveTask"
+	MoveTasksService_DropMoveTaskV2_FullMethodName              = "/spqr.MoveTasksService/DropMoveTaskV2"
 	MoveTasksService_ListMoveTaskGroups_FullMethodName          = "/spqr.MoveTasksService/ListMoveTaskGroups"
 	MoveTasksService_GetMoveTaskGroup_FullMethodName            = "/spqr.MoveTasksService/GetMoveTaskGroup"
 	MoveTasksService_WriteMoveTaskGroup_FullMethodName          = "/spqr.MoveTasksService/WriteMoveTaskGroup"
@@ -47,6 +48,7 @@ type MoveTasksServiceClient interface {
 	// Deprecated: Do not use.
 	RemoveMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DropMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropMoveTaskV2(ctx context.Context, in *MoveTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListMoveTaskGroups(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListMoveTaskGroupsReply, error)
 	GetMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*GetMoveTaskGroupReply, error)
 	WriteMoveTaskGroup(ctx context.Context, in *WriteMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -106,6 +108,16 @@ func (c *moveTasksServiceClient) DropMoveTask(ctx context.Context, in *MoveTaskS
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MoveTasksService_DropMoveTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *moveTasksServiceClient) DropMoveTaskV2(ctx context.Context, in *MoveTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MoveTasksService_DropMoveTaskV2_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +255,7 @@ type MoveTasksServiceServer interface {
 	// Deprecated: Do not use.
 	RemoveMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error)
 	DropMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error)
+	DropMoveTaskV2(context.Context, *MoveTaskRequest) (*emptypb.Empty, error)
 	ListMoveTaskGroups(context.Context, *emptypb.Empty) (*ListMoveTaskGroupsReply, error)
 	GetMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*GetMoveTaskGroupReply, error)
 	WriteMoveTaskGroup(context.Context, *WriteMoveTaskGroupRequest) (*emptypb.Empty, error)
@@ -278,6 +291,9 @@ func (UnimplementedMoveTasksServiceServer) RemoveMoveTask(context.Context, *Move
 }
 func (UnimplementedMoveTasksServiceServer) DropMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DropMoveTask not implemented")
+}
+func (UnimplementedMoveTasksServiceServer) DropMoveTaskV2(context.Context, *MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DropMoveTaskV2 not implemented")
 }
 func (UnimplementedMoveTasksServiceServer) ListMoveTaskGroups(context.Context, *emptypb.Empty) (*ListMoveTaskGroupsReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMoveTaskGroups not implemented")
@@ -404,6 +420,24 @@ func _MoveTasksService_DropMoveTask_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MoveTasksServiceServer).DropMoveTask(ctx, req.(*MoveTaskSelector))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MoveTasksService_DropMoveTaskV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveTasksServiceServer).DropMoveTaskV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoveTasksService_DropMoveTaskV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveTasksServiceServer).DropMoveTaskV2(ctx, req.(*MoveTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -646,6 +680,10 @@ var MoveTasksService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropMoveTask",
 			Handler:    _MoveTasksService_DropMoveTask_Handler,
+		},
+		{
+			MethodName: "DropMoveTaskV2",
+			Handler:    _MoveTasksService_DropMoveTaskV2_Handler,
 		},
 		{
 			MethodName: "ListMoveTaskGroups",

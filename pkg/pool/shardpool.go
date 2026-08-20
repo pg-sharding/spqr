@@ -35,6 +35,7 @@ type shardHostPool struct {
 
 	connectionLimit            int
 	connectionRetries          int
+	disableJitter              bool
 	connectionRetrySleepSlice  int
 	connectionRetryRandomSleep int
 }
@@ -67,6 +68,7 @@ func NewShardHostPool(allocFn ConnectionAllocFn, host config.Host, beRule *confi
 
 		connectionLimit:            connLimit,
 		connectionRetries:          connRetries,
+		disableJitter:              beRule.DisableJitter,
 		connectionRetrySleepSlice:  50,
 		connectionRetryRandomSleep: 10,
 	}
@@ -124,16 +126,31 @@ var (
 // TODO : unit tests
 func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
 	if err := func() error {
-		// TODO refactor
+
+		/* If jitter-based wait is not configured, skip */
+		if h.disableJitter {
+			<-h.queue
+			return nil
+		}
+
+		// TODO: remove this wait under separate setting
 		for range h.connectionRetries {
-			select {
 			// TODO: configure waits using backend rule
-			case <-time.After(time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))):
+			jitter := time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))
+			timer := time.NewTimer(jitter)
+			select {
+			case <-timer.C:
 				spqrlog.Zero.Info().
 					Uint("client", clid).
 					Str("host", h.host).
 					Msg("still waiting for backend connection to host")
 			case <-h.queue:
+				// Normally you dont need to stop
+				// short-lived timer (which this timer is).
+				// But for sake of tidiness, we anyway will do it.
+				// Also prevents memory leakage for very badly
+				// misconfigured servers
+				timer.Stop()
 				return nil
 			}
 		}

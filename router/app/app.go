@@ -157,9 +157,9 @@ func (app *App) ServeWD(ctx context.Context) error {
 			spqrlog.Zero.Info().Msg("recovery watchdog done")
 			return nil
 		default:
-			_, err := wd.RecoverDistributedTx()
+			_, err := wd.RecoverDistributedTx(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err)
+				spqrlog.Zero.Error().Err(err).Msg("failed to recover distributed transactions")
 			}
 
 			if config.RouterConfig().TxDataTTL != 0 {

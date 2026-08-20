@@ -1426,6 +1426,21 @@ func (mr *MockQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// LockKeyRangeOps mocks base method.
+func (m *MockQDB) LockKeyRangeOps(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockKeyRangeOps indicates an expected call of LockKeyRangeOps.
+func (mr *MockQDBMockRecorder) LockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRangeOps", reflect.TypeOf((*MockQDB)(nil).LockKeyRangeOps), ctx, id)
+}
+
 // NextRange mocks base method.
 func (m *MockQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	m.ctrl.T.Helper()
@@ -1481,6 +1496,20 @@ func (m *MockQDB) UnlockKeyRange(ctx context.Context, id string) error {
 func (mr *MockQDBMockRecorder) UnlockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRange", reflect.TypeOf((*MockQDB)(nil).UnlockKeyRange), ctx, id)
+}
+
+// UnlockKeyRangeOps mocks base method.
+func (m *MockQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlockKeyRangeOps indicates an expected call of UnlockKeyRangeOps.
+func (mr *MockQDBMockRecorder) UnlockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRangeOps", reflect.TypeOf((*MockQDB)(nil).UnlockKeyRangeOps), ctx, id)
 }
 
 // UpdateCoordinator mocks base method.
@@ -3377,6 +3406,21 @@ func (mr *MockXQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockXQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// LockKeyRangeOps mocks base method.
+func (m *MockXQDB) LockKeyRangeOps(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockKeyRangeOps indicates an expected call of LockKeyRangeOps.
+func (mr *MockXQDBMockRecorder) LockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRangeOps", reflect.TypeOf((*MockXQDB)(nil).LockKeyRangeOps), ctx, id)
+}
+
 // LockRedistributeTask mocks base method.
 func (m *MockXQDB) LockRedistributeTask(ctx context.Context, id, holder string) error {
 	m.ctrl.T.Helper()
@@ -3544,6 +3588,20 @@ func (m *MockXQDB) UnlockKeyRange(ctx context.Context, id string) error {
 func (mr *MockXQDBMockRecorder) UnlockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRange", reflect.TypeOf((*MockXQDB)(nil).UnlockKeyRange), ctx, id)
+}
+
+// UnlockKeyRangeOps mocks base method.
+func (m *MockXQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlockKeyRangeOps indicates an expected call of UnlockKeyRangeOps.
+func (mr *MockXQDBMockRecorder) UnlockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRangeOps", reflect.TypeOf((*MockXQDB)(nil).UnlockKeyRangeOps), ctx, id)
 }
 
 // UpdateCoordinator mocks base method.
@@ -4950,6 +5008,21 @@ func (mr *MockStateKeeperQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// LockKeyRangeOps mocks base method.
+func (m *MockStateKeeperQDB) LockKeyRangeOps(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockKeyRangeOps indicates an expected call of LockKeyRangeOps.
+func (mr *MockStateKeeperQDBMockRecorder) LockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRangeOps", reflect.TypeOf((*MockStateKeeperQDB)(nil).LockKeyRangeOps), ctx, id)
+}
+
 // LockRedistributeTask mocks base method.
 func (m *MockStateKeeperQDB) LockRedistributeTask(ctx context.Context, id, holder string) error {
 	m.ctrl.T.Helper()
@@ -5189,6 +5262,20 @@ func (m *MockStateKeeperQDB) UnlockKeyRange(ctx context.Context, id string) erro
 func (mr *MockStateKeeperQDBMockRecorder) UnlockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).UnlockKeyRange), ctx, id)
+}
+
+// UnlockKeyRangeOps mocks base method.
+func (m *MockStateKeeperQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlockKeyRangeOps indicates an expected call of UnlockKeyRangeOps.
+func (mr *MockStateKeeperQDBMockRecorder) UnlockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRangeOps", reflect.TypeOf((*MockStateKeeperQDB)(nil).UnlockKeyRangeOps), ctx, id)
 }
 
 // UpdateCoordinator mocks base method.

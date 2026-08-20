@@ -1,6 +1,8 @@
 package qparser_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/pg-sharding/spqr/router/qparser"
@@ -45,5 +47,46 @@ func TestQParser(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.exp, comments)
 		}
+	}
+}
+
+func buildQueryWithComments(nComments int, bodyLen int) string {
+	body := strings.Repeat("x", bodyLen)
+	var b strings.Builder
+	b.WriteString("SELECT ")
+	for i := 0; i < nComments; i++ {
+		fmt.Fprintf(&b, "/* __spqr__key%d: value%d */ ", i, i)
+	}
+	b.WriteString(body)
+	return b.String()
+}
+
+func BenchmarkQParserParse(b *testing.B) {
+	for _, tt := range []struct {
+		name  string
+		query string
+	}{
+		{
+			name:  "one-comment",
+			query: "SELECT /* __spqr__execute_on: sh1 */ id FROM t WHERE id = 42",
+		},
+		{
+			name:  "many-comments",
+			query: buildQueryWithComments(500, 32),
+		},
+		{
+			name:  "long-query/one-comment",
+			query: buildQueryWithComments(1, 4096),
+		},
+	} {
+		b.Run(tt.name, func(b *testing.B) {
+			b.SetBytes(int64(len(tt.query)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			qp := &qparser.QParser{}
+			for b.Loop() {
+				_, _, _ = qp.Parse(tt.query)
+			}
+		})
 	}
 }

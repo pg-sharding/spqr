@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
@@ -333,7 +334,26 @@ func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbSt
 
 // DropKeyRangeAll implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
-	return lc.qdb.DropKeyRangeAll(ctx)
+	krs, err := lc.qdb.ListAllKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+	if err := lc.qdb.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	krIDs := make([]string, len(krs))
+	for _, kr := range krs {
+		krIDs = append(krIDs, kr.KeyRangeID)
+	}
+
+	return UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
+		{
+			DropKeyRange: &proto.DropKeyRangeGossip{
+				Id: krIDs,
+			},
+		},
+	})
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
@@ -446,9 +466,47 @@ func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, err
 	return retRouters, nil
 }
 
-// Move implements meta.EntityMgr.
-func (lc *Coordinator) Move(_ context.Context, _ *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
-	panic("unimplemented")
+// Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - req (*kr.MoveKeyRange): a pointer to a MoveKeyRange object containing the necessary information for the move operation.
+//
+// Returns:
+// - error: an error if the move operation encounters any issues.
+func (lc *Coordinator) Move(ctx context.Context, req *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
+	if !req.MetaOnly {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "cannot move the data in local coordinator").Hint("use MOVE KEY RANGE ... META ONLY to only update key range metadata")
+	}
+	var krmv *qdb.KeyRange
+	var err error
+	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
+		return err
+	}
+
+	ds, err := lc.qdb.GetDistribution(ctx, krmv.DistributionId)
+	if err != nil {
+		return err
+	}
+
+	reqKr, err := kr.KeyRangeFromDB(krmv, ds.ColTypes)
+	if err != nil {
+		return err
+	}
+	reqKr.ShardID = req.ShardID
+
+	// TODO: move check to meta layer
+	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
+		return err
+	}
+	tranMngr := meta.NewTranEntityManager(lc)
+	if err := tranMngr.UpdateKeyRange(ctx, reqKr, ds.ColTypes); err != nil {
+		return err
+	}
+	if err := tranMngr.ExecNoTran(ctx); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+	}
+	return nil
 }
 
 // NextVal implements meta.EntityMgr.
@@ -484,15 +542,20 @@ func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
 
 // RenameKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew string) error {
-	keyRange, err := lc.GetKeyRange(ctx, krID)
-	if err != nil {
-		return err
-	}
-	if _, err := meta.LockKeyRange(ctx, lc, krID); err != nil {
-		return err
-	}
 	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
+	}
+	lockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := lc.LockKeyRangeOps(lockCtx, krID); err != nil {
+		return err
+	}
+	defer func() {
+		_ = lc.UnlockKeyRangeOps(ctx, krID)
+	}()
+	keyRange, err := meta.LockKeyRange(ctx, lc, krID)
+	if err != nil {
+		return err
 	}
 	if !config.CoordinatorConfig().UseSPQRGuard {
 		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
@@ -630,7 +693,7 @@ func (lc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 	return res, nil
 }
 
-func (lc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
+func (lc *Coordinator) DropMoveTask(ctx context.Context, id string, isCascade bool) error {
 	task, err := lc.GetMoveTask(ctx, id)
 	if err != nil {
 		return err
@@ -641,6 +704,20 @@ func (lc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
 	}
 	if status != nil && status.State != tasks.TaskGroupError {
 		return fmt.Errorf("cannot remove move task: it's forbidden to remove move tasks when its task group is being executed")
+	}
+	if isCascade {
+		krmoves, err := lc.qdb.ListKeyRangeMoves(ctx)
+		if err != nil {
+			return err
+		}
+		for _, move := range krmoves {
+			if move.KeyRangeID == task.KridTemp {
+				if err := lc.qdb.DeleteKeyRangeMove(ctx, move.MoveId, false); err != nil {
+					return err
+				}
+				break
+			}
+		}
 	}
 	return lc.qdb.DropMoveTask(ctx, id)
 }
@@ -823,7 +900,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 		return err
 	}
 	if task != nil {
-		if err := lc.qdb.DropMoveTask(ctx, task.ID); err != nil {
+		if err := lc.DropMoveTask(ctx, task.ID, cascade); err != nil {
 			return err
 		}
 	}
@@ -1043,7 +1120,7 @@ func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]q
 //
 // Parameters:
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - krid (string): the ID of the key range to lock.
+// - keyRangeID (string): the ID of the key range to lock.
 //
 // Returns:
 // - *kr.KeyRange: the locked KeyRange object.
@@ -1064,11 +1141,36 @@ func (lc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 
 // TODO : unit tests
 
+// LockKeyRangeOps acquires operation lock for key range identified by krid and returns the corresponding KeyRange object.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - keyRangeID (string): the ID of the key range to lock.
+//
+// Returns:
+// - *kr.KeyRange: the locked KeyRange object.
+// - error: an error if the lock operation encounters any issues.
+func (lc *Coordinator) LockKeyRangeOps(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
+	keyRangeDB, err := lc.qdb.LockKeyRangeOps(ctx, keyRangeID)
+	if err != nil {
+		return nil, err
+	}
+	ds, err := lc.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
+	if err != nil {
+		_ = lc.UnlockKeyRangeOps(ctx, keyRangeID)
+		return nil, err
+	}
+
+	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes)
+}
+
+// TODO : unit tests
+
 // UnlockKeyRange unlocks a key range identified by krid.
 //
 // Parameters:
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - krid (string): the ID of the key range to lock.
+// - keyRangeID (string): the ID of the key range to lock.
 //
 // Returns:
 // - error: an error if the unlock operation encounters any issues.
@@ -1076,6 +1178,23 @@ func (lc *Coordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) er
 	return retry.Do(ctx, retry.NewFibonacci(meta.LockRetryStep),
 		func(ctx context.Context) error {
 			return lc.qdb.UnlockKeyRange(ctx, keyRangeID)
+		})
+}
+
+// TODO : unit tests
+
+// UnlockKeyRangeOps releases the operation lock for key range identified by krid.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - keyRangeID (string): the ID of the key range to lock.
+//
+// Returns:
+// - error: an error if the unlock operation encounters any issues.
+func (lc *Coordinator) UnlockKeyRangeOps(ctx context.Context, keyRangeID string) error {
+	return retry.Do(ctx, retry.NewFibonacci(meta.LockRetryStep),
+		func(ctx context.Context) error {
+			return lc.qdb.UnlockKeyRangeOps(ctx, keyRangeID)
 		})
 }
 
@@ -1130,32 +1249,35 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeID).Str("appendage id", uniteKeyRange.AppendageKeyRangeID).Msg("unite key ranges")
-	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeID)
+	// TODO: wrap in retries and move to meta
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	krBase, err := lc.LockKeyRangeOps(opsLockCtx, uniteKeyRange.BaseKeyRangeID)
 	if err != nil {
 		return err
 	}
-
 	defer func() {
-		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
-		// We'll just check existing lock at the start.
-		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeID); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Unite")
-		}
+		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.BaseKeyRangeID)
 	}()
+	if krBase.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.BaseKeyRangeID)
+	}
 
 	ds, err := lc.qdb.GetDistribution(ctx, krBase.Distribution)
 	if err != nil {
 		return err
 	}
 
-	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeID)
+	krAppendage, err := lc.LockKeyRangeOps(opsLockCtx, uniteKeyRange.AppendageKeyRangeID)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.AppendageKeyRangeID)
+	}()
 
-	krAppendage, err := kr.KeyRangeFromDB(krAppendageDb, ds.ColTypes)
-	if err != nil {
-		return err
+	if krAppendage.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.AppendageKeyRangeID)
 	}
 
 	if krBase.ShardID != krAppendage.ShardID {
@@ -1261,16 +1383,21 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.KeyRangeID)
 	}
 
-	krOld, err := lc.LockKeyRange(ctx, req.SourceID)
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	krOld, err := lc.LockKeyRangeOps(opsLockCtx, req.SourceID)
 	if err != nil {
 		return err
 	}
-
 	defer func() {
-		if err := lc.UnlockKeyRange(ctx, req.SourceID); err != nil {
+		if err := lc.UnlockKeyRangeOps(ctx, req.SourceID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
 		}
 	}()
+
+	if krOld.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to split key range: key range \"%s\" is locked", krOld.ID)
+	}
 
 	ds, err := lc.qdb.GetDistribution(ctx, krOld.Distribution)
 

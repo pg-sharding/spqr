@@ -120,7 +120,10 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	}
 
 	// maxuint64
-	serv, err := r.mShardPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, tsa.TSA(config.TargetSessionAttrsAny))
+	serv, err := r.mShardPool.ConnectionWithTSA(pool.ConnAllocParams{
+		Clid: 0xFFFFFFFFFFFFFFFF,
+		Tsa:  tsa.TSA(config.TargetSessionAttrsAny),
+	}, anyK)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err

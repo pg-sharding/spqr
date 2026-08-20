@@ -52,12 +52,6 @@ type SessionParamsHolder interface {
 	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
 
-	SetShardingKey(level string, val string)
-	ShardingKey() string
-
-	SetShowNoticeMsg(level string, val bool)
-	ShowNoticeMsg() bool
-
 	/* Statement level makes sence? */
 	SetMaintainParams(level string, val bool)
 	MaintainParams() bool
@@ -142,16 +136,23 @@ const (
 	SPQR_SESSION_CONNECTIONS_PIN = "__spqr__session_connections_pin"
 
 	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
+
+	SPQR_NOTICE_MESSAGE_FORMAT = "__spqr__notice_message_format"
+
+	/* Special case for default_transaction_read_only */
+
+	PG_DEFAULT_TRANSACTION_READ_ONLY = "default_transaction_read_only"
 )
 
 //revive:enable:var-naming
 
 func ParamIsBoolean(n string) bool {
 	switch n {
-	/* SPQR_MAINTAIN_PARAMS, SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
+	/* SPQR_MAINTAIN_PARAMS, SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
 	case SPQR_ALLOW_SPLIT_UPDATE,
 		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
-		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN:
+		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN,
+		SPQR_REPLY_NOTICE:
 		return true
 	default:
 		return false
@@ -160,7 +161,12 @@ func ParamIsBoolean(n string) bool {
 
 func ParamIsString(n string) bool {
 	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR, SPQR_DEFAULT_ROUTE_BEHAVIOUR, SPQR_PREFERRED_ENGINE, SPQR_EXECUTE_ON:
+	case SPQR_ADVISORY_LOCK_BEHAVIOUR,
+		SPQR_DEFAULT_ROUTE_BEHAVIOUR,
+		SPQR_PREFERRED_ENGINE,
+		SPQR_EXECUTE_ON,
+		SPQR_SHARDING_KEY,
+		SPQR_NOTICE_MESSAGE_FORMAT:
 		return true
 	default:
 		return false

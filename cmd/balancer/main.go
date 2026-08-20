@@ -24,8 +24,8 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  false,
-	SilenceErrors: false,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadBalancerCfg(cfgPath)
 		if err != nil {

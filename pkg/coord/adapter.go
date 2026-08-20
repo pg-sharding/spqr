@@ -479,6 +479,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange, _ icp.ICPCont
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 				Id:        keyRange.ID,
 				ToShardId: move.ShardID,
+				MetaOnly:  move.MetaOnly,
 			})
 			return spqrerror.CleanGrpcError(err)
 		}
@@ -1059,9 +1060,9 @@ func (a *Adapter) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, 
 //
 // Returns:
 // - error: An error if the retrieval of tasks fails, otherwise nil.
-func (a *Adapter) DropMoveTask(ctx context.Context, id string) error {
+func (a *Adapter) DropMoveTask(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.DropMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
+	_, err := tasksService.DropMoveTaskV2(ctx, &proto.MoveTaskRequest{ID: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 

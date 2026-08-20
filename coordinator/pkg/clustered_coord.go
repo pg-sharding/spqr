@@ -906,18 +906,18 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all key ranges")
 
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	if err := qc.Coordinator.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.DropAllKeyRanges(ctx, nil)
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("drop key range response")
 		return err
-	}); err != nil {
-		return err
-	}
-
-	return qc.Coordinator.DropKeyRangeAll(ctx)
+	})
 }
 
 // TODO : unit tests
@@ -1003,6 +1003,43 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 		Str("shard-id", req.ShardID).
 		Msg("qdb coordinator move key range")
 
+	// TODO: lock key range for ops for the duration of the move
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := qc.LockKeyRangeOps(opsLockCtx, req.KeyRangeID); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to acquire key range operation lock: %w", err)
+	}
+	defer func() {
+		_ = qc.UnlockKeyRangeOps(ctx, req.KeyRangeID)
+	}()
+
+	if req.MetaOnly {
+		if err := qc.Coordinator.Move(ctx, req, icpCH); err != nil {
+			return err
+		}
+		if config.CoordinatorConfig().UseSPQRGuard {
+			if err := coord.UpdateKeyRangeMeta(ctx,
+				[]*proto.MetaTransactionGossipCommand{
+					{DropKeyRange: &proto.DropKeyRangeGossip{Id: []string{req.KeyRangeID}}},
+					{CreateKeyRange: &proto.CreateKeyRangeGossip{KeyRangeInfo: &proto.KeyRangeInfo{Krid: req.KeyRangeID, ShardId: req.ShardID}}},
+				}); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
+			}
+		}
+		return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			cl := proto.NewKeyRangeServiceClient(cc)
+			moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
+				Id:        req.KeyRangeID,
+				ToShardId: req.ShardID,
+				MetaOnly:  req.MetaOnly,
+			})
+			spqrlog.Zero.Debug().Err(err).
+				Interface("response", moveResp).
+				Msg("move key range response")
+			return err
+		})
+	}
+
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
 	if err != nil {
 		return err
@@ -1042,6 +1079,14 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
+			if config.CoordinatorConfig().DataMoveOptimisticPIDAwait {
+				if err := datatransfers.AwaitPIDs(ctx, keyRange.ShardID, "key_range_move_"+move.MoveId); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to await virtual transactions before move")
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
+				}
+			}
+			move.Status = qdb.MoveKeyRangeAwaited
+		case qdb.MoveKeyRangeAwaited:
 			// lock the key range
 			_, err = qc.LockKeyRange(ctx, req.KeyRangeID)
 			if err != nil {
@@ -1134,6 +1179,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 					Id:        keyRange.ID,
 					ToShardId: keyRange.ShardID,
+					MetaOnly:  true,
 				})
 				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).
@@ -1918,7 +1964,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
-	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: coord.GetNewKeyRangeId(ctx, qc.QDB()), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
 		task.KridTemp = taskGroup.KridTo
 	}
@@ -2261,7 +2307,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 			ShardID:        req.ShardID,
 			BatchSize:      req.BatchSize,
 			Limit:          -1,
-			DestKeyRangeID: uuid.NewString(),
+			DestKeyRangeID: coord.GetNewKeyRangeId(ctx, qc.QDB()),
 			Type:           tasks.SplitRight,
 		}); err != nil {
 			return err
@@ -2274,7 +2320,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		KeyRangeID:  req.KeyRangeID,
 		ShardID:     req.ShardID,
 		BatchSize:   req.BatchSize,
-		TempKrID:    uuid.NewString(),
+		TempKrID:    coord.GetNewKeyRangeId(ctx, qc.QDB()),
 		State:       tasks.RedistributeTaskPlanned,
 	}, false, icpCH)
 }
