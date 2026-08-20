@@ -101,7 +101,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
-	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
@@ -117,6 +117,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().GetTsa().AnyTimes()
+	cl.EXPECT().AllocParams().AnyTimes()
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -230,13 +231,14 @@ func TestFrontendXProto(t *testing.T) {
 		sh,
 	})
 
-	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any()).AnyTimes()
 
 	/* query Router */
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
 	cl.EXPECT().GetTsa().AnyTimes()
+	cl.EXPECT().AllocParams().AnyTimes()
 	cl.EXPECT().Unroute().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)

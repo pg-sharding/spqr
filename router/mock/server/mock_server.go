@@ -15,9 +15,9 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	planopts "github.com/pg-sharding/spqr/pkg/planopts"
+	pool "github.com/pg-sharding/spqr/pkg/pool"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
-	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	server "github.com/pg-sharding/spqr/router/server"
 	gomock "go.uber.org/mock/gomock"
@@ -48,17 +48,17 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 }
 
 // AllocateGangMember mocks base method.
-func (m *MockServer) AllocateGangMember(clid uint, shardKey kr.ShardKey, arg2 tsa.TSA) error {
+func (m *MockServer) AllocateGangMember(params pool.ConnAllocParams, shardKey kr.ShardKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AllocateGangMember", clid, shardKey, arg2)
+	ret := m.ctrl.Call(m, "AllocateGangMember", params, shardKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AllocateGangMember indicates an expected call of AllocateGangMember.
-func (mr *MockServerMockRecorder) AllocateGangMember(clid, shardKey, arg2 any) *gomock.Call {
+func (mr *MockServerMockRecorder) AllocateGangMember(params, shardKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateGangMember", reflect.TypeOf((*MockServer)(nil).AllocateGangMember), clid, shardKey, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateGangMember", reflect.TypeOf((*MockServer)(nil).AllocateGangMember), params, shardKey)
 }
 
 // Cancel mocks base method.
@@ -118,17 +118,17 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // ExpandGang mocks base method.
-func (m *MockServer) ExpandGang(clid uint, shkey kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
+func (m *MockServer) ExpandGang(params pool.ConnAllocParams, shkey kr.ShardKey, deployTX bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExpandGang", clid, shkey, arg2, deployTX)
+	ret := m.ctrl.Call(m, "ExpandGang", params, shkey, deployTX)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ExpandGang indicates an expected call of ExpandGang.
-func (mr *MockServerMockRecorder) ExpandGang(clid, shkey, arg2, deployTX any) *gomock.Call {
+func (mr *MockServerMockRecorder) ExpandGang(params, shkey, deployTX any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandGang", reflect.TypeOf((*MockServer)(nil).ExpandGang), clid, shkey, arg2, deployTX)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandGang", reflect.TypeOf((*MockServer)(nil).ExpandGang), params, shkey, deployTX)
 }
 
 // HasPrepareStatement mocks base method.

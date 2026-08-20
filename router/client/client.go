@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -58,6 +59,10 @@ type RouterClient interface {
 	/* Client target-session-attrs policy */
 
 	ResetTsa()
+
+	/* AllocParams returns the connection allocation parameters derived from
+	the current client state (client id and effective target session attrs). */
+	AllocParams() pool.ConnAllocParams
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
@@ -408,6 +413,16 @@ func (cl *PsqlClient) ReplyWarningf(code string, fmtString string, args ...any) 
 
 func (cl *PsqlClient) ID() uint {
 	return cl.id
+}
+
+// AllocParams implements [RouterClient]. It derives the connection allocation
+// parameters (client id and effective target session attrs) from the current
+// client state.
+func (cl *PsqlClient) AllocParams() pool.ConnAllocParams {
+	return pool.ConnAllocParams{
+		Clid: cl.ID(),
+		Tsa:  cl.GetTsa(),
+	}
 }
 
 func (cl *PsqlClient) Shards() []shard.ShardHostInstance {
@@ -1043,6 +1058,13 @@ func NewFakeClient() *FakeClient {
 
 func (f FakeClient) ID() uint {
 	return spqrlog.GetPointer(f)
+}
+
+// AllocParams implements [RouterClient].
+func (f FakeClient) AllocParams() pool.ConnAllocParams {
+	return pool.ConnAllocParams{
+		Clid: f.ID(),
+	}
 }
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {

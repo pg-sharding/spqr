@@ -60,9 +60,12 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 	for _, sh := range shs {
 		spqrlog.Zero.Info().Str("shard", sh.ID).Msg("fetching stale two phase commit data")
 
-		serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
+		serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
+			Clid: 0xFFFFFFFFFFFFFFFF,
+			Tsa:  tsa.TSA(config.TargetSessionAttrsRW),
+		}, kr.ShardKey{
 			Name: sh.ID,
-		}, tsa.TSA(config.TargetSessionAttrsRW))
+		})
 		if err != nil {
 			return nil, spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc recovery: %v", sh.ID, err)
 		}
@@ -185,9 +188,12 @@ func (d *TwoPCWatchDog) CheckTransactionOnShard(serv shard.ShardHostInstance, gi
 }
 
 func (d *TwoPCWatchDog) FinalizeTxStatus(sh string, gid string, q string) error {
-	serv, err := d.p.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, kr.ShardKey{
+	serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
+		Clid: 0xFFFFFFFFFFFFFFFF,
+		Tsa:  tsa.TSA(config.TargetSessionAttrsRW),
+	}, kr.ShardKey{
 		Name: sh,
-	}, tsa.TSA(config.TargetSessionAttrsRW))
+	})
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Str("shard", sh).Str("gid", gid).Msg("failed to acquire connection for 2pc finalize")
 		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc finalize of gid %q: %v", sh, gid, err)

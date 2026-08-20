@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -32,7 +31,7 @@ func (srv *ShardServer) ToMultishard() Server {
 }
 
 // ExpandGang implements Server.
-func (srv *ShardServer) ExpandGang(_ uint, _ kr.ShardKey, _ tsa.TSA, _ bool) error {
+func (srv *ShardServer) ExpandGang(_ pool.ConnAllocParams, _ kr.ShardKey, _ bool) error {
 	return fmt.Errorf("expanding gang on single shard server in unsupported")
 }
 
@@ -111,14 +110,14 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) (shard.ShardHostInstance
 }
 
 // TODO : unit tests
-func (srv *ShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+func (srv *ShardServer) AllocateGangMember(params pool.ConnAllocParams, shkey kr.ShardKey) error {
 	v := srv.shard.Load()
 	if v != nil {
 		return fmt.Errorf("single datashard " +
 			"server does not support more than 1 datashard connection simultaneously")
 	}
 
-	if val, err := srv.pool.ConnectionWithTSA(clid, shkey, tsa); err != nil {
+	if val, err := srv.pool.ConnectionWithTSA(params, shkey); err != nil {
 		return err
 	} else {
 		srv.shard.Store(&val)

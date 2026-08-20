@@ -15,7 +15,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
@@ -123,8 +122,8 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) expandGangUtil(clid uint,
-	shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+func (m *MultiShardServer) expandGangUtil(params pool.ConnAllocParams,
+	shkey kr.ShardKey, deployTX bool) error {
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
 
@@ -134,7 +133,7 @@ func (m *MultiShardServer) expandGangUtil(clid uint,
 			return nil
 		}
 	}
-	sh, err := m.pool.ConnectionWithTSA(clid, shkey, tsa)
+	sh, err := m.pool.ConnectionWithTSA(params, shkey)
 	if err != nil {
 		return err
 	}
@@ -158,8 +157,8 @@ func (m *MultiShardServer) expandGangUtil(clid uint,
 	return nil
 }
 
-func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
-	if err := m.expandGangUtil(clid, shkey, tsa, false); err != nil {
+func (m *MultiShardServer) AllocateGangMember(params pool.ConnAllocParams, shkey kr.ShardKey) error {
+	if err := m.expandGangUtil(params, shkey, false); err != nil {
 		return err
 	}
 	m.states = append(m.states, ShardRFQState)
@@ -169,8 +168,8 @@ func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa 
 	return nil
 }
 
-func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
-	if err := m.expandGangUtil(clid, shkey, tsa, deployTX); err != nil {
+func (m *MultiShardServer) ExpandGang(params pool.ConnAllocParams, shkey kr.ShardKey, deployTX bool) error {
+	if err := m.expandGangUtil(params, shkey, deployTX); err != nil {
 		return err
 	}
 	m.states = append(m.states, m.states[0])
