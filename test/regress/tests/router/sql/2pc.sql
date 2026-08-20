@@ -25,6 +25,18 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
 DROP TABLE ref_2pc;
 
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+
+SELECT __spqr__set_next_2pc_gid('zzz3');
+
+BEGIN;
+CREATE TEMP TABLE xzz() /* __spqr__scatter_query: true */;
+-- will fail, we have temporal objects in session.
+COMMIT;
+ROLLBACK;
+
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');

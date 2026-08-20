@@ -121,6 +121,9 @@ type Router struct {
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
 	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
 
+	/* Should we eagerly cleanup tow phase commit metadata on revert(happy-path rollback?) */
+	EagerCleanup2PC bool `json:"eager_cleanup_2pc" toml:"eager_cleanup_2pc" yaml:"eager_cleanup_2pc"`
+
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
 
 	UseSystemdNotifier   bool   `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`

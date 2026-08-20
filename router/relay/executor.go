@@ -371,12 +371,18 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 }
 
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
-	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
+	spqrlog.Zero.Debug().
+		Uint("client", s.cl.ID()).
+		Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).
+		Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
 
 	serv := s.cl.Server()
 
 	/* XXX: warn user of misconfiguration */
-	if config.RouterConfig().AllowTwoPhaseCommit && s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
+	/* XXX: check if planner 'guarantees' read-only-ness */
+	if config.RouterConfig().AllowTwoPhaseCommit &&
+		s.cl.CommitStrategy() == twopc.CommitStrategy2pc &&
+		len(serv.Datashards()) > 1 {
 		st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv)
 
 		if err != nil {
