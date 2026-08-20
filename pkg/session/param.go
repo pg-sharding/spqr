@@ -116,6 +116,7 @@ const (
 	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
 	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
+	SPQR_EXECUTE_HOST_FILTER     = "__spqr__execute_host_filter"
 
 	/* backward compatibility */
 	SPQR_TARGET_SESSION_ATTRS_ALIAS   = "target_session_attrs"
@@ -165,6 +166,7 @@ func ParamIsString(n string) bool {
 		SPQR_DEFAULT_ROUTE_BEHAVIOUR,
 		SPQR_PREFERRED_ENGINE,
 		SPQR_EXECUTE_ON,
+		SPQR_EXECUTE_HOST_FILTER,
 		SPQR_SHARDING_KEY,
 		SPQR_NOTICE_MESSAGE_FORMAT:
 		return true

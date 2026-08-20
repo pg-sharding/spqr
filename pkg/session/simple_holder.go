@@ -567,6 +567,13 @@ var StrGUCs = []StrGUCimpl{
 		},
 	},
 	{
+		n:         SPQR_EXECUTE_HOST_FILTER,
+		shortName: "execute host filter",
+		def: func() string {
+			return ""
+		},
+	},
+	{
 		n:         SPQR_SHARDING_KEY,
 		shortName: "sharding key",
 		def: func() string {
