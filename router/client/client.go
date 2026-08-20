@@ -60,8 +60,8 @@ type RouterClient interface {
 
 	ResetTsa()
 
-	/* AllocParams returns the connection allocation parameters derived from
-	the current client state (client id and effective target session attrs). */
+	/* Client state relation to connection allocation logic, e.g.
+	* requested target-session-attrs and such */
 	AllocParams() pool.ConnAllocParams
 
 	ReplyParseComplete() error
@@ -415,9 +415,7 @@ func (cl *PsqlClient) ID() uint {
 	return cl.id
 }
 
-// AllocParams implements [RouterClient]. It derives the connection allocation
-// parameters (client id and effective target session attrs) from the current
-// client state.
+// AllocParams implements [RouterClient].
 func (cl *PsqlClient) AllocParams() pool.ConnAllocParams {
 	return pool.ConnAllocParams{
 		Clid: cl.ID(),
