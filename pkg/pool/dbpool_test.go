@@ -139,7 +139,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 	}
 
-	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
+	sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRW}, key)
 
 	assert.NoError(err)
 	assert.NotNil(sh)
@@ -152,7 +152,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	/* next time expect only one call */
 	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 
-	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
+	sh, err = dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRW}, key)
 
 	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
@@ -324,7 +324,7 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				defer wg.Done()
 				defer sem.Release(1)
 
-				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
+				sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: uint(i), Tsa: config.TargetSessionAttrsPS}, kr.ShardKey{Name: shards[i%3]})
 
 				assert.NoError(err)
 
@@ -452,7 +452,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 	}
 
-	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
+	sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRW}, key)
 
 	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
@@ -475,7 +475,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	dbpool.ShuffleHosts = true
 
 	for range repeatTimes {
-		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)
+		sh, err = dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRO}, key)
 
 		// assert.NotEqual(sh, h3)
 

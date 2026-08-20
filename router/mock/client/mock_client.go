@@ -18,6 +18,7 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
 	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
+	pool "github.com/pg-sharding/spqr/pkg/pool"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	session "github.com/pg-sharding/spqr/pkg/session"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
@@ -65,6 +66,20 @@ func (m *MockRouterClient) Add(statType statistics.StatisticsType, value float64
 func (mr *MockRouterClientMockRecorder) Add(statType, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRouterClient)(nil).Add), statType, value)
+}
+
+// AllocParams mocks base method.
+func (m *MockRouterClient) AllocParams() pool.ConnAllocParams {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllocParams")
+	ret0, _ := ret[0].(pool.ConnAllocParams)
+	return ret0
+}
+
+// AllocParams indicates an expected call of AllocParams.
+func (mr *MockRouterClientMockRecorder) AllocParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocParams", reflect.TypeOf((*MockRouterClient)(nil).AllocParams))
 }
 
 // AssignRoute mocks base method.

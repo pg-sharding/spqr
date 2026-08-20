@@ -21,7 +21,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
@@ -83,7 +82,7 @@ func (s *QueryStateExecutorImpl) View() pool.Statistics {
 }
 
 // ConnectionWithTSA implements [pool.ConnectionProvider].
-func (s *QueryStateExecutorImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+func (s *QueryStateExecutorImpl) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
 
 	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
 	if err != nil {
@@ -97,7 +96,7 @@ func (s *QueryStateExecutorImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, t
 		}
 	}
 
-	return s.Client().Route().MultiShardPool().ConnectionWithTSA(clid, key, targetSessionAttrs)
+	return s.Client().Route().MultiShardPool().ConnectionWithTSA(params, key)
 }
 
 // CleanupConnection implements [poolmgr.GangMgr].
@@ -272,8 +271,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			Str("client tsa", string(s.Client().GetTsa())).
 			Msg("adding shard with tsa")
 		if err := s.Client().Server().AllocateGangMember(
-			s.Client().ID(),
-			shkey, s.Client().GetTsa()); err != nil {
+			s.Client().AllocParams(), shkey); err != nil {
 			return err
 		}
 	}
@@ -1322,7 +1320,7 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := s.Client().Server().ExpandGang(s.Client().ID(), shkey, s.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := s.Client().Server().ExpandGang(s.Client().AllocParams(), shkey, beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}

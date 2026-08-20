@@ -56,9 +56,18 @@ type ShardHostsPool interface {
 	SetRule(rule *config.BackendRule)
 }
 
+// ConnAllocParams bundles the per-client parameters required to allocate
+// a shard connection: the client id and the effective target session
+// attributes resolved for the current request. Methods that previously
+// passed clid and tsa as separate arguments now receive this struct.
+type ConnAllocParams struct {
+	Clid uint
+	Tsa  tsa.TSA
+}
+
 type ConnectionProvider interface {
 	ConnectionKeeper
-	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
+	ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error)
 }
 
 type MultiShardTSAPool interface {
