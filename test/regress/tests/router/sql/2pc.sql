@@ -25,6 +25,10 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
 DROP TABLE ref_2pc;
 
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+
+SELECT __spqr__set_next_2pc_gid('zzz3');
+
 BEGIN;
 CREATE TEMP TABLE xzz() /* __spqr__scatter_query: true */;
 -- will fail, we have temporal objects in session.
