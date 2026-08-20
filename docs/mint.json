@@ -74,7 +74,8 @@
                         "features/performance",
                         "features/authentication",
                         "features/config_reloading",
-                        "features/statistics"
+                        "features/statistics",
+                        "features/metrics"
                     ]
                 },
                 {

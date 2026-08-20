@@ -8,7 +8,7 @@ const (
 	ConfigReloadsTotalName        = MetricPrefix + "reloads_total"
 	InboundQueriesTotalName       = MetricPrefix + "inbound_queries_total"
 	ClientConnectionsTCPTotalName = MetricPrefix + "router_client_conn_tcp_total"
-	ActiveTCPCountName            = MetricPrefix + "spqr_router_client_conn_active_tcp"
+	ActiveTCPCountName            = MetricPrefix + "router_client_conn_active_tcp"
 	RouterTimeSummaryName         = MetricPrefix + "router_time"
 	ShardTimeSummaryName          = MetricPrefix + "shard_time"
 	CancelRequestCountName        = MetricPrefix + "canceled_requests_total"
