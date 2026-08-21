@@ -295,7 +295,9 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 			return routerClient.ID(), nil
 		}
 
-		cancelRateLim.Wait(context.Background())
+		if err := cancelRateLim.Wait(context.Background()); err != nil {
+			return 0, err
+		}
 
 		return routerClient.ID(), r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
