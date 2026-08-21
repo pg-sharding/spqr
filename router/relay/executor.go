@@ -276,8 +276,13 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 		}
 	}
 
+	guc, err := s.Client().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS)
+	if err != nil {
+		return err
+	}
+
 	/* Do this in expand routes too. */
-	if s.Client().MaintainParams() {
+	if guc.Get(s.Client()) {
 		query := s.Client().ConstructClientParams()
 		spqrlog.Zero.Debug().
 			Uint("client", s.Client().ID()).

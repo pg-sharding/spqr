@@ -52,10 +52,6 @@ type SessionParamsHolder interface {
 	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
 
-	/* Statement level makes sence? */
-	SetMaintainParams(level string, val bool)
-	MaintainParams() bool
-
 	/* Query routing logic */
 
 	/* route hint always statement-level  */
@@ -150,11 +146,11 @@ const (
 
 func ParamIsBoolean(n string) bool {
 	switch n {
-	/* SPQR_MAINTAIN_PARAMS, SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
+	/*  SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
 	case SPQR_ALLOW_SPLIT_UPDATE,
 		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
 		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN,
-		SPQR_REPLY_NOTICE:
+		SPQR_REPLY_NOTICE, SPQR_MAINTAIN_PARAMS:
 		return true
 	default:
 		return false

@@ -454,20 +454,6 @@ func (mr *MockClientInfoMockRecorder) Init(cfg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockClientInfo)(nil).Init), cfg)
 }
 
-// MaintainParams mocks base method.
-func (m *MockClientInfo) MaintainParams() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainParams")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// MaintainParams indicates an expected call of MaintainParams.
-func (mr *MockClientInfoMockRecorder) MaintainParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockClientInfo)(nil).MaintainParams))
-}
-
 // NextGID mocks base method.
 func (m *MockClientInfo) NextGID() string {
 	m.ctrl.T.Helper()
@@ -1008,18 +994,6 @@ func (m *MockClientInfo) SetErrCounter(arg0 errcounter.ErrCounter) {
 func (mr *MockClientInfoMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockClientInfo)(nil).SetErrCounter), arg0)
-}
-
-// SetMaintainParams mocks base method.
-func (m *MockClientInfo) SetMaintainParams(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetMaintainParams", level, val)
-}
-
-// SetMaintainParams indicates an expected call of SetMaintainParams.
-func (mr *MockClientInfoMockRecorder) SetMaintainParams(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockClientInfo)(nil).SetMaintainParams), level, val)
 }
 
 // SetNextGID mocks base method.

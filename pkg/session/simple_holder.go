@@ -121,8 +121,6 @@ type SimpleSessionParamHandler struct {
 
 	paramCodes []int16
 
-	maintainParams bool
-
 	nextGID string
 }
 
@@ -243,16 +241,6 @@ func (cl *SimpleSessionParamHandler) SetDistributionKey(val string) {
 // DistributionKey implements RouterClient.
 func (cl *SimpleSessionParamHandler) DistributionKey() string {
 	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTION_KEY, "")
-}
-
-// MaintainParams implements RouterClient.
-func (cl *SimpleSessionParamHandler) MaintainParams() bool {
-	return cl.maintainParams
-}
-
-// SetMaintainParams implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetMaintainParams(_ string, val bool) {
-	cl.maintainParams = val
 }
 
 // BindParamFormatCodes implements RouterClient.
@@ -524,6 +512,13 @@ var BoolGUCs = []BoolGUCimpl{
 		shortName: "show notice messages",
 		def: func() bool {
 			return false
+		},
+	},
+	{
+		n:         SPQR_MAINTAIN_PARAMS,
+		shortName: "maintain params",
+		def: func() bool {
+			return config.RouterConfig().MaintainParams
 		},
 	},
 }
