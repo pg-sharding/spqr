@@ -132,6 +132,7 @@ const (
 	SPQR_ALLOW_AUTOPROTECT_2PC   = "__spqr__allow_autoprotect_2pc"
 	SPQR_ALLOW_FLUX_ACCESS       = "__spqr__flux_access"
 	SPQR_SESSION_CONNECTIONS_PIN = "__spqr__session_connections_pin"
+	SPQR_EAGER_CLEANUP_2PC       = "__spqr__eager_cleanup_2pc"
 
 	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
 
@@ -150,7 +151,7 @@ func ParamIsBoolean(n string) bool {
 	case SPQR_ALLOW_SPLIT_UPDATE,
 		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
 		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN,
-		SPQR_REPLY_NOTICE, SPQR_MAINTAIN_PARAMS:
+		SPQR_REPLY_NOTICE, SPQR_MAINTAIN_PARAMS, SPQR_EAGER_CLEANUP_2PC:
 		return true
 	default:
 		return false
