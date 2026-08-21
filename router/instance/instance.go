@@ -27,12 +27,19 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
+	"golang.org/x/time/rate"
 )
 
 const (
-	defaultAcceptorMaxRetries    = 10
+	defaultAcceptorMaxRetries = 10
+
+	defaultCancelRateLimit       = 100000 /* 100k per second is basically no limit */
 	defaultAcceptorRetrySleep    = 50 * time.Millisecond
 	defaultAcceptorRetrySleepMax = 1 * time.Second
+)
+
+var (
+	cancelRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().CancelRateLimit, defaultCancelRateLimit)), defaultCancelRateLimit)
 )
 
 // Accept connection and send it to channel.
@@ -287,6 +294,8 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		if config.RouterConfig().IgnoreCancel {
 			return routerClient.ID(), nil
 		}
+
+		cancelRateLim.Wait(context.Background())
 
 		return routerClient.ID(), r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
