@@ -818,7 +818,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			var filteredOids []uint32
 			// NB: ind are zero - indexed
 			for ind, val := range desc.ParameterOIDs {
-				if _, ok := def.OverwriteRemoveParamIDs[ind]; ok {
+				if _, ok := def.OverwriteRemoveParamIDs[ind + 1]; ok {
 					continue
 				}
 				filteredOids = append(filteredOids, val)
