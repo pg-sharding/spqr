@@ -105,8 +105,8 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
-	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 	cl.EXPECT().FindBoolGUC(gomock.Any()).AnyTimes().Return(session.BoolGUCs[2], nil)
+	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(session.BoolGUCs[7], nil)
 	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.StrGUCs[3], nil)
 	cl.EXPECT().FindStrGUC(session.SPQR_SHARDING_KEY).AnyTimes().Return(session.StrGUCs[4], nil)
 	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).AnyTimes().Return(false)
@@ -237,12 +237,14 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
+	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(session.BoolGUCs[7], nil)
+	cl.EXPECT().ResolveVirtualBoolParam(session.SPQR_MAINTAIN_PARAMS, gomock.Any()).AnyTimes()
+
 	cl.EXPECT().GetTsa().AnyTimes()
 	cl.EXPECT().AllocParams().AnyTimes()
 	cl.EXPECT().Unroute().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
-	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
