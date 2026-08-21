@@ -582,20 +582,6 @@ func (mr *MockRouterClientMockRecorder) ListPreparedStatements() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockRouterClient)(nil).ListPreparedStatements))
 }
 
-// MaintainParams mocks base method.
-func (m *MockRouterClient) MaintainParams() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainParams")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// MaintainParams indicates an expected call of MaintainParams.
-func (mr *MockRouterClientMockRecorder) MaintainParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockRouterClient)(nil).MaintainParams))
-}
-
 // NextGID mocks base method.
 func (m *MockRouterClient) NextGID() string {
 	m.ctrl.T.Helper()
@@ -1248,18 +1234,6 @@ func (m *MockRouterClient) SetErrCounter(arg0 errcounter.ErrCounter) {
 func (mr *MockRouterClientMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockRouterClient)(nil).SetErrCounter), arg0)
-}
-
-// SetMaintainParams mocks base method.
-func (m *MockRouterClient) SetMaintainParams(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetMaintainParams", level, val)
-}
-
-// SetMaintainParams indicates an expected call of SetMaintainParams.
-func (mr *MockRouterClientMockRecorder) SetMaintainParams(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), level, val)
 }
 
 // SetNextGID mocks base method.
