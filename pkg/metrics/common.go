@@ -17,9 +17,9 @@ const (
 	MaxMetricStartupTime = 5 * time.Second
 	MetricStartupTick    = 100 * time.Millisecond
 
-	// prefix of all metric names.
 	DefaultMetricPath = "/metric"
-	MetricPrefix      = "spqr_"
+	// prefix of all metric names.
+	MetricPrefix = "spqr_"
 )
 
 type MetricRegistry interface {
@@ -76,11 +76,29 @@ func Start(registry MetricRegistry, path string, port string) error {
 	}
 }
 
+type DynamicCounter struct {
+	Name   string
+	Help   string
+	Getter func() float64
+}
+
+func (c *DynamicCounter) Desc() *prometheus.Desc {
+	return prometheus.NewDesc(c.Name, c.Help, nil, nil)
+}
+
+func (c *DynamicCounter) Collect(ch chan<- prometheus.Metric) {
+	value := c.Getter()
+	ch <- prometheus.MustNewConstMetric(c.Desc(), prometheus.CounterValue, value)
+}
+
+func (c *DynamicCounter) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.Desc()
+}
+
 type DynamicGauge struct {
 	Name   string
 	Help   string
 	Getter func() float64
-	Value  float64
 }
 
 func (g *DynamicGauge) Desc() *prometheus.Desc {
