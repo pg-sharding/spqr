@@ -77,6 +77,28 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
  zzz3 | TxInitState
 (3 rows)
 
+/* eager cleanup 2pc: on failed 2PC, metadata should be cleaned up */
+SET __spqr__eager_cleanup_2pc TO true;
+SELECT __spqr__set_next_2pc_gid('zzz4');
+BEGIN;
+CREATE TEMP TABLE xzz2() /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- will fail, we have temporal objects in session.
+COMMIT;
+NOTICE: rollback prepared zzz4 on spqr_shard_1:6432
+ERROR:  error while deploying shard: prepare tx-cannot PREPARE a transaction that has operated on temporary objects
+QUERY:  COMMIT;
+ROLLBACK;
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+ gid  |   status    
+------+-------------
+ zzz1 | Done
+ zzz2 | Done
+ zzz3 | TxInitState
+(3 rows)
+
+SET __spqr__eager_cleanup_2pc TO false;
+
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 NOTICE: send query to shard(s) : sh1
  reloid 
