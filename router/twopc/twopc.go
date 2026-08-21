@@ -39,6 +39,11 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		return txstatus.TXERR, err
 	}
 
+	eagerCleanupGuc, err := cl.FindBoolGUC(session.SPQR_EAGER_CLEANUP_2PC)
+	if err != nil {
+		return txstatus.TXERR, err
+	}
+
 	gid := cl.NextGID()
 	if gid == "" {
 		uid7, err := uuid.NewV7()
@@ -106,7 +111,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}
 
 		/* XXX: consider opt-in for doing this unconditionally */
-		if config.RouterConfig().EagerCleanup2PC {
+		if eagerCleanupGuc.Get(cl) {
 			/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
 			if !anyErr {
 				if err := q.RemoveTXData(ctx, gid); err != nil {
