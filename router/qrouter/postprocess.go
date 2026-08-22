@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -289,6 +290,7 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 		for _, tle := range stmt.TargetList {
 			switch q := tle.(type) {
 			case *lyx.FuncApplication:
+				q.Name = strings.ToLower(q.Name)
 				/* thats ok */
 				if engine.EngineV2AggregateFunction(q.Name) {
 					anyAgg = true
