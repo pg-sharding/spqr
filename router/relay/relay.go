@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"slices"
-
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -817,10 +815,15 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 		if desc != nil {
 			// if we did overwrite something - remove our
 			// columns from output
-			for ind := range def.OverwriteRemoveParamIDs {
-				// NB: ind are zero - indexed
-				desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
+			var filteredOids []uint32
+			// NB: ind are zero - indexed
+			for ind, val := range desc.ParameterOIDs {
+				if _, ok := def.OverwriteRemoveParamIDs[ind+1]; ok {
+					continue
+				}
+				filteredOids = append(filteredOids, val)
 			}
+			desc.ParameterOIDs = filteredOids
 
 			if err := rst.Client().Send(desc); err != nil {
 				return err
