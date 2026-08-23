@@ -198,6 +198,13 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2); err != nil {
 			return txstatus.TXERR, err
 		}
+
+		/* XXX: consider opt-in for doing this unconditionally */
+		if config.RouterConfig().EagerCleanup2PC {
+			if err := q.RemoveTXData(ctx, gid); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
+			}
+		}
 	}
 
 	return retST, nil
