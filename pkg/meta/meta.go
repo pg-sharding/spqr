@@ -1605,12 +1605,32 @@ func ProcessShowExtended(ctx context.Context,
 		for k, v := range counters {
 			tts.WriteDataRow(k, fmt.Sprintf("%v", v))
 		}
+	case spqrparser.TwoPhaseTXExtStr:
+		d := mngr.DCStateKeeper()
+
+		if d == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "two state transactions status keeper not configured")
+		}
+
+		txs, err := d.TXInfos(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("gid", "status", "modified_at", "members"),
+		}
+
+		for _, tx := range txs {
+			tts.WriteDataRow(tx.Gid, string(tx.State), fmt.Sprintf("%+v", tx.UpdatedAt), fmt.Sprintf("%+v", tx.ShardsIDs))
+		}
+
 	case spqrparser.TwoPhaseTXStr:
 
 		d := mngr.DCStateKeeper()
 
 		if d == nil {
-			return nil, fmt.Errorf("two state transactions status keeper")
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "two state transactions status keeper not configured")
 		}
 
 		txs, err := d.ListTXNames(ctx)
@@ -2008,34 +2028,7 @@ func ProcessShow(ctx context.Context,
 		return nil, err
 	}
 
-	/* Do tuple projection */
-	if stmt.Columns != nil {
-		colMp := tts.Desc.GetColumnsMap()
-		offsets := []int{}
-
-		tuplesProjected := &tupleslot.TupleTableSlot{}
-
-		for _, c := range stmt.Columns {
-			off, ok := colMp[c]
-			if !ok {
-				return nil, fmt.Errorf("no such column %s", c)
-			}
-			offsets = append(offsets, off)
-			tuplesProjected.Desc = append(tuplesProjected.Desc, tts.Desc[off])
-		}
-
-		for _, r := range tts.Raw {
-			rowProjection := [][]byte{}
-			for _, off := range offsets {
-				rowProjection = append(rowProjection, r[off])
-			}
-			tuplesProjected.Raw = append(tuplesProjected.Raw, rowProjection)
-		}
-
-		return tuplesProjected, nil
-	} /* nil means all cols */
-
-	return tts, nil
+	return engine.Project(tts, stmt.Columns)
 }
 
 /* workhorse for ProcessShow. Retrieve tuples for virtual relation */

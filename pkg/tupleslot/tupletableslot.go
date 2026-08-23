@@ -11,7 +11,7 @@ type TupleDesc []pgproto3.FieldDescription
 type TupleTableSlot struct {
 	Desc TupleDesc
 
-	//
+	// Command Tag?
 
 	Raw [][][]byte
 }
