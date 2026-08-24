@@ -77,6 +77,38 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
  zzz3 | TxInitState
 (3 rows)
 
+/* eager cleanup 2pc: on success 2PC, metadata should be cleaned up */
+SET __spqr__eager_cleanup_2pc TO true;
+SELECT __spqr__set_next_2pc_gid('zzz4');
+BEGIN;
+SELECT 1+1 /* __spqr__scatter_query: true */ ;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ ?column? 
+----------
+        2
+        2
+        2
+        2
+(4 rows)
+
+COMMIT;
+NOTICE: prepare tx zzz4 on spqr_shard_1:6432
+NOTICE: prepare tx zzz4 on spqr_shard_2:6432
+NOTICE: prepare tx zzz4 on spqr_shard_3:6432
+NOTICE: prepare tx zzz4 on spqr_shard_4:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_1:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_2:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_3:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_4:6432
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+ gid  |   status    
+------+-------------
+ zzz1 | Done
+ zzz2 | Done
+ zzz3 | TxInitState
+(3 rows)
+
+SET __spqr__eager_cleanup_2pc TO false;
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 NOTICE: send query to shard(s) : sh1
  reloid 

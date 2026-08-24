@@ -37,6 +37,18 @@ ROLLBACK;
 
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
+/* eager cleanup 2pc: on success 2PC, metadata should be cleaned up */
+SET __spqr__eager_cleanup_2pc TO true;
+SELECT __spqr__set_next_2pc_gid('zzz4');
+
+BEGIN;
+SELECT 1+1 /* __spqr__scatter_query: true */ ;
+COMMIT;
+
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+
+SET __spqr__eager_cleanup_2pc TO false;
+
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');

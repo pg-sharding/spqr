@@ -521,6 +521,13 @@ var BoolGUCs = []BoolGUCimpl{
 			return config.RouterConfig().MaintainParams
 		},
 	},
+	{
+		n:         SPQR_EAGER_CLEANUP_2PC,
+		shortName: "eager cleanup 2pc",
+		def: func() bool {
+			return config.RouterConfig().EagerCleanup2PC
+		},
+	},
 }
 
 var StrGUCs = []StrGUCimpl{
