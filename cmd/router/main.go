@@ -187,7 +187,6 @@ var runCmd = &cobra.Command{
 		}
 
 		router_util.ReloadRotateLog()
-		defer spqrlog.CloseLogger()
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -525,6 +524,7 @@ var testCmd = &cobra.Command{
 }
 
 func main() {
+	defer spqrlog.CloseLogger()
 	if err := rootCmd.Execute(); err != nil {
 		spqrlog.Zero.Fatal().Err(err).Msg("")
 	}
