@@ -195,7 +195,7 @@ func runnerPool(t *testing.T, connLimit, clientCount int) {
 		assert.NoError(err)
 	}
 
-	for it = 0; it < connLimit; it++ {
+	for it = range connLimit {
 		assert.NoError(shp.Put(conns[it]))
 	}
 

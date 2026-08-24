@@ -144,8 +144,7 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 }
 
 func (app *App) ServeWD(ctx context.Context) error {
-
-	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
+	wd, err := recovery.NewTwoPCWatchDog(recovery.GetWatchdogBackendRules(), topology.TopMgr)
 
 	if err != nil {
 		return err
