@@ -144,6 +144,7 @@ type Router struct {
 	TxDataTTL                time.Duration `json:"tx_data_ttl" toml:"tx_data_ttl" yaml:"tx_data_ttl"`
 	AllowAutoprotectTwoPhase bool          `json:"allow_autoprotect_two_phase" yaml:"allow_autoprotect_two_phase" toml:"allow_autoprotect_two_phase"`
 	SessionConnectionsPin    bool          `json:"session_connections_pin" yaml:"session_connections_pin" toml:"session_connections_pin"`
+	BackupTxDataOnly         bool          `json:"backup_tx_data_only" toml:"backup_tx_data_only" yaml:"backup_tx_data_only"`
 
 	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }

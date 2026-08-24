@@ -168,3 +168,116 @@ Feature: MemQDB save state into a file
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_initsql_and_coordinator_init.yaml
     """
     And cluster is failed up and running
+
+  Scenario: Two-phase commit transactions data is restored
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+    """
+    Given cluster is up and running
+    When I execute SQL on host "router-admin"
+    """
+    CREATE REFERENCE RELATION ref_2pc;
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE ref_2pc(i INT);
+    SET __spqr__engine_v2 TO true;
+    SET __spqr__commit_strategy TO 2pc;
+    SELECT __spqr__set_next_2pc_gid('zzz1');
+    BEGIN;
+    INSERT INTO ref_2pc (i) VALUES (1);
+    COMMIT;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+
+  Scenario: MemQDB is able to only store 2pc tx data
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_tx_data_only.yaml
+    """
+    Given cluster is up and running
+    When I execute SQL on host "router-admin"
+    """
+    CREATE REFERENCE RELATION ref_2pc;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE ref_2pc(i INT);
+    SET __spqr__engine_v2 TO true;
+    SET __spqr__commit_strategy TO 2pc;
+    SELECT __spqr__set_next_2pc_gid('zzz1');
+    BEGIN;
+    INSERT INTO ref_2pc (i) VALUES (1);
+    COMMIT;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW distributions;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
