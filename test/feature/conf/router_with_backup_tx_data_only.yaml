@@ -11,6 +11,7 @@ time_quantiles:
 world_shard_fallback: true
 show_notice_messages: true
 allow_two_phase_commit: true
+backup_tx_data_only: true
 query_routing:
   forbid_direct_shard_queries: true
   use_spqrguard: true

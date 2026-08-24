@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
@@ -109,6 +110,10 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 	}, nil
 }
 
+type memQDBStateTxDataOnly struct {
+	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
+}
+
 func RestoreQDB(backupPath string) (*MemQDB, error) {
 	qdb, err := NewMemQDB(backupPath)
 	if err != nil {
@@ -135,7 +140,17 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(data, qdb)
+	if !config.RouterConfig().BackupTxDataOnly {
+		if err = json.Unmarshal(data, qdb); err != nil {
+			return nil, err
+		}
+	} else {
+		tmp := &memQDBStateTxDataOnly{}
+		if err := json.Unmarshal(data, &tmp); err != nil {
+			return nil, err
+		}
+		qdb.State.TwoPhaseTx = tmp.TwoPhaseTx
+	}
 
 	for kr, locked := range qdb.State.Freq {
 		if locked {
@@ -143,9 +158,6 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 		}
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	return qdb, nil
 }
 
@@ -167,7 +179,12 @@ func (q *MemQDB) DumpState() error {
 		}
 	}(f)
 
-	state, err := json.MarshalIndent(q, "", "	")
+	var state []byte
+	if config.RouterConfig().BackupTxDataOnly {
+		state, err = json.MarshalIndent(&memQDBStateTxDataOnly{TwoPhaseTx: q.State.TwoPhaseTx}, "", "	")
+	} else {
+		state, err = json.MarshalIndent(q, "", "	")
+	}
 
 	if err != nil {
 		return err
