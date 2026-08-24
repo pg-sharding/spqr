@@ -197,6 +197,9 @@ type DCStateKeeper interface {
 	ListTXNames(ctx context.Context) ([]string, error)
 	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
 
+	TXInfo(ctx context.Context, gid string) (TwoPCInfo, error)
+	TXInfos(ctx context.Context) ([]TwoPCInfo, error)
+
 	AcquireTxOwnership(ctx context.Context, gid string) (bool, error)
 	ReleaseTxOwnership(ctx context.Context, gid string) error
 

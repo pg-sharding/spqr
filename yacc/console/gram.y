@@ -763,8 +763,9 @@ show_statement_type:
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr, TaskGroupWorkersStr, ShardsExtendedStr, MeanKRLockTimeStr:
+			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
+			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
+			ShardsExtendedStr, MeanKRLockTimeStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

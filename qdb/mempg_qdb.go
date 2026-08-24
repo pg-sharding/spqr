@@ -111,6 +111,16 @@ func (q *MemPgQDB) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error) {
 	return q.stateKeeper.GetTXs(ctx)
 }
 
+// TXInfo implements [DCStateKeeper].
+func (q *MemPgQDB) TXInfo(ctx context.Context, gid string) (TwoPCInfo, error) {
+	return q.stateKeeper.TXInfo(ctx, gid)
+}
+
+// TXInfos implements [DCStateKeeper].
+func (q *MemPgQDB) TXInfos(ctx context.Context) ([]TwoPCInfo, error) {
+	return q.stateKeeper.TXInfos(ctx)
+}
+
 func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {
 	return q.stateKeeper.SetTxMetaStorage(storage)
 }

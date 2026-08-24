@@ -497,6 +497,7 @@ const (
 	ErrorStr              = "errors"
 	StartupFinishedStr    = "startup_finished"
 	TwoPhaseTXStr         = "two_phase_tx"
+	TwoPhaseTXExtStr      = "two_phase_tx_ext"
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
 	TaskGroupWorkersStr   = "task_group_workers"

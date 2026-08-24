@@ -1846,6 +1846,36 @@ func (mr *MockDCStateKeeperMockRecorder) TXCohortShards(ctx, gid any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockDCStateKeeper)(nil).TXCohortShards), ctx, gid)
 }
 
+// TXInfo mocks base method.
+func (m *MockDCStateKeeper) TXInfo(ctx context.Context, gid string) (qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfo", ctx, gid)
+	ret0, _ := ret[0].(qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfo indicates an expected call of TXInfo.
+func (mr *MockDCStateKeeperMockRecorder) TXInfo(ctx, gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfo", reflect.TypeOf((*MockDCStateKeeper)(nil).TXInfo), ctx, gid)
+}
+
+// TXInfos mocks base method.
+func (m *MockDCStateKeeper) TXInfos(ctx context.Context) ([]qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfos", ctx)
+	ret0, _ := ret[0].([]qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfos indicates an expected call of TXInfos.
+func (mr *MockDCStateKeeperMockRecorder) TXInfos(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfos", reflect.TypeOf((*MockDCStateKeeper)(nil).TXInfos), ctx)
+}
+
 // TXStatus mocks base method.
 func (m *MockDCStateKeeper) TXStatus(ctx context.Context, gid string) (qdb.TwoPhaseTxState, error) {
 	m.ctrl.T.Helper()
@@ -2199,6 +2229,36 @@ func (m *MockXDCStateKeeper) TXCohortShards(ctx context.Context, gid string) ([]
 func (mr *MockXDCStateKeeperMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXCohortShards), ctx, gid)
+}
+
+// TXInfo mocks base method.
+func (m *MockXDCStateKeeper) TXInfo(ctx context.Context, gid string) (qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfo", ctx, gid)
+	ret0, _ := ret[0].(qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfo indicates an expected call of TXInfo.
+func (mr *MockXDCStateKeeperMockRecorder) TXInfo(ctx, gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfo", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXInfo), ctx, gid)
+}
+
+// TXInfos mocks base method.
+func (m *MockXDCStateKeeper) TXInfos(ctx context.Context) ([]qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfos", ctx)
+	ret0, _ := ret[0].([]qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfos indicates an expected call of TXInfos.
+func (mr *MockXDCStateKeeperMockRecorder) TXInfos(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfos", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXInfos), ctx)
 }
 
 // TXStatus mocks base method.
@@ -5205,6 +5265,36 @@ func (m *MockStateKeeperQDB) TXCohortShards(ctx context.Context, gid string) ([]
 func (mr *MockStateKeeperQDBMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXCohortShards), ctx, gid)
+}
+
+// TXInfo mocks base method.
+func (m *MockStateKeeperQDB) TXInfo(ctx context.Context, gid string) (qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfo", ctx, gid)
+	ret0, _ := ret[0].(qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfo indicates an expected call of TXInfo.
+func (mr *MockStateKeeperQDBMockRecorder) TXInfo(ctx, gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfo", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXInfo), ctx, gid)
+}
+
+// TXInfos mocks base method.
+func (m *MockStateKeeperQDB) TXInfos(ctx context.Context) ([]qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfos", ctx)
+	ret0, _ := ret[0].([]qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfos indicates an expected call of TXInfos.
+func (mr *MockStateKeeperQDBMockRecorder) TXInfos(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfos", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXInfos), ctx)
 }
 
 // TXStatus mocks base method.

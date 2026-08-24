@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -2001,18 +2002,22 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 // ChangeTxStatus implements DCStateKeeper.
 func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Msg("memqdb: ChangeTxStatus")
+	n := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	/* XXX: validate state outer layers? */
 
 	info := q.State.TwoPhaseTx[id]
+	info.UpdatedAt = n
 	info.State = state
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TwoPhaseTx, id, info))
 }
 
 func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) {
+	n := time.Now()
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -2027,6 +2032,7 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 		Gid:       id,
 		ShardsIDs: nil,
 		State:     TwoPhaseInitState,
+		UpdatedAt: n,
 		Locked:    true,
 	}
 
@@ -2036,11 +2042,13 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 
 func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
 	spqrlog.Zero.Debug().Str("gid", gid).Msg("memqdb: ReleaseTxOwnership")
+	n := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	if info, ok := q.State.TwoPhaseTx[gid]; ok {
 		info.Locked = false
+		info.UpdatedAt = n
 	}
 	return nil
 }
@@ -2049,6 +2057,7 @@ func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
 // XXX: check that all members are valid spqr shards
 func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []string) error {
 	spqrlog.Zero.Debug().Msg("memqdb: RecordTwoPhaseMembers")
+	n := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -2057,6 +2066,7 @@ func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []st
 		ShardsIDs: shards,
 		State:     TwoPhaseInitState,
 		Locked:    true,
+		UpdatedAt: n,
 	}
 
 	q.State.TwoPhaseTx[id] = info
@@ -2102,6 +2112,30 @@ func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
 	defer q.mu.RUnlock()
 
 	return q.State.TwoPhaseTx, nil
+}
+
+// TXInfo implements [DCStateKeeper].
+func (q *MemQDB) TXInfo(_ context.Context, gid string) (TwoPCInfo, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
+		return TwoPCInfo{}, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+	} else {
+		return *tx, nil
+	}
+}
+
+// TXInfos implements [DCStateKeeper].
+func (q *MemQDB) TXInfos(_ context.Context) ([]TwoPCInfo, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	rt := make([]TwoPCInfo, 0, len(q.State.TwoPhaseTx))
+	for _, tx := range q.State.TwoPhaseTx {
+		rt = append(rt, *tx)
+	}
+	return rt, nil
 }
 
 func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {

@@ -284,6 +284,60 @@ func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, er
 	return txInfo, tx.Commit(ctx)
 }
 
+// TXInfo implements [DCStateKeeper].
+func (q *PgDCStateKeeper) TXInfo(ctx context.Context, gid string) (TwoPCInfo, error) {
+	conn, err := q.getConn(ctx)
+	if err != nil {
+		return TwoPCInfo{}, err
+	}
+	row := conn.QueryRow(ctx, "SELECT id, status, members, updated_at FROM spqr_metadata.spqr_tx_status WHERE id = $1", gid)
+	info := &TwoPCInfo{
+		ShardsIDs: []string{},
+	}
+	status := ""
+	if err = row.Scan(&info.Gid, &status, &info.ShardsIDs, &info.UpdatedAt); err != nil {
+		return TwoPCInfo{}, err
+	}
+	state, err := TwoPhaseTXStateFromString(status)
+	if err != nil {
+		return TwoPCInfo{}, err
+	}
+	info.State = state
+	return *info, nil
+}
+
+// TXInfos implements [DCStateKeeper].
+func (q *PgDCStateKeeper) TXInfos(ctx context.Context) ([]TwoPCInfo, error) {
+	conn, err := q.getConn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := conn.Query(ctx, "SELECT id, status, members, updated_at FROM spqr_metadata.spqr_tx_status")
+	if err != nil {
+		return nil, err
+	}
+	txInfoSlice, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (TwoPCInfo, error) {
+		info := TwoPCInfo{
+			ShardsIDs: []string{},
+		}
+		status := ""
+		if err := row.Scan(&info.Gid, &status, &info.ShardsIDs, &info.UpdatedAt); err != nil {
+			return TwoPCInfo{}, err
+		}
+		state, err := TwoPhaseTXStateFromString(status)
+		if err != nil {
+			return TwoPCInfo{}, err
+		}
+		info.State = state
+		return info, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return txInfoSlice, nil
+}
+
 func (q *PgDCStateKeeper) GetTxMetaStorage() []string {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
