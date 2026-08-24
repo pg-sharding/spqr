@@ -37,15 +37,13 @@ ROLLBACK;
 
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
-/* eager cleanup 2pc: on failed 2PC, metadata should be cleaned up */
+/* eager cleanup 2pc: on success 2PC, metadata should be cleaned up */
 SET __spqr__eager_cleanup_2pc TO true;
 SELECT __spqr__set_next_2pc_gid('zzz4');
 
 BEGIN;
-CREATE TEMP TABLE xzz2() /* __spqr__scatter_query: true */;
--- will fail, we have temporal objects in session.
+SELECT 1+1 /* __spqr__scatter_query: true */ ;
 COMMIT;
-ROLLBACK;
 
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 

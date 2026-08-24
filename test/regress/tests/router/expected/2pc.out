@@ -81,14 +81,24 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 SET __spqr__eager_cleanup_2pc TO true;
 SELECT __spqr__set_next_2pc_gid('zzz4');
 BEGIN;
-CREATE TEMP TABLE xzz2() /* __spqr__scatter_query: true */;
+SELECT 1+1 /* __spqr__scatter_query: true */ ;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
--- will fail, we have temporal objects in session.
+?column?
+--------
+       3
+       3
+       3
+       3
+(4 rows)
 COMMIT;
-NOTICE: rollback prepared zzz4 on spqr_shard_1:6432
-ERROR:  error while deploying shard: prepare tx-cannot PREPARE a transaction that has operated on temporary objects
-QUERY:  COMMIT;
-ROLLBACK;
+NOTICE: prepare tx zzz4 on spqr_shard_1:6432
+NOTICE: prepare tx zzz4 on spqr_shard_2:6432
+NOTICE: prepare tx zzz4 on spqr_shard_3:6432
+NOTICE: prepare tx zzz4 on spqr_shard_4:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_1:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_2:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_3:6432
+NOTICE: commit prepared tx zzz4 on spqr_shard_4:6432
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
  gid  |   status    
 ------+-------------
