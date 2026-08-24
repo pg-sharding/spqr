@@ -3,6 +3,7 @@ package recovery
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -19,11 +20,11 @@ import (
 
 type TwoPCWatchDog struct {
 	d  qdb.XDCStateKeeper
-	be *config.BackendRule
+	be []*config.BackendRule
 	p  pool.MultiShardTSAPool
 }
 
-func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPCWatchDog, error) {
+func NewTwoPCWatchDog(be []*config.BackendRule, tmgr topology.TopologyMgr) (*TwoPCWatchDog, error) {
 	if be == nil {
 		return nil, fmt.Errorf("invalid watchdog config: nil backend rule")
 	}
@@ -34,8 +35,6 @@ func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPC
 	/* XXX: pass mapping as param here? */
 	wd.p =
 		pool.NewDBPoolWithDisabledFeatures(tmgr)
-
-	wd.p.SetRule(wd.be)
 
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
@@ -50,6 +49,7 @@ func NewTwoPCWatchDog(be *config.BackendRule, tmgr topology.TopologyMgr) (*TwoPC
 * On any failure, first encountered error is returned.
  */
 func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]struct{}, error) {
+	spqrlog.Zero.Info().Msg("enter RecoverDistributedTx")
 	shs, err := d.d.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -57,67 +57,79 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 
 	gids := map[string]struct{}{}
 
-	for _, sh := range shs {
-		spqrlog.Zero.Info().Str("shard", sh.ID).Msg("fetching stale two phase commit data")
+	for _, beRule := range d.be {
+		if err := func() error {
+			d.p.SetRule(beRule)
 
-		serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
-			Clid: 0xFFFFFFFFFFFFFFFF,
-			Tsa:  tsa.TSA(config.TargetSessionAttrsRW),
-		}, kr.ShardKey{
-			Name: sh.ID,
-		})
-		if err != nil {
-			return nil, spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc recovery: %v", sh.ID, err)
-		}
+			for _, sh := range shs {
+				spqrlog.Zero.Info().Str("shard", sh.ID).Str("user", beRule.Usr).Str("db", beRule.DB).Msg("fetching stale two phase commit data")
 
-		if err := serv.Instance().Send(&pgproto3.Query{
-			String: `
+				serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
+					Clid: 0xFFFFFFFFFFFFFFFF,
+					Tsa:  tsa.TSA(config.TargetSessionAttrsRW),
+				}, kr.ShardKey{
+					Name: sh.ID,
+				})
+				if err != nil {
+					return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc recovery: %v", sh.ID, err)
+				}
+
+				defer func() {
+					if err := d.p.Put(serv); err != nil {
+						spqrlog.Zero.Debug().Msg("failed to release connection")
+					}
+				}()
+
+				if err := serv.Instance().Send(&pgproto3.Query{
+					String: `
 				SELECT gid FROM pg_prepared_xacts;
 			`,
-		}); err != nil {
-			/* Be tidy, return acquired connection. */
-			_ = d.p.Discard(serv)
-			return nil, err
-		}
-
-		/* okay, collect unfinished GID's from this shard */
-
-		if err := func() error {
-
-			for {
-				msg, err := serv.Receive()
-				if err != nil {
+				}); err != nil {
+					/* Be tidy, return acquired connection. */
+					_ = d.p.Discard(serv)
 					return err
 				}
 
-				switch v := msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					return nil
-				case *pgproto3.DataRow:
-					/* process */
-					gid := string(v.Values[0])
+				/* okay, collect unfinished GID's from this shard */
 
-					spqrlog.Zero.Debug().Str("shard", sh.ID).Str("gid", gid).Msg("found unfinished tx on shard")
+				if err := func() error {
 
-					/* XXX: Recheck gid status ? */
+					for {
+						msg, err := serv.Receive()
+						if err != nil {
+							return err
+						}
 
-					gids[gid] = struct{}{}
+						switch v := msg.(type) {
+						case *pgproto3.ReadyForQuery:
+							return nil
+						case *pgproto3.DataRow:
+							/* process */
+							gid := string(v.Values[0])
 
-				case *pgproto3.CommandComplete:
-					/* ok */
-				case *pgproto3.RowDescription:
-					/* ok */
-				default:
-					return fmt.Errorf("unexpected msg from server %+v", msg)
+							spqrlog.Zero.Debug().Str("shard", sh.ID).Str("gid", gid).Msg("found unfinished tx on shard")
+
+							/* XXX: Recheck gid status ? */
+
+							gids[gid] = struct{}{}
+
+						case *pgproto3.CommandComplete:
+							/* ok */
+						case *pgproto3.RowDescription:
+							/* ok */
+						default:
+							return fmt.Errorf("unexpected msg from server %+v", msg)
+						}
+					}
+				}(); err != nil {
+					/* Be tidy, return acquired connection. */
+					_ = d.p.Discard(serv)
+					return err
 				}
-			}
-		}(); err != nil {
-			/* Be tidy, return acquired connection. */
-			_ = d.p.Discard(serv)
-			return nil, err
-		}
 
-		if err := d.p.Put(serv); err != nil {
+			}
+			return nil
+		}(); err != nil {
 			return nil, err
 		}
 	}
@@ -188,33 +200,50 @@ func (d *TwoPCWatchDog) CheckTransactionOnShard(serv shard.ShardHostInstance, gi
 }
 
 func (d *TwoPCWatchDog) FinalizeTxStatus(sh string, gid string, q string) error {
-	serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
-		Clid: 0xFFFFFFFFFFFFFFFF,
-		Tsa:  tsa.TSA(config.TargetSessionAttrsRW),
-	}, kr.ShardKey{
-		Name: sh,
-	})
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Str("shard", sh).Str("gid", gid).Msg("failed to acquire connection for 2pc finalize")
-		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc finalize of gid %q: %v", sh, gid, err)
-	}
+	accErr := make([]string, 0)
+	for _, beRule := range d.be {
+		if done, err := func() (bool, error) {
+			d.p.SetRule(beRule)
+			serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
+				Clid: 0xFFFFFFFFFFFFFFFF,
+				Tsa:  tsa.TSA(config.TargetSessionAttrsRW),
+			}, kr.ShardKey{
+				Name: sh,
+			})
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Str("shard", sh).Str("gid", gid).Msg("failed to acquire connection for 2pc finalize")
+				return false, spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc finalize of gid %q: %v", sh, gid, err)
+			}
 
-	defer func() {
-		if err := d.p.Put(serv); err != nil {
-			spqrlog.Zero.Error().Str("gid", gid).Err(err).Msg("failed to release cleanup connection")
+			defer func() {
+				if err := d.p.Put(serv); err != nil {
+					spqrlog.Zero.Error().Str("gid", gid).Err(err).Msg("failed to release cleanup connection")
+				}
+			}()
+
+			if res, err := d.CheckTransactionOnShard(serv, gid); err != nil {
+				return false, err
+			} else if !res {
+				/* tx already finalized */
+				spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
+				return true, nil
+			}
+
+			/* ROLLBACK/COMMIT */
+			if err := d.DeployQueryOnShard(serv, q); err != nil {
+				spqrlog.Zero.Debug().Str("gid", gid).Str("user", beRule.Usr).Err(err).Msg("failed to roll back transaction")
+				accErr = append(accErr, err.Error())
+				return false, nil
+			} else {
+				return true, nil
+			}
+		}(); err != nil {
+			return err
+		} else if done {
+			return nil
 		}
-	}()
-
-	if res, err := d.CheckTransactionOnShard(serv, gid); err != nil {
-		return err
-	} else if !res {
-		/* tx already finalized */
-		spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
-		return nil
 	}
-
-	/* ROLLBACK */
-	return d.DeployQueryOnShard(serv, q)
+	return spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "could not finalize two-phase transaction: %s", strings.Join(accErr, ";"))
 }
 
 func (d *TwoPCWatchDog) executeCommitShards(shs []string, gid string) error {

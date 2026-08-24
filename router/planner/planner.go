@@ -888,7 +888,7 @@ func ConsoleFunctionCall(
 			return nil, fmt.Errorf("%s function accepts no more than one arg", fname)
 		}
 
-		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
+		wd, err := recovery.NewTwoPCWatchDog(recovery.GetWatchdogBackendRules(), topology.TopMgr)
 		if err != nil {
 			return nil, err
 		}
@@ -945,7 +945,7 @@ func ConsoleFunctionCall(
 		if len(args) > 0 {
 			return nil, fmt.Errorf("%s function accepts no arg", fname)
 		}
-		wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule, topology.TopMgr)
+		wd, err := recovery.NewTwoPCWatchDog(recovery.GetWatchdogBackendRules(), topology.TopMgr)
 		if err != nil {
 			return nil, err
 		}
