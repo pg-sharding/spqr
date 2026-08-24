@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -126,13 +127,20 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(_ context.Context, txid string) (bo
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
-func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
+func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState, curExpectedState TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Str("gid", txid).Str("state", string(state)).Msg("pg dc state keeper: change tx state")
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = (*tx).Rollback(ctx) }()
+	curState, err := q.getTxStatusInner(ctx, txid, tx)
+	if err != nil {
+		return err
+	}
+	if curState != curExpectedState {
+		return spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "unexpected 2pc tx status for update: %s, expected %s", curState, curExpectedState)
+	}
 	pgState := ""
 	switch state {
 	case TwoPhaseInitState:
@@ -211,9 +219,13 @@ func (q *PgDCStateKeeper) TXStatus(ctx context.Context, txid string) (TwoPhaseTx
 	if err != nil {
 		return "", err
 	}
-	row := (*tx).QueryRow(ctx, "SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	return q.getTxStatusInner(ctx, txid, tx)
+}
+
+func (q *PgDCStateKeeper) getTxStatusInner(ctx context.Context, txid string, tx *pgx.Tx) (TwoPhaseTxState, error) {
+	row := (*tx).QueryRow(ctx, "SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = $1 FOR UPDATE", txid)
 	status := ""
-	if err = row.Scan(&status); err != nil {
+	if err := row.Scan(&status); err != nil {
 		return "", err
 	}
 	return TwoPhaseTXStateFromString(status)

@@ -79,8 +79,8 @@ func (q *MemPgQDB) AcquireTxOwnership(ctx context.Context, txid string) (bool, e
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
-func (q *MemPgQDB) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
-	return q.stateKeeper.ChangeTxStatus(ctx, txid, state)
+func (q *MemPgQDB) ChangeTxStatus(ctx context.Context, txid string, state, curExpectedState TwoPhaseTxState) error {
+	return q.stateKeeper.ChangeTxStatus(ctx, txid, state, curExpectedState)
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].

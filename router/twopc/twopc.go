@@ -157,7 +157,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP1); err != nil {
+		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP1, qdb.TwoPhaseInitState); err != nil {
 			return txstatus.TXERR, err
 		}
 	}
@@ -200,7 +200,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2); err != nil {
+		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2, qdb.TwoPhaseP1); err != nil {
 			return txstatus.TXERR, err
 		}
 

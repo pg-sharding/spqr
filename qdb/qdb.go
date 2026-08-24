@@ -192,7 +192,7 @@ type TwoPhaseTxMetaKeeper interface {
 // Could be ether local storage or ETCD
 type DCStateKeeper interface {
 	RecordTwoPhaseMembers(ctx context.Context, gid string, shards []string) error
-	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState) error
+	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState, curExpectedState TwoPhaseTxState) error
 
 	ListTXNames(ctx context.Context) ([]string, error)
 	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
