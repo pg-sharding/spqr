@@ -390,10 +390,10 @@ pgsharding
 PGSSLMODE
 pgsync
 PGUSER
-PGXS
 pgx
 pgxconn
 pgxpool
+PGXS
 pgxv
 PIDs
 pids
@@ -575,6 +575,7 @@ tdigest
 terabytes
 terraform
 testdb
+testkr
 testutil
 texpr
 textoid
