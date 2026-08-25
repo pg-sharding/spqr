@@ -541,7 +541,6 @@ func (q *EtcdQDB) parseKeyRange(keyRangeResp, lockResp, metaResp *etcdserverpb.R
 		}
 		version = meta.Version
 	}
-	fmt.Printf("here11: %#v\n", string(metaResp.GetResponseRange().Kvs[0].Value))
 
 	return keyRangeFromInternal(kRange, isLocked, version), nil
 }
