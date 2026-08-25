@@ -1732,17 +1732,17 @@ func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid any) *gomoc
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state, curExpectedState qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state, curExpectedState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpectedState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state, curExpectedState)
 }
 
 // ClearTxStatuses mocks base method.
@@ -1973,17 +1973,17 @@ func (mr *MockXDCStateKeeperMockRecorder) AlterShard(ctx, newShard any) *gomock.
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state, curExpectedState qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state, curExpectedState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpectedState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state, curExpectedState)
 }
 
 // ClearTxStatuses mocks base method.
@@ -4041,17 +4041,17 @@ func (mr *MockStateKeeperQDBMockRecorder) BeginTransaction(ctx, transaction any)
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockStateKeeperQDB) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockStateKeeperQDB) ChangeTxStatus(ctx context.Context, gid string, state, curExpectedState qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state, curExpectedState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockStateKeeperQDBMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ChangeTxStatus(ctx, gid, state, curExpectedState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).ChangeTxStatus), ctx, gid, state, curExpectedState)
 }
 
 // CheckDistribution mocks base method.
