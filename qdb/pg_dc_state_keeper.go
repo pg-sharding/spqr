@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spaolacci/murmur3"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -101,8 +102,6 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 }
 
 func (q *PgDCStateKeeper) getConn(ctx context.Context, txid string) (*pgxpool.Conn, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	if txid != "" {
 		if conn, ok := q.conns[txid]; ok {
 			if err := conn.Ping(ctx); err == nil {
@@ -150,7 +149,11 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 	if err != nil {
 		return false, err
 	}
-	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", txid); err != nil {
+	hasher := murmur3.New64()
+	if _, err := hasher.Write([]byte(txid)); err != nil {
+		return false, err
+	}
+	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", hasher.Sum64()); err != nil {
 		return false, err
 	}
 
@@ -220,7 +223,11 @@ func (q *PgDCStateKeeper) ReleaseTxOwnership(ctx context.Context, txid string) e
 	if err != nil {
 		return err
 	}
-	if _, err = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", txid); err != nil {
+	hasher := murmur3.New64()
+	if _, err := hasher.Write([]byte(txid)); err != nil {
+		return err
+	}
+	if _, err = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", hasher.Sum64()); err != nil {
 		return err
 	}
 	q.releaseConn(txid)
