@@ -29,7 +29,8 @@ const (
 func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	cl client.Client,
 	s server.Server) (txstatus.TXStatus, error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	/*
 	* go along first phase
