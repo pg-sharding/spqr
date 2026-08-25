@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -208,6 +209,48 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	return nil
 }
 
+func (s *QueryStateExecutorImpl) TryMatchExecTargets(p plan.Plan, ds []kr.ShardKey) (plan.Plan, error) {
+
+	/* Try to select route close to already acquired, in cases when plan
+	* does not dictate this strictly. */
+	switch v := p.(type) {
+	case *plan.RandomDispatchPlan:
+		if v.ExecTargets == nil {
+			if len(s.ActiveShards()) == 0 {
+				return planner.SelectRandomDispatchPlan(ds)
+
+			} else {
+				return planner.SelectRandomDispatchPlan(s.ActiveShards())
+			}
+		} else {
+
+			/* check if ref relation storage shards and out active shards
+			* have intersection */
+
+			activeOK := false
+
+			for _, curr := range s.ActiveShards() {
+				if slices.ContainsFunc(v.ExecTargets, func(sh kr.ShardKey) bool {
+					return sh.Name == curr.Name
+				}) {
+					activeOK = true
+					break
+				}
+			}
+
+			if activeOK {
+				return planner.SelectRandomDispatchPlan(s.ActiveShards())
+
+			} else {
+				/* reference relation case */
+				return planner.SelectRandomDispatchPlan(v.ExecTargets)
+			}
+		}
+	default:
+		return p, nil
+	}
+}
+
 // InitPlan implements QueryStateExecutor.
 func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 
@@ -243,7 +286,6 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 
 	var serv server.Server
 	var err error
-
 	/* Traverse and create gang for each slice. */
 
 	if len(s.ActiveShards()) > 1 || p.Subplan() != nil {
@@ -1003,6 +1045,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 	if sp := p.Subplan(); sp != nil {
 		/* XXX: Do all required job in sub-plan */
 		spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
+
 		if err := s.executeInnerSlice(serv, sp); err != nil {
 			return err
 		}
