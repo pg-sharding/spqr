@@ -316,7 +316,7 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 			return err
 		}
 
-		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2Rejected)
+		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2Rejected, qdb.TwoPhaseInitState)
 	case qdb.TwoPhaseP1:
 		shards, err := d.d.TXCohortShards(ctx, gid)
 		if err != nil {
@@ -325,7 +325,7 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 		if err := d.executeCommitShards(shards, gid); err != nil {
 			return err
 		}
-		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2)
+		return d.d.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2, qdb.TwoPhaseP1)
 	case qdb.TwoPhaseP2:
 		return nil
 	case qdb.TwoPhaseP2Rejected:

@@ -2017,7 +2017,7 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 }
 
 // ChangeTxStatus implements DCStateKeeper.
-func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state TwoPhaseTxState) error {
+func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state, _ TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Msg("memqdb: ChangeTxStatus")
 	n := time.Now()
 	q.mu.Lock()
