@@ -1033,3 +1033,10 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 		is.False(lock.TryLock()) // locked key range krid1
 	})
 }
+
+func TestMemQDBKeyRangeVersions(t *testing.T) {
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(t, err)
+
+	qdb.RunTestKeyRangeChangeVersion(t, memqdb)
+}
