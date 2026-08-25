@@ -1358,6 +1358,12 @@ func ProcMetadataCommand(ctx context.Context,
 		return tts, nil
 	case *spqrparser.Rename:
 		return processRename(ctx, stmt, mgr)
+	case *spqrparser.Begin:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Commit:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Rollback:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

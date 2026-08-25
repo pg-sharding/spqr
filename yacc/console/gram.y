@@ -131,6 +131,10 @@ func randomHex(n int) (string, error) {
 	alter_shard             *AlterShard
 	option				   	GenericOption
 	options				   	[]GenericOption
+
+	begin 					*Begin
+	commit 					*Commit
+	rollback 				*Rollback
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -216,6 +220,7 @@ func randomHex(n int) (string, error) {
 %token <str> STALE CLIENTS
 %token <str> OPTIONS FORCE
 %token <str> META ONLY
+%token <str> BEGIN COMMIT ROLLBACK
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -301,6 +306,10 @@ func randomHex(n int) (string, error) {
 %type<strlist> opt_show_columns show_columns_list
 
 %type<alter_relation> relation_alter_stmt_v2
+
+%type<begin> begin_stmt
+%type<commit> commit_stmt
+%type<rollback> rollback_stmt
 
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
@@ -488,6 +497,15 @@ command:
 	{
 		$$ = $1
 	} | rename_stmt 
+	{
+		$$ = $1
+	} | begin_stmt
+	{
+		$$ = $1
+	} | commit_stmt
+	{
+		$$ = $1
+	} | rollback_stmt
 	{
 		$$ = $1
 	}
@@ -2016,6 +2034,24 @@ rename_stmt:
 			Element: $2,
 			NewID: $4,
 		}
+	}
+
+begin_stmt:
+	BEGIN
+	{
+		$$ = &Begin{}
+	}
+
+commit_stmt:
+	COMMIT
+	{
+		$$ = &Commit{}
+	}
+
+rollback_stmt:
+	ROLLBACK
+	{
+		$$ = &Rollback{}
 	}
 
 %%

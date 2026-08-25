@@ -117,4 +117,7 @@ var reservedWords = map[string]int{
 	"between":      BETWEEN,
 	"meta":         META,
 	"only":         ONLY,
+	"begin":        BEGIN,
+	"commit":       COMMIT,
+	"rollback":     ROLLBACK,
 }

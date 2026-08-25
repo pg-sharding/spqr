@@ -85,6 +85,21 @@ func TestSimple(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "BEGIN;",
+			exp:   &spqrparser.Begin{},
+			err:   nil,
+		},
+		{
+			query: "COMMIT;",
+			exp:   &spqrparser.Commit{},
+			err:   nil,
+		},
+		{
+			query: "ROLLBACK;",
+			exp:   &spqrparser.Rollback{},
+			err:   nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
