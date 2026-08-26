@@ -141,6 +141,7 @@ type Router struct {
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 
 	StoreTxDataPostgresql    bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+	AdvisoryLockTwoPhaseTx   bool          `json:"2pc_tx_advisory_lock" yaml:"2pc_tx_advisory_lock" toml:"2pc_tx_advisory_lock"`
 	TxDataTTL                time.Duration `json:"tx_data_ttl" toml:"tx_data_ttl" yaml:"tx_data_ttl"`
 	AllowAutoprotectTwoPhase bool          `json:"allow_autoprotect_two_phase" yaml:"allow_autoprotect_two_phase" toml:"allow_autoprotect_two_phase"`
 	SessionConnectionsPin    bool          `json:"session_connections_pin" yaml:"session_connections_pin" toml:"session_connections_pin"`

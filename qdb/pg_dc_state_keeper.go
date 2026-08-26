@@ -144,17 +144,19 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 
 	q.locks[txid] = true
 
-	// Acquire advisory lock in postgres
-	conn, err := q.getConn(ctx, txid)
-	if err != nil {
-		return false, err
-	}
-	hasher := murmur3.New64()
-	if _, err := hasher.Write([]byte(txid)); err != nil {
-		return false, err
-	}
-	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", hasher.Sum64()); err != nil {
-		return false, err
+	if config.RouterConfig().AdvisoryLockTwoPhaseTx {
+		// Acquire advisory lock in postgres
+		conn, err := q.getConn(ctx, txid)
+		if err != nil {
+			return false, err
+		}
+		hasher := murmur3.New64()
+		if _, err := hasher.Write([]byte(txid)); err != nil {
+			return false, err
+		}
+		if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", hasher.Sum64()); err != nil {
+			return false, err
+		}
 	}
 
 	return true, nil
@@ -219,18 +221,20 @@ func (q *PgDCStateKeeper) ReleaseTxOwnership(ctx context.Context, txid string) e
 	defer q.mu.Unlock()
 
 	delete(q.locks, txid)
-	conn, err := q.getConn(ctx, txid)
-	if err != nil {
-		return err
+	if config.RouterConfig().AdvisoryLockTwoPhaseTx {
+		conn, err := q.getConn(ctx, txid)
+		if err != nil {
+			return err
+		}
+		hasher := murmur3.New64()
+		if _, err := hasher.Write([]byte(txid)); err != nil {
+			return err
+		}
+		if _, err = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", hasher.Sum64()); err != nil {
+			return err
+		}
+		q.releaseConn(txid)
 	}
-	hasher := murmur3.New64()
-	if _, err := hasher.Write([]byte(txid)); err != nil {
-		return err
-	}
-	if _, err = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", hasher.Sum64()); err != nil {
-		return err
-	}
-	q.releaseConn(txid)
 	return nil
 }
 
