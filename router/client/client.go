@@ -274,7 +274,18 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 }
 
 func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementDefinition) {
-	hash := murmur3.Sum64([]byte(d.Query))
+
+	hData := make([]byte, len(d.Query)+4*len(d.ParameterOIDs))
+
+	copy(hData, d.Query)
+
+	off := len(d.Query)
+	for _, n := range d.ParameterOIDs {
+		binary.BigEndian.PutUint32(hData[off:off+4], n)
+		off += 4
+	}
+
+	hash := murmur3.Sum64(hData)
 	cl.prepStmts[d.Name] = d
 	cl.prepStmtsHash[d.Name] = hash
 }
