@@ -53,6 +53,9 @@ type QueryStateExecutor interface {
 	/* Do all gang allocation required for plan processing */
 	InitPlan(p plan.Plan) error
 
+	/* Try route to already acquired routes */
+	TryMatchExecTargets(p plan.Plan, ds []kr.ShardKey) (plan.Plan, error)
+
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
 

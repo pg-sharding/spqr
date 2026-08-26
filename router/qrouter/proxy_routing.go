@@ -888,13 +888,13 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	return pl, nil
 }
 
-func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
+func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	p plan.Plan) (plan.Plan, error) {
 
 	switch v := p.(type) {
 	case *plan.DataRowFilter:
-		sp, err := qr.InitExecutionTargets(ctx, rm, v.Plan)
+		sp, err := qr.PostProcessPlan(ctx, rm, v.Plan)
 		if err != nil {
 			return nil, err
 		}
@@ -910,13 +910,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	case *plan.VirtualPlan:
 		return v, nil
 	case *plan.RandomDispatchPlan:
-		if v.ExecTargets == nil {
-			return planner.SelectRandomDispatchPlan(qr.DataShardsRoutes())
-		} else {
-			/* reference relation case */
-			return planner.SelectRandomDispatchPlan(v.ExecTargets)
-		}
-
+		return v, nil
 	case *plan.CopyPlan:
 		/* Convert to dispatchable plan */
 		return &plan.ScatterPlan{
@@ -1591,7 +1585,7 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 	}
 
 	/* do init plan logic */
-	np, err := qr.InitExecutionTargets(ctx, rm, p)
+	np, err := qr.PostProcessPlan(ctx, rm, p)
 	if err == nil {
 		np.SetStmt(rm.Stmt)
 	}

@@ -385,7 +385,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	}
 
 	switch v := queryPlan.(type) {
-	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.DataRowFilter:
+	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowFilter:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -1259,6 +1259,11 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 	switch err {
 	case nil:
+		q, err := rst.QueryExecutor().TryMatchExecTargets(q, rst.Qr.DataShardsRoutes())
+		if err != nil {
+			return nil, err
+		}
+
 		if expandCurrentTx {
 			execTarg := q.ExecutionTargets()
 
