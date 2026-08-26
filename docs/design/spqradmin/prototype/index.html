@@ -1,40 +1,286 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SPQR Admin prototypes</title>
-  <link rel="icon" href="spqr_icon-main.svg" type="image/svg+xml">
-  <style>
-    :root { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #191a1e; background: #fbfcff; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px; }
-    main { width: min(920px, 100%); }
-    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 34px; }
-    .brand img { width: 36px; height: 36px; }
-    .brand strong { font-size: 20px; }
-    .brand span { color: #727377; font-size: 13px; }
-    h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
-    .intro { margin: 10px 0 26px; color: #727377; }
-    .concepts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    a { min-height: 180px; padding: 20px; border: 1px solid #e8eaf0; border-radius: 14px; background: white; color: inherit; text-decoration: none; box-shadow: 0 12px 36px rgba(34,52,88,.05); }
-    a:hover { border-color: #5382ff; box-shadow: 0 0 0 3px rgba(83,130,255,.13); }
-    a small { color: #5382ff; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
-    a h2 { margin: 14px 0 8px; font-size: 18px; }
-    a p { margin: 0; color: #727377; font-size: 12px; line-height: 1.55; }
-    @media (max-width: 720px) { .concepts { grid-template-columns: 1fr; } a { min-height: auto; } }
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SPQRADMIN prototypes</title>
+    <link rel="icon" href="spqr_icon-main.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg: #fff;
+            --bg-soft: #f8fafc;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --text-soft: #475569;
+            --border: #e2e8f0;
+            --border-strong: #cbd5e1;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-soft: #eff6ff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text);
+            background: radial-gradient(circle at top left, rgba(59, 130, 246, .08), transparent 32rem), linear-gradient(180deg, #fff 0%, #fbfdff 42%, #fff 100%);
+        }
+
+        .container {
+            width: min(1120px, calc(100% - 48px));
+            margin: 0 auto;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(226, 232, 240, .85);
+            background: rgba(255, 255, 255, .88);
+            backdrop-filter: blur(14px);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            font-size: .98rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .brand img {
+            width: 28px;
+            height: 28px;
+        }
+
+        nav {
+            display: flex;
+            gap: 6px;
+        }
+
+        nav a {
+            padding: 8px 10px;
+            border-radius: 8px;
+            color: var(--text-soft);
+            font-size: .9rem;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        nav a:hover {
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+        }
+
+        .hero {
+            padding: 70px 0 58px;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            margin-bottom: 18px;
+            padding: 6px 10px;
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: var(--primary-dark);
+            font-size: .76rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+
+        h1 {
+            margin: 0 0 18px;
+            font-size: clamp(2.6rem, 6vw, 4.25rem);
+            line-height: 1.05;
+            letter-spacing: -.03em;
+        }
+
+        .tagline {
+            max-width: 680px;
+            margin: 0 auto;
+            color: var(--text-muted);
+            font-size: 1.18rem;
+            line-height: 1.65;
+        }
+
+        .demo-note {
+            margin: 14px 0 0;
+            color: var(--text-muted);
+            font-size: .82rem;
+        }
+
+        .concept-section {
+            padding: 48px 0 72px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-soft);
+        }
+
+        .section-heading {
+            margin-bottom: 26px;
+            text-align: center;
+        }
+
+        .section-heading h2 {
+            margin: 0 0 6px;
+            font-size: 2rem;
+            letter-spacing: -.02em;
+        }
+
+        .section-heading p {
+            margin: 0;
+            color: var(--text-muted);
+        }
+
+        .concepts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .concept-card {
+            display: block;
+            min-height: 220px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg);
+            color: var(--text);
+            text-decoration: none;
+            transition: border-color .2s, box-shadow .2s, transform .2s;
+        }
+
+        .concept-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-strong);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .06);
+        }
+
+        .concept-letter {
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: var(--primary-soft);
+            color: var(--primary-dark);
+            font-size: .9rem;
+            font-weight: 800;
+        }
+
+        .concept-card h3 {
+            margin: 0 0 9px;
+            font-size: 1.25rem;
+        }
+
+        .concept-card p {
+            min-height: 54px;
+            margin: 0 0 18px;
+            color: var(--text-muted);
+            font-size: .94rem;
+            line-height: 1.6;
+        }
+
+        .concept-card span {
+            color: var(--primary-dark);
+            font-size: .9rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 760px) {
+            .container {
+                width: min(100% - 32px, 1120px);
+            }
+
+            nav {
+                display: none;
+            }
+
+            .hero {
+                padding: 54px 0 46px;
+            }
+
+            h1 {
+                font-size: 2.65rem;
+            }
+
+            .tagline {
+                font-size: 1.05rem;
+            }
+
+            .concepts {
+                grid-template-columns: 1fr;
+            }
+
+            .concept-card {
+                min-height: 0;
+            }
+
+            .concept-card p {
+                min-height: 0;
+            }
+        }
+    </style>
 </head>
+
 <body>
-  <main>
-    <div class="brand"><img src="spqr_icon-main.svg" alt=""><strong>SPQRADMIN</strong><span>prototypes</span></div>
-    <h1>Choose a concept</h1>
-    <p class="intro">Three ways to explore key ranges and investigate failed moves.</p>
-    <div class="concepts">
-      <a href="atlas/"><small>CONCEPT A</small><h2>Atlas</h2><p>Topology-first view for understanding a distribution and producing clean screenshots.</p></a>
-      <a href="transfer-desk/"><small>CONCEPT B</small><h2>Transfer Desk</h2><p>Task-first workspace focused on move progress, failures, and operator evidence.</p></a>
-      <a href="control-map/"><small>CONCEPT C</small><h2>Control Map</h2><p>Hybrid workspace combining the ordered KR map with a live activity rail.</p></a>
-    </div>
-  </main>
+    <header>
+        <div class="container header-content">
+            <a class="brand" href="./"><img src="spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
+        </div>
+    </header>
+    <main>
+        <section class="hero">
+            <div class="container">
+                <span class="badge">Read-only prototypes · not connected to a cluster</span>
+                <h1>Explore prototypes visually</h1>
+                <p class="tagline">See key ranges, shards, and data moves without parsing console output.</p>
+            </div>
+        </section>
+        <section class="concept-section">
+            <div class="container">
+                <div class="section-heading">
+                    <h2>Choose a concept</h2>
+                    <p>The same demo cluster, presented three ways.</p>
+                </div>
+                <div class="concepts">
+                    <a class="concept-card" href="atlas/">
+                        <div class="concept-letter">A</div>
+                        <h3>Atlas</h3>
+                        <p>Start with the distribution topology and inspect any key range.</p><span>Open Atlas →</span>
+                    </a>
+                    <a class="concept-card" href="transfer-desk/">
+                        <div class="concept-letter">B</div>
+                        <h3>Transfer Desk</h3>
+                        <p>Start with active moves, failures, and operator evidence.</p><span>Open Transfer Desk
+                            →</span>
+                    </a>
+                    <a class="concept-card" href="control-map/">
+                        <div class="concept-letter">C</div>
+                        <h3>Control Map</h3>
+                        <p>Keep the key range map and move activity visible together.</p><span>Open Control Map →</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
 </body>
+
 </html>
