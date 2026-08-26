@@ -6954,133 +6954,10 @@ func TestTypesInXproto(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
-func TestTypesInXprotoParamOids(t *testing.T) {
-
-	frontend, conn, err := bootstrapConnection(t)
-	assert.NoError(t, err, "startup failed")
-
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	tt := []MessageGroup{
-		/* create named portal, describe, close, re-create, execute */
-		{
-			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Close{
-					Name:       "stmt_types_i2",
-					ObjectType: 'S',
-				},
-				&pgproto3.Close{
-					Name:       "stmt_types_i4",
-					ObjectType: 'S',
-				},
-				&pgproto3.Parse{
-					Name:  "stmt_types_i2",
-					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
-					ParameterOIDs: []uint32{
-						catalog.INT2OID,
-						catalog.INT4OID,
-						catalog.INT4OID,
-					},
-				},
-				&pgproto3.Parse{
-					Name:  "stmt_types_i4",
-					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
-					ParameterOIDs: []uint32{
-						catalog.INT4OID,
-						catalog.INT4OID,
-						catalog.INT4OID,
-					},
-				},
-				&pgproto3.Parse{
-					Query: "BEGIN",
-				},
-				&pgproto3.Bind{},
-				&pgproto3.Execute{},
-				&pgproto3.Bind{
-					DestinationPortal: "P2",
-					PreparedStatement: "stmt_types_i2",
-					Parameters: [][]byte{
-						{0x0, 0x2},
-						{0x0, 0x0, 0x0, 0x3},
-						{0x0, 0x0, 0x0, 0x4},
-					},
-					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
-				},
-				&pgproto3.Bind{
-					DestinationPortal: "",
-					PreparedStatement: "stmt_types_i4",
-					Parameters: [][]byte{
-						{0x0, 0x0, 0x0, 0x1},
-						{0x0, 0x0, 0x0, 0x1},
-						{0x0, 0x0, 0x0, 0x1},
-					},
-					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
-				},
-				&pgproto3.Describe{
-					ObjectType: 'P',
-					Name:       "P2",
-				},
-				&pgproto3.Describe{
-					ObjectType: 'P',
-					Name:       "",
-				},
-				&pgproto3.Execute{
-					Portal: "P2",
-				},
-				&pgproto3.Execute{
-					Portal: "",
-				},
-
-				&pgproto3.Parse{
-					Query: "ROLLBACK",
-				},
-				&pgproto3.Bind{},
-				&pgproto3.Execute{},
-				&pgproto3.Sync{},
-			},
-			Response: []pgproto3.BackendMessage{
-				&pgproto3.CloseComplete{},
-				&pgproto3.CloseComplete{},
-				&pgproto3.ParseComplete{},
-				&pgproto3.ParseComplete{},
-				&pgproto3.ParseComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.CommandComplete{
-					CommandTag: []byte("BEGIN"),
-				},
-				&pgproto3.BindComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.NoData{},
-				&pgproto3.NoData{},
-
-				&pgproto3.CommandComplete{
-					CommandTag: []byte("INSERT 0 1"),
-				},
-				&pgproto3.CommandComplete{
-					CommandTag: []byte("INSERT 0 1"),
-				},
-
-				&pgproto3.ParseComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.CommandComplete{
-					CommandTag: []byte("ROLLBACK"),
-				},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-			},
-		},
-	}
-	protoTestRunner(t, frontend, tt)
-}
-
 func TestDescribeNonDefaultPortals(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
-
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -7473,6 +7350,421 @@ func TestParametrizedShardingKeyRoutingOperators(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestTypesInXprotoParamOids(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* create named portal, describe, close, re-create, execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt_types",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "stmt_types",
+					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+				},
+				&pgproto3.Parse{
+					Name:  "stmt_types",
+					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT4OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
+				},
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					PreparedStatement: "stmt_types",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "",
+				},
+				&pgproto3.Execute{
+					Portal: "",
+				},
+
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestTypesInXprotoParamOidsRef(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* create named portal, describe, close, re-create, execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt_types",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "stmt_types",
+					Query: "INSERT INTO xproto_ref_types(a, b, c) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT4OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					PreparedStatement: "stmt_types",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{
+					Portal: "",
+				},
+
+				&pgproto3.Parse{
+					Name:  "stmt_types",
+					Query: "INSERT INTO xproto_ref_types(a, b, c) VALUES($1, $2, $3)",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					PreparedStatement: "stmt_types",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{
+					Portal: "",
+				},
+
+				&pgproto3.Parse{
+					Name:  "stmt_types",
+					Query: "INSERT INTO xproto_ref_types(a, b, c) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT4OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					PreparedStatement: "stmt_types",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{
+					Portal: "",
+				},
+
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestTypesInXprotoParamOids2(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* create named portal, describe, close, re-create, execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt_types_i2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "stmt_types_i4",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "stmt_types_i2",
+					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT2OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
+				},
+				&pgproto3.Parse{
+					Name:  "stmt_types_i4",
+					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT4OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
+				},
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					DestinationPortal: "P2",
+					PreparedStatement: "stmt_types_i2",
+					Parameters: [][]byte{
+						{0x0, 0x2},
+						{0x0, 0x0, 0x0, 0x3},
+						{0x0, 0x0, 0x0, 0x4},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					PreparedStatement: "stmt_types_i4",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "P2",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "",
+				},
+				&pgproto3.Execute{
+					Portal: "P2",
+				},
+				&pgproto3.Execute{
+					Portal: "",
+				},
+
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.NoData{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestTypesInXprotoParamOidsUnnamed(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* create named portal, describe, close, re-create, execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+				},
+				&pgproto3.Parse{
+					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT4OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "",
+				},
+				&pgproto3.Execute{
+					Portal: "",
+				},
+
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("ROLLBACK"),
 				},
