@@ -588,27 +588,27 @@ func (x *XRecord) GetArgs() []string {
 	return nil
 }
 
-type ExecuteXRecordsRequest struct {
+type ApplyXRecordsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Records       []*XRecord             `protobuf:"bytes,1,rep,name=records,proto3" json:"records,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ExecuteXRecordsRequest) Reset() {
-	*x = ExecuteXRecordsRequest{}
+func (x *ApplyXRecordsRequest) Reset() {
+	*x = ApplyXRecordsRequest{}
 	mi := &file_protos_meta_transaction_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExecuteXRecordsRequest) String() string {
+func (x *ApplyXRecordsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExecuteXRecordsRequest) ProtoMessage() {}
+func (*ApplyXRecordsRequest) ProtoMessage() {}
 
-func (x *ExecuteXRecordsRequest) ProtoReflect() protoreflect.Message {
+func (x *ApplyXRecordsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_protos_meta_transaction_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -620,12 +620,12 @@ func (x *ExecuteXRecordsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExecuteXRecordsRequest.ProtoReflect.Descriptor instead.
-func (*ExecuteXRecordsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ApplyXRecordsRequest.ProtoReflect.Descriptor instead.
+func (*ApplyXRecordsRequest) Descriptor() ([]byte, []int) {
 	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *ExecuteXRecordsRequest) GetRecords() []*XRecord {
+func (x *ApplyXRecordsRequest) GetRecords() []*XRecord {
 	if x != nil {
 		return x.Records
 	}
@@ -670,18 +670,18 @@ const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\n" +
 	"MethodName\x18\x01 \x01(\tR\n" +
 	"MethodName\x12\x12\n" +
-	"\x04args\x18\x02 \x03(\tR\x04args\"A\n" +
-	"\x16ExecuteXRecordsRequest\x12'\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\"?\n" +
+	"\x14ApplyXRecordsRequest\x12'\n" +
 	"\arecords\x18\x01 \x03(\v2\r.spqr.XRecordR\arecords2i\n" +
 	"\x1cMetaTransactionGossipService\x12I\n" +
-	"\tApplyMeta\x12\".spqr.MetaTransactionGossipRequest\x1a\x16.google.protobuf.Empty\"\x002\xad\x02\n" +
+	"\tApplyMeta\x12\".spqr.MetaTransactionGossipRequest\x1a\x16.google.protobuf.Empty\"\x002\xa9\x02\n" +
 	"\x16MetaTransactionService\x12?\n" +
 	"\n" +
 	"ExecNoTran\x12\x17.spqr.ExecNoTranRequest\x1a\x16.google.protobuf.Empty\"\x00\x12D\n" +
 	"\n" +
 	"CommitTran\x12\x1c.spqr.MetaTransactionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12A\n" +
-	"\tBeginTran\x12\x16.google.protobuf.Empty\x1a\x1a.spqr.MetaTransactionReply\"\x00\x12I\n" +
-	"\x0fExecuteXRecords\x12\x1c.spqr.ExecuteXRecordsRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
+	"\tBeginTran\x12\x16.google.protobuf.Empty\x1a\x1a.spqr.MetaTransactionReply\"\x00\x12E\n" +
+	"\rApplyXRecords\x12\x1a.spqr.ApplyXRecordsRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (
@@ -709,7 +709,7 @@ var file_protos_meta_transaction_proto_goTypes = []any{
 	(*MetaTransactionRequest)(nil),       // 8: spqr.MetaTransactionRequest
 	(*ExecNoTranRequest)(nil),            // 9: spqr.ExecNoTranRequest
 	(*XRecord)(nil),                      // 10: spqr.XRecord
-	(*ExecuteXRecordsRequest)(nil),       // 11: spqr.ExecuteXRecordsRequest
+	(*ApplyXRecordsRequest)(nil),         // 11: spqr.ApplyXRecordsRequest
 	(*Distribution)(nil),                 // 12: spqr.Distribution
 	(*KeyRangeInfo)(nil),                 // 13: spqr.KeyRangeInfo
 	(*emptypb.Empty)(nil),                // 14: google.protobuf.Empty
@@ -727,17 +727,17 @@ var file_protos_meta_transaction_proto_depIdxs = []int32{
 	5,  // 9: spqr.MetaTransactionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
 	5,  // 10: spqr.MetaTransactionRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
 	5,  // 11: spqr.ExecNoTranRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	10, // 12: spqr.ExecuteXRecordsRequest.records:type_name -> spqr.XRecord
+	10, // 12: spqr.ApplyXRecordsRequest.records:type_name -> spqr.XRecord
 	6,  // 13: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
 	9,  // 14: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
 	8,  // 15: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
 	14, // 16: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
-	11, // 17: spqr.MetaTransactionService.ExecuteXRecords:input_type -> spqr.ExecuteXRecordsRequest
+	11, // 17: spqr.MetaTransactionService.ApplyXRecords:input_type -> spqr.ApplyXRecordsRequest
 	14, // 18: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
 	14, // 19: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
 	14, // 20: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
 	7,  // 21: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
-	14, // 22: spqr.MetaTransactionService.ExecuteXRecords:output_type -> google.protobuf.Empty
+	14, // 22: spqr.MetaTransactionService.ApplyXRecords:output_type -> google.protobuf.Empty
 	18, // [18:23] is the sub-list for method output_type
 	13, // [13:18] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name

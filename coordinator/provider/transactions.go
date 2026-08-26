@@ -46,7 +46,7 @@ func (mts *MetaTransactionServer) BeginTran(ctx context.Context, _ *emptypb.Empt
 	}
 }
 
-func (mts *MetaTransactionServer) Execute(ctx context.Context, request *proto.ExecuteXRecordsRequest) (*emptypb.Empty, error) {
+func (mts *MetaTransactionServer) ApplyXRecords(ctx context.Context, request *proto.ExecuteXRecordsRequest) (*emptypb.Empty, error) {
 	xrecords := models.ConvertMany(request.Records, mtran.XRecordFromProto)
 	err := mts.impl.ApplyXRecords(ctx, xrecords)
 	return nil, spqrerror.CleanGrpcError(err)

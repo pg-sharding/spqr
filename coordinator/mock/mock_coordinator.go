@@ -207,6 +207,20 @@ func (mr *MockCoordinatorMockRecorder) AlterShardOptions(ctx, shardID, options a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockCoordinator)(nil).AlterShardOptions), ctx, shardID, options)
 }
 
+// ApplyXRecords mocks base method.
+func (m *MockCoordinator) ApplyXRecords(ctx context.Context, records []*transaction.XRecord) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplyXRecords", ctx, records)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplyXRecords indicates an expected call of ApplyXRecords.
+func (mr *MockCoordinatorMockRecorder) ApplyXRecords(ctx, records any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyXRecords", reflect.TypeOf((*MockCoordinator)(nil).ApplyXRecords), ctx, records)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
@@ -518,20 +532,6 @@ func (m *MockCoordinator) ExecNoTran(ctx context.Context, chunk *transaction.Met
 func (mr *MockCoordinatorMockRecorder) ExecNoTran(ctx, chunk any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTran", reflect.TypeOf((*MockCoordinator)(nil).ExecNoTran), ctx, chunk)
-}
-
-// Execute mocks base method.
-func (m *MockCoordinator) Execute(ctx context.Context, records []*transaction.XRecord) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", ctx, records)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Execute indicates an expected call of Execute.
-func (mr *MockCoordinatorMockRecorder) Execute(ctx, records any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockCoordinator)(nil).Execute), ctx, records)
 }
 
 // GetAllTaskGroupStatuses mocks base method.

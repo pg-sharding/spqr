@@ -70,7 +70,7 @@ service MetaTransactionService {
   rpc CommitTran(MetaTransactionRequest) returns (google.protobuf.Empty) {}
   rpc BeginTran(google.protobuf.Empty) returns (MetaTransactionReply) {}
 
-  rpc ExecuteXRecords(ExecuteXRecordsRequest) returns (google.protobuf.Empty) {}
+  rpc ApplyXRecords(ApplyXRecordsRequest) returns (google.protobuf.Empty) {}
 }
 
 message XRecord {
@@ -78,6 +78,6 @@ message XRecord {
   repeated string args = 2;
 }
 
-message ExecuteXRecordsRequest {
+message ApplyXRecordsRequest {
   repeated XRecord records = 1;
 }
