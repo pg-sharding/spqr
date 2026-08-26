@@ -243,6 +243,11 @@ func SetupSharding() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 
+	_, err = conn.Exec(context.Background(), "CREATE REFERENCE TABLE xproto_ref_types;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE REFERENCE TABLE xproto_ref_autoinc AUTO INCREMENT id;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -300,6 +305,10 @@ func CreateTables() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE TABLE xproto_ref (a int, b int, c int)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE TABLE xproto_ref_types (a int, b int, c smallint)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
