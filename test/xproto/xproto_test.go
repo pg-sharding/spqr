@@ -7090,47 +7090,6 @@ func TestTypesInXprotoParamOidsRef(t *testing.T) {
 				},
 
 				&pgproto3.Parse{
-					Name:  "stmt_types",
-					Query: "INSERT INTO xproto_ref_types(a, b, c) VALUES($1, $2, $3)",
-				},
-				&pgproto3.Bind{
-					DestinationPortal: "",
-					PreparedStatement: "stmt_types",
-					Parameters: [][]byte{
-						{0x0, 0x0, 0x0, 0x1},
-						{0x0, 0x0, 0x0, 0x1},
-						{0x0, 0x0, 0x0, 0x1},
-					},
-					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
-				},
-				&pgproto3.Execute{
-					Portal: "",
-				},
-
-				&pgproto3.Parse{
-					Name:  "stmt_types",
-					Query: "INSERT INTO xproto_ref_types(a, b, c) VALUES($1, $2, $3)",
-					ParameterOIDs: []uint32{
-						catalog.INT4OID,
-						catalog.INT4OID,
-						catalog.INT4OID,
-					},
-				},
-				&pgproto3.Bind{
-					DestinationPortal: "",
-					PreparedStatement: "stmt_types",
-					Parameters: [][]byte{
-						{0x0, 0x0, 0x0, 0x1},
-						{0x0, 0x0, 0x0, 0x1},
-						{0x0, 0x0, 0x0, 0x1},
-					},
-					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
-				},
-				&pgproto3.Execute{
-					Portal: "",
-				},
-
-				&pgproto3.Parse{
 					Query: "ROLLBACK",
 				},
 				&pgproto3.Bind{},

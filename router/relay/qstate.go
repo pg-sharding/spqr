@@ -179,8 +179,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
-
 	statistics.IncTotalRequest()
 
 	switch st := stmt.(type) {

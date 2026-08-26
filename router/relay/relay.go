@@ -964,6 +964,8 @@ func (rst *RelayStateImpl) BindPrepared(
 				forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
 			default:
 			}
+
+			var savedParamOids []uint32
 			switch p.(type) {
 			case *plan.VirtualPlan:
 			default:
@@ -982,12 +984,14 @@ func (rst *RelayStateImpl) BindPrepared(
 					ParameterOIDs: def.ParameterOIDs,
 				})
 
+				savedParamOids = def.ParameterOIDs
+
 				if err != nil {
 					return err
 				}
 			}
 
-			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, maxrows)
+			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, savedParamOids, maxrows)
 		}
 
 		/* only populate map for non-empty portal */
