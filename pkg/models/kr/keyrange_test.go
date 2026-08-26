@@ -1,7 +1,6 @@
 package kr_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -422,17 +421,4 @@ func TestCmpRangesLess_PanicOnTypeMismatch(t *testing.T) {
 	types := []string{qdb.ColumnTypeUinteger}
 
 	kr.CmpRangesLess(bound, key, types)
-}
-
-func TestTemp(t *testing.T) {
-	kr := &distributions.Distribution{
-		Id:       "ds1",
-		ColTypes: []string{"integer"},
-	}
-
-	js, err := json.Marshal(kr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Error(string(js))
 }
