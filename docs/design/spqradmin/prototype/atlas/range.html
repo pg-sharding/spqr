@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin · Atlas range detail</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="range" data-concept="atlas">
+  <header class="app-header">
+    <a class="brand" href="index.html"><img src="../spqr_icon-main.svg" alt=""><span>SPQR</span><small>Admin</small></a>
+    <nav class="primary-nav" aria-label="Atlas pages">
+      <a href="index.html">Topology</a><a class="active" href="range.html?id=kr-0100&amp;count=240">Range detail</a><a href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
+    </nav>
+    <div class="header-actions">
+      <select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html" selected>Concept A · Atlas</option><option value="../transfer-desk/index.html">Concept B · Transfer Desk</option><option value="../control-map/index.html">Concept C · Control Map</option></select>
+      <button class="quiet-button" type="button" data-presentation>Present</button>
+    </div>
+  </header>
+  <main class="page-shell">
+    <div class="page-heading">
+      <div><p class="eyebrow">KEY RANGE</p><h1 data-page-range-id>kr-0100</h1><p class="subtitle">customers_by_id · exact coordinator state</p></div>
+      <a class="text-link" data-back-to-map href="index.html?count=240&amp;id=kr-0100">← Back to distribution</a>
+    </div>
+    <section class="detail-layout">
+      <article class="detail-panel" data-range-detail></article>
+      <div>
+        <article class="detail-panel">
+          <h2>Ordered context</h2><p>Previous and next ranges preserve the distribution order.</p>
+          <div class="context-ranges" data-neighbors></div>
+        </article>
+        <article class="detail-panel" style="margin-top:14px">
+          <h2>Relations</h2><p>Relations using this distribution.</p>
+          <table class="relations-table"><thead><tr><th>Relation</th><th>Distribution key</th><th>Column type</th></tr></thead><tbody><tr><td>public.customers</td><td><code>customer_id</code></td><td>integer</td></tr><tr><td>public.orders</td><td><code>customer_id</code></td><td>integer</td></tr><tr><td>public.payments</td><td><code>customer_id</code></td><td>integer</td></tr></tbody></table>
+        </article>
+      </div>
+    </section>
+    <section class="detail-panel" style="margin-top:14px"><h2>Raw gRPC data</h2><p>Unmodified fields from the coordinator response.</p><pre class="raw-block" data-raw-json></pre></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

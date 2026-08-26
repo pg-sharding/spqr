@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin · Transfer Desk</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="overview" data-concept="transfer-desk">
+  <header class="app-header">
+    <a class="brand" href="index.html" aria-label="SPQR Admin Transfer Desk home">
+      <img src="../spqr_icon-main.svg" alt="">
+      <span>SPQR</span><small>Admin</small>
+    </a>
+    <nav class="primary-nav" aria-label="Transfer Desk pages">
+      <a class="active" href="index.html">Moves</a>
+      <a href="range.html?id=kr-0100&amp;count=240">Range context</a>
+      <a href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
+    </nav>
+    <div class="header-actions">
+      <select class="concept-switch" aria-label="Concept">
+        <option value="../atlas/index.html">Concept A · Atlas</option>
+        <option value="../transfer-desk/index.html" selected>Concept B · Transfer Desk</option>
+        <option value="../control-map/index.html">Concept C · Control Map</option>
+      </select>
+      <button class="quiet-button" type="button" data-presentation>Present</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">OPERATIONS</p>
+        <h1>Transfer desk</h1>
+        <p class="subtitle">Moves first: where each range is going, how far it got, and what needs attention.</p>
+      </div>
+      <div class="page-controls">
+        <label>Distribution size
+          <select data-scale>
+            <option value="12">12 KR</option>
+            <option value="240" selected>240 KR</option>
+            <option value="1842">1,842 KR</option>
+          </select>
+        </label>
+        <label>Show
+          <select data-filter>
+            <option value="all">All moves</option>
+            <option value="attention">Needs attention</option>
+            <option value="running">Running</option>
+            <option value="planned">Planned</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <section class="attention-strip" aria-label="Move summary">
+      <div><strong data-stat="error">1</strong><span>needs attention</span></div>
+      <div><strong data-stat="running">2</strong><span>running now</span></div>
+      <div><strong data-stat="planned">4</strong><span>planned</span></div>
+      <p><span class="pulse-dot"></span> Live model from Coordinator gRPC</p>
+    </section>
+
+    <section class="desk-layout">
+      <div class="move-board">
+        <div class="board-heading">
+          <div><h2>Shard lanes</h2><p>Active and queued traffic between shards</p></div>
+          <div class="state-legend"><span class="error-mark">ERROR</span><span class="running-mark">RUNNING</span><span>PLANNED</span></div>
+        </div>
+        <div class="shard-headers" data-shard-headers></div>
+        <div class="move-list" data-move-list aria-live="polite"></div>
+      </div>
+
+      <aside class="queue-panel">
+        <div class="panel-heading"><div><h2>Attention queue</h2><p>Errors are pinned above active work.</p></div></div>
+        <a class="queue-card error" href="task.html?id=tg-7f31&amp;count=240">
+          <span class="queue-state">ERROR</span><strong>tg-7f31</strong>
+          <p>Metadata update stopped after data copy.</p><small>kr-0100 · shard-02 → shard-03</small>
+        </a>
+        <div class="queue-card running"><span class="queue-state">RUNNING</span><strong>tg-904a</strong><p>Copying relations on the destination.</p><small>kr-0174 · shard-01 → shard-02</small></div>
+        <a class="plain-link" href="task.html?id=tg-7f31&amp;count=240">Open investigation workspace →</a>
+      </aside>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

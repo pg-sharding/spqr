@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin · Control Map · Range</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="range" data-concept="control-map">
+  <header class="app-header">
+    <a class="brand" href="index.html"><img src="../spqr_icon-main.svg" alt=""><span>SPQR</span><small>Admin</small></a>
+    <nav class="primary-nav" aria-label="Control Map pages"><a href="index.html">Control map</a><a class="active" href="range.html?id=kr-0100&amp;count=240">Range detail</a><a href="task.html?id=tg-7f31&amp;count=240">Move detail</a></nav>
+    <div class="header-actions"><select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html">Concept A · Atlas</option><option value="../transfer-desk/index.html">Concept B · Transfer Desk</option><option value="../control-map/index.html" selected>Concept C · Control Map</option></select><button class="quiet-button" type="button" data-presentation>Present</button></div>
+  </header>
+
+  <main class="detail-shell">
+    <a class="back-link" data-back-map href="index.html">← Back to control map</a>
+    <div class="detail-heading"><div><p class="eyebrow">KEY RANGE</p><h1 data-range-id>kr-0100</h1><p class="subtitle">customers_by_id · ordered context and operational state</p></div><span class="state-chip locked">LOCKED</span></div>
+
+    <section class="context-card">
+      <div class="panel-heading"><div><h2>Position in distribution</h2><p>Five exact neighbours around the selected range</p></div><span data-position-label>100 of 240</span></div>
+      <div class="neighbor-strip" data-neighbor-strip></div>
+    </section>
+
+    <section class="range-detail-grid">
+      <article class="facts-card">
+        <div class="panel-heading"><div><h2>Routing facts</h2><p>Coordinator gRPC</p></div></div>
+        <dl class="fact-list" data-range-facts></dl>
+      </article>
+      <article class="linked-move-card">
+        <span class="task-status">TASK GROUP · ERROR</span><h2>Move stopped after data copy</h2><p>Routing still points to <b data-source-shard>shard-02</b>. Destination data may already exist on shard-03.</p>
+        <div class="mini-phase"><span class="done">LOCKED</span><span class="done">DATA_MOVED</span><span class="failed">COORD_META_UPDATED</span></div>
+        <a data-task-link href="task.html?id=tg-7f31&amp;count=240">Open move evidence →</a>
+      </article>
+      <article class="raw-card"><div class="panel-heading"><div><h2>Raw gRPC data</h2><p>Exact response behind this view</p></div></div><pre data-raw-json></pre></article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

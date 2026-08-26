@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin · Transfer Desk · Failed move</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="task" data-concept="transfer-desk">
+  <header class="app-header">
+    <a class="brand" href="index.html"><img src="../spqr_icon-main.svg" alt=""><span>SPQR</span><small>Admin</small></a>
+    <nav class="primary-nav" aria-label="Transfer Desk pages">
+      <a href="index.html">Moves</a><a href="range.html?id=kr-0100&amp;count=240">Range context</a><a class="active" href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
+    </nav>
+    <div class="header-actions">
+      <select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html">Concept A · Atlas</option><option value="../transfer-desk/index.html" selected>Concept B · Transfer Desk</option><option value="../control-map/index.html">Concept C · Control Map</option></select>
+      <button class="quiet-button" type="button" data-presentation>Present</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <a class="back-link" data-back-to-desk href="index.html">← Back to moves</a>
+    <div class="incident-heading">
+      <div><p class="eyebrow">MOVE INVESTIGATION</p><h1>tg-7f31</h1><p class="subtitle"><a data-range-link href="range.html?id=kr-0100&amp;count=240">kr-0100</a> · shard-02 → shard-03</p></div>
+      <span class="state-chip error">ERROR</span>
+    </div>
+
+    <section class="incident-callout">
+      <div class="failure-icon">!</div>
+      <div><small>FAILED AT COORD_META_UPDATED</small><h2>Data was copied, but routing was not committed.</h2><p>Keep the range locked. Verify row counts on both shards before retrying or rolling back.</p></div>
+    </section>
+
+    <section class="investigation-layout">
+      <article class="phase-panel">
+        <div class="panel-heading"><div><h2>Move journal</h2><p>Exact phase vocabulary from SPQR</p></div><code>DATA_MOVED</code></div>
+        <div class="vertical-timeline">
+          <div class="done"><i>✓</i><div><strong>PLANNED</strong><span>Task created</span></div><time>12:41:02</time></div>
+          <div class="done"><i>✓</i><div><strong>AWAITED</strong><span>Worker acquired task</span></div><time>12:41:04</time></div>
+          <div class="done"><i>✓</i><div><strong>LOCKED</strong><span>kr-0100 locked</span></div><time>12:41:05</time></div>
+          <div class="done"><i>✓</i><div><strong>DATA_MOVED</strong><span>Transfer state: data_copied</span></div><time>12:42:17</time></div>
+          <div class="failed"><i>×</i><div><strong>COORD_META_UPDATED</strong><span>Coordinator rejected metadata update</span></div><time>12:42:18</time></div>
+          <div class="pending"><i></i><div><strong>COMPLETE</strong><span>Not reached</span></div><time>—</time></div>
+        </div>
+      </article>
+
+      <div class="evidence-column">
+        <article class="evidence-panel"><small>ROUTING</small><strong>shard-02</strong><span>Coordinator answer is known</span><b class="known">KNOWN</b></article>
+        <article class="evidence-panel"><small>TRANSFER</small><strong>data_copied</strong><span>Worker reported copied relations</span><b class="known">KNOWN</b></article>
+        <article class="evidence-panel uncertain"><small>PHYSICAL DATA</small><strong>Not verified</strong><span>SPQR has no row-count evidence yet</span><b>UNKNOWN</b></article>
+        <article class="error-log"><small>LAST ERROR</small><code>update key range kr-0100: coordinator revision conflict</code></article>
+      </div>
+    </section>
+
+    <section class="next-actions">
+      <div><h2>Operator checklist</h2><p>This prototype explains the next investigation step; it does not mutate the cluster.</p></div>
+      <ol><li>Compare source and destination row counts.</li><li>Confirm current Coordinator ownership.</li><li>Retry only after physical placement is known.</li></ol>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

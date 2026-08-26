@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin prototypes</title>
+  <link rel="icon" href="spqr_icon-main.svg" type="image/svg+xml">
+  <style>
+    :root { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #191a1e; background: #fbfcff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px; }
+    main { width: min(920px, 100%); }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 34px; }
+    .brand img { width: 36px; height: 36px; }
+    .brand strong { font-size: 20px; }
+    .brand span { color: #727377; font-size: 13px; }
+    h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
+    .intro { margin: 10px 0 26px; color: #727377; }
+    .concepts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    a { min-height: 180px; padding: 20px; border: 1px solid #e8eaf0; border-radius: 14px; background: white; color: inherit; text-decoration: none; box-shadow: 0 12px 36px rgba(34,52,88,.05); }
+    a:hover { border-color: #5382ff; box-shadow: 0 0 0 3px rgba(83,130,255,.13); }
+    a small { color: #5382ff; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+    a h2 { margin: 14px 0 8px; font-size: 18px; }
+    a p { margin: 0; color: #727377; font-size: 12px; line-height: 1.55; }
+    @media (max-width: 720px) { .concepts { grid-template-columns: 1fr; } a { min-height: auto; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand"><img src="spqr_icon-main.svg" alt=""><strong>SPQRADMIN</strong><span>prototypes</span></div>
+    <h1>Choose a concept</h1>
+    <p class="intro">Three ways to explore key ranges and investigate failed moves.</p>
+    <div class="concepts">
+      <a href="atlas/"><small>CONCEPT A</small><h2>Atlas</h2><p>Topology-first view for understanding a distribution and producing clean screenshots.</p></a>
+      <a href="transfer-desk/"><small>CONCEPT B</small><h2>Transfer Desk</h2><p>Task-first workspace focused on move progress, failures, and operator evidence.</p></a>
+      <a href="control-map/"><small>CONCEPT C</small><h2>Control Map</h2><p>Hybrid workspace combining the ordered KR map with a live activity rail.</p></a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin · Transfer Desk · Range</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="range" data-concept="transfer-desk">
+  <header class="app-header">
+    <a class="brand" href="index.html"><img src="../spqr_icon-main.svg" alt=""><span>SPQR</span><small>Admin</small></a>
+    <nav class="primary-nav" aria-label="Transfer Desk pages">
+      <a href="index.html">Moves</a><a class="active" href="range.html?id=kr-0100&amp;count=240">Range context</a><a href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
+    </nav>
+    <div class="header-actions">
+      <select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html">Concept A · Atlas</option><option value="../transfer-desk/index.html" selected>Concept B · Transfer Desk</option><option value="../control-map/index.html">Concept C · Control Map</option></select>
+      <button class="quiet-button" type="button" data-presentation>Present</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <a class="back-link" data-back-to-desk href="index.html">← Back to moves</a>
+    <div class="page-heading compact-heading">
+      <div><p class="eyebrow">RANGE CONTEXT</p><h1 data-page-range-id>kr-0100</h1><p class="subtitle">The range as seen from its failed transfer.</p></div>
+      <span class="state-chip locked">LOCKED</span>
+    </div>
+
+    <section class="route-story" aria-label="Range route">
+      <div class="route-node source"><small>CURRENT ROUTE</small><strong data-current-shard>shard-02</strong><span>Coordinator still sends traffic here</span></div>
+      <div class="route-arrow"><span>data_copied</span><i>→</i><small>metadata not updated</small></div>
+      <div class="route-node destination"><small>DESTINATION</small><strong>shard-03</strong><span>Copied rows may be present here</span></div>
+    </section>
+
+    <section class="detail-grid">
+      <article class="detail-panel" data-range-facts></article>
+      <article class="detail-panel">
+        <div class="panel-heading"><div><h2>Why it is locked</h2><p>Correlated task and journal state</p></div></div>
+        <div class="compact-timeline">
+          <div class="done"><i></i><strong>LOCKED</strong><span>Routing frozen</span></div>
+          <div class="done"><i></i><strong>DATA_MOVED</strong><span>Copy reported complete</span></div>
+          <div class="failed"><i></i><strong>COORD_META_UPDATED</strong><span>Failed before commit</span></div>
+        </div>
+        <a class="primary-link" data-task-link href="task.html?id=tg-7f31&amp;count=240">Explain the failure →</a>
+      </article>
+      <article class="detail-panel raw-panel">
+        <div class="panel-heading"><div><h2>Raw gRPC data</h2><p>KeyRangeService response</p></div></div>
+        <pre class="raw-block" data-raw-json></pre>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

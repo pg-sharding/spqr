@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQR Admin · Atlas</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="overview" data-concept="atlas">
+  <header class="app-header">
+    <a class="brand" href="index.html" aria-label="SPQR Admin Atlas home">
+      <img src="../spqr_icon-main.svg" alt="">
+      <span>SPQR</span><small>Admin</small>
+    </a>
+    <nav class="primary-nav" aria-label="Atlas pages">
+      <a class="active" href="index.html">Topology</a>
+      <a href="range.html?id=kr-0100&amp;count=240">Range detail</a>
+      <a href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
+    </nav>
+    <div class="header-actions">
+      <select class="concept-switch" aria-label="Concept">
+        <option value="../atlas/index.html" selected>Concept A · Atlas</option>
+        <option value="../transfer-desk/index.html">Concept B · Transfer Desk</option>
+        <option value="../control-map/index.html">Concept C · Control Map</option>
+      </select>
+      <button class="quiet-button" type="button" data-presentation>Present</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">DISTRIBUTION</p>
+        <h1>customers_by_id</h1>
+        <p class="subtitle"><span data-range-total>240</span> key ranges · 3 shards · ordered ranges</p>
+      </div>
+      <div class="page-controls">
+        <label>Scale
+          <select data-scale>
+            <option value="12">12 KR</option>
+            <option value="240" selected>240 KR</option>
+            <option value="1842">1,842 KR</option>
+          </select>
+        </label>
+        <label>Jump to
+          <input data-jump type="search" value="kr-0100" aria-label="Jump to key range">
+        </label>
+        <button class="primary-button" type="button" data-jump-button>Show range</button>
+      </div>
+    </div>
+
+    <section class="atlas-layout" aria-label="Distribution topology">
+      <div class="map-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Full distribution</h2>
+            <p data-density-label>One ordered mark per key range</p>
+          </div>
+          <div class="legend" aria-label="Shard and state legend">
+            <span><i class="shard-one"></i>shard-01</span>
+            <span><i class="shard-two"></i>shard-02</span>
+            <span><i class="shard-three"></i>shard-03</span>
+            <span><i class="locked-mark"></i>LOCKED</span>
+          </div>
+        </div>
+
+        <div class="overview-canvas-wrap">
+          <canvas data-overview-canvas role="img" aria-label="Ordered key range overview"></canvas>
+        </div>
+
+        <div class="viewport-heading">
+          <h3 data-window-title>Ranges 89–112 of 240</h3>
+          <span>Exact viewport · arrow keys follow range order</span>
+        </div>
+        <div class="range-viewport" data-range-viewport aria-label="Visible key ranges"></div>
+      </div>
+
+      <aside class="selection-panel" data-selection-panel aria-live="polite"></aside>
+    </section>
+
+    <section class="allocation-panel">
+      <div class="panel-heading">
+        <div><h2>Allocation</h2><p>Count of ranges currently routed to each shard</p></div>
+        <a class="text-link" href="task.html?id=tg-7f31&amp;count=240">Open active move →</a>
+      </div>
+      <div class="allocation-bars" data-allocation-bars></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
