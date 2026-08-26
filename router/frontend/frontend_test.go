@@ -90,6 +90,9 @@ func TestFrontendSimple(t *testing.T) {
 	}()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+	qr.EXPECT().DataShardsRoutes().Return([]kr.ShardKey{kr.ShardKey{
+		Name: "sh1",
+	}}).AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 
