@@ -1308,7 +1308,7 @@ func (a *Adapter) GetTxnBatchSize() uint16 {
 	return a.maxTxnBatch
 }
 
-func (a *Adapter) ApplyXRecords(ctx context.Context, request []*mtran.XRecord) error {
+func (a *Adapter) ApplyXRecords(_ context.Context, _ []*mtran.XRecord) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Adapter ApplyXRecords not implemented")
 }
 
