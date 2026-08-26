@@ -520,6 +520,20 @@ func (mr *MockCoordinatorMockRecorder) ExecNoTran(ctx, chunk any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTran", reflect.TypeOf((*MockCoordinator)(nil).ExecNoTran), ctx, chunk)
 }
 
+// Execute mocks base method.
+func (m *MockCoordinator) Execute(ctx context.Context, records []*transaction.XRecord) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Execute", ctx, records)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Execute indicates an expected call of Execute.
+func (mr *MockCoordinatorMockRecorder) Execute(ctx, records any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockCoordinator)(nil).Execute), ctx, records)
+}
+
 // GetAllTaskGroupStatuses mocks base method.
 func (m *MockCoordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
 	m.ctrl.T.Helper()

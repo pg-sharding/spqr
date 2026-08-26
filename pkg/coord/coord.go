@@ -1617,6 +1617,15 @@ func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, 
 	return lc.qdb.GetTxMetaStorage(ctx)
 }
 
+func (lc *Coordinator) Execute(ctx context.Context, records []*mtran.XRecord) error {
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.DataShard) error {
 	user := ""
 	host := ""

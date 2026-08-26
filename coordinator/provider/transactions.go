@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/models"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -42,4 +44,10 @@ func (mts *MetaTransactionServer) BeginTran(ctx context.Context, _ *emptypb.Empt
 	} else {
 		return &proto.MetaTransactionReply{TransactionId: tran.TransactionId.String()}, nil
 	}
+}
+
+func (mts *MetaTransactionServer) Execute(ctx context.Context, request *proto.ExecuteRequest) (*emptypb.Empty, error) {
+	xrecords := models.ConvertMany(request.Records, mtran.XRecordFromProto)
+	err := mts.impl.Execute(ctx, xrecords)
+	return nil, spqrerror.CleanGrpcError(err)
 }

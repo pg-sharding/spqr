@@ -2,8 +2,10 @@ package meta
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -2452,4 +2454,70 @@ func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector s
 	}
 
 	return tgs, nil
+}
+
+func ApplyXRecords(
+	ctx context.Context,
+	tx EntityMgr,
+	operation *mtran.XRecord,
+) error {
+	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
+	if !method.IsValid() {
+		return fmt.Errorf("unknown EntityMgr method %q", operation.MethodName)
+	}
+
+	methodType := method.Type()
+
+	if methodType.NumIn() != len(operation.Args)+1 {
+		return fmt.Errorf(
+			"invalid argument count for %s. Got %d, expected %d",
+			operation.MethodName,
+			len(operation.Args),
+			methodType.NumIn(),
+		)
+	}
+
+	args := make([]reflect.Value, 0, methodType.NumIn())
+	args = append(args, reflect.ValueOf(ctx))
+
+	for i, raw := range operation.Args {
+		argType := methodType.In(i + 1)
+
+		arg := reflect.New(argType)
+
+		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
+			return fmt.Errorf(
+				"decode argument %d of %s: %w",
+				i,
+				operation.MethodName,
+				err,
+			)
+		}
+
+		args = append(args, arg.Elem())
+	}
+
+	results := method.Call(args)
+
+	if len(results) == 1 && !results[0].IsNil() {
+		return results[0].Interface().(error)
+	}
+
+	return nil
+}
+
+func MakeXRecord(method string, args ...any) (*mtran.XRecord, error) {
+	jsonArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		raw, err := json.Marshal(arg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal args: %s", err)
+		}
+		jsonArgs = append(jsonArgs, string(raw))
+	}
+
+	return &mtran.XRecord{
+		MethodName: method,
+		Args:       jsonArgs,
+	}, nil
 }

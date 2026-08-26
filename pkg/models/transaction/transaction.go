@@ -21,6 +21,8 @@ type TransactionMgr interface {
 	BeginTran(ctx context.Context) (*MetaTransaction, error)
 	// Gets txn batch size
 	GetTxnBatchSize() uint16
+
+	Execute(ctx context.Context, records []*XRecord) error
 }
 
 type MetaTransaction struct {
@@ -143,4 +145,20 @@ func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, boo
 	result = checkCommandPart(request.UpdateKeyRange, result, GRUpdateKeyRange)
 	result = checkCommandPart(request.CreateSequence, result, GRCreateSequence)
 	return result, result != GRUnknown && result != GRError
+}
+
+type XRecord struct {
+	MethodName string
+	Args       []string
+}
+
+func XRecordFromProto(record *proto.XRecord) *XRecord {
+	if record == nil {
+		return nil
+	}
+
+	return &XRecord{
+		MethodName: record.MethodName,
+		Args:       record.Args,
+	}
 }

@@ -45,6 +45,10 @@ func NewAdapter(conn *grpc.ClientConn, maxTxnBatch uint16) *Adapter {
 	}
 }
 
+func (a *Adapter) Execute(ctx context.Context, request []*mtran.XRecord) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+
 // QDB returns the QDB object associated with the Adapter.
 
 // Parameters:
