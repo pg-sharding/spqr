@@ -6886,15 +6886,24 @@ func TestTypesInXprotoParamOids(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Close{
-					Name:       "stmt_types",
+					Name:       "stmt_types_i2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "stmt_types_i4",
 					ObjectType: 'S',
 				},
 				&pgproto3.Parse{
-					Name:  "stmt_types",
+					Name:  "stmt_types_i2",
 					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
+					ParameterOIDs: []uint32{
+						catalog.INT2OID,
+						catalog.INT4OID,
+						catalog.INT4OID,
+					},
 				},
 				&pgproto3.Parse{
-					Name:  "stmt_types",
+					Name:  "stmt_types_i4",
 					Query: "INSERT INTO t_types(id, val, value) VALUES($1, $2, $3)",
 					ParameterOIDs: []uint32{
 						catalog.INT4OID,
@@ -6908,8 +6917,18 @@ func TestTypesInXprotoParamOids(t *testing.T) {
 				&pgproto3.Bind{},
 				&pgproto3.Execute{},
 				&pgproto3.Bind{
+					DestinationPortal: "P2",
+					PreparedStatement: "stmt_types_i2",
+					Parameters: [][]byte{
+						{0x0, 0x2},
+						{0x0, 0x0, 0x0, 0x3},
+						{0x0, 0x0, 0x0, 0x4},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary, xproto.FormatCodeBinary, xproto.FormatCodeBinary},
+				},
+				&pgproto3.Bind{
 					DestinationPortal: "",
-					PreparedStatement: "stmt_types",
+					PreparedStatement: "stmt_types_i4",
 					Parameters: [][]byte{
 						{0x0, 0x0, 0x0, 0x1},
 						{0x0, 0x0, 0x0, 0x1},
@@ -6919,7 +6938,14 @@ func TestTypesInXprotoParamOids(t *testing.T) {
 				},
 				&pgproto3.Describe{
 					ObjectType: 'P',
+					Name:       "P2",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
 					Name:       "",
+				},
+				&pgproto3.Execute{
+					Portal: "P2",
 				},
 				&pgproto3.Execute{
 					Portal: "",
@@ -6934,6 +6960,7 @@ func TestTypesInXprotoParamOids(t *testing.T) {
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParseComplete{},
@@ -6942,8 +6969,13 @@ func TestTypesInXprotoParamOids(t *testing.T) {
 					CommandTag: []byte("BEGIN"),
 				},
 				&pgproto3.BindComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
 				&pgproto3.NoData{},
 
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
 				},
