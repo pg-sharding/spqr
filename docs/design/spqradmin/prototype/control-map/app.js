@@ -16,7 +16,18 @@
     if (ratio < .48 || ratio >= .64) return 2;
     return 3;
   };
-  const locked = () => [selected, Math.floor(total * .72), Math.max(0, total - 3)];
+  const incidentIndex = defaultIndex;
+  const copyingIndex = Math.floor(total * .72);
+  const awaitingIndex = Math.floor(total * .18);
+  const manualLockIndex = Math.max(0, total - 3);
+  const locked = () => [...new Set([incidentIndex, copyingIndex, awaitingIndex, manualLockIndex])];
+  const rangeState = (index) => {
+    if (index === incidentIndex) return { locked: true, task: "tg-7f31 · ERROR", taskState: "ERROR", move: "DATA_MOVED", transfer: "data_copied" };
+    if (index === copyingIndex) return { locked: true, task: "tg-904a · RUNNING", taskState: "RUNNING", move: "DATA_MOVED", transfer: "data_copied" };
+    if (index === awaitingIndex) return { locked: true, task: "tg-b180 · RUNNING", taskState: "RUNNING", move: "LOCKED", transfer: "locked" };
+    if (index === manualLockIndex) return { locked: true, task: "—", taskState: null, move: "—", transfer: "—" };
+    return { locked: false, task: "—", taskState: null, move: "—", transfer: "—" };
+  };
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   document.querySelectorAll("[data-range-total]").forEach((node) => { node.textContent = total.toLocaleString("en-US"); });
@@ -62,7 +73,7 @@
       context.strokeStyle = css("--warning"); context.lineWidth = 2;
       context.beginPath(); context.moveTo(x, 12); context.lineTo(x, 54); context.stroke();
     });
-    const errorX = (selected + .5) / total * width;
+    const errorX = (incidentIndex + .5) / total * width;
     context.fillStyle = css("--danger"); context.beginPath(); context.arc(errorX, 7, 4, 0, Math.PI * 2); context.fill();
   };
 
@@ -92,8 +103,9 @@
   const renderSelected = () => {
     const target = document.querySelector("[data-selected-card]");
     if (!target) return;
-    target.innerHTML = `<div><p class="eyebrow">SELECTED</p><h2>${idFor(selected)}</h2><span class="state-chip locked">LOCKED</span></div>
-      <dl><div><dt>Bounds</dt><dd>[${selected * 1000}, ${(selected + 1) * 1000})</dd></div><div><dt>Routes to</dt><dd>shard-0${shardFor(selected)}</dd></div><div><dt>Linked task</dt><dd class="danger-text">tg-7f31 · ERROR</dd></div></dl>
+    const state = rangeState(selected);
+    target.innerHTML = `<div><p class="eyebrow">SELECTED</p><h2>${idFor(selected)}</h2><span class="state-chip ${state.locked ? "locked" : "unlocked"}">${state.locked ? "LOCKED" : "UNLOCKED"}</span></div>
+      <dl><div><dt>Bounds</dt><dd>[${selected * 1000}, ${(selected + 1) * 1000})</dd></div><div><dt>Routes to</dt><dd>shard-0${shardFor(selected)}</dd></div><div><dt>Linked task</dt><dd class="${state.taskState === "ERROR" ? "danger-text" : ""}">${state.task}</dd></div></dl>
       <a href="range.html?id=${idFor(selected)}&count=${total}">Inspect range →</a>`;
   };
 
@@ -101,9 +113,9 @@
     const target = document.querySelector("[data-activity-list]");
     if (!target) return;
     const items = [
-      { id: "tg-7f31", index: selected, state: "ERROR", phase: "COORD_META_UPDATED", route: "02 → 03" },
-      { id: "tg-904a", index: Math.floor(total * .72), state: "RUNNING", phase: "DATA_MOVED", route: "01 → 02" },
-      { id: "tg-b180", index: Math.floor(total * .18), state: "RUNNING", phase: "LOCKED", route: "03 → 01" },
+      { id: "tg-7f31", index: incidentIndex, state: "ERROR", phase: "COORD_META_UPDATED", route: "02 → 03" },
+      { id: "tg-904a", index: copyingIndex, state: "RUNNING", phase: "DATA_MOVED", route: "01 → 02" },
+      { id: "tg-b180", index: awaitingIndex, state: "RUNNING", phase: "LOCKED", route: "03 → 01" },
       { id: "tg-120c", index: Math.floor(total * .88), state: "PLANNED", phase: "PLANNED", route: "01 → 03" }
     ];
     target.innerHTML = "";
@@ -130,18 +142,30 @@
   if (page === "range") {
     const rangeId = idFor(selected);
     const shardId = `shard-0${shardFor(selected)}`;
+    const state = rangeState(selected);
     document.querySelector("[data-range-id]").textContent = rangeId;
     document.querySelector("[data-position-label]").textContent = `${selected + 1} of ${total.toLocaleString("en-US")}`;
-    document.querySelector("[data-source-shard]").textContent = shardId;
     document.querySelector("[data-back-map]").href = `index.html?id=${rangeId}&count=${total}`;
-    document.querySelector("[data-task-link]").href = `task.html?id=${rangeId}&count=${total}`;
+    const stateChip = document.querySelector("[data-range-state]");
+    stateChip.textContent = state.locked ? "LOCKED" : "UNLOCKED";
+    stateChip.className = `state-chip ${state.locked ? "locked" : "unlocked"}`;
     const neighbors = document.querySelector("[data-neighbor-strip]");
     for (let index = Math.max(0, selected - 2); index <= Math.min(total - 1, selected + 2); index += 1) {
       const link = document.createElement("a"); link.href = `range.html?id=${idFor(index)}&count=${total}`; link.className = index === selected ? "current" : "";
       link.dataset.shard = String(shardFor(index)); link.innerHTML = `<strong>${idFor(index)}</strong><span>shard-0${shardFor(index)}</span><small>[${index * 1000}, ${(index + 1) * 1000})</small>`; neighbors.append(link);
     }
-    document.querySelector("[data-range-facts]").innerHTML = `<div><dt>ID</dt><dd>${rangeId}</dd></div><div><dt>Bounds</dt><dd>[${selected * 1000}, ${(selected + 1) * 1000})</dd></div><div><dt>Distribution</dt><dd>customers_by_id</dd></div><div><dt>Shard</dt><dd>${shardId}</dd></div><div><dt>Key range</dt><dd>LOCKED</dd></div><div><dt>Move journal</dt><dd>DATA_MOVED</dd></div>`;
-    document.querySelector("[data-raw-json]").textContent = JSON.stringify({ krid: rangeId, shardId, distributionId: "customers_by_id", locked: true, bound: { values: [String(selected * 1000)] } }, null, 2);
+    document.querySelector("[data-range-facts]").innerHTML = `<div><dt>ID</dt><dd>${rangeId}</dd></div><div><dt>Bounds</dt><dd>[${selected * 1000}, ${(selected + 1) * 1000})</dd></div><div><dt>Distribution</dt><dd>customers_by_id</dd></div><div><dt>Shard</dt><dd>${shardId}</dd></div><div><dt>Key range</dt><dd>${state.locked ? "LOCKED" : "UNLOCKED"}</dd></div><div><dt>Move journal</dt><dd>${state.move}</dd></div>`;
+    const moveCard = document.querySelector("[data-linked-move]");
+    if (selected === incidentIndex) {
+      moveCard.innerHTML = `<span class="task-status">TASK GROUP · ERROR</span><h2>Move stopped after data copy</h2><p>Routing still points to <b>${shardId}</b>. Destination data may already exist on shard-03.</p><div class="mini-phase"><span class="done">LOCKED</span><span class="done">DATA_MOVED</span><span class="failed">COORD_META_UPDATED</span></div><a href="task.html?id=${rangeId}&count=${total}">Open move evidence →</a>`;
+    } else if (state.taskState === "RUNNING") {
+      moveCard.classList.add("running");
+      moveCard.innerHTML = `<span class="task-status">TASK GROUP · RUNNING</span><h2>Move is still in progress</h2><p>The key range is locked by ${state.task.split(" · ")[0]}. Current move journal: <b>${state.move}</b>.</p><div class="mini-phase"><span class="done">LOCKED</span><span class="done">${state.transfer}</span></div>`;
+    } else {
+      moveCard.classList.add("idle");
+      moveCard.innerHTML = `<span class="task-status">NO LINKED TASK</span><h2>No active move for this range</h2><p>Selection changes the inspection focus only. It does not change Coordinator state.</p>`;
+    }
+    document.querySelector("[data-raw-json]").textContent = JSON.stringify({ krid: rangeId, shardId, distributionId: "customers_by_id", locked: state.locked, bound: { values: [String(selected * 1000)] } }, null, 2);
   }
 
   if (page === "task") {

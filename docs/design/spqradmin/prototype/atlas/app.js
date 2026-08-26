@@ -16,7 +16,18 @@
     return 3;
   };
   const idFor = (index) => `kr-${String(index + 1).padStart(Math.max(3, String(total).length), "0")}`;
-  const locked = () => [selected, Math.floor(total * .72), Math.max(0, total - 3)];
+  const incidentIndex = defaultIndex;
+  const copyingIndex = Math.floor(total * .72);
+  const awaitingIndex = Math.floor(total * .18);
+  const manualLockIndex = Math.max(0, total - 3);
+  const locked = () => [...new Set([incidentIndex, copyingIndex, awaitingIndex, manualLockIndex])];
+  const rangeState = (index) => {
+    if (index === incidentIndex) return { locked: true, task: "ERROR", move: "DATA_MOVED", transfer: "data_copied", evidence: "routing known · physical counts unknown" };
+    if (index === copyingIndex) return { locked: true, task: "RUNNING", move: "DATA_MOVED", transfer: "data_copied", evidence: "copy reported · metadata pending" };
+    if (index === awaitingIndex) return { locked: true, task: "RUNNING", move: "LOCKED", transfer: "locked", evidence: "routing known · source locked" };
+    if (index === manualLockIndex) return { locked: true, task: "—", move: "—", transfer: "—", evidence: "routing known · no correlated move" };
+    return { locked: false, task: "—", move: "—", transfer: "—", evidence: "routing known · no active move" };
+  };
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   document.querySelectorAll("[data-range-total]").forEach((node) => { node.textContent = total.toLocaleString("en-US"); });
@@ -45,16 +56,18 @@
     const panel = document.querySelector("[data-selection-panel]");
     if (!panel) return;
     const source = `shard-0${shardFor(selected)}`;
+    const state = rangeState(selected);
+    const stateLabel = state.locked ? "LOCKED" : "UNLOCKED";
     panel.innerHTML = `<div class="selection-kicker">SELECTED KEY RANGE</div>
       <h2>${idFor(selected)}</h2>
-      <span class="state-chip locked">LOCKED</span>
+      <span class="state-chip ${state.locked ? "locked" : "unlocked"}">${stateLabel}</span>
       <dl class="detail-list">
         <div class="detail-row"><dt>Interval</dt><dd>[${selected * 1000}, ${(selected + 1) * 1000})</dd></div>
         <div class="detail-row"><dt>Routes to</dt><dd>${source}</dd></div>
-        <div class="detail-row"><dt>Task group</dt><dd>ERROR</dd></div>
-        <div class="detail-row"><dt>Move journal</dt><dd>DATA_MOVED</dd></div>
-        <div class="detail-row"><dt>Transfer</dt><dd>data_copied</dd></div>
-        <div class="detail-row"><dt>Evidence</dt><dd>routing known · physical counts unknown</dd></div>
+        <div class="detail-row"><dt>Task group</dt><dd>${state.task}</dd></div>
+        <div class="detail-row"><dt>Move journal</dt><dd>${state.move}</dd></div>
+        <div class="detail-row"><dt>Transfer</dt><dd>${state.transfer}</dd></div>
+        <div class="detail-row"><dt>Evidence</dt><dd>${state.evidence}</dd></div>
       </dl>
       <a class="panel-link" href="range.html?id=${idFor(selected)}&count=${total}">Open exact range detail →</a>`;
   };
@@ -87,7 +100,7 @@
       ctx.strokeStyle = css("--warning"); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(x, 11); ctx.lineTo(x, 47); ctx.stroke();
     });
-    const errorX = (selected + .5) / total * width;
+    const errorX = (incidentIndex + .5) / total * width;
     ctx.fillStyle = css("--danger");
     ctx.beginPath(); ctx.moveTo(errorX, 2); ctx.lineTo(errorX - 5, 9); ctx.lineTo(errorX + 5, 9); ctx.fill();
   };
@@ -141,20 +154,22 @@
   }
 
   if (page === "range") {
+    const state = rangeState(selected);
     document.querySelector("[data-page-range-id]").textContent = idFor(selected);
     document.querySelector("[data-back-to-map]").href = `index.html?count=${total}&id=${idFor(selected)}`;
     const detail = document.querySelector("[data-range-detail]");
+    const taskLink = selected === incidentIndex ? `<a class="panel-link" href="task.html?id=tg-7f31&count=${total}">Explain failed move →</a>` : "";
     detail.innerHTML = `<h2>Routing and lock</h2><p>Facts from KeyRangeService and matching move journals.</p>
-      <span class="state-chip locked">LOCKED</span><dl class="detail-list">
+      <span class="state-chip ${state.locked ? "locked" : "unlocked"}">${state.locked ? "LOCKED" : "UNLOCKED"}</span><dl class="detail-list">
       <div class="detail-row"><dt>ID</dt><dd>${idFor(selected)}</dd></div><div class="detail-row"><dt>Distribution</dt><dd>customers_by_id</dd></div>
       <div class="detail-row"><dt>Lower bound</dt><dd>${selected * 1000}</dd></div><div class="detail-row"><dt>Upper bound</dt><dd>${(selected + 1) * 1000}</dd></div>
-      <div class="detail-row"><dt>Shard</dt><dd>shard-0${shardFor(selected)}</dd></div><div class="detail-row"><dt>Move journal</dt><dd>DATA_MOVED</dd></div>
-      <div class="detail-row"><dt>Transfer</dt><dd>data_copied</dd></div></dl><a class="panel-link" href="task.html?id=tg-7f31&count=${total}">Explain failed move →</a>`;
+      <div class="detail-row"><dt>Shard</dt><dd>shard-0${shardFor(selected)}</dd></div><div class="detail-row"><dt>Move journal</dt><dd>${state.move}</dd></div>
+      <div class="detail-row"><dt>Transfer</dt><dd>${state.transfer}</dd></div></dl>${taskLink}`;
     const neighbors = document.querySelector("[data-neighbors]");
     for (let index = Math.max(0, selected - 2); index <= Math.min(total - 1, selected + 2); index += 1) {
       const link = document.createElement("a"); link.className = `context-range${index === selected ? " current" : ""}`; link.href = `range.html?count=${total}&id=${idFor(index)}`;
       link.innerHTML = `<strong>${idFor(index)}</strong><span>shard-0${shardFor(index)} · [${index * 1000}, ${(index + 1) * 1000})</span>`; neighbors.append(link);
     }
-    document.querySelector("[data-raw-json]").textContent = JSON.stringify({ krid: idFor(selected), shardId: `shard-0${shardFor(selected)}`, distributionId: "customers_by_id", locked: true, bound: { values: [String(selected * 1000)] } }, null, 2);
+    document.querySelector("[data-raw-json]").textContent = JSON.stringify({ krid: idFor(selected), shardId: `shard-0${shardFor(selected)}`, distributionId: "customers_by_id", locked: state.locked, bound: { values: [String(selected * 1000)] } }, null, 2);
   }
 })();

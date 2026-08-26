@@ -85,6 +85,7 @@ h1 { margin: 0; font-size: 30px; line-height: 1.15; letter-spacing: -.03em; }
 .selection-panel h2 { margin: 6px 0 8px; font: 750 17px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .state-chip { display: inline-flex; padding: 4px 7px; border-radius: 6px; font: 800 10px ui-monospace, monospace; }
 .state-chip.locked { color: var(--warning); background: var(--warning-soft); }
+.state-chip.unlocked { color: var(--success); background: #e5f5ef; }
 .state-chip.error { color: var(--danger); background: var(--danger-soft); }
 .state-chip.running { color: var(--primary); background: var(--primary-soft); }
 .detail-list { margin: 14px 0 0; }
