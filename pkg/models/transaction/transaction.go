@@ -22,7 +22,7 @@ type TransactionMgr interface {
 	// Gets txn batch size
 	GetTxnBatchSize() uint16
 
-	Execute(ctx context.Context, records []*XRecord) error
+	ApplyXRecords(ctx context.Context, records []*XRecord) error
 }
 
 type MetaTransaction struct {
