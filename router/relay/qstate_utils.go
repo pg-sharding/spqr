@@ -111,7 +111,8 @@ func DispatchSlice(qd *QueryDesc,
 					/* Uh, oh, this is very ugly hack */
 					/* Parse in unnamed */
 					if err := serv.SendShard(&pgproto3.Parse{
-						Query: ovMsg,
+						Query:         ovMsg,
+						ParameterOIDs: qd.savedParamOids,
 					}, targ); err != nil {
 						return err
 					}

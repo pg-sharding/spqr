@@ -16,6 +16,8 @@ import (
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
 
+	savedParamOids []uint32
+
 	simple    bool
 	ParamsNum int
 	exec      *pgproto3.Execute
