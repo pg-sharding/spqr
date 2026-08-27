@@ -119,7 +119,8 @@
       return next;
     };
 
-    const url = (path, extra = {}) => `${path}?${query(extra).toString()}`;
+    const canonicalPath = (path) => path === "cluster.html" ? "../cluster/" : path === "shard.html" ? "../shard/" : path;
+    const url = (path, extra = {}) => `${canonicalPath(path)}?${query(extra).toString()}`;
     const changeUrl = (changes = {}) => {
       const next = new URL(location.href);
       const nextParams = query(changes);
@@ -150,8 +151,10 @@
     };
 
     const decorateLinks = (root = document) => root.querySelectorAll("a[href]").forEach((anchor) => {
-      const href = anchor.getAttribute("href");
+      let href = anchor.getAttribute("href");
       if (!href || href.startsWith("http") || href.startsWith("#") || href === "../" || href === "./") return;
+      if (href === "cluster.html") href = "../cluster/";
+      if (href === "shard.html") href = "../shard/";
       const next = new URL(href, location.href);
       if (next.origin !== location.origin) return;
       const existing = new URLSearchParams(next.search);

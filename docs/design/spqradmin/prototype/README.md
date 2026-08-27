@@ -19,7 +19,7 @@ The start page groups prototypes by page. Direct comparison links:
 - Shard: http://127.0.0.1:8766/shard/
 - Move: http://127.0.0.1:8766/move/
 
-Each gallery compares three visual variants using the same demo data. Use the controls to switch between 1/8/32 distributions, 2/8/32/128 shards, and 12/240/1,842 key ranges per distribution.
+Cluster and Shard each have one canonical page. Distribution, Range, and Move each compare three visual variants using the same demo data. Use the controls to switch between 1/8/32 distributions, 2/8/32/128 shards, and 12/240/1,842 key ranges per distribution.
 
 Stop the server with `Ctrl+C`.
 

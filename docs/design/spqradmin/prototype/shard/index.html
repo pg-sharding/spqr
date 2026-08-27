@@ -1,16 +1,29 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SPQRADMIN · Shard prototypes</title><link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml"><link rel="stylesheet" href="../gallery.css"></head>
-<body>
-  <header class="gallery-header"><a class="gallery-brand" href="../"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a><nav class="gallery-nav" aria-label="Prototype pages"><a data-gallery-link href="../cluster/">Cluster</a><a data-gallery-link href="../distribution/">Distribution</a><a data-gallery-link href="../range/">Range</a><a class="active" data-gallery-link href="../shard/">Shard</a><a data-gallery-link href="../move/">Move</a></nav><a class="gallery-home" href="../">All pages</a></header>
-  <main class="gallery-main">
-    <section class="gallery-intro"><div><p class="eyebrow">PAGE PROTOTYPES</p><h1>Shard</h1><p class="intro-copy">Compare ways to answer what a shard owns, which distributions use it, and whether data is currently moving into or out of it.</p></div><div class="scenario-controls"><label>Distributions<select data-scenario="distributions"><option>1</option><option>8</option><option>32</option></select></label><label>Shards<select data-scenario="shards"><option>2</option><option>8</option><option>32</option><option>128</option></select></label><label>KR / distribution<select data-scenario="count"><option>12</option><option>240</option><option>1842</option></select></label></div></section>
-    <p class="comparison-note">Same shard placement data; the visual hierarchy follows the surrounding page style.</p>
-    <section class="variant-grid">
-      <article class="variant-card"><div class="variant-heading"><span class="variant-tag">VARIANT A</span><h2>Inventory</h2><p>Distribution membership and KR counts in a compact topology-oriented page.</p></div><div class="preview-window"><iframe title="Shard inventory" data-variant-path="../atlas/shard.html"></iframe></div><div class="variant-actions"><span>Ownership first</span><a class="open-variant" data-variant-path="../atlas/shard.html">Open full prototype →</a></div></article>
-      <article class="variant-card"><div class="variant-heading"><span class="variant-tag">VARIANT B</span><h2>Operations</h2><p>Incoming and outgoing move activity framed for an operator investigating work.</p></div><div class="preview-window"><iframe title="Shard operations" data-variant-path="../transfer-desk/shard.html"></iframe></div><div class="variant-actions"><span>Moves first</span><a class="open-variant" data-variant-path="../transfer-desk/shard.html">Open full prototype →</a></div></article>
-      <article class="variant-card"><div class="variant-heading"><span class="variant-tag">VARIANT C</span><h2>Placement</h2><p>Distribution placement and move context in the same visual language as the control map.</p></div><div class="preview-window"><iframe title="Shard placement" data-variant-path="../control-map/shard.html"></iframe></div><div class="variant-actions"><span>Context together</span><a class="open-variant" data-variant-path="../control-map/shard.html">Open full prototype →</a></div></article>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQRADMIN · Shard</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../atlas/app.css">
+</head>
+<body data-page="shard" data-concept="shard" data-distribution-path="../atlas/index.html" data-shard-path="../shard/" data-range-path="../atlas/range.html" data-move-path="../atlas/task.html">
+  <header class="app-header">
+    <a class="brand" href="../" aria-label="SPQRADMIN prototype home"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
+    <nav class="primary-nav" aria-label="Prototype pages"><a href="../cluster/">Cluster</a><a href="../distribution/">Distribution</a><a href="../range/">Range</a><a class="active" href="../shard/">Shard</a><a href="../move/">Move</a></nav>
+    <div class="header-actions"><button class="quiet-button" type="button" data-presentation>Present</button></div>
+  </header>
+  <main class="page-shell">
+    <a class="text-link" href="../cluster/">← Back to cluster</a>
+    <div class="page-heading shard-heading">
+      <div><p class="eyebrow">SHARD</p><h1 data-shard-id>shard-01</h1><p class="subtitle"><span data-shard-distribution-total>0</span> distributions · <span data-shard-range-total>0</span> key ranges</p></div>
+      <div class="page-controls"><label>Shard<select data-shard-picker></select></label><label>Shard scale<select data-shard-scale><option value="2">2</option><option value="8">8</option><option value="32">32</option><option value="128">128</option></select></label></div>
+    </div>
+    <section class="detail-layout shard-layout">
+      <article class="detail-panel"><div class="panel-heading"><div><h2>Distribution placement</h2><p>Key ranges from each distribution routed to this shard.</p></div></div><table class="relations-table"><thead><tr><th>Distribution</th><th>KR on shard</th><th>Locked</th></tr></thead><tbody data-shard-distribution-rows></tbody></table></article>
+      <article class="detail-panel"><div class="panel-heading"><div><h2>Related moves</h2><p>Incoming and outgoing move tasks.</p></div></div><div class="cluster-moves" data-shard-moves></div></article>
     </section>
-  </main><script src="../gallery.js"></script>
+  </main>
+  <script src="../demo-data.js"></script><script src="../entity-pages.js"></script>
 </body>
 </html>
