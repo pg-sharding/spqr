@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQRADMIN · Atlas · Cluster</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-page="cluster" data-concept="atlas">
+  <header class="app-header">
+    <a class="brand" href="../" aria-label="SPQRADMIN prototype home"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
+    <nav class="primary-nav" aria-label="Atlas pages">
+      <a class="active" href="cluster.html">Cluster</a><a href="index.html">Distribution</a><a href="range.html">Range</a><a href="shard.html">Shard</a><a href="task.html">Move</a>
+    </nav>
+    <div class="header-actions"><select class="concept-switch" aria-label="Concept"><option value="../atlas/cluster.html" selected>Concept A · Atlas</option><option value="../transfer-desk/cluster.html">Concept B · Transfer Desk</option><option value="../control-map/cluster.html">Concept C · Control Map</option></select><button class="quiet-button" type="button" data-presentation>Present</button></div>
+  </header>
+  <main class="page-shell">
+    <div class="page-heading">
+      <div><p class="eyebrow">CLUSTER</p><h1>demo-cluster</h1><p class="subtitle">Coordinator view · refreshed 12 seconds ago</p></div>
+      <div class="page-controls cluster-controls">
+        <label>Distributions<select data-distribution-scale><option value="1">1</option><option value="8">8</option><option value="32">32</option></select></label>
+        <label>Shards<select data-shard-scale><option value="2">2</option><option value="8">8</option><option value="32">32</option><option value="128">128</option></select></label>
+        <label>KR / distribution<select data-scale><option value="12">12</option><option value="240">240</option><option value="1842">1,842</option></select></label>
+      </div>
+    </div>
+    <section class="cluster-stats" data-cluster-stats></section>
+    <section class="cluster-grid">
+      <article class="detail-panel cluster-distributions"><div class="panel-heading"><div><h2>Distributions</h2><p>Open one to inspect its ordered key ranges.</p></div></div><div class="distribution-table-wrap"><table class="relations-table"><thead><tr><th>Distribution</th><th>KR</th><th>Shards used</th><th>Locked</th><th>Moves</th></tr></thead><tbody data-distribution-rows></tbody></table></div></article>
+      <article class="detail-panel"><div class="panel-heading"><div><h2>Shard pool</h2><p>Cluster shards; only participating shards appear on a distribution page.</p></div><a class="text-link" data-first-shard href="shard.html">Open shard →</a></div><div class="shard-cloud" data-shard-cloud></div></article>
+    </section>
+    <section class="detail-panel cluster-activity"><div class="panel-heading"><div><h2>Move activity</h2><p>Errors first, across all distributions.</p></div></div><div class="cluster-moves" data-cluster-moves></div></section>
+  </main>
+  <script src="../demo-data.js"></script><script src="../entity-pages.js"></script>
+</body>
+</html>

@@ -10,20 +10,20 @@
 <body data-page="task" data-concept="control-map">
   <header class="app-header">
     <a class="brand" href="../"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
-    <nav class="primary-nav" aria-label="Control Map pages"><a href="index.html">Control map</a><a href="range.html?id=kr-0100&amp;count=240">Range detail</a><a class="active" href="task.html?id=tg-7f31&amp;count=240">Move detail</a></nav>
+    <nav class="primary-nav" aria-label="Control Map pages"><a href="cluster.html">Cluster</a><a href="index.html">Control map</a><a href="range.html">Range</a><a href="shard.html">Shard</a><a class="active" href="task.html">Move</a></nav>
     <div class="header-actions"><select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html">Concept A · Atlas</option><option value="../transfer-desk/index.html">Concept B · Transfer Desk</option><option value="../control-map/index.html" selected>Concept C · Control Map</option></select><button class="quiet-button" type="button" data-presentation>Present</button></div>
   </header>
 
   <main class="detail-shell">
     <a class="back-link" data-back-map href="index.html">← Back to control map</a>
-    <div class="detail-heading"><div><p class="eyebrow">MOVE TASK</p><h1>tg-7f31</h1><p class="subtitle"><a data-task-range href="range.html?id=kr-0100&amp;count=240">kr-0100</a> · shard-02 → shard-03</p></div><span class="state-chip error">ERROR</span></div>
+    <div class="detail-heading"><div><p class="eyebrow">MOVE TASK</p><h1 data-task-id>tg-7f31</h1><p class="subtitle"><a data-task-range href="range.html">kr-0100</a> · <span data-task-source>shard-02</span> → <span data-task-destination>shard-03</span></p></div><span class="state-chip error">ERROR</span></div>
 
     <section class="task-map-card">
       <div class="panel-heading"><div><h2>Where the data is</h2><p>Known control-plane facts are separated from unverified physical data.</p></div></div>
       <div class="placement-flow">
-        <div class="placement-node current"><small>CURRENT ROUTE</small><strong>shard-02</strong><span>Coordinator metadata</span><b>KNOWN</b></div>
+        <div class="placement-node current"><small>CURRENT ROUTE</small><strong data-task-source>shard-02</strong><span>Coordinator metadata</span><b>KNOWN</b></div>
         <div class="placement-edge"><span>transfer: data_copied</span><i>→</i><em>move journal: DATA_MOVED</em></div>
-        <div class="placement-node destination"><small>DESTINATION</small><strong>shard-03</strong><span>Physical rows not checked</span><b>UNKNOWN</b></div>
+        <div class="placement-node destination"><small>DESTINATION</small><strong data-task-destination>shard-03</strong><span>Physical rows not checked</span><b>UNKNOWN</b></div>
       </div>
     </section>
 
@@ -32,11 +32,12 @@
         <div class="panel-heading"><div><h2>Phase history</h2><p>Failure is located, not collapsed into “unhealthy”.</p></div></div>
         <div class="phase-track"><div class="done"><i></i><strong>PLANNED</strong><span>12:41:02</span></div><div class="done"><i></i><strong>AWAITED</strong><span>12:41:04</span></div><div class="done"><i></i><strong>LOCKED</strong><span>12:41:05</span></div><div class="done"><i></i><strong>DATA_MOVED</strong><span>12:42:17</span></div><div class="failed"><i></i><strong>COORD_META_UPDATED</strong><span>12:42:18</span></div><div><i></i><strong>COMPLETE</strong><span>not reached</span></div></div>
       </article>
-      <article class="failure-card"><small>LAST ERROR</small><h2>Coordinator revision conflict</h2><code>update key range kr-0100: expected revision 483, got 484</code><p>The interface can explain the safe investigation order, but the prototype provides no retry button.</p></article>
-      <article class="checklist-card"><div class="panel-heading"><div><h2>Verify before action</h2><p>Evidence still missing from the cluster view</p></div></div><ul><li><span>Source row count</span><b>UNKNOWN</b></li><li><span>Destination row count</span><b>UNKNOWN</b></li><li><span>Coordinator owner</span><b class="known">shard-02</b></li><li><span>Key range lock</span><b class="known">LOCKED</b></li></ul></article>
+      <article class="failure-card"><small>LAST ERROR</small><h2>Coordinator revision conflict</h2><code>update key range <span data-task-range>kr-0100</span>: expected revision 483, got 484</code><p>The interface can explain the safe investigation order, but the prototype provides no retry button.</p></article>
+      <article class="checklist-card"><div class="panel-heading"><div><h2>Verify before action</h2><p>Evidence still missing from the cluster view</p></div></div><ul><li><span>Source row count</span><b>UNKNOWN</b></li><li><span>Destination row count</span><b>UNKNOWN</b></li><li><span>Coordinator owner</span><b class="known" data-task-source>shard-02</b></li><li><span>Key range lock</span><b class="known">LOCKED</b></li></ul></article>
     </section>
   </main>
 
+  <script src="../demo-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -13,11 +13,7 @@
       <img src="../spqr_icon-main.svg" alt="">
       <span>SPQRADMIN</span>
     </a>
-    <nav class="primary-nav" aria-label="Transfer Desk pages">
-      <a class="active" href="index.html">Moves</a>
-      <a href="range.html?id=kr-0100&amp;count=240">Range context</a>
-      <a href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
-    </nav>
+    <nav class="primary-nav" aria-label="Transfer Desk pages"><a href="cluster.html">Cluster</a><a class="active" href="index.html">Moves</a><a href="range.html">Range</a><a href="shard.html">Shard</a><a href="task.html">Investigation</a></nav>
     <div class="header-actions">
       <select class="concept-switch" aria-label="Concept">
         <option value="../atlas/index.html">Concept A · Atlas</option>
@@ -33,9 +29,10 @@
       <div>
         <p class="eyebrow">OPERATIONS</p>
         <h1>Transfer desk</h1>
-        <p class="subtitle">Moves first: where each range is going, how far it got, and what needs attention.</p>
+        <p class="subtitle"><span data-distribution-name>customers_by_id</span> · <span data-shard-total>8</span> shards · moves first</p>
       </div>
-      <div class="page-controls">
+      <div class="page-controls cluster-controls">
+        <label>Distribution<select data-distribution-picker></select></label>
         <label>Distribution size
           <select data-scale>
             <option value="12">12 KR</option>
@@ -43,6 +40,7 @@
             <option value="1842">1,842 KR</option>
           </select>
         </label>
+        <label>Shards<select data-shard-scale><option value="2">2</option><option value="8">8</option><option value="32">32</option><option value="128">128</option></select></label>
         <label>Show
           <select data-filter>
             <option value="all">All moves</option>
@@ -73,16 +71,13 @@
 
       <aside class="queue-panel">
         <div class="panel-heading"><div><h2>Attention queue</h2><p>Errors are pinned above active work.</p></div></div>
-        <a class="queue-card error" href="task.html?id=tg-7f31&amp;count=240">
-          <span class="queue-state">ERROR</span><strong>tg-7f31</strong>
-          <p>Metadata update stopped after data copy.</p><small>kr-0100 · shard-02 → shard-03</small>
-        </a>
-        <div class="queue-card running"><span class="queue-state">RUNNING</span><strong>tg-904a</strong><p>Copying relations on the destination.</p><small>kr-0174 · shard-01 → shard-02</small></div>
-        <a class="plain-link" href="task.html?id=tg-7f31&amp;count=240">Open investigation workspace →</a>
+        <div data-attention-queue></div>
+        <a class="plain-link" href="task.html">Open failed-move investigation →</a>
       </aside>
     </section>
   </main>
 
+  <script src="../demo-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

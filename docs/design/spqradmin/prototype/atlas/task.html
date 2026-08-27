@@ -10,25 +10,22 @@
 <body data-page="task" data-concept="atlas">
   <header class="app-header">
     <a class="brand" href="../"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
-    <nav class="primary-nav" aria-label="Atlas pages"><a href="index.html">Topology</a><a href="range.html?id=kr-0100&amp;count=240">Range detail</a><a class="active" href="task.html?id=tg-7f31&amp;count=240">Failed move</a></nav>
+    <nav class="primary-nav" aria-label="Atlas pages"><a href="cluster.html">Cluster</a><a href="index.html">Distribution</a><a href="range.html">Range</a><a href="shard.html">Shard</a><a class="active" href="task.html">Move</a></nav>
     <div class="header-actions"><select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html" selected>Concept A · Atlas</option><option value="../transfer-desk/index.html">Concept B · Transfer Desk</option><option value="../control-map/index.html">Concept C · Control Map</option></select><button class="quiet-button" type="button" data-presentation>Present</button></div>
   </header>
   <main class="page-shell">
-    <div class="page-heading"><div><p class="eyebrow">MOVE TASK GROUP</p><h1>tg-7f31</h1><p class="subtitle">customers_by_id · updated 12 seconds ago</p></div><span class="state-chip error">ERROR</span></div>
-    <section class="task-summary"><h2>Move failed while updating Coordinator metadata</h2><p>The key range is locked. Routing still points to shard-02. The transfer journal records a copy on shard-03, but physical counts have not been independently verified.</p></section>
+    <div class="page-heading"><div><p class="eyebrow">MOVE TASK GROUP</p><h1 data-task-id>tg-01e1</h1><p class="subtitle"><span data-task-distribution>customers_by_id</span> · updated 12 seconds ago</p></div><span class="state-chip error" data-task-state>ERROR</span></div>
+    <section class="task-summary"><h2 data-task-summary-title>Move failed while updating Coordinator metadata</h2><p data-task-summary-body>The key range is locked. Routing still points to <span data-task-source>shard-01</span>. The transfer journal records a copy on <span data-task-destination>shard-02</span>, but physical counts have not been independently verified.</p></section>
     <section class="detail-panel" style="margin-top:14px">
       <h2>Move journal</h2><p>Exact SPQR phases; the failed transition is distinguished from the last persisted state.</p>
       <div class="phase-track"><div class="phase-step done">PLANNED</div><div class="phase-step done">AWAITED</div><div class="phase-step done">LOCKED</div><div class="phase-step done">DATA_MOVED</div><div class="phase-step failed">COORD_META_UPDATED</div><div class="phase-step">COMPLETE</div></div>
-      <div class="evidence-grid"><article class="evidence-card"><small>ROUTING METADATA · KNOWN</small><h3>shard-02</h3><p>Coordinator still routes kr-0100 to the source.</p></article><article class="evidence-card"><small>TRANSFER JOURNAL · KNOWN</small><h3>Target copy recorded</h3><p><code>data_copied</code> on shard-03.</p></article><article class="evidence-card"><small>PHYSICAL COUNTS · UNKNOWN</small><h3>Not verified</h3><p>Run explicit verification before recovery.</p></article></div>
-      <div class="error-message">update key range kr-0100: coordinator revision conflict</div>
-      <pre class="raw-block">KeyRange: LOCKED
-MoveKeyRange: DATA_MOVED
-TransferTransaction: data_copied
-MoveTask: MOVED
-TaskGroup: ERROR</pre>
-      <a class="panel-link" href="range.html?id=kr-0100&amp;count=240">Open affected range →</a>
+      <div class="evidence-grid"><article class="evidence-card"><small>ROUTING METADATA · KNOWN</small><h3 data-task-source>shard-01</h3><p>Coordinator still routes <a data-task-range href="range.html">kr-0100</a> to the source.</p></article><article class="evidence-card"><small>TRANSFER JOURNAL · KNOWN</small><h3>Target copy recorded</h3><p><code>data_copied</code> on <span data-task-destination>shard-02</span>.</p></article><article class="evidence-card"><small>PHYSICAL COUNTS · UNKNOWN</small><h3>Not verified</h3><p>Run explicit verification before recovery.</p></article></div>
+      <div class="error-message">update key range <span data-task-range>kr-0100</span>: coordinator revision conflict</div>
+      <pre class="raw-block" data-task-raw></pre>
+      <a class="panel-link" data-task-range href="range.html">Open affected range →</a>
     </section>
   </main>
+  <script src="../demo-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

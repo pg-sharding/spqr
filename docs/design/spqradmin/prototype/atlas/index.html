@@ -13,11 +13,7 @@
       <img src="../spqr_icon-main.svg" alt="">
       <span>SPQRADMIN</span>
     </a>
-    <nav class="primary-nav" aria-label="Atlas pages">
-      <a class="active" href="index.html">Topology</a>
-      <a href="range.html?id=kr-0100&amp;count=240">Range detail</a>
-      <a href="task.html?id=tg-7f31&amp;count=240">Failed move</a>
-    </nav>
+    <nav class="primary-nav" aria-label="Atlas pages"><a href="cluster.html">Cluster</a><a class="active" href="index.html">Distribution</a><a href="range.html">Range</a><a href="shard.html">Shard</a><a href="task.html">Move</a></nav>
     <div class="header-actions">
       <select class="concept-switch" aria-label="Concept">
         <option value="../atlas/index.html" selected>Concept A · Atlas</option>
@@ -32,10 +28,11 @@
     <div class="page-heading">
       <div>
         <p class="eyebrow">DISTRIBUTION</p>
-        <h1>customers_by_id</h1>
-        <p class="subtitle"><span data-range-total>240</span> key ranges · 3 shards · ordered ranges</p>
+        <h1 data-distribution-name>customers_by_id</h1>
+        <p class="subtitle"><span data-range-total>240</span> key ranges · <span data-shard-total>8</span> shards · ordered ranges</p>
       </div>
-      <div class="page-controls">
+      <div class="page-controls cluster-controls">
+        <label>Distribution<select data-distribution-picker></select></label>
         <label>Scale
           <select data-scale>
             <option value="12">12 KR</option>
@@ -43,6 +40,7 @@
             <option value="1842">1,842 KR</option>
           </select>
         </label>
+        <label>Shards<select data-shard-scale><option value="2">2</option><option value="8">8</option><option value="32">32</option><option value="128">128</option></select></label>
         <label>Jump to
           <input data-jump type="search" value="kr-0100" aria-label="Jump to key range">
         </label>
@@ -57,12 +55,7 @@
             <h2>Full distribution</h2>
             <p data-density-label>One ordered mark per key range</p>
           </div>
-          <div class="legend" aria-label="Shard and state legend">
-            <span><i class="shard-one"></i>shard-01</span>
-            <span><i class="shard-two"></i>shard-02</span>
-            <span><i class="shard-three"></i>shard-03</span>
-            <span><i class="locked-mark"></i>LOCKED</span>
-          </div>
+          <div class="legend" data-shard-legend aria-label="Shard and state legend"></div>
         </div>
 
         <div class="overview-canvas-wrap">
@@ -82,12 +75,13 @@
     <section class="allocation-panel">
       <div class="panel-heading">
         <div><h2>Allocation</h2><p>Count of ranges currently routed to each shard</p></div>
-        <a class="text-link" href="task.html?id=tg-7f31&amp;count=240">Open active move →</a>
+        <a class="text-link" href="task.html">Open failed move →</a>
       </div>
       <div class="allocation-bars" data-allocation-bars></div>
     </section>
   </main>
 
+  <script src="../demo-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

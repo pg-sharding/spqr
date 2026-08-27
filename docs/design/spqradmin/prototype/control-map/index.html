@@ -11,7 +11,7 @@
   <header class="app-header">
     <a class="brand" href="../" aria-label="SPQRADMIN prototype home"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
     <nav class="primary-nav" aria-label="Control Map pages">
-      <a class="active" href="index.html">Control map</a><a href="range.html?id=kr-0100&amp;count=240">Range detail</a><a href="task.html?id=tg-7f31&amp;count=240">Move detail</a>
+      <a href="cluster.html">Cluster</a><a class="active" href="index.html">Control map</a><a href="range.html">Range</a><a href="shard.html">Shard</a><a href="task.html">Move</a>
     </nav>
     <div class="header-actions">
       <select class="concept-switch" aria-label="Concept"><option value="../atlas/index.html">Concept A · Atlas</option><option value="../transfer-desk/index.html">Concept B · Transfer Desk</option><option value="../control-map/index.html" selected>Concept C · Control Map</option></select>
@@ -22,16 +22,18 @@
   <main class="workspace-shell">
     <section class="map-workspace">
       <div class="page-heading">
-        <div><p class="eyebrow">DISTRIBUTION</p><h1>customers_by_id</h1><p class="subtitle"><span data-range-total>240</span> ranges · topology and operations in one view</p></div>
+        <div><p class="eyebrow">DISTRIBUTION</p><h1 data-distribution-name>customers_by_id</h1><p class="subtitle"><span data-range-total>240</span> ranges across <span data-shard-total>8</span> shards · topology and operations in one view</p></div>
         <div class="page-controls">
-          <label>Scale<select data-scale><option value="12">12 KR</option><option value="240" selected>240 KR</option><option value="1842">1,842 KR</option></select></label>
+          <label>Distribution<select data-distribution-picker></select></label>
+          <label>Key ranges<select data-scale><option value="12">12 KR</option><option value="240" selected>240 KR</option><option value="1842">1,842 KR</option></select></label>
+          <label>Shards<select data-shard-scale><option value="2">2</option><option value="8" selected>8</option><option value="32">32</option><option value="128">128</option></select></label>
           <label>Find range<input data-jump type="search" value="kr-0100"></label>
           <button class="primary-button" type="button" data-jump-button>Locate</button>
         </div>
       </div>
 
       <section class="distribution-card">
-        <div class="panel-heading"><div><h2>Ordered ownership map</h2><p data-density-label>Every mark is one key range.</p></div><div class="legend"><span><i class="s1"></i>shard-01</span><span><i class="s2"></i>shard-02</span><span><i class="s3"></i>shard-03</span><span><i class="lock"></i>LOCKED</span></div></div>
+        <div class="panel-heading"><div><h2>Ordered ownership map</h2><p data-density-label>Every mark is one key range.</p></div><div class="legend"><span><i class="lock"></i>LOCKED</span><span>Exact shard IDs appear in the viewport</span></div></div>
         <div class="macro-map"><canvas data-map-canvas role="img" aria-label="Full ordered key range map"></canvas></div>
         <div class="map-toolbar"><strong data-window-label>Ranges 92–109</strong><span>Click a range to connect it with current activity.</span></div>
         <div class="range-strip" data-range-strip></div>
@@ -42,12 +44,13 @@
 
     <aside class="activity-rail">
       <div class="rail-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Moves</h2></div><span class="live-indicator">LIVE</span></div>
-      <div class="rail-summary"><span><b>1</b> error</span><span><b>2</b> running</span><span><b>4</b> planned</span></div>
+      <div class="rail-summary"><span><b data-activity-errors>1</b> error</span><span><b data-activity-running>2</b> running</span><span><b data-activity-planned>4</b> planned</span></div>
       <div class="activity-list" data-activity-list></div>
       <div class="rail-note"><strong>Why this rail exists</strong><p>Selecting an incident locates its range; selecting a range shows its incident.</p></div>
     </aside>
   </main>
 
+  <script src="../demo-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
