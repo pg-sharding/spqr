@@ -121,10 +121,9 @@ func (q *PgDCStateKeeper) getConn(ctx context.Context, txid string) (*pgxpool.Co
 	return conn, nil
 }
 
+// releaseConn releases connection back into its pool/
+// WARNING: caller should acquire mutex
 func (q *PgDCStateKeeper) releaseConn(txid string) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
 	if conn, ok := q.conns[txid]; ok {
 		conn.Release()
 	}
