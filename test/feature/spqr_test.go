@@ -1580,13 +1580,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx.debug = debug
 
 	s.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
-		//tctx.cleanup()
-		tctx.composerEnv = []string{
-			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
-			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-			"ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-			"ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-		}
 		tctx.variables = make(map[string]any)
 		return ctx, nil
 	})
