@@ -14,8 +14,6 @@ services:
             POSTGRES_USER: regress
             POSTGRES_DB: regress
             PG_SYNC_REPLICA: true
-        # ports:
-        #     - "7432:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_1
@@ -25,8 +23,6 @@ services:
         environment:
             <<: *shard-env-common
             PG_MASTER: spqr_shard_1
-        # ports:
-        #     - "7532:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_1_replica
@@ -35,8 +31,6 @@ services:
         <<: *shard-common
         environment:
             <<: *shard-env-common
-        # ports:
-        #     - "7433:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_2
@@ -46,22 +40,15 @@ services:
         environment:
             <<: *shard-env-common
             PG_MASTER: spqr_shard_2
-        # ports:
-        #     - "7533:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_2_replica
         container_name: spqr_shard_2_replica
-
-
-
     shard3:
         <<: *shard-common
         environment: &shard-env-common
             POSTGRES_USER: regress
             POSTGRES_DB: regress
-        # ports:
-        #     - "7432:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_3
@@ -71,8 +58,6 @@ services:
         environment:
             <<: *shard-env-common
             PG_MASTER: spqr_shard_3
-        # ports:
-        #     - "7532:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_3_replica
@@ -81,8 +66,6 @@ services:
         <<: *shard-common
         environment:
             <<: *shard-env-common
-        # ports:
-        #     - "7433:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_4
@@ -92,24 +75,26 @@ services:
         environment:
             <<: *shard-env-common
             PG_MASTER: spqr_shard_4
-        # ports:
-        #     - "7533:6432"
         networks:
             xproto_test_net:
         hostname: spqr_shard_4_replica
         container_name: spqr_shard_4_replica
+
     router:
         build:
             dockerfile: ./test/xproto/router/Dockerfile
             context: ../../
-        # ports:
-        #     - "6432:6432"
         networks:
             xproto_test_net:
         environment:
             - ROUTER_CONFIG=/spqr/test/xproto/conf/router.yaml
         hostname: regress_router
         container_name: regress_router
+        healthcheck:
+            test: pg_isready -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 20
         depends_on:
             shard1:
                 condition: service_healthy

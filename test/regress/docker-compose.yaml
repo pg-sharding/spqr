@@ -2,8 +2,6 @@ services:
     x-shard-common:
         &shard-common
         image: ${SHARD_IMAGE:-spqr-shard-image}
-        # depends_on:
-            # - shard-image-mdb
 
     shard1:
         <<: *shard-common
@@ -129,6 +127,11 @@ services:
             - ROUTER_LOG=/var/log/spqr-router.log
         hostname: regress_router
         container_name: regress_router
+        healthcheck:
+            test: 'pg_isready -p 6432 -U regress -d regress'
+            interval: 10s
+            timeout: 3s
+            retries: 20
         depends_on:
             shard1:
                 condition: service_healthy
@@ -186,4 +189,3 @@ services:
             - router
             - coordinator
             - pooler
-            # - regress-mdb-image
