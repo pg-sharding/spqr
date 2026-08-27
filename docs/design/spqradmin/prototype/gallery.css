@@ -1,0 +1,77 @@
+:root {
+  --bg: #fff;
+  --surface: #f8fafc;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-soft: #eff6ff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--text); background: var(--surface); }
+a { color: inherit; }
+
+.gallery-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  min-height: 64px;
+  padding: 0 30px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, .94);
+  backdrop-filter: blur(14px);
+}
+
+.gallery-brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; text-decoration: none; }
+.gallery-brand img { width: 28px; height: 28px; }
+.gallery-nav { display: flex; gap: 4px; overflow-x: auto; }
+.gallery-nav a { padding: 8px 10px; border-radius: 8px; color: #475569; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.gallery-nav a:hover, .gallery-nav a.active { color: var(--primary-dark); background: var(--primary-soft); }
+.gallery-home { margin-left: auto; color: var(--muted); font-size: 13px; text-decoration: none; white-space: nowrap; }
+
+.gallery-main { width: min(1500px, calc(100% - 48px)); margin: 0 auto; padding: 48px 0 70px; }
+.gallery-intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; margin-bottom: 28px; }
+.eyebrow { margin: 0 0 8px; color: var(--primary-dark); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+h1 { margin: 0; font-size: clamp(2.3rem, 5vw, 4rem); line-height: 1; letter-spacing: -.04em; }
+.intro-copy { max-width: 680px; margin: 14px 0 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
+
+.scenario-controls { display: flex; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.scenario-controls label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 650; }
+.scenario-controls select { min-width: 92px; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--border); border-radius: 7px; background: white; color: var(--text); }
+
+.comparison-note { display: flex; align-items: center; gap: 9px; margin-bottom: 18px; color: var(--muted); font-size: 13px; }
+.comparison-note::before { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); content: ""; }
+.variant-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.variant-card { overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: white; box-shadow: 0 14px 40px rgba(15, 23, 42, .05); }
+.variant-heading { min-height: 154px; padding: 22px 22px 18px; }
+.variant-tag { display: inline-flex; margin-bottom: 14px; padding: 5px 8px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-dark); font-size: 10px; font-weight: 800; letter-spacing: .05em; }
+.variant-heading h2 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.02em; }
+.variant-heading p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.preview-window { position: relative; width: 100%; height: 280px; overflow: hidden; border-block: 1px solid var(--border); background: #eef2f7; }
+.preview-window iframe { position: absolute; top: 0; left: 0; width: 1360px; height: 820px; border: 0; transform-origin: top left; pointer-events: none; }
+.variant-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; }
+.variant-actions span { color: var(--muted); font-size: 11px; }
+.open-variant { color: var(--primary-dark); font-size: 13px; font-weight: 700; text-decoration: none; }
+.open-variant:hover { text-decoration: underline; }
+
+@media (max-width: 1100px) {
+  .variant-grid { grid-template-columns: 1fr; }
+  .variant-heading { min-height: 0; }
+}
+
+@media (max-width: 760px) {
+  .gallery-header { flex-wrap: wrap; gap: 4px 12px; padding: 10px 16px; }
+  .gallery-nav { order: 3; width: 100%; }
+  .gallery-home { margin-left: auto; }
+  .gallery-main { width: min(100% - 28px, 1500px); padding-top: 32px; }
+  .gallery-intro { align-items: flex-start; flex-direction: column; }
+  .scenario-controls { width: 100%; flex-wrap: wrap; }
+  .scenario-controls label { flex: 1; }
+  .scenario-controls select { width: 100%; }
+}

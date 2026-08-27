@@ -11,13 +11,15 @@ Open the printed URL without adding punctuation:
 
 http://127.0.0.1:8766/
 
-The start page links to all three concepts. Direct links:
+The start page groups prototypes by page. Direct comparison links:
 
-- Atlas: http://127.0.0.1:8766/atlas/
-- Transfer Desk: http://127.0.0.1:8766/transfer-desk/
-- Control Map: http://127.0.0.1:8766/control-map/
+- Cluster: http://127.0.0.1:8766/cluster/
+- Distribution: http://127.0.0.1:8766/distribution/
+- Range: http://127.0.0.1:8766/range/
+- Shard: http://127.0.0.1:8766/shard/
+- Move: http://127.0.0.1:8766/move/
 
-Each concept now includes cluster, distribution, shard, key-range, and move pages. Use the controls in the prototype to switch between 1/8/32 distributions, 2/8/32/128 shards, and 12/240/1,842 key ranges per distribution.
+Each gallery compares three visual variants using the same demo data. Use the controls to switch between 1/8/32 distributions, 2/8/32/128 shards, and 12/240/1,842 key ranges per distribution.
 
 Stop the server with `Ctrl+C`.
 

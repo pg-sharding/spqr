@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPQRADMIN · Cluster prototypes</title>
+  <link rel="icon" href="../spqr_icon-main.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../gallery.css">
+</head>
+<body>
+  <header class="gallery-header">
+    <a class="gallery-brand" href="../"><img src="../spqr_icon-main.svg" alt=""><span>SPQRADMIN</span></a>
+    <nav class="gallery-nav" aria-label="Prototype pages"><a class="active" data-gallery-link href="../cluster/">Cluster</a><a data-gallery-link href="../distribution/">Distribution</a><a data-gallery-link href="../range/">Range</a><a data-gallery-link href="../shard/">Shard</a><a data-gallery-link href="../move/">Move</a></nav>
+    <a class="gallery-home" href="../">All pages</a>
+  </header>
+  <main class="gallery-main">
+    <section class="gallery-intro">
+      <div><p class="eyebrow">PAGE PROTOTYPES</p><h1>Cluster</h1><p class="intro-copy">Compare three answers to the same question: what should an operator understand first when a cluster contains many distributions and shards?</p></div>
+      <div class="scenario-controls"><label>Distributions<select data-scenario="distributions"><option>1</option><option>8</option><option>32</option></select></label><label>Shards<select data-scenario="shards"><option>2</option><option>8</option><option>32</option><option>128</option></select></label><label>KR / distribution<select data-scenario="count"><option>12</option><option>240</option><option>1842</option></select></label></div>
+    </section>
+    <p class="comparison-note">Same demo cluster and scale; only the information priority changes.</p>
+    <section class="variant-grid">
+      <article class="variant-card"><div class="variant-heading"><span class="variant-tag">VARIANT A</span><h2>Inventory summary</h2><p>Lead with totals and a distribution table. Best for orientation and documentation screenshots.</p></div><div class="preview-window"><iframe title="Cluster inventory summary" data-variant-path="../atlas/cluster.html"></iframe></div><div class="variant-actions"><span>Summary first</span><a class="open-variant" data-variant-path="../atlas/cluster.html">Open full prototype →</a></div></article>
+      <article class="variant-card"><div class="variant-heading"><span class="variant-tag">VARIANT B</span><h2>Operations first</h2><p>Lead with move activity and exceptions. Best when the operator arrives because something failed.</p></div><div class="preview-window"><iframe title="Cluster operations overview" data-variant-path="../transfer-desk/cluster.html"></iframe></div><div class="variant-actions"><span>Incidents first</span><a class="open-variant" data-variant-path="../transfer-desk/cluster.html">Open full prototype →</a></div></article>
+      <article class="variant-card"><div class="variant-heading"><span class="variant-tag">VARIANT C</span><h2>Topology map</h2><p>Lead with placement across shards while keeping failures visible. Best for explaining the cluster visually.</p></div><div class="preview-window"><iframe title="Cluster topology map" data-variant-path="../control-map/cluster.html"></iframe></div><div class="variant-actions"><span>Placement first</span><a class="open-variant" data-variant-path="../control-map/cluster.html">Open full prototype →</a></div></article>
+    </section>
+  </main>
+  <script src="../gallery.js"></script>
+</body>
+</html>
