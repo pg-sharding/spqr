@@ -40,6 +40,7 @@ type Coordinator struct {
 	DataMoveAwaitPIDTimeout    time.Duration `json:"data_move_await_pid_timeout" toml:"data_move_await_pid_timeout" yaml:"data_move_await_pid_timeout"`
 	DataMoveOptimisticPIDAwait bool          `json:"data_move_optimistic_pid_await" toml:"data_move_optimistic_pid_await" yaml:"data_move_optimistic_pid_await"`
 	DataMoveIdleInTxTimeout    string        `json:"data_move_idle_in_tx_timeout" toml:"data_move_idle_in_tx_timeout" yaml:"data_move_idle_in_tx_timeout"`
+	DataMoveDisableLogs        bool          `json:"data_move_disable_logs" toml:"data_move_disable_logs" yaml:"data_move_disable_logs"`
 
 	UseSPQRGuard             bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
