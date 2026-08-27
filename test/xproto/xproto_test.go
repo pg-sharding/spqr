@@ -6993,3 +6993,90 @@ func TestTypesInXprotoParamOids(t *testing.T) {
 	}
 	protoTestRunner(t, frontend, tt)
 }
+
+func TestDescribeNonDefaultPortals(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		/* create named portal, describe, close, re-create, execute */
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "stmt_portals_d_1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "stmt_portals_d_2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "stmt_portals_d_1",
+					Query: "SELECT FROM t /*__spqr__execute_on: sh1*/",
+				},
+				&pgproto3.Parse{
+					Name:  "stmt_portals_d_2",
+					Query: "DELETE FROM t /*__spqr__execute_on: sh1*/",
+				},
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					DestinationPortal: "P1",
+					PreparedStatement: "stmt_portals_d_1",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "P2",
+					PreparedStatement: "stmt_portals_d_2",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "P1",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "P2",
+				},
+
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{},
+				&pgproto3.NoData{},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}

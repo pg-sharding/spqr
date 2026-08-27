@@ -38,12 +38,20 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 
 			buf := bytes.NewBuffer(bindParams[ind])
 
-			if len(bindParams[ind]) == 4 {
+			/* XXX: Check OID of param? */
+
+			if len(bindParams[ind]) == 2 {
+				var tmpnum int16
+				err = binary.Read(buf, binary.BigEndian, &tmpnum)
+				num = int64(tmpnum)
+			} else if len(bindParams[ind]) == 4 {
 				var tmpnum int32
 				err = binary.Read(buf, binary.BigEndian, &tmpnum)
 				num = int64(tmpnum)
-			} else {
+			} else if len(bindParams[ind]) == 8 {
 				err = binary.Read(buf, binary.BigEndian, &num)
+			} else {
+				return nil, ErrResolvingValue
 			}
 			if err != nil {
 				return nil, ErrResolvingValue

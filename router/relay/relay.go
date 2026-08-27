@@ -99,9 +99,12 @@ type RelayStateImpl struct {
 
 	msgBuf []pgproto3.FrontendMessage
 
-	bindQueryPlan       plan.Plan
-	bindQueryPlanMP     map[string]plan.Plan
+	bindQueryPlan   plan.Plan
+	bindQueryPlanMP map[string]plan.Plan
+
+	/* Client-side names */
 	lastBindName        string
+	lastBindNameMP      map[string]string
 	unnamedPortalExists bool
 
 	execute   func(maxrows uint32) error
@@ -151,6 +154,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		executeMp:           map[string]func(uint32) error{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
+		lastBindNameMP:      map[string]string{},
 		bindQueryPlan:       nil,
 		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
@@ -529,6 +533,7 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatemen
 	spqrlog.Zero.Debug().
 		Str("name", qname).
 		Str("query", def.Query).
+		Uints32("params", def.ParameterOIDs).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
 		Msg("deploy prepared statement")
@@ -575,6 +580,9 @@ func (rst *RelayStateImpl) relayParsePrepared(
 		return nil, err
 	}
 
+	/* From now, our cached portal description is stale */
+	delete(rst.savedPortalDesc, name)
+
 	rst.savedRM[name] = rm
 
 	def := &prepstatement.PreparedStatementDefinition{
@@ -582,9 +590,6 @@ func (rst *RelayStateImpl) relayParsePrepared(
 		Query:         query,
 		ParameterOIDs: parameterOIDs,
 	}
-
-	/* From now, our cached portal description is stale */
-	delete(rst.savedPortalDesc, name)
 
 	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
 	* or select __spqr__virtual_func()? ?*/
@@ -644,6 +649,7 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	spqrlog.Zero.Debug().
 		Str("name", name).
 		Str("query", query).
+		Uints32("params", parameterOIDs).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
 		Msg("Parsing prepared statement")
@@ -675,7 +681,9 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	return retMsg, nil
 }
 
-func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
+func (rst *RelayStateImpl) describeDeployablePlan(
+	objType byte,
+	name string,
 	dMsg *pgproto3.Describe, p plan.Plan) (*PortalDesc, error) {
 
 	/* SingleShard or random shard plans */
@@ -685,18 +693,20 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 		return nil, err
 	}
 
-	rst.routingDecisionPlan = p
-
-	if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
-		return nil, err
-	}
-
 	var bnd *pgproto3.Bind
-
+	var bindName string
 	if name == "" {
 		bnd = &rst.saveBind
+		bindName = rst.lastBindName
 	} else {
 		bnd = rst.saveBindNamed[name]
+		bindName = rst.lastBindNameMP[name]
+	}
+
+	rst.routingDecisionPlan = p
+
+	if _, _, err := rst.gangDeployPrepStmtByName(bindName); err != nil {
+		return nil, err
 	}
 
 	/* XXX: maybe optimize allocation here */
@@ -713,7 +723,7 @@ func (rst *RelayStateImpl) describeDeployablePlan(objType byte, name string,
 		return nil, err
 	}
 
-	rst.savedPortalDesc[rst.lastBindName] = cachedPd
+	rst.savedPortalDesc[bindName] = cachedPd
 	return cachedPd, nil
 }
 
@@ -731,6 +741,7 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Str("last-bind-name", rst.lastBindName).
+			Str("name", name).
 			Msg("Describe portal")
 
 		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
@@ -904,7 +915,12 @@ func (rst *RelayStateImpl) BindPrepared(
 		return err
 	}
 
-	rst.lastBindName = preparedStatement
+	if destinationPortal != "" {
+		rst.lastBindNameMP[destinationPortal] = preparedStatement
+	} else {
+		rst.lastBindName = preparedStatement
+	}
+
 	rst.unnamedPortalExists = false
 
 	/* only populate map for non-empty portal */
@@ -1104,6 +1120,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 
 	switch currentMsg := msg.(type) {
 	case *pgproto3.Parse:
+
 		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
 			return err
 		} else if retMsg != nil {
