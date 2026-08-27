@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -1121,9 +1120,8 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 
 	switch currentMsg := msg.(type) {
 	case *pgproto3.Parse:
-		oids := slices.Clone(currentMsg.ParameterOIDs)
 
-		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, oids); err != nil {
+		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
 			return err
 		} else if retMsg != nil {
 			if err := rst.Client().Send(retMsg); err != nil {
