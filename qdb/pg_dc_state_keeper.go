@@ -11,6 +11,7 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -38,7 +39,7 @@ type PgDCStateKeeper struct {
 	storage []string
 	pooler  map[string]*pgxpool.Pool
 	locks   map[string]any
-	conns   map[string]*pgxpool.Conn
+	conns   *sync.Map
 }
 
 func (q *PgDCStateKeeper) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
@@ -103,7 +104,11 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 
 func (q *PgDCStateKeeper) getConn(ctx context.Context, txid string) (*pgxpool.Conn, error) {
 	if txid != "" {
-		if conn, ok := q.conns[txid]; ok {
+		if connRaw, ok := q.conns.Load(txid); ok {
+			conn, ok := connRaw.(*pgxpool.Conn)
+			if !ok {
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected value in PgDCStateKeeper.conns: %#v", connRaw)
+			}
 			if err := conn.Ping(ctx); err == nil {
 				return conn, nil
 			}
@@ -117,18 +122,19 @@ func (q *PgDCStateKeeper) getConn(ctx context.Context, txid string) (*pgxpool.Co
 	if err != nil {
 		return nil, err
 	}
-	q.conns[txid] = conn
+	q.conns.Store(txid, conn)
 	return conn, nil
 }
 
-// releaseConn releases connection back into its pool/
-// WARNING: caller should acquire mutex
+// releaseConn releases connection back into its pool
 func (q *PgDCStateKeeper) releaseConn(txid string) {
-	if conn, ok := q.conns[txid]; ok {
-		conn.Release()
+	if connRaw, ok := q.conns.Load(txid); ok {
+		if conn, ok := connRaw.(*pgxpool.Conn); ok {
+			conn.Release()
+		}
 	}
 
-	delete(q.conns, txid)
+	q.conns.Delete(txid)
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
@@ -436,7 +442,7 @@ func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {
 		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
 		locks:  map[string]any{},
-		conns:  map[string]*pgxpool.Conn{},
+		conns:  &sync.Map{},
 	}
 }
 
