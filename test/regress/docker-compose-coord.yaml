@@ -141,7 +141,7 @@ services:
         hostname: regress_router
         container_name: regress_router
         healthcheck:
-            test: 'pg_isready -p 6432 -U regress -d regress'
+            test: 'pg_isready -p 6432 -U regress -d spqr-console -c "SHOW startup_finished"'
             interval: 10s
             timeout: 3s
             retries: 20
