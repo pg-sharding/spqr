@@ -91,6 +91,8 @@ func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Avoid server-side prepared statements; they break when connections go through a pooler in transaction mode.
+	connConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
 	if err != nil {
 		return nil, err
