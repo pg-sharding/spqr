@@ -129,7 +129,7 @@ services:
       - "7022:7002"
       - "7023:7003"
     environment:
-      - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_CONFIG=${ROUTER_CONFIG:-/spqr/test/feature/conf/router.yaml}
       - ROUTER_LOG=/var/log/spqr-router.log
       - COORDINATOR_CONFIG=${ROUTER_2_COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
     hostname: regress_router_2
