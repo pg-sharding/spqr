@@ -14,7 +14,7 @@ require (
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.14
 	github.com/google/uuid v1.6.0
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jcmturner/gofork v1.7.6
