@@ -424,6 +424,24 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.INTEGER,
 			},
 		},
+		{
+			query: "BEGIN",
+			exp: []int{
+				spqrparser.BEGIN,
+			},
+		},
+		{
+			query: "COMMIT",
+			exp: []int{
+				spqrparser.COMMIT,
+			},
+		},
+		{
+			query: "ROLLBACK",
+			exp: []int{
+				spqrparser.ROLLBACK,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

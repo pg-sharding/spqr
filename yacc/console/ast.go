@@ -450,6 +450,10 @@ type InstanceControlPoint struct {
 
 func (*InstanceControlPoint) iStatement() {}
 
+type Begin struct{}
+type Commit struct{}
+type Rollback struct{}
+
 //revive:disable:var-naming
 const (
 	SHOW_KIND_UNSPEC = 0
@@ -551,6 +555,9 @@ func (*System) iStatement()                             {}
 func (*Invalidate) iStatement()                         {}
 func (*SyncReferenceTables) iStatement()                {}
 func (*AlterReferenceTableStorage) iStatement()         {}
+func (*Begin) iStatement()                              {}
+func (*Commit) iStatement()                             {}
+func (*Rollback) iStatement()                           {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
