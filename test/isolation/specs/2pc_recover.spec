@@ -1,5 +1,4 @@
-
-# The most basic "REDISTRIBUTE KEY RANGE" behaviour test
+# Two-phase transaction recovery test
 
 setup
 {

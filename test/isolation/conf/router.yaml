@@ -22,6 +22,7 @@ query_routing:
     use_spqrguard: true
     enhanced_multishard_processing: true
 store_tx_data_postgresql: True
+2pc_tx_advisory_lock: true
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt

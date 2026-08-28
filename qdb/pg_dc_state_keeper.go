@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spaolacci/murmur3"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -38,6 +39,7 @@ type PgDCStateKeeper struct {
 	storage []string
 	pooler  map[string]*pgxpool.Pool
 	locks   map[string]any
+	conns   *sync.Map
 }
 
 func (q *PgDCStateKeeper) getShardMasterConn(ctx context.Context, shard *config.ShardConnect) (*pgxpool.Conn, error) {
@@ -85,7 +87,7 @@ func (q *PgDCStateKeeper) getStorageShardConnect() (*config.ShardConnect, error)
 }
 
 func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, error) {
-	conn, err := q.getConn(ctx)
+	conn, err := q.getConn(ctx, txid)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +102,18 @@ func (q *PgDCStateKeeper) getTx(ctx context.Context, txid string) (*pgx.Tx, erro
 	return &tx, nil
 }
 
-func (q *PgDCStateKeeper) getConn(ctx context.Context) (*pgxpool.Conn, error) {
+func (q *PgDCStateKeeper) getConn(ctx context.Context, txid string) (*pgxpool.Conn, error) {
+	if txid != "" {
+		if connRaw, ok := q.conns.Load(txid); ok {
+			conn, ok := connRaw.(*pgxpool.Conn)
+			if !ok {
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected value in PgDCStateKeeper.conns: %#v", connRaw)
+			}
+			if err := conn.Ping(ctx); err == nil {
+				return conn, nil
+			}
+		}
+	}
 	shardCfg, err := q.getStorageShardConnect()
 	if err != nil {
 		return nil, err
@@ -109,11 +122,23 @@ func (q *PgDCStateKeeper) getConn(ctx context.Context) (*pgxpool.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	q.conns.Store(txid, conn)
 	return conn, nil
 }
 
+// releaseConn releases connection back into its pool
+func (q *PgDCStateKeeper) releaseConn(txid string) {
+	if connRaw, ok := q.conns.Load(txid); ok {
+		if conn, ok := connRaw.(*pgxpool.Conn); ok {
+			conn.Release()
+		}
+	}
+
+	q.conns.Delete(txid)
+}
+
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) AcquireTxOwnership(_ context.Context, txid string) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -123,6 +148,22 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(_ context.Context, txid string) (bo
 	}
 
 	q.locks[txid] = true
+
+	if config.RouterConfig().AdvisoryLockTwoPhaseTx {
+		// Acquire advisory lock in postgres
+		conn, err := q.getConn(ctx, txid)
+		if err != nil {
+			return false, err
+		}
+		hasher := murmur3.New64()
+		if _, err := hasher.Write([]byte(txid)); err != nil {
+			return false, err
+		}
+		if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
+			return false, err
+		}
+	}
+
 	return true, nil
 }
 
@@ -186,12 +227,26 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 }
 
 // ReleaseTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) ReleaseTxOwnership(_ context.Context, txid string) error {
+func (q *PgDCStateKeeper) ReleaseTxOwnership(ctx context.Context, txid string) error {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: release tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	delete(q.locks, txid)
+	if config.RouterConfig().AdvisoryLockTwoPhaseTx {
+		conn, err := q.getConn(ctx, txid)
+		if err != nil {
+			return err
+		}
+		hasher := murmur3.New64()
+		if _, err := hasher.Write([]byte(txid)); err != nil {
+			return err
+		}
+		if _, err = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", int64(hasher.Sum64())); err != nil {
+			return err
+		}
+		q.releaseConn(txid)
+	}
 	return nil
 }
 
@@ -232,7 +287,7 @@ func (q *PgDCStateKeeper) getTxStatusInner(ctx context.Context, txid string, tx 
 }
 
 func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
-	conn, err := q.getConn(ctx)
+	conn, err := q.getConn(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +305,7 @@ func (q *PgDCStateKeeper) ListTXNames(ctx context.Context) ([]string, error) {
 }
 
 func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error) {
-	conn, err := q.getConn(ctx)
+	conn, err := q.getConn(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +353,7 @@ func (q *PgDCStateKeeper) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, er
 
 // TXInfo implements [DCStateKeeper].
 func (q *PgDCStateKeeper) TXInfo(ctx context.Context, gid string) (TwoPCInfo, error) {
-	conn, err := q.getConn(ctx)
+	conn, err := q.getConn(ctx, "")
 	if err != nil {
 		return TwoPCInfo{}, err
 	}
@@ -320,7 +375,7 @@ func (q *PgDCStateKeeper) TXInfo(ctx context.Context, gid string) (TwoPCInfo, er
 
 // TXInfos implements [DCStateKeeper].
 func (q *PgDCStateKeeper) TXInfos(ctx context.Context) ([]TwoPCInfo, error) {
-	conn, err := q.getConn(ctx)
+	conn, err := q.getConn(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +438,7 @@ func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) error {
 }
 
 func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
-	conn, err := q.getConn(ctx)
+	conn, err := q.getConn(ctx, "")
 	if err != nil {
 		return err
 	}
@@ -398,6 +453,7 @@ func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {
 		shards: shards,
 		pooler: make(map[string]*pgxpool.Pool),
 		locks:  map[string]any{},
+		conns:  &sync.Map{},
 	}
 }
 

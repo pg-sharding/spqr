@@ -161,13 +161,15 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 }
 
 func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string) error {
-	acq, err := d.d.AcquireTxOwnership(ctx, gid)
+	recoverCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid)
 	if err != nil {
 		return err
 	}
 	if acq {
 		/* Try to fix things  */
-		if err := d.Recover2PhaseCommitTX(ctx, gid); err != nil {
+		if err := d.Recover2PhaseCommitTX(recoverCtx, gid); err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to recover unfinished distributed tx %q: %v", gid, err)
 		}
 	}
