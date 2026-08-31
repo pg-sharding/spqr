@@ -454,6 +454,7 @@ rerr
 rerrors
 resharding
 reshke
+resynced
 retcode
 retmsg
 retryable
