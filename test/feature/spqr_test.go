@@ -337,13 +337,6 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	return db, nil
 }
 
-// routerSQLService returns the service SQL traffic addressed to the given router must
-// actually be sent to. Normally that is the router itself. When SPQR_FEATURE_POOLER names
-// a pooler service (see the "odyssey" service in docker-compose.yaml) and that pooler is
-// part of the current topology, client traffic for the main router goes through it
-// instead, which is how the whole feature suite can be replayed through Odyssey.
-// The router admin console is never proxied, and neither is any router other than the
-// main one, because the pooler is configured with a single upstream.
 func (tctx *testContext) routerSQLService(service string) string {
 	pooler := os.Getenv("SPQR_FEATURE_POOLER")
 	if pooler == "" || service != spqrRouterName {
