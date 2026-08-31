@@ -185,9 +185,6 @@ func (dc *DockerComposer) Up(env []string) error {
 }
 
 // Down tears all containers/VMs down.
-// The env of the last Up is replayed, because "docker compose down" skips services that
-// are not enabled by the current COMPOSE_PROFILES and would leave their containers
-// running, making the next Up fail on a container name conflict.
 func (dc *DockerComposer) Down() error {
 	return dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, dc.upEnv)
 }
