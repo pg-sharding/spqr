@@ -189,6 +189,8 @@ clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
 FEATURE_TEST_ENV = GODOG_FEATURE_DIR=$${GODOG_FEATURE_DIR:-generatedFeatures} GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature/feature.xml}
+FEATURE_TEST_TIMEOUT ?= 150m
+RUN_FEATURE_TEST_ENV ?= $(FEATURE_TEST_ENV)
 
 feature_test_ci:
 	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
@@ -199,8 +201,8 @@ feature_test_ci:
 	fi
 	docker compose build spqr-base-image
 	go build ./test/feature/...
-	mkdir ./test/feature/logs
-	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
+	mkdir -p ./test/feature/logs
+	(cd test/feature; $(RUN_FEATURE_TEST_ENV) go test -timeout $(FEATURE_TEST_TIMEOUT))
 
 feature_test: clean_feature_test build_images
 	make split_feature_test
@@ -224,22 +226,11 @@ prepare_feature_test_odyssey:
 # Runs the Odyssey scenarios against a single Odyssey version, for example:
 #   make feature_test_odyssey ODYSSEY_IMAGE=ghcr.io/yandex/odyssey:1.5.0
 feature_test_odyssey: clean_feature_test build_images prepare_feature_test_odyssey
-	go build ./test/feature/...
 	rm -rf ./test/feature/logs
-	mkdir ./test/feature/logs
-	(cd test/feature; $(ODYSSEY_TEST_ENV) go test -timeout 60m)
+	$(MAKE) RUN_FEATURE_TEST_ENV="$(ODYSSEY_TEST_ENV)" FEATURE_TEST_TIMEOUT=60m feature_test_ci
 
 feature_test_odyssey_ci: prepare_feature_test_odyssey
-	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
-		echo "Rebuild";\
-		docker compose build spqr-shard-image;\
-	else\
-		docker load -i ${CACHE_FILE_SHARD};\
-	fi
-	docker compose build spqr-base-image
-	go build ./test/feature/...
-	mkdir -p ./test/feature/logs
-	(cd test/feature; $(ODYSSEY_TEST_ENV) go test -timeout 60m)
+	$(MAKE) RUN_FEATURE_TEST_ENV="$(ODYSSEY_TEST_ENV)" FEATURE_TEST_TIMEOUT=60m feature_test_ci
 
 ####################### LINTERS #######################
 
