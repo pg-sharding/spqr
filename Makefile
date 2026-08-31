@@ -176,8 +176,14 @@ split_feature_test_old:
 	docker compose build slicer
 	(cd test/feature/features; tar -c .) | docker compose run slicer | (mkdir test/feature/generatedFeatures; cd test/feature/generatedFeatures; tar -x)
 
+# Features excluded from the general feature test split because a dedicated job owns them.
+# odyssey.feature is run by feature_test_odyssey against several Odyssey versions, so
+# running it here as well would only repeat the default version.
+SPLIT_FEATURE_EXCLUDE ?= odyssey.feature
+
 split_feature_test:
 	mkdir test/feature/generatedFeatures && cp test/feature/features/* test/feature/generatedFeatures
+	cd test/feature/generatedFeatures && rm -f $(SPLIT_FEATURE_EXCLUDE)
 
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
@@ -202,6 +208,38 @@ feature_test: clean_feature_test build_images
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
 	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
+
+#################### ODYSSEY COMPATIBILITY ####################
+
+# Odyssey version under test. Public image, see the "odyssey" service in
+# test/feature/docker-compose.yaml and test/feature/README.md.
+ODYSSEY_IMAGE ?= ghcr.io/yandex/odyssey:1.5.1
+
+ODYSSEY_TEST_ENV = ODYSSEY_IMAGE=$(ODYSSEY_IMAGE) GODOG_FEATURE_DIR=generatedFeatures GODOG_FEATURE=odyssey \
+	GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature/odyssey.xml}
+
+prepare_feature_test_odyssey:
+	mkdir -p test/feature/generatedFeatures && cp test/feature/features/odyssey.feature test/feature/generatedFeatures
+
+# Runs the Odyssey scenarios against a single Odyssey version, for example:
+#   make feature_test_odyssey ODYSSEY_IMAGE=ghcr.io/yandex/odyssey:1.5.0
+feature_test_odyssey: clean_feature_test build_images prepare_feature_test_odyssey
+	go build ./test/feature/...
+	rm -rf ./test/feature/logs
+	mkdir ./test/feature/logs
+	(cd test/feature; $(ODYSSEY_TEST_ENV) go test -timeout 60m)
+
+feature_test_odyssey_ci: prepare_feature_test_odyssey
+	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
+		echo "Rebuild";\
+		docker compose build spqr-shard-image;\
+	else\
+		docker load -i ${CACHE_FILE_SHARD};\
+	fi
+	docker compose build spqr-base-image
+	go build ./test/feature/...
+	mkdir -p ./test/feature/logs
+	(cd test/feature; $(ODYSSEY_TEST_ENV) go test -timeout 60m)
 
 ####################### LINTERS #######################
 

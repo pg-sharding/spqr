@@ -189,6 +189,51 @@ services:
       - "qdb01"
     networks:
       - feature_test_network
+  # Odyssey connection pooler in front of the SPQR router, as it is deployed in production.
+  # Only started when COMPOSE_PROFILES contains "odyssey", so the default feature test
+  # topology is unchanged. The image is a public one and its version is selected by
+  # ODYSSEY_IMAGE, which is how the compatibility matrix in CI picks the version to test.
+  # The image builds its config from the environment below, so we do not have to maintain
+  # a config file per Odyssey version.
+  odyssey:
+    profiles:
+      - odyssey
+    image: ${ODYSSEY_IMAGE:-ghcr.io/yandex/odyssey:1.5.1}
+    # upstream publishes linux/amd64 only; pinning it keeps the service usable on
+    # arm64 development machines through emulation
+    platform: ${ODYSSEY_PLATFORM:-linux/amd64}
+    ports:
+      - "6444:6432"
+    environment:
+      LISTEN_PORT: 6432
+      PG_HOST: regress_router
+      PG_PORT: 6432
+      DB_NAME: regress
+      USER_NAME: regress
+      USER_AUTH_TYPE: clear_text
+      USER_PASSWORD: 12345678
+      POOL_TYPE: ${ODYSSEY_POOL_TYPE:-transaction}
+      POOL_SIZE: 20
+      # forward SPQR/shard errors to the client verbatim, otherwise error propagation
+      # through the pooler cannot be asserted
+      CLIENT_FWD_ERROR: "yes"
+      LOG_SESSION: "yes"
+      LOG_QUERY: "yes"
+      LOG_DEBUG: ${ODYSSEY_LOG_DEBUG:-no}
+    hostname: regress_odyssey
+    container_name: regress_odyssey
+    depends_on:
+      # only ordering, not readiness: Odyssey binds its listener before it talks to the
+      # router and reconnects on its own, and the test harness retries the connection.
+      # Waiting for the router to be healthy would break scenarios that deliberately
+      # leave the router unhealthy.
+      router:
+        condition: service_started
+    # No healthcheck on purpose: the contents of the Odyssey image differ between the
+    # versions under test (1.5.0 is Alpine and ships nc, 1.5.1 is Debian and does not),
+    # so readiness is established by the test harness, which retries the connection.
+    networks:
+      - feature_test_network
   qdb01: #the instance of etcd is hardcoded in feature test
     image: 'quay.io/coreos/etcd:v3.6.4'
     hostname: regress_qdb_0_1

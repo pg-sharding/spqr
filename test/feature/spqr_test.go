@@ -44,6 +44,7 @@ const (
 	spqrRouterName                  = "router"
 	spqrCoordinatorName             = "coordinator"
 	spqrQDBName                     = "qdb"
+	spqrPoolerName                  = "odyssey"
 	spqrPort                        = 6432
 	spqrConsolePort                 = 7432
 	spqrCoordinatorPort             = 7002
@@ -99,6 +100,31 @@ var routerLogsToSave = map[string]string{
 	"/var/log/spqr-router.log": "router.log",
 }
 
+// savePoolerLogs stores the container stdout of a pooler service, which is where
+// Odyssey writes its log.
+func (tctx *testContext) savePoolerLogs(scenario, service string) error {
+	logs, err := tctx.composer.GetContainerLogs(service)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = logs.Close() }()
+
+	content, err := io.ReadAll(logs)
+	if err != nil {
+		return err
+	}
+	if tctx.debug {
+		fmt.Printf("\"%s\" logs:\n", service)
+		fmt.Println(string(content))
+	}
+
+	logdir := filepath.Join("logs", scenario, service)
+	if err := os.MkdirAll(logdir, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(logdir, "odyssey.log"), content, 0644)
+}
+
 func (tctx *testContext) saveLogs(scenario string) error {
 	var errs []error
 	for _, service := range tctx.composer.Services() {
@@ -108,6 +134,12 @@ func (tctx *testContext) saveLogs(scenario string) error {
 			logsToSave = postgresqlLogsToSave
 		case strings.HasPrefix(service, spqrRouterName):
 			logsToSave = routerLogsToSave
+		case strings.HasPrefix(service, spqrPoolerName):
+			// Odyssey is a third-party image that logs to stdout only
+			if err := tctx.savePoolerLogs(scenario, service); err != nil {
+				errs = append(errs, err)
+			}
+			continue
 		default:
 			continue
 		}
@@ -305,10 +337,29 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	return db, nil
 }
 
+// routerSQLService returns the service SQL traffic addressed to the given router must
+// actually be sent to. Normally that is the router itself. When SPQR_FEATURE_POOLER names
+// a pooler service (see the "odyssey" service in docker-compose.yaml) and that pooler is
+// part of the current topology, client traffic for the main router goes through it
+// instead, which is how the whole feature suite can be replayed through Odyssey.
+// The router admin console is never proxied, and neither is any router other than the
+// main one, because the pooler is configured with a single upstream.
+func (tctx *testContext) routerSQLService(service string) string {
+	pooler := os.Getenv("SPQR_FEATURE_POOLER")
+	if pooler == "" || service != spqrRouterName {
+		return service
+	}
+	if _, err := tctx.composer.GetAddr(pooler, spqrPort); err != nil {
+		log.Printf("pooler %q is not part of the topology, connecting to %q directly: %s", pooler, service, err)
+		return service
+	}
+	return pooler
+}
+
 func (tctx *testContext) trySetupConnectionRouter(user, service string) (*sql.DB, error) {
 	routerService := strings.TrimSuffix(service, "-admin")
 	adminService := routerService + "-admin"
-	addrRouter, err := tctx.composer.GetAddr(service, spqrPort)
+	addrRouter, err := tctx.composer.GetAddr(tctx.routerSQLService(service), spqrPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get router addr %s: %s", routerService, err)
 	}
@@ -361,6 +412,23 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sql.DB, erro
 		return tctx.trySetupConnectionRouter(user, service)
 	}
 
+	// check pooler
+	if strings.HasPrefix(service, spqrPoolerName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get pooler addr %s: %s", service, err)
+		}
+		db, err := tctx.connectPostgresql(addr, user, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to pooler %s: %s", service, err)
+		}
+		if _, ok := tctx.userDbs[user]; !ok {
+			tctx.userDbs[user] = make(map[string]*sql.DB)
+		}
+		tctx.userDbs[user][service] = db
+		return db, nil
+	}
+
 	// check coordinator
 	if strings.HasPrefix(service, spqrCoordinatorName) {
 		addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
@@ -407,7 +475,7 @@ func (tctx *testContext) getPostgresqlConnection(user, host string) (*sql.DB, er
 	if err == nil {
 		return db, nil
 	}
-	addr, err := tctx.composer.GetAddr(host, spqrPort)
+	addr, err := tctx.composer.GetAddr(tctx.routerSQLService(host), spqrPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
 	}
@@ -653,10 +721,25 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 		}
 	}
 
+	// check pooler
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrPoolerName) {
+			addr, err := tctx.composer.GetAddr(service, spqrPort)
+			if err != nil {
+				return fmt.Errorf("failed to get pooler addr %s: %s", service, err)
+			}
+			db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
+			if err != nil {
+				return fmt.Errorf("failed to connect to pooler %s: %s", service, err)
+			}
+			tctx.userDbs[shardUser][service] = db
+		}
+	}
+
 	// check router
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrRouterName) {
-			addr, err := tctx.composer.GetAddr(service, spqrPort)
+			addr, err := tctx.composer.GetAddr(tctx.routerSQLService(service), spqrPort)
 			if err != nil {
 				return fmt.Errorf("failed to get router addr %s: %s", service, err)
 			}
@@ -801,9 +884,23 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		return nil
 	}
 
+	// check pooler
+	if strings.HasPrefix(service, spqrPoolerName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return fmt.Errorf("failed to get pooler addr %s: %s", service, err)
+		}
+		db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to connect to pooler %s: %s", service, err)
+		}
+		tctx.userDbs[shardUser][service] = db
+		return nil
+	}
+
 	// check router
 	if strings.HasPrefix(service, spqrRouterName) {
-		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		addr, err := tctx.composer.GetAddr(tctx.routerSQLService(service), spqrPort)
 		if err != nil {
 			return fmt.Errorf("failed to get router addr %s: %s", service, err)
 		}

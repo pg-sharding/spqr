@@ -64,6 +64,8 @@ type Composer interface {
 	RunAsyncCommand(service, cmd string) error
 	// Returns content of the file from container by path
 	GetFile(service, path string) (io.ReadCloser, error)
+	// Returns stdout/stderr of the container, for services that log to stdout only
+	GetContainerLogs(service string) (io.ReadCloser, error)
 	// CheckIfFileExist Checks if file exists
 	CheckIfFileExist(service, path string) (bool, error)
 	//The external port that the internalPort is mapped to
@@ -77,6 +79,9 @@ type DockerComposer struct {
 	api         *client.Client
 	containers  map[string]container.Summary
 	stopped     map[string]bool
+	// env of the last Up, replayed on Down so that services enabled through
+	// COMPOSE_PROFILES are torn down instead of being left behind
+	upEnv []string
 }
 
 // NewDockerComposer returns DockerComposer instance for specified compose file
@@ -147,6 +152,7 @@ func (dc *DockerComposer) fillContainers() error {
 
 // Up brings all containers up according to config
 func (dc *DockerComposer) Up(env []string) error {
+	dc.upEnv = env
 	err := dc.runCompose([]string{"up", "-d", "--force-recreate", "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))}, env)
 	if err != nil {
 		// to save container logs
@@ -178,9 +184,12 @@ func (dc *DockerComposer) Up(env []string) error {
 	return err
 }
 
-// Down tears all containers/VMs down
+// Down tears all containers/VMs down.
+// The env of the last Up is replayed, because "docker compose down" skips services that
+// are not enabled by the current COMPOSE_PROFILES and would leave their containers
+// running, making the next Up fail on a container name conflict.
 func (dc *DockerComposer) Down() error {
-	return dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, nil)
+	return dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, dc.upEnv)
 }
 
 // Services returns names/ids of running containers
@@ -365,6 +374,28 @@ func (dc *DockerComposer) GetFile(service, path string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	return newUntarReaderCloser(reader)
+}
+
+// GetContainerLogs returns stdout and stderr collected by docker for the given service.
+// Useful for images we do not control, which log to stdout instead of a file.
+func (dc *DockerComposer) GetContainerLogs(service string) (io.ReadCloser, error) {
+	cont, ok := dc.containers[service]
+	if !ok {
+		return nil, fmt.Errorf("no such service: %s", service)
+	}
+	raw, err := dc.api.ContainerLogs(context.Background(), cont.ID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = raw.Close() }()
+
+	// docker frames stdout and stderr for containers without a TTY, so the stream has to
+	// be demultiplexed before it is readable
+	var out bytes.Buffer
+	if _, err := stdcopy.StdCopy(&out, &out, raw); err != nil {
+		return nil, fmt.Errorf("failed demultiplexing logs of %s: %s", service, err)
+	}
+	return io.NopCloser(&out), nil
 }
 
 // CheckIfFileExist Checks if file exists

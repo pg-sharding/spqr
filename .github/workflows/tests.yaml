@@ -329,11 +329,85 @@ jobs:
           path: test-reports/feature/**/*.xml
           if-no-files-found: ignore
 
+  # Runs the Odyssey scenarios against every supported Odyssey version. Odyssey sits in
+  # front of the router in production, and the router has to keep working across pooler
+  # upgrades, so the version is a tested input rather than a pinned constant.
+  # See test/feature/README.md for how to add or retire a version.
+  feature-odyssey:
+    name: feature_odyssey
+    runs-on: ubuntu-latest
+    needs: feature_prepare
+    strategy:
+      # a failure on one Odyssey version must not hide the result on the others
+      fail-fast: false
+      matrix:
+        include:
+          - version: '1.5.0'
+            image: 'ghcr.io/yandex/odyssey:1.5.0'
+          - version: '1.5.1'
+            image: 'ghcr.io/yandex/odyssey:1.5.1'
+    steps:
+      - name: Install Latest Docker
+        run: |
+          for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          sudo chmod a+r /etc/apt/keyrings/docker.asc
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
+
+      - name: Load shard image
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
+
+      - name: Report the Odyssey image under test
+        run: |
+          docker pull "${{ matrix.image }}"
+          echo "odyssey image: ${{ matrix.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "resolved digest: $(docker image inspect --format '{{index .RepoDigests 0}}' '${{ matrix.image }}')" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Odyssey feature tests
+        run: make feature_test_odyssey_ci
+        env:
+          ODYSSEY_IMAGE: ${{ matrix.image }}
+          GODOG_JUNIT_REPORT: ../../test-reports/feature/odyssey-${{ matrix.version }}.xml
+
+      - name: Upload Odyssey feature test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-feature-odyssey-${{ matrix.version }}
+          path: test-reports/feature/**/*.xml
+          if-no-files-found: ignore
+
+      - name: Upload Odyssey logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-feature-odyssey-${{ matrix.version }}
+          path: test/feature/logs/**
+          if-no-files-found: ignore
+
   test-report:
     name: test-report
     runs-on: ubuntu-latest
     needs:
       - feature
+      - feature-odyssey
       - regress-pgdg
       - regress-clustered-pgdg
       - isolation-regress

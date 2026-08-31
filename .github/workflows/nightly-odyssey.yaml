@@ -1,0 +1,222 @@
+name: nightly odyssey
+
+# Nightly compatibility run for the Odyssey connection pooler.
+#
+# The per-pull-request job in tests.yaml covers the Odyssey versions we support today and
+# is meant to stay small. This workflow is where the coverage is widened: it adds the
+# moving upstream tags, so that a change in Odyssey that would break SPQR shows up here
+# before it reaches a release, and it replays the whole feature suite through the pooler.
+#
+# Nothing here gates a merge. Failures are a signal to look, not to revert.
+
+on:
+  schedule:
+    # 02:30 UTC, outside the working day of the teams that watch this repository
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      odyssey_image:
+        description: 'Odyssey image to test instead of the nightly set, e.g. ghcr.io/yandex/odyssey:1.5.1'
+        required: false
+        type: string
+
+env:
+  IMAGE_SHARD: spqr-shard-image
+
+jobs:
+  # Builds the shard image once and shares it with the jobs below, mirroring what
+  # feature_prepare does in tests.yaml.
+  prepare:
+    name: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      odyssey_versions: ${{ steps.versions.outputs.matrix }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      # A manual run tests exactly the image it was given; a scheduled run tests the
+      # nightly set. Keep this list in step with the pull request matrix in tests.yaml,
+      # see test/feature/README.md.
+      - name: Build the Odyssey version matrix
+        id: versions
+        env:
+          ODYSSEY_IMAGE_INPUT: ${{ inputs.odyssey_image }}
+        run: |
+          if [ -n "$ODYSSEY_IMAGE_INPUT" ]; then
+            matrix=$(jq -nc --arg image "$ODYSSEY_IMAGE_INPUT" '[{version:"manual", image:$image}]')
+          else
+            matrix='[
+              {"version":"1.5.0","image":"ghcr.io/yandex/odyssey:1.5.0"},
+              {"version":"1.5.1","image":"ghcr.io/yandex/odyssey:1.5.1"},
+              {"version":"latest","image":"ghcr.io/yandex/odyssey:latest"},
+              {"version":"master","image":"ghcr.io/yandex/odyssey:master"}
+            ]'
+          fi
+          echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
+
+      - name: Docker shard image caching
+        id: cache-shard-image
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
+
+      - name: Build shard image
+        if: steps.cache-shard-image.outputs.cache-hit != 'true'
+        run: make save_shard_image
+
+  # The Odyssey scenarios against a wider set of versions than a pull request runs,
+  # including the moving upstream tags.
+  odyssey-versions:
+    name: odyssey_versions
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      fail-fast: false
+      # includes the moving upstream tags, which resolve to something different every
+      # night: that is the point, but it also means they can go red for reasons that have
+      # nothing to do with this repository
+      matrix:
+        include: ${{ fromJson(needs.prepare.outputs.odyssey_versions) }}
+    steps:
+      - name: Install Latest Docker
+        run: |
+          for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          sudo chmod a+r /etc/apt/keyrings/docker.asc
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
+
+      - name: Load shard image
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
+
+      # A moving tag has to be reported as the digest it actually resolved to, otherwise a
+      # nightly failure cannot be tied to a specific Odyssey build.
+      - name: Report the Odyssey image under test
+        env:
+          ODYSSEY_IMAGE: ${{ matrix.image }}
+        run: |
+          docker pull "$ODYSSEY_IMAGE"
+          {
+            echo "odyssey image: $ODYSSEY_IMAGE"
+            echo "resolved digest: $(docker image inspect --format '{{index .RepoDigests 0}}' "$ODYSSEY_IMAGE")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Odyssey feature tests
+        run: make feature_test_odyssey_ci
+        env:
+          ODYSSEY_IMAGE: ${{ matrix.image }}
+          GODOG_JUNIT_REPORT: ../../test-reports/feature/odyssey-${{ matrix.version }}.xml
+
+      - name: Upload Odyssey feature test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-nightly-odyssey-${{ matrix.version }}
+          path: test-reports/feature/**/*.xml
+          if-no-files-found: ignore
+
+      - name: Upload Odyssey logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-nightly-odyssey-${{ matrix.version }}
+          path: test/feature/logs/**
+          if-no-files-found: ignore
+
+  # Replays the entire feature suite with client traffic for the main router routed
+  # through Odyssey (SPQR_FEATURE_POOLER), instead of hitting the router directly.
+  #
+  # This is exploratory on purpose and does not fail the workflow. Parts of the suite
+  # assume a direct session with the router (session scoped SPQR settings, stopping and
+  # starting the router underneath an open connection, the auth scenarios, which select a
+  # different compose profile and therefore run without the pooler at all), so a red
+  # result here is expected until the surviving subset is known. Its output is the list of
+  # scenarios worth promoting into a permanent nightly through-the-pooler suite.
+  feature-suite-through-odyssey:
+    name: feature_suite_through_odyssey
+    runs-on: ubuntu-latest
+    needs: prepare
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        pool-type: ['session', 'transaction']
+    steps:
+      - name: Install Latest Docker
+        run: |
+          for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          sudo chmod a+r /etc/apt/keyrings/docker.asc
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-${{ hashFiles('docker/shard/**', 'docker-compose.yaml', 'Makefile') }}"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
+
+      - name: Load shard image
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
+
+      - name: Feature suite through Odyssey
+        continue-on-error: true
+        run: make split_feature_test && make feature_test_ci
+        env:
+          COMPOSE_PROFILES: odyssey
+          SPQR_FEATURE_POOLER: odyssey
+          ODYSSEY_IMAGE: ${{ inputs.odyssey_image || 'ghcr.io/yandex/odyssey:1.5.1' }}
+          ODYSSEY_POOL_TYPE: ${{ matrix.pool-type }}
+          GODOG_JUNIT_REPORT: ../../test-reports/feature/through-odyssey-${{ matrix.pool-type }}.xml
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-through-odyssey-${{ matrix.pool-type }}
+          path: test-reports/feature/**/*.xml
+          if-no-files-found: ignore
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-through-odyssey-${{ matrix.pool-type }}
+          path: test/feature/logs/**
+          if-no-files-found: ignore
