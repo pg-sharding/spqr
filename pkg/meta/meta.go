@@ -2487,7 +2487,7 @@ func ApplyXRecords(
 
 		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
 			return fmt.Errorf(
-				"decode argument %d of %s: %w",
+				"failed to decode argument %d of %s: %w",
 				i,
 				operation.MethodName,
 				err,
