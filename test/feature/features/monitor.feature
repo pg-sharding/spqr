@@ -1030,3 +1030,31 @@ Feature: spqr-monitor test
       }
     ]
     """
+
+  Scenario: spqr-monitor check works with no key ranges
+    When I execute SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
+    CREATE RELATION xMove3 (w_id) FOR DISTRIBUTION ds2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    CREATE TABLE xMove3(w_id INT, s TEXT);
+    SET __spqr__execute_on TO sh1;
+    insert into xMove3(w_id, s) values(1, '001');
+    insert into xMove3(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    0;OK
+    """

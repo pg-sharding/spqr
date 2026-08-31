@@ -257,6 +257,12 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB, shardData *config.Datatran
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not list key ranges: %w", err)
 		}
+		if len(krs) == 0 {
+			for id := range shardData.ShardsData {
+				delete(keyRangesMap[id], ds.ID)
+			}
+			continue
+		}
 		krsInternal := make([]*keyRangeExt, len(krs))
 		for i, krDb := range krs {
 			keyRange, err := kr.KeyRangeFromDB(krDb, ds.ColTypes)
