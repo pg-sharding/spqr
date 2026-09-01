@@ -32,6 +32,11 @@ var (
 	tableSampleSize   float64
 	keyRangeId        string
 	dryRun            bool
+	routerHost        string
+	routerPort        string
+	routerUser        string
+	routerDatabase    string
+	routerPassword    string
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-monitor command args...",
@@ -45,7 +50,7 @@ var (
 	}
 
 	checkCmd = &cobra.Command{
-		Use:   "check --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --file `result file`",
+		Use:   "check --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`... --file `result file` --tablesample-size 1 [--host localhost --port 6432 --user `username` --database `dbname` --password `password`]",
 		Short: "run check iteration",
 		Run: func(_ *cobra.Command, _ []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
@@ -61,32 +66,32 @@ var (
 			db, err := qdb.NewEtcdQDB(qdbAddrs, 0)
 			if err != nil {
 				_, _ = fmt.Println("2;could not connect to QDB")
-				os.Exit(1)
+				return
 			}
 			keyRangeByShardMap, dsMap, err := getQDBData(context.Background(), db, shardData)
 			if err != nil {
 				_, _ = fmt.Println("2;error getting data from QDB")
-				os.Exit(1)
+				return
 			}
 			for id, shardConf := range shardData.ShardsData {
 				keyRangeMap, ok := keyRangeByShardMap[id]
 				if !ok {
 					continue
 				}
-				vals, relName, err := checkShard(context.Background(), shardConf, keyRangeMap, dsMap, tableSampleSize)
+				vals, relName, err := checkShard(context.Background(), id, shardConf, keyRangeMap, dsMap, tableSampleSize)
 				if err != nil {
 					_, _ = fmt.Printf("2;error running check on shard \"%s\": %s\n", id, err)
-					os.Exit(1)
+					return
 				}
 				if vals != nil {
 					f, err := os.OpenFile(stateFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 					if err != nil {
 						_, _ = fmt.Printf("2;failed to open state file: %s\n", err)
-						os.Exit(1)
+						return
 					}
 					if _, err := fmt.Fprintf(f, "Corruption found: row %v, rel \"%s\" shard \"%s\"\n", vals, relName, id); err != nil {
 						_, _ = fmt.Printf("2;failed to write into state file: %s", err)
-						os.Exit(1)
+						return
 					}
 					_, _ = fmt.Printf("2;corruption found, check \"%s\" file\n", stateFilePath)
 					return
@@ -212,6 +217,11 @@ var (
 func init() {
 	checkCmd.Flags().StringVar(&stateFilePath, "file", "", "result file path")
 	checkCmd.Flags().Float64Var(&tableSampleSize, "tablesample-size", 0.01, "query table sample size in percents")
+	checkCmd.Flags().StringVar(&routerHost, "host", "localhost", "router hostname")
+	checkCmd.Flags().StringVar(&routerPort, "port", "6432", "router port")
+	checkCmd.Flags().StringVar(&routerUser, "user", "", "router username")
+	checkCmd.Flags().StringVar(&routerDatabase, "database", "", "router database")
+	checkCmd.Flags().StringVar(&routerPassword, "password", "", "router password")
 
 	recoverKeyRangesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "only check key ranges, do not delete anything")
 	recoverKeyRangesCmd.Flags().StringVar(&coordAddr, "coordinator-addr", "localhost:7003", "coordinator grpc api address")
@@ -299,17 +309,28 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB, shardData *config.Datatran
 	return keyRangesMap, distributionsMap, nil
 }
 
-func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
-	conn, err := connectWithTSA(ctx, shardConn, "prefer-standby")
+func checkShard(ctx context.Context, shardId string, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
+	var conn *pgx.Conn
+	var err error
+	if routerUser != "" {
+		conn, err = connectRouter(ctx, "prefer-standby")
+	} else {
+		conn, err = connectWithTSA(ctx, shardConn, "prefer-standby")
+	}
 	if err != nil {
 		return nil, "", err
+	}
+	defer func() { _ = conn.Close(ctx) }()
+	if routerUser != "" {
+		if _, err := conn.Exec(ctx, "SET __spqr__execute_on TO $1", shardId); err != nil {
+			return nil, "", err
+		}
 	}
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return nil, "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	defer func() { _ = conn.Close(ctx) }()
 	for dsId, krs := range keyRangesMap {
 		ds, ok := distributionsMap[dsId]
 		if !ok {
@@ -361,6 +382,14 @@ func checkShard(ctx context.Context, shardConn *config.ShardConnect, keyRangesMa
 	}
 	_ = tx.Commit(ctx)
 	return nil, "", nil
+}
+
+func connectRouter(ctx context.Context, tsa string) (*pgx.Conn, error) {
+	connConfig, err := pgx.ParseConfig(fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s target_session_attrs=%s", routerUser, routerHost, routerPort, routerDatabase, routerPassword, tsa))
+	if err != nil {
+		return nil, err
+	}
+	return pgx.ConnectConfig(ctx, connConfig)
 }
 
 func connectWithTSA(ctx context.Context, shardConn *config.ShardConnect, tsa string) (*pgx.Conn, error) {
