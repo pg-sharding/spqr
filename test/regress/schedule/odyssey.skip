@@ -1,0 +1,11 @@
+# Router tests that cannot hold when a connection pooler sits between the router
+# and the shards (make regress_odyssey). Everything else in schedule/router runs
+# unchanged, against the same expected outputs.
+#
+# copy_to: after draining a COPY ... TO STDOUT the router sends a CopyDone of its
+# own to every shard (copyToExecutor in router/relay/executor.go). In COPY-out
+# the frontend is not supposed to send that message at all; postgres tolerates
+# it, odyssey rejects it with "unexpected message type 'c' for client not in
+# xproto mode". The check arrived in yandex/odyssey fa440cd ("correct support for
+# Copy in xproto"), so the test still passed on 1.5.1-rc2 and fails on 1.5.1.
+copy_to
