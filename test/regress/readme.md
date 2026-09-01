@@ -36,15 +36,4 @@ reuse `conf/router.yaml` and the regular expected outputs.
 ```
 make regress_odyssey
 ```
-or
-```
-docker compose --verbose -f ./test/regress/docker-compose-odyssey.yaml up 2>&1 | grep --line-buffered "regress_tests_odyssey"
-```
-
-The suite asserts the same expected outputs as `make regress`; the router
-schedule runs as is except for the tests listed in `schedule/odyssey.skip`. The
-pooler route lives in `conf/odyssey.conf`, and `ODYSSEY_IMAGE` points the run at
-another odyssey build.
-
-
 

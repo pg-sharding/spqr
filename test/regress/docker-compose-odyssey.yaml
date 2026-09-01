@@ -22,8 +22,6 @@ x-odyssey-common:
     &odyssey-common
     image: ${ODYSSEY_IMAGE:-ghcr.io/yandex/odyssey:1.5.1}
     platform: linux/amd64
-    volumes:
-        - ./conf/odyssey.conf:/etc/odyssey/regress-route.conf:ro
     healthcheck:
         # The image is a minimal debian without nc/psql, so probe the listener
         # with bash's own tcp redirection.
@@ -35,18 +33,31 @@ x-odyssey-common:
         - regress_odyssey_network
 
 # The image builds its config from these variables (see entrypoint.sh in the
-# odyssey image). PG_HOST/PG_PORT shape the storage block; the route the router
-# actually lands on is defined in conf/odyssey.conf, which is parsed first via
-# PRE_INCLUDE_PATH. The template's own catch-all route stays unused.
+# odyssey image). The pooling knobs mirror the production odyssey deployment.
+#
+# Auth is the one deliberate deviation: production uses md5, the shards here run
+# on trust (docker/shard/pg_hba_test.conf), and requiring a password would break
+# schema_cache_backend_rule, which carries no auth_rules in conf/router.yaml.
 x-odyssey-env-common:
     &odyssey-env-common
-    PRE_INCLUDE_PATH: /etc/odyssey/regress-route.conf
+    DB_NAME: regress
+    USER_NAME: regress
     USER_AUTH_TYPE: none
     PG_PORT: 6432
-    CLIENT_MAX: 500
-    WORKERS: 2
-    LOG_STATS: "no"
-    LOG_SESSION: "no"
+
+    POOL_TYPE: transaction
+    POOL_SIZE: 300
+    POOL_TIMEOUT: 1000
+    POOL_TTL: 20
+    POOL_DISCARD: "no"
+    POOL_SMART_DISCARD: "yes"
+    POOL_CANCEL: "yes"
+    POOL_ROLLBACK: "yes"
+    POOL_RESERVE_PREPARED_STATEMENT: "yes"
+    APPLICATION_NAME_ADD_HOST: "yes"
+    CLIENT_FWD_ERROR: "yes"
+    CLIENT_MAX: 32000
+    WORKERS: 1
 
 services:
     shard1:
