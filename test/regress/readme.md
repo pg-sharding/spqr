@@ -25,15 +25,3 @@ docker compose --verbose -f ./test/regress/docker-compose-coord.yaml up 2>&1 | g
 ```
 and wait for "regress_tests_etcd exited with code". this is the end of test.
 
-### through an odyssey pooler
-
-Same topology as "without coordinator installation", but every shard is fronted
-by an [odyssey](https://github.com/yandex/odyssey) pooler, so the path is
-`pg_regress -> router -> odyssey -> postgres`. The odyssey containers take the
-`spqr_shard_*` names and postgres moves to `spqr_shard_*_pg`, which lets the run
-reuse `conf/router.yaml` and the regular expected outputs.
-
-```
-make regress_odyssey
-```
-
