@@ -1,0 +1,80 @@
+# Nightly feature suite against the odyssey pooler topology.
+#
+# This runs the very same scenarios as the `feature` job in tests.yaml, but with
+# an odyssey pooler in front of every shard (test/feature/docker-compose-odyssey.yaml,
+# selected via FEATURE_COMPOSE_FILE). Transaction pooling does not preserve
+# per-backend session state, so some scenarios are expected to fail; this workflow
+# exists to *record* those failures, not to gate anything.
+#
+# It is deliberately a standalone, schedule-driven workflow: it is NOT referenced
+# in the `needs:` of test-report or any other gate in tests.yaml, so a red run
+# here never blocks a PR. It is also self-contained — it generates the feature
+# files itself (make split_feature_test, invoked by feature_test_odyssey) instead
+# of consuming the generatedFeatures artifact from a sibling job.
+
+name: feature-odyssey
+
+on:
+  schedule:
+    # 02:17 UTC daily. Off-peak, and offset from the top of the hour.
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  feature_odyssey:
+    name: feature_odyssey
+    runs-on: ubuntu-latest
+    # go test runs with -timeout 150m (see the feature_test_odyssey target); give
+    # the job enough headroom on top for image builds and the qemu-emulated
+    # odyssey containers.
+    timeout-minutes: 170
+    # There is no matrix here (the whole suite runs in a single go test), so a
+    # scenario failure never cancels the rest — go test executes every scenario
+    # and the JUnit report below captures them all.
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Install Latest Docker
+        run: |
+          for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          sudo chmod a+r /etc/apt/keyrings/docker.asc
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      - name: Check Docker Version
+        run: docker --version
+
+      - name: Set up QEMU
+        # The odyssey image is linux/amd64 only; ubuntu-latest runners are amd64,
+        # but register the emulators anyway so the pinned platform never trips up.
+        uses: docker/setup-qemu-action@v3
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: feature odyssey tests
+        run: make feature_test_odyssey
+
+      - name: Upload feature odyssey test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-feature-odyssey
+          path: test-reports/feature-odyssey/**/*.xml
+          if-no-files-found: ignore
+
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: feature-odyssey-logs
+          path: test/feature/logs/**
+          if-no-files-found: ignore

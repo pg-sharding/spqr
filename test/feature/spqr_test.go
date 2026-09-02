@@ -81,7 +81,11 @@ type testContext struct {
 func newTestContext(t *testing.T) (*testContext, error) {
 	var err error
 	tctx := new(testContext)
-	tctx.composer, err = testutil.NewDockerComposer("spqr", "docker-compose.yaml")
+	composeFile := os.Getenv("FEATURE_COMPOSE_FILE")
+	if composeFile == "" {
+		composeFile = "docker-compose.yaml"
+	}
+	tctx.composer, err = testutil.NewDockerComposer("spqr", composeFile)
 	tctx.t = t
 	if err != nil {
 		return nil, err
@@ -1714,6 +1718,11 @@ func TestSpqr(t *testing.T) {
 		format = fmt.Sprintf("%s,junit:%s", format, junitReport)
 	}
 
+	stopOnFailure := true
+	if v, ok := os.LookupEnv("GODOG_STOP_ON_FAILURE"); ok && strings.ToLower(v) == "false" {
+		stopOnFailure = false
+	}
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
 			InitializeScenario(s, t, debug)
@@ -1723,7 +1732,7 @@ func TestSpqr(t *testing.T) {
 			Paths:         paths,
 			Strict:        true,
 			NoColors:      false,
-			StopOnFailure: true,
+			StopOnFailure: stopOnFailure,
 			Concurrency:   1,
 		},
 	}

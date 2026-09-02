@@ -1,0 +1,392 @@
+# Same topology as docker-compose.yaml (single memqdb router pair + coordinators),
+# but with an odyssey pooler in front of every postgres instance, the way spqr is
+# deployed in production:
+#
+#   feature harness -> spqr router -> odyssey -> postgres shard
+#
+# Renaming scheme (identical to test/regress/docker-compose-odyssey.yaml):
+#
+#   * The compose *service* names stay on postgres: shard1, shard1-replica, ...
+#     The Go harness (test/feature/spqr_test.go) connects to every service whose
+#     name has the "shard" prefix as if it were postgres, so steps like
+#     `When I run SQL on host "shard1"` keep talking to postgres directly,
+#     bypassing the pooler. That is intentional.
+#
+#   * The odyssey containers take over the hostnames the router knows the shards
+#     by (spqr_shard_1, spqr_shard_1_replica, ...) so test/feature/conf/router.yaml
+#     and every conf/*.yaml that lists spqr_shard_N:6432 are reused verbatim.
+#     Postgres moves to spqr_shard_N_pg / spqr_shard_N_replica_pg, and the
+#     replicas' PG_MASTER points at the _pg host.
+#
+#   * The pooler services are named pooler1, pooler1-replica, ... — NOT shard* or
+#     router* and not containing the substring "shard". The harness matches shard
+#     services both by prefix (Services()/HasPrefix) and by substring
+#     (RunCommandAtHosts), so a pooler named like a shard would be mistaken for
+#     postgres. See the landmines in test/feature/odyssey-task.md.
+
+x-odyssey-common:
+  &odyssey-common
+  # Odyssey is published for linux/amd64 only, so the platform is pinned
+  # explicitly to keep the compose file usable on arm hosts (via qemu).
+  image: ${ODYSSEY_IMAGE:-ghcr.io/yandex/odyssey:1.5.1}
+  platform: linux/amd64
+  healthcheck:
+    # The 1.5.1 image is a minimal debian without nc/psql, so probe the listener
+    # with bash's own tcp redirection instead.
+    test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6432"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+  networks:
+    - feature_test_network
+
+# The image builds its config from these variables (see entrypoint.sh in the
+# odyssey image). The pooling knobs are copied verbatim from
+# test/regress/docker-compose-odyssey.yaml.
+#
+# USER_AUTH_TYPE: none is deliberate: the shards run on trust
+# (docker/shard/pg_hba_test.conf) and requiring a password would break
+# schema_cache_backend_rule, which carries no auth_rules in conf/router.yaml.
+# Do not switch it to md5.
+x-odyssey-env-common:
+  &odyssey-env-common
+  DB_NAME: regress
+  USER_NAME: regress
+  USER_AUTH_TYPE: none
+  PG_PORT: 6432
+
+  POOL_TYPE: transaction
+  POOL_SIZE: 300
+  POOL_TIMEOUT: 1000
+  POOL_TTL: 20
+  POOL_DISCARD: "no"
+  POOL_SMART_DISCARD: "yes"
+  POOL_CANCEL: "yes"
+  POOL_ROLLBACK: "yes"
+  POOL_RESERVE_PREPARED_STATEMENT: "yes"
+
+services:
+  shard1:
+    image: spqr-shard-image
+    environment: &feature-env-common
+      POSTGRES_USER: regress
+      POSTGRES_DB: regress
+      PG_SYNC_REPLICA: true
+    ports:
+      - "5500:6432"
+    hostname: spqr_shard_1_pg
+    container_name: spqr_shard_1_pg
+    healthcheck: &shard-healthcheck
+      test: 'pg_isready -U regress --dbname=regress -p 6432'
+      interval: 10s
+      timeout: 3s
+      retries: 50
+    networks:
+      - feature_test_network
+  shard1-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_1_pg
+    ports:
+      - "5600:6432"
+    hostname: spqr_shard_1_replica_pg
+    container_name: spqr_shard_1_replica_pg
+    healthcheck:
+      <<: *shard-healthcheck
+    networks:
+      - feature_test_network
+  shard2:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+    ports:
+      - "5501:6432"
+    hostname: spqr_shard_2_pg
+    container_name: spqr_shard_2_pg
+    healthcheck:
+      <<: *shard-healthcheck
+    networks:
+      - feature_test_network
+  shard2-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_2_pg
+    ports:
+      - "5601:6432"
+    hostname: spqr_shard_2_replica_pg
+    container_name: spqr_shard_2_replica_pg
+    healthcheck:
+      <<: *shard-healthcheck
+    networks:
+      - feature_test_network
+  shard3:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+    ports:
+      - "5502:6432"
+    hostname: spqr_shard_3_pg
+    container_name: spqr_shard_3_pg
+    healthcheck:
+      <<: *shard-healthcheck
+    networks:
+      - feature_test_network
+  shard3-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_3_pg
+    ports:
+      - "5602:6432"
+    hostname: spqr_shard_3_replica_pg
+    container_name: spqr_shard_3_replica_pg
+    healthcheck:
+      <<: *shard-healthcheck
+    networks:
+      - feature_test_network
+
+  # Odyssey poolers. Each one takes the hostname the router expects the shard at
+  # (spqr_shard_N / spqr_shard_N_replica) and forwards to the postgres now living
+  # at spqr_shard_N_pg / spqr_shard_N_replica_pg.
+  pooler1:
+    <<: *odyssey-common
+    environment:
+      <<: *odyssey-env-common
+      PG_HOST: spqr_shard_1_pg
+    hostname: spqr_shard_1
+    container_name: spqr_shard_1
+    depends_on:
+      shard1:
+        condition: service_healthy
+  pooler1-replica:
+    <<: *odyssey-common
+    environment:
+      <<: *odyssey-env-common
+      PG_HOST: spqr_shard_1_replica_pg
+    hostname: spqr_shard_1_replica
+    container_name: spqr_shard_1_replica
+    depends_on:
+      shard1-replica:
+        condition: service_healthy
+  pooler2:
+    <<: *odyssey-common
+    environment:
+      <<: *odyssey-env-common
+      PG_HOST: spqr_shard_2_pg
+    hostname: spqr_shard_2
+    container_name: spqr_shard_2
+    depends_on:
+      shard2:
+        condition: service_healthy
+  pooler2-replica:
+    <<: *odyssey-common
+    environment:
+      <<: *odyssey-env-common
+      PG_HOST: spqr_shard_2_replica_pg
+    hostname: spqr_shard_2_replica
+    container_name: spqr_shard_2_replica
+    depends_on:
+      shard2-replica:
+        condition: service_healthy
+  pooler3:
+    <<: *odyssey-common
+    environment:
+      <<: *odyssey-env-common
+      PG_HOST: spqr_shard_3_pg
+    hostname: spqr_shard_3
+    container_name: spqr_shard_3
+    depends_on:
+      shard3:
+        condition: service_healthy
+  pooler3-replica:
+    <<: *odyssey-common
+    environment:
+      <<: *odyssey-env-common
+      PG_HOST: spqr_shard_3_replica_pg
+    hostname: spqr_shard_3_replica
+    container_name: spqr_shard_3_replica
+    depends_on:
+      shard3-replica:
+        condition: service_healthy
+
+  router:
+    build:
+      dockerfile: ./docker/router/Dockerfile
+      context: ../../
+    ports:
+      - "6432:6432"
+      - "7432:7432"
+      - "7012:7002"
+      - "7013:7003"
+    environment:
+      - ROUTER_CONFIG=${ROUTER_CONFIG:-/spqr/test/feature/conf/router.yaml}
+      - ROUTER_LOG=/var/log/spqr-router.log
+      - COORDINATOR_CONFIG=${ROUTER_COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
+    hostname: regress_router
+    container_name: regress_router
+    depends_on:
+      pooler1:
+        condition: service_healthy
+      pooler1-replica:
+        condition: service_healthy
+      pooler2:
+        condition: service_healthy
+      pooler2-replica:
+        condition: service_healthy
+      pooler3:
+        condition: service_healthy
+      pooler3-replica:
+        condition: service_healthy
+      coordinator:
+        condition: service_started
+    healthcheck: &router-healthcheck
+      test: psql -h regress_router -p 6432 -U regress -d regress
+      interval: 10s
+      timeout: 3s
+      retries: 50
+    volumes:
+      - keytab:/keytab
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf
+    networks:
+      - feature_test_network
+  router2:
+    build:
+      dockerfile: ./docker/router/Dockerfile
+      context: ../../
+    ports:
+      - "6433:6432"
+      - "7433:7432"
+      - "7022:7002"
+      - "7023:7003"
+    environment:
+      - ROUTER_CONFIG=${ROUTER_CONFIG:-/spqr/test/feature/conf/router.yaml}
+      - ROUTER_LOG=/var/log/spqr-router.log
+      - COORDINATOR_CONFIG=${ROUTER_2_COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
+    hostname: regress_router_2
+    container_name: regress_router_2
+    depends_on:
+      pooler1:
+        condition: service_healthy
+      pooler1-replica:
+        condition: service_healthy
+      pooler2:
+        condition: service_healthy
+      pooler2-replica:
+        condition: service_healthy
+      pooler3:
+        condition: service_healthy
+      pooler3-replica:
+        condition: service_healthy
+      coordinator:
+        condition: service_started
+    healthcheck:
+      <<: *router-healthcheck
+      test: psql -h regress_router_2 -p 6432 -U regress -d regress
+    volumes:
+      - keytab:/keytab
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf
+    networks:
+      - feature_test_network
+  coordinator:
+    build:
+      dockerfile: ./docker/coordinator/Dockerfile
+      context: ../../
+    ports:
+      - "7002:7002"
+      - "7003:7003"
+    environment:
+      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
+    hostname: regress_coordinator
+    container_name: regress_coordinator
+    depends_on:
+      - "qdb01"
+    networks:
+      - feature_test_network
+  coordinator2:
+    build:
+      dockerfile: ./docker/coordinator/Dockerfile
+      context: ../../
+    ports:
+      - "7032:7002"
+      - "7033:7003"
+    environment:
+      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG_2:-/spqr/test/feature/conf/coordinator2.yaml}
+    hostname: regress_coordinator_2
+    container_name: regress_coordinator_2
+    depends_on:
+      - "router"
+      - "router2"
+      - "qdb01"
+    networks:
+      - feature_test_network
+  qdb01: #the instance of etcd is hardcoded in feature test
+    image: 'quay.io/coreos/etcd:v3.6.4'
+    hostname: regress_qdb_0_1
+    container_name: regress_qdb_0_1
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_LOG_LEVEL: "debug"
+    ports:
+      - "2379:2379"
+    networks:
+      - feature_test_network
+    entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
+  ldapserver:
+    image: "osixia/openldap:1.5.0"
+    profiles:
+      - auth
+    privileged: true
+    hostname: regress_ldap_server
+    container_name: regress_ldap_server
+    environment: &ldap-env
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: adminpassword
+      LDAP_DOMAIN: example.com
+      LDAP_READONLY_USER: true
+      LDAP_READONLY_USER_USERNAME: regress
+      LDAP_READONLY_USER_PASSWORD: 12345678
+      LDAP_PORT_NUMBER: 389
+      LDAP_LDAPS_PORT_NUMBER: 636
+    ports:
+      - "1389:389"
+      - "1636:636"
+    healthcheck: &ldap-healthcheck
+      test: ldapwhoami -H ldap://127.0.0.1:389 -D "cn=regress,dc=example,dc=com" -w 12345678
+      interval: 10s
+      timeout: 3s
+      retries: 50
+    networks:
+      - feature_test_network
+  ldapserver2:
+    image: "osixia/openldap:1.5.0"
+    profiles:
+      - auth
+    privileged: true
+    hostname: regress_ldap_server_2
+    container_name: regress_ldap_server_2
+    environment:
+      <<: *ldap-env
+    ports:
+      - "2389:389"
+      - "2636:636"
+    healthcheck:
+      <<: *ldap-healthcheck
+    networks:
+      - feature_test_network
+  kdc:
+    profiles:
+      - auth
+    build:
+      context: ./conf/kdc
+    volumes:
+      - ./conf/kdc/start.sh:/start.sh
+      - keytab:/keytab
+    networks:
+      - feature_test_network
+volumes:
+  keytab:
+networks:
+  feature_test_network:
+    name: feature_test_network
