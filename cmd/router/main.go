@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/router_util"
@@ -207,6 +208,14 @@ var runCmd = &cobra.Command{
 				return err
 			}
 			log.Println("Running coordinator config:", cfgStr)
+			if config.RouterConfig().WithCoordinator {
+				if err := grpccreds.ValidateServer(config.CoordinatorConfig().ServerTLS); err != nil {
+					return fmt.Errorf("init embedded coordinator gRPC server TLS: %w", err)
+				}
+				if err := grpccreds.ValidateClient(config.CoordinatorConfig().ClientTLS); err != nil {
+					return fmt.Errorf("init embedded coordinator router gRPC client TLS: %w", err)
+				}
+			}
 		}
 
 		if console && daemonize {
@@ -323,8 +332,11 @@ var runCmd = &cobra.Command{
 						return err
 					}
 
-					app := coordApp.NewApp(coordinator)
-					return app.Run(false)
+					coordinatorApp, err := coordApp.NewApp(coordinator)
+					if err != nil {
+						return err
+					}
+					return coordinatorApp.Run(false)
 				}(); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
