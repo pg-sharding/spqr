@@ -1058,3 +1058,49 @@ Feature: spqr-monitor test
     """
     0;OK
     """
+
+  Scenario: spqr-monitor check works on router with no corruptions
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I run command on host "router" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100 --host regress_router --user regress --database regress
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    0;OK
+    """
+
+  Scenario: spqr-monitor check works on router with corruptions
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100 --host regress_router --user regress --database regress
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    2;corruption found, check "/tmp/report.txt" file
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    Corruption found: row \[1 001\], rel "xMove" shard "sh2"
+    """
