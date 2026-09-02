@@ -457,6 +457,11 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	sort.Strings(shardInfos)
 	shardMatches := strings.Join(shardInfos, ",")
 
+	if config.RouterConfig().LogDispatch {
+		spqrlog.Zero.Info().Uint("client", client.ID()).
+			Str("shards", shardMatches).Time("time", time.Now()).Msg("dispatched query to shards")
+	}
+
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
