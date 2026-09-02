@@ -573,9 +573,17 @@ func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 		}
 	}
 
+	/* XXX: should we remove this ? */
 	if rule.PoolDiscard {
-		if err := sh.fire("DISCARD ALL"); err != nil {
-			return err
+		if rule.PoolPreparedStatement {
+			/* XXX: need to be smarter for RESET ALL */
+			if err := sh.fire("SET SESSION AUTHORIZATION DEFAULT; RESET ALL;UNLISTEN *;"); err != nil {
+				return err
+			}
+		} else {
+			if err := sh.fire("SET SESSION AUTHORIZATION DEFAULT; RESET ALL;UNLISTEN *;DEALLOCATE ALL;DISCARD PLANS;"); err != nil {
+				return err
+			}
 		}
 	}
 
