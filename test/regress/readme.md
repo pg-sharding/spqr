@@ -25,5 +25,3 @@ docker compose --verbose -f ./test/regress/docker-compose-coord.yaml up 2>&1 | g
 ```
 and wait for "regress_tests_etcd exited with code". this is the end of test.
 
-
-
