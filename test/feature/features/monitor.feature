@@ -1069,7 +1069,7 @@ Feature: spqr-monitor test
     Then command return code should be "0"
     When I run command on host "router" with timeout "30" seconds
     """
-    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100 --user regress --database regress
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100 --host regress_router --user regress --database regress
     """
     Then command return code should be "0"
     And command output should match regexp
@@ -1088,7 +1088,7 @@ Feature: spqr-monitor test
     Then command return code should be "0"
     When I run command on host "coordinator" with timeout "30" seconds
     """
-    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100  --user regress --database regress
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100 --host regress_router --user regress --database regress
     """
     Then command return code should be "0"
     And command output should match regexp
