@@ -23,6 +23,8 @@ service RouterService {
   rpc AddRouter (AddRouterRequest) returns (AddRouterReply) {}
   rpc RemoveRouter (RemoveRouterRequest) returns (google.protobuf.Empty) {}
   rpc SyncMetadata (SyncMetadataRequest) returns (google.protobuf.Empty) {}
+  rpc GetMetadataHash (google.protobuf.Empty) returns (MetadataHashReply) {}
+  rpc Rebootstrap (google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message ListRoutersReply {
@@ -43,4 +45,8 @@ message RemoveRouterRequest {
 
 message SyncMetadataRequest {
   Router router = 1 [(buf.validate.field).required = true];
+}
+
+message MetadataHashReply {
+  uint64 hash = 1;
 }
