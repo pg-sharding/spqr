@@ -2,9 +2,11 @@ package qdb
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/spaolacci/murmur3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
@@ -79,4 +81,37 @@ func GetStateKeeperQDB() (StateKeeperQDB, error) {
 	} else {
 		return GetMemQDB()
 	}
+}
+
+// GetQDBStateHash calculates hash of the QDB's state.
+// Currently, only distributions, relations and key ranges are considered
+func GetQDBStateHash(ctx context.Context, q QDB) (uint64, error) {
+	hasher := murmur3.New64()
+	distributions, err := q.ListDistributions(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, distribution := range distributions {
+		dsJSON, err := json.Marshal(distribution)
+		if err != nil {
+			return 0, err
+		}
+		if _, err := hasher.Write(dsJSON); err != nil {
+			return 0, err
+		}
+	}
+	keyRanges, err := q.ListAllKeyRanges(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, keyRange := range keyRanges {
+		krJSON, err := json.Marshal(keyRange)
+		if err != nil {
+			return 0, err
+		}
+		if _, err := hasher.Write(krJSON); err != nil {
+			return 0, err
+		}
+	}
+	return hasher.Sum64(), nil
 }
