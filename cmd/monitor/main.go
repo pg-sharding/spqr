@@ -322,7 +322,7 @@ func checkShard(ctx context.Context, shardId string, shardConn *config.ShardConn
 	}
 	defer func() { _ = conn.Close(ctx) }()
 	if routerUser != "" {
-		if _, err := conn.Exec(ctx, "SET __spqr__execute_on TO $1", shardId); err != nil {
+		if _, err := conn.Exec(ctx, fmt.Sprintf("SET __spqr__execute_on TO %s", shardId)); err != nil {
 			return nil, "", err
 		}
 	}
