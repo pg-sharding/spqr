@@ -24,7 +24,7 @@ type Balancer struct {
 
 	TimeoutSec int `json:"timeout" yaml:"timeout" toml:"timeout"`
 
-	CoordinatorGrpcTLS *GRPCClientTLSConfig `json:"coordinator_grpc_tls" yaml:"coordinator_grpc_tls" toml:"coordinator_grpc_tls"`
+	ClientTLS *GRPCClientTLSConfig `json:"client_tls" yaml:"client_tls" toml:"client_tls"`
 }
 
 var _ Config = &Balancer{}
@@ -34,8 +34,8 @@ func (b *Balancer) ApplyDefaults() {
 }
 
 func (b *Balancer) PostProcess() error {
-	if err := b.CoordinatorGrpcTLS.Validate(); err != nil {
-		return fmt.Errorf("invalid coordinator_grpc_tls: %w", err)
+	if err := b.ClientTLS.Validate(); err != nil {
+		return fmt.Errorf("invalid client_tls: %w", err)
 	}
 
 	if b.TimeoutSec == 0 {

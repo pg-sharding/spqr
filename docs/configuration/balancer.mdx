@@ -9,3 +9,5 @@ spqr-balancer run --config ./examples/balancer.yaml
 ```
 
 Work in progress. Refer to the [pkg/config/balancer.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/balancer.go) file for the most up-to-date configuration options.
+
+The optional `client_tls` setting configures the balancer's connection to the coordinator gRPC API. It supports `disabled`, `tls`, and `mtls` modes and uses the same `GRPCClientTLSConfig` fields as router and coordinator client connections.

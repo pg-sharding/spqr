@@ -307,7 +307,10 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("router failed to start: %w", err)
 		}
 
-		app := app.NewApp(router)
+		routerApp, err := app.NewApp(router)
+		if err != nil {
+			return err
+		}
 
 		if !config.RouterConfig().WithCoordinator && rcfgPath != "" {
 			if err := datatransfers.LoadConfig(rcfgPath); err != nil {
@@ -451,7 +454,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServeRouter(ctx)
+			err := routerApp.ServeRouter(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL console")
 				errCh <- err
@@ -461,7 +464,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServeGrpcAPI(ctx)
+			err := routerApp.ServeGrpcAPI(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
 				errCh <- err
@@ -471,7 +474,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServeAdminConsole(ctx)
+			err := routerApp.ServeAdminConsole(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL administrative console")
 				errCh <- err
@@ -481,7 +484,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServiceUnixSocket(ctx)
+			err := routerApp.ServiceUnixSocket(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve unix socket")
 				errCh <- err
@@ -496,7 +499,7 @@ var runCmd = &cobra.Command{
 			/* XXX: configure more that one watchdog? */
 
 			go func(wg *sync.WaitGroup) {
-				err := app.ServeWD(ctx)
+				err := routerApp.ServeWD(ctx)
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("failed to serve recovery watchdog")
 					errCh <- err

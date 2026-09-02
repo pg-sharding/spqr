@@ -11,6 +11,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
@@ -160,6 +161,10 @@ func (r *InstanceImpl) Initialize() bool {
 var _ RouterInstance = &InstanceImpl{}
 
 func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16, metricRegistry *metrics.RouterMetricRegistry) (*InstanceImpl, error) {
+	if err := grpccreds.ValidateClient(config.RouterConfig().ClientTLS); err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC client TLS: %w", err)
+	}
+
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
