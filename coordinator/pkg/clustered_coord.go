@@ -453,6 +453,13 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			currentRouterIDs[r.ID] = true
 		}
 
+		coordHash, err := qdb.GetQDBStateHash(ctx, qc.db)
+		checkRouterHashes := true
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to get etcd QDB hash")
+			checkRouterHashes = false
+		}
+
 		for _, r := range routers {
 			if err := func() error {
 				// Create bounded context for this router's operations
@@ -493,9 +500,21 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					}
 
 				case proto.RouterStatus_OPENED:
-					/* TODO: check router metadata consistency */
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
+					}
+
+					if config.CoordinatorConfig().WatchRoutersQDB && checkRouterHashes {
+						routerClient := proto.NewRouterServiceClient(cc)
+						routerHashResp, err := routerClient.GetMetadataHash(routerCtx, nil)
+						if err != nil {
+							return err
+						}
+						if routerHashResp.Hash != coordHash {
+							if _, err := routerClient.Rebootstrap(ctx, nil); err != nil {
+								return fmt.Errorf("failed to rebootstrap router: %w", err)
+							}
+						}
 					}
 
 					/* Mark router as opened in qdb */
@@ -2461,6 +2480,7 @@ func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNe
 }
 
 // TODO : unit tests
+// TODO: make router do a rebootstrap instead
 func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
