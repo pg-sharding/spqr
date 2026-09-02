@@ -21,7 +21,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/lib/pq v1.12.3
 	github.com/libp2p/go-reuseport v0.4.0
-	github.com/pg-sharding/lyx v0.0.0-20260826110717-d4c2e6c4e0be
+	github.com/pg-sharding/lyx v0.0.0-20260901143418-c3643eda2fa5
 	github.com/rs/zerolog v1.35.1
 	github.com/sethvargo/go-retry v0.4.0
 	github.com/sevlyar/go-daemon v0.1.7
