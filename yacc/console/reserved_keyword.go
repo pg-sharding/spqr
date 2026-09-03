@@ -120,4 +120,5 @@ var reservedWords = map[string]int{
 	"begin":        BEGIN,
 	"commit":       COMMIT,
 	"rollback":     ROLLBACK,
+	"call":         CALL,
 }

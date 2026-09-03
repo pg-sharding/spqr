@@ -81,6 +81,18 @@ type DropStmt interface {
 	iDrop()
 }
 
+type CallStmt interface {
+	iCall()
+}
+
+type Call struct {
+	FuncName string
+	Args     []string
+}
+
+func (*Call) iStatement() {}
+func (*Call) iCall()      {}
+
 type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string
