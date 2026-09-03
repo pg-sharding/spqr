@@ -466,6 +466,11 @@ func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, err
 	return retRouters, nil
 }
 
+// AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
+func (lc *Coordinator) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, ErrNotCoordinator
+}
+
 // Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
 //
 // Parameters:

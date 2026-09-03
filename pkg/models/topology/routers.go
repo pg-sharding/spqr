@@ -21,6 +21,7 @@ type RouterMgr interface {
 	SyncRouterCoordinatorAddress(ctx context.Context, router *Router) error
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
+	GetRouterMetadataHash(ctx context.Context, r *Router) (uint64, error)
 }
 
 // RouterToProto converts a Router object to a protos.Router object.

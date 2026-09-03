@@ -10,6 +10,7 @@ const (
 	VirtualRun2PCRecover        = "__spqr__run_2pc_recover"
 	VirtualClear2PCData         = "__spqr__clear_2pc_data"
 	VirtualCleanOutdated2PCData = "__spqr__clean_outdated_2pc_data"
+	VirtualCheckRouterMetaHash  = "__spqr__check_router_metadata_hash"
 
 	VirtualCTID      = "__spqr__ctid"
 	VirtualFuncHosts = "__spqr__host_status"
