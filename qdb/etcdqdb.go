@@ -441,7 +441,11 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	versions := make(map[string]int)
 	for _, kv := range resp.Responses[2].GetResponseRange().Kvs {
 		id := strings.TrimPrefix(string(kv.Key), keyRangesMetadataNamespace)
-		versions[id] = int(kv.Version)
+		meta := &KeyRangeMeta{}
+		if err := json.Unmarshal(kv.Value, &meta); err != nil {
+			return nil, err
+		}
+		versions[id] = meta.Version
 	}
 
 	keyRanges := make([]*KeyRange, 0, len(krDbs))
@@ -459,7 +463,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		}
 		version := 0
 		ver, ok := versions[kRange.KeyRangeID]
-		if !ok {
+		if ok {
 			version = ver
 		}
 		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version))
