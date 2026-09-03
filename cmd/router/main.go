@@ -201,9 +201,15 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
 		}
 
-		if rootCmd.PersistentFlags().Changed("coordinator-config") || config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
+		usesCoordinatorConfig := config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql
+		if rootCmd.PersistentFlags().Changed("coordinator-config") || usesCoordinatorConfig {
 			var err error
-			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
+			var cfgStr string
+			if usesCoordinatorConfig {
+				cfgStr, err = config.LoadCoordinatorCfg(ccfgPath)
+			} else {
+				cfgStr, err = config.LoadCoordinatorTLSCfg(ccfgPath)
+			}
 			if err != nil {
 				return err
 			}

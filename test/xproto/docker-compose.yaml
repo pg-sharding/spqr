@@ -88,6 +88,7 @@ services:
             xproto_test_net:
         environment:
             - ROUTER_CONFIG=/spqr/test/xproto/conf/router.yaml
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
         hostname: regress_router
         container_name: regress_router
         healthcheck:
