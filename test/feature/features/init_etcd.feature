@@ -118,6 +118,10 @@ Feature: Initialize router metadata from Etcd
         When I run SQL on host "coordinator" with timeout "60" seconds
         """
         CREATE DISTRIBUTION ds1 (int);
+        """
+        Then command return code should be "1"
+        When I run SQL on host "coordinator" with timeout "60" seconds
+        """
         CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1;
         """
         Then command return code should be "1"
@@ -127,7 +131,7 @@ Feature: Initialize router metadata from Etcd
         """
         When I run command on host "router"
         """
-        iptables -A INPUT -p tcp --dport 7000 -j ACCEPT
+        iptables -D INPUT -p tcp --dport 7000 -j REJECT && iptables -A INPUT -p tcp --dport 7000 -j ACCEPT
         """
         Then command return code should be "0"
         And we wait for "30" seconds
@@ -152,6 +156,10 @@ Feature: Initialize router metadata from Etcd
         And SQL result should match json_exactly
         """
         [{
-            "key_range_id": "kr1"
+            "distribution_id": "ds1",
+            "key_range_id": "kr1",
+            "locked": "false",
+            "lower_bound": "0",
+            "shard_id": "sh1"
         }]
         """
