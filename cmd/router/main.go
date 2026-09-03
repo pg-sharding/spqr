@@ -201,7 +201,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
 		}
 
-		if config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
+		if rootCmd.PersistentFlags().Changed("coordinator-config") || config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -307,7 +307,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("router failed to start: %w", err)
 		}
 
-		routerApp, err := app.NewApp(router)
+		app, err := app.NewApp(router)
 		if err != nil {
 			return err
 		}
@@ -454,7 +454,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := routerApp.ServeRouter(ctx)
+			err := app.ServeRouter(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL console")
 				errCh <- err
@@ -464,7 +464,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := routerApp.ServeGrpcAPI(ctx)
+			err := app.ServeGrpcAPI(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
 				errCh <- err
@@ -474,7 +474,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := routerApp.ServeAdminConsole(ctx)
+			err := app.ServeAdminConsole(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL administrative console")
 				errCh <- err
@@ -484,7 +484,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := routerApp.ServiceUnixSocket(ctx)
+			err := app.ServiceUnixSocket(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve unix socket")
 				errCh <- err
@@ -499,7 +499,7 @@ var runCmd = &cobra.Command{
 			/* XXX: configure more that one watchdog? */
 
 			go func(wg *sync.WaitGroup) {
-				err := routerApp.ServeWD(ctx)
+				err := app.ServeWD(ctx)
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("failed to serve recovery watchdog")
 					errCh <- err

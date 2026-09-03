@@ -422,7 +422,7 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
-	dialOption, err := grpccreds.DialOption(config.RouterConfig().ClientTLS)
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
 		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
 	}
@@ -447,7 +447,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().CurrVal(ctx, seqName)
 	}
-	dialOption, err := grpccreds.DialOption(config.RouterConfig().ClientTLS)
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
 		return -1, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
 	}

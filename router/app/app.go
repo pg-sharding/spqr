@@ -27,7 +27,7 @@ type App struct {
 }
 
 func NewApp(sg *instance.InstanceImpl) (*App, error) {
-	serverOptions, err := grpccreds.ServerOptions(config.RouterConfig().ServerTLS)
+	serverOptions, err := grpccreds.ServerOptions(config.CoordinatorConfig().ServerTLS)
 	if err != nil {
 		return nil, fmt.Errorf("init router gRPC server TLS: %w", err)
 	}

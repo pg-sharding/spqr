@@ -26,7 +26,7 @@ use_spqrguard: true
 #   # server_name may override the registered router address for certificate checks
 #   # cert_file and key_file are required in mtls mode
 
-# TLS for the coordinator gRPC API used by routers and tools
+# TLS for the gRPC API used for router/coordinator interconnect
 # server_tls:
 #   mode: tls                  # disabled, tls, mtls
 #   cert_file: /path/to/grpc/coordinator-server.crt

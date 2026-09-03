@@ -2,6 +2,8 @@
 title: Coordinator
 ---
 
+import GRPCTLS from '/snippets/grpc_tls.mdx';
+
 The SPQR Coordinator configuration can be specified in JSON, TOML, or YAML format. The configuration file passing as a parameter to run command:
 
 ```
@@ -21,8 +23,8 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `coordinator_port`         | The port number for the coordinator.                                                         | Any valid port number                         | (none)  |
 | `grpc_api_port`            | The port number for the gRPC API.                                                            | Any valid port number                         | (none)  |
 | `frontend_tls`             | See [auth.mdx](./auth).                                                                      | Object of `TLSConfig`                         | (none)  |
-| `client_tls`               | TLS for outgoing coordinator connections to router gRPC APIs.                                | Object of `GRPCClientTLSConfig`               | disabled |
-| `server_tls`               | TLS for the coordinator gRPC API.                                                            | Object of `GRPCServerTLSConfig`               | disabled |
+| `client_tls`               | TLS for outgoing internal gRPC connections. See [gRPC TLS Settings](#grpc-tls-settings).      | Object of `GRPCClientTLSConfig`               | disabled |
+| `server_tls`               | TLS for the internal gRPC API. See [gRPC TLS Settings](#grpc-tls-settings).                   | Object of `GRPCServerTLSConfig`               | disabled |
 | `frontend_rules`           | The rules for frontend connections.                                                          | List of `FrontendRule`                        | (none)  |
 | `shard_data`               | Path to shard metadata used for data moves and distribution.                                 | Any valid file path                           | (none)  |
 | `use_systemd_notifier`     | Whether to use systemd notifier.                                                             | `true`, `false`                               | `false` |
@@ -44,27 +46,7 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 
 ## gRPC TLS Settings
 
-Both settings default to disabled when omitted. They are read from the same coordinator configuration when running either `spqr-coordinator` or an embedded coordinator through `spqr-router --coordinator-config`.
-
-`client_tls` configures connections initiated by the coordinator to router gRPC APIs:
-
-```yaml
-client_tls:
-  mode: tls # disabled, tls, or mtls
-  root_ca_file: /path/to/ca.crt
-  server_name: router.internal # optional certificate name override
-  # cert_file and key_file are required for mtls
-```
-
-`server_tls` configures the coordinator gRPC API:
-
-```yaml
-server_tls:
-  mode: tls # disabled, tls, or mtls
-  cert_file: /path/to/server.crt
-  key_file: /path/to/server.key
-  # client_ca_file is required for mtls
-```
+<GRPCTLS />
 
 ## Coordinator Timing Settings
 

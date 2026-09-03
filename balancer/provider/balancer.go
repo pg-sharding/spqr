@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
-	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -19,6 +18,7 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type BalancerImpl struct {
@@ -49,11 +49,7 @@ func NewBalancer() (*BalancerImpl, error) {
 		threshold[i] = configThresholds[i]
 		threshold[metricsCount+i] = configThresholds[i]
 	}
-	dialOption, err := grpccreds.DialOption(config.BalancerConfig().ClientTLS)
-	if err != nil {
-		return nil, fmt.Errorf("init coordinator gRPC TLS: %w", err)
-	}
-	conn, err := grpc.NewClient(config.BalancerConfig().CoordinatorAddress, dialOption)
+	conn, err := grpc.NewClient(config.BalancerConfig().CoordinatorAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

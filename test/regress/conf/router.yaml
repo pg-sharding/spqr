@@ -16,14 +16,6 @@ allow_two_phase_commit: true
 enable_role_system: true
 roles_file: /spqr/test/regress/conf/roles.yaml
 notice_message_format: "{shard}"
-server_tls:
-  mode: tls
-  cert_file: /etc/spqr/ssl/server.crt
-  key_file: /etc/spqr/ssl/server.key
-client_tls:
-  mode: tls
-  root_ca_file: /etc/spqr/ssl/server.crt
-  server_name: localhost
 query_routing:
     forbid_direct_shard_queries: true
     use_spqrguard: true

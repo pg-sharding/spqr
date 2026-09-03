@@ -22,7 +22,7 @@ func DistributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.
 		return nil, nil, err
 	}
 
-	dialOption, err := grpccreds.DialOption(config.RouterConfig().ClientTLS)
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
 		return nil, nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
 	}

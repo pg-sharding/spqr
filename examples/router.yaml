@@ -21,18 +21,6 @@ frontend_tls:
   cert_file: /path/to/ssl/server.crt
   sslmode: disable
 
-# TLS for router connections to the coordinator gRPC API
-# client_tls:
-#   mode: tls
-#   root_ca_file: /path/to/grpc/ca.crt
-#   server_name: coordinator.internal
-
-# TLS for the router gRPC API
-# server_tls:
-#   mode: tls
-#   cert_file: /path/to/grpc/router-server.crt
-#   key_file: /path/to/grpc/router-server.key
-
 frontend_rules:
   - usr: user1
     db: db1

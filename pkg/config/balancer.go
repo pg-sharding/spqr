@@ -1,7 +1,5 @@
 package config
 
-import "fmt"
-
 const defaultBalancerTimeout = 60
 
 type Balancer struct {
@@ -23,8 +21,6 @@ type Balancer struct {
 	MaxFitCoefficient float64 `json:"max_fit_coefficient" yaml:"max_fit_coefficient" toml:"max_fit_coefficient"`
 
 	TimeoutSec int `json:"timeout" yaml:"timeout" toml:"timeout"`
-
-	ClientTLS *GRPCClientTLSConfig `json:"client_tls" yaml:"client_tls" toml:"client_tls"`
 }
 
 var _ Config = &Balancer{}
@@ -34,10 +30,6 @@ func (b *Balancer) ApplyDefaults() {
 }
 
 func (b *Balancer) PostProcess() error {
-	if err := b.ClientTLS.Validate(); err != nil {
-		return fmt.Errorf("invalid client_tls: %w", err)
-	}
-
 	if b.TimeoutSec == 0 {
 		b.TimeoutSec = defaultBalancerTimeout
 	}

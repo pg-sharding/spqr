@@ -2,6 +2,8 @@
 title: Router
 ---
 
+import GRPCTLS from '/snippets/grpc_tls.mdx';
+
 The SPQR Router configuration can be specified in JSON, TOML, or YAML format. The configuration file passing as a parameter to run command:
 
 ```
@@ -35,12 +37,12 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `router_ro_port`     | The port number for the read-only queries router. | Any valid port number | (none) |
 | `admin_console_port` | The port number for the admin console.            | Any valid port number | (none) |
 | `grpc_api_port`      | The port number for the gRPC API.                 | Any valid port number | (none) |
-| `client_tls`         | TLS for outgoing router connections to the coordinator gRPC API. | Object of `GRPCClientTLSConfig` | disabled |
-| `server_tls`         | TLS for the router gRPC API.                      | Object of `GRPCServerTLSConfig` | disabled |
 | `metric_path`        | The path for prometheus metric exporter           | Any valid HTTP path   | `/metric` |
 | `metric_port`        | The port for prometheus metric exporter           | Any valid port number | (none) |
 
-`client_tls` and `server_tls` support `disabled`, `tls`, and `mtls` modes. Client configuration accepts `root_ca_file` and an optional `server_name`; `cert_file` and `key_file` are required in `mtls` mode. Server configuration requires `cert_file` and `key_file` for TLS, plus `client_ca_file` in `mtls` mode.
+## gRPC TLS Settings
+
+<GRPCTLS />
 
 ## Frontend Rules
 
