@@ -163,3 +163,12 @@ Feature: Initialize router metadata from Etcd
             "shard_id": "sh1"
         }]
         """
+        When I run SQL on host "coordinator"
+        """
+        CALL __spqr__check_router_metadata_hash("r1");
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [{"hash_equal": "true"}]
+        """
