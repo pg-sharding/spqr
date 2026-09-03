@@ -2,6 +2,8 @@
 title: Coordinator
 ---
 
+import GRPCTLS from '/snippets/grpc_tls.mdx';
+
 The SPQR Coordinator configuration can be specified in JSON, TOML, or YAML format. The configuration file passing as a parameter to run command:
 
 ```
@@ -21,6 +23,8 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `coordinator_port`         | The port number for the coordinator.                                                         | Any valid port number                         | (none)  |
 | `grpc_api_port`            | The port number for the gRPC API.                                                            | Any valid port number                         | (none)  |
 | `frontend_tls`             | See [auth.mdx](./auth).                                                                      | Object of `TLSConfig`                         | (none)  |
+| `client_tls`               | TLS for outgoing internal gRPC connections. See [gRPC TLS Settings](#grpc-tls-settings).      | Object of `GRPCClientTLSConfig`               | disabled |
+| `server_tls`               | TLS for the internal gRPC API. See [gRPC TLS Settings](#grpc-tls-settings).                   | Object of `GRPCServerTLSConfig`               | disabled |
 | `frontend_rules`           | The rules for frontend connections.                                                          | List of `FrontendRule`                        | (none)  |
 | `shard_data`               | Path to shard metadata used for data moves and distribution.                                 | Any valid file path                           | (none)  |
 | `use_systemd_notifier`     | Whether to use systemd notifier.                                                             | `true`, `false`                               | `false` |
@@ -39,6 +43,10 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `data_move_await_pid_exception` | Whether to await PID exception during data moves.                                           | `"true"`, `"false"` (as strings)              | `"true"` |
 | `use_spqrguard`            | Maintains [`spqrguard`](/deployment/spqrguard) metadata for key ranges and distributed and reference tables during topology changes and data moves. | `true`, `false` | `false` |
 | `forbid_direct_shard_queries` | Enables global `spqrguard` protection against direct writes to distributed and reference tables. | `true`, `false` | `false` |
+
+## gRPC TLS Settings
+
+<GRPCTLS />
 
 ## Coordinator Timing Settings
 

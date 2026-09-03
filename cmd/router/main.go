@@ -298,7 +298,10 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("router failed to start: %w", err)
 		}
 
-		app := app.NewApp(router)
+		app, err := app.NewApp(router)
+		if err != nil {
+			return err
+		}
 
 		if !config.RouterConfig().WithCoordinator && rcfgPath != "" {
 			if err := datatransfers.LoadConfig(rcfgPath); err != nil {
@@ -323,7 +326,10 @@ var runCmd = &cobra.Command{
 						return err
 					}
 
-					app := coordApp.NewApp(coordinator)
+					app, err := coordApp.NewApp(coordinator)
+					if err != nil {
+						return err
+					}
 					return app.Run(false)
 				}(); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")

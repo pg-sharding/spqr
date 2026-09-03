@@ -20,8 +20,8 @@ type Coordinator struct {
 	GrpcAPIPort          string               `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	Host                 string               `json:"host" toml:"host" yaml:"host"`
 	FrontendTLS          *TLSConfig           `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	GrpcAPITLS           *GRPCServerTLSConfig `json:"grpc_api_tls" yaml:"grpc_api_tls" toml:"grpc_api_tls"`
-	RouterGrpcTLS        *GRPCClientTLSConfig `json:"router_grpc_tls" yaml:"router_grpc_tls" toml:"router_grpc_tls"`
+	ClientTLS            *GRPCClientTLSConfig `json:"client_tls" yaml:"client_tls" toml:"client_tls"`
+	ServerTLS            *GRPCServerTLSConfig `json:"server_tls" yaml:"server_tls" toml:"server_tls"`
 	FrontendRules        []*FrontendRule      `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
 	ShardDataCfg         string               `json:"shard_data" toml:"shard_data" yaml:"shard_data"`
 	UseSystemdNotifier   bool                 `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
@@ -69,11 +69,11 @@ func (c *Coordinator) ApplyDefaults() {
 }
 
 func (c *Coordinator) PostProcess() error {
-	if err := c.GrpcAPITLS.Validate(); err != nil {
-		return fmt.Errorf("invalid grpc_api_tls: %w", err)
+	if err := c.ClientTLS.Validate(); err != nil {
+		return fmt.Errorf("invalid client_tls: %w", err)
 	}
-	if err := c.RouterGrpcTLS.Validate(); err != nil {
-		return fmt.Errorf("invalid router_grpc_tls: %w", err)
+	if err := c.ServerTLS.Validate(); err != nil {
+		return fmt.Errorf("invalid server_tls: %w", err)
 	}
 
 	if c.QdbAddr != "" && c.QdbAddrs == nil {
