@@ -104,25 +104,6 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	return configStr, nil
 }
 
-// LoadCoordinatorTLSCfg loads only the gRPC interconnect settings from a
-// coordinator configuration. Routers that do not otherwise use coordinator
-// configuration must not inherit coordinator-only settings such as shard_data.
-func LoadCoordinatorTLSCfg(cfgPath string) (string, error) {
-	c := &Coordinator{}
-	configStr, err := LoadConfig(cfgPath, c)
-	if err != nil {
-		return "", err
-	}
-
-	cfgMu.Lock()
-	defer cfgMu.Unlock()
-	cfgCoordinator = Coordinator{
-		ClientTLS: c.ClientTLS,
-		ServerTLS: c.ServerTLS,
-	}
-	return configStr, nil
-}
-
 // CoordinatorConfig returns a pointer to the Coordinator configuration.
 //
 // Returns:

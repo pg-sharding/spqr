@@ -121,7 +121,7 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		coordinatorApp, err := app.NewApp(coordinator)
+		app, err := app.NewApp(coordinator)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ var rootCmd = &cobra.Command{
 				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
 			}
 		}()
-		return coordinatorApp.Run(true)
+		return app.Run(true)
 	},
 }
 

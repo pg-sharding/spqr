@@ -1,6 +1,4 @@
-The `client_tls` and `server_tls` fields belong to the coordinator configuration. Both `spqr-coordinator` and `spqr-router run --coordinator-config` read them from that file for their internal gRPC interconnect. Both settings default to `disabled` when omitted.
-
-`client_tls` configures outgoing internal gRPC connections:
+`client_tls` configures outgoing internal gRPC connections, `server_tls` configures the internal gRPC API:
 
 ```yaml coordinator.yaml
 client_tls:
@@ -8,11 +6,6 @@ client_tls:
   root_ca_file: /path/to/ca.crt
   server_name: spqr.internal # optional certificate name override
   # cert_file and key_file are required for mtls
-```
-
-`server_tls` configures the internal gRPC API:
-
-```yaml coordinator.yaml
 server_tls:
   mode: tls # disabled, tls, or mtls
   cert_file: /path/to/server.crt

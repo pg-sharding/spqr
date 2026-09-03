@@ -20,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
-	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/router_util"
@@ -201,27 +200,13 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
 		}
 
-		usesCoordinatorConfig := config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql
-		if rootCmd.PersistentFlags().Changed("coordinator-config") || usesCoordinatorConfig {
+		if config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
 			var err error
-			var cfgStr string
-			if usesCoordinatorConfig {
-				cfgStr, err = config.LoadCoordinatorCfg(ccfgPath)
-			} else {
-				cfgStr, err = config.LoadCoordinatorTLSCfg(ccfgPath)
-			}
+			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
 				return err
 			}
 			log.Println("Running coordinator config:", cfgStr)
-			if config.RouterConfig().WithCoordinator {
-				if err := grpccreds.ValidateServer(config.CoordinatorConfig().ServerTLS); err != nil {
-					return fmt.Errorf("init embedded coordinator gRPC server TLS: %w", err)
-				}
-				if err := grpccreds.ValidateClient(config.CoordinatorConfig().ClientTLS); err != nil {
-					return fmt.Errorf("init embedded coordinator router gRPC client TLS: %w", err)
-				}
-			}
 		}
 
 		if console && daemonize {
@@ -341,11 +326,11 @@ var runCmd = &cobra.Command{
 						return err
 					}
 
-					coordinatorApp, err := coordApp.NewApp(coordinator)
+					app, err := coordApp.NewApp(coordinator)
 					if err != nil {
 						return err
 					}
-					return coordinatorApp.Run(false)
+					return app.Run(false)
 				}(); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
