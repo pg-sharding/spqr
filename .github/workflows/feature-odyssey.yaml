@@ -1,22 +1,10 @@
 # Nightly feature suite against the odyssey pooler topology.
-#
-# This runs the very same scenarios as the `feature` job in tests.yaml, but with
-# an odyssey pooler in front of every shard (test/feature/docker-compose-odyssey.yaml,
-# selected via FEATURE_COMPOSE_FILE). Transaction pooling does not preserve
-# per-backend session state, so some scenarios are expected to fail; this workflow
-# exists to *record* those failures, not to gate anything.
-#
-# It is deliberately a standalone, schedule-driven workflow: it is NOT referenced
-# in the `needs:` of test-report or any other gate in tests.yaml, so a red run
-# here never blocks a PR. It is also self-contained — it generates the feature
-# files itself (make split_feature_test, invoked by feature_test_odyssey) instead
-# of consuming the generatedFeatures artifact from a sibling job.
+# Standalone, not wired into any PR gate. Failures are expected and recorded.
 
 name: feature-odyssey
 
 on:
   schedule:
-    # 02:17 UTC daily. Off-peak, and offset from the top of the hour.
     - cron: '17 2 * * *'
   workflow_dispatch:
 
@@ -24,13 +12,7 @@ jobs:
   feature_odyssey:
     name: feature_odyssey
     runs-on: ubuntu-latest
-    # go test runs with -timeout 150m (see the feature_test_odyssey target); give
-    # the job enough headroom on top for image builds and the qemu-emulated
-    # odyssey containers.
     timeout-minutes: 170
-    # There is no matrix here (the whole suite runs in a single go test), so a
-    # scenario failure never cancels the rest — go test executes every scenario
-    # and the JUnit report below captures them all.
     strategy:
       fail-fast: false
     steps:
@@ -47,9 +29,8 @@ jobs:
       - name: Check Docker Version
         run: docker --version
 
+      # odyssey image is linux/amd64 only
       - name: Set up QEMU
-        # The odyssey image is linux/amd64 only; ubuntu-latest runners are amd64,
-        # but register the emulators anyway so the pinned platform never trips up.
         uses: docker/setup-qemu-action@v3
 
       - name: Check out code
