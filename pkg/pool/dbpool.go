@@ -61,6 +61,7 @@ const (
 	AcquireHostKindANY = AcquireHostKind(iota)
 	AcquireHostKindRW  = AcquireHostKind(iota)
 	AcquireHostKindRO  = AcquireHostKind(iota)
+	AcquireHostKindPR  = AcquireHostKind(iota)
 )
 
 // StartBackgroundHealthCheck starts background health checking for failed hosts
@@ -358,16 +359,6 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 	return nil
 }
 
-// selectReadOnlyShardHost wraps the selectShardHost method to specifically select a read-only shard host.
-func (s *DBPool) selectReadOnlyShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host) (shard.ShardHostInstance, error) {
-	return s.selectShardHost(params, key, hosts, AcquireHostKindRO)
-}
-
-// selectReadWriteShardHost wraps the selectShardHost method to specifically select a read-write shard host.
-func (s *DBPool) selectReadWriteShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host) (shard.ShardHostInstance, error) {
-	return s.selectShardHost(params, key, hosts, AcquireHostKindRW)
-}
-
 // selectShardHost selects a shard host based on the provided connection allocation
 // parameters, shard key, list of hosts, and whether the host should be a primary or not.
 // It traverses the hosts and checks if they are suitable for the given shard key and
@@ -495,24 +486,14 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 
 	/* pool.Connection will reorder hosts in such way, that preferred tsa will go first */
 	switch effectiveTargetSessionAttrs {
-	case "":
-		fallthrough
-	case config.TargetSessionAttrsAny:
-
+	case "", config.TargetSessionAttrsAny:
 		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindANY)
-
 	case config.TargetSessionAttrsRO:
-		return s.selectReadOnlyShardHost(effectiveParams, key, hostOrder)
-	case config.TargetSessionAttrsPS:
-		fallthrough
-	case config.TargetSessionAttrsPR:
-		if res, err := s.selectReadOnlyShardHost(effectiveParams, key, hostOrder); err != nil {
-			return s.selectReadWriteShardHost(effectiveParams, key, hostOrder)
-		} else {
-			return res, nil
-		}
+		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindRO)
+	case config.TargetSessionAttrsPS, config.TargetSessionAttrsPR:
+		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindPR)
 	case config.TargetSessionAttrsRW:
-		return s.selectReadWriteShardHost(effectiveParams, key, hostOrder)
+		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindRW)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
