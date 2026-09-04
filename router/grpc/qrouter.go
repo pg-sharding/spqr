@@ -19,12 +19,10 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
-	ggrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
@@ -333,31 +331,7 @@ func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) 
 		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
 	}
 
-	if config.RouterConfig().WithCoordinatorConfig() {
-		etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if err := etcdConn.Client().Close(); err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
-			}
-		}()
-
-		if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
-			return nil, err
-		}
-		return nil, nil
-	}
-	coordAddr, err := l.mgr.GetCoordinator(ctx)
-	if err == nil {
-		cc, err := ggrpc.NewClient(coordAddr)
-		if err != nil {
-			return nil, err
-		}
-		return nil, rebootstrap.MemQDBReBootstrapGRPC(ctx, memqdb, cc)
-	}
-	return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+	return nil, rebootstrap.RebootstrapMemQDB(ctx, memqdb, l.mgr)
 }
 
 // SyncMetadata implements [proto.RouterServiceServer].

@@ -4,13 +4,17 @@ import (
 	"context"
 	"sort"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.EtcdQDB) error {
@@ -182,4 +186,35 @@ func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.Cli
 
 	memqdb.SwapState(swapDb.State)
 	return nil
+}
+
+func RebootstrapMemQDB(ctx context.Context, memqdb *qdb.MemQDB, mgr topology.RouterMgr) error {
+	if config.RouterConfig().WithCoordinatorConfig() {
+		etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := etcdConn.Client().Close(); err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+			}
+		}()
+
+		if err := MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			return err
+		}
+		return nil
+	}
+	coordAddr, err := mgr.GetCoordinator(ctx)
+	if err != nil {
+		return err
+	}
+	if coordAddr == "" {
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+	}
+	cc, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	return MemQDBReBootstrapGRPC(ctx, memqdb, cc)
 }
