@@ -72,7 +72,7 @@ func (guc *BoolGUCimpl) InitBoot() {
 	guc.bootVal = guc.initBoot()
 }
 
-func (guc *BoolGUCimpl) SetBoolValue(val bool) {
+func (guc *BoolGUCimpl) SetBoolBootValue(val bool) {
 	guc.bootVal = val
 }
 
@@ -108,7 +108,7 @@ func (guc *StrGUCimpl) InitBoot() {
 	guc.bootVal = guc.initBoot()
 }
 
-func (guc *StrGUCimpl) SetStrValue(val string) {
+func (guc *StrGUCimpl) SetStrBootValue(val string) {
 	guc.bootVal = val
 }
 
