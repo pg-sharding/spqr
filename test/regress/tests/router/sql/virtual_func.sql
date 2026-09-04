@@ -96,57 +96,75 @@ SET __spqr__notice_message_format = '{shard}@{host}';
 SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO 'spqr_shard_1';
 SELECT 1+2;
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 SELECT __spqr__host_status('spqr_shard_1:6432');
 
 -- sh1: replica
+SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO 'spqr_shard_1_replica';
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT 1+2;
-SELECT __spqr__host_status('spqr_shard_1_replica:6432');
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
+SELECT __spqr__host_status('spqr_shard_1_replica:6432');
 
 -- sh2: primary
 SET __spqr__execute_on TO sh2;
 SET __spqr__execute_host_filter TO 'spqr_shard_2';
 SELECT 1+2;
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 SELECT __spqr__host_status('spqr_shard_2:6432');
 
 -- sh2: replica
+SET __spqr__execute_on TO sh2;
 SET __spqr__execute_host_filter TO 'spqr_shard_2_replica';
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT 1+2;
-SELECT __spqr__host_status('spqr_shard_2_replica:6432');
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
+SELECT __spqr__host_status('spqr_shard_2_replica:6432');
 
 -- sh3: primary
 SET __spqr__execute_on TO sh3;
 SET __spqr__execute_host_filter TO 'spqr_shard_3';
 SELECT 1+2;
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 SELECT __spqr__host_status('spqr_shard_3:6432');
 
 -- sh3: replica
+SET __spqr__execute_on TO sh3;
 SET __spqr__execute_host_filter TO 'spqr_shard_3_replica';
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT 1+2;
-SELECT __spqr__host_status('spqr_shard_3_replica:6432');
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
+SELECT __spqr__host_status('spqr_shard_3_replica:6432');
 
 -- sh4: primary
 SET __spqr__execute_on TO sh4;
 SET __spqr__execute_host_filter TO 'spqr_shard_4';
 SELECT 1+2;
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
 SELECT __spqr__host_status('spqr_shard_4:6432');
 
 -- sh4: replica
+SET __spqr__execute_on TO sh4;
 SET __spqr__execute_host_filter TO 'spqr_shard_4_replica';
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT 1+2;
-SELECT __spqr__host_status('spqr_shard_4_replica:6432');
-RESET __spqr__target_session_attrs;
-
--- cleanup GUCs
 RESET __spqr__execute_on;
 RESET __spqr__execute_host_filter;
+RESET __spqr__target_session_attrs;
+SELECT __spqr__host_status('spqr_shard_4_replica:6432');
+
+-- cleanup GUCs
 RESET __spqr__notice_message_format;
 
 -- error: unknown host
