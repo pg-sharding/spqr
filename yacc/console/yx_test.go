@@ -1,6 +1,7 @@
 package spqrparser_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 	"time"
@@ -2882,6 +2883,53 @@ func TestRename(t *testing.T) {
 		{
 			query: "RENAME KEY RANGE ALL TO kr_new",
 			err:   fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+	}
+}
+
+func TestCall(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	val1 := make([]byte, 10)
+	binary.PutVarint(val1, 1)
+
+	for _, tt := range []tcase{
+		{
+			query: "CALL f(1, asd)",
+
+			exp: &spqrparser.Call{
+				FuncName: "f",
+				Args: []string{
+					string(val1),
+					"asd",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CALL no_args()",
+
+			exp: &spqrparser.Call{
+				FuncName: "no_args",
+				Args:     []string{},
+			},
+			err: nil,
 		},
 	} {
 

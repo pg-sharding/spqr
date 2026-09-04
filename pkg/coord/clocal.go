@@ -331,6 +331,14 @@ func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.
 	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 
+// GetRouterMetadataHash is disabled in LocalCoordinator
+//
+// Returns:
+// - error: SPQR_INVALID_REQUEST error
+func (lc *LocalInstanceMetadataMgr) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "MoveKeyRange is not available in local coordinator")
+}
+
 // MoveKeyRange is disabled in LocalCoordinator
 //
 // Returns:

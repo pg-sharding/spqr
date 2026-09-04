@@ -11,12 +11,16 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -313,6 +317,54 @@ func (l *LocalQrouterServer) ListRouters(_ context.Context, _ *emptypb.Empty) (*
 func (l *LocalQrouterServer) OpenRouter(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	l.qr.Initialize()
 	return nil, nil
+}
+
+// GetMetadataHash implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Empty) (*protos.MetadataHashReply, error) {
+	hash, err := qdb.GetQDBStateHash(ctx, l.mgr.QDB())
+	return &protos.MetadataHashReply{Hash: hash}, err
+}
+
+// Rebootstrap implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	memqdb, ok := l.mgr.QDB().(*qdb.MemQDB)
+	if !ok {
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
+	}
+
+	if !config.RouterConfig().UseCoordinatorInit {
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+	}
+
+	etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := etcdConn.Client().Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+		}
+	}()
+
+	if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// SyncMetadata implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) SyncMetadata(context.Context, *protos.SyncMetadataRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// AddRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) AddRouter(context.Context, *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// RemoveRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) RemoveRouter(context.Context, *protos.RemoveRouterRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
 }
 
 // TODO : unit tests

@@ -305,6 +305,7 @@ func (dc *DockerComposer) runCommand(service string, cmd []string, timeout time.
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmd,
+		Privileged:   true,
 	}
 	execResp, err := dc.api.ContainerExecCreate(ctx, cont.ID, execCfg)
 	if err != nil {

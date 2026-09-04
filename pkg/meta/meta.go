@@ -42,6 +42,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/virtual"
 
 	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -1364,6 +1365,43 @@ func ProcMetadataCommand(ctx context.Context,
 		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
 	case *spqrparser.Rollback:
 		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Call:
+		switch stmt.FuncName {
+		case virtual.VirtualCheckRouterMetaHash:
+			if len(stmt.Args) != 1 {
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "function \"%s\" accepts 1 argument, got %d", stmt.FuncName, len(stmt.Args))
+			}
+			routerId := stmt.Args[0]
+			routers, err := mgr.ListRouters(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var router *topology.Router
+			for _, iRouter := range routers {
+				if iRouter.ID == routerId {
+					router = iRouter
+					break
+				}
+			}
+			if router == nil {
+				return nil, spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router \"%s\" not found", routerId)
+			}
+			routerHash, err := mgr.GetRouterMetadataHash(ctx, router)
+			if err != nil {
+				return nil, err
+			}
+			localHash, err := qdb.GetQDBStateHash(ctx, mgr.QDB())
+			if err != nil {
+				return nil, err
+			}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("hash_equal"),
+			}
+			tts.WriteDataRow(strconv.FormatBool(routerHash == localHash))
+			return tts, nil
+		default:
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "incorrect function name \"%s\"", stmt.FuncName)
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

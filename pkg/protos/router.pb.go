@@ -349,6 +349,50 @@ func (x *SyncMetadataRequest) GetRouter() *Router {
 	return nil
 }
 
+type MetadataHashReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Hash          uint64                 `protobuf:"varint,1,opt,name=hash,proto3" json:"hash,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MetadataHashReply) Reset() {
+	*x = MetadataHashReply{}
+	mi := &file_protos_router_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MetadataHashReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MetadataHashReply) ProtoMessage() {}
+
+func (x *MetadataHashReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_router_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MetadataHashReply.ProtoReflect.Descriptor instead.
+func (*MetadataHashReply) Descriptor() ([]byte, []int) {
+	return file_protos_router_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *MetadataHashReply) GetHash() uint64 {
+	if x != nil {
+		return x.Hash
+	}
+	return 0
+}
+
 var File_protos_router_proto protoreflect.FileDescriptor
 
 const file_protos_router_proto_rawDesc = "" +
@@ -367,17 +411,21 @@ const file_protos_router_proto_rawDesc = "" +
 	"\x13RemoveRouterRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"C\n" +
 	"\x13SyncMetadataRequest\x12,\n" +
-	"\x06router\x18\x01 \x01(\v2\f.spqr.RouterB\x06\xbaH\x03\xc8\x01\x01R\x06router*&\n" +
+	"\x06router\x18\x01 \x01(\v2\f.spqr.RouterB\x06\xbaH\x03\xc8\x01\x01R\x06router\"'\n" +
+	"\x11MetadataHashReply\x12\x12\n" +
+	"\x04hash\x18\x01 \x01(\x04R\x04hash*&\n" +
 	"\fRouterStatus\x12\n" +
 	"\n" +
 	"\x06CLOSED\x10\x00\x12\n" +
 	"\n" +
-	"\x06OPENED\x10\x012\x97\x02\n" +
+	"\x06OPENED\x10\x012\x9e\x03\n" +
 	"\rRouterService\x12?\n" +
 	"\vListRouters\x12\x16.google.protobuf.Empty\x1a\x16.spqr.ListRoutersReply\"\x00\x12;\n" +
 	"\tAddRouter\x12\x16.spqr.AddRouterRequest\x1a\x14.spqr.AddRouterReply\"\x00\x12C\n" +
 	"\fRemoveRouter\x12\x19.spqr.RemoveRouterRequest\x1a\x16.google.protobuf.Empty\"\x00\x12C\n" +
-	"\fSyncMetadata\x12\x19.spqr.SyncMetadataRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
+	"\fSyncMetadata\x12\x19.spqr.SyncMetadataRequest\x1a\x16.google.protobuf.Empty\"\x00\x12D\n" +
+	"\x0fGetMetadataHash\x12\x16.google.protobuf.Empty\x1a\x17.spqr.MetadataHashReply\"\x00\x12?\n" +
+	"\vRebootstrap\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (
@@ -393,7 +441,7 @@ func file_protos_router_proto_rawDescGZIP() []byte {
 }
 
 var file_protos_router_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_protos_router_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_protos_router_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_protos_router_proto_goTypes = []any{
 	(RouterStatus)(0),           // 0: spqr.RouterStatus
 	(*Router)(nil),              // 1: spqr.Router
@@ -402,26 +450,31 @@ var file_protos_router_proto_goTypes = []any{
 	(*AddRouterReply)(nil),      // 4: spqr.AddRouterReply
 	(*RemoveRouterRequest)(nil), // 5: spqr.RemoveRouterRequest
 	(*SyncMetadataRequest)(nil), // 6: spqr.SyncMetadataRequest
-	(*emptypb.Empty)(nil),       // 7: google.protobuf.Empty
+	(*MetadataHashReply)(nil),   // 7: spqr.MetadataHashReply
+	(*emptypb.Empty)(nil),       // 8: google.protobuf.Empty
 }
 var file_protos_router_proto_depIdxs = []int32{
-	0, // 0: spqr.Router.status:type_name -> spqr.RouterStatus
-	1, // 1: spqr.ListRoutersReply.routers:type_name -> spqr.Router
-	1, // 2: spqr.AddRouterRequest.router:type_name -> spqr.Router
-	1, // 3: spqr.SyncMetadataRequest.router:type_name -> spqr.Router
-	7, // 4: spqr.RouterService.ListRouters:input_type -> google.protobuf.Empty
-	3, // 5: spqr.RouterService.AddRouter:input_type -> spqr.AddRouterRequest
-	5, // 6: spqr.RouterService.RemoveRouter:input_type -> spqr.RemoveRouterRequest
-	6, // 7: spqr.RouterService.SyncMetadata:input_type -> spqr.SyncMetadataRequest
-	2, // 8: spqr.RouterService.ListRouters:output_type -> spqr.ListRoutersReply
-	4, // 9: spqr.RouterService.AddRouter:output_type -> spqr.AddRouterReply
-	7, // 10: spqr.RouterService.RemoveRouter:output_type -> google.protobuf.Empty
-	7, // 11: spqr.RouterService.SyncMetadata:output_type -> google.protobuf.Empty
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: spqr.Router.status:type_name -> spqr.RouterStatus
+	1,  // 1: spqr.ListRoutersReply.routers:type_name -> spqr.Router
+	1,  // 2: spqr.AddRouterRequest.router:type_name -> spqr.Router
+	1,  // 3: spqr.SyncMetadataRequest.router:type_name -> spqr.Router
+	8,  // 4: spqr.RouterService.ListRouters:input_type -> google.protobuf.Empty
+	3,  // 5: spqr.RouterService.AddRouter:input_type -> spqr.AddRouterRequest
+	5,  // 6: spqr.RouterService.RemoveRouter:input_type -> spqr.RemoveRouterRequest
+	6,  // 7: spqr.RouterService.SyncMetadata:input_type -> spqr.SyncMetadataRequest
+	8,  // 8: spqr.RouterService.GetMetadataHash:input_type -> google.protobuf.Empty
+	8,  // 9: spqr.RouterService.Rebootstrap:input_type -> google.protobuf.Empty
+	2,  // 10: spqr.RouterService.ListRouters:output_type -> spqr.ListRoutersReply
+	4,  // 11: spqr.RouterService.AddRouter:output_type -> spqr.AddRouterReply
+	8,  // 12: spqr.RouterService.RemoveRouter:output_type -> google.protobuf.Empty
+	8,  // 13: spqr.RouterService.SyncMetadata:output_type -> google.protobuf.Empty
+	7,  // 14: spqr.RouterService.GetMetadataHash:output_type -> spqr.MetadataHashReply
+	8,  // 15: spqr.RouterService.Rebootstrap:output_type -> google.protobuf.Empty
+	10, // [10:16] is the sub-list for method output_type
+	4,  // [4:10] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_protos_router_proto_init() }
@@ -435,7 +488,7 @@ func file_protos_router_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_router_proto_rawDesc), len(file_protos_router_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

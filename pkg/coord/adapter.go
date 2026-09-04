@@ -593,6 +593,10 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 	return spqrerror.CleanGrpcError(err)
 }
 
+func (a *Adapter) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, fmt.Errorf("not implemented")
+}
+
 // AddDataShard adds a data shard to the system.
 //
 // Parameters:

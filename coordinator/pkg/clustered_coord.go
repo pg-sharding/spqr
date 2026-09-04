@@ -458,6 +458,13 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			currentRouterIDs[r.ID] = true
 		}
 
+		coordHash, err := qdb.GetQDBStateHash(ctx, qc.db)
+		checkRouterHashes := true
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to get etcd QDB hash")
+			checkRouterHashes = false
+		}
+
 		for _, r := range routers {
 			if err := func() error {
 				// Create bounded context for this router's operations
@@ -498,9 +505,22 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					}
 
 				case proto.RouterStatus_OPENED:
-					/* TODO: check router metadata consistency */
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
+					}
+
+					if config.CoordinatorConfig().WatchRoutersQDB && checkRouterHashes {
+						routerClient := proto.NewRouterServiceClient(cc)
+						routerHash, err := qc.getRouterMetaHashInternal(ctx, routerClient)
+						if err != nil {
+							return err
+						}
+						if routerHash != coordHash {
+							spqrlog.Zero.Debug().Str("router id", r.ID).Msg("re-bootstraping router")
+							if _, err := routerClient.Rebootstrap(ctx, nil); err != nil {
+								return fmt.Errorf("failed to re-bootstrap router: %w", err)
+							}
+						}
 					}
 
 					/* Mark router as opened in qdb */
@@ -2470,6 +2490,7 @@ func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNe
 }
 
 // TODO : unit tests
+// TODO: make router do a rebootstrap instead
 func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
@@ -3524,6 +3545,24 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxID strin
 			Msg("drop unique index response")
 		return nil
 	})
+}
+
+func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *topology.Router) (uint64, error) {
+	cc, cf, err := qc.getOrCreateRouterConn(r)
+	if err != nil {
+		return 0, err
+	}
+	defer cf()
+	rCl := proto.NewRouterServiceClient(cc)
+	return qc.getRouterMetaHashInternal(ctx, rCl)
+}
+
+func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {
+	resp, err := rCl.GetMetadataHash(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	return resp.Hash, nil
 }
 
 func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, updated []*topology.DataShard) {

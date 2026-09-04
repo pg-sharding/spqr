@@ -135,6 +135,8 @@ func randomHex(n int) (string, error) {
 	begin 					*Begin
 	commit 					*Commit
 	rollback 				*Rollback
+
+	call                    *Call
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -206,7 +208,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME CALL
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS SHARD COLUMNS HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
@@ -350,6 +352,8 @@ func randomHex(n int) (string, error) {
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
+
+%type<call> call_stmt
 
 %left		OR
 %left		AND
@@ -506,6 +510,9 @@ command:
 	{
 		$$ = $1
 	} | rollback_stmt
+	{
+		$$ = $1
+	} | call_stmt
 	{
 		$$ = $1
 	}
@@ -2052,6 +2059,20 @@ rollback_stmt:
 	ROLLBACK
 	{
 		$$ = &Rollback{}
+	}
+
+call_stmt:
+	CALL any_id TOPENBR any_id_list TCLOSEBR
+	{
+		$$ = &Call{
+			FuncName: $2,
+			Args: $4,
+		}
+	} | CALL any_id TOPENBR TCLOSEBR {
+		$$ = &Call{
+			FuncName: $2,
+			Args: []string{},
+		}
 	}
 
 %%

@@ -20,10 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RouterService_ListRouters_FullMethodName  = "/spqr.RouterService/ListRouters"
-	RouterService_AddRouter_FullMethodName    = "/spqr.RouterService/AddRouter"
-	RouterService_RemoveRouter_FullMethodName = "/spqr.RouterService/RemoveRouter"
-	RouterService_SyncMetadata_FullMethodName = "/spqr.RouterService/SyncMetadata"
+	RouterService_ListRouters_FullMethodName     = "/spqr.RouterService/ListRouters"
+	RouterService_AddRouter_FullMethodName       = "/spqr.RouterService/AddRouter"
+	RouterService_RemoveRouter_FullMethodName    = "/spqr.RouterService/RemoveRouter"
+	RouterService_SyncMetadata_FullMethodName    = "/spqr.RouterService/SyncMetadata"
+	RouterService_GetMetadataHash_FullMethodName = "/spqr.RouterService/GetMetadataHash"
+	RouterService_Rebootstrap_FullMethodName     = "/spqr.RouterService/Rebootstrap"
 )
 
 // RouterServiceClient is the client API for RouterService service.
@@ -34,6 +36,8 @@ type RouterServiceClient interface {
 	AddRouter(ctx context.Context, in *AddRouterRequest, opts ...grpc.CallOption) (*AddRouterReply, error)
 	RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetMetadataHash(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MetadataHashReply, error)
+	Rebootstrap(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type routerServiceClient struct {
@@ -84,6 +88,26 @@ func (c *routerServiceClient) SyncMetadata(ctx context.Context, in *SyncMetadata
 	return out, nil
 }
 
+func (c *routerServiceClient) GetMetadataHash(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MetadataHashReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MetadataHashReply)
+	err := c.cc.Invoke(ctx, RouterService_GetMetadataHash_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *routerServiceClient) Rebootstrap(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RouterService_Rebootstrap_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RouterServiceServer is the server API for RouterService service.
 // All implementations must embed UnimplementedRouterServiceServer
 // for forward compatibility.
@@ -92,6 +116,8 @@ type RouterServiceServer interface {
 	AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error)
 	RemoveRouter(context.Context, *RemoveRouterRequest) (*emptypb.Empty, error)
 	SyncMetadata(context.Context, *SyncMetadataRequest) (*emptypb.Empty, error)
+	GetMetadataHash(context.Context, *emptypb.Empty) (*MetadataHashReply, error)
+	Rebootstrap(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRouterServiceServer()
 }
 
@@ -113,6 +139,12 @@ func (UnimplementedRouterServiceServer) RemoveRouter(context.Context, *RemoveRou
 }
 func (UnimplementedRouterServiceServer) SyncMetadata(context.Context, *SyncMetadataRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SyncMetadata not implemented")
+}
+func (UnimplementedRouterServiceServer) GetMetadataHash(context.Context, *emptypb.Empty) (*MetadataHashReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMetadataHash not implemented")
+}
+func (UnimplementedRouterServiceServer) Rebootstrap(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Rebootstrap not implemented")
 }
 func (UnimplementedRouterServiceServer) mustEmbedUnimplementedRouterServiceServer() {}
 func (UnimplementedRouterServiceServer) testEmbeddedByValue()                       {}
@@ -207,6 +239,42 @@ func _RouterService_SyncMetadata_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RouterService_GetMetadataHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouterServiceServer).GetMetadataHash(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RouterService_GetMetadataHash_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouterServiceServer).GetMetadataHash(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RouterService_Rebootstrap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouterServiceServer).Rebootstrap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RouterService_Rebootstrap_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouterServiceServer).Rebootstrap(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RouterService_ServiceDesc is the grpc.ServiceDesc for RouterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -229,6 +297,14 @@ var RouterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SyncMetadata",
 			Handler:    _RouterService_SyncMetadata_Handler,
+		},
+		{
+			MethodName: "GetMetadataHash",
+			Handler:    _RouterService_GetMetadataHash_Handler,
+		},
+		{
+			MethodName: "Rebootstrap",
+			Handler:    _RouterService_Rebootstrap_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
