@@ -593,7 +593,7 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 	return spqrerror.CleanGrpcError(err)
 }
 
-func (a *Adapter) GetRouterMetadataHash(ctx context.Context, router *topology.Router) (uint64, error) {
+func (a *Adapter) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 
