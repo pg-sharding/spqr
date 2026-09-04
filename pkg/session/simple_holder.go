@@ -44,10 +44,11 @@ type ParamEntry struct {
 type BoolGUCimpl struct {
 	n         string
 	shortName string
-	def       func() bool
+	initBoot  func() bool
+	bootVal   bool
 }
 
-func (guc BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
+func (guc *BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
 	if val {
 		cl.RecordVirtualParam(level, guc.n, "ok")
 	} else {
@@ -55,26 +56,35 @@ func (guc BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
 	}
 }
 
-func (guc BoolGUCimpl) ShortName() string {
+func (guc *BoolGUCimpl) ShortName() string {
 	return guc.shortName
 }
 
-func (guc BoolGUCimpl) Reset() {
+func (guc *BoolGUCimpl) Reset() {
 
 }
 
-func (guc BoolGUCimpl) Get(cl SessionParamsHolder) bool {
-	return cl.ResolveVirtualBoolParam(guc.n, guc.def())
+func (guc *BoolGUCimpl) Get(cl SessionParamsHolder) bool {
+	return cl.ResolveVirtualBoolParam(guc.n, guc.bootVal)
+}
+
+func (guc *BoolGUCimpl) InitBoot() {
+	guc.bootVal = guc.initBoot()
+}
+
+func (guc *BoolGUCimpl) SetBoolBootValue(val bool) {
+	guc.bootVal = val
 }
 
 type StrGUCimpl struct {
 	n         string
 	shortName string
-	def       func() string
+	initBoot  func() string
+	bootVal   string
 	assign    func(sph SessionParamsHolder, level string, val string) error
 }
 
-func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
+func (guc *StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
 	if guc.assign != nil {
 		return guc.assign(cl, level, val)
 	}
@@ -82,16 +92,24 @@ func (guc StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) erro
 	return nil
 }
 
-func (guc StrGUCimpl) ShortName() string {
+func (guc *StrGUCimpl) ShortName() string {
 	return guc.shortName
 }
 
-func (guc StrGUCimpl) Reset() {
+func (guc *StrGUCimpl) Reset() {
 
 }
 
-func (guc StrGUCimpl) Get(cl SessionParamsHolder) string {
-	return cl.ResolveVirtualStringParam(guc.n, guc.def())
+func (guc *StrGUCimpl) Get(cl SessionParamsHolder) string {
+	return cl.ResolveVirtualStringParam(guc.n, guc.bootVal)
+}
+
+func (guc *StrGUCimpl) InitBoot() {
+	guc.bootVal = guc.initBoot()
+}
+
+func (guc *StrGUCimpl) SetStrBootValue(val string) {
+	guc.bootVal = val
 }
 
 func (lhs ParamEntry) EqualIgnoringValue(rhs ParamEntry) bool {
@@ -463,39 +481,39 @@ func (cl *SimpleSessionParamHandler) getParamVisibility(name string, isVirtual b
 	}
 }
 
-var BoolGUCs = []BoolGUCimpl{
+var BoolGUCs = []*BoolGUCimpl{
 	{
 		n:         SPQR_ALLOW_SPLIT_UPDATE,
 		shortName: "allow split update",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().Qr.AllowSplitUpdate
 		},
 	},
 	{
 		n:         SPQR_ALLOW_POSTPROCESSING,
 		shortName: "allow postprocessing",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().Qr.AllowPostProcessing
 		},
 	},
 	{
 		n:         SPQR_LINEARIZE_DISPATCH,
 		shortName: "linearize dispatch",
-		def: func() bool {
+		initBoot: func() bool {
 			return false
 		},
 	},
 	{
 		n:         SPQR_ALLOW_AUTOPROTECT_2PC,
 		shortName: "Allow auto protect 2pc",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().AllowAutoprotectTwoPhase
 		},
 	},
 	{
 		n:         SPQR_ALLOW_FLUX_ACCESS,
 		shortName: "flux data access",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().Qr.AllowFluxChunkAccess
 		},
 	},
@@ -503,59 +521,59 @@ var BoolGUCs = []BoolGUCimpl{
 	{
 		n:         SPQR_SESSION_CONNECTIONS_PIN,
 		shortName: "Session connections pinned",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().SessionConnectionsPin
 		},
 	},
 	{
 		n:         SPQR_REPLY_NOTICE,
 		shortName: "show notice messages",
-		def: func() bool {
+		initBoot: func() bool {
 			return false
 		},
 	},
 	{
 		n:         SPQR_MAINTAIN_PARAMS,
 		shortName: "maintain params",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().MaintainParams
 		},
 	},
 	{
 		n:         SPQR_EAGER_CLEANUP_2PC,
 		shortName: "eager cleanup 2pc",
-		def: func() bool {
+		initBoot: func() bool {
 			return config.RouterConfig().EagerCleanup2PC
 		},
 	},
 }
 
-var StrGUCs = []StrGUCimpl{
+var StrGUCs = []*StrGUCimpl{
 	{
 		n:         SPQR_ADVISORY_LOCK_BEHAVIOUR,
 		shortName: "advisory lock behaviour",
-		def: func() string {
+		initBoot: func() string {
 			return string(config.RouterConfig().Qr.AdvisoryLockBehaviour)
 		},
 	},
 	{
 		n:         SPQR_DEFAULT_ROUTE_BEHAVIOUR,
 		shortName: "default route behaviour",
-		def: func() string {
+		initBoot: func() string {
 			return string(config.RouterConfig().Qr.DefaultRouteBehaviour)
 		},
 	},
 	{
 		n:         SPQR_PREFERRED_ENGINE,
 		shortName: "preferred engine",
-		def: func() string {
+		initBoot: func() string {
 			return ""
 		},
 	},
 	{
 		n:         SPQR_EXECUTE_ON,
 		shortName: "execute on",
-		def: func() string {
+		initBoot: func() string {
 			return ""
 		},
 		assign: func(sph SessionParamsHolder, level string, val string) error {
@@ -571,21 +589,21 @@ var StrGUCs = []StrGUCimpl{
 	{
 		n:         SPQR_EXECUTE_HOST_FILTER,
 		shortName: "execute host filter",
-		def: func() string {
+		initBoot: func() string {
 			return ""
 		},
 	},
 	{
 		n:         SPQR_SHARDING_KEY,
 		shortName: "sharding key",
-		def: func() string {
+		initBoot: func() string {
 			return ""
 		},
 	},
 	{
 		n:         SPQR_NOTICE_MESSAGE_FORMAT,
 		shortName: "notice message format",
-		def: func() string {
+		initBoot: func() string {
 			return config.RouterConfig().NoticeMessageFormat
 		},
 	},
@@ -609,6 +627,15 @@ func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
 	}
 
 	return nil, fmt.Errorf("unknown GUC: %s", n)
+}
+
+func InitGUCs() {
+	for i := range BoolGUCs {
+		BoolGUCs[i].InitBoot()
+	}
+	for i := range StrGUCs {
+		StrGUCs[i].InitBoot()
+	}
 }
 
 func NewSimpleHandler(t string, showNotice bool, ds string) SessionParamsHolder {
