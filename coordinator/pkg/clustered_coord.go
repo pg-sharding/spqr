@@ -509,7 +509,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 						return err
 					}
 
-					if config.CoordinatorConfig().WatchRoutersQDB && checkRouterHashes {
+					if config.CoordinatorConfig().AutoRebootstrap && checkRouterHashes {
 						routerClient := proto.NewRouterServiceClient(cc)
 						routerHash, err := qc.getRouterMetaHashInternal(ctx, routerClient)
 						if err != nil {
