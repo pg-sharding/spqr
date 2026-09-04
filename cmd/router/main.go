@@ -382,7 +382,7 @@ var runCmd = &cobra.Command{
 					session.InitGUCs()
 
 					if err := instance.NewAutoConfBootstrapper(config.RouterConfig().AutoConf).InitializeMetadata(ctx, router); err != nil {
-						/*  Errorneous autoconf file, log and ignore. */
+						/*  Erroneous autoconf file, log and ignore. */
 
 						spqrlog.Zero.Error().Err(err).Msg("failed apply autoconf")
 					}
@@ -441,7 +441,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if err := instance.NewAutoConfBootstrapper(config.RouterConfig().AutoConf).InitializeMetadata(ctx, router); err != nil {
-			/*  Errorneous autoconf file, do not operate. */
+			/*  Erroneous autoconf file, do not operate. */
 			return err
 		}
 
