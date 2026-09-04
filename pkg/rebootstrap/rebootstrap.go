@@ -176,9 +176,6 @@ func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.Cli
 		return err
 	}
 	spqrlog.Zero.Debug().Strs("storage", storageResp.Storage).Msg("got dcs storage from etcd")
-	if err != nil {
-		return err
-	}
 	if err := swapDb.SetTxMetaStorage(ctx, storageResp.Storage); err != nil {
 		return err
 	}
