@@ -41,10 +41,6 @@ type SessionParamsHolder interface {
 	AutoDistribution() string
 
 	/* Only statement-level */
-	SetDistributionKey(val string)
-	DistributionKey() string
-
-	/* Only statement-level */
 	SetDistribution(level string, val string)
 	Distribution() string
 
@@ -166,6 +162,7 @@ func ParamIsString(n string) bool {
 		SPQR_EXECUTE_ON,
 		SPQR_EXECUTE_HOST_FILTER,
 		SPQR_SHARDING_KEY,
+		SPQR_DISTRIBUTION_KEY,
 		SPQR_NOTICE_MESSAGE_FORMAT:
 		return true
 	default:
