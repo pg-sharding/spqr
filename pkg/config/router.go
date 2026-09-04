@@ -330,6 +330,6 @@ func GetHostOrHostname(host string) (string, error) {
 	return host, nil
 }
 
-func (c *Router) WithCoordinatorConfig() bool {
-	return c.WithCoordinator || c.UseCoordinatorInit || c.StoreTxDataPostgresql
+func (r *Router) WithCoordinatorConfig() bool {
+	return r.WithCoordinator || r.UseCoordinatorInit || r.StoreTxDataPostgresql
 }

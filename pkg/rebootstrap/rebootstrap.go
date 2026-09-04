@@ -200,10 +200,7 @@ func RebootstrapMemQDB(ctx context.Context, memqdb *qdb.MemQDB, mgr topology.Rou
 			}
 		}()
 
-		if err := MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
-			return err
-		}
-		return nil
+		return MemQDBReBootstrap(ctx, memqdb, etcdConn)
 	}
 	coordAddr, err := mgr.GetCoordinator(ctx)
 	if err != nil {
