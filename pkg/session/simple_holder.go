@@ -610,22 +610,28 @@ var StrGUCs = []*StrGUCimpl{
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
+	return FindBoolGUC(n)
+}
+
+func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
+	return FindStrGUC(n)
+}
+
+func FindBoolGUC(n string) (*BoolGUCimpl, error) {
 	for _, guc := range BoolGUCs {
 		if guc.n == n {
 			return guc, nil
 		}
 	}
-
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func (cl *SimpleSessionParamHandler) FindStrGUC(n string) (StrGUC, error) {
+func FindStrGUC(n string) (*StrGUCimpl, error) {
 	for _, guc := range StrGUCs {
 		if guc.n == n {
 			return guc, nil
 		}
 	}
-
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
