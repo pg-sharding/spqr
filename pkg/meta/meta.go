@@ -728,7 +728,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
 			}
 
-			if !config.RouterConfig().UseCoordinatorInit {
+			if !(config.RouterConfig().WithCoordinatorConfig()) {
 				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
 			}
 
