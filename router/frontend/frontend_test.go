@@ -112,9 +112,11 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(session.BoolGUCs[7], nil)
 	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.StrGUCs[3], nil)
 	cl.EXPECT().FindStrGUC(session.SPQR_SHARDING_KEY).AnyTimes().Return(session.StrGUCs[4], nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(session.StrGUCs[6], nil)
 	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).AnyTimes().Return(false)
 	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_EXECUTE_ON, gomock.Any()).AnyTimes().Return("")
 	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_SHARDING_KEY, gomock.Any()).AnyTimes().Return("")
+	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, gomock.Any()).AnyTimes().Return("")
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	cl.EXPECT().ClosePreparedStatement(gomock.Any()).AnyTimes()

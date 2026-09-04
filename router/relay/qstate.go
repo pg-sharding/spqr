@@ -628,8 +628,6 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				rst.Client().SetScatterQuery(hintVal != "")
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
-			case session.SPQR_DISTRIBUTION_KEY:
-				rst.Client().SetDistributionKey(hintVal)
 			case session.SPQR_DISTRIBUTED_RELATION:
 				rst.Client().SetDistributedRelation(lvl, hintVal)
 			case session.SPQR_TARGET_SESSION_ATTRS:
@@ -671,7 +669,11 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 				_, ok := mp[session.SPQR_DISTRIBUTION_KEY]
 				if !ok {
-					if rst.Client().DistributionKey() == "" {
+					guc, err := rst.Client().FindStrGUC(session.SPQR_DISTRIBUTION_KEY)
+					if err != nil {
+						return err
+					}
+					if guc.Get(rst.Client()) == "" {
 						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
 					}
 				}

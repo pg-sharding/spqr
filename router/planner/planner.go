@@ -78,6 +78,12 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 					return nil, err
 				}
 			} else {
+				dkGuc, err := rm.SPH.FindStrGUC(session.SPQR_DISTRIBUTION_KEY)
+				if err != nil {
+					return nil, err
+				}
+				distributionKey := dkGuc.Get(rm.SPH)
+
 				if v.IfNotExists {
 					if d, err := rm.Mgr.GetDistribution(ctx, distributionID); err != nil {
 						// ok
@@ -87,14 +93,14 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
 							/* ok */
 						} else {
-							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
+							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, distributionKey)
 							if err != nil {
 								return nil, err
 							}
 						}
 					}
 				} else {
-					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
+					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, distributionKey)
 					if err != nil {
 						return nil, err
 					}

@@ -251,16 +251,6 @@ func (cl *SimpleSessionParamHandler) AutoDistribution() string {
 	return cl.ResolveVirtualStringParam(SPQR_AUTO_DISTRIBUTION, "")
 }
 
-// SetDistributionKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetDistributionKey(val string) {
-	cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_DISTRIBUTION_KEY, val)
-}
-
-// DistributionKey implements RouterClient.
-func (cl *SimpleSessionParamHandler) DistributionKey() string {
-	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTION_KEY, "")
-}
-
 // BindParamFormatCodes implements RouterClient.
 func (cl *SimpleSessionParamHandler) BindParamFormatCodes() []int16 {
 	return cl.paramCodes
@@ -598,6 +588,17 @@ var StrGUCs = []*StrGUCimpl{
 		shortName: "sharding key",
 		initBoot: func() string {
 			return ""
+		},
+	},
+	{
+		n:         SPQR_DISTRIBUTION_KEY,
+		shortName: "distribution key",
+		initBoot: func() string {
+			return ""
+		},
+		assign: func(sph SessionParamsHolder, _ string, val string) error {
+			sph.RecordVirtualParam(VirtualParamLevelStatement, SPQR_DISTRIBUTION_KEY, val)
+			return nil
 		},
 	},
 	{

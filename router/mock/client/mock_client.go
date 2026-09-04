@@ -384,20 +384,6 @@ func (mr *MockRouterClientMockRecorder) Distribution() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockRouterClient)(nil).Distribution))
 }
 
-// DistributionKey mocks base method.
-func (m *MockRouterClient) DistributionKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistributionKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DistributionKey indicates an expected call of DistributionKey.
-func (mr *MockRouterClientMockRecorder) DistributionKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionKey", reflect.TypeOf((*MockRouterClient)(nil).DistributionKey))
-}
-
 // EnhancedMultiShardProcessing mocks base method.
 func (m *MockRouterClient) EnhancedMultiShardProcessing() bool {
 	m.ctrl.T.Helper()
@@ -1198,18 +1184,6 @@ func (m *MockRouterClient) SetDistribution(level, val string) {
 func (mr *MockRouterClientMockRecorder) SetDistribution(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), level, val)
-}
-
-// SetDistributionKey mocks base method.
-func (m *MockRouterClient) SetDistributionKey(val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributionKey", val)
-}
-
-// SetDistributionKey indicates an expected call of SetDistributionKey.
-func (mr *MockRouterClientMockRecorder) SetDistributionKey(val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), val)
 }
 
 // SetEnhancedMultiShardProcessing mocks base method.
