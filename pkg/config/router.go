@@ -329,3 +329,7 @@ func GetHostOrHostname(host string) (string, error) {
 	}
 	return host, nil
 }
+
+func (r *Router) WithCoordinatorConfig() bool {
+	return r.WithCoordinator || r.UseCoordinatorInit || r.StoreTxDataPostgresql
+}

@@ -477,6 +477,7 @@ RPCs
 rport
 rqdn
 rqfn
+rrels
 rrelation
 rrouter
 rulemgr

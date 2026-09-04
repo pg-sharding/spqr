@@ -728,21 +728,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
 			}
 
-			if !config.RouterConfig().UseCoordinatorInit {
-				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
-			}
-
-			etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
-			if err != nil {
-				return nil, err
-			}
-			defer func() {
-				if err := etcdConn.Client().Close(); err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
-				}
-			}()
-
-			if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			if err := rebootstrap.RebootstrapMemQDB(ctx, memqdb, mngr); err != nil {
 				return nil, err
 			}
 		}
