@@ -123,9 +123,10 @@ var MetaTransactionGossipService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	MetaTransactionService_ExecNoTran_FullMethodName = "/spqr.MetaTransactionService/ExecNoTran"
-	MetaTransactionService_CommitTran_FullMethodName = "/spqr.MetaTransactionService/CommitTran"
-	MetaTransactionService_BeginTran_FullMethodName  = "/spqr.MetaTransactionService/BeginTran"
+	MetaTransactionService_ExecNoTran_FullMethodName    = "/spqr.MetaTransactionService/ExecNoTran"
+	MetaTransactionService_CommitTran_FullMethodName    = "/spqr.MetaTransactionService/CommitTran"
+	MetaTransactionService_BeginTran_FullMethodName     = "/spqr.MetaTransactionService/BeginTran"
+	MetaTransactionService_ApplyXRecords_FullMethodName = "/spqr.MetaTransactionService/ApplyXRecords"
 )
 
 // MetaTransactionServiceClient is the client API for MetaTransactionService service.
@@ -135,6 +136,7 @@ type MetaTransactionServiceClient interface {
 	ExecNoTran(ctx context.Context, in *ExecNoTranRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CommitTran(ctx context.Context, in *MetaTransactionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeginTran(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MetaTransactionReply, error)
+	ApplyXRecords(ctx context.Context, in *ApplyXRecordsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type metaTransactionServiceClient struct {
@@ -175,6 +177,16 @@ func (c *metaTransactionServiceClient) BeginTran(ctx context.Context, in *emptyp
 	return out, nil
 }
 
+func (c *metaTransactionServiceClient) ApplyXRecords(ctx context.Context, in *ApplyXRecordsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MetaTransactionService_ApplyXRecords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MetaTransactionServiceServer is the server API for MetaTransactionService service.
 // All implementations must embed UnimplementedMetaTransactionServiceServer
 // for forward compatibility.
@@ -182,6 +194,7 @@ type MetaTransactionServiceServer interface {
 	ExecNoTran(context.Context, *ExecNoTranRequest) (*emptypb.Empty, error)
 	CommitTran(context.Context, *MetaTransactionRequest) (*emptypb.Empty, error)
 	BeginTran(context.Context, *emptypb.Empty) (*MetaTransactionReply, error)
+	ApplyXRecords(context.Context, *ApplyXRecordsRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMetaTransactionServiceServer()
 }
 
@@ -200,6 +213,9 @@ func (UnimplementedMetaTransactionServiceServer) CommitTran(context.Context, *Me
 }
 func (UnimplementedMetaTransactionServiceServer) BeginTran(context.Context, *emptypb.Empty) (*MetaTransactionReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeginTran not implemented")
+}
+func (UnimplementedMetaTransactionServiceServer) ApplyXRecords(context.Context, *ApplyXRecordsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyXRecords not implemented")
 }
 func (UnimplementedMetaTransactionServiceServer) mustEmbedUnimplementedMetaTransactionServiceServer() {
 }
@@ -277,6 +293,24 @@ func _MetaTransactionService_BeginTran_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MetaTransactionService_ApplyXRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyXRecordsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MetaTransactionServiceServer).ApplyXRecords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MetaTransactionService_ApplyXRecords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MetaTransactionServiceServer).ApplyXRecords(ctx, req.(*ApplyXRecordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MetaTransactionService_ServiceDesc is the grpc.ServiceDesc for MetaTransactionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -295,6 +329,10 @@ var MetaTransactionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BeginTran",
 			Handler:    _MetaTransactionService_BeginTran_Handler,
+		},
+		{
+			MethodName: "ApplyXRecords",
+			Handler:    _MetaTransactionService_ApplyXRecords_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

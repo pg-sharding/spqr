@@ -69,4 +69,15 @@ service MetaTransactionService {
   rpc ExecNoTran(ExecNoTranRequest) returns (google.protobuf.Empty) {}
   rpc CommitTran(MetaTransactionRequest) returns (google.protobuf.Empty) {}
   rpc BeginTran(google.protobuf.Empty) returns (MetaTransactionReply) {}
+
+  rpc ApplyXRecords(ApplyXRecordsRequest) returns (google.protobuf.Empty) {}
+}
+
+message XRecord {
+  string MethodName = 1;
+  repeated string args = 2;
+}
+
+message ApplyXRecordsRequest {
+  repeated XRecord records = 1;
 }

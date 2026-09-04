@@ -1312,6 +1312,10 @@ func (a *Adapter) GetTxnBatchSize() uint16 {
 	return a.maxTxnBatch
 }
 
+func (a *Adapter) ApplyXRecords(_ context.Context, _ []*mtran.XRecord) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Adapter ApplyXRecords not implemented")
+}
+
 // CreateUniqueIndex implements meta.EntityMgr.
 func (a *Adapter) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
 	c := proto.NewDistributionServiceClient(a.conn)
