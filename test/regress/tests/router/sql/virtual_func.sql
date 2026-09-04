@@ -86,5 +86,68 @@ select __spqr__route_key('d3', 'm');
 select __spqr__route_key('d3', 'n');
 select __spqr__route_key('d3', 'o');
 
+-- test __spqr__host_status: check rw status of each host in each shard
+-- topology: sh1-sh4, each has a primary (spqr_shard_N) and a replica (spqr_shard_N_replica)
+-- primaries are RW, replicas are RO
+
+-- sh1: primary
+SET __spqr__execute_on TO sh1;
+SET __spqr__execute_host_filter TO 'spqr_shard_1';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_1:6432');
+
+-- sh1: replica
+SET __spqr__execute_host_filter TO 'spqr_shard_1_replica';
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_1_replica:6432');
+RESET __spqr__target_session_attrs;
+
+-- sh2: primary
+SET __spqr__execute_on TO sh2;
+SET __spqr__execute_host_filter TO 'spqr_shard_2';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_2:6432');
+
+-- sh2: replica
+SET __spqr__execute_host_filter TO 'spqr_shard_2_replica';
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_2_replica:6432');
+RESET __spqr__target_session_attrs;
+
+-- sh3: primary
+SET __spqr__execute_on TO sh3;
+SET __spqr__execute_host_filter TO 'spqr_shard_3';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_3:6432');
+
+-- sh3: replica
+SET __spqr__execute_host_filter TO 'spqr_shard_3_replica';
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_3_replica:6432');
+RESET __spqr__target_session_attrs;
+
+-- sh4: primary
+SET __spqr__execute_on TO sh4;
+SET __spqr__execute_host_filter TO 'spqr_shard_4';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_4:6432');
+
+-- sh4: replica
+SET __spqr__execute_host_filter TO 'spqr_shard_4_replica';
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SELECT 1+2;
+SELECT __spqr__host_status('spqr_shard_4_replica:6432');
+RESET __spqr__target_session_attrs;
+
+-- cleanup GUCs
+RESET __spqr__execute_on;
+RESET __spqr__execute_host_filter;
+
+-- error: unknown host
+SELECT __spqr__host_status('nonexistent_host:6432');
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
