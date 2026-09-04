@@ -389,7 +389,19 @@ func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts 
 		}
 
 		tcr, err := s.checker.CheckTSA(shard, s.CheckTimeout)
-		good := tcr.CR.RW == (kind == AcquireHostKindRW)
+
+		var good bool
+		switch kind {
+		case AcquireHostKindRW:
+			good = tcr.CR.RW
+		case AcquireHostKindRO:
+			good = !tcr.CR.RW
+		case AcquireHostKindPR:
+			// Prefer RO but accept RW as fallback.
+			// BuildHostOrder guarantees RO hosts precede RW hosts in the list,
+			// so the first match in a single pass is an RO host when one is alive.
+			good = true
+		}
 
 		if err != nil {
 			hostToReason[shard.Instance().Hostname()] = err.Error()
