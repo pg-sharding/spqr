@@ -90,6 +90,8 @@ select __spqr__route_key('d3', 'o');
 -- topology: sh1-sh4, each has a primary (spqr_shard_N) and a replica (spqr_shard_N_replica)
 -- primaries are RW, replicas are RO
 
+SET __spqr__notice_message_format = '{shard}@{host}';
+
 -- sh1: primary
 SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO 'spqr_shard_1';
@@ -145,6 +147,7 @@ RESET __spqr__target_session_attrs;
 -- cleanup GUCs
 RESET __spqr__execute_on;
 RESET __spqr__execute_host_filter;
+RESET __spqr__notice_message_format;
 
 -- error: unknown host
 SELECT __spqr__host_status('nonexistent_host:6432');
