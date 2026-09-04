@@ -783,43 +783,11 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 			},
 		},
 		{
-			name: "Prefer standby: alive standbys before alive primaries",
+			name: "PS: alive standbys before alive primary",
 			cacheState: func() *sync.Map {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
 					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
-					LastCheckTime: time.Now(),
-				})
-				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
-					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
-					LastCheckTime: time.Now(),
-				})
-				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
-					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
-					LastCheckTime: time.Now(),
-				})
-				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h4:6432", AZ: "vla"}, pool.CachedEntry{
-					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
-					LastCheckTime: time.Now(),
-				})
-				return cache
-			}(),
-			tsa:          config.TargetSessionAttrsPS,
-			shuffleHosts: false,
-			expectedOrder: []string{
-				"h1:6432", // alive standby (matched)
-				"h3:6432", // alive standby (matched)
-				"h5:6432", // no cache, treated as good
-				"h2:6432", // alive primary (not matched for PS)
-				"h4:6432", // alive primary (not matched for PS)
-			},
-		},
-		{
-			name: "Prefer standby: alive standbys after alive primaries",
-			cacheState: func() *sync.Map {
-				cache := &sync.Map{}
-				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
-					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
@@ -839,15 +807,15 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 			tsa:          config.TargetSessionAttrsPS,
 			shuffleHosts: false,
 			expectedOrder: []string{
+				"h1:6432", // alive standby (matched)
 				"h3:6432", // alive standby (matched)
 				"h4:6432", // alive standby (matched)
 				"h5:6432", // no cache, treated as good
-				"h1:6432", // alive primary (not matched for PS)
 				"h2:6432", // alive primary (not matched for PS)
 			},
 		},
 		{
-			name: "Prefer standby: all standbys dead, alive primary comes before dead hosts",
+			name: "PS: all standbys dead, alive primary comes before dead hosts",
 			cacheState: func() *sync.Map {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
@@ -883,7 +851,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 			},
 		},
 		{
-			name: "Prefer standby: all standbys dead, alive primary comes after dead hosts",
+			name: "PS: all standbys dead, alive primary comes after dead hosts",
 			cacheState: func() *sync.Map {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
@@ -919,7 +887,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 			},
 		},
 		{
-			name: "Prefer standby: both alive/dead standby and alive primary",
+			name: "PS: both alive/dead standby and alive primary",
 			cacheState: func() *sync.Map {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
