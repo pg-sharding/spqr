@@ -33,6 +33,7 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `lock_iteration_timeout`   | Sleep duration between attempts to acquire the coordinator lock when starting up. | Duration string (e.g., `500ms`, `1s`, `5s`)   | `1s` |
 | `router_keepalive_time`    | Interval for sending gRPC keepalive pings to routers. Prevents idle connection closure by network intermediaries. | Duration string (e.g., `15s`, `30s`, `1m`) | `30s` |
 | `router_keepalive_timeout` | Time to wait for keepalive ping response before considering connection dead.  | Duration string (e.g., `10s`, `20s`)    | `20s` |
+| `watch_routers_qdb`        | Whether to check router's QDB contents and perform automatic re-bootstrapping. | `true`, `false` | `false` |
 | `enable_role_system`       | Whether to enable the [role-based access control system](./roles).                           | `true`, `false`                               | `false` |
 | `roles_file`               | The file path to the [roles](./roles) configuration.                                         | Any valid file path                           | (none) |
 | `etcd_max_send_bytes`      | Maximum request size in bytes that the etcd client (QDB implementation) is allowed to send. | Integer (bytes), use `0` for the etcd default | `0` |
@@ -60,10 +61,11 @@ On each iteration, the coordinator:
 1. Queries QDB for the list of active routers
 2. Connects to each router via gRPC (using cached connections)
 3. Calls `GetRouterStatus()` to check router health
-4. Syncs coordinator address and metadata if needed
-5. Opens/closes routers in QDB based on their status
-6. Cleans up connections for removed routers
-7. Sleeps for `iteration_timeout` before the next cycle
+4. Syncs coordinator address if needed
+5. Sync router QDB metadata if enabled via `watch_routers_qdb`
+6. Opens/closes routers in QDB based on their status
+7. Cleans up connections for removed routers
+8. Sleeps for `iteration_timeout` before the next cycle
 
 <Warning>
 When using high `iteration_timeout` values (e.g., 5m+), ensure `router_keepalive_time` is configured appropriately to prevent cached connections from being closed by network devices. See [gRPC Keepalive Settings](#grpc-keepalive-settings).
