@@ -68,7 +68,7 @@ type AutoConfBootstrapper struct {
 }
 
 /* Guc processing is slightly different that console SQL, so use separate util */
-func (a *AutoConfBootstrapper) InitializeMetadata(_ context.Context, r RouterInstance) error {
+func (a *AutoConfBootstrapper) InitializeMetadata(_ context.Context, _ RouterInstance) error {
 	if len(a.AutoConfFile) == 0 {
 		return nil
 	}
