@@ -3,7 +3,6 @@ package topology
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"sync"
@@ -111,9 +110,8 @@ func InitShardMapping(shardMapping map[string]*DataShard) {
 }
 
 type HostsInfo struct {
-	options   []GenericOption
-	Hosts     []config.Host
-	Addresses []string
+	options []GenericOption
+	Hosts   []config.Host
 }
 
 type DataShard struct {
@@ -156,24 +154,24 @@ func (ds *DataShard) SetOptions(options []GenericOption) {
 // The format of the RawHost is host:port:availability_zone.
 // If the availability_zone is not provided, it is empty.
 // If the port is not provided, it does not matter
-func parseHosts(rawHosts []string) (parsedHosts []config.Host, parsedAddresses []string) {
-	for _, rawHost := range rawHosts {
-		host := config.Host{}
-		parts := strings.Split(rawHost, ":")
-		if len(parts) > 3 {
-			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
-			continue
-		} else if len(parts) == 3 {
-			host.AZ = parts[2]
-			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
-		} else {
-			host.Address = rawHost
-		}
 
-		parsedHosts = append(parsedHosts, host)
-		parsedAddresses = append(parsedAddresses, host.Address)
+// parseHosts parses the raw hosts into a slice of Hosts.
+// The format of the RawHost is host:port:availability_zone.
+// If the availability_zone is not provided, it is empty.
+// If the port is not provided, it does not matter
+func parseSingleHostSpec(rawHostSpec string) (config.Host, error) {
+	host := config.Host{}
+	parts := strings.Split(rawHostSpec, ":")
+	if len(parts) > 3 {
+		return config.Host{}, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", rawHostSpec)
+	} else if len(parts) == 3 {
+		host.AZ = parts[2]
+		host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
+	} else {
+		host.Address = rawHostSpec
 	}
-	return
+
+	return host, nil
 }
 
 func (ds *DataShard) infos() *HostsInfo {
@@ -182,13 +180,15 @@ func (ds *DataShard) infos() *HostsInfo {
 	if hi == nil {
 		return nil
 	}
-	if hi.Hosts == nil || hi.Addresses == nil {
+	if hi.Hosts == nil {
 		/* There is a possibility of concurrent parsing, we don't care though */
-		parsedHosts, parsedAddresses := retrieveHostsFromOptions(hi.options)
+
+		/* XXX: we silently ignore errors here for backwards compatibility sake */
+		parsedHosts, _ := retrieveHostsFromOptions(hi.options)
+
 		info := &HostsInfo{
-			options:   hi.options,
-			Hosts:     parsedHosts,
-			Addresses: parsedAddresses,
+			options: hi.options,
+			Hosts:   parsedHosts,
 		}
 
 		ds.HostsInfo.CompareAndSwap(hi, info)
@@ -200,27 +200,22 @@ func (ds *DataShard) infos() *HostsInfo {
 	}
 }
 
-func (ds *DataShard) Hosts() []string {
-	return ds.infos().Addresses
-}
-
 func (ds *DataShard) HostsAZ() []config.Host {
 	return ds.infos().Hosts
 }
 
-func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, []string) {
-	hosts := retrieveRawHostsFromOptions(options)
-	return parseHosts(hosts)
-}
-
-func retrieveRawHostsFromOptions(options []GenericOption) []string {
-	hosts := make([]string, 0)
+func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, error) {
+	var hosts []config.Host
 	for _, opt := range options {
 		if opt.Name == "host" {
-			hosts = append(hosts, opt.Arg)
+			host, err := parseSingleHostSpec(opt.Arg)
+			if err != nil {
+				return nil, err
+			}
+			hosts = append(hosts, host)
 		}
 	}
-	return hosts
+	return hosts, nil
 }
 
 func (ds *DataShard) TLS() *config.TLSConfig {
@@ -293,15 +288,18 @@ func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) ([]*proto.
 
 	if !hostsWithAZ {
 		for action, options := range hostsByActions {
-			_, addresses := retrieveHostsFromOptions(options)
+			hosts, err := retrieveHostsFromOptions(options)
+			if err != nil {
+				return nil, err
+			}
 			protoAction, err := GenericOptionActionToProto(action)
 			if err != nil {
 				return nil, err
 			}
-			for _, addr := range addresses {
+			for _, host := range hosts {
 				protoOptions = append(protoOptions, &proto.GenericOption{
 					Name:   "host",
-					Value:  addr,
+					Value:  host.Address,
 					Action: protoAction,
 				})
 			}

@@ -194,7 +194,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
 	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
 		assert.Equal(t, "sh-new", shard.ID)
-		assert.Equal(t, []string{listener.Addr().String()}, shard.Hosts())
+		assert.Equal(t, []config.Host{config.Host{Address: listener.Addr().String()}}, shard.HostsAZ())
 		return nil
 	})
 

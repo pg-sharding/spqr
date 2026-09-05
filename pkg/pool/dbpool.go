@@ -523,6 +523,7 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 const (
 	highestHostPriority = 100
 	lowerHostPriority   = 1
+	DisablePriority     = -1
 )
 
 func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
@@ -552,6 +553,11 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 	}
 
 	getHostPrior := func(h config.Host) int {
+		/* Zero means priority not set. Note that disable priority is
+		* -1, so we will return that here */
+		if h.Priority != 0 {
+			return h.Priority
+		}
 		if h.AZ == s.PreferAZ {
 			return highestHostPriority
 		}
