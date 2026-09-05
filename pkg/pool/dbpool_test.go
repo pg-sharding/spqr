@@ -782,6 +782,146 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				"h5:6432",
 			},
 		},
+		{
+			name: "PS: alive standbys before alive primary",
+			cacheState: func() *sync.Map {
+				cache := &sync.Map{}
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h4:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
+					LastCheckTime: time.Now(),
+				})
+				return cache
+			}(),
+			tsa:          config.TargetSessionAttrsPS,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h1:6432", // alive standby (matched)
+				"h3:6432", // alive standby (matched)
+				"h4:6432", // alive standby (matched)
+				"h5:6432", // no cache, treated as good
+				"h2:6432", // alive primary (not matched for PS)
+			},
+		},
+		{
+			name: "PS: all standbys dead, alive primary comes before dead hosts",
+			cacheState: func() *sync.Map {
+				cache := &sync.Map{}
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h4:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h5:6432", AZ: "klg"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				return cache
+			}(),
+			tsa:          config.TargetSessionAttrsPS,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h2:6432", // alive primary (negCache)
+				"h1:6432", // dead (deadCache)
+				"h3:6432", // dead (deadCache)
+				"h4:6432", // dead (deadCache)
+				"h5:6432", // dead (deadCache)
+			},
+		},
+		{
+			name: "PS: all standbys dead, alive primary comes after dead hosts",
+			cacheState: func() *sync.Map {
+				cache := &sync.Map{}
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h4:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h5:6432", AZ: "klg"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
+					LastCheckTime: time.Now(),
+				})
+				return cache
+			}(),
+			tsa:          config.TargetSessionAttrsPS,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h5:6432", // alive primary (negCache)
+				"h1:6432", // dead (deadCache)
+				"h2:6432", // dead (deadCache)
+				"h3:6432", // dead (deadCache)
+				"h4:6432", // dead (deadCache)
+			},
+		},
+		{
+			name: "PS: both alive/dead standby and alive primary",
+			cacheState: func() *sync.Map {
+				cache := &sync.Map{}
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: false, Reason: "primary"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h4:6432", AZ: "vla"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: true, Match: true, Reason: "standby"},
+					LastCheckTime: time.Now(),
+				})
+				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsPS, Host: "h5:6432", AZ: "klg"}, pool.CachedEntry{
+					Result:        pool.LocalCheckResult{Alive: false, Match: false, Reason: "dead"},
+					LastCheckTime: time.Now(),
+				})
+				return cache
+			}(),
+			tsa:          config.TargetSessionAttrsPS,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h1:6432", // alive standby (matched)
+				"h4:6432", // alive standby (matched)
+				"h2:6432", // alive primary (negCache)
+				"h3:6432", // dead
+				"h5:6432", // dead
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -830,4 +970,61 @@ func TestBuildHostOrderNonExistentShard(t *testing.T) {
 	_, err := dbpool.BuildHostOrder(key, config.TargetSessionAttrsAny)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "shard with name \"non_existent_shard\" not found")
+}
+
+func TestPreferStandbyDeadHostFallback(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
+	key := kr.ShardKey{Name: "sh1"}
+	primaryHost := config.Host{Address: "primary:6432", AZ: "klg"}
+	deadStandbyHost := config.Host{Address: "standby:6432", AZ: "sas"}
+	dataShard := topology.DataShardFromConfig(key.Name, &config.Shard{RawHosts: []string{"primary:6432:klg", "standby:6432:sas"}})
+
+	dbpool := pool.NewDBPoolFromMultiPool(
+		topology.TopMgrFromMap(map[string]*topology.DataShard{key.Name: dataShard}),
+		&startup.StartupParams{}, underlyingPool, time.Hour,
+	)
+	defer dbpool.StopCacheWatchdog()
+	dbpool.Cache().MarkUnmatched(config.TargetSessionAttrsPS, primaryHost.Address, primaryHost.AZ, true, "primary")
+	dbpool.Cache().MarkUnmatched(config.TargetSessionAttrsPS, deadStandbyHost.Address, deadStandbyHost.AZ, false, "dead")
+
+	mockHost := func(host config.Host, transactionReadOnly string) *mockshard.MockShardHostInstance {
+		instance := mockinst.NewMockDBInstance(ctrl)
+		instance.EXPECT().Hostname().AnyTimes().Return(host.Address)
+		instance.EXPECT().AvailabilityZone().AnyTimes().Return(host.AZ)
+		sh := mockshard.NewMockShardHostInstance(ctrl)
+		sh.EXPECT().Instance().AnyTimes().Return(instance)
+		sh.EXPECT().ID().AnyTimes().Return(uint(1))
+		sh.EXPECT().Sync().AnyTimes().Return(int64(0))
+		sh.EXPECT().IsStale().AnyTimes().Return(false)
+		sh.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
+		sh.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Times(1).Return(nil)
+		sh.EXPECT().Receive().Return(&pgproto3.DataRow{Values: [][]byte{[]byte(transactionReadOnly)}}, nil)
+		sh.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
+		return sh
+	}
+	primary, standby := mockHost(primaryHost, "off"), mockHost(deadStandbyHost, "on")
+
+	hostAttempts := map[config.Host]int{}
+	underlyingPool.EXPECT().ConnectionHost(uint(1), key, gomock.Any()).AnyTimes().
+		DoAndReturn(func(_ uint, _ kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+			hostAttempts[host]++
+			if host == deadStandbyHost {
+				return standby, nil
+			}
+			return primary, nil
+		})
+	underlyingPool.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
+	acquire := func() shard.ShardHostInstance {
+		selected, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: 1, Tsa: config.TargetSessionAttrsPS}, key)
+		assert.NoError(t, err)
+		return selected
+	}
+
+	assert.Same(t, primary, acquire())
+	assert.Equal(t, 1, hostAttempts[primaryHost], "primary must be checked only once")
+	assert.Zero(t, hostAttempts[deadStandbyHost], "dead standby must not precede an alive primary fallback")
+	dataShard.SetOptions(topology.HostsToOptions([]string{"standby:6432:sas"}))
+	assert.Same(t, standby, acquire())
+	assert.Equal(t, 1, hostAttempts[deadStandbyHost], "dead standby must remain the last resort")
 }
