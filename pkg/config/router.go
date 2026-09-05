@@ -214,17 +214,18 @@ const (
 	TargetSessionAttrsAny     = "any"
 )
 
+type Host struct {
+	Address string // format host:port
+	AZ      string // Availability zone
+
+	Priority int // connection acquire priority
+}
+
 type Shard struct {
-	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
+	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port[:availability_zone]
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-}
-
-type Host struct {
-	Address  string // format host:port
-	AZ       string // Availability zone
-	Priority int    // connection acquire priority
 }
 
 func ValueOrDefaultInt(value int, def int) int {
