@@ -203,6 +203,16 @@ feature_test: clean_feature_test build_images
 	mkdir ./test/feature/logs
 	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
 
+# Feature suite against the odyssey pooler topology. See test/feature/odyssey-task.md.
+FEATURE_ODYSSEY_TEST_ENV = FEATURE_COMPOSE_FILE=docker-compose-odyssey.yaml GODOG_STOP_ON_FAILURE=false GODOG_FEATURE_DIR=$${GODOG_FEATURE_DIR:-generatedFeatures} GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature-odyssey/feature.xml}
+
+feature_test_odyssey: clean_feature_test build_images
+	make split_feature_test
+	go build ./test/feature/...
+	rm -rf ./test/feature/logs
+	mkdir ./test/feature/logs
+	(cd test/feature; $(FEATURE_ODYSSEY_TEST_ENV) go test -timeout 150m)
+
 ####################### LINTERS #######################
 
 fmt:
