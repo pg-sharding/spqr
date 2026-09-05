@@ -380,6 +380,7 @@ select __spqr__route_key('d3', 'o');
 -------------------
  sh2
 (1 row)
+
 -- test __spqr__host_status: check rw status of each host in each shard
 -- topology: sh1-sh4, each has a primary (spqr_shard_N) and a replica (spqr_shard_N_replica)
 -- primaries are RW, replicas are RO
@@ -401,6 +402,7 @@ SELECT __spqr__host_status('spqr_shard_1:6432');
 -------------------+------
  spqr_shard_1:6432 | true
 (1 row)
+
 -- sh1: replica
 SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO 'spqr_shard_1_replica';
@@ -420,6 +422,7 @@ SELECT __spqr__host_status('spqr_shard_1_replica:6432');
 ---------------------------+-------
  spqr_shard_1_replica:6432 | false
 (1 row)
+
 -- sh2: primary
 SET __spqr__execute_on TO sh2;
 SET __spqr__execute_host_filter TO 'spqr_shard_2';
@@ -437,6 +440,7 @@ SELECT __spqr__host_status('spqr_shard_2:6432');
 -------------------+------
  spqr_shard_2:6432 | true
 (1 row)
+
 -- sh2: replica
 SET __spqr__execute_on TO sh2;
 SET __spqr__execute_host_filter TO 'spqr_shard_2_replica';
@@ -456,6 +460,7 @@ SELECT __spqr__host_status('spqr_shard_2_replica:6432');
 ---------------------------+-------
  spqr_shard_2_replica:6432 | false
 (1 row)
+
 -- sh3: primary
 SET __spqr__execute_on TO sh3;
 SET __spqr__execute_host_filter TO 'spqr_shard_3';
@@ -473,6 +478,7 @@ SELECT __spqr__host_status('spqr_shard_3:6432');
 -------------------+------
  spqr_shard_3:6432 | true
 (1 row)
+
 -- sh3: replica
 SET __spqr__execute_on TO sh3;
 SET __spqr__execute_host_filter TO 'spqr_shard_3_replica';
@@ -492,6 +498,7 @@ SELECT __spqr__host_status('spqr_shard_3_replica:6432');
 ---------------------------+-------
  spqr_shard_3_replica:6432 | false
 (1 row)
+
 -- sh4: primary
 SET __spqr__execute_on TO sh4;
 SET __spqr__execute_host_filter TO 'spqr_shard_4';
@@ -509,6 +516,7 @@ SELECT __spqr__host_status('spqr_shard_4:6432');
 -------------------+------
  spqr_shard_4:6432 | true
 (1 row)
+
 -- sh4: replica
 SET __spqr__execute_on TO sh4;
 SET __spqr__execute_host_filter TO 'spqr_shard_4_replica';
@@ -528,6 +536,7 @@ SELECT __spqr__host_status('spqr_shard_4_replica:6432');
 ---------------------------+-------
  spqr_shard_4_replica:6432 | false
 (1 row)
+
 -- cleanup GUCs
 RESET __spqr__notice_message_format;
 -- error: unknown host
