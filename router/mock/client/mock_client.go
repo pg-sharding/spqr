@@ -1070,20 +1070,6 @@ func (mr *MockRouterClientMockRecorder) Savepoint(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Savepoint", reflect.TypeOf((*MockRouterClient)(nil).Savepoint), arg0)
 }
 
-// ScatterQuery mocks base method.
-func (m *MockRouterClient) ScatterQuery() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ScatterQuery")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ScatterQuery indicates an expected call of ScatterQuery.
-func (mr *MockRouterClientMockRecorder) ScatterQuery() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).ScatterQuery))
-}
-
 // Send mocks base method.
 func (m *MockRouterClient) Send(msg pgproto3.BackendMessage) error {
 	m.ctrl.T.Helper()
@@ -1244,18 +1230,6 @@ func (m *MockRouterClient) SetParamFormatCodes(arg0 []int16) {
 func (mr *MockRouterClientMockRecorder) SetParamFormatCodes(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).SetParamFormatCodes), arg0)
-}
-
-// SetScatterQuery mocks base method.
-func (m *MockRouterClient) SetScatterQuery(val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetScatterQuery", val)
-}
-
-// SetScatterQuery indicates an expected call of SetScatterQuery.
-func (mr *MockRouterClientMockRecorder) SetScatterQuery(val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).SetScatterQuery), val)
 }
 
 // SetSeed mocks base method.

@@ -337,6 +337,30 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
         1
 (2 rows)
 
+-- test SET-based scatter query (not hint)
+SET __spqr__scatter_query TO true;
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id | age 
+----+-----
+  1 |   1
+  5 |   5
+ 10 |  10
+ 15 |  15
+ 20 |  20
+ 25 |  25
+(6 rows)
+
+SET __spqr__scatter_query TO false;
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+  1 |   1
+  5 |   5
+ 10 |  10
+(3 rows)
+
 CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__default_route_behaviour to 'sh2';

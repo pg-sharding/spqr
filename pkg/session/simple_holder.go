@@ -46,9 +46,15 @@ type BoolGUCimpl struct {
 	shortName string
 	initBoot  func() bool
 	bootVal   bool
+	show      func(sph SessionParamsHolder) (string, error)
+	assign    func(sph SessionParamsHolder, level string, val bool)
 }
 
 func (guc *BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
+	if guc.assign != nil {
+		guc.assign(cl, level, val)
+		return
+	}
 	if val {
 		cl.RecordVirtualParam(level, guc.n, "ok")
 	} else {
@@ -66,6 +72,16 @@ func (guc *BoolGUCimpl) Reset() {
 
 func (guc *BoolGUCimpl) Get(cl SessionParamsHolder) bool {
 	return cl.ResolveVirtualBoolParam(guc.n, guc.bootVal)
+}
+
+func (guc *BoolGUCimpl) Show(cl SessionParamsHolder) (string, error) {
+	if guc.show != nil {
+		return guc.show(cl)
+	}
+	if guc.Get(cl) {
+		return "true", nil
+	}
+	return "false", nil
 }
 
 func (guc *BoolGUCimpl) InitBoot() {
@@ -269,20 +285,6 @@ func (cl *SimpleSessionParamHandler) BindParams() [][]byte {
 // SetBindParams implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetBindParams(p [][]byte) {
 	cl.bindParams = p
-}
-
-// ScatterQuery implements RouterClient.
-func (cl *SimpleSessionParamHandler) ScatterQuery() bool {
-	return cl.ResolveVirtualBoolParam(SPQR_SCATTER_QUERY, false)
-}
-
-// SetScatterQuery implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetScatterQuery(val bool) {
-	if val {
-		cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "ok")
-	} else {
-		cl.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "no")
-	}
 }
 
 func (cl *SimpleSessionParamHandler) GetTsa() tsa.TSA {
@@ -534,6 +536,24 @@ var BoolGUCs = []*BoolGUCimpl{
 		shortName: "eager cleanup 2pc",
 		initBoot: func() bool {
 			return config.RouterConfig().EagerCleanup2PC
+		},
+	},
+	{
+		n:         SPQR_SCATTER_QUERY,
+		shortName: "scatter query",
+		initBoot: func() bool {
+			return false
+		},
+		show: func(_ SessionParamsHolder) (string, error) {
+			return "", spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+				SPQR_SCATTER_QUERY)
+		},
+		assign: func(sph SessionParamsHolder, _ string, val bool) {
+			if val {
+				sph.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "ok")
+			} else {
+				sph.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "no")
+			}
 		},
 	},
 }
