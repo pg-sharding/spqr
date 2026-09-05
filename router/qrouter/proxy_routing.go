@@ -390,6 +390,10 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, err
 		}
 
+		if p != nil && len(p.ExecutionTargets()) == 0 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "failed to build insert plan")
+		}
+
 		/* plan one slice per unique index */
 		iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
 		if err != nil {
