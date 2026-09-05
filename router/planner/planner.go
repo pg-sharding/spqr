@@ -713,24 +713,7 @@ func ConsoleFunctionCall(
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: []pgproto3.FieldDescription{
-				{
-					Name:                 []byte("host"),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				},
-				{
-					Name:                 []byte("rw"),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				},
+				engine.TextOidFD("host"), engine.TextOidFD("rw"),
 			},
 		}
 
@@ -748,22 +731,23 @@ func ConsoleFunctionCall(
 				[][]byte{[]byte(k),
 					fmt.Appendf(nil, "%v", v.CR.RW)})
 		} else {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong first argument for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "host %q is not found in topology for %s", k, fname)
 		}
 
 		return tts, nil
 	case virtual.VirtualFuncIsReady:
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: []pgproto3.FieldDescription{pgproto3.FieldDescription{
-				Name:                 []byte(virtual.VirtualFuncIsReady),
-				DataTypeOID:          catalog.BOOLOID,
-				TypeModifier:         -1,
-				DataTypeSize:         1,
-				TableAttributeNumber: 0,
-				TableOID:             0,
-				Format:               0,
-			},
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte(virtual.VirtualFuncIsReady),
+					DataTypeOID:          catalog.BOOLOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
 			},
 		}
 
