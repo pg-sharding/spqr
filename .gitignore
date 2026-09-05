@@ -26,3 +26,4 @@ yacc/console/gram.y.save
 *.log
 *.tfstate*
 .terraform*
+spqr.autoconf

@@ -1,6 +1,11 @@
 package session
 
-import "github.com/pg-sharding/spqr/pkg/tsa"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/tsa"
+)
 
 type BoolGUC interface {
 	ShortName() string
@@ -141,6 +146,28 @@ const (
 
 //revive:enable:var-naming
 
+func ApplyAutoConfGUC(name, val string) error {
+	if ParamIsBoolean(name) {
+		if guc, err := FindBoolGUC(name); err == nil {
+
+			v, err := ParseBoolGUCValue(val)
+
+			if err != nil {
+				return err
+			}
+			guc.SetBoolBootValue(v)
+		}
+	} else if ParamIsString(name) {
+		guc, err := FindStrGUC(name)
+		if err != nil {
+			return err
+		}
+
+		guc.SetStrBootValue(val)
+	}
+	return nil
+}
+
 func ParamIsBoolean(n string) bool {
 	switch n {
 	/*  SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
@@ -167,5 +194,16 @@ func ParamIsString(n string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func ParseBoolGUCValue(val string) (bool, error) {
+	switch strings.ToLower(val) {
+	case "true", "ok", "on":
+		return true, nil
+	case "false", "no", "off":
+		return false, nil
+	default:
+		return false, fmt.Errorf("malformed value for GUC: %v", val)
 	}
 }

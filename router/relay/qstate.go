@@ -594,15 +594,9 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 		if session.ParamIsBoolean(name) {
 
-			var v bool
-
-			switch value {
-			case "true", "ok", "on":
-				v = true
-			case "false", "no", "off":
-				v = false
-			default:
-				return fmt.Errorf("malformed value for GUC: %v", value)
+			v, err := session.ParseBoolGUCValue(value)
+			if err != nil {
+				return err
 			}
 			guc, err := rst.Client().FindBoolGUC(name)
 			if err != nil {
