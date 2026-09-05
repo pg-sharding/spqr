@@ -154,11 +154,6 @@ func (ds *DataShard) SetOptions(options []GenericOption) {
 // The format of the RawHost is host:port:availability_zone.
 // If the availability_zone is not provided, it is empty.
 // If the port is not provided, it does not matter
-
-// parseHosts parses the raw hosts into a slice of Hosts.
-// The format of the RawHost is host:port:availability_zone.
-// If the availability_zone is not provided, it is empty.
-// If the port is not provided, it does not matter
 func parseSingleHostSpec(rawHostSpec string) (config.Host, error) {
 	host := config.Host{}
 	parts := strings.Split(rawHostSpec, ":")
