@@ -242,6 +242,7 @@ mockgen:
 
 yaccgen:
 	make -C ./yacc/console gen
+	make -C ./yacc/hostspec gen
 
 gen: gogen yaccgen mockgen
 
@@ -250,6 +251,7 @@ generate:
 	docker run --name spqr-generator-1 spqr-generator
 	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos
 	docker cp spqr-generator-1:/spqr/yacc/console/. yacc/console
+	docker cp spqr-generator-1:/spqr/yacc/hostspec/. yacc/hostspec
 	docker cp spqr-generator-1:/spqr/pkg/mock/. pkg/mock
 	docker cp spqr-generator-1:/spqr/router/mock/. router/mock
 	docker cp spqr-generator-1:/spqr/coordinator/mock/. coordinator/mock

@@ -13,6 +13,7 @@ import (
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	hostspec "github.com/pg-sharding/spqr/yacc/hostspec"
 )
 
 type TopologyMgr interface {
@@ -150,23 +151,12 @@ func (ds *DataShard) SetOptions(options []GenericOption) {
 	ds.tls.Store(nil)
 }
 
-// parseHosts parses the raw hosts into a slice of Hosts.
-// The format of the RawHost is host:port:availability_zone.
-// If the availability_zone is not provided, it is empty.
-// If the port is not provided, it does not matter
 func parseSingleHostSpec(rawHostSpec string) (config.Host, error) {
-	host := config.Host{}
-	parts := strings.Split(rawHostSpec, ":")
-	if len(parts) > 3 {
+	spec, err := hostspec.Parse(rawHostSpec)
+	if err != nil {
 		return config.Host{}, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", rawHostSpec)
-	} else if len(parts) == 3 {
-		host.AZ = parts[2]
-		host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
-	} else {
-		host.Address = rawHostSpec
 	}
-
-	return host, nil
+	return config.Host{Address: spec.Address, AZ: spec.AZ}, nil
 }
 
 func (ds *DataShard) infos() *HostsInfo {
