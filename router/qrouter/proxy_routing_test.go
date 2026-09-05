@@ -2436,7 +2436,8 @@ func TestCopyMultiShard(t *testing.T) {
 
 		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
 		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
-		dh.SetScatterQuery(false)
+		scatterGuc, _ := dh.FindBoolGUC(session.SPQR_SCATTER_QUERY)
+		scatterGuc.Set(dh, session.VirtualParamLevelStatement, false)
 
 		stmt := parserRes[0]
 

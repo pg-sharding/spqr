@@ -70,7 +70,11 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	if guc.Get(sph) == "" && !sph.ScatterQuery() {
+	scatterGuc, err := sph.FindBoolGUC(session.SPQR_SCATTER_QUERY)
+	if err != nil {
+		return nil, err
+	}
+	if guc.Get(sph) == "" && !scatterGuc.Get(sph) {
 		if planErr := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); planErr != nil {
 			spqrlog.Zero.Debug().Err(planErr).Err(planErr).Msg("failed to analyze query")
 
