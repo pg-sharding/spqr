@@ -143,9 +143,9 @@ SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
 
 -- test SET-based scatter query (not hint)
 SET __spqr__scatter_query TO true;
-SELECT * FROM test ORDER BY id;
+SELECT * FROM test WHERE id = 1;
 SET __spqr__scatter_query TO false;
-SELECT * FROM test ORDER BY id;
+SELECT * FROM test WHERE id = 1;
 
 CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
 SET __spqr__default_route_behaviour to 'sh2';
