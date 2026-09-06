@@ -339,7 +339,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 -- test SET-based scatter query (not hint)
 SET __spqr__scatter_query TO true;
-SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
+SELECT * FROM test ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | age 
 ----+-----
@@ -352,7 +352,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (6 rows)
 
 SET __spqr__scatter_query TO false;
-SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
+SELECT * FROM test ORDER BY id;
 NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
