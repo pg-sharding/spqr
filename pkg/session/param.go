@@ -10,6 +10,7 @@ import (
 type BoolGUC interface {
 	ShortName() string
 	Get(sph SessionParamsHolder) bool
+	Show(sph SessionParamsHolder) (string, error)
 	Set(sph SessionParamsHolder, level string, val bool)
 	Reset()
 }
@@ -52,12 +53,6 @@ type SessionParamsHolder interface {
 	/*  Only statement level */
 	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
-
-	/* Query routing logic */
-
-	/* route hint always statement-level  */
-	SetScatterQuery(val bool)
-	ScatterQuery() bool
 
 	/* Check if we apply engine v2 routing for query */
 	SetEnhancedMultiShardProcessing(level string, val bool)
@@ -170,11 +165,11 @@ func ApplyAutoConfGUC(name, val string) error {
 
 func ParamIsBoolean(n string) bool {
 	switch n {
-	/*  SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
 	case SPQR_ALLOW_SPLIT_UPDATE,
 		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
 		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN,
-		SPQR_REPLY_NOTICE, SPQR_MAINTAIN_PARAMS, SPQR_EAGER_CLEANUP_2PC:
+		SPQR_REPLY_NOTICE, SPQR_MAINTAIN_PARAMS, SPQR_EAGER_CLEANUP_2PC,
+		SPQR_SCATTER_QUERY:
 		return true
 	default:
 		return false
