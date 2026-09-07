@@ -156,7 +156,7 @@ func parseSingleHostSpec(rawHostSpec string) (config.Host, error) {
 	if err != nil {
 		return config.Host{}, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", rawHostSpec)
 	}
-	return config.Host{Address: spec.Address, AZ: spec.AZ}, nil
+	return config.Host{Address: spec.Address, AZ: spec.AZ, Priority: spec.Priority}, nil
 }
 
 func (ds *DataShard) infos() *HostsInfo {

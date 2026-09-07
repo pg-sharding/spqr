@@ -543,7 +543,8 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 	for _, host := range sh.HostsAZ() {
 		cr, ok := s.cache.Match(targetSessionAttrs, host.Address, host.AZ)
 		if ok {
-			if !cr.Alive {
+			/* Check if host is explicitly disabled and threat such cases as 'dead' */
+			if !cr.Alive || host.Priority == DisablePriority {
 				deadCache = append(deadCache, host)
 			} else if cr.Match {
 				posCache = append(posCache, host)
