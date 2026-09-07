@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/session/sessiontest"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -27,7 +28,7 @@ func TestAutoDistributionSetFail(t *testing.T) {
 	client := mockcl.NewMockRouterClient(ctrl)
 	client.EXPECT().CleanupStatementSet().AnyTimes()
 
-	client.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(session.StrGUCs[6], nil)
+	client.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_DISTRIBUTION_KEY), nil)
 	client.EXPECT().ResolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, gomock.Any()).AnyTimes().Return("i")
 
 	qr := mockqr.NewMockQueryRouter(ctrl)
@@ -66,7 +67,7 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	client := mockcl.NewMockRouterClient(ctrl)
 	client.EXPECT().CleanupStatementSet().AnyTimes()
 
-	client.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(session.StrGUCs[6], nil)
+	client.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_DISTRIBUTION_KEY), nil)
 	client.EXPECT().ResolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, gomock.Any()).AnyTimes().Return("i")
 
 	qr := mockqr.NewMockQueryRouter(ctrl)
