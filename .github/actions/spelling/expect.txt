@@ -97,6 +97,7 @@ dbtpcc
 dbutils
 dcd
 dcs
+DClocal
 ddl
 debian
 denchick

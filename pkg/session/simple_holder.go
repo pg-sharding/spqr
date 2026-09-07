@@ -294,6 +294,7 @@ func (cl *SimpleSessionParamHandler) GetTsa() tsa.TSA {
 func (cl *SimpleSessionParamHandler) SetTsa(level string, s string) {
 	switch s {
 	case config.TargetSessionAttrsAny,
+		config.TargetSessionAttrsDClocal,
 		config.TargetSessionAttrsPS,
 		config.TargetSessionAttrsPR,
 		config.TargetSessionAttrsRW,

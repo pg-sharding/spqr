@@ -128,6 +128,7 @@ Possible values for `target-session-attrs`:
 - `read-only`: Connects only to read-only (in recovery) servers. Fails if none available.
 - `prefer-standby` or `prefer-replica`: Prefers connecting to standby servers. If none are available, it connects to primary.
 - `any`: Connect to any available server, regardless of state.
+- `dc-local`: Alias for `any`.
 
 ```sql
 SELECT pg_is_in_recovery() /* target-session-attrs: read-write */;
