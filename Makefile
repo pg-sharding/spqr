@@ -119,7 +119,7 @@ unittest-race:
 	go test -v -race -count 20 -timeout 120s -run "TestDbPoolRaces|TestShardPoolConnectionAcquireLimit"  ./pkg/pool/
 
 unittest:
-	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
+	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console... ./yacc/hostspec/...
 	$(MAKE) unittest-race
 
 bench:
