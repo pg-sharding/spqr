@@ -98,6 +98,7 @@ type StrGUCimpl struct {
 	initBoot  func() string
 	bootVal   string
 	assign    func(sph SessionParamsHolder, level string, val string) error
+	show      func(sph SessionParamsHolder) (string, error)
 }
 
 func (guc *StrGUCimpl) Set(cl SessionParamsHolder, level string, val string) error {
@@ -118,6 +119,13 @@ func (guc *StrGUCimpl) Reset() {
 
 func (guc *StrGUCimpl) Get(cl SessionParamsHolder) string {
 	return cl.ResolveVirtualStringParam(guc.n, guc.bootVal)
+}
+
+func (guc *StrGUCimpl) Show(cl SessionParamsHolder) (string, error) {
+	if guc.show != nil {
+		return guc.show(cl)
+	}
+	return guc.Get(cl), nil
 }
 
 func (guc *StrGUCimpl) InitBoot() {
@@ -226,16 +234,6 @@ func (cl *SimpleSessionParamHandler) Distribution() string {
 }
 
 // SetCommitStrategy implements RouterClient.
-func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val string) {
-	cl.RecordVirtualParam(level, SPQR_DISTRIBUTED_RELATION, val)
-}
-
-// DistributedRelation implements RouterClient.
-func (cl *SimpleSessionParamHandler) DistributedRelation() string {
-	return cl.ResolveVirtualStringParam(SPQR_DISTRIBUTED_RELATION, "")
-}
-
-// SetExecuteOn implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetEnhancedMultiShardProcessing(level string, val bool) {
 	if val {
 		cl.RecordVirtualParam(level, SPQR_ENGINE_V2, "ok")
@@ -620,6 +618,17 @@ var StrGUCs = []*StrGUCimpl{
 		assign: func(sph SessionParamsHolder, _ string, val string) error {
 			sph.RecordVirtualParam(VirtualParamLevelStatement, SPQR_DISTRIBUTION_KEY, val)
 			return nil
+		},
+	},
+	{
+		n:         SPQR_DISTRIBUTED_RELATION,
+		shortName: "distributed relation",
+		initBoot: func() string {
+			return ""
+		},
+		show: func(_ SessionParamsHolder) (string, error) {
+			return "", spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
+				SPQR_DISTRIBUTED_RELATION)
 		},
 	},
 	{

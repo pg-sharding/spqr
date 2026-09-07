@@ -356,20 +356,6 @@ func (mr *MockRouterClientMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockRouterClient)(nil).DefaultReply))
 }
 
-// DistributedRelation mocks base method.
-func (m *MockRouterClient) DistributedRelation() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistributedRelation")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DistributedRelation indicates an expected call of DistributedRelation.
-func (mr *MockRouterClientMockRecorder) DistributedRelation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributedRelation", reflect.TypeOf((*MockRouterClient)(nil).DistributedRelation))
-}
-
 // Distribution mocks base method.
 func (m *MockRouterClient) Distribution() string {
 	m.ctrl.T.Helper()
@@ -1146,18 +1132,6 @@ func (m *MockRouterClient) SetCommitStrategy(value string) {
 func (mr *MockRouterClientMockRecorder) SetCommitStrategy(value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommitStrategy", reflect.TypeOf((*MockRouterClient)(nil).SetCommitStrategy), value)
-}
-
-// SetDistributedRelation mocks base method.
-func (m *MockRouterClient) SetDistributedRelation(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributedRelation", level, val)
-}
-
-// SetDistributedRelation indicates an expected call of SetDistributedRelation.
-func (mr *MockRouterClientMockRecorder) SetDistributedRelation(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributedRelation", reflect.TypeOf((*MockRouterClient)(nil).SetDistributedRelation), level, val)
 }
 
 // SetDistribution mocks base method.
