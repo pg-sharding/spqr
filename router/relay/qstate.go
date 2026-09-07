@@ -307,6 +307,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
+			val, err := guc.Show(rst.Client())
+			if err != nil {
+				return nil, err
+			}
+
 			tts := tupleslot.TupleTableSlot{
 				Desc: []pgproto3.FieldDescription{
 					{
@@ -318,11 +323,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				},
 			}
 
-			if guc.Get(rst.Client()) {
-				tts.WriteDataRow("true")
-			} else {
-				tts.WriteDataRow("false")
-			}
+			tts.WriteDataRow(val)
 
 			ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
@@ -358,9 +359,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTED_RELATION)
 
-			case session.SPQR_SCATTER_QUERY:
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_SCATTER_QUERY)
 			case session.SPQR_ENGINE_V2:
 
 				tts := tupleslot.TupleTableSlot{
@@ -594,15 +592,9 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 		if session.ParamIsBoolean(name) {
 
-			var v bool
-
-			switch value {
-			case "true", "ok", "on":
-				v = true
-			case "false", "no", "off":
-				v = false
-			default:
-				return fmt.Errorf("malformed value for GUC: %v", value)
+			v, err := session.ParseBoolGUCValue(value)
+			if err != nil {
+				return err
 			}
 			guc, err := rst.Client().FindBoolGUC(name)
 			if err != nil {
@@ -623,13 +615,8 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 		} else {
 
 			switch name {
-			case session.SPQR_SCATTER_QUERY:
-				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
-				rst.Client().SetScatterQuery(hintVal != "")
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
-			case session.SPQR_DISTRIBUTION_KEY:
-				rst.Client().SetDistributionKey(hintVal)
 			case session.SPQR_DISTRIBUTED_RELATION:
 				rst.Client().SetDistributedRelation(lvl, hintVal)
 			case session.SPQR_TARGET_SESSION_ATTRS:
@@ -671,7 +658,11 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 				_, ok := mp[session.SPQR_DISTRIBUTION_KEY]
 				if !ok {
-					if rst.Client().DistributionKey() == "" {
+					guc, err := rst.Client().FindStrGUC(session.SPQR_DISTRIBUTION_KEY)
+					if err != nil {
+						return err
+					}
+					if guc.Get(rst.Client()) == "" {
 						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
 					}
 				}

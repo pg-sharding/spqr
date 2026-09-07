@@ -1192,6 +1192,56 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "ALTER SYSTEM RELOAD",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					Reload: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET kek = 'on'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "kek",
+					SetValue: "on",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params = 'true'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "true",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params TO 'true'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "true",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params TO 'on'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "on",
+				},
+			},
+			err: nil,
+		},
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{

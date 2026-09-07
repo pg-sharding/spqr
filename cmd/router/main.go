@@ -23,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/router_util"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
@@ -378,6 +379,14 @@ var runCmd = &cobra.Command{
 						spqrlog.Zero.Error().Err(err).Msg("failed to re-apply CLI overrides on SIGHUP")
 					}
 
+					session.InitGUCs()
+
+					if err := instance.NewAutoConfBootstrapper(config.RouterConfig().AutoConf).InitializeMetadata(ctx, router); err != nil {
+						/*  Erroneous autoconf file, log and ignore. */
+
+						spqrlog.Zero.Error().Err(err).Msg("failed apply autoconf")
+					}
+
 					if err := logEffectiveConfig(config.RouterConfig()); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("failed to print running config")
 					}
@@ -412,6 +421,9 @@ var runCmd = &cobra.Command{
 			}
 		}()
 
+		/* initialize GUC boot values from config */
+		session.InitGUCs()
+
 		/* initialize metadata */
 		if config.RouterConfig().UseInitSQL {
 			i := instance.NewInitSQLMetadataBootstrapper(config.RouterConfig().InitSQL, config.RouterConfig().ExitOnInitSQLError)
@@ -426,6 +438,11 @@ var runCmd = &cobra.Command{
 		} else {
 			/* TODO: maybe error-out? */
 			router.Initialize()
+		}
+
+		if err := instance.NewAutoConfBootstrapper(config.RouterConfig().AutoConf).InitializeMetadata(ctx, router); err != nil {
+			/*  Erroneous autoconf file, do not operate. */
+			return err
 		}
 
 		errCh := make(chan error)

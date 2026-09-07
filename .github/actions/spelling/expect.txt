@@ -97,6 +97,7 @@ dbtpcc
 dbutils
 dcd
 dcs
+DClocal
 ddl
 debian
 denchick
@@ -206,6 +207,7 @@ helpgen
 Highload
 hostnossl
 hostssl
+hostspec
 hotspot
 hst
 HTAP
@@ -494,6 +496,7 @@ sconst
 screenshots
 sdnotifier
 seqmgr
+sessiontest
 serviceprincipal
 sethvargo
 sevlyar
@@ -657,6 +660,7 @@ xmove
 xmovestr
 xproto
 XQDB
+xrecord
 xtab
 xxerr
 xxhashuuid

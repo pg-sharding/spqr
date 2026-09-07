@@ -74,6 +74,7 @@ type Router struct {
 	InitSQL                   string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	UseInitSQL                bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
 	ExitOnInitSQLError        bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
+	AutoConf                  string `json:"autoconf" toml:"autoconf" yaml:"autoconf"`
 	UseCoordinatorInit        bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 	ManageShardsByCoordinator bool   `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
 	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
@@ -211,19 +212,21 @@ const (
 	TargetSessionAttrsPS      = "prefer-standby"
 	TargetSessionAttrsPR      = "prefer-replica"
 	TargetSessionAttrsAny     = "any"
+	TargetSessionAttrsDClocal = "dc-local" // alias for TargetSessionAttrsAny
 )
 
+type Host struct {
+	Address string // format host:port
+	AZ      string // Availability zone
+
+	Priority int // connection acquire priority
+}
+
 type Shard struct {
-	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
+	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port[:availability_zone]
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-}
-
-type Host struct {
-	Address  string // format host:port
-	AZ       string // Availability zone
-	Priority int    // connection acquire priority
 }
 
 func ValueOrDefaultInt(value int, def int) int {

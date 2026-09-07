@@ -971,6 +971,16 @@ alter_sys_target:
 		$$ = &System{
 			RotateLog: true,
 		}
+	} | SYSTEM SET any_id TEQ any_val {
+		$$ = &System{
+			SetGUC: $3,
+			SetValue: $5,
+		}
+	} | SYSTEM SET any_id TO any_val {
+		$$ = &System{
+			SetGUC: $3,
+			SetValue: $5,
+		}
 	}
 
 /*****************************************************************************

@@ -113,7 +113,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		distr := true
 		switch el := tstmt.Element.(type) {
 		case *spqrparser.System:
-			if el.Rebootstrap {
+			if el.Rebootstrap || el.SetGUC != "" {
 				distr = false
 				break
 			}

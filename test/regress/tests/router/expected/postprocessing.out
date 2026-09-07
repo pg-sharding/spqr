@@ -137,6 +137,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should be rejected in router
 SELECT count(id), i FROM r_pp GROUP BY i;
 ERROR:  in-router postprocessing for GROUP BY aggregate is not yet supported
+HINT:  turn __spqr__allow_postprocessing to off to retrieve underlaying data rows
 QUERY:  SELECT count(id), i FROM r_pp GROUP BY i;
 DROP TABLE r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

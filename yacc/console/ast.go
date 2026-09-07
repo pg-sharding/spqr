@@ -274,6 +274,8 @@ type System struct {
 	Restart     bool
 	RotateLog   bool
 	Rebootstrap bool
+	SetGUC      string
+	SetValue    string
 }
 
 type GrantStmt struct {

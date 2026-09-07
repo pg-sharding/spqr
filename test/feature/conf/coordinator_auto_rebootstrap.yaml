@@ -16,4 +16,4 @@ use_spqrguard: true
 recover_key_range_moves: true
 watch_task_groups: false
 enable_icp: true
-watch_routers_qdb: true
+auto_rebootstrap: true

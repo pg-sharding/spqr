@@ -8,10 +8,14 @@ SHOW __spqr__advisory_lock_behaviour;
 
 SET __spqr__engine_v2 TO off;
 SELECT pg_advisory_lock(11);
-ERROR:  SPQRC: pg_advisory_lock function execution is prohibited
+ERROR:  SPQRB: pg_advisory_lock function execution is prohibited
+DETAIL:  engine V2 is OFF
+HINT:  try to turn engine V2 to ON
 QUERY:  SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
-ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
+ERROR:  SPQRB: pg_advisory_xact_lock function execution is prohibited
+DETAIL:  engine V2 is OFF
+HINT:  try to turn engine V2 to ON
 QUERY:  SELECT pg_advisory_xact_lock(11);
 SET __spqr__advisory_lock_behaviour TO BLOCK;
 SHOW __spqr__advisory_lock_behaviour;
@@ -21,17 +25,25 @@ SHOW __spqr__advisory_lock_behaviour;
 (1 row)
 
 SELECT pg_advisory_lock(11);
-ERROR:  SPQRC: pg_advisory_lock function execution is prohibited
+ERROR:  SPQRB: pg_advisory_lock function execution is prohibited
+DETAIL:  advisory_lock_behaviour is BLOCK
+HINT:  try to switch advisory_lock_behaviour
 QUERY:  SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
-ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
+ERROR:  SPQRB: pg_advisory_xact_lock function execution is prohibited
+DETAIL:  advisory_lock_behaviour is BLOCK
+HINT:  try to switch advisory_lock_behaviour
 QUERY:  SELECT pg_advisory_xact_lock(11);
 SET __spqr__engine_v2 TO on;
 SELECT pg_advisory_lock(11);
-ERROR:  SPQRC: pg_advisory_lock function execution is prohibited
+ERROR:  SPQRB: pg_advisory_lock function execution is prohibited
+DETAIL:  advisory_lock_behaviour is BLOCK
+HINT:  try to switch advisory_lock_behaviour
 QUERY:  SELECT pg_advisory_lock(11);
 SELECT pg_advisory_xact_lock(11);
-ERROR:  SPQRC: pg_advisory_xact_lock function execution is prohibited
+ERROR:  SPQRB: pg_advisory_xact_lock function execution is prohibited
+DETAIL:  advisory_lock_behaviour is BLOCK
+HINT:  try to switch advisory_lock_behaviour
 QUERY:  SELECT pg_advisory_xact_lock(11);
 SET __spqr__advisory_lock_behaviour TO SCATTER;
 BEGIN;

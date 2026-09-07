@@ -194,7 +194,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
 	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
 		assert.Equal(t, "sh-new", shard.ID)
-		assert.Equal(t, []string{listener.Addr().String()}, shard.Hosts())
+		assert.Equal(t, []config.Host{config.Host{Address: listener.Addr().String()}}, shard.HostsAZ())
 		return nil
 	})
 
@@ -469,4 +469,105 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
+}
+
+func TestApplyXRecords(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false).Times(1).Return(nil)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
+		assert.NoError(err)
+
+		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
+		referenceRelation := &rrelation.ReferenceRelation{
+			RelationName: &rfqn.RelationFQN{
+				RelationName: "relation",
+				SchemaName:   "schema",
+			},
+			ShardIDs: []string{"sh1"},
+		}
+		mmgr.EXPECT().CreateReferenceRelation(gomock.Any(), referenceRelation, nil).Times(1).Return(nil)
+		createReferenceRelationXRecord, err := meta.MakeXRecord("CreateReferenceRelation", referenceRelation, nil)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, createReferenceRelationXRecord)
+		assert.NoError(err)
+	})
+
+	t.Run("invalid xrecord - arguments count mismatch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 3")
+	})
+
+	t.Run("invalid xrecord - argument type mismatch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "failed to decode argument 1 of AddDataShard")
+	})
+
+	t.Run("invalid xrecord - invalid method name", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("InvalidMethod", datashard, -1)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "unknown EntityMgr method")
+	})
 }

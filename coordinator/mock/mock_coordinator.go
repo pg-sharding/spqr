@@ -207,6 +207,20 @@ func (mr *MockCoordinatorMockRecorder) AlterShardOptions(ctx, shardID, options a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockCoordinator)(nil).AlterShardOptions), ctx, shardID, options)
 }
 
+// ApplyXRecords mocks base method.
+func (m *MockCoordinator) ApplyXRecords(ctx context.Context, records []*transaction.XRecord) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplyXRecords", ctx, records)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplyXRecords indicates an expected call of ApplyXRecords.
+func (mr *MockCoordinatorMockRecorder) ApplyXRecords(ctx, records any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyXRecords", reflect.TypeOf((*MockCoordinator)(nil).ApplyXRecords), ctx, records)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()

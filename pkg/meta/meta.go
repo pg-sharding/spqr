@@ -2,8 +2,11 @@ package meta
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,6 +37,7 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/router_util"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
@@ -712,6 +716,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.System:
+		if stmt.SetGUC != "" {
+			return processAlterSystemSet(stmt.SetGUC, stmt.SetValue)
+		}
 		if stmt.RotateLog {
 			router_util.ReloadRotateLog()
 		} else if stmt.Reload {
@@ -746,6 +753,33 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
+}
+
+func processAlterSystemSet(name, val string) (*tupleslot.TupleTableSlot, error) {
+	path := config.RouterConfig().AutoConf
+	if path == "" {
+		/* XXX: maybe better to use default */
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "autoconf file is not configured")
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}(f)
+
+	if _, err := fmt.Fprintf(f, "%s = %s\n", name, val); err != nil {
+		return nil, err
+	}
+	if err := session.ApplyAutoConfGUC(name, val); err != nil {
+		spqrlog.Zero.Error().Err(err).Str("filename", path).Str("name", name).Str("value", val).Msg("autoconf apply failed")
+		return nil, err
+	}
+	return &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("alter system")}, nil
 }
 
 // processAlterDistribution processes the given alter distribution statement and performs the corresponding operation.
@@ -2471,4 +2505,70 @@ func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector s
 	}
 
 	return tgs, nil
+}
+
+func ApplyXRecords(
+	ctx context.Context,
+	tx EntityMgr,
+	operation *mtran.XRecord,
+) error {
+	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
+	if !method.IsValid() {
+		return fmt.Errorf("unknown EntityMgr method %q", operation.MethodName)
+	}
+
+	methodType := method.Type()
+
+	if methodType.NumIn() != len(operation.Args)+1 {
+		return fmt.Errorf(
+			"invalid argument count for %s. Got %d, expected %d",
+			operation.MethodName,
+			len(operation.Args),
+			methodType.NumIn(),
+		)
+	}
+
+	args := make([]reflect.Value, 0, methodType.NumIn())
+	args = append(args, reflect.ValueOf(ctx))
+
+	for i, raw := range operation.Args {
+		argType := methodType.In(i + 1)
+
+		arg := reflect.New(argType)
+
+		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
+			return fmt.Errorf(
+				"failed to decode argument %d of %s: %w",
+				i,
+				operation.MethodName,
+				err,
+			)
+		}
+
+		args = append(args, arg.Elem())
+	}
+
+	results := method.Call(args)
+
+	if len(results) == 1 && !results[0].IsNil() {
+		return results[0].Interface().(error)
+	}
+
+	return nil
+}
+
+func MakeXRecord(method string, args ...any) (*mtran.XRecord, error) {
+	jsonArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		raw, err := json.Marshal(arg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal args: %s", err)
+		}
+		jsonArgs = append(jsonArgs, string(raw))
+	}
+
+	return &mtran.XRecord{
+		MethodName: method,
+		Args:       jsonArgs,
+	}, nil
 }

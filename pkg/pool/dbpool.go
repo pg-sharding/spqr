@@ -231,6 +231,8 @@ func (s *DBPool) evaluateTSAMatch(cr tsa.CheckResult, requiredTSA tsa.TSA) bool 
 		return !cr.RW // prefer replica (read-only)
 	case config.TargetSessionAttrsAny:
 		return true
+	case config.TargetSessionAttrsDClocal: // alias for any
+		return true
 	default:
 		return false
 	}
@@ -498,7 +500,8 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-
+		fallthrough
+	case config.TargetSessionAttrsDClocal: // alias for any
 		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindANY)
 
 	case config.TargetSessionAttrsRO:
@@ -523,6 +526,7 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 const (
 	highestHostPriority = 100
 	lowerHostPriority   = 1
+	DisablePriority     = -1
 )
 
 func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
@@ -552,6 +556,14 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 	}
 
 	getHostPrior := func(h config.Host) int {
+		if len(s.PreferAZ) == 0 {
+			return h.Priority
+		}
+		/* Zero means priority not set. Note that disable priority is
+		* -1, so we will return that here */
+		if h.Priority != 0 {
+			return h.Priority
+		}
 		if h.AZ == s.PreferAZ {
 			return highestHostPriority
 		}
@@ -570,17 +582,15 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 		})
 	}
 
-	if len(s.PreferAZ) > 0 {
-		sort.Slice(posCache, func(i, j int) bool {
-			return getHostPrior(posCache[i]) > getHostPrior(posCache[j])
-		})
-		sort.Slice(negCache, func(i, j int) bool {
-			return getHostPrior(negCache[i]) > getHostPrior(negCache[j])
-		})
-		sort.Slice(deadCache, func(i, j int) bool {
-			return getHostPrior(deadCache[i]) > getHostPrior(deadCache[j])
-		})
-	}
+	sort.Slice(posCache, func(i, j int) bool {
+		return getHostPrior(posCache[i]) > getHostPrior(posCache[j])
+	})
+	sort.Slice(negCache, func(i, j int) bool {
+		return getHostPrior(negCache[i]) > getHostPrior(negCache[j])
+	})
+	sort.Slice(deadCache, func(i, j int) bool {
+		return getHostPrior(deadCache[i]) > getHostPrior(deadCache[j])
+	})
 
 	hostOrder = append(posCache, negCache...)
 	hostOrder = append(hostOrder, deadCache...)
