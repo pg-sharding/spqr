@@ -656,22 +656,6 @@ func FindStrGUC(n string) (*StrGUCimpl, error) {
 	return nil, fmt.Errorf("unknown GUC: %s", n)
 }
 
-func MustFindBoolGUC(n string) BoolGUC {
-	guc, err := FindBoolGUC(n)
-	if err != nil {
-		panic(err)
-	}
-	return guc
-}
-
-func MustFindStrGUC(n string) StrGUC {
-	guc, err := FindStrGUC(n)
-	if err != nil {
-		panic(err)
-	}
-	return guc
-}
-
 func InitGUCs() {
 	for i := range BoolGUCs {
 		BoolGUCs[i].InitBoot()

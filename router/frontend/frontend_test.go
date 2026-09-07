@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/session/sessiontest"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/frontend"
@@ -108,11 +109,11 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
-	cl.EXPECT().FindBoolGUC(gomock.Any()).AnyTimes().Return(session.MustFindBoolGUC(session.SPQR_LINEARIZE_DISPATCH), nil)
-	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(session.MustFindBoolGUC(session.SPQR_MAINTAIN_PARAMS), nil)
-	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(session.MustFindStrGUC(session.SPQR_EXECUTE_ON), nil)
-	cl.EXPECT().FindStrGUC(session.SPQR_SHARDING_KEY).AnyTimes().Return(session.MustFindStrGUC(session.SPQR_SHARDING_KEY), nil)
-	cl.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(session.MustFindStrGUC(session.SPQR_DISTRIBUTION_KEY), nil)
+	cl.EXPECT().FindBoolGUC(gomock.Any()).AnyTimes().Return(sessiontest.MustFindBoolGUC(session.SPQR_LINEARIZE_DISPATCH), nil)
+	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(sessiontest.MustFindBoolGUC(session.SPQR_MAINTAIN_PARAMS), nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_EXECUTE_ON).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_EXECUTE_ON), nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_SHARDING_KEY).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_SHARDING_KEY), nil)
+	cl.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_DISTRIBUTION_KEY), nil)
 	cl.EXPECT().ResolveVirtualBoolParam(gomock.Any(), gomock.Any()).AnyTimes().Return(false)
 	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_EXECUTE_ON, gomock.Any()).AnyTimes().Return("")
 	cl.EXPECT().ResolveVirtualStringParam(session.SPQR_SHARDING_KEY, gomock.Any()).AnyTimes().Return("")
@@ -242,7 +243,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
-	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(session.MustFindBoolGUC(session.SPQR_MAINTAIN_PARAMS), nil)
+	cl.EXPECT().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS).AnyTimes().Return(sessiontest.MustFindBoolGUC(session.SPQR_MAINTAIN_PARAMS), nil)
 	cl.EXPECT().ResolveVirtualBoolParam(session.SPQR_MAINTAIN_PARAMS, gomock.Any()).AnyTimes()
 
 	cl.EXPECT().GetTsa().AnyTimes()
