@@ -88,3 +88,4 @@ DROP DISTRIBUTION ALL CASCADE;
 -----------------
  ds1
 (1 row)
+
