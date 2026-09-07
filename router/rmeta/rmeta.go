@@ -418,6 +418,7 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 			}
 			if first {
 				hf = hfLocal
+				first = false
 			} else {
 				if hf != hfLocal {
 					return kr.ShardKey{}, fmt.Errorf("failed to resolve hint hash function")

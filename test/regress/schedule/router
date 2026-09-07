@@ -38,6 +38,7 @@ test: subselects
 test: virtual_show
 test: virtual
 test: auto_distribution
+test: distributed_relation
 test: spqrguard
 test: negative_routing
 test: default_shard
