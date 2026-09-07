@@ -97,7 +97,7 @@ Feature: Initialize router metadata from Etcd
     Scenario: Coordinator can re-bootstrap router if metadata differs
         Given cluster environment is
         """
-        COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_watch_routers_qdb.yaml
+        COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_auto_rebootstrap.yaml
         ROUTER_CONFIG=/spqr/test/feature/conf/router_with_coordinator.yaml
         ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator.yaml
         ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator_2.yaml
