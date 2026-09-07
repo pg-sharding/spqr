@@ -12,9 +12,12 @@ If no shards are specified with ON, the table is created on all shards.
 
 
 ```sql
-CREATE REFERENCE TABLE <table_name>
+CREATE REFERENCE TABLE [IF NOT EXISTS] <table_name>
     [AUTO INCREMENT <column> [START <value>], ...]
     [ON <shard_id>, ...]
+
+With IF NOT EXISTS, the command is a no-op that succeeds when a reference
+table with the same name already exists, which makes migrations re-runnable.
 ```
 
 **Examples:**
@@ -28,6 +31,8 @@ CREATE REFERENCE TABLE tax_rates ON sh1, sh2;
 CREATE REFERENCE TABLE orders AUTO INCREMENT id;
 -- With auto-increment starting at a specific value
 CREATE REFERENCE TABLE orders AUTO INCREMENT id START 1000;
+-- Idempotent creation (no error if it already exists)
+CREATE REFERENCE TABLE IF NOT EXISTS tax_rates;
 ```
 
 ### DROP REFERENCE TABLE
@@ -37,7 +42,10 @@ table from the shards.
 
 
 ```sql
-DROP REFERENCE TABLE <table_name>
+DROP REFERENCE TABLE [IF EXISTS] <table_name>
+
+With IF EXISTS, dropping a missing reference table succeeds as a no-op,
+which makes down-migrations re-runnable.
 ```
 
 **Examples:**
@@ -45,6 +53,8 @@ DROP REFERENCE TABLE <table_name>
 ```sql
 -- Drop a reference table
 DROP REFERENCE TABLE tax_rates;
+-- Idempotent drop (no error if it does not exist)
+DROP REFERENCE TABLE IF EXISTS tax_rates;
 ```
 
 ### ALTER REFERENCE TABLE STORAGE

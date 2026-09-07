@@ -12,7 +12,7 @@ You can append "hash" after a column type to apply hash-based distribution to th
 
 
 ```sql
-CREATE DISTRIBUTION <distributionID>
+CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
   [COLUMN TYPES <types> | (<types>)]
   [DEFAULT SHARD <shardID>]
 
@@ -21,6 +21,9 @@ distribution key, and each type is one of: INTEGER, INT,
 VARCHAR, UUID (VARCHAR/INTEGER/UUID may be followed by HASH)
 
 where <shardID> is a default shard identifier. The <shardID> must exist.
+
+With IF NOT EXISTS, the command is a no-op that succeeds when a distribution
+with the same identifier already exists, which makes migrations re-runnable.
 ```
 
 **Examples:**
@@ -38,6 +41,8 @@ CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
 CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;
 -- Parenthesized type syntax with default shard
 CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;
+-- Idempotent creation (no error if it already exists)
+CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
 ```
 
 ### DROP DISTRIBUTION
@@ -51,7 +56,10 @@ Use CASCADE to remove dependent metadata objects (key ranges, attached relations
 
 
 ```sql
-DROP DISTRIBUTION <distributionID> [CASCADE]
+DROP DISTRIBUTION [IF EXISTS] <distributionID> [CASCADE]
+
+With IF EXISTS, the command is a no-op that succeeds when the distribution
+does not exist, which makes down-migrations re-runnable.
 ```
 
 **Examples:**
@@ -61,6 +69,8 @@ DROP DISTRIBUTION <distributionID> [CASCADE]
 DROP DISTRIBUTION ds1;
 -- Drop distribution with dependent metadata
 DROP DISTRIBUTION ds1 CASCADE;
+-- Idempotent drop (no error if it does not exist)
+DROP DISTRIBUTION IF EXISTS ds1;
 ```
 
 ### ALTER DISTRIBUTION ATTACH TABLE
@@ -71,29 +81,36 @@ For composite sharding keys, specify multiple column names separated by commas i
 
 
 ```sql
-ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
   [, <tableName> ...]
   DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
 where keys is a comma-separated list of column names
 (e.g., "col1, col2" for composite keys)
 where hashFunction is one of: IDENTITY, MURMUR, CITY
+
+With IF NOT EXISTS, attaching an already-attached table is a no-op that
+succeeds, which makes migrations re-runnable.
 ```
 
 **Examples:**
 
 ```sql
 -- Single column sharding key
-ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+ALTER DISTRIBUTION ds1 ATTACH TABLE orders
  DISTRIBUTION KEY order_id;
 
 -- Composite sharding key with two columns
-ALTER DISTRIBUTION ds2 ATTACH TABLE users 
+ALTER DISTRIBUTION ds2 ATTACH TABLE users
  DISTRIBUTION KEY tenant_id, user_id;
 
 -- Composite key with hash function
-ALTER DISTRIBUTION ds3 ATTACH TABLE events 
+ALTER DISTRIBUTION ds3 ATTACH TABLE events
  DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+
+-- Idempotent attach (no error if already attached)
+ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
+ DISTRIBUTION KEY order_id;
 
 ```
 
@@ -144,9 +161,21 @@ CREATE DISTRIBUTED TABLE copy_test (id1, id2) IN ds2;
 
 Detaches a table from the distribution using the DETACH TABLE clause.
 
+With IF EXISTS, detaching a table that is not attached is a no-op that
+succeeds, which makes down-migrations re-runnable.
+
 
 ```sql
-ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
+```
+
+**Examples:**
+
+```sql
+-- Detach a table
+ALTER DISTRIBUTION ds1 DETACH TABLE orders;
+-- Idempotent detach (no error if not attached)
+ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;
 ```
 
 ### ALTER DISTRIBUTION ALTER TABLE DISTRIBUTION KEY

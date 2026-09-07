@@ -8,9 +8,12 @@ description: |
   If no shards are specified with ON, the table is created on all shards.
 
 syntax: |
-  CREATE REFERENCE TABLE <table_name>
+  CREATE REFERENCE TABLE [IF NOT EXISTS] <table_name>
       [AUTO INCREMENT <column> [START <value>], ...]
       [ON <shard_id>, ...]
+
+  With IF NOT EXISTS, the command is a no-op that succeeds when a reference
+  table with the same name already exists, which makes migrations re-runnable.
 
 parameters:
   - name: table_name
@@ -31,6 +34,8 @@ examples:
     code: CREATE REFERENCE TABLE orders AUTO INCREMENT id;
   - description: With auto-increment starting at a specific value
     code: CREATE REFERENCE TABLE orders AUTO INCREMENT id START 1000;
+  - description: Idempotent creation (no error if it already exists)
+    code: CREATE REFERENCE TABLE IF NOT EXISTS tax_rates;
 
 notes:
   - You may specify initial sequence value with the START keyword.

@@ -7,8 +7,11 @@ description: |
   Use DROP KEY RANGE ALL to remove all key ranges at once.
 
 syntax: |
-  DROP KEY RANGE <keyRangeID>
+  DROP KEY RANGE [IF EXISTS] <keyRangeID>
   DROP KEY RANGE ALL
+
+  With IF EXISTS, the command is a no-op that succeeds when the key range
+  does not exist, which makes down-migrations re-runnable.
 
 parameters:
   - name: keyRangeID
@@ -21,6 +24,8 @@ examples:
     code: DROP KEY RANGE krid1;
   - description: Drop all key ranges
     code: DROP KEY RANGE ALL;
+  - description: Idempotent drop (no error if it does not exist)
+    code: DROP KEY RANGE IF EXISTS krid1;
 
 tips:
   - Dropping a key range does not migrate or delete the underlying data

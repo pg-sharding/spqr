@@ -3,13 +3,17 @@ NAME
     key space is an ordered set,
 
 SYNTAX
-    CREATE KEY RANGE [ <keyRangeID> ]
+    CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
       FROM <lowerBound>
-      ROUTE TO <shardID> 
+      ROUTE TO <shardID>
       FOR DISTRIBUTION <distributionID>
 
     where lowerBound is a single value or comma-separated values
     for composite keys (e.g., "100, 'value'" for a two-column key)
+
+    With IF NOT EXISTS, the command is a no-op that succeeds when a key range
+    with the same identifier already exists, which makes migrations re-runnable.
+    IF NOT EXISTS requires an explicit <keyRangeID>.
 
 DESCRIPTION
     This command is used to create a new key range. Since the key space is an
@@ -36,6 +40,9 @@ EXAMPLES
     Composite key range with integer and varchar:
         CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
             ROUTE TO shard3 FOR DISTRIBUTION ds3;
+    Idempotent creation (no error if it already exists):
+        CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+            ROUTE TO shard1 FOR DISTRIBUTION ds1;
 
 TIPS
     - Value bounds should be continuous and non-overlapping

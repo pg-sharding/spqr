@@ -3,7 +3,16 @@ NAME
     using the DETACH TABLE clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+    ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
 
 DESCRIPTION
     Detaches a table from the distribution using the DETACH TABLE clause.
+
+    With IF EXISTS, detaching a table that is not attached is a no-op that
+    succeeds, which makes down-migrations re-runnable.
+
+EXAMPLES
+    Detach a table:
+        ALTER DISTRIBUTION ds1 DETACH TABLE orders;
+    Idempotent detach (no error if not attached):
+        ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;

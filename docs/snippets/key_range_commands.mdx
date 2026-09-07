@@ -10,13 +10,17 @@ to each column in the distribution.
 
 
 ```sql
-CREATE KEY RANGE [ <keyRangeID> ]
+CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
   FROM <lowerBound>
-  ROUTE TO <shardID> 
+  ROUTE TO <shardID>
   FOR DISTRIBUTION <distributionID>
 
 where lowerBound is a single value or comma-separated values
 for composite keys (e.g., "100, 'value'" for a two-column key)
+
+With IF NOT EXISTS, the command is a no-op that succeeds when a key range
+with the same identifier already exists, which makes migrations re-runnable.
+IF NOT EXISTS requires an explicit <keyRangeID>.
 ```
 
 **Examples:**
@@ -29,6 +33,9 @@ CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
 -- Composite key range with integer and varchar
 CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
     ROUTE TO shard3 FOR DISTRIBUTION ds3;
+-- Idempotent creation (no error if it already exists)
+CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+    ROUTE TO shard1 FOR DISTRIBUTION ds1;
 ```
 
 ### CREATE KEY RANGES FOR DISTRIBUTION
@@ -85,8 +92,11 @@ Use DROP KEY RANGE ALL to remove all key ranges at once.
 
 
 ```sql
-DROP KEY RANGE <keyRangeID>
+DROP KEY RANGE [IF EXISTS] <keyRangeID>
 DROP KEY RANGE ALL
+
+With IF EXISTS, the command is a no-op that succeeds when the key range
+does not exist, which makes down-migrations re-runnable.
 ```
 
 **Examples:**
@@ -96,6 +106,8 @@ DROP KEY RANGE ALL
 DROP KEY RANGE krid1;
 -- Drop all key ranges
 DROP KEY RANGE ALL;
+-- Idempotent drop (no error if it does not exist)
+DROP KEY RANGE IF EXISTS krid1;
 ```
 
 ### LOCK KEY RANGE

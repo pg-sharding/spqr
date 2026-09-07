@@ -35,11 +35,15 @@ description: |
   do not match any key range. DROP DEFAULT SHARD removes the default shard setting.
 
 syntax: |
-  ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
+  ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
     DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
-  ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+  ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
   ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
     DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
+
+  ATTACH TABLE IF NOT EXISTS succeeds as a no-op when the table is already
+  attached; DETACH TABLE IF EXISTS succeeds as a no-op when it is not
+  attached. Both make migrations re-runnable.
   ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
     SCHEMA <schemaName>
   ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
@@ -117,26 +121,33 @@ subcommands:
 
       For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+      ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
         [, <tableName> ...]
         DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
       where keys is a comma-separated list of column names
       (e.g., "col1, col2" for composite keys)
       where hashFunction is one of: IDENTITY, MURMUR, CITY
+
+      With IF NOT EXISTS, attaching an already-attached table is a no-op that
+      succeeds, which makes migrations re-runnable.
     examples:
       - description: Single column sharding key
         code: |
-          ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+          ALTER DISTRIBUTION ds1 ATTACH TABLE orders
            DISTRIBUTION KEY order_id;
       - description: Composite sharding key with two columns
         code: |
-          ALTER DISTRIBUTION ds2 ATTACH TABLE users 
+          ALTER DISTRIBUTION ds2 ATTACH TABLE users
            DISTRIBUTION KEY tenant_id, user_id;
       - description: Composite key with hash function
         code: |
-          ALTER DISTRIBUTION ds3 ATTACH TABLE events 
+          ALTER DISTRIBUTION ds3 ATTACH TABLE events
            DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+      - description: Idempotent attach (no error if already attached)
+        code: |
+          ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
+           DISTRIBUTION KEY order_id;
 
   - name: CREATE TABLE
     description: |
@@ -176,8 +187,16 @@ subcommands:
   - name: ALTER DISTRIBUTION DETACH TABLE
     description: |
       Detaches a table from the distribution using the DETACH TABLE clause.
+
+      With IF EXISTS, detaching a table that is not attached is a no-op that
+      succeeds, which makes down-migrations re-runnable.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+      ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
+    examples:
+      - description: Detach a table
+        code: ALTER DISTRIBUTION ds1 DETACH TABLE orders;
+      - description: Idempotent detach (no error if not attached)
+        code: ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;
 
   - name: ALTER DISTRIBUTION ALTER TABLE DISTRIBUTION KEY
     description: |

@@ -11,7 +11,7 @@ description: |
   You can append "hash" after a column type to apply hash-based distribution to that column.
 
 syntax: |
-  CREATE DISTRIBUTION <distributionID>
+  CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
     [COLUMN TYPES <types> | (<types>)]
     [DEFAULT SHARD <shardID>]
 
@@ -20,6 +20,9 @@ syntax: |
   VARCHAR, UUID (VARCHAR/INTEGER/UUID may be followed by HASH)
 
   where <shardID> is a default shard identifier. The <shardID> must exist.
+
+  With IF NOT EXISTS, the command is a no-op that succeeds when a distribution
+  with the same identifier already exists, which makes migrations re-runnable.
 
 parameters:
   - name: distributionID
@@ -42,6 +45,8 @@ examples:
     code: CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;
   - description: Parenthesized type syntax with default shard
     code: CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;
+  - description: Idempotent creation (no error if it already exists)
+    code: CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
 
 tips:
   - Keep column type order aligned with relation distribution keys

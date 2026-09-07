@@ -4,13 +4,16 @@ NAME
     ATTACH TABLE clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+    ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
       [, <tableName> ...]
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
     where keys is a comma-separated list of column names
     (e.g., "col1, col2" for composite keys)
     where hashFunction is one of: IDENTITY, MURMUR, CITY
+
+    With IF NOT EXISTS, attaching an already-attached table is a no-op that
+    succeeds, which makes migrations re-runnable.
 
 DESCRIPTION
     Attaches one or more [tables](/sharding/sharded_tables) to an existing
@@ -21,11 +24,14 @@ DESCRIPTION
 
 EXAMPLES
     Single column sharding key:
-        ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+        ALTER DISTRIBUTION ds1 ATTACH TABLE orders
          DISTRIBUTION KEY order_id;
     Composite sharding key with two columns:
-        ALTER DISTRIBUTION ds2 ATTACH TABLE users 
+        ALTER DISTRIBUTION ds2 ATTACH TABLE users
          DISTRIBUTION KEY tenant_id, user_id;
     Composite key with hash function:
-        ALTER DISTRIBUTION ds3 ATTACH TABLE events 
+        ALTER DISTRIBUTION ds3 ATTACH TABLE events
          DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
+    Idempotent attach (no error if already attached):
+        ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
+         DISTRIBUTION KEY order_id;

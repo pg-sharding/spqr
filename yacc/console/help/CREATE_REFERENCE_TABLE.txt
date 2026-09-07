@@ -3,9 +3,12 @@ NAME
     across all or specific shards.
 
 SYNTAX
-    CREATE REFERENCE TABLE <table_name>
+    CREATE REFERENCE TABLE [IF NOT EXISTS] <table_name>
         [AUTO INCREMENT <column> [START <value>], ...]
         [ON <shard_id>, ...]
+
+    With IF NOT EXISTS, the command is a no-op that succeeds when a reference
+    table with the same name already exists, which makes migrations re-runnable.
 
 DESCRIPTION
     Creates a reference table — a table replicated across all or specific
@@ -31,6 +34,8 @@ EXAMPLES
         CREATE REFERENCE TABLE orders AUTO INCREMENT id;
     With auto-increment starting at a specific value:
         CREATE REFERENCE TABLE orders AUTO INCREMENT id START 1000;
+    Idempotent creation (no error if it already exists):
+        CREATE REFERENCE TABLE IF NOT EXISTS tax_rates;
 
 RELATED COMMANDS
     DROP REFERENCE TABLE

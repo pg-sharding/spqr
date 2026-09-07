@@ -2,11 +2,15 @@ NAME
     ALTER DISTRIBUTION - Modifies distribution metadata.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
+    ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
-    ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+    ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
     ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
+
+    ATTACH TABLE IF NOT EXISTS succeeds as a no-op when the table is already
+    attached; DETACH TABLE IF EXISTS succeeds as a no-op when it is not
+    attached. Both make migrations re-runnable.
     ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
       SCHEMA <schemaName>
     ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>

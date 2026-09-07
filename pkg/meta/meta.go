@@ -90,6 +90,52 @@ type RouterConnector interface {
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
+// distributionExists reports whether a distribution with the given id exists.
+// It is used to implement idempotent DDL (IF [NOT] EXISTS) and relies on
+// listing rather than error-code inspection so it behaves identically whether
+// the entity manager is local (coordinator) or gRPC-backed (router console).
+func distributionExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	dss, err := mngr.ListDistributions(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, ds := range dss {
+		if ds.Id == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// keyRangeExists reports whether a key range with the given id exists.
+func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	krs, err := mngr.ListAllKeyRanges(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, k := range krs {
+		if k.ID == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// referenceRelationExists reports whether a reference relation with the given
+// (unqualified) name exists.
+func referenceRelationExists(ctx context.Context, mngr EntityMgr, name string) (bool, error) {
+	rels, err := mngr.ListReferenceRelations(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, r := range rels {
+		if r.RelationName.RelationName == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // TODO : unit tests
 
 // processDrop processes the drop command based on the type of statement provided.
@@ -105,7 +151,7 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
 	dstmt spqrparser.Statement,
-	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	isCascade bool, ifExists bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -130,6 +176,23 @@ func processDrop(ctx context.Context,
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
+
+			if ifExists {
+				exists, err := keyRangeExists(ctx, mngr, stmt.KeyRangeID)
+				if err != nil {
+					return nil, err
+				}
+				if !exists {
+					/* IF EXISTS: nothing to drop, report success. */
+					tts := &tupleslot.TupleTableSlot{}
+					tts.Desc = engine.GetVPHeader("key_range_id")
+					tts.Raw = append(tts.Raw, [][]byte{
+						[]byte(stmt.KeyRangeID),
+					})
+					return tts, nil
+				}
+			}
+
 			tranMngr := NewTranEntityManager(mngr)
 			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
 			if err != nil {
@@ -148,6 +211,20 @@ func processDrop(ctx context.Context,
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relationFQN := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
+		}
+
+		if ifExists {
+			exists, err := referenceRelationExists(ctx, mngr, stmt.ID)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				/* IF EXISTS: nothing to drop, report success. */
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("relation_name"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
 		}
 
 		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
@@ -176,6 +253,23 @@ func processDrop(ctx context.Context,
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
 		var err error
+
+		if ifExists && stmt.ID != "*" {
+			exists, err := distributionExists(ctx, mngr, stmt.ID)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				/* IF EXISTS: nothing to drop, report success. */
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("distribution_id"),
+				}
+				tts.Raw = append(tts.Raw, [][]byte{
+					[]byte(stmt.ID),
+				})
+				return tts, nil
+			}
+		}
 
 		if stmt.ID == "*" {
 
@@ -503,6 +597,22 @@ func createNonReplicatedDistribution(ctx context.Context,
 
 // TODO : unit tests
 func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrparser.ReferenceRelationDefinition) (*tupleslot.TupleTableSlot, error) {
+	if stmt.IfNotExists {
+		exists, err := referenceRelationExists(ctx, mngr, stmt.TableName.RelationName)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			/* IF NOT EXISTS: reference relation already present, report success. */
+			return &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("create reference table"),
+				Raw: [][][]byte{
+					{fmt.Appendf(nil, "table    -> %s", stmt.TableName.String())},
+				},
+			}, nil
+		}
+	}
+
 	r := &rrelation.ReferenceRelation{
 		RelationName:  stmt.TableName,
 		SchemaVersion: 1,
@@ -561,6 +671,23 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.ID == "default" {
 			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
+		if stmt.IfNotExists {
+			exists, err := distributionExists(ctx, mngr, stmt.ID)
+			if err != nil {
+				return nil, err
+			}
+			if exists {
+				/* IF NOT EXISTS: distribution already present, report success. */
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add distribution"),
+					Raw: [][][]byte{
+						{
+							fmt.Appendf(nil, "distribution id -> %s", stmt.ID),
+						},
+					},
+				}, nil
+			}
+		}
 		if stmt.Replicated {
 			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
 				return nil, err
@@ -595,6 +722,21 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 	case *spqrparser.KeyRangeDefinition:
+		if stmt.IfNotExists {
+			exists, err := keyRangeExists(ctx, mngr, stmt.KeyRangeID)
+			if err != nil {
+				return nil, err
+			}
+			if exists {
+				/* IF NOT EXISTS: key range already present, report success. */
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add key range"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "key range id -> %s", stmt.KeyRangeID)},
+					},
+				}, nil
+			}
+		}
 		tranMngr := NewTranEntityManager(mngr)
 		createdKr, err := createKeyRange(ctx, tranMngr, stmt, true)
 		if err != nil {
@@ -840,8 +982,37 @@ func processAlterDistribution(ctx context.Context,
 
 		selectedDistribId := dsId
 
-		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
-			return nil, err
+		/*
+		 * ATTACH RELATION IF NOT EXISTS: relations that are already attached
+		 * are silently skipped, so re-running a migration is a no-op for them.
+		 */
+		relsToAttach := rels
+		anyIfNotExists := false
+		for _, drel := range stmt.Relations {
+			if drel.IfNotExists {
+				anyIfNotExists = true
+				break
+			}
+		}
+		if anyIfNotExists {
+			ds, err := mngr.GetDistribution(ctx, selectedDistribId)
+			if err != nil {
+				return nil, err
+			}
+			relsToAttach = nil
+			for i, drel := range stmt.Relations {
+				if drel.IfNotExists && ds.GetRelation(rels[i].Relation) != nil {
+					/* already attached, no-op */
+					continue
+				}
+				relsToAttach = append(relsToAttach, rels[i])
+			}
+		}
+
+		if len(relsToAttach) > 0 {
+			if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, relsToAttach); err != nil {
+				return nil, err
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -856,6 +1027,33 @@ func processAlterDistribution(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.DetachRelation:
+		/*
+		 * DETACH RELATION IF EXISTS: if the relation is not attached (or the
+		 * distribution is already gone), report success without doing anything.
+		 */
+		if stmt.IfExists {
+			exists, err := distributionExists(ctx, mngr, dsId)
+			if err != nil {
+				return nil, err
+			}
+			attached := false
+			if exists {
+				ds, err := mngr.GetDistribution(ctx, dsId)
+				if err != nil {
+					return nil, err
+				}
+				attached = ds.GetRelation(stmt.RelationName) != nil
+			}
+			if !attached {
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("detach relation"),
+				}
+				tts.WriteDataRow(fmt.Sprintf("relation name   -> %s", stmt.RelationName.String()))
+				tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", dsId))
+				return tts, nil
+			}
+		}
+
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return nil, err
 		}
@@ -1151,7 +1349,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, stmt.IfExists, mgr)
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:

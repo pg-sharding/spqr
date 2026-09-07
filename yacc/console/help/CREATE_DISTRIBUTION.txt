@@ -3,7 +3,7 @@ NAME
     identifier and key column types.
 
 SYNTAX
-    CREATE DISTRIBUTION <distributionID>
+    CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
       [COLUMN TYPES <types> | (<types>)]
       [DEFAULT SHARD <shardID>]
 
@@ -12,6 +12,9 @@ SYNTAX
     VARCHAR, UUID (VARCHAR/INTEGER/UUID may be followed by HASH)
 
     where <shardID> is a default shard identifier. The <shardID> must exist.
+
+    With IF NOT EXISTS, the command is a no-op that succeeds when a distribution
+    with the same identifier already exists, which makes migrations re-runnable.
 
 DESCRIPTION
     Creates a sharding distribution with a distribution identifier and key
@@ -45,6 +48,8 @@ EXAMPLES
         CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar hash;
     Parenthesized type syntax with default shard:
         CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;
+    Idempotent creation (no error if it already exists):
+        CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
 
 TIPS
     - Keep column type order aligned with relation distribution keys
