@@ -206,6 +206,7 @@ helpgen
 Highload
 hostnossl
 hostssl
+hostspec
 hotspot
 hst
 HTAP
