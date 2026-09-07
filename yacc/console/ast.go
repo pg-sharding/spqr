@@ -46,6 +46,7 @@ func (*Create) iStatement() {}
 type Drop struct {
 	Element       Statement
 	CascadeDelete bool
+	IfExists      bool
 }
 
 func (*Drop) iStatement() {}
@@ -99,12 +100,14 @@ type DistributionDefinition struct {
 	Replicated           bool
 	AutoIncrementEntries []AutoIncrementEntry
 	DefaultShard         string
+	IfNotExists          bool
 }
 
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
 	ShardIDs             []string
+	IfNotExists          bool
 }
 
 type UniqueIndexDefinition struct {
@@ -127,6 +130,7 @@ type KeyRangeDefinition struct {
 	ShardID      string
 	KeyRangeID   string
 	Distribution *DistributionSelector
+	IfNotExists  bool
 }
 
 type KeyRangesForDistributionDefinition struct {
@@ -360,6 +364,7 @@ type DistributedRelation struct {
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
 	AutoIncrementEntries []*AutoIncrementEntry
+	IfNotExists          bool
 }
 
 type AttachRelation struct {
@@ -413,6 +418,7 @@ func (*RenameDistributionColumn) iAlterRelation() {}
 
 type DetachRelation struct {
 	RelationName *rfqn.RelationFQN
+	IfExists     bool
 }
 
 func (*DetachRelation) iStatement()         {}
