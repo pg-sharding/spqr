@@ -140,6 +140,35 @@ jobs:
           path: test-reports/regress-coord/**/*.xml
           if-no-files-found: ignore
 
+  regress-odyssey-pgdg:
+    name: regress-odyssey
+    runs-on: ubuntu-latest
+    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
+
+    strategy:
+      matrix:
+        os-version: ['jammy', 'noble']
+        version: ['14', '15', '16', '17', '18']
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Run tests
+        run: |
+              if !(REGRESS_REPORT_DIR=/regress/test-reports/regress-odyssey/${{ matrix.os-version }}-${{ matrix.version }} make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress_odyssey; ); then
+                docker compose -f test/regress/docker-compose-odyssey.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | awk 'tolower($0) ~ /unhealthy/ {print $1}' | xargs -r -n 1 docker logs;
+                exit 1;
+              fi
+
+      - name: Upload regress odyssey test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-regress-odyssey-${{ matrix.os-version }}-${{ matrix.version }}
+          path: test-reports/regress-odyssey/**/*.xml
+          if-no-files-found: ignore
+
   isolation-regress:
     name: isolation-tests
     runs-on: ubuntu-latest
@@ -336,6 +365,7 @@ jobs:
       - feature
       - regress-pgdg
       - regress-clustered-pgdg
+      - regress-odyssey-pgdg
       - isolation-regress
     if: always()
     permissions:

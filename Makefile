@@ -153,6 +153,9 @@ regress: build_images build_pg_regress_junit_tool
 regress_coord: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose-coord.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-coord.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-coord.yaml run --remove-orphans regress
 
+regress_odyssey: build_images build_pg_regress_junit_tool
+	docker compose -f test/regress/docker-compose-odyssey.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-odyssey.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-odyssey.yaml run --remove-orphans regress
+
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
