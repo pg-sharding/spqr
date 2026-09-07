@@ -18,6 +18,7 @@ type yySymType struct {
 	yys  int
 	str  string
 	host HostSpec
+	int  int
 }
 
 const IDENT = 57346
@@ -45,7 +46,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line gram.y:48
+//line gram.y:50
 
 //line yacctab:1
 var yyExca = [...]int8{
@@ -59,41 +60,39 @@ const yyPrivate = 57344
 const yyLast = 21
 
 var yyAct = [...]int8{
-	5, 17, 16, 6, 7, 15, 3, 10, 4, 18,
-	8, 21, 20, 19, 12, 14, 13, 11, 9, 2,
+	5, 6, 8, 11, 7, 8, 16, 3, 20, 4,
+	19, 13, 17, 9, 18, 15, 14, 12, 10, 2,
 	1,
 }
 
 var yyPact = [...]int16{
-	2, -32768, -5, 5, 14, 13, 13, 12, 11, -2,
-	-7, -32768, -8, -32768, -32768, 4, 9, 8, 7, -32768,
-	-32768, -32768,
+	3, -32768, -4, 8, 14, -32768, 13, 13, 12, 11,
+	-1, -7, -32768, -7, -32768, -32768, 5, -32768, -32768, 4,
+	-32768,
 }
 
 var yyPgo = [...]int8{
-	0, 20, 7, 19,
+	0, 20, 3, 19, 0,
 }
 
 var yyR1 = [...]int8{
-	0, 1, 1, 1, 1, 1, 1, 2, 3, 3,
-	3,
+	0, 4, 4, 1, 1, 1, 2, 3, 3, 3,
 }
 
 var yyR2 = [...]int8{
-	0, 1, 3, 3, 3, 5, 5, 1, 3, 5,
-	1,
+	0, 0, 2, 2, 4, 4, 1, 3, 5, 1,
 }
 
 var yyChk = [...]int16{
-	-32768, -1, -3, 4, 6, 5, 8, 9, 5, 4,
-	-2, 4, -2, 4, 4, 7, 9, 9, 5, 4,
-	4, 4,
+	-32768, -1, -3, 4, 6, -4, 5, 8, 9, 5,
+	4, -2, 4, -2, 4, 4, 7, -4, -4, 5,
+	4,
 }
 
 var yyDef = [...]int8{
-	0, -2, 1, 10, 0, 0, 0, 0, 0, 0,
-	2, 7, 3, 4, 8, 0, 0, 0, 0, 5,
-	6, 9,
+	0, -2, 1, 9, 0, 3, 0, 0, 0, 0,
+	0, 1, 6, 1, 2, 7, 0, 4, 5, 0,
+	8,
 }
 
 var yyTok1 = [...]int8{
@@ -446,68 +445,59 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:25
+		yyDollar = yyS[yypt-0 : yypt+1]
+//line gram.y:28
 		{
-			yyVAL.host = HostSpec{Address: yyDollar[1].str}
-			setResult(yylex, yyVAL.host)
+			yyVAL.int = 0
 		}
 	case 2:
-		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:27
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:28
 		{
-			yyVAL.host = HostSpec{Address: yyDollar[1].str, AZ: yyDollar[3].str}
-			setResult(yylex, yyVAL.host)
+			yyVAL.int = parseInt(yyDollar[2].str)
 		}
 	case 3:
-		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:29
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:33
 		{
-			yyVAL.host = HostSpec{Address: yyDollar[1].str, AZ: yyDollar[3].str}
+			yyVAL.host = HostSpec{Address: yyDollar[1].str, Priority: yyDollar[2].int}
 			setResult(yylex, yyVAL.host)
 		}
 	case 4:
-		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:31
+		yyDollar = yyS[yypt-4 : yypt+1]
+//line gram.y:35
 		{
-			yyVAL.host = HostSpec{Address: yyDollar[1].str, Priority: parseInt(yyDollar[3].str)}
+			yyVAL.host = HostSpec{Address: yyDollar[1].str, AZ: yyDollar[3].str, Priority: yyDollar[4].int}
 			setResult(yylex, yyVAL.host)
 		}
 	case 5:
-		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:33
+		yyDollar = yyS[yypt-4 : yypt+1]
+//line gram.y:37
 		{
-			yyVAL.host = HostSpec{Address: yyDollar[1].str, AZ: yyDollar[3].str, Priority: parseInt(yyDollar[5].str)}
+			yyVAL.host = HostSpec{Address: yyDollar[1].str, AZ: yyDollar[3].str, Priority: yyDollar[4].int}
 			setResult(yylex, yyVAL.host)
 		}
 	case 6:
-		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:35
-		{
-			yyVAL.host = HostSpec{Address: yyDollar[1].str, AZ: yyDollar[3].str, Priority: parseInt(yyDollar[5].str)}
-			setResult(yylex, yyVAL.host)
-		}
-	case 7:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:39
+//line gram.y:41
 		{
 			yyVAL.str = yyDollar[1].str
 		}
-	case 8:
+	case 7:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:43
+//line gram.y:45
 		{
 			yyVAL.str = yyDollar[1].str + ":" + yyDollar[3].str
 		}
-	case 9:
+	case 8:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:44
+//line gram.y:46
 		{
 			yyVAL.str = "[" + yyDollar[2].str + "]:" + yyDollar[5].str
 		}
-	case 10:
+	case 9:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:45
+//line gram.y:47
 		{
 			yyVAL.str = yyDollar[1].str
 		}

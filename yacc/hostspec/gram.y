@@ -11,28 +11,30 @@ type HostSpec struct {
 %union {
     str  string
     host HostSpec
+    int int
 }
 
 %token <str> IDENT COLON LBRACKET RBRACKET ZONE PRIORITY
 
 %type <host> hostspec
 %type <str>  zone address
+%type<int> opt_priority
+
+%start hostspec
 
 %%
 
+opt_priority:
+	    /* nothing */ { $$ = 0 } | PRIORITY IDENT { $$ = parseInt($2) }
+	;
+
 hostspec:
-    address
-    { $$ = HostSpec{Address: $1}; setResult(yylex, $$) }
-    | address COLON zone
-    { $$ = HostSpec{Address: $1, AZ: $3}; setResult(yylex, $$) }
-    | address ZONE zone
-    { $$ = HostSpec{Address: $1, AZ: $3}; setResult(yylex, $$) }
-    | address PRIORITY IDENT
-    { $$ = HostSpec{Address: $1, Priority: parseInt($3)}; setResult(yylex, $$) }
-    | address COLON zone PRIORITY IDENT
-    { $$ = HostSpec{Address: $1, AZ: $3, Priority: parseInt($5)}; setResult(yylex, $$) }
-    | address ZONE zone PRIORITY IDENT
-    { $$ = HostSpec{Address: $1, AZ: $3, Priority: parseInt($5)}; setResult(yylex, $$) }
+    address opt_priority
+    { $$ = HostSpec{Address: $1, Priority: $2}; setResult(yylex, $$) }
+    | address COLON zone opt_priority
+    { $$ = HostSpec{Address: $1, AZ: $3, Priority: $4}; setResult(yylex, $$) }
+    | address ZONE zone opt_priority
+    { $$ = HostSpec{Address: $1, AZ: $3, Priority: $4}; setResult(yylex, $$) }
     ;
 
 zone:
