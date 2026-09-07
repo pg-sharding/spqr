@@ -78,16 +78,6 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		}
 	}
 
-	// TODO: initialize two-phase meta storage
-	storage, err := etcdConn.GetTxMetaStorage(ctx)
-	spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
-	if err != nil {
-		return err
-	}
-	if err := swapDb.SetTxMetaStorage(ctx, storage); err != nil {
-		return err
-	}
-
 	memqdb.SwapState(swapDb.State)
 	return nil
 }
@@ -173,22 +163,22 @@ func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.Cli
 		}
 	}
 
-	// TODO: initialize two-phase meta storage
-	twoPhaseTxMetaCl := proto.NewTwoPhaseTxMetaServiceClient(cc)
-	storageResp, err := twoPhaseTxMetaCl.GetTwoPhaseTxMetaStorage(ctx, nil)
-	if err != nil {
-		return err
-	}
-	spqrlog.Zero.Debug().Strs("storage", storageResp.Storage).Msg("got dcs storage from etcd")
-	if err := swapDb.SetTxMetaStorage(ctx, storageResp.Storage); err != nil {
-		return err
-	}
-
 	memqdb.SwapState(swapDb.State)
 	return nil
 }
 
-func RebootstrapMemQDB(ctx context.Context, memqdb *qdb.MemQDB, mgr topology.RouterMgr) error {
+func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) error {
+	var memqdb *qdb.MemQDB
+	var memPgQDB *qdb.MemPgQDB
+	switch d := db.(type) {
+	case *qdb.MemQDB:
+		memqdb = d
+	case *qdb.MemPgQDB:
+		memqdb = d.MemQDB
+		memPgQDB = d
+	default:
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for MemQDB and MemPGQDB")
+	}
 	if config.RouterConfig().WithCoordinatorConfig() {
 		etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
 		if err != nil {
@@ -200,20 +190,50 @@ func RebootstrapMemQDB(ctx context.Context, memqdb *qdb.MemQDB, mgr topology.Rou
 			}
 		}()
 
-		return MemQDBReBootstrap(ctx, memqdb, etcdConn)
+		if err := MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			return err
+		}
+		if memPgQDB != nil {
+			storage, err := etcdConn.GetTxMetaStorage(ctx)
+			spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
+			if err != nil {
+				return err
+			}
+			if err := memPgQDB.SetTxMetaStorage(ctx, storage); err != nil {
+				return err
+			}
+		}
+	} else {
+		coordAddr, err := mgr.GetCoordinator(ctx)
+		if err != nil {
+			return err
+		}
+		if coordAddr == "" {
+			return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for coordinator-managed routers")
+		}
+		cc, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+		if err := MemQDBReBootstrapGRPC(ctx, memqdb, cc); err != nil {
+			return err
+		}
+		if memPgQDB != nil {
+
+			// TODO: initialize two-phase meta storage
+			twoPhaseTxMetaCl := proto.NewTwoPhaseTxMetaServiceClient(cc)
+			storageResp, err := twoPhaseTxMetaCl.GetTwoPhaseTxMetaStorage(ctx, nil)
+			if err != nil {
+				return err
+			}
+			spqrlog.Zero.Debug().Strs("storage", storageResp.Storage).Msg("got dcs storage from etcd")
+			if err := memPgQDB.SetTxMetaStorage(ctx, storageResp.Storage); err != nil {
+				return err
+			}
+
+		}
 	}
-	coordAddr, err := mgr.GetCoordinator(ctx)
-	if err != nil {
-		return err
-	}
-	if coordAddr == "" {
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for coordinator-managed routers")
-	}
-	cc, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return err
-	}
-	return MemQDBReBootstrapGRPC(ctx, memqdb, cc)
+	return nil
 }
 
 func copyStateFields(swapDb, db *qdb.MemQDBState) {

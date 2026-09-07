@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
@@ -326,17 +325,7 @@ func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Emp
 
 // Rebootstrap implements [proto.RouterServiceServer].
 func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	var memqdb *qdb.MemQDB
-	switch d := l.mgr.QDB().(type) {
-	case *qdb.MemQDB:
-		memqdb = d
-	case *qdb.MemPgQDB:
-		memqdb = d.MemQDB
-	default:
-		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for MemQDB and MemPGQDB")
-	}
-
-	return nil, rebootstrap.RebootstrapMemQDB(ctx, memqdb, l.mgr)
+	return nil, rebootstrap.RebootstrapQDB(ctx, l.mgr.QDB(), l.mgr)
 }
 
 // SyncMetadata implements [proto.RouterServiceServer].
