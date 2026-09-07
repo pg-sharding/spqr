@@ -74,7 +74,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 	return 0
 }
 
-func (lex *Lexer) Error(msg string) {}
+func (lex *Lexer) Error(_ string) {}
 
 type Tokenizer struct {
 	l      *Lexer
