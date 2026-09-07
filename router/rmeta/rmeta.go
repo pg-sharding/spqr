@@ -393,7 +393,11 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 		return kr.ShardKey{}, err
 	}
 
-	dRel := rm.SPH.DistributedRelation()
+	dRelGuc, err := rm.SPH.FindStrGUC(session.SPQR_DISTRIBUTED_RELATION)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+	dRel := dRelGuc.Get(rm.SPH)
 
 	hf := hashfunction.HashFunctionIdent
 

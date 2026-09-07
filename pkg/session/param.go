@@ -18,6 +18,7 @@ type BoolGUC interface {
 type StrGUC interface {
 	ShortName() string
 	Get(sph SessionParamsHolder) string
+	Show(sph SessionParamsHolder) (string, error)
 	Set(sph SessionParamsHolder, level string, val string) error
 	Reset()
 }
@@ -49,10 +50,6 @@ type SessionParamsHolder interface {
 	/* Only statement-level */
 	SetDistribution(level string, val string)
 	Distribution() string
-
-	/*  Only statement level */
-	SetDistributedRelation(level string, val string)
-	DistributedRelation() string
 
 	/* Check if we apply engine v2 routing for query */
 	SetEnhancedMultiShardProcessing(level string, val bool)
@@ -185,6 +182,7 @@ func ParamIsString(n string) bool {
 		SPQR_EXECUTE_HOST_FILTER,
 		SPQR_SHARDING_KEY,
 		SPQR_DISTRIBUTION_KEY,
+		SPQR_DISTRIBUTED_RELATION,
 		SPQR_NOTICE_MESSAGE_FORMAT:
 		return true
 	default:
