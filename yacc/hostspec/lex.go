@@ -2,6 +2,7 @@ package hostspec
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -56,6 +57,13 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 		}
 	}
 
+	if rest := string(lex.input[lex.pos:]); len(rest) >= 8 && strings.EqualFold(rest[:8], "priority") {
+		if len(rest) == 8 || rest[8] == ' ' || rest[8] == '\t' {
+			lex.pos += 8
+			return PRIORITY
+		}
+	}
+
 	start := lex.pos
 	if lex.inBrackets {
 		for lex.pos < len(lex.input) && isIPv6Char(lex.input[lex.pos]) {
@@ -90,6 +98,14 @@ func (t *Tokenizer) Lex(lval *yySymType) int { return t.l.Lex(lval) }
 func (t *Tokenizer) Error(s string)         { t.err = s }
 
 func setResult(yylex any, h HostSpec) { yylex.(*Tokenizer).result = h }
+
+func parseInt(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return n
+}
 
 func Parse(s string) (HostSpec, error) {
 	t := NewTokenizer(s)
