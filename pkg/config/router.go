@@ -212,6 +212,7 @@ const (
 	TargetSessionAttrsPS      = "prefer-standby"
 	TargetSessionAttrsPR      = "prefer-replica"
 	TargetSessionAttrsAny     = "any"
+	TargetSessionAttrsDClocal = "dc-local" // alias for TargetSessionAttrsAny
 )
 
 type Host struct {

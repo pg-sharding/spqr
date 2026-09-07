@@ -231,6 +231,8 @@ func (s *DBPool) evaluateTSAMatch(cr tsa.CheckResult, requiredTSA tsa.TSA) bool 
 		return !cr.RW // prefer replica (read-only)
 	case config.TargetSessionAttrsAny:
 		return true
+	case config.TargetSessionAttrsDClocal: // alias for any
+		return true
 	default:
 		return false
 	}
@@ -498,7 +500,8 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-
+		fallthrough
+	case config.TargetSessionAttrsDClocal: // alias for any
 		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindANY)
 
 	case config.TargetSessionAttrsRO:
