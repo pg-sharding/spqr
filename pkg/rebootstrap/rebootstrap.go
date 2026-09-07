@@ -23,7 +23,7 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		return err
 	}
 
-	swapDb.State.Shards = memqdb.State.Shards
+	copyStateFields(swapDb.State, memqdb.State)
 
 	ds, err := etcdConn.ListDistributions(ctx)
 	if err != nil {
@@ -98,7 +98,7 @@ func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.Cli
 		return err
 	}
 
-	swapDb.State.Shards = memqdb.State.Shards
+	copyStateFields(swapDb.State, memqdb.State)
 
 	dsCl := proto.NewDistributionServiceClient(cc)
 	krCl := proto.NewKeyRangeServiceClient(cc)
@@ -214,4 +214,22 @@ func RebootstrapMemQDB(ctx context.Context, memqdb *qdb.MemQDB, mgr topology.Rou
 		return err
 	}
 	return MemQDBReBootstrapGRPC(ctx, memqdb, cc)
+}
+
+func copyStateFields(swapDb, db *qdb.MemQDBState) {
+	swapDb.Shards = db.Shards
+	swapDb.Transactions = db.Transactions
+	swapDb.Coordinator = db.Coordinator
+	swapDb.MoveTasks = db.MoveTasks
+	swapDb.BalancerTask = db.BalancerTask
+	swapDb.MoveTaskGroups = db.MoveTaskGroups
+	swapDb.TaskGroupIDToStatus = db.TaskGroupIDToStatus
+	swapDb.StopMoveTaskGroup = db.StopMoveTaskGroup
+	swapDb.TotalKeys = db.TotalKeys
+	swapDb.RedistributeTasks = db.RedistributeTasks
+	swapDb.RedistributeTaskTaskGroupId = db.RedistributeTaskTaskGroupId
+	swapDb.KeyRangeRedistributeTasks = db.KeyRangeRedistributeTasks
+	swapDb.TaskGroupMoveTaskID = db.TaskGroupMoveTaskID
+	swapDb.UniqueIndexes = db.UniqueIndexes
+	swapDb.UniqueIndexesByRel = db.UniqueIndexesByRel
 }
