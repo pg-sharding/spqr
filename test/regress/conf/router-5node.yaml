@@ -1,0 +1,67 @@
+host: '127.0.0.1'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7000'
+router_mode: PROXY
+log_level: debug
+display_greeting: false
+time_quantiles:
+  - "0.75"
+  - "0.90"
+  - "0.999"
+  - "0.9999"
+world_shard_fallback: true
+show_notice_messages: false
+allow_two_phase_commit: true
+notice_message_format: "{shard}"
+dbpool_tsa_recheck_period: 250ms
+dbpool_dead_check_interval: 500ms
+dbpool_recheck_tcp: true
+query_routing:
+    forbid_direct_shard_queries: true
+    use_spqrguard: true
+    enhanced_multishard_processing: true
+    always_check_rules: true
+frontend_rules:
+  - db: regress
+    usr: regress
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+  - pool_mode: TRANSACTION
+    pool_default: true
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
+shards:
+  sh1:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - '127.0.0.1:6433'
+      - '127.0.0.1:6434'
+      - '127.0.0.1:6435'
+      - '127.0.0.1:6436'
+      - '127.0.0.1:6437'
+
+backend_rules:
+  - db: regress
+    usr: regress
+    connection_limit: 50
+    auth_rules:
+      sh1:
+        auth_method: md5
+        password: 12345678
+schema_cache_backend_rule:
+  usr: regress
+  db: regress
+watchdog_backend_rule:
+  db: regress
+  usr: regress
+  connection_limit: 50
+  auth_rules:
+    sh1:
+      auth_method: md5
+      password: 12345678
