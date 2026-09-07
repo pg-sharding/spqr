@@ -493,6 +493,7 @@ sconst
 screenshots
 sdnotifier
 seqmgr
+sessiontest
 serviceprincipal
 sethvargo
 sevlyar
