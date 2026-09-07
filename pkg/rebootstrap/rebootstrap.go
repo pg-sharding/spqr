@@ -207,7 +207,7 @@ func RebootstrapMemQDB(ctx context.Context, memqdb *qdb.MemQDB, mgr topology.Rou
 		return err
 	}
 	if coordAddr == "" {
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for coordinator-managed routers")
 	}
 	cc, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

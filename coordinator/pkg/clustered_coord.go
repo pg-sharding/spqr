@@ -516,7 +516,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 							return err
 						}
 						if routerHash != coordHash {
-							spqrlog.Zero.Debug().Str("router id", r.ID).Msg("re-bootstraping router")
+							spqrlog.Zero.Debug().Str("router id", r.ID).Msg("re-bootstrapping router")
 							if _, err := routerClient.Rebootstrap(ctx, nil); err != nil {
 								return fmt.Errorf("failed to re-bootstrap router: %w", err)
 							}

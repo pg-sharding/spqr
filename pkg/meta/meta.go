@@ -723,9 +723,14 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 				return nil, err
 			}
 		} else /* REBOOTSTRAP */ {
-			memqdb, ok := mngr.QDB().(*qdb.MemQDB)
-			if !ok {
-				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
+			var memqdb *qdb.MemQDB
+			switch d := mngr.QDB().(type) {
+			case *qdb.MemQDB:
+				memqdb = d
+			case *qdb.MemPgQDB:
+				memqdb = d.MemQDB
+			default:
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for MemQDB and MemPGQDB")
 			}
 
 			if err := rebootstrap.RebootstrapMemQDB(ctx, memqdb, mngr); err != nil {

@@ -326,9 +326,14 @@ func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Emp
 
 // Rebootstrap implements [proto.RouterServiceServer].
 func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	memqdb, ok := l.mgr.QDB().(*qdb.MemQDB)
-	if !ok {
-		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
+	var memqdb *qdb.MemQDB
+	switch d := l.mgr.QDB().(type) {
+	case *qdb.MemQDB:
+		memqdb = d
+	case *qdb.MemPgQDB:
+		memqdb = d.MemQDB
+	default:
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for MemQDB and MemPGQDB")
 	}
 
 	return nil, rebootstrap.RebootstrapMemQDB(ctx, memqdb, l.mgr)
