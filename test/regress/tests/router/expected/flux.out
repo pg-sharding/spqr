@@ -60,6 +60,10 @@ QUERY:  SELECT * FROM flux_access_t1 WHERE i = 67;
 INSERT INTO flux_access_t1(i) VALUES(67);
 ERROR:  key range is locked
 QUERY:  INSERT INTO flux_access_t1(i) VALUES(67);
+\set VERBOSITY sqlstate
+SELECT * FROM flux_access_t1 WHERE i = 67;
+ERROR:  SPQRK
+\unset VERBOSITY
 SET __spqr__flux_access TO true;
 SHOW __spqr__flux_access;
  flux data access 
