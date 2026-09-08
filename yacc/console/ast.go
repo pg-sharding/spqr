@@ -485,6 +485,7 @@ const (
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
 	HostsStr              = "hosts"
+	HostsExtendedStr      = "hosts_extended"
 	ShardingRules         = "sharding_rules"
 	KeyRangesStr          = "key_ranges"
 	KeyRangesExtendedStr  = "key_ranges_extended"

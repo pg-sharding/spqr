@@ -790,7 +790,7 @@ show_statement_type:
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
 			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
-			ShardsExtendedStr, MeanKRLockTimeStr:
+			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

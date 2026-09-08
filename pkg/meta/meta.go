@@ -1608,6 +1608,16 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.HostsStr:
+		return ProcessShow(ctx, &spqrparser.Show{
+			Kind:    stmt.Kind,
+			Cmd:     spqrparser.HostsExtendedStr,
+			Columns: []string{"shard", "host", "alive", "rw", "time"},
+			Where:   stmt.Where,
+			Order:   stmt.Order,
+			GroupBy: stmt.GroupBy,
+		}, mngr, ci, true)
+
+	case spqrparser.HostsExtendedStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
 			return nil, err
