@@ -131,9 +131,17 @@ CREATE SHARD sh5 OPTIONS (HOST "spqr_shard_1:6432 PRIORITY 5", HOST "spqr_shard_
 SHOW hosts_extended;
  shard |           host            |  alive  |   rw    |  time   | priority 
 -------+---------------------------+---------+---------+---------+----------
+ sh1   | spqr_shard_1:6432         | unknown | unknown | unknown | 0
+ sh1   | spqr_shard_1_replica:6432 | unknown | unknown | unknown | 0
+ sh2   | spqr_shard_2:6432         | unknown | unknown | unknown | 0
+ sh2   | spqr_shard_2_replica:6432 | unknown | unknown | unknown | 0
+ sh3   | spqr_shard_3:6432         | unknown | unknown | unknown | 0
+ sh3   | spqr_shard_3_replica:6432 | unknown | unknown | unknown | 0
+ sh4   | spqr_shard_4:6432         | unknown | unknown | unknown | 0
+ sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown | 0
  sh5   | spqr_shard_1:6432         | unknown | unknown | unknown | 5
  sh5   | spqr_shard_1_replica:6432 | unknown | unknown | unknown | -1
-(2 rows)
+(10 rows)
 
 DROP SHARD sh5;
  shard_id 
@@ -144,5 +152,13 @@ DROP SHARD sh5;
 SHOW hosts_extended;
  shard |           host            |  alive  |   rw    |  time   | priority 
 -------+---------------------------+---------+---------+---------+----------
-(0 rows)
+ sh1   | spqr_shard_1:6432         | unknown | unknown | unknown | 0
+ sh1   | spqr_shard_1_replica:6432 | unknown | unknown | unknown | 0
+ sh2   | spqr_shard_2:6432         | unknown | unknown | unknown | 0
+ sh2   | spqr_shard_2_replica:6432 | unknown | unknown | unknown | 0
+ sh3   | spqr_shard_3:6432         | unknown | unknown | unknown | 0
+ sh3   | spqr_shard_3_replica:6432 | unknown | unknown | unknown | 0
+ sh4   | spqr_shard_4:6432         | unknown | unknown | unknown | 0
+ sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown | 0
+(8 rows)
 
