@@ -11,22 +11,22 @@ CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6
 CREATE SHARD sh1 OPTIONS (HOST "localhost:6432") FORCE;
 
 SHOW shards_extended;
-SHOW hosts (shard, host, alive, rw, time);
+SHOW hosts;
 
 CREATE SHARD sh5 OPTIONS (HOST "127.0.0.1:1") FORCE;
 
 SHOW shards_extended;
-SHOW hosts (shard, host, alive, rw, time);
+SHOW hosts;
 
 DROP SHARD sh5;
 
 SHOW shards_extended;
-SHOW hosts (shard, host, alive, rw, time);
+SHOW hosts;
 
 CREATE SHARD sh5 OPTIONS (HOST "spqr_shard_1:6432 PRIORITY 5", HOST "spqr_shard_1_replica:6432 PRIORITY -1") FORCE;
 
-SHOW hosts (shard, host, priority);
+SHOW hosts_extended;
 
 DROP SHARD sh5;
 
-SHOW hosts (shard, host, priority);
+SHOW hosts_extended;

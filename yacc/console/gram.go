@@ -1730,7 +1730,7 @@ yydefault:
 				TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 				ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
 				TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
-				ShardsExtendedStr, MeanKRLockTimeStr:
+				ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr
