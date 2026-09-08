@@ -57,7 +57,7 @@ SHOW shards_extended;
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (4 rows)
 
-SHOW hosts;
+SHOW hosts (shard, host, alive, rw, time);
  shard |           host            |  alive  |   rw    |  time   
 -------+---------------------------+---------+---------+---------
  sh1   | spqr_shard_1:6432         | unknown | unknown | unknown
@@ -81,7 +81,7 @@ SHOW shards_extended;
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (4 rows)
 
-SHOW hosts;
+SHOW hosts (shard, host, alive, rw, time);
  shard |           host            |  alive  |   rw    |  time   
 -------+---------------------------+---------+---------+---------
  sh1   | spqr_shard_1:6432         | unknown | unknown | unknown
@@ -109,7 +109,7 @@ SHOW shards_extended;
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
 (4 rows)
 
-SHOW hosts;
+SHOW hosts (shard, host, alive, rw, time);
  shard |           host            |  alive  |   rw    |  time   
 -------+---------------------------+---------+---------+---------
  sh1   | spqr_shard_1:6432         | unknown | unknown | unknown
@@ -121,4 +121,28 @@ SHOW hosts;
  sh4   | spqr_shard_4:6432         | unknown | unknown | unknown
  sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
 (8 rows)
+
+CREATE SHARD sh5 OPTIONS (HOST "spqr_shard_1:6432 PRIORITY 5", HOST "spqr_shard_1_replica:6432 PRIORITY -1") FORCE;
+    add shard    
+-----------------
+ shard id -> sh5
+(1 row)
+
+SHOW hosts (shard, host, priority);
+ shard |           host            | priority 
+-------+---------------------------+----------
+ sh5   | spqr_shard_1:6432         | 5
+ sh5   | spqr_shard_1_replica:6432 | -1
+(2 rows)
+
+DROP SHARD sh5;
+ shard_id 
+----------
+ sh5
+(1 row)
+
+SHOW hosts (shard, host, priority);
+ shard |           host            | priority 
+-------+---------------------------+----------
+(0 rows)
 
