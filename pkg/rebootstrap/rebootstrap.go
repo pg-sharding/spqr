@@ -203,7 +203,7 @@ func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) err
 			if err != nil {
 				return err
 			}
-			if curStorage == nil {
+			if len(curStorage) == 0 {
 				if err := memPgQDB.SetTxMetaStorage(ctx, storage); err != nil {
 					return err
 				}
