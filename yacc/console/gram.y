@@ -250,7 +250,7 @@ func randomHex(n int) (string, error) {
 
 %type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
-%type<statement> distribution_drop_selector redistribute_task_drop_selector
+%type<statement> distribution_drop_selector redistribute_task_drop_selector drop_target create_target
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -828,55 +828,30 @@ opt_cascade:
 	CASCADE { $$ = true } | {$$ = false}
 
 drop_stmt:
-	DROP key_range_stmt
-	{
-		$$ = &Drop{Element: $2}
-	}
-	| DROP distribution_drop_selector opt_cascade
+	DROP drop_target opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
-	| DROP SHARD any_id opt_cascade
-	{
-		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
-	}
-	| DROP TASK GROUP any_id opt_cascade
-	{
-		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }, CascadeDelete: $5}
-	}
-	| DROP SEQUENCE any_id opt_cascade
-	{
-		$$ = &Drop{Element: &SequenceSelector{Name: $3}, CascadeDelete: $4}
-	}
-	| DROP REFERENCE table_or_relation any_id
-	{
-		$$ = &Drop{
-			Element: &ReferenceRelationSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP UNIQUE INDEX any_id 
-	{
-		$$ = &Drop{
-			Element: &UniqueIndexSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP redistribute_task_drop_selector opt_cascade
-	{
-		$$ = &Drop{Element: $2, CascadeDelete: $3}
-	}
-	| DROP MOVE TASK any_id opt_cascade
-	{
-		$$ = &Drop{
-			Element: &MoveTaskSelector{
-				ID: $4,
-			},
-			CascadeDelete: $5,
-		}
-	}
+
+drop_target:
+	key_range_stmt
+	{ $$ = $1 }
+	| SHARD any_id
+	{ $$ = &ShardSelector{ID: $2} }
+	| TASK GROUP any_id
+	{ $$ = &TaskGroupSelector{ID: $3} }
+	| SEQUENCE any_id
+	{ $$ = &SequenceSelector{Name: $2} }
+	| REFERENCE table_or_relation any_id
+	{ $$ = &ReferenceRelationSelector{ID: $3} }
+	| UNIQUE INDEX any_id
+	{ $$ = &UniqueIndexSelector{ID: $3} }
+	| MOVE TASK any_id
+	{ $$ = &MoveTaskSelector{ID: $3} }
+	| distribution_drop_selector
+	{ $$ = $1 }
+	| redistribute_task_drop_selector
+	{ $$ = $1 }
 
 
 /*
@@ -1372,45 +1347,34 @@ opt_on_shards:
 	ON SHARDS any_id_list { $$ = $3 } | /* nothing */ {}
 
 create_stmt:
-	CREATE distribution_define_stmt
+	CREATE create_target
 	{
 		$$ = &Create{Element: $2}
 	}
-	|
-	CREATE key_range_define_stmt
+
+create_target:
+	distribution_define_stmt
+	{ $$ = $1 }
+	| key_range_define_stmt
+	{ $$ = $1 }
+	| key_ranges_for_distribution_define_stmt
+	{ $$ = $1 }
+	| shard_define_stmt
+	{ $$ = $1 }
+	| REFERENCE table_or_relation qualified_name opt_auto_increment opt_on_shards
 	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE key_ranges_for_distribution_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE shard_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE REFERENCE table_or_relation qualified_name opt_auto_increment opt_on_shards
-	{
-		$$ = &Create{
-			Element: &ReferenceRelationDefinition{
-				TableName: $4,
-                AutoIncrementEntries: $5,
-				ShardIDs: $6,
-			},
+		$$ = &ReferenceRelationDefinition{
+			TableName: $3,
+			AutoIncrementEntries: $4,
+			ShardIDs: $5,
 		}
 	}
-	|
-	CREATE UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
+	| UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
 	{
-		$$ = &Create{
-			Element: &UniqueIndexDefinition{
-				ID:        $4,
-				TableName: $6,
-				Columns:    $9,
-			},
+		$$ = &UniqueIndexDefinition{
+			ID:        $3,
+			TableName: $5,
+			Columns:   $8,
 		}
 	}
 
