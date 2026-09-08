@@ -217,7 +217,7 @@ var (
 func init() {
 	checkCmd.Flags().StringVar(&stateFilePath, "file", "", "result file path")
 	checkCmd.Flags().Float64Var(&tableSampleSize, "tablesample-size", 0.01, "query table sample size in percents")
-	checkCmd.Flags().StringVar(&routerHost, "host", "localhost", "router hostname")
+	checkCmd.Flags().StringVar(&routerHost, "host", "", "router hostname")
 	checkCmd.Flags().StringVar(&routerPort, "port", "6432", "router port")
 	checkCmd.Flags().StringVar(&routerUser, "user", "", "router username")
 	checkCmd.Flags().StringVar(&routerDatabase, "database", "", "router database")
@@ -238,7 +238,6 @@ func init() {
 func main() {
 	err := rootCmd.Execute()
 	if err != nil {
-		// fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -312,8 +311,8 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB, shardData *config.Datatran
 func checkShard(ctx context.Context, shardId string, shardConn *config.ShardConnect, keyRangesMap map[string][]*keyRangeExt, distributionsMap map[string]*distributions.Distribution, tableSampleSize float64) ([]any, string, error) {
 	var conn *pgx.Conn
 	var err error
-	if routerUser != "" {
-		conn, err = connectRouter(ctx, "prefer-standby")
+	if routerHost != "" {
+		conn, err = connectRouter(ctx, "prefer-standby", shardConn)
 	} else {
 		conn, err = connectWithTSA(ctx, shardConn, "prefer-standby")
 	}
@@ -321,7 +320,7 @@ func checkShard(ctx context.Context, shardId string, shardConn *config.ShardConn
 		return nil, "", err
 	}
 	defer func() { _ = conn.Close(ctx) }()
-	if routerUser != "" {
+	if routerHost != "" {
 		if _, err := conn.Exec(ctx, fmt.Sprintf("SET __spqr__execute_on TO \"%s\"", shardId)); err != nil {
 			return nil, "", err
 		}
@@ -384,8 +383,14 @@ func checkShard(ctx context.Context, shardId string, shardConn *config.ShardConn
 	return nil, "", nil
 }
 
-func connectRouter(ctx context.Context, tsa string) (*pgx.Conn, error) {
-	connConfig, err := pgx.ParseConfig(fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s target_session_attrs=%s", routerUser, routerHost, routerPort, routerDatabase, routerPassword, tsa))
+func connectRouter(ctx context.Context, tsa string, shardConn *config.ShardConnect) (*pgx.Conn, error) {
+	var connConfig *pgx.ConnConfig
+	var err error
+	if routerUser != "" {
+		connConfig, err = pgx.ParseConfig(fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s target_session_attrs=%s", routerUser, routerHost, routerPort, routerDatabase, routerPassword, tsa))
+	} else {
+		connConfig, err = pgx.ParseConfig(fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s target_session_attrs=%s", shardConn.User, routerHost, routerPort, shardConn.DB, shardConn.Password, tsa))
+	}
 	if err != nil {
 		return nil, err
 	}
