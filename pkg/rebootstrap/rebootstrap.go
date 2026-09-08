@@ -199,9 +199,7 @@ func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) err
 			if err != nil {
 				return err
 			}
-			if err := memPgQDB.SetTxMetaStorage(ctx, storage); err != nil {
-				return err
-			}
+			_ = memPgQDB.SetTxMetaStorage(ctx, storage)
 		}
 	} else {
 		coordAddr, err := mgr.GetCoordinator(ctx)
@@ -227,9 +225,7 @@ func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) err
 				return err
 			}
 			spqrlog.Zero.Debug().Strs("storage", storageResp.Storage).Msg("got dcs storage from etcd")
-			if err := memPgQDB.SetTxMetaStorage(ctx, storageResp.Storage); err != nil {
-				return err
-			}
+			_ = memPgQDB.SetTxMetaStorage(ctx, storageResp.Storage)
 
 		}
 	}
