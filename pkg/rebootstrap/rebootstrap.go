@@ -199,7 +199,15 @@ func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) err
 			if err != nil {
 				return err
 			}
-			_ = memPgQDB.SetTxMetaStorage(ctx, storage)
+			curStorage, err := memPgQDB.GetTxMetaStorage(ctx)
+			if err != nil {
+				return err
+			}
+			if curStorage == nil {
+				if err := memPgQDB.SetTxMetaStorage(ctx, storage); err != nil {
+					return err
+				}
+			}
 		}
 	} else {
 		coordAddr, err := mgr.GetCoordinator(ctx)
@@ -217,15 +225,21 @@ func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) err
 			return err
 		}
 		if memPgQDB != nil {
-
-			// TODO: initialize two-phase meta storage
 			twoPhaseTxMetaCl := proto.NewTwoPhaseTxMetaServiceClient(cc)
 			storageResp, err := twoPhaseTxMetaCl.GetTwoPhaseTxMetaStorage(ctx, nil)
 			if err != nil {
 				return err
 			}
 			spqrlog.Zero.Debug().Strs("storage", storageResp.Storage).Msg("got dcs storage from etcd")
-			_ = memPgQDB.SetTxMetaStorage(ctx, storageResp.Storage)
+			curStorage, err := memPgQDB.GetTxMetaStorage(ctx)
+			if err != nil {
+				return err
+			}
+			if curStorage == nil {
+				if err := memPgQDB.SetTxMetaStorage(ctx, storageResp.Storage); err != nil {
+					return err
+				}
+			}
 
 		}
 	}
