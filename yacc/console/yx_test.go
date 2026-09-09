@@ -3015,3 +3015,128 @@ func TestCall(t *testing.T) {
 		}
 	}
 }
+
+// TestIdempotentDDLFlags checks that the optional IF [NOT] EXISTS flags are
+// parsed into the AST for every command that supports them, and that omitting
+// the flag preserves the previous (flag-less) behaviour.
+func TestIdempotentDDLFlags(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE DISTRIBUTION IF NOT EXISTS ds COLUMN TYPES varchar",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:          "ds",
+					ColTypes:    []string{"varchar"},
+					IfNotExists: true,
+				},
+			},
+		},
+		{
+			query: "CREATE DISTRIBUTION ds COLUMN TYPES varchar",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:       "ds",
+					ColTypes: []string{"varchar"},
+				},
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION IF EXISTS ds",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.DistributionSelector{ID: "ds"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION IF EXISTS ds CASCADE",
+			exp: &spqrparser.Drop{
+				Element:       &spqrparser.DistributionSelector{ID: "ds"},
+				CascadeDelete: true,
+				IfExists:      true,
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION ds",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.DistributionSelector{ID: "ds"},
+			},
+		},
+		{
+			query: "CREATE KEY RANGE IF NOT EXISTS kr1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					KeyRangeID: "kr1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{{2, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+					},
+					ShardID:      "sh1",
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					IfNotExists:  true,
+				},
+			},
+		},
+		{
+			query: "DROP KEY RANGE IF EXISTS kr1",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.KeyRangeSelector{KeyRangeID: "kr1"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "CREATE REFERENCE TABLE IF NOT EXISTS rr",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName:   &rfqn.RelationFQN{RelationName: "rr"},
+					IfNotExists: true,
+				},
+			},
+		},
+		{
+			query: "DROP REFERENCE TABLE IF EXISTS rr",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.ReferenceRelationSelector{ID: "rr"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds ATTACH RELATION IF NOT EXISTS t DISTRIBUTION KEY id",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Relation:        &rfqn.RelationFQN{RelationName: "t"},
+								DistributionKey: []spqrparser.DistributionKeyEntry{{Column: "id"}},
+								IfNotExists:     true,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds DETACH RELATION IF EXISTS t",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					Element: &spqrparser.DetachRelation{
+						RelationName: &rfqn.RelationFQN{RelationName: "t"},
+						IfExists:     true,
+					},
+				},
+			},
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+		assert.NoError(err, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+	}
+}

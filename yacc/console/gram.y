@@ -137,6 +137,8 @@ func randomHex(n int) (string, error) {
 	rollback 				*Rollback
 
 	call                    *Call
+
+	drop_selector           DropSelector
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -224,6 +226,8 @@ func randomHex(n int) (string, error) {
 %token <str> META ONLY
 %token <str> BEGIN COMMIT ROLLBACK
 
+%token <str> IF EXISTS
+
 %token <str> IDENTITY MURMUR CITY 
 
 %token<str> START STOP TRACE MESSAGES IMMEDIATE
@@ -250,7 +254,8 @@ func randomHex(n int) (string, error) {
 
 %type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
-%type<statement> distribution_drop_selector redistribute_task_drop_selector drop_target create_target
+%type<statement> create_target
+%type<drop_selector> drop_target
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -320,6 +325,7 @@ func randomHex(n int) (string, error) {
 %type<options> options opt_options alter_generic_options generic_option_list alter_generic_option_list
 %type<option> generic_option_elem alter_generic_option_elem
 %type<bool> opt_force
+%type<bool> opt_if_not_exists opt_if_exists
 
 %type<statement> alter_sys_target
 
@@ -827,31 +833,45 @@ kill_statement_type:
 opt_cascade:
 	CASCADE { $$ = true } | {$$ = false}
 
+opt_if_not_exists:
+	IF NOT EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
+
+opt_if_exists:
+	IF EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
+
 drop_stmt:
-	DROP drop_target opt_cascade
+	DROP drop_target opt_if_exists any_id opt_cascade
 	{
-		$$ = &Drop{Element: $2, CascadeDelete: $3}
+		el := $2
+		el.SetID($4)
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
+	} |
+	DROP drop_target opt_if_exists ALL opt_cascade
+	{
+		el := $2
+		el.SetID("*")
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
 	}
 
 drop_target:
-	key_range_stmt
-	{ $$ = $1 }
-	| SHARD any_id
-	{ $$ = &ShardSelector{ID: $2} }
-	| TASK GROUP any_id
-	{ $$ = &TaskGroupSelector{ID: $3} }
-	| SEQUENCE any_id
-	{ $$ = &SequenceSelector{Name: $2} }
-	| REFERENCE table_or_relation any_id
-	{ $$ = &ReferenceRelationSelector{ID: $3} }
-	| UNIQUE INDEX any_id
-	{ $$ = &UniqueIndexSelector{ID: $3} }
-	| MOVE TASK any_id
-	{ $$ = &MoveTaskSelector{ID: $3} }
-	| distribution_drop_selector
-	{ $$ = $1 }
-	| redistribute_task_drop_selector
-	{ $$ = $1 }
+	KEY RANGE
+	{ $$ = &KeyRangeSelector{} }
+	| SHARD
+	{ $$ = &ShardSelector{} }
+	| TASK GROUP 
+	{ $$ = &TaskGroupSelector{} }
+	| SEQUENCE
+	{ $$ = &SequenceSelector{} }
+	| REFERENCE table_or_relation
+	{ $$ = &ReferenceRelationSelector{} }
+	| UNIQUE INDEX
+	{ $$ = &UniqueIndexSelector{} }
+	| MOVE TASK 
+	{ $$ = &MoveTaskSelector{} }
+	| DISTRIBUTION
+	{ $$ = &DistributionSelector{} }
+	| REDISTRIBUTE TASK
+	{ $$ = &RedistributeTaskSelector{} }
 
 
 /*
@@ -867,29 +887,6 @@ distribution_select_stmt:
 	DISTRIBUTION any_id
 	{
 		$$ = &DistributionSelector{ID: $2}
-	}
-
-/*
- * Selectors used by DROP that accept either a concrete id or ALL ("*").
- */
-distribution_drop_selector:
-	DISTRIBUTION any_id
-	{
-		$$ = &DistributionSelector{ID: $2}
-	}
-	| DISTRIBUTION ALL
-	{
-		$$ = &DistributionSelector{ID: `*`}
-	}
-
-redistribute_task_drop_selector:
-	REDISTRIBUTE TASK any_id
-	{
-		$$ = &RedistributeTaskSelector{ID: $3}
-	}
-	| REDISTRIBUTE TASK ALL
-	{
-		$$ = &RedistributeTaskSelector{ID: `*`}
 	}
 
 add_stmt:
@@ -1161,12 +1158,13 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DETACH table_or_relation qualified_name
+	distribution_select_stmt DETACH table_or_relation opt_if_exists qualified_name
 	{
 		$$ = &AlterDistribution{
 			Distribution: $1,
 			Element: &DetachRelation{
-				RelationName: $4,
+				RelationName: $5,
+				IfExists: $4,
 			},
 		}
 	} |
@@ -1241,22 +1239,24 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	table_or_relation opt_if_not_exists qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
-			Relation:    	 $2,
+			Relation:    	 $3,
+			DistributionKey: $6,
+			AutoIncrementEntries: $7,
+			IfNotExists: $2,
+		}
+	}
+	| table_or_relation opt_if_not_exists qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
+	{
+		$$ = &DistributedRelation{
+			Relation:    	 $3,
 			DistributionKey: $5,
 			AutoIncrementEntries: $6,
+			IfNotExists: $2,
 		}
-	} 
-	| table_or_relation qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
-	{
-		$$ = &DistributedRelation{
-			Relation:    	 $2,
-			DistributionKey: $4,
-			AutoIncrementEntries: $5,
-		}
-	} 
+	}
 
 opt_auto_increment:
     AUTO INCREMENT auto_inc_argument_list {
@@ -1361,13 +1361,14 @@ create_target:
 	{ $$ = $1 }
 	| shard_define_stmt
 	{ $$ = $1 }
-	| REFERENCE table_or_relation qualified_name opt_auto_increment opt_on_shards
+	| REFERENCE table_or_relation opt_if_not_exists qualified_name opt_auto_increment opt_on_shards
 	{
 		$$ = &ReferenceRelationDefinition{
-			TableName: $3,
-			AutoIncrementEntries: $4,
-			ShardIDs: $5,
-		}
+				TableName: $4,
+                AutoIncrementEntries: $5,
+				ShardIDs: $6,
+				IfNotExists: $3,
+			}
 	}
 	| UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
 	{
@@ -1520,12 +1521,13 @@ lock_stmt:
 
 
 distribution_define_stmt:
-	DISTRIBUTION any_id opt_col_types opt_default_shard
+	DISTRIBUTION opt_if_not_exists any_id opt_col_types opt_default_shard
 	{
 		$$ = &DistributionDefinition{
-			ID: $2,
-			ColTypes: $3,
-			DefaultShard: $4,
+			ID: $3,
+			ColTypes: $4,
+			DefaultShard: $5,
+			IfNotExists: $2,
 		}
 	}
 
@@ -1644,13 +1646,14 @@ key_range_bound:
 
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
+	KEY RANGE opt_if_not_exists any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
 	{
 		$$ = &KeyRangeDefinition{
-			KeyRangeID: $3,
-			LowerBound: $5,
-			ShardID: $8,
-			Distribution: $9,
+			KeyRangeID: $4,
+			LowerBound: $6,
+			ShardID: $9,
+			Distribution: $10,
+			IfNotExists: $3,
 		}
 	}
 	| KEY RANGE FROM key_range_bound ROUTE TO any_id opt_distribution_selector
