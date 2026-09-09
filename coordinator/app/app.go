@@ -176,6 +176,7 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	tasksServ := provider.NewTasksServer(app.coordinator)
 	refRelServ := provider.NewReferenceRelationServer(app.coordinator)
 	metaTranServ := provider.NewMetaTransactionServer(app.coordinator)
+	twoPhaseTxServ := provider.NewTwoPhaseTxMetaServer(app.coordinator)
 	protos.RegisterKeyRangeServiceServer(serv, krServ)
 	protos.RegisterRouterServiceServer(serv, rrServ)
 	protos.RegisterTopologyServiceServer(serv, topServ)
@@ -186,6 +187,7 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	protos.RegisterRedistributeTaskServiceServer(serv, tasksServ)
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
+	protos.RegisterTwoPhaseTxMetaServiceServer(serv, twoPhaseTxServ)
 
 	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)

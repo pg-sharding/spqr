@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
@@ -19,7 +18,6 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -327,29 +325,7 @@ func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Emp
 
 // Rebootstrap implements [proto.RouterServiceServer].
 func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	memqdb, ok := l.mgr.QDB().(*qdb.MemQDB)
-	if !ok {
-		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
-	}
-
-	if !config.RouterConfig().UseCoordinatorInit {
-		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
-	}
-
-	etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err := etcdConn.Client().Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
-		}
-	}()
-
-	if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
-		return nil, err
-	}
-	return nil, nil
+	return nil, rebootstrap.RebootstrapQDB(ctx, l.mgr.QDB(), l.mgr)
 }
 
 // SyncMetadata implements [proto.RouterServiceServer].
