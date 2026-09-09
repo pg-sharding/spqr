@@ -35,7 +35,7 @@ benchmem
 Benro
 berule
 BOOLOID
-bootstraping
+bootstrapping
 Bootstrapper
 buildpackage
 cachedchecker
@@ -479,6 +479,7 @@ RPCs
 rport
 rqdn
 rqfn
+rrels
 rrelation
 rrouter
 rulemgr

@@ -78,6 +78,28 @@ func TestSimple(t *testing.T) {
 		},
 
 		{
+			query: "SHOW hosts (alive, rw, time)",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.HostsStr,
+				Columns: []string{"alive", "rw", "time"},
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "SHOW hosts_extended",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.HostsExtendedStr,
+				Columns: nil,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
 			query: "\nSHOW \n relations \n\n;",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,

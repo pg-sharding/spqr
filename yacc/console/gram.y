@@ -137,6 +137,8 @@ func randomHex(n int) (string, error) {
 	rollback 				*Rollback
 
 	call                    *Call
+
+	drop_selector           DropSelector
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -252,7 +254,8 @@ func randomHex(n int) (string, error) {
 
 %type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
-%type<statement> redistribute_task_drop_selector
+%type<statement> create_target
+%type<drop_selector> drop_target
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -793,7 +796,7 @@ show_statement_type:
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
 			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
-			ShardsExtendedStr, MeanKRLockTimeStr:
+			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -837,64 +840,38 @@ opt_if_exists:
 	IF EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
 
 drop_stmt:
-	DROP KEY RANGE opt_if_exists any_id
+	DROP drop_target opt_if_exists any_id opt_cascade
 	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: $5}, IfExists: $4}
-	}
-	| DROP KEY RANGE ALL
+		el := $2
+		el.SetID($4)
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
+	} |
+	DROP drop_target opt_if_exists ALL opt_cascade
 	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
+		el := $2
+		el.SetID("*")
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
 	}
-	| DROP DISTRIBUTION opt_if_exists any_id opt_cascade
-	{
-		$$ = &Drop{Element: &DistributionSelector{ID: $4}, CascadeDelete: $5, IfExists: $3}
-	}
-	| DROP DISTRIBUTION ALL opt_cascade
-	{
-		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
-	}
-	| DROP SHARD any_id opt_cascade
-	{
-		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
-	}
-	| DROP TASK GROUP any_id opt_cascade
-	{
-		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }, CascadeDelete: $5}
-	}
-	| DROP SEQUENCE any_id opt_cascade
-	{
-		$$ = &Drop{Element: &SequenceSelector{Name: $3}, CascadeDelete: $4}
-	}
-	| DROP REFERENCE table_or_relation opt_if_exists any_id
-	{
-		$$ = &Drop{
-			Element: &ReferenceRelationSelector{
-				ID: $5,
-			},
-			IfExists: $4,
-		}
-	}
-	| DROP UNIQUE INDEX any_id 
-	{
-		$$ = &Drop{
-			Element: &UniqueIndexSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP redistribute_task_drop_selector opt_cascade
-	{
-		$$ = &Drop{Element: $2, CascadeDelete: $3}
-	}
-	| DROP MOVE TASK any_id opt_cascade
-	{
-		$$ = &Drop{
-			Element: &MoveTaskSelector{
-				ID: $4,
-			},
-			CascadeDelete: $5,
-		}
-	}
+
+drop_target:
+	KEY RANGE
+	{ $$ = &KeyRangeSelector{} }
+	| SHARD
+	{ $$ = &ShardSelector{} }
+	| TASK GROUP 
+	{ $$ = &TaskGroupSelector{} }
+	| SEQUENCE
+	{ $$ = &SequenceSelector{} }
+	| REFERENCE table_or_relation
+	{ $$ = &ReferenceRelationSelector{} }
+	| UNIQUE INDEX
+	{ $$ = &UniqueIndexSelector{} }
+	| MOVE TASK 
+	{ $$ = &MoveTaskSelector{} }
+	| DISTRIBUTION
+	{ $$ = &DistributionSelector{} }
+	| REDISTRIBUTE TASK
+	{ $$ = &RedistributeTaskSelector{} }
 
 
 /*
@@ -910,19 +887,6 @@ distribution_select_stmt:
 	DISTRIBUTION any_id
 	{
 		$$ = &DistributionSelector{ID: $2}
-	}
-
-/*
- * Selectors used by DROP that accept either a concrete id or ALL ("*").
- */
-redistribute_task_drop_selector:
-	REDISTRIBUTE TASK any_id
-	{
-		$$ = &RedistributeTaskSelector{ID: $3}
-	}
-	| REDISTRIBUTE TASK ALL
-	{
-		$$ = &RedistributeTaskSelector{ID: `*`}
 	}
 
 add_stmt:
@@ -1383,46 +1347,35 @@ opt_on_shards:
 	ON SHARDS any_id_list { $$ = $3 } | /* nothing */ {}
 
 create_stmt:
-	CREATE distribution_define_stmt
+	CREATE create_target
 	{
 		$$ = &Create{Element: $2}
 	}
-	|
-	CREATE key_range_define_stmt
+
+create_target:
+	distribution_define_stmt
+	{ $$ = $1 }
+	| key_range_define_stmt
+	{ $$ = $1 }
+	| key_ranges_for_distribution_define_stmt
+	{ $$ = $1 }
+	| shard_define_stmt
+	{ $$ = $1 }
+	| REFERENCE table_or_relation opt_if_not_exists qualified_name opt_auto_increment opt_on_shards
 	{
-		$$ = &Create{Element: $2}
+		$$ = &ReferenceRelationDefinition{
+				TableName: $4,
+                AutoIncrementEntries: $5,
+				ShardIDs: $6,
+				IfNotExists: $3,
+			}
 	}
-	|
-	CREATE key_ranges_for_distribution_define_stmt
+	| UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
 	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE shard_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE REFERENCE table_or_relation opt_if_not_exists qualified_name opt_auto_increment opt_on_shards
-	{
-		$$ = &Create{
-			Element: &ReferenceRelationDefinition{
-				TableName: $5,
-                AutoIncrementEntries: $6,
-				ShardIDs: $7,
-				IfNotExists: $4,
-			},
-		}
-	}
-	|
-	CREATE UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
-	{
-		$$ = &Create{
-			Element: &UniqueIndexDefinition{
-				ID:        $4,
-				TableName: $6,
-				Columns:    $9,
-			},
+		$$ = &UniqueIndexDefinition{
+			ID:        $3,
+			TableName: $5,
+			Columns:   $8,
 		}
 	}
 
