@@ -8,7 +8,7 @@ on:
     - cron: '17 2 * * *'
   push:
     branches:
-      - feature-test-with-odyssey
+      - feature-odyssey-nightly
   workflow_dispatch:
 
 jobs:
