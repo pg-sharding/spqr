@@ -6,6 +6,9 @@ name: feature-odyssey
 on:
   schedule:
     - cron: '17 2 * * *'
+  push:
+    branches:
+      - feature-test-with-odyssey
   workflow_dispatch:
 
 jobs:
