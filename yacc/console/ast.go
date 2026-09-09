@@ -44,12 +44,16 @@ type Create struct {
 func (*Create) iStatement() {}
 
 type Drop struct {
-	Element       Statement
+	Element       DropSelector
 	CascadeDelete bool
 	IfExists      bool
 }
 
 func (*Drop) iStatement() {}
+
+type DropSelector interface {
+	SetID(string)
+}
 
 type CreateStmt interface {
 	iCreate()
@@ -215,32 +219,64 @@ type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
+func (s *KeyRangeSelector) SetID(id string) {
+	s.KeyRangeID = id
+}
+
 type DistributionSelector struct {
 	ID string
+}
+
+func (s *DistributionSelector) SetID(id string) {
+	s.ID = id
 }
 
 type ReferenceRelationSelector struct {
 	ID string
 }
 
+func (s *ReferenceRelationSelector) SetID(id string) {
+	s.ID = id
+}
+
 type UniqueIndexSelector struct {
 	ID string
+}
+
+func (s *UniqueIndexSelector) SetID(id string) {
+	s.ID = id
 }
 
 type ShardSelector struct {
 	ID string
 }
 
+func (s *ShardSelector) SetID(id string) {
+	s.ID = id
+}
+
 type TaskGroupSelector struct {
 	ID string
+}
+
+func (s *TaskGroupSelector) SetID(id string) {
+	s.ID = id
 }
 
 type MoveTaskSelector struct {
 	ID string
 }
 
+func (s *MoveTaskSelector) SetID(id string) {
+	s.ID = id
+}
+
 type RedistributeTaskSelector struct {
 	ID string
+}
+
+func (s *RedistributeTaskSelector) SetID(id string) {
+	s.ID = id
 }
 
 func (*KeyRangeSelector) iDrop()          {}
@@ -442,6 +478,9 @@ type SequenceSelector struct {
 }
 
 func (*SequenceSelector) iDrop() {}
+func (s *SequenceSelector) SetID(id string) {
+	s.Name = id
+}
 
 type RetryMoveTaskGroup struct {
 	ID     string
