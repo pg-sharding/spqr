@@ -104,7 +104,7 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
-	dstmt spqrparser.Statement,
+	dstmt spqrparser.DropSelector,
 	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
