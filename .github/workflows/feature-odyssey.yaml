@@ -12,11 +12,39 @@ on:
   workflow_dispatch:
 
 jobs:
+  feature_odyssey_prepare:
+    name: feature_prepare
+    runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.step1.outputs.features }}
+    steps:
+      - name: Check Docker Version
+        run: docker --version
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - id: step1
+        run: |
+          make split_feature_test
+          export COMMAND="feature_test_odyssey"
+          array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk '{printf $0"\n"}' | python3 .github/scenario_balancer.py)
+          echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated_tests
+          path: |
+            ./test/feature/generatedFeatures
+
   feature_odyssey:
     name: feature_odyssey
+    needs: feature_odyssey_prepare
     runs-on: ubuntu-latest
     timeout-minutes: 170
     strategy:
+      matrix: ${{ fromJson(needs.feature_odyssey_prepare.outputs.output1) }}
       fail-fast: false
     steps:
       - name: Install Latest Docker
@@ -45,13 +73,15 @@ jobs:
           go-version-file: go.mod
 
       - name: feature odyssey tests
-        run: make feature_test_odyssey
+        run: ${{ matrix.command }}
+        env:
+          GODOG_JUNIT_REPORT: ../../test-reports/feature-odyssey/feature-${{ strategy.job-index }}.xml
 
       - name: Upload feature odyssey test reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-reports-feature-odyssey
+          name: test-reports-feature-odyssey-${{ strategy.job-index }}
           path: test-reports/feature-odyssey/**/*.xml
           if-no-files-found: ignore
 
@@ -59,6 +89,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: feature-odyssey-logs
+          name: feature-odyssey-logs-${{ strategy.job-index }}
           path: test/feature/logs/**
           if-no-files-found: ignore
