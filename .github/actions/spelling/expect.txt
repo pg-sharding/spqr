@@ -222,6 +222,7 @@ idxs
 IExecute
 IKill
 inds
+initdb
 initsql
 innerhash
 innerres
@@ -647,6 +648,7 @@ vasya
 vguoyguoygoyy
 Vitess
 Volkov
+wal
 walreceiver
 Warningf
 workloadlog
