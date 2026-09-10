@@ -225,6 +225,7 @@ func randomHex(n int) (string, error) {
 %token <str> OPTIONS FORCE
 %token <str> META ONLY
 %token <str> BEGIN COMMIT ROLLBACK
+%token <str> MIGRATION RESET
 
 %token <str> IF EXISTS
 
@@ -528,13 +529,9 @@ any_uint:
 		$$ = uint($1)
 	}
 
-any_val: SCONST
+any_val: any_id
 	{
-		$$ = string($1)
-	} | 
-	IDENT
-	{
-		$$ = string($1)
+		$$ = $1
 	} | ICONST {
 		if $1 > uint(math.MaxInt64) {
 			yylex.Error(SIGNED_INT_RANGE_ERROR)
@@ -561,6 +558,12 @@ any_id: IDENT
 	} | SCONST
 	{
 		$$ = string($1)
+	} | MIGRATION
+	{
+		$$ = $1
+	} | RESET
+	{
+		$$ = $1
 	}
 
 opt_any_id:
@@ -796,7 +799,7 @@ show_statement_type:
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
 			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
-			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr:
+			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr, MigrationsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -953,6 +956,12 @@ alter_sys_target:
 			SetGUC: $3,
 			SetValue: $5,
 		}
+	} | SYSTEM MIGRATION SET any_id TEQ any_id {
+		$$ = &AlterSystemMigration{Name: $4, Value: $6}
+	} | SYSTEM MIGRATION SET any_id TO any_id {
+		$$ = &AlterSystemMigration{Name: $4, Value: $6}
+	} | SYSTEM MIGRATION RESET any_id {
+		$$ = &AlterSystemMigration{Name: $4, Reset: true}
 	}
 
 /*****************************************************************************
@@ -1469,6 +1478,10 @@ help_command_name:
 // help_word matches keywords and identifiers that can appear in command names
 help_word:
 	IDENT { $$ = $1 }
+	| SYSTEM { $$ = "SYSTEM" }
+	| MIGRATION { $$ = "MIGRATION" }
+	| SET { $$ = "SET" }
+	| RESET { $$ = "RESET" }
 	| CREATE { $$ = "CREATE" }
 	| DROP { $$ = "DROP" }
 	| ALTER { $$ = "ALTER" }
