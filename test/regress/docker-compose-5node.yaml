@@ -1,0 +1,33 @@
+services:
+    shard5node:
+        build:
+            dockerfile: ./docker/5node/Dockerfile
+            context: ../../
+        cap_add:
+            - NET_ADMIN
+        environment:
+            - POSTGRES_USER=regress
+            - POSTGRES_DB=regress
+        hostname: spqr5_monolith
+        container_name: spqr5_monolith
+        healthcheck:
+            test: 'pg_isready -p 6432 -U regress -d regress'
+            interval: 10s
+            timeout: 5s
+            retries: 60
+
+    regress:
+        build:
+            context: .
+        network_mode: service:shard5node
+        cap_add:
+            - NET_ADMIN
+        container_name: regress_tests_5node
+        environment:
+            - REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress-5node}
+        entrypoint: ["/bin/bash", "-c", "chmod +x /regress/run_tests_5node.sh && /regress/run_tests_5node.sh"]
+        volumes:
+            - ../../test-reports/regress-5node:/regress/test-reports/regress-5node
+        depends_on:
+            shard5node:
+                condition: service_healthy
