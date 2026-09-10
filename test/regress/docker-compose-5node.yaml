@@ -20,6 +20,8 @@ services:
         build:
             context: .
         network_mode: service:shard5node
+        cap_add:
+            - NET_ADMIN
         container_name: regress_tests_5node
         environment:
             - REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress-5node}
