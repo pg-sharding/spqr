@@ -40,6 +40,15 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `metric_path`        | The path for prometheus metric exporter           | Any valid HTTP path   | `/metric` |
 | `metric_port`        | The port for prometheus metric exporter           | Any valid port number | (none) |
 
+## Availability Zone Settings
+
+| Setting                         | Description                                                                            | Possible Values | Default |
+|---------------------------------|----------------------------------------------------------------------------------------|-----------------|---------|
+| `availability_zone`             | The router's availability zone, matched against zone labels in shard host entries.     | Any zone label  | (none)  |
+| `prefer_same_availability_zone` | Prefer hosts in the router's zone. Takes effect when `availability_zone` is non-empty. | `true`, `false` | `false` |
+
+See [Availability zone preferences](/features/multiple_servers_and_failover#availability-zone-preferences) for an example.
+
 ## gRPC TLS Settings
 
 <GRPCTLS />
@@ -87,7 +96,7 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 | Setting | Description                             | Possible Values         | Default |
 |---------|-----------------------------------------|-------------------------|---------|
-| `hosts` | A list of host addresses for the shard. | Array of host addresses | (none) |
+| `hosts` | A list of host addresses with optional availability zone labels. | Array of `host:port[:availability_zone]` strings | (none) |
 | `type`  | Use `DATA` always                       | `DATA`, `WORLD`         | (none) |
 | `tls`   | See [auth.mdx](./auth)                  | Object of `TLSConfig`   | (none) |
 
