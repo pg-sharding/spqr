@@ -22,9 +22,7 @@ CREATE RELATION tsa_test (i);
 
 \c regress
 CREATE TABLE tsa_test (i int);
-
 INSERT INTO tsa_test (i) VALUES (22);
-
 SELECT count(*) FROM tsa_test;
  count 
 -------
@@ -120,9 +118,7 @@ SELECT __spqr__host_status('127.0.0.1:6437');
 -- the router writes distributed-relation metadata into the shard's spqr_metadata
 -- on CREATE TABLE; DROP TABLE does not scrub that row, so remove it explicitly
 DROP TABLE tsa_test;
-
 DELETE FROM spqr_metadata.spqr_distributed_relations /* __spqr__scatter_query: true */;
-
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
  reloid 
 --------
@@ -134,3 +130,4 @@ DROP DISTRIBUTION ALL CASCADE;
 -----------------
  d
 (1 row)
+
