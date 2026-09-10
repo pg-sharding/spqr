@@ -13,3 +13,28 @@ NOTICE: send query to shard(s) : sh1
  f                 | 22
 (1 row)
 ```
+
+## Availability zone preferences
+
+Set `prefer_same_availability_zone` to `true` and specify the router's `availability_zone` to prefer hosts in the same zone. These are top-level [router settings](/configuration/router#availability-zone-settings). Add the zone to each host address as `host:port:availability_zone`:
+
+```yaml
+availability_zone: "us-east-1a"
+prefer_same_availability_zone: true
+
+shards:
+  shard1:
+    hosts:
+      - "db1.example.com:5432:us-east-1a"
+      - "db2.example.com:5432:us-east-1b"
+```
+
+Zone labels must match the router's `availability_zone` exactly. The syntax `db1.example.com:5432 ZONE us-east-1a` is also supported. Hosts without a zone label receive no zone preference.
+
+In this example, SPQR prefers `db1.example.com` when both hosts are available and satisfy `target-session-attrs`. If no suitable host in `us-east-1a` is available, SPQR can connect to `db2.example.com`.
+
+Zone preference applies within a shard. Host availability and `target-session-attrs` take precedence: for example, `read-write` requires a primary even if it is in another zone.
+
+When `prefer_same_availability_zone` is `false` (the default), or `availability_zone` is empty, zone labels do not affect host selection.
+
+With zone preference enabled, hosts without an explicit priority receive priority `100` in the router's zone and `1` otherwise. A nonzero `PRIORITY` in a host entry replaces this value for that host. Higher priorities are tried first among hosts with the same availability and `target-session-attrs` status.
