@@ -3,8 +3,8 @@ package engine
 import (
 	"fmt"
 
-	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 )
 
 // ExtractProjectionColumns returns column names from a target list,
