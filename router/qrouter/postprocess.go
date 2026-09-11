@@ -129,19 +129,18 @@ func (qr *ProxyQrouter) addSortToPlan(
 
 	switch v := p.(type) {
 	case *plan.VirtualPlan:
-		var err error
-
 		switch stmt := rm.Stmt.(type) {
 		case *lyx.Select:
-			/* This currently support sorting for one column. */
-			for _, n := range stmt.SortClause {
-				switch sb := n.(type) {
-				case *lyx.SortBy:
-					v.TTS.Raw, err = engine.ProcessOrderBy(v.TTS.Raw, v.TTS.Desc.GetColumnsMap(), sb)
-					if err != nil {
-						return nil, err
-					}
-					return p, nil
+			/* sort keys in reverse order for correct multi-key ORDER BY */
+			for i := len(stmt.SortClause) - 1; i >= 0; i-- {
+				sb, ok := stmt.SortClause[i].(*lyx.SortBy)
+				if !ok {
+					continue
+				}
+				var err error
+				v.TTS.Raw, err = engine.ProcessOrderBy(v.TTS.Raw, v.TTS.Desc.GetColumnsMap(), sb)
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
