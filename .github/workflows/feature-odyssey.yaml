@@ -1,0 +1,94 @@
+# Nightly feature suite against the odyssey pooler topology.
+# Standalone, not wired into any PR gate. Failures are expected and recorded.
+
+name: feature-odyssey
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  push:
+    branches:
+      - feature-odyssey-nightly
+  workflow_dispatch:
+
+jobs:
+  feature_odyssey_prepare:
+    name: feature_prepare
+    runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.step1.outputs.features }}
+    steps:
+      - name: Check Docker Version
+        run: docker --version
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - id: step1
+        run: |
+          make split_feature_test
+          export COMMAND="feature_test_odyssey"
+          array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk '{printf $0"\n"}' | python3 .github/scenario_balancer.py)
+          echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated_tests
+          path: |
+            ./test/feature/generatedFeatures
+
+  feature_odyssey:
+    name: feature_odyssey
+    needs: feature_odyssey_prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    strategy:
+      matrix: ${{ fromJson(needs.feature_odyssey_prepare.outputs.output1) }}
+      fail-fast: false
+    steps:
+      - name: Install Latest Docker
+        run: |
+          for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          sudo chmod a+r /etc/apt/keyrings/docker.asc
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      - name: Check Docker Version
+        run: docker --version
+
+      # odyssey image is linux/amd64 only
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: feature odyssey tests
+        run: ${{ matrix.command }}
+        env:
+          GODOG_JUNIT_REPORT: ../../test-reports/feature-odyssey/feature-${{ strategy.job-index }}.xml
+
+      - name: Upload feature odyssey test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-feature-odyssey-${{ strategy.job-index }}
+          path: test-reports/feature-odyssey/**/*.xml
+          if-no-files-found: ignore
+
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: feature-odyssey-logs-${{ strategy.job-index }}
+          path: test/feature/logs/**
+          if-no-files-found: ignore
