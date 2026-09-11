@@ -6,7 +6,7 @@
 x-odyssey-common:
   &odyssey-common
   # linux/amd64 only, run under qemu on arm
-  image: ${ODYSSEY_IMAGE:-ghcr.io/yandex/odyssey:1.5.1}
+  image: ${ODYSSEY_IMAGE:-ghcr.io/yandex/odyssey:REL_1_5_2}
   platform: linux/amd64
   healthcheck:
     # image lacks nc/psql, so probe the listener with bash tcp redirection
@@ -24,17 +24,20 @@ x-odyssey-env-common:
   DB_NAME: regress
   USER_NAME: regress
   USER_AUTH_TYPE: none
+  MAINTAIN_PARAMS: "yes"
   PG_PORT: 6432
-
-  POOL_TYPE: transaction
+  LOG_DEBUG: "yes"
+  LOG_QUERY: "yes"
+  LOG_SESSION: "yes"
+  POOL_TYPE: session
   POOL_SIZE: 300
   POOL_TIMEOUT: 1000
   POOL_TTL: 20
   POOL_DISCARD: "no"
-  POOL_SMART_DISCARD: "yes"
+  POOL_SMART_DISCARD: "no"
   POOL_CANCEL: "yes"
   POOL_ROLLBACK: "yes"
-  POOL_RESERVE_PREPARED_STATEMENT: "yes"
+  POOL_RESERVE_PREPARED_STATEMENT: "no"
 
 services:
   shard1:
@@ -126,6 +129,8 @@ services:
       PG_HOST: spqr_shard_1_pg
     hostname: spqr_shard_1
     container_name: spqr_shard_1
+    ports:
+      - "8432:6432"
     depends_on:
       shard1:
         condition: service_healthy
@@ -146,6 +151,8 @@ services:
       PG_HOST: spqr_shard_2_pg
     hostname: spqr_shard_2
     container_name: spqr_shard_2
+    ports:
+      - "8433:6432"
     depends_on:
       shard2:
         condition: service_healthy
@@ -166,6 +173,8 @@ services:
       PG_HOST: spqr_shard_3_pg
     hostname: spqr_shard_3
     container_name: spqr_shard_3
+    ports:
+      - "8434:6432"
     depends_on:
       shard3:
         condition: service_healthy
