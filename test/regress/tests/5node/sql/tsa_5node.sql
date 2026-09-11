@@ -11,7 +11,6 @@ SELECT count(*) FROM tsa_test;
 -- reply_notice is off by default; flip it on for pinned queries to see which node answered
 SET __spqr__reply_notice TO true;
 SET __spqr__notice_message_format = '{shard}@{host}';
-SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO ':6433';
 SET __spqr__target_session_attrs TO 'read-write';
 SELECT 1+2;
@@ -32,7 +31,6 @@ SELECT 1+2;
 RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
-RESET __spqr__execute_on;
 SET __spqr__reply_notice TO false;
 SELECT __spqr__host_status('127.0.0.1:6433');
 SELECT __spqr__host_status('127.0.0.1:6434');
@@ -46,7 +44,6 @@ SET __spqr__allow_postprocessing TO false;
 -- cut the replicas off: prefer-standby must fall back to the primary
 SET __spqr__reply_notice TO true;
 SET __spqr__notice_message_format = '{shard}@{host}';
-SET __spqr__execute_on TO sh1;
 \! iptables -A INPUT -p tcp --dport 6434 -j REJECT
 \! iptables -A INPUT -p tcp --dport 6435 -j REJECT
 \! iptables -A INPUT -p tcp --dport 6436 -j REJECT
@@ -64,7 +61,6 @@ SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6437 -j REJECT
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
-RESET __spqr__execute_on;
 SET __spqr__reply_notice TO false;
 -- the router writes distributed-relation metadata into the shard's spqr_metadata
 -- on CREATE TABLE; DROP TABLE does not scrub that row, so remove it explicitly
