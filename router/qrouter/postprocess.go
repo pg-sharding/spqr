@@ -127,6 +127,27 @@ func (qr *ProxyQrouter) addSortToPlan(
 		return p, nil
 	}
 
+	switch v := p.(type) {
+	case *plan.VirtualPlan:
+		var err error
+
+		switch stmt := rm.Stmt.(type) {
+		case *lyx.Select:
+			/* This currently support sorting for one column. */
+			for _, n := range stmt.SortClause {
+				switch sb := n.(type) {
+				case *lyx.SortBy:
+					v.TTS.Raw, err = engine.ProcessOrderBy(v.TTS.Raw, v.TTS.Desc.GetColumnsMap(), sb)
+					if err != nil {
+						return nil, err
+					}
+					return p, nil
+				}
+			}
+		}
+		return p, nil
+	}
+
 	scatterSlice, ok := p.(*plan.ScatterPlan)
 
 	if !ok {

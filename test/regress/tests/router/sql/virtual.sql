@@ -47,6 +47,12 @@ SELECT * FROM __spqr__show('key_ranges') /* __spqr__.preferred_engine: v2 */;
 SELECT key_range_id, locked FROM __spqr__show('key_ranges') /* __spqr__.preferred_engine: v2 */;
 SELECT lower_bound FROM __spqr__show('key_ranges') /* __spqr__.preferred_engine: v2 */;
 
+SET __spqr__allow_postprocessing TO true;
+SELECT * FROM __spqr__show('key_ranges') ORDER BY shard_id DESC;
+SELECT * FROM __spqr__show('key_ranges') ORDER BY lower_bound DESC;
+SELECT key_range_id, shard_id FROM __spqr__show('key_ranges') ORDER BY shard_id;
+SET __spqr__allow_postprocessing TO false;
+
 SELECT 1;
 
 SELECT 1, 2, 3;
