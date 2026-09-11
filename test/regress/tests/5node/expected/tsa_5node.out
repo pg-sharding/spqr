@@ -120,19 +120,22 @@ SET __spqr__allow_postprocessing TO true;
 SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') ORDER BY tsa, host;
       tsa       |      host      | az | alive | match 
 ----------------+----------------+----+-------+-------
- any            | 127.0.0.1:6433 |    | true  | true  
- prefer-standby | 127.0.0.1:6434 |    | true  | true  
- prefer-standby | 127.0.0.1:6435 |    | true  | true  
- prefer-standby | 127.0.0.1:6436 |    | true  | true  
- prefer-standby | 127.0.0.1:6437 |    | true  | true  
- read-write     | 127.0.0.1:6433 |    | true  | true  
-(6 rows)
+ any            | 127.0.0.1:6435 |    | true  | true
+ prefer-standby | 127.0.0.1:6434 |    | true  | true
+ prefer-standby | 127.0.0.1:6435 |    | true  | true
+ prefer-standby | 127.0.0.1:6436 |    | true  | true
+ prefer-standby | 127.0.0.1:6437 |    | true  | true
+ read-write     | 127.0.0.1:6433 |    | true  | true
+ read-write     | 127.0.0.1:6434 |    | true  | false
+ read-write     | 127.0.0.1:6435 |    | true  | false
+ read-write     | 127.0.0.1:6436 |    | true  | false
+ read-write     | 127.0.0.1:6437 |    | true  | false
+(10 rows)
 
 SET __spqr__allow_postprocessing TO false;
 -- cut the replicas off: prefer-standby must fall back to the primary
 SET __spqr__reply_notice TO true;
 SET __spqr__notice_message_format = '{shard}@{host}';
-SET __spqr__execute_on TO sh1;
 \! iptables -A INPUT -p tcp --dport 6434 -j REJECT
 \! iptables -A INPUT -p tcp --dport 6435 -j REJECT
 \! iptables -A INPUT -p tcp --dport 6436 -j REJECT
@@ -151,14 +154,18 @@ SET __spqr__allow_postprocessing TO true;
 SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') ORDER BY tsa, host;
       tsa       |      host      | az | alive | match 
 ----------------+----------------+----+-------+-------
- any            | 127.0.0.1:6433 |    | true  | true  
- prefer-standby | 127.0.0.1:6433 |    | true  | true  
- prefer-standby | 127.0.0.1:6434 |    | false | false 
- prefer-standby | 127.0.0.1:6435 |    | false | false 
- prefer-standby | 127.0.0.1:6436 |    | false | false 
- prefer-standby | 127.0.0.1:6437 |    | false | false 
- read-write     | 127.0.0.1:6433 |    | true  | true  
-(7 rows)
+ any            | 127.0.0.1:6435 |    | true  | true
+ prefer-standby | 127.0.0.1:6433 |    | true  | true
+ prefer-standby | 127.0.0.1:6434 |    | false | false
+ prefer-standby | 127.0.0.1:6435 |    | false | false
+ prefer-standby | 127.0.0.1:6436 |    | false | false
+ prefer-standby | 127.0.0.1:6437 |    | false | false
+ read-write     | 127.0.0.1:6433 |    | true  | true
+ read-write     | 127.0.0.1:6434 |    | true  | false
+ read-write     | 127.0.0.1:6435 |    | true  | false
+ read-write     | 127.0.0.1:6436 |    | true  | false
+ read-write     | 127.0.0.1:6437 |    | true  | false
+(11 rows)
 
 SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6434 -j REJECT
@@ -167,7 +174,6 @@ SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6437 -j REJECT
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
-RESET __spqr__execute_on;
 SET __spqr__reply_notice TO false;
 -- the router writes distributed-relation metadata into the shard's spqr_metadata
 -- on CREATE TABLE; DROP TABLE does not scrub that row, so remove it explicitly

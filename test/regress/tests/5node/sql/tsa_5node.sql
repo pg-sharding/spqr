@@ -46,7 +46,6 @@ SET __spqr__allow_postprocessing TO false;
 -- cut the replicas off: prefer-standby must fall back to the primary
 SET __spqr__reply_notice TO true;
 SET __spqr__notice_message_format = '{shard}@{host}';
-SET __spqr__execute_on TO sh1;
 \! iptables -A INPUT -p tcp --dport 6434 -j REJECT
 \! iptables -A INPUT -p tcp --dport 6435 -j REJECT
 \! iptables -A INPUT -p tcp --dport 6436 -j REJECT
@@ -64,7 +63,6 @@ SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6437 -j REJECT
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
-RESET __spqr__execute_on;
 SET __spqr__reply_notice TO false;
 -- the router writes distributed-relation metadata into the shard's spqr_metadata
 -- on CREATE TABLE; DROP TABLE does not scrub that row, so remove it explicitly
