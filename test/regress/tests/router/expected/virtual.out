@@ -159,6 +159,36 @@ SELECT lower_bound FROM __spqr__show('key_ranges') /* __spqr__.preferred_engine:
  301
 (4 rows)
 
+SET __spqr__allow_postprocessing TO true;
+SELECT * FROM __spqr__show('key_ranges') ORDER BY shard_id DESC;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ k4           | sh4      | ds1             | 301         | false
+ k3           | sh3      | ds1             | 201         | false
+ k2           | sh2      | ds1             | 101         | false
+ k1           | sh1      | ds1             | 1           | false
+(4 rows)
+
+SELECT * FROM __spqr__show('key_ranges') ORDER BY lower_bound DESC;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ k4           | sh4      | ds1             | 301         | false
+ k3           | sh3      | ds1             | 201         | false
+ k2           | sh2      | ds1             | 101         | false
+ k1           | sh1      | ds1             | 1           | false
+(4 rows)
+
+SELECT key_range_id, shard_id FROM __spqr__show('key_ranges') ORDER BY shard_id;
+ key_range_id | shard_id 
+--------------+----------
+ k1           | sh1
+ k2           | sh2
+ k3           | sh3
+ k4           | sh4
+(4 rows)
+
+SET __spqr__allow_postprocessing TO false;
+
 SELECT 1;
  ?column? 
 ----------
