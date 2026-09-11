@@ -1723,6 +1723,11 @@ func TestSpqr(t *testing.T) {
 		stopOnFailure = false
 	}
 
+	tags := ""
+	if v, ok := os.LookupEnv("GODOG_TAGS"); ok {
+		tags = v
+	}
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
 			InitializeScenario(s, t, debug)
@@ -1734,6 +1739,7 @@ func TestSpqr(t *testing.T) {
 			NoColors:      false,
 			StopOnFailure: stopOnFailure,
 			Concurrency:   1,
+			Tags:          tags,
 		},
 	}
 	if suite.Run() != 0 {
