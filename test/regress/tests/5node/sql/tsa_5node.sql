@@ -11,6 +11,7 @@ SELECT count(*) FROM tsa_test;
 -- reply_notice is off by default; flip it on for pinned queries to see which node answered
 SET __spqr__reply_notice TO true;
 SET __spqr__notice_message_format = '{shard}@{host}';
+SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO ':6433';
 SET __spqr__target_session_attrs TO 'read-write';
 SELECT 1+2;
@@ -31,6 +32,7 @@ SELECT 1+2;
 RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
+RESET __spqr__execute_on;
 SET __spqr__reply_notice TO false;
 SELECT __spqr__host_status('127.0.0.1:6433');
 SELECT __spqr__host_status('127.0.0.1:6434');

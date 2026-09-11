@@ -32,6 +32,7 @@ SELECT count(*) FROM tsa_test;
 -- reply_notice is off by default; flip it on for pinned queries to see which node answered
 SET __spqr__reply_notice TO true;
 SET __spqr__notice_message_format = '{shard}@{host}';
+SET __spqr__execute_on TO sh1;
 SET __spqr__execute_host_filter TO ':6433';
 SET __spqr__target_session_attrs TO 'read-write';
 SELECT 1+2;
@@ -82,6 +83,7 @@ NOTICE: send query to shard(s) : sh1@127.0.0.1:6437
 RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
+RESET __spqr__execute_on;
 SET __spqr__reply_notice TO false;
 SELECT __spqr__host_status('127.0.0.1:6433');
       host      |  rw  
@@ -152,14 +154,18 @@ SET __spqr__allow_postprocessing TO true;
 SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') ORDER BY tsa, host;
       tsa       |      host      | az | alive | match 
 ----------------+----------------+----+-------+-------
- any            | 127.0.0.1:6433 |    | true  | true  
- prefer-standby | 127.0.0.1:6433 |    | true  | true  
- prefer-standby | 127.0.0.1:6434 |    | false | false 
- prefer-standby | 127.0.0.1:6435 |    | false | false 
- prefer-standby | 127.0.0.1:6436 |    | false | false 
- prefer-standby | 127.0.0.1:6437 |    | false | false 
- read-write     | 127.0.0.1:6433 |    | true  | true  
-(7 rows)
+ any            | 127.0.0.1:6435 |    | true  | true
+ prefer-standby | 127.0.0.1:6433 |    | true  | true
+ prefer-standby | 127.0.0.1:6434 |    | false | false
+ prefer-standby | 127.0.0.1:6435 |    | false | false
+ prefer-standby | 127.0.0.1:6436 |    | false | false
+ prefer-standby | 127.0.0.1:6437 |    | false | false
+ read-write     | 127.0.0.1:6433 |    | true  | true
+ read-write     | 127.0.0.1:6434 |    | true  | false
+ read-write     | 127.0.0.1:6435 |    | true  | false
+ read-write     | 127.0.0.1:6436 |    | true  | false
+ read-write     | 127.0.0.1:6437 |    | true  | false
+(11 rows)
 
 SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6434 -j REJECT
