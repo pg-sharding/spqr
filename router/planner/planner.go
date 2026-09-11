@@ -978,7 +978,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
 	fname string,
-	args []lyx.Node) (plan.Plan, error) {
+	args []lyx.Node, columns []string) (plan.Plan, error) {
 
 	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
@@ -1033,6 +1033,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+		tts, err = engine.Project(tts, columns)
+		if err != nil {
+			return nil, err
+		}
 		return &plan.VirtualPlan{
 			TTS: tts,
 		}, nil
@@ -1043,12 +1047,12 @@ func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
-	n lyx.Node) (plan.Plan, error) {
+	n lyx.Node, columns []string) (plan.Plan, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
 			return MetadataVirtualFunctionCall(ctx,
-				rm, plr, q.Name, q.Args)
+				rm, plr, q.Name, q.Args, columns)
 		}
 	}
 	/* XXX: we should error out here */
@@ -1081,7 +1085,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
+				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0], nil)
 				if err != nil {
 					return nil, err
 				}
@@ -1113,13 +1117,15 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
+
 				p, err := RetrieveTuples(
 					ctx,
 					rm,
-					p, q.Arg)
+					p, q.Arg, engine.ExtractProjectionColumns(v.TargetList))
 				if err != nil {
 					return nil, err
 				}
+
 				if p != nil {
 					return p, nil
 				}

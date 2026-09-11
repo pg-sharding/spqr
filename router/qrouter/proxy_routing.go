@@ -810,7 +810,8 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 					ctx,
 					rm,
 					qr,
-					qs.TargetList[0])
+					qs.TargetList[0],
+					nil)
 				if err != nil {
 					return nil, err
 				}
@@ -824,7 +825,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 			switch q := qs.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
+				p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg, engine.ExtractProjectionColumns(qs.TargetList))
 				if err != nil {
 					return nil, err
 				}
