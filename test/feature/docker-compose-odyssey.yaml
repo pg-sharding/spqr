@@ -29,15 +29,15 @@ x-odyssey-env-common:
   LOG_DEBUG: "yes"
   LOG_QUERY: "yes"
   LOG_SESSION: "yes"
-  POOL_TYPE: session
+  POOL_TYPE: transaction
   POOL_SIZE: 300
   POOL_TIMEOUT: 1000
   POOL_TTL: 20
   POOL_DISCARD: "no"
-  POOL_SMART_DISCARD: "no"
+  POOL_SMART_DISCARD: "yes"
   POOL_CANCEL: "yes"
   POOL_ROLLBACK: "yes"
-  POOL_RESERVE_PREPARED_STATEMENT: "no"
+  POOL_RESERVE_PREPARED_STATEMENT: "yes"
 
 services:
   shard1:
