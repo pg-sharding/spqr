@@ -120,7 +120,7 @@ SET __spqr__allow_postprocessing TO true;
 SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') ORDER BY tsa, host;
       tsa       |      host      | az | alive | match 
 ----------------+----------------+----+-------+-------
- any            | 127.0.0.1:6434 |    | true  | true
+ any            | 127.0.0.1:6435 |    | true  | true
  prefer-standby | 127.0.0.1:6434 |    | true  | true
  prefer-standby | 127.0.0.1:6435 |    | true  | true
  prefer-standby | 127.0.0.1:6436 |    | true  | true
