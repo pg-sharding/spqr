@@ -459,7 +459,7 @@ SELECT table_name, shards FROM __spqr__show('reference_relations');
     table_name     |      shards       
 -------------------+-------------------
  test_ref_rel      | [sh1 sh2 sh3 sh4]
- test_ref_rel_part | [sh1 sh3]         
+ test_ref_rel_part | [sh1 sh3]
  test_ref_rel_rel  | [sh1 sh2 sh3 sh4]
 (3 rows)
 
