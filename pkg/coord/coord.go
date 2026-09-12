@@ -117,13 +117,15 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 		return err
 	}
 
-	newOptions := slices.Clone(shard.Options())
+	hi := shard.Infos()
+	updatedOpts := make([]topology.GenericOption, len(hi.Options))
+	copy(updatedOpts, hi.Options)
 
 	for _, change := range changes {
 
 		optionNameCount := 0
 		optionValueCount := 0
-		for _, o := range newOptions {
+		for _, o := range updatedOpts {
 			if o.Name == change.Name {
 				optionNameCount++
 				if o.Arg == change.Arg {
@@ -139,17 +141,53 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 			if optionValueCount > 0 {
 				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" provided more than once", change.Name, change.Arg))
 			}
-			newOptions = append(newOptions, topology.GenericOption{Name: change.Name, Arg: change.Arg})
+			updatedOpts = append(updatedOpts, topology.GenericOption{Name: change.Name, Arg: change.Arg})
 		case topology.GenericOptionActionSet:
 			if optionNameCount == 0 {
 				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 			}
-			if optionNameCount > 1 {
-				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" has multiple values provided", change.Name))
+
+			if change.Name != "host" {
+				if optionNameCount > 1 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" has multiple values provided", change.Name))
+				}
+				ind := slices.IndexFunc(updatedOpts, func(o topology.GenericOption) bool { return o.Name == change.Name })
+				updatedOpts[ind].Arg = change.Arg
+			} else {
+				// change topology
+				// parse host spec. Should be single host.
+				h, err := topology.ParseSingleHostSpec(change.Arg)
+				if err != nil {
+					return err
+				}
+
+				found := false
+				for _, oldH := range hi.Hosts {
+					if oldH.Address == h.Address {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed host specification").Detail(fmt.Sprintf("host %s not found", h.Address))
+				}
+
+				for i := range updatedOpts {
+					if updatedOpts[i].Name == "host" {
+						/* XXX: thats very bad to re-parse something twice, but
+						* refactoring of this piece is not woth it right now. */
+						parsed, err := topology.ParseSingleHostSpec(updatedOpts[i].Arg)
+						if err != nil {
+							return err
+						}
+						if parsed.Address == h.Address {
+							updatedOpts[i].Arg = change.Arg
+						}
+					}
+				}
 			}
 
-			ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name })
-			newOptions[ind].Arg = change.Arg
 		case topology.GenericOptionActionDrop:
 			// Drop all
 			if change.Arg == "" {
@@ -157,9 +195,9 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 				}
 
-				for i := len(newOptions) - 1; i >= 0; i-- {
-					if change.Name == newOptions[i].Name {
-						newOptions = slices.Delete(newOptions, i, i+1)
+				for i := len(updatedOpts) - 1; i >= 0; i-- {
+					if change.Name == updatedOpts[i].Name {
+						updatedOpts = slices.Delete(updatedOpts, i, i+1)
 					}
 				}
 			} else { // Drop option with specific value
@@ -167,13 +205,13 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
 				}
 
-				ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name && o.Arg == change.Arg })
-				newOptions = slices.Delete(newOptions, ind, ind+1)
+				ind := slices.IndexFunc(updatedOpts, func(o topology.GenericOption) bool { return o.Name == change.Name && o.Arg == change.Arg })
+				updatedOpts = slices.Delete(updatedOpts, ind, ind+1)
 			}
 		}
 	}
 
-	shard.SetOptions(newOptions)
+	shard.SetOptions(updatedOpts)
 
 	return lc.qdb.AlterShard(ctx, topology.DataShardToDB(shard))
 }
