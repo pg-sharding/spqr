@@ -121,6 +121,32 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 	updatedOpts := make([]topology.GenericOption, len(hi.Options))
 	copy(updatedOpts, hi.Options)
 
+	compareOpts := func(o1 topology.GenericOption, o2 topology.GenericOption) (bool, error) {
+		if o1.Name != o2.Name {
+			return false, nil
+		}
+
+		if o1.Name != "host" {
+
+			return o1.Arg == o1.Arg, nil
+
+		} else {
+			/* XXX: thats very bad to re-parse something twice, but
+			* refactoring of this piece is not worth it right now. */
+			parsed1, err := topology.ParseSingleHostSpec(o1.Arg)
+			if err != nil {
+				return false, err
+			}
+
+			parsed2, err := topology.ParseSingleHostSpec(o2.Arg)
+			if err != nil {
+				return false, err
+			}
+
+			return parsed1.Address == parsed2.Address, nil
+		}
+	}
+
 	for _, change := range changes {
 
 		optionNameCount := 0
@@ -128,7 +154,9 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 		for _, o := range updatedOpts {
 			if o.Name == change.Name {
 				optionNameCount++
-				if o.Arg == change.Arg {
+				if ok, err := compareOpts(o, change); err != nil {
+					return err
+				} else if ok {
 					optionValueCount++
 				}
 			}
@@ -175,13 +203,9 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 
 				for i := range updatedOpts {
 					if updatedOpts[i].Name == "host" {
-						/* XXX: thats very bad to re-parse something twice, but
-						* refactoring of this piece is not woth it right now. */
-						parsed, err := topology.ParseSingleHostSpec(updatedOpts[i].Arg)
-						if err != nil {
+						if ok, err := compareOpts(updatedOpts[i], change); err != nil {
 							return err
-						}
-						if parsed.Address == h.Address {
+						} else if ok {
 							updatedOpts[i].Arg = change.Arg
 						}
 					}
@@ -195,8 +219,8 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 				}
 
-				for i := len(updatedOpts) - 1; i >= 0; i-- {
-					if change.Name == updatedOpts[i].Name {
+				for i, updatedOpt := range slices.Backward(updatedOpts) {
+					if change.Name == updatedOpt.Name {
 						updatedOpts = slices.Delete(updatedOpts, i, i+1)
 					}
 				}
