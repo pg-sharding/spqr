@@ -5,7 +5,7 @@ REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 (1 row)
 
 DROP SHARD sh1;
- shard_id 
+ shard id 
 ----------
  sh1
 (1 row)
@@ -70,15 +70,15 @@ SHOW shards_extended;
 (4 rows)
 
 ALTER SHARD sh1 OPTIONS (SET HOST 'spqr_shard_1:6432 PRIORITY 5');
-         alter shard         
------------------------------
+                   alter shard                   
+-------------------------------------------------
  shard id -> sh1
  options  -> {host=spqr_shard_1:6432 PRIORITY 5}
 (2 rows)
 
 SHOW shards_extended;
- shard |                                                              options                                                              
-------+-----------------------------------------------------------------------------------------------------------------------------------
+ shard |                                                      options                                                      
+-------+-------------------------------------------------------------------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432 PRIORITY 5,host=spqr_shard_1_replica:6432,sslmode=allow,user=another_user,user=test_user}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
@@ -86,15 +86,15 @@ SHOW shards_extended;
 (4 rows)
 
 ALTER SHARD sh1 OPTIONS (SET HOST 'spqr_shard_1_replica:6432 PRIORITY 10');
-         alter shard          
-------------------------------
+                       alter shard                        
+----------------------------------------------------------
  shard id -> sh1
  options  -> {host=spqr_shard_1_replica:6432 PRIORITY 10}
 (2 rows)
 
 SHOW shards_extended;
- shard |                                                                 options                                                                 
-------+----------------------------------------------------------------------------------------------------------------------------------------
+ shard |                                                            options                                                            
+-------+-------------------------------------------------------------------------------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432 PRIORITY 5,host=spqr_shard_1_replica:6432 PRIORITY 10,sslmode=allow,user=another_user,user=test_user}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
@@ -102,15 +102,15 @@ SHOW shards_extended;
 (4 rows)
 
 ALTER SHARD sh1 OPTIONS (SET HOST 'spqr_shard_1:6432 PRIORITY -1');
-        alter shard         
-----------------------------
+                   alter shard                    
+--------------------------------------------------
  shard id -> sh1
  options  -> {host=spqr_shard_1:6432 PRIORITY -1}
 (2 rows)
 
 SHOW shards_extended;
- shard |                                                                 options                                                                 
-------+----------------------------------------------------------------------------------------------------------------------------------------
+ shard |                                                            options                                                            
+-------+-------------------------------------------------------------------------------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432 PRIORITY -1,host=spqr_shard_1_replica:6432 PRIORITY 10,sslmode=allow,user=another_user,user=test_user}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
@@ -121,15 +121,15 @@ ALTER SHARD sh1 OPTIONS (SET HOST 'unknown:6432 PRIORITY 1');
 ERROR:  SPQRV: malformed host specification
 DETAIL:  host unknown:6432 not found
 ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
-                 alter shard                  
-----------------------------------------------
+         alter shard         
+-----------------------------
  shard id -> sh1
  options  -> {host=spqr_shard_1_replica:6432}
 (2 rows)
 
 SHOW shards_extended;
- shard |                                                    options                                                    
-------+--------------------------------------------------------------------------------------------------------------
+ shard |                                                  options                                                   
+------+----------------------------------------------------------------------------------------------------------
  sh1   | {host=spqr_shard_1:6432 PRIORITY -1,sslmode=allow,user=another_user,user=test_user}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
@@ -144,9 +144,9 @@ ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'allow');
 (2 rows)
 
 SHOW shards_extended;
- shard |                          options                          
--------+-----------------------------------------------------------
- sh1   | {host=spqr_shard_1:6432,user=another_user,user=test_user}
+ shard |                                              options                                              
+------+----------------------------------------------------------------------------------------------------
+ sh1   | {host=spqr_shard_1:6432 PRIORITY -1,user=another_user,user=test_user}
  sh2   | {host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432}
  sh3   | {host=spqr_shard_3:6432,host=spqr_shard_3_replica:6432}
  sh4   | {host=spqr_shard_4:6432,host=spqr_shard_4_replica:6432}
@@ -206,4 +206,3 @@ UNREGISTER ROUTER ALL;
 -------------------
  router id -> *
 (1 row)
-

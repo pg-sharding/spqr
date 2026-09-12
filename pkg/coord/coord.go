@@ -128,7 +128,7 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 
 		if o1.Name != "host" {
 
-			return o1.Arg == o1.Arg, nil
+			return o1.Arg == o2.Arg, nil
 
 		} else {
 			/* XXX: thats very bad to re-parse something twice, but
@@ -229,7 +229,17 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
 				}
 
-				ind := slices.IndexFunc(updatedOpts, func(o topology.GenericOption) bool { return o.Name == change.Name && o.Arg == change.Arg })
+				ind := slices.IndexFunc(updatedOpts, func(o topology.GenericOption) bool {
+					ok, err := compareOpts(o, change)
+					if err != nil {
+						/* XXX: Should not happen */
+						return false
+					}
+					return ok
+				})
+				if ind == -1 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
+				}
 				updatedOpts = slices.Delete(updatedOpts, ind, ind+1)
 			}
 		}
