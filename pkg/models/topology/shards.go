@@ -111,7 +111,7 @@ func InitShardMapping(shardMapping map[string]*DataShard) {
 }
 
 type HostsInfo struct {
-	options []GenericOption
+	Options []GenericOption
 	Hosts   []config.Host
 }
 
@@ -139,19 +139,19 @@ func (ds *DataShard) Options() []GenericOption {
 	if hi == nil {
 		return nil
 	}
-	return hi.options
+	return hi.Options
 }
 
 func (ds *DataShard) SetOptions(options []GenericOption) {
 	/* XXX: refactor */
 	info := HostsInfo{
-		options: options,
+		Options: options,
 	}
 	ds.HostsInfo.Store(&info)
 	ds.tls.Store(nil)
 }
 
-func parseSingleHostSpec(rawHostSpec string) (config.Host, error) {
+func ParseSingleHostSpec(rawHostSpec string) (config.Host, error) {
 	spec, err := hostspec.Parse(rawHostSpec)
 	if err != nil {
 		return config.Host{}, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", rawHostSpec)
@@ -159,7 +159,7 @@ func parseSingleHostSpec(rawHostSpec string) (config.Host, error) {
 	return config.Host{Address: spec.Address, AZ: spec.AZ, Priority: spec.Priority}, nil
 }
 
-func (ds *DataShard) infos() *HostsInfo {
+func (ds *DataShard) Infos() *HostsInfo {
 	hi := ds.HostsInfo.Load()
 	/* XXX: hi == nil shouldn't happen */
 	if hi == nil {
@@ -169,10 +169,10 @@ func (ds *DataShard) infos() *HostsInfo {
 		/* There is a possibility of concurrent parsing, we don't care though */
 
 		/* XXX: we silently ignore errors here for backwards compatibility sake */
-		parsedHosts, _ := retrieveHostsFromOptions(hi.options)
+		parsedHosts, _ := retrieveHostsFromOptions(hi.Options)
 
 		info := &HostsInfo{
-			options: hi.options,
+			Options: hi.Options,
 			Hosts:   parsedHosts,
 		}
 
@@ -186,14 +186,14 @@ func (ds *DataShard) infos() *HostsInfo {
 }
 
 func (ds *DataShard) HostsAZ() []config.Host {
-	return ds.infos().Hosts
+	return ds.Infos().Hosts
 }
 
 func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, error) {
 	var hosts []config.Host
 	for _, opt := range options {
 		if opt.Name == "host" {
-			host, err := parseSingleHostSpec(opt.Arg)
+			host, err := ParseSingleHostSpec(opt.Arg)
 			if err != nil {
 				return nil, err
 			}
