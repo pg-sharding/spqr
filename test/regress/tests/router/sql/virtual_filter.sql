@@ -13,6 +13,9 @@ SELECT * FROM __spqr__show('key_ranges') WHERE shard_id = 'sh1';
 SELECT * FROM __spqr__show('key_ranges') WHERE shard_id = 'sh2' OR shard_id = 'sh3';
 SELECT key_range_id, shard_id, lower_bound FROM __spqr__show('key_ranges') WHERE lower_bound = '101';
 SELECT * FROM __spqr__show('key_ranges') WHERE locked = 'false';
+SELECT * FROM __spqr__show('key_ranges') WHERE shard_id <> 'sh1';
+SELECT * FROM __spqr__show('key_ranges') WHERE shard_id <> 'sh1' AND shard_id <> 'sh4';
+SELECT * FROM __spqr__show('key_ranges') WHERE shard_id != 'sh1';
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
