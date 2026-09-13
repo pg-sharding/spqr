@@ -37,6 +37,7 @@ test: subplan
 test: subselects
 test: virtual_show
 test: virtual
+test: virtual_filter
 test: auto_distribution
 test: distributed_relation
 test: spqrguard

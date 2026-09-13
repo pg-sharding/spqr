@@ -373,6 +373,11 @@ func (qr *ProxyQrouter) planQueryV1(
 			p = plan.Combine(p, tmp)
 		}
 
+		p, err = applyWhere(p, stmt.Where)
+		if err != nil {
+			return nil, err
+		}
+
 		return p, nil
 
 	case *lyx.Insert:
@@ -762,6 +767,94 @@ func (qr *ProxyQrouter) CatalogDispatchPlan(seed int) *plan.ShardDispatchPlan {
 	}
 }
 
+func applyWhere(p plan.Plan, where lyx.Node) (plan.Plan, error) {
+	if where == nil {
+		return p, nil
+	}
+	if vp, ok := p.(*plan.VirtualPlan); ok {
+		var err error
+		vp.TTS, err = engine.FilterRows(vp.TTS, where)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+func (qr *ProxyQrouter) routeSelect(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	qs *lyx.Select) (plan.Plan, error) {
+
+	/* Special case for `select __spqr__show('obj')`, or other purely virtual functions */
+
+	if len(qs.FromClause) == 0 {
+		if len(qs.TargetList) == 1 {
+
+			p, err := planner.RetrieveTuples(
+				ctx,
+				rm,
+				qr,
+				qs.TargetList[0],
+				nil)
+			if err != nil {
+				return nil, err
+			}
+
+			if p != nil {
+				return applyWhere(p, qs.Where)
+			}
+		}
+	} else if len(qs.FromClause) == 1 {
+		/* Special case for `select * from __spqr__show('obj')` */
+
+		switch q := qs.FromClause[0].(type) {
+		case *lyx.SubSelect:
+			p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg, engine.ExtractProjectionColumns(qs.TargetList))
+			if err != nil {
+				return nil, err
+			}
+			if p != nil {
+				return applyWhere(p, qs.Where)
+			}
+		default:
+			break
+		}
+	}
+
+	/*
+	 *  Sometimes we have problems with some cases. For example, if a client
+	 *  tries to access information schema AND other relation in same TX.
+	 *  We are unable to serve this properly.
+	 *  But if this is a catalog-only query, we can route it to any shard.
+	 */
+	hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
+
+	for rqfn := range rm.Rels {
+		if strings.HasPrefix(strings.ToLower(rqfn.RelationName), "pg_") {
+			anyCatalog = true
+		} else {
+			onlyCatalog = false
+		}
+		if rqfn.SchemaName == "information_schema" {
+			hasInfSchema = true
+		} else {
+			hasOtherSchema = true
+		}
+	}
+
+	if onlyCatalog && anyCatalog {
+		return qr.CatalogDispatchPlan(rm.SPH.GetCatalogSeed()), nil
+	}
+	if hasInfSchema && hasOtherSchema {
+		return nil, rerrors.ErrInformationSchemaCombinedQuery
+	}
+	if hasInfSchema {
+		return &plan.RandomDispatchPlan{}, nil
+	}
+
+	return qr.planQueryV1(ctx, rm, qs)
+}
+
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -777,9 +870,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	/* TODO: delay this until step 2. */
 
-	var pl plan.Plan
-	pl = nil
-
 	/*
 	 * Step 1: traverse query tree and deparse mapping from
 	 * columns to their values (either constant or expression).
@@ -792,105 +882,22 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	/* TDB: comments? */
 	case *lyx.Insert:
 
-		rs, err := qr.planQueryV1(ctx, rm, stmt)
-		if err != nil {
-			return nil, err
-		}
-
-		pl = plan.Combine(pl, rs)
+		return qr.planQueryV1(ctx, rm, stmt)
 
 	case *lyx.Select:
 
-		/* Special case for `select __spqr__show('obj')`, or other purely virtual functions */
-
-		if len(qs.FromClause) == 0 {
-			if len(qs.TargetList) == 1 {
-
-				p, err := planner.RetrieveTuples(
-					ctx,
-					rm,
-					qr,
-					qs.TargetList[0],
-					nil)
-				if err != nil {
-					return nil, err
-				}
-
-				if p != nil {
-					return p, nil
-				}
-			}
-		} else if len(qs.FromClause) == 1 {
-			/* Special case for `select * from __spqr__show('obj')` */
-
-			switch q := qs.FromClause[0].(type) {
-			case *lyx.SubSelect:
-				p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg, engine.ExtractProjectionColumns(qs.TargetList))
-				if err != nil {
-					return nil, err
-				}
-				if p != nil {
-					return p, nil
-				}
-			default:
-				break
-			}
-		}
-
-		/*
-		 *  Sometimes we have problems with some cases. For example, if a client
-		 *  tries to access information schema AND other relation in same TX.
-		 *  We are unable to serve this properly.
-		 *  But if this is a catalog-only query, we can route it to any shard.
-		 */
-		hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
-
-		for rqfn := range rm.Rels {
-			if strings.HasPrefix(strings.ToLower(rqfn.RelationName), "pg_") {
-				anyCatalog = true
-			} else {
-				onlyCatalog = false
-			}
-			if rqfn.SchemaName == "information_schema" {
-				hasInfSchema = true
-			} else {
-				hasOtherSchema = true
-			}
-		}
-
-		if onlyCatalog && anyCatalog {
-			return qr.CatalogDispatchPlan(rm.SPH.GetCatalogSeed()), nil
-		}
-		if hasInfSchema && hasOtherSchema {
-			return nil, rerrors.ErrInformationSchemaCombinedQuery
-		}
-		if hasInfSchema {
-			return &plan.RandomDispatchPlan{}, nil
-		}
-
-		p, err := qr.planQueryV1(ctx, rm, stmt)
-
-		if err != nil {
-			return nil, err
-		}
-
-		pl = plan.Combine(pl, p)
+		return qr.routeSelect(ctx, rm, qs)
 
 	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
-		rs, err := qr.planQueryV1(ctx, rm, stmt)
-		if err != nil {
-			return nil, err
-		}
-		pl = plan.Combine(pl, rs)
+		return qr.planQueryV1(ctx, rm, stmt)
+
 	case *lyx.ExplainStmt:
 		return qr.RouteWithRules(ctx, rm, qs.Query)
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
-
-	return pl, nil
 }
 
 func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
@@ -1523,6 +1530,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	if guc.Get(rm.SPH) {
+
 		p, err = qr.addSortToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err
