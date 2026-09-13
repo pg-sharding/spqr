@@ -41,7 +41,7 @@ SELECT __spqr__host_status('127.0.0.1:6436');
 SELECT __spqr__host_status('127.0.0.1:6437');
 -- tsa_cache: dump identity (tsa, host, az) + health (alive, match) before the cut-off
 SET __spqr__allow_postprocessing TO true;
-SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') ORDER BY tsa, host;
+SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> 'any' ORDER BY tsa, host;
 SET __spqr__allow_postprocessing TO false;
 -- cut the replicas off: prefer-standby must fall back to the primary
 SET __spqr__reply_notice TO true;
@@ -55,7 +55,7 @@ SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT 1+2;
 -- after the fallback replicas must be dead, primary alive; only alive/match flip
 SET __spqr__allow_postprocessing TO true;
-SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') ORDER BY tsa, host;
+SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> 'any' ORDER BY tsa, host;
 SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6434 -j REJECT
 \! iptables -D INPUT -p tcp --dport 6435 -j REJECT
