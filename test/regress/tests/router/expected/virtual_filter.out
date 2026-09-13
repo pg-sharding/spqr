@@ -58,6 +58,29 @@ SELECT * FROM __spqr__show('key_ranges') WHERE locked = 'false';
  k4           | sh4      | ds1             | 301         | false
 (4 rows)
 
+SELECT * FROM __spqr__show('key_ranges') WHERE shard_id <> 'sh1';
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ k2           | sh2      | ds1             | 101         | false
+ k3           | sh3      | ds1             | 201         | false
+ k4           | sh4      | ds1             | 301         | false
+(3 rows)
+
+SELECT * FROM __spqr__show('key_ranges') WHERE shard_id <> 'sh1' AND shard_id <> 'sh4';
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ k2           | sh2      | ds1             | 101         | false
+ k3           | sh3      | ds1             | 201         | false
+(2 rows)
+
+SELECT * FROM __spqr__show('key_ranges') WHERE shard_id != 'sh1';
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ k2           | sh2      | ds1             | 101         | false
+ k3           | sh3      | ds1             | 201         | false
+ k4           | sh4      | ds1             | 301         | false
+(3 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

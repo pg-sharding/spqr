@@ -68,6 +68,21 @@ func MatchRow(row [][]byte, nameToIndex map[string]int, condition lyx.Node) (boo
 			}
 			/*XXX: use operator here */
 			return string(row[i]) == cv.Value, nil
+		case "<>", "!=":
+			cr, ok := where.Left.(*lyx.ColumnRef)
+			if !ok {
+				return true, spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "left operand is not a column ref")
+			}
+			cv, ok := where.Right.(*lyx.AExprSConst)
+			if !ok {
+				return true, spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "right operand is not a string const")
+			}
+			i, ok := nameToIndex[cr.ColName]
+			if !ok {
+				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s does not exist", cr.ColName)
+			}
+			/*XXX: use operator here */
+			return string(row[i]) != cv.Value, nil
 		default:
 			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported logic operation: %s", where.Op)
 		}
