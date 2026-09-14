@@ -13,6 +13,8 @@ time_quantiles:
 world_shard_fallback: true
 show_notice_messages: false
 allow_two_phase_commit: true
+availability_zone: local
+prefer_same_availability_zone: true
 notice_message_format: "{shard}"
 dbpool_tsa_recheck_period: 250ms
 dbpool_dead_check_interval: 500ms
@@ -40,11 +42,11 @@ shards:
     pwd: 12345678
     type: DATA
     hosts:
-      - '127.0.0.1:6433'
-      - '127.0.0.1:6434'
-      - '127.0.0.1:6435'
-      - '127.0.0.1:6436'
-      - '127.0.0.1:6437'
+      - '127.0.0.1:6433:far'
+      - '127.0.0.1:6434:local'
+      - '127.0.0.1:6435:far'
+      - '127.0.0.1:6436:far'
+      - '127.0.0.1:6437:far'
 
 backend_rules:
   - db: regress
