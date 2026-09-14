@@ -47,7 +47,24 @@ SELECT 1+2;
 RESET __spqr__execute_on;
 SELECT __spqr__console_execute('ALTER SHARD sh1 OPTIONS (SET HOST ''127.0.0.1:6437:far'')') /*__spqr__preferred_engine: v2 */;
 SET __spqr__execute_on TO sh1;
-
+-- cut network except 6434 and 6435
+\! iptables -A INPUT -p tcp --dport 6433 -j REJECT
+\! iptables -A INPUT -p tcp --dport 6436 -j REJECT
+\! iptables -A INPUT -p tcp --dport 6437 -j REJECT
+\! sleep 2
+-- prefer-standby picks the local-AZ replica first
+SELECT 1+2;
+-- disabling 6434 forces the route to the next standby
+RESET __spqr__execute_on;
+SELECT __spqr__console_execute('ALTER SHARD sh1 OPTIONS (SET HOST ''127.0.0.1:6434:local PRIORITY -1'')') /*__spqr__preferred_engine: v2 */;
+SET __spqr__execute_on TO sh1;
+SELECT 1+2;
+RESET __spqr__execute_on;
+SELECT __spqr__console_execute('ALTER SHARD sh1 OPTIONS (SET HOST ''127.0.0.1:6434:local'')') /*__spqr__preferred_engine: v2 */;
+SET __spqr__execute_on TO sh1;
+\! iptables -D INPUT -p tcp --dport 6433 -j REJECT
+\! iptables -D INPUT -p tcp --dport 6436 -j REJECT
+\! iptables -D INPUT -p tcp --dport 6437 -j REJECT
 RESET __spqr__target_session_attrs;
 RESET __spqr__notice_message_format;
 RESET __spqr__execute_on;
