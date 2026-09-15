@@ -1,9 +1,7 @@
 \c spqr-console
-
 -- pullup sublist in simple single level select:
 -- INSERT ... SELECT with nested subselects must route by the pulled-up
 -- target list value instead of failing / misrouting
-
 CREATE DISTRIBUTION d (int);
    add distribution   
 ----------------------
@@ -64,6 +62,8 @@ NOTICE: send query to shard(s) : sh2
 DROP TABLE t_city;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DELETE FROM spqr_metadata.spqr_distributed_relations /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 NOTICE: send query to shard(s) : sh1
  reloid 
@@ -76,3 +76,4 @@ DROP DISTRIBUTION ALL CASCADE;
 -----------------
  d
 (1 row)
+
