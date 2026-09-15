@@ -290,17 +290,8 @@ func (cl *SimpleSessionParamHandler) GetTsa() tsa.TSA {
 }
 
 func (cl *SimpleSessionParamHandler) SetTsa(level string, s string) {
-	switch s {
-	case config.TargetSessionAttrsAny,
-		config.TargetSessionAttrsDClocal,
-		config.TargetSessionAttrsPS,
-		config.TargetSessionAttrsPR,
-		config.TargetSessionAttrsRW,
-		config.TargetSessionAttrsSmartRW,
-		config.TargetSessionAttrsRO:
-		cl.RecordVirtualParam(level, SPQR_TARGET_SESSION_ATTRS, s)
-	default:
-		// XXX: else error out!
+	if guc, err := FindStrGUC(SPQR_TARGET_SESSION_ATTRS); err == nil {
+		_ = guc.Set(cl, level, s)
 	}
 }
 
@@ -638,6 +629,29 @@ var StrGUCs = []*StrGUCimpl{
 			return config.RouterConfig().NoticeMessageFormat
 		},
 	},
+	{
+		n:         SPQR_TARGET_SESSION_ATTRS,
+		shortName: "target session attrs",
+		initBoot: func() string {
+			return config.RouterConfig().Qr.DefaultTSA
+		},
+		assign: func(sph SessionParamsHolder, level string, val string) error {
+			switch val {
+			case config.TargetSessionAttrsAny,
+				config.TargetSessionAttrsDClocal,
+				config.TargetSessionAttrsPS,
+				config.TargetSessionAttrsPR,
+				config.TargetSessionAttrsRW,
+				config.TargetSessionAttrsSmartRW,
+				config.TargetSessionAttrsRO:
+				sph.RecordVirtualParam(level, SPQR_TARGET_SESSION_ATTRS, val)
+			}
+			return nil
+		},
+		show: func(sph SessionParamsHolder) (string, error) {
+			return string(sph.GetTsa()), nil
+		},
+	},
 }
 
 func (cl *SimpleSessionParamHandler) FindBoolGUC(n string) (BoolGUC, error) {
@@ -658,6 +672,11 @@ func FindBoolGUC(n string) (*BoolGUCimpl, error) {
 }
 
 func FindStrGUC(n string) (*StrGUCimpl, error) {
+	switch n {
+	case SPQR_TARGET_SESSION_ATTRS_ALIAS,
+		SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+		n = SPQR_TARGET_SESSION_ATTRS
+	}
 	for _, guc := range StrGUCs {
 		if guc.n == n {
 			return guc, nil
