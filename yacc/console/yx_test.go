@@ -2365,8 +2365,13 @@ func TestDropTaskGroup(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "DROP MOVE TASK GROUP",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `group`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
 		},
 		{
 			query: "DROP MOVE TASK mt_id",

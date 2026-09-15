@@ -199,7 +199,7 @@ func randomHex(n int) (string, error) {
 
 %type<integer> opt_show_kind
 
-%type<str> any_val any_id shard_id opt_any_id
+%type<str> any_val any_id shard_id opt_any_id reserved_keyword
 
 %type<uinteger> any_uint
 // CMDS
@@ -558,10 +558,376 @@ any_id: IDENT
 	} | SCONST
 	{
 		$$ = string($1)
+	} | reserved_keyword
+	{
+		$$ = $1
+	}
+
+reserved_keyword:
+	SHOW
+	{
+		$$ = $1
+	} | KILL
+	{
+		$$ = $1
+	} | HELP
+	{
+		$$ = $1
+	} | WHERE
+	{
+		$$ = $1
+	} | OR
+	{
+		$$ = $1
+	} | AND
+	{
+		$$ = $1
+	} | NOT
+	{
+		$$ = $1
+	} | SHUTDOWN
+	{
+		$$ = $1
+	} | LISTEN
+	{
+		$$ = $1
+	} | REGISTER
+	{
+		$$ = $1
+	} | UNREGISTER
+	{
+		$$ = $1
+	} | ROUTER
+	{
+		$$ = $1
+	} | ROUTE
+	{
+		$$ = $1
+	} | CREATE
+	{
+		$$ = $1
+	} | ADD
+	{
+		$$ = $1
+	} | DROP
+	{
+		$$ = $1
+	} | LOCK
+	{
+		$$ = $1
+	} | UNLOCK
+	{
+		$$ = $1
+	} | SPLIT
+	{
+		$$ = $1
+	} | MOVE
+	{
+		$$ = $1
+	} | SET
+	{
+		$$ = $1
+	} | CASCADE
+	{
+		$$ = $1
+	} | ATTACH
+	{
+		$$ = $1
+	} | ALTER
+	{
+		$$ = $1
+	} | DETACH
+	{
+		$$ = $1
+	} | REDISTRIBUTE
+	{
+		$$ = $1
+	} | REFERENCE
+	{
+		$$ = $1
+	} | CHECK
+	{
+		$$ = $1
+	} | APPLY
+	{
+		$$ = $1
+	} | UNIQUE
+	{
+		$$ = $1
+	} | RENAME
+	{
+		$$ = $1
+	} | CALL
+	{
+		$$ = $1
+	} | COLUMN
+	{
+		$$ = $1
+	} | TABLE
+	{
+		$$ = $1
+	} | TABLES
+	{
+		$$ = $1
+	} | RELATIONS
+	{
+		$$ = $1
+	} | BACKENDS
+	{
+		$$ = $1
+	} | HASH
+	{
+		$$ = $1
+	} | FUNCTION
+	{
+		$$ = $1
+	} | KEY
+	{
+		$$ = $1
+	} | RANGE
+	{
+		$$ = $1
+	} | RANGES
+	{
+		$$ = $1
+	} | USING
+	{
+		$$ = $1
+	} | DISTRIBUTION
+	{
+		$$ = $1
+	} | RELATION
+	{
+		$$ = $1
+	} | REPLICATED
+	{
+		$$ = $1
+	} | AUTO
+	{
+		$$ = $1
+	} | INCREMENT
+	{
+		$$ = $1
+	} | SEQUENCE
+	{
+		$$ = $1
+	} | SCHEMA
+	{
+		$$ = $1
+	} | INDEX
+	{
+		$$ = $1
+	} | STORAGE
+	{
+		$$ = $1
+	} | SHARDS
+	{
+		$$ = $1
+	} | SHARD
+	{
+		$$ = $1
+	} | COLUMNS
+	{
+		$$ = $1
+	} | HOSTS
+	{
+		$$ = $1
+	} | BY
+	{
+		$$ = $1
+	} | FROM
+	{
+		$$ = $1
+	} | TO
+	{
+		$$ = $1
+	} | WITH
+	{
+		$$ = $1
+	} | UNITE
+	{
+		$$ = $1
+	} | ADDRESS
+	{
+		$$ = $1
+	} | FOR
+	{
+		$$ = $1
+	} | BETWEEN
+	{
+		$$ = $1
+	} | CLIENT
+	{
+		$$ = $1
+	} | BATCH
+	{
+		$$ = $1
+	} | SIZE
+	{
+		$$ = $1
+	} | NOWAIT
+	{
+		$$ = $1
+	} | INVALIDATE
+	{
+		$$ = $1
+	} | CACHE
+	{
+		$$ = $1
+	} | SYNC
+	{
+		$$ = $1
+	} | RETRY
+	{
+		$$ = $1
+	} | DISTRIBUTED
+	{
+		$$ = $1
+	} | IN
+	{
+		$$ = $1
+	} | ON
+	{
+		$$ = $1
+	} | DEFAULT
+	{
+		$$ = $1
+	} | STALE
+	{
+		$$ = $1
+	} | CLIENTS
+	{
+		$$ = $1
+	} | OPTIONS
+	{
+		$$ = $1
+	} | FORCE
+	{
+		$$ = $1
+	} | META
+	{
+		$$ = $1
+	} | ONLY
+	{
+		$$ = $1
+	} | BEGIN
+	{
+		$$ = $1
+	} | COMMIT
+	{
+		$$ = $1
+	} | ROLLBACK
+	{
+		$$ = $1
 	} | MIGRATION
 	{
 		$$ = $1
 	} | RESET
+	{
+		$$ = $1
+	} | IF
+	{
+		$$ = $1
+	} | EXISTS
+	{
+		$$ = $1
+	} | IDENTITY
+	{
+		$$ = $1
+	} | MURMUR
+	{
+		$$ = $1
+	} | CITY
+	{
+		$$ = $1
+	} | START
+	{
+		$$ = $1
+	} | STOP
+	{
+		$$ = $1
+	} | TRACE
+	{
+		$$ = $1
+	} | MESSAGES
+	{
+		$$ = $1
+	} | IMMEDIATE
+	{
+		$$ = $1
+	} | TASK
+	{
+		$$ = $1
+	} | GROUP
+	{
+		$$ = $1
+	} | SYSTEM
+	{
+		$$ = $1
+	} | RELOAD
+	{
+		$$ = $1
+	} | RESTART
+	{
+		$$ = $1
+	} | REBOOTSTRAP
+	{
+		$$ = $1
+	} | ROTATE
+	{
+		$$ = $1
+	} | SECONDS
+	{
+		$$ = $1
+	} | WAIT
+	{
+		$$ = $1
+	} | PANIC
+	{
+		$$ = $1
+	} | SLEEP
+	{
+		$$ = $1
+	} | GRANT
+	{
+		$$ = $1
+	} | LOCAL
+	{
+		$$ = $1
+	} | GLOBAL
+	{
+		$$ = $1
+	} | VARCHAR
+	{
+		$$ = $1
+	} | INTEGER
+	{
+		$$ = $1
+	} | INT
+	{
+		$$ = $1
+	} | TYPES
+	{
+		$$ = $1
+	} | UUID
+	{
+		$$ = $1
+	} | TYPE
+	{
+		$$ = $1
+	} | CONTROL
+	{
+		$$ = $1
+	} | POINT
+	{
+		$$ = $1
+	} | ASC
+	{
+		$$ = $1
+	} | DESC
+	{
+		$$ = $1
+	} | ORDER
 	{
 		$$ = $1
 	}
@@ -1050,13 +1416,13 @@ privilege:
 		{
 			$$ = "create"
 		} | ALTER SYSTEM
-			{
-				$$ = "alter system";
-			}
+		{
+			$$ = "alter system";
+		}
 		| any_id
-			{
-				$$ = $1;
-			}
+		{
+			$$ = $1;
+		}
 		;
 
 
