@@ -318,6 +318,14 @@ type System struct {
 	SetValue    string
 }
 
+type AlterSystemMigration struct {
+	Name  string
+	Value string
+	Reset bool
+}
+
+func (*AlterSystemMigration) iStatement() {}
+
 type GrantStmt struct {
 	IsGrant bool
 
@@ -564,6 +572,7 @@ const (
 	TwoPhaseTXExtStr      = "two_phase_tx_ext"
 	TwoPhaseTXStorageStr  = "dcs_storage"
 	FileSettingsStr       = "file_settings"
+	MigrationsStr         = "migrations"
 	TaskGroupWorkersStr   = "task_group_workers"
 	ShardsExtendedStr     = "shards_extended"
 	MeanKRLockTimeStr     = "mean_key_range_lock_time"

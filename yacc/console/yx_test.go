@@ -1265,6 +1265,22 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "ALTER SYSTEM MIGRATION SET init = abc123;",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "init", Value: "abc123"}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION SET 'MixedCase' TO 'sha256:abc';",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "MixedCase", Value: "sha256:abc"}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION RESET init;",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "init", Reset: true}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION RESET 'MixedCase'",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "MixedCase", Reset: true}},
+		},
+		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
@@ -2349,8 +2365,13 @@ func TestDropTaskGroup(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "DROP MOVE TASK GROUP",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `group`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
 		},
 		{
 			query: "DROP MOVE TASK mt_id",
