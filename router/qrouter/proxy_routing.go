@@ -85,6 +85,46 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
+func (qr *ProxyQrouter) pullupSublist(s *lyx.Select) ([][]lyx.Node, error) {
+
+	tlist := [][]lyx.Node{s.TargetList}
+
+	if len(s.FromClause) != 1 {
+		return tlist, nil
+	}
+
+	replaceIndx := -1
+	for i, n := range s.TargetList {
+		switch n.(type) {
+		case *lyx.AExprEmpty:
+			if replaceIndx != -1 {
+				return tlist, nil
+			}
+			replaceIndx = i
+		}
+	}
+
+	if replaceIndx == -1 {
+		return tlist, nil
+	}
+
+	switch sRv := s.FromClause[0].(type) {
+	case *lyx.SubSelect:
+		switch ss := (sRv.Arg).(type) {
+		case *lyx.Select:
+			tl, err := qr.pullupSublist(ss)
+			if err != nil {
+				return nil, err
+			}
+			tlist = slices.Replace(tlist, replaceIndx, replaceIndx+1, tl...)
+		}
+
+		return tlist, nil
+	default:
+		return tlist, nil
+	}
+}
+
 func (qr *ProxyQrouter) planInsertV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -103,13 +143,13 @@ func (qr *ProxyQrouter) planInsertV1(
 
 	switch subS := selectStmt.(type) {
 	case *lyx.Select:
-		spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
 
 		p, _ = qr.planQueryV1(ctx, rm, subS)
 
 		if len(subS.FromClause) == 1 {
 
 			switch sRv := subS.FromClause[0].(type) {
+
 			case *lyx.RangeVar:
 
 				var ds *distributions.Distribution
@@ -189,8 +229,12 @@ func (qr *ProxyQrouter) planInsertV1(
 		/* try target list, check if
 		* this target list has sharding column for some insert (...) */
 
-		routingList = [][]lyx.Node{subS.TargetList}
 		/* record all values from tl */
+
+		routingList, err = qr.pullupSublist(subS)
+		if err != nil {
+			return nil, err
+		}
 
 		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
@@ -247,6 +291,7 @@ func (qr *ProxyQrouter) planInsertV1(
 			if err != nil {
 				return nil, err
 			}
+
 			for _, sh := range shs {
 				if sh.Name != shs[0].Name {
 					return nil, rerrors.ErrComplexQuery
