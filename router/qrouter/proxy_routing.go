@@ -85,16 +85,16 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) pullupSublist(s *lyx.Select) ([][]lyx.Node, error) {
+func (qr *ProxyQrouter) pullupSublist(s *lyx.Select) ([]lyx.Node, error) {
 
-	tlist := [][]lyx.Node{s.TargetList}
+	tlist := s.TargetList
 
 	if len(s.FromClause) != 1 {
 		return tlist, nil
 	}
 
 	replaceIndx := -1
-	for i, n := range s.TargetList {
+	for i, n := range tlist {
 		switch n.(type) {
 		case *lyx.AExprEmpty:
 			if replaceIndx != -1 {
@@ -102,10 +102,6 @@ func (qr *ProxyQrouter) pullupSublist(s *lyx.Select) ([][]lyx.Node, error) {
 			}
 			replaceIndx = i
 		}
-	}
-
-	if replaceIndx == -1 {
-		return tlist, nil
 	}
 
 	switch sRv := s.FromClause[0].(type) {
@@ -116,7 +112,30 @@ func (qr *ProxyQrouter) pullupSublist(s *lyx.Select) ([][]lyx.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			tlist = slices.Replace(tlist, replaceIndx, replaceIndx+1, tl...)
+
+			if replaceIndx != -1 {
+				tlist = slices.Replace(tlist, replaceIndx, replaceIndx+1, tl...)
+			}
+
+			offsets := map[string]int{}
+			for i, tle := range tl {
+				switch t := tle.(type) {
+				case *lyx.ResTarget:
+					offsets[t.Name] = i
+				}
+			}
+			for i, tle := range tlist {
+				switch t := tle.(type) {
+				case *lyx.ColumnRef:
+					off, ok := offsets[t.ColName]
+					if !ok {
+						return tlist, nil
+					}
+					tlist[i] = tl[off]
+				}
+			}
+
+			return tlist, nil
 		}
 
 		return tlist, nil
@@ -231,10 +250,11 @@ func (qr *ProxyQrouter) planInsertV1(
 
 		/* record all values from tl */
 
-		routingList, err = qr.pullupSublist(subS)
+		pulledTList, err := qr.pullupSublist(subS)
 		if err != nil {
 			return nil, err
 		}
+		routingList = [][]lyx.Node{pulledTList}
 
 		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
