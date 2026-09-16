@@ -90,43 +90,36 @@ type RouterConnector interface {
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
-func distributionExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
-	dists, err := mngr.ListDistributions(ctx)
-	if err != nil {
-		return false, err
-	}
-	for _, distribution := range dists {
-		if distribution.ID() == id {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
-	keyRanges, err := mngr.ListAllKeyRanges(ctx)
+	_, err := mngr.GetKeyRange(ctx, id)
 	if err != nil {
+		if keyRangeDoesNotExist(err) {
+			return false, nil
+		}
 		return false, err
 	}
-	for _, keyRange := range keyRanges {
-		if keyRange.ID == id {
-			return true, nil
-		}
-	}
-	return false, nil
+	return true, nil
 }
 
-func referenceRelationExists(ctx context.Context, mngr EntityMgr, relationName string) (bool, error) {
-	relations, err := mngr.ListReferenceRelations(ctx)
-	if err != nil {
-		return false, err
+func objectDoesNotExist(err error) bool {
+	var spqrErr *spqrerror.SpqrError
+	return errors.As(err, &spqrErr) && spqrErr.ErrorCode == spqrerror.SPQR_OBJECT_NOT_EXIST
+}
+
+func keyRangeDoesNotExist(err error) bool {
+	if objectDoesNotExist(err) {
+		return true
 	}
-	for _, relation := range relations {
-		if relation.RelationName.RelationName == relationName {
-			return true, nil
-		}
+
+	// Key-range backends currently use the generic key-range error code for a
+	// missing object, so preserve their specific messages without hiding other
+	// storage errors reported under the same code.
+	var spqrErr *spqrerror.SpqrError
+	if !errors.As(err, &spqrErr) || spqrErr.ErrorCode != spqrerror.SPQR_KEYRANGE_ERROR {
+		return false
 	}
-	return false, nil
+	return strings.HasPrefix(err.Error(), "no key range found at ") ||
+		strings.HasPrefix(err.Error(), "there is no key range ")
 }
 
 // TODO : unit tests
@@ -204,11 +197,10 @@ func processDrop(ctx context.Context,
 		}
 
 		if ifExists {
-			exists, err := referenceRelationExists(ctx, mngr, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
-			if !exists {
+			if _, err := mngr.GetReferenceRelation(ctx, relationFQN); err != nil {
+				if !objectDoesNotExist(err) {
+					return nil, err
+				}
 				return &tupleslot.TupleTableSlot{
 					Desc: engine.GetVPHeader("relation_name"),
 					Raw:  [][][]byte{{[]byte(stmt.ID)}},
@@ -220,14 +212,17 @@ func processDrop(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		for _, seq := range seqs {
-			if err := mngr.DropSequence(ctx, seq, true); err != nil {
-				return nil, err
-			}
-		}
 
 		if err := mngr.DropReferenceRelation(ctx, relationFQN); err != nil {
-			return nil, err
+			if !ifExists || !objectDoesNotExist(err) {
+				return nil, err
+			}
+		} else {
+			for _, seq := range seqs {
+				if err := mngr.DropSequence(ctx, seq, true); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -241,14 +236,15 @@ func processDrop(ctx context.Context,
 		return tts, nil
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
+		var ds *distributions.Distribution
 		var err error
 
-		if ifExists && stmt.ID != "*" {
-			exists, err := distributionExists(ctx, mngr, stmt.ID)
+		if stmt.ID != "*" {
+			ds, err = mngr.GetDistribution(ctx, stmt.ID)
 			if err != nil {
-				return nil, err
-			}
-			if !exists {
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
 				return &tupleslot.TupleTableSlot{
 					Desc: engine.GetVPHeader("distribution_id"),
 					Raw:  [][][]byte{{[]byte(stmt.ID)}},
@@ -283,10 +279,6 @@ func processDrop(ctx context.Context,
 		}
 
 		if stmt.ID != "*" {
-			ds, err := mngr.GetDistribution(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
 			if len(ds.ListRelations()) != 0 && !isCascade {
 				return nil, spqrerror.Newf(
 					spqrerror.SPQR_INVALID_REQUEST,
@@ -309,7 +301,9 @@ func processDrop(ctx context.Context,
 			}
 
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
-				return nil, err
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
 			}
 
 			tts := &tupleslot.TupleTableSlot{
@@ -917,20 +911,12 @@ func processAlterDistribution(ctx context.Context,
 		return tts, nil
 	case *spqrparser.DetachRelation:
 		if stmt.IfExists {
-			exists, err := distributionExists(ctx, mngr, dsId)
+			distribution, err := mngr.GetDistribution(ctx, dsId)
 			if err != nil {
 				return nil, err
 			}
 
-			attached := false
-			if exists {
-				distribution, err := mngr.GetDistribution(ctx, dsId)
-				if err != nil {
-					return nil, err
-				}
-				attached = distribution.GetRelation(stmt.RelationName) != nil
-			}
-			if !attached {
+			if distribution.GetRelation(stmt.RelationName) == nil {
 				tts := &tupleslot.TupleTableSlot{
 					Desc: engine.GetVPHeader("detach relation"),
 				}
