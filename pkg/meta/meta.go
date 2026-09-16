@@ -90,14 +90,54 @@ type RouterConnector interface {
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
+func distributionExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	dists, err := mngr.ListDistributions(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, distribution := range dists {
+		if distribution.ID() == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	keyRanges, err := mngr.ListAllKeyRanges(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, keyRange := range keyRanges {
+		if keyRange.ID == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func referenceRelationExists(ctx context.Context, mngr EntityMgr, relationName string) (bool, error) {
+	relations, err := mngr.ListReferenceRelations(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, relation := range relations {
+		if relation.RelationName.RelationName == relationName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // TODO : unit tests
 
 // processDrop processes the drop command based on the type of statement provided.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - dstmt (spqrparser.Statement): The statement to be processed.
+// - dstmt (spqrparser.DropSelector): The statement to be processed.
 // - isCascade (bool): Indicates whether cascade is enabled.
+// - ifExists (bool): Indicates whether a missing object should be ignored.
 // - mngr (EntityMgr): The entity manager handling the drop operation.
 //
 // Returns:
@@ -105,7 +145,7 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
 	dstmt spqrparser.DropSelector,
-	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	isCascade, ifExists bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -130,6 +170,19 @@ func processDrop(ctx context.Context,
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
+			if ifExists {
+				exists, err := keyRangeExists(ctx, mngr, stmt.KeyRangeID)
+				if err != nil {
+					return nil, err
+				}
+				if !exists {
+					return &tupleslot.TupleTableSlot{
+						Desc: engine.GetVPHeader("key_range_id"),
+						Raw:  [][][]byte{{[]byte(stmt.KeyRangeID)}},
+					}, nil
+				}
+			}
+
 			tranMngr := NewTranEntityManager(mngr)
 			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
 			if err != nil {
@@ -148,6 +201,19 @@ func processDrop(ctx context.Context,
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relationFQN := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
+		}
+
+		if ifExists {
+			exists, err := referenceRelationExists(ctx, mngr, stmt.ID)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("relation_name"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
 		}
 
 		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
@@ -176,6 +242,19 @@ func processDrop(ctx context.Context,
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
 		var err error
+
+		if ifExists && stmt.ID != "*" {
+			exists, err := distributionExists(ctx, mngr, stmt.ID)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("distribution_id"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
+		}
 
 		if stmt.ID == "*" {
 
@@ -837,6 +916,30 @@ func processAlterDistribution(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.DetachRelation:
+		if stmt.IfExists {
+			exists, err := distributionExists(ctx, mngr, dsId)
+			if err != nil {
+				return nil, err
+			}
+
+			attached := false
+			if exists {
+				distribution, err := mngr.GetDistribution(ctx, dsId)
+				if err != nil {
+					return nil, err
+				}
+				attached = distribution.GetRelation(stmt.RelationName) != nil
+			}
+			if !attached {
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("detach relation"),
+				}
+				tts.WriteDataRow(fmt.Sprintf("relation name   -> %s", stmt.RelationName.String()))
+				tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", dsId))
+				return tts, nil
+			}
+		}
+
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return nil, err
 		}
@@ -1132,7 +1235,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, stmt.IfExists, mgr)
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
