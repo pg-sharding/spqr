@@ -1,6 +1,6 @@
 \c spqr-console
 -- insert with aliased target list entries in select must route by
--- underlying constant value instead of failing to build insert plan
+-- the underlying constant value instead of failing to build insert plan
 CREATE DISTRIBUTION d (int);
    add distribution   
 ----------------------
