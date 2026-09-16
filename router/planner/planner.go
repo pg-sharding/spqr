@@ -261,6 +261,19 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
+func unwrapRoutingTupleValue(colVal lyx.Node) (lyx.Node, bool) {
+	for {
+		switch tmp := colVal.(type) {
+		case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+			return colVal, true
+		case *lyx.ResTarget:
+			colVal = tmp.Value
+		default:
+			return nil, false
+		}
+	}
+}
+
 func TuplePlansByDistributionEntry(
 	ctx context.Context,
 	routingList [][]lyx.Node,
@@ -317,16 +330,17 @@ func TuplePlansByDistributionEntry(
 						return nil, nil
 					}
 
-					switch routingList[i][val].(type) {
-					case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-					default:
+					colVal := routingList[i][val]
+
+					colVal, ok = unwrapRoutingTupleValue(colVal)
+					if !ok {
 						return nil, nil
 					}
 
 					/* this is always non-ident hash function */
 					itemVal, err := CalculateRoutingListTupleItemValue(rm,
 						cr.ColType,
-						routingList[i][val],
+						colVal,
 						queryParamsFormatCodes)
 
 					if err != nil {
@@ -361,16 +375,16 @@ func TuplePlansByDistributionEntry(
 				if len(routingList[i]) <= val {
 					return nil, nil
 				}
+				colVal := routingList[i][val]
 
-				switch routingList[i][val].(type) {
-				case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-				default:
+				colVal, ok = unwrapRoutingTupleValue(colVal)
+				if !ok {
 					return nil, nil
 				}
 
 				itemVal, err := CalculateRoutingListTupleItemValue(rm,
 					tp,
-					routingList[i][val],
+					colVal,
 					queryParamsFormatCodes)
 
 				if err != nil {
