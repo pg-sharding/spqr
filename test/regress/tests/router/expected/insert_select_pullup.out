@@ -31,14 +31,14 @@ CREATE RELATION t_city (id) FOR DISTRIBUTION d;
 CREATE TABLE t_city(id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-insert into t_city(id) select * from (select * from (select 1));
+insert into t_city(id) select * from (select * from (select 1) as a) as b;
 NOTICE: send query to shard(s) : sh1
-insert into t_city(id) select * from (select 1);
+insert into t_city(id) select * from (select 1) as a;
 NOTICE: send query to shard(s) : sh1
 insert into t_city(id) select 1;
 NOTICE: send query to shard(s) : sh1
 -- routed to the other key range
-insert into t_city(id) select * from (select * from (select 12));
+insert into t_city(id) select * from (select * from (select 12) as a) as b;
 NOTICE: send query to shard(s) : sh2
 insert into t_city(id) select 12;
 NOTICE: send query to shard(s) : sh2

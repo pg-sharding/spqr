@@ -11,12 +11,12 @@ CREATE RELATION t_city (id) FOR DISTRIBUTION d;
 
 CREATE TABLE t_city(id int);
 
-insert into t_city(id) select * from (select * from (select 1));
-insert into t_city(id) select * from (select 1);
+insert into t_city(id) select * from (select * from (select 1) as a) as b;
+insert into t_city(id) select * from (select 1) as a;
 insert into t_city(id) select 1;
 
 -- routed to the other key range
-insert into t_city(id) select * from (select * from (select 12));
+insert into t_city(id) select * from (select * from (select 12) as a) as b;
 insert into t_city(id) select 12;
 
 SELECT id FROM t_city WHERE id = 1 ORDER BY 1;
