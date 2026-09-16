@@ -1004,7 +1004,8 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 	switch fname {
 	case virtual.PGAdvisoryLock, virtual.PGAdvisoryUnlockAll,
-		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
+		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PGTryAdvisoryXactLock,
+		virtual.PgTryAdvisoryLock:
 
 		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
 		if err != nil {
