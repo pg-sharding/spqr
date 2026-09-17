@@ -946,8 +946,11 @@ func processAlterDistribution(ctx context.Context,
 
 				relsToAttach = make([]*distributions.DistributedRelation, 0, len(rels))
 				for i, candidate := range stmt.Relations {
-					if candidate.IfNotExists && distribution.GetRelation(candidate.Relation) != nil {
-						continue
+					if candidate.IfNotExists {
+						existing, ok := distribution.TryGetRelation(candidate.Relation)
+						if ok && existing != nil && existing.Relation.MetadataKey() == candidate.Relation.MetadataKey() {
+							continue
+						}
 					}
 					relsToAttach = append(relsToAttach, rels[i])
 				}

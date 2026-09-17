@@ -76,6 +76,34 @@ ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS existing_rel DIST
  distribution id -> idempotent_ds
 (4 rows)
 
+ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS public.existing_rel DISTRIBUTION KEY other_id;
+              attach table              
+----------------------------------------
+ relation name   -> public.existing_rel
+ distribution id -> idempotent_ds
+(2 rows)
+
+ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS schema_a.shared_rel DISTRIBUTION KEY id;
+              attach table              
+----------------------------------------
+ relation name   -> schema_a.shared_rel
+ distribution id -> idempotent_ds
+(2 rows)
+
+ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS schema_b.shared_rel DISTRIBUTION KEY id;
+              attach table              
+----------------------------------------
+ relation name   -> schema_b.shared_rel
+ distribution id -> idempotent_ds
+(2 rows)
+
+ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS schema_a.shared_rel DISTRIBUTION KEY other_id;
+              attach table              
+----------------------------------------
+ relation name   -> schema_a.shared_rel
+ distribution id -> idempotent_ds
+(2 rows)
+
 -- IF NOT EXISTS does not suppress errors unrelated to relation existence.
 ALTER DISTRIBUTION missing_ds ATTACH RELATION IF NOT EXISTS orphan_rel DISTRIBUTION KEY id;
 ERROR:  distribution "missing_ds" not found
@@ -111,11 +139,23 @@ SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  idempotent_kr | sh1      | idempotent_ds   | 0           | false
 (1 row)
 
-SHOW relations WHERE distribution_id = 'idempotent_ds';
+SHOW relations WHERE relation_name = 'existing_rel';
  relation_name | distribution_id | distribution_key | schema_name 
 ---------------+-----------------+------------------+-------------
  existing_rel  | idempotent_ds   | ("id", identity) | public
+(1 row)
+
+SHOW relations WHERE relation_name = 'new_rel';
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
  new_rel       | idempotent_ds   | ("id", identity) | public
+(1 row)
+
+SHOW relations WHERE relation_name = 'shared_rel' ORDER BY schema_name;
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+ shared_rel    | idempotent_ds   | ("id", identity) | schema_a
+ shared_rel    | idempotent_ds   | ("id", identity) | schema_b
 (2 rows)
 
 SHOW reference_relations;
