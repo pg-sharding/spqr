@@ -68,5 +68,6 @@ test: pg_try_advisory_xact_lock
 test: create_shard
 test: spqr_remote_execute
 test: insert_select_pullup
+test: projection_pullup
 test: insert_select_returning
 test: target_list_alias_routing
