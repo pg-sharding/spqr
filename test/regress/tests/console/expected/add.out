@@ -46,3 +46,85 @@ DROP DISTRIBUTION ALL CASCADE;
  ds1
 (1 row)
 
+-- IF NOT EXISTS keeps CREATE and ATTACH commands idempotent.
+CREATE DISTRIBUTION IF NOT EXISTS idempotent_ds COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ distribution id -> idempotent_ds
+(1 row)
+
+CREATE DISTRIBUTION IF NOT EXISTS idempotent_ds COLUMN TYPES varchar;
+         add distribution         
+----------------------------------
+ distribution id -> idempotent_ds
+(1 row)
+
+ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS existing_rel DISTRIBUTION KEY id;
+           attach table           
+----------------------------------
+ relation name   -> existing_rel
+ distribution id -> idempotent_ds
+(2 rows)
+
+ALTER DISTRIBUTION idempotent_ds ATTACH RELATION IF NOT EXISTS existing_rel DISTRIBUTION KEY id
+    RELATION new_rel DISTRIBUTION KEY id;
+           attach table           
+----------------------------------
+ relation name   -> existing_rel
+ distribution id -> idempotent_ds
+ relation name   -> new_rel
+ distribution id -> idempotent_ds
+(4 rows)
+
+CREATE KEY RANGE IF NOT EXISTS idempotent_kr FROM 0 ROUTE TO sh1 FOR DISTRIBUTION idempotent_ds;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE IF NOT EXISTS idempotent_kr FROM 100 ROUTE TO sh2 FOR DISTRIBUTION idempotent_ds;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE REFERENCE TABLE IF NOT EXISTS idempotent_ref ON sh1;
+   create reference table   
+----------------------------
+ table    -> idempotent_ref
+ shard id -> sh1
+(2 rows)
+
+CREATE REFERENCE TABLE IF NOT EXISTS idempotent_ref ON sh2;
+   create reference table   
+----------------------------
+ table    -> idempotent_ref
+ shard id -> sh1
+(2 rows)
+
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+ key_range_id  | shard_id | distribution_id | lower_bound | locked 
+---------------+----------+-----------------+-------------+--------
+ idempotent_kr | sh1      | idempotent_ds   | 0           | false
+(1 row)
+
+SHOW relations WHERE distribution_id = 'idempotent_ds';
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+ existing_rel  | idempotent_ds   | ("id", identity) | public
+ new_rel       | idempotent_ds   | ("id", identity) | public
+(2 rows)
+
+SHOW reference_relations;
+   table_name   | schema_name | schema_version | shards | column_sequence_mapping 
+----------------+-------------+----------------+--------+-------------------------
+ idempotent_ref | public      | 1              | [sh1]  | map[]
+(1 row)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+ idempotent_ds
+(2 rows)
+
