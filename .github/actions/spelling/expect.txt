@@ -14,7 +14,6 @@ Aflake
 aliasname
 anyerr
 AOk
-APITLS
 appdefaults
 APREQ
 argexpr
@@ -35,7 +34,6 @@ benchmem
 Benro
 berule
 BOOLOID
-bootstrapping
 Bootstrapper
 buildpackage
 cachedchecker
@@ -96,8 +94,8 @@ dbshard
 dbtpcc
 dbutils
 dcd
-dcs
 DClocal
+dcs
 ddl
 debian
 denchick
@@ -206,8 +204,8 @@ healthcheck
 helpgen
 Highload
 hostnossl
-hostssl
 hostspec
+hostssl
 hotspot
 hst
 HTAP
@@ -362,7 +360,6 @@ Oids
 oiwejow
 OLAP
 ONCONFLICT
-onehost
 opgejrqr
 optarg
 optval
@@ -415,6 +412,7 @@ ppp
 pppp
 prepstatement
 privs
+prj
 procps
 promhttp
 protobuf
@@ -459,6 +457,7 @@ rerr
 rerrors
 resharding
 reshke
+restarget
 retcode
 retmsg
 retryable
@@ -481,7 +480,7 @@ RPCs
 rport
 rqdn
 rqfn
-rrels
+rrel
 rrelation
 rrouter
 rulemgr
@@ -498,8 +497,8 @@ sconst
 screenshots
 sdnotifier
 seqmgr
-sessiontest
 serviceprincipal
+sessiontest
 sethvargo
 sevlyar
 shardconn
@@ -683,5 +682,3 @@ zerolog
 zid
 zjoin
 zzz
-prj
-restarget
