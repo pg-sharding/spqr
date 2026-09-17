@@ -32,23 +32,23 @@ CREATE RELATION t_city (id) FOR DISTRIBUTION d;
 CREATE TABLE t_city(id int, val text);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-insert into t_city(id) select * from (select aa from (select 1 as aa));
+insert into t_city(id) select * from (select aa from (select 1 as aa) a) b;
 NOTICE: send query to shard(s) : sh1
-insert into t_city(id) select * from (select aa from (select 12 as aa));
+insert into t_city(id) select * from (select aa from (select 12 as aa) a) b;
 NOTICE: send query to shard(s) : sh2
-insert into t_city(id) select * from (select * from (select 1 as aa));
+insert into t_city(id) select * from (select * from (select 1 as aa) a) b;
 NOTICE: send query to shard(s) : sh1
-insert into t_city(id) select * from (select * from (select 12 as aa));
+insert into t_city(id) select * from (select * from (select 12 as aa) a) b;
 NOTICE: send query to shard(s) : sh2
-insert into t_city(id) select aa from (select * from (select 1 as aa));
+insert into t_city(id) select aa from (select * from (select 1 as aa) a) b;
 NOTICE: send query to shard(s) : sh1
-insert into t_city(id) select aa from (select * from (select 12 as aa));
+insert into t_city(id) select aa from (select * from (select 12 as aa) a) b;
 NOTICE: send query to shard(s) : sh2
-insert into t_city(id) select aa from (select aa from (select 1 as aa));
+insert into t_city(id) select aa from (select aa from (select 1 as aa) a) b;
 NOTICE: send query to shard(s) : sh1
-insert into t_city(id) select aa from (select aa from (select 12 as aa));
+insert into t_city(id) select aa from (select aa from (select 12 as aa) a) b;
 NOTICE: send query to shard(s) : sh2
-insert into t_city(id, val) select aa, 'x' as bb from (select 12 as aa);
+insert into t_city(id, val) select aa, 'x' as bb from (select 12 as aa) a;
 NOTICE: send query to shard(s) : sh2
 SELECT id FROM t_city WHERE id = 1 ORDER BY 1;
 NOTICE: send query to shard(s) : sh1

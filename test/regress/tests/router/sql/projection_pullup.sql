@@ -12,15 +12,15 @@ CREATE RELATION t_city (id) FOR DISTRIBUTION d;
 
 CREATE TABLE t_city(id int, val text);
 
-insert into t_city(id) select * from (select aa from (select 1 as aa));
-insert into t_city(id) select * from (select aa from (select 12 as aa));
-insert into t_city(id) select * from (select * from (select 1 as aa));
-insert into t_city(id) select * from (select * from (select 12 as aa));
-insert into t_city(id) select aa from (select * from (select 1 as aa));
-insert into t_city(id) select aa from (select * from (select 12 as aa));
-insert into t_city(id) select aa from (select aa from (select 1 as aa));
-insert into t_city(id) select aa from (select aa from (select 12 as aa));
-insert into t_city(id, val) select aa, 'x' as bb from (select 12 as aa);
+insert into t_city(id) select * from (select aa from (select 1 as aa) a) b;
+insert into t_city(id) select * from (select aa from (select 12 as aa) a) b;
+insert into t_city(id) select * from (select * from (select 1 as aa) a) b;
+insert into t_city(id) select * from (select * from (select 12 as aa) a) b;
+insert into t_city(id) select aa from (select * from (select 1 as aa) a) b;
+insert into t_city(id) select aa from (select * from (select 12 as aa) a) b;
+insert into t_city(id) select aa from (select aa from (select 1 as aa) a) b;
+insert into t_city(id) select aa from (select aa from (select 12 as aa) a) b;
+insert into t_city(id, val) select aa, 'x' as bb from (select 12 as aa) a;
 
 SELECT id FROM t_city WHERE id = 1 ORDER BY 1;
 SELECT id FROM t_city WHERE id = 12 ORDER BY 1;
