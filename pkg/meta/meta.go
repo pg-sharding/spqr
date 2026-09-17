@@ -90,14 +90,47 @@ type RouterConnector interface {
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
+func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	_, err := mngr.GetKeyRange(ctx, id)
+	if err != nil {
+		if keyRangeDoesNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func objectDoesNotExist(err error) bool {
+	var spqrErr *spqrerror.SpqrError
+	return errors.As(err, &spqrErr) && spqrErr.ErrorCode == spqrerror.SPQR_OBJECT_NOT_EXIST
+}
+
+func keyRangeDoesNotExist(err error) bool {
+	if objectDoesNotExist(err) {
+		return true
+	}
+
+	// Key-range backends currently use the generic key-range error code for a
+	// missing object, so preserve their specific messages without hiding other
+	// storage errors reported under the same code.
+	var spqrErr *spqrerror.SpqrError
+	if !errors.As(err, &spqrErr) || spqrErr.ErrorCode != spqrerror.SPQR_KEYRANGE_ERROR {
+		return false
+	}
+	return strings.HasPrefix(err.Error(), "no key range found at ") ||
+		strings.HasPrefix(err.Error(), "there is no key range ")
+}
+
 // TODO : unit tests
 
 // processDrop processes the drop command based on the type of statement provided.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - dstmt (spqrparser.Statement): The statement to be processed.
+// - dstmt (spqrparser.DropSelector): The statement to be processed.
 // - isCascade (bool): Indicates whether cascade is enabled.
+// - ifExists (bool): Indicates whether a missing object should be ignored.
 // - mngr (EntityMgr): The entity manager handling the drop operation.
 //
 // Returns:
@@ -105,7 +138,7 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
 	dstmt spqrparser.DropSelector,
-	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	isCascade, ifExists bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -130,6 +163,19 @@ func processDrop(ctx context.Context,
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
+			if ifExists {
+				exists, err := keyRangeExists(ctx, mngr, stmt.KeyRangeID)
+				if err != nil {
+					return nil, err
+				}
+				if !exists {
+					return &tupleslot.TupleTableSlot{
+						Desc: engine.GetVPHeader("key_range_id"),
+						Raw:  [][][]byte{{[]byte(stmt.KeyRangeID)}},
+					}, nil
+				}
+			}
+
 			tranMngr := NewTranEntityManager(mngr)
 			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
 			if err != nil {
@@ -150,18 +196,33 @@ func processDrop(ctx context.Context,
 			RelationName: stmt.ID,
 		}
 
+		if ifExists {
+			if _, err := mngr.GetReferenceRelation(ctx, relationFQN); err != nil {
+				if !objectDoesNotExist(err) {
+					return nil, err
+				}
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("relation_name"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
+		}
+
 		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
 		if err != nil {
 			return nil, err
 		}
-		for _, seq := range seqs {
-			if err := mngr.DropSequence(ctx, seq, true); err != nil {
-				return nil, err
-			}
-		}
 
 		if err := mngr.DropReferenceRelation(ctx, relationFQN); err != nil {
-			return nil, err
+			if !ifExists || !objectDoesNotExist(err) {
+				return nil, err
+			}
+		} else {
+			for _, seq := range seqs {
+				if err := mngr.DropSequence(ctx, seq, true); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -175,7 +236,21 @@ func processDrop(ctx context.Context,
 		return tts, nil
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
+		var ds *distributions.Distribution
 		var err error
+
+		if stmt.ID != "*" {
+			ds, err = mngr.GetDistribution(ctx, stmt.ID)
+			if err != nil {
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("distribution_id"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
+		}
 
 		if stmt.ID == "*" {
 
@@ -204,10 +279,6 @@ func processDrop(ctx context.Context,
 		}
 
 		if stmt.ID != "*" {
-			ds, err := mngr.GetDistribution(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
 			if len(ds.ListRelations()) != 0 && !isCascade {
 				return nil, spqrerror.Newf(
 					spqrerror.SPQR_INVALID_REQUEST,
@@ -230,7 +301,9 @@ func processDrop(ctx context.Context,
 			}
 
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
-				return nil, err
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
 			}
 
 			tts := &tupleslot.TupleTableSlot{
@@ -837,6 +910,22 @@ func processAlterDistribution(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.DetachRelation:
+		if stmt.IfExists {
+			distribution, err := mngr.GetDistribution(ctx, dsId)
+			if err != nil {
+				return nil, err
+			}
+
+			if distribution.GetRelation(stmt.RelationName) == nil {
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("detach relation"),
+				}
+				tts.WriteDataRow(fmt.Sprintf("relation name   -> %s", stmt.RelationName.String()))
+				tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", dsId))
+				return tts, nil
+			}
+		}
+
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return nil, err
 		}
@@ -1132,7 +1221,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, stmt.IfExists, mgr)
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:

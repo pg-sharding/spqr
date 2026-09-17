@@ -76,3 +76,88 @@ DROP DISTRIBUTION ALL CASCADE;
  ds1
 (1 row)
 
+-- IF EXISTS keeps DROP and DETACH commands idempotent.
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id;
+      attach table      
+------------------------
+ relation name   -> rel
+ distribution id -> ds1
+(2 rows)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE REFERENCE TABLE zz;
+   create reference table    
+-----------------------------
+ table    -> zz
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+DROP KEY RANGE IF EXISTS krid1;
+ key_range_id 
+--------------
+ krid1
+(1 row)
+
+DROP KEY RANGE IF EXISTS krid1;
+ key_range_id 
+--------------
+ krid1
+(1 row)
+
+ALTER DISTRIBUTION ds1 DETACH RELATION IF EXISTS rel;
+    detach relation     
+------------------------
+ relation name   -> rel
+ distribution id -> ds1
+(2 rows)
+
+ALTER DISTRIBUTION ds1 DETACH RELATION IF EXISTS rel;
+    detach relation     
+------------------------
+ relation name   -> rel
+ distribution id -> ds1
+(2 rows)
+
+ALTER DISTRIBUTION missing DETACH RELATION IF EXISTS rel;
+ERROR:  distribution "missing" not found
+DROP REFERENCE TABLE IF EXISTS zz;
+ relation_name 
+---------------
+ zz
+(1 row)
+
+DROP REFERENCE TABLE IF EXISTS zz;
+ relation_name 
+---------------
+ zz
+(1 row)
+
+DROP DISTRIBUTION IF EXISTS ds1;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
+DROP DISTRIBUTION IF EXISTS ds1;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+(1 row)
+
