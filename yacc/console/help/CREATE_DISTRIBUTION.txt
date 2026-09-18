@@ -3,7 +3,7 @@ NAME
     identifier and key column types.
 
 SYNTAX
-    CREATE DISTRIBUTION <distributionID>
+    CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
       [COLUMN TYPES <types> | (<types>)]
       [DEFAULT SHARD <shardID>]
 
@@ -27,6 +27,8 @@ DESCRIPTION
     You can append "hash" after a column type to apply hash-based distribution
     to that column.
 
+    Use IF NOT EXISTS to skip creation when the distribution already exists.
+
 PARAMETERS
     <distributionID> - Unique identifier of the distribution
     <types> - Distribution key column types in order (single or composite key)
@@ -35,6 +37,8 @@ PARAMETERS
 EXAMPLES
     Single integer key distribution:
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    Create a distribution if it does not exist:
+        CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
     Single varchar key distribution with hash:
         CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
     Single uuid key distribution with hash:
