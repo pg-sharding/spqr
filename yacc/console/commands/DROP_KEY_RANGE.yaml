@@ -5,9 +5,10 @@ description: |
   but does not affect the actual data stored on the shard.
 
   Use DROP KEY RANGE ALL to remove all key ranges at once.
+  Use IF EXISTS to skip the command when the key range does not exist.
 
 syntax: |
-  DROP KEY RANGE <keyRangeID>
+  DROP KEY RANGE [IF EXISTS] <keyRangeID>
   DROP KEY RANGE ALL
 
 parameters:
@@ -19,6 +20,8 @@ parameters:
 examples:
   - description: Drop a specific key range
     code: DROP KEY RANGE krid1;
+  - description: Drop a key range if it exists
+    code: DROP KEY RANGE IF EXISTS krid1;
   - description: Drop all key ranges
     code: DROP KEY RANGE ALL;
 

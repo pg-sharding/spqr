@@ -8,9 +8,11 @@ it is enough to specify only one end of the range.
 For composite sharding keys, specify multiple values separated by commas that correspond 
 to each column in the distribution.
 
+Use IF NOT EXISTS to skip creation when the key range already exists.
+
 
 ```sql
-CREATE KEY RANGE [ <keyRangeID> ]
+CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
   FROM <lowerBound>
   ROUTE TO <shardID> 
   FOR DISTRIBUTION <distributionID>
@@ -24,6 +26,10 @@ for composite keys (e.g., "100, 'value'" for a two-column key)
 ```sql
 -- Single column key range
 CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+-- Create a key range if it does not exist
+CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+  ROUTE TO shard1 FOR DISTRIBUTION ds1;
+
 -- Composite key range with two integers
 CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
 -- Composite key range with integer and varchar
@@ -82,10 +88,11 @@ Removes a key range from the cluster. This deletes the key range metadata
 but does not affect the actual data stored on the shard.
 
 Use DROP KEY RANGE ALL to remove all key ranges at once.
+Use IF EXISTS to skip the command when the key range does not exist.
 
 
 ```sql
-DROP KEY RANGE <keyRangeID>
+DROP KEY RANGE [IF EXISTS] <keyRangeID>
 DROP KEY RANGE ALL
 ```
 
@@ -94,6 +101,8 @@ DROP KEY RANGE ALL
 ```sql
 -- Drop a specific key range
 DROP KEY RANGE krid1;
+-- Drop a key range if it exists
+DROP KEY RANGE IF EXISTS krid1;
 -- Drop all key ranges
 DROP KEY RANGE ALL;
 ```
