@@ -305,6 +305,7 @@ Feature: Balancer test
     }]
     """
 
+  @pure_pg
   Scenario: balancer works with cpu metric
     When I execute SQL on host "coordinator"
     """
