@@ -576,6 +576,22 @@ func createNonReplicatedDistribution(ctx context.Context,
 
 // TODO : unit tests
 func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrparser.ReferenceRelationDefinition) (*tupleslot.TupleTableSlot, error) {
+	if stmt.IfNotExists {
+		relation, err := mngr.GetReferenceRelation(ctx, stmt.TableName)
+		if err == nil {
+			return &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("create reference table"),
+				Raw: [][][]byte{
+					{fmt.Appendf(nil, "table    -> %s", relation.QualifiedName())},
+					{fmt.Appendf(nil, "shard id -> %s", strings.Join(relation.ShardIDs, ","))},
+				},
+			}, nil
+		}
+		if !objectDoesNotExist(err) {
+			return nil, err
+		}
+	}
+
 	r := &rrelation.ReferenceRelation{
 		RelationName:  stmt.TableName,
 		SchemaVersion: 1,
@@ -634,6 +650,18 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.ID == "default" {
 			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
+		if stmt.IfNotExists {
+			if _, err := mngr.GetDistribution(ctx, stmt.ID); err == nil {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add distribution"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "distribution id -> %s", stmt.ID)},
+					},
+				}, nil
+			} else if !objectDoesNotExist(err) {
+				return nil, err
+			}
+		}
 		if stmt.Replicated {
 			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
 				return nil, err
@@ -668,6 +696,20 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 	case *spqrparser.KeyRangeDefinition:
+		if stmt.IfNotExists {
+			keyRange, err := mngr.GetKeyRange(ctx, stmt.KeyRangeID)
+			if err == nil {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add key range"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "bound -> %s", keyRange.SendRaw()[0])},
+					},
+				}, nil
+			}
+			if !keyRangeDoesNotExist(err) {
+				return nil, err
+			}
+		}
 		tranMngr := NewTranEntityManager(mngr)
 		createdKr, err := createKeyRange(ctx, tranMngr, stmt, true)
 		if err != nil {
@@ -894,8 +936,32 @@ func processAlterDistribution(ctx context.Context,
 
 		selectedDistribId := dsId
 
-		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
-			return nil, err
+		relsToAttach := rels
+		for _, relation := range stmt.Relations {
+			if relation.IfNotExists {
+				distribution, err := mngr.GetDistribution(ctx, selectedDistribId)
+				if err != nil {
+					return nil, err
+				}
+
+				relsToAttach = make([]*distributions.DistributedRelation, 0, len(rels))
+				for i, candidate := range stmt.Relations {
+					if candidate.IfNotExists {
+						existing, ok := distribution.TryGetRelation(candidate.Relation)
+						if ok && existing != nil && existing.Relation.MetadataKey() == candidate.Relation.MetadataKey() {
+							continue
+						}
+					}
+					relsToAttach = append(relsToAttach, rels[i])
+				}
+				break
+			}
+		}
+
+		if len(relsToAttach) != 0 {
+			if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, relsToAttach); err != nil {
+				return nil, err
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{

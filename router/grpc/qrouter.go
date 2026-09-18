@@ -111,6 +111,15 @@ func (l *LocalQrouterServer) ListReferenceRelations(ctx context.Context, _ *empt
 	}, nil
 }
 
+// GetReferenceRelation implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) GetReferenceRelation(ctx context.Context, relation *protos.QualifiedName) (*protos.ReferenceRelation, error) {
+	refRelation, err := l.mgr.GetReferenceRelation(ctx, rfqn.RelationFQNFromProto(relation))
+	if err != nil {
+		return nil, err
+	}
+	return rrelation.RefRelationToProto(refRelation), nil
+}
+
 // SyncReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) SyncReferenceRelations(context.Context, *protos.SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
 	return nil, fmt.Errorf("local query router in unable to sync reference relation")

@@ -23,6 +23,7 @@ const (
 	ReferenceRelationsService_CreateReferenceRelations_FullMethodName              = "/spqr.ReferenceRelationsService/CreateReferenceRelations"
 	ReferenceRelationsService_DropReferenceRelations_FullMethodName                = "/spqr.ReferenceRelationsService/DropReferenceRelations"
 	ReferenceRelationsService_ListReferenceRelations_FullMethodName                = "/spqr.ReferenceRelationsService/ListReferenceRelations"
+	ReferenceRelationsService_GetReferenceRelation_FullMethodName                  = "/spqr.ReferenceRelationsService/GetReferenceRelation"
 	ReferenceRelationsService_AlterReferenceRelationStorage_FullMethodName         = "/spqr.ReferenceRelationsService/AlterReferenceRelationStorage"
 	ReferenceRelationsService_SyncReferenceRelations_FullMethodName                = "/spqr.ReferenceRelationsService/SyncReferenceRelations"
 	ReferenceRelationsService_AlterReferenceRelationStorageAdvanced_FullMethodName = "/spqr.ReferenceRelationsService/AlterReferenceRelationStorageAdvanced"
@@ -35,6 +36,7 @@ type ReferenceRelationsServiceClient interface {
 	CreateReferenceRelations(ctx context.Context, in *CreateReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DropReferenceRelations(ctx context.Context, in *DropReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListReferenceRelations(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListReferenceRelationsReply, error)
+	GetReferenceRelation(ctx context.Context, in *QualifiedName, opts ...grpc.CallOption) (*ReferenceRelation, error)
 	AlterReferenceRelationStorage(ctx context.Context, in *AlterReferenceRelationStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SyncReferenceRelations(ctx context.Context, in *SyncReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AlterReferenceRelationStorageAdvanced(ctx context.Context, in *AlterReferenceRelationStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -78,6 +80,16 @@ func (c *referenceRelationsServiceClient) ListReferenceRelations(ctx context.Con
 	return out, nil
 }
 
+func (c *referenceRelationsServiceClient) GetReferenceRelation(ctx context.Context, in *QualifiedName, opts ...grpc.CallOption) (*ReferenceRelation, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReferenceRelation)
+	err := c.cc.Invoke(ctx, ReferenceRelationsService_GetReferenceRelation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *referenceRelationsServiceClient) AlterReferenceRelationStorage(ctx context.Context, in *AlterReferenceRelationStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -115,6 +127,7 @@ type ReferenceRelationsServiceServer interface {
 	CreateReferenceRelations(context.Context, *CreateReferenceRelationsRequest) (*emptypb.Empty, error)
 	DropReferenceRelations(context.Context, *DropReferenceRelationsRequest) (*emptypb.Empty, error)
 	ListReferenceRelations(context.Context, *emptypb.Empty) (*ListReferenceRelationsReply, error)
+	GetReferenceRelation(context.Context, *QualifiedName) (*ReferenceRelation, error)
 	AlterReferenceRelationStorage(context.Context, *AlterReferenceRelationStorageRequest) (*emptypb.Empty, error)
 	SyncReferenceRelations(context.Context, *SyncReferenceRelationsRequest) (*emptypb.Empty, error)
 	AlterReferenceRelationStorageAdvanced(context.Context, *AlterReferenceRelationStorageRequest) (*emptypb.Empty, error)
@@ -136,6 +149,9 @@ func (UnimplementedReferenceRelationsServiceServer) DropReferenceRelations(conte
 }
 func (UnimplementedReferenceRelationsServiceServer) ListReferenceRelations(context.Context, *emptypb.Empty) (*ListReferenceRelationsReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListReferenceRelations not implemented")
+}
+func (UnimplementedReferenceRelationsServiceServer) GetReferenceRelation(context.Context, *QualifiedName) (*ReferenceRelation, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetReferenceRelation not implemented")
 }
 func (UnimplementedReferenceRelationsServiceServer) AlterReferenceRelationStorage(context.Context, *AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AlterReferenceRelationStorage not implemented")
@@ -222,6 +238,24 @@ func _ReferenceRelationsService_ListReferenceRelations_Handler(srv interface{}, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ReferenceRelationsService_GetReferenceRelation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QualifiedName)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReferenceRelationsServiceServer).GetReferenceRelation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReferenceRelationsService_GetReferenceRelation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReferenceRelationsServiceServer).GetReferenceRelation(ctx, req.(*QualifiedName))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ReferenceRelationsService_AlterReferenceRelationStorage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AlterReferenceRelationStorageRequest)
 	if err := dec(in); err != nil {
@@ -294,6 +328,10 @@ var ReferenceRelationsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListReferenceRelations",
 			Handler:    _ReferenceRelationsService_ListReferenceRelations_Handler,
+		},
+		{
+			MethodName: "GetReferenceRelation",
+			Handler:    _ReferenceRelationsService_GetReferenceRelation_Handler,
 		},
 		{
 			MethodName: "AlterReferenceRelationStorage",

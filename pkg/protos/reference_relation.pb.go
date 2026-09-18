@@ -435,11 +435,12 @@ const file_protos_reference_relation_proto_rawDesc = "" +
 	"\trelations\x18\x02 \x03(\v2\x13.spqr.QualifiedNameR\trelations\"|\n" +
 	"$AlterReferenceRelationStorageRequest\x127\n" +
 	"\brelation\x18\x01 \x01(\v2\x13.spqr.QualifiedNameB\x06\xbaH\x03\xc8\x01\x01R\brelation\x12\x1b\n" +
-	"\tshard_ids\x18\x02 \x03(\tR\bshardIds2\xd7\x04\n" +
+	"\tshard_ids\x18\x02 \x03(\tR\bshardIds2\x9f\x05\n" +
 	"\x19ReferenceRelationsService\x12[\n" +
 	"\x18CreateReferenceRelations\x12%.spqr.CreateReferenceRelationsRequest\x1a\x16.google.protobuf.Empty\"\x00\x12W\n" +
 	"\x16DropReferenceRelations\x12#.spqr.DropReferenceRelationsRequest\x1a\x16.google.protobuf.Empty\"\x00\x12U\n" +
-	"\x16ListReferenceRelations\x12\x16.google.protobuf.Empty\x1a!.spqr.ListReferenceRelationsReply\"\x00\x12e\n" +
+	"\x16ListReferenceRelations\x12\x16.google.protobuf.Empty\x1a!.spqr.ListReferenceRelationsReply\"\x00\x12F\n" +
+	"\x14GetReferenceRelation\x12\x13.spqr.QualifiedName\x1a\x17.spqr.ReferenceRelation\"\x00\x12e\n" +
 	"\x1dAlterReferenceRelationStorage\x12*.spqr.AlterReferenceRelationStorageRequest\x1a\x16.google.protobuf.Empty\"\x00\x12W\n" +
 	"\x16SyncReferenceRelations\x12#.spqr.SyncReferenceRelationsRequest\x1a\x16.google.protobuf.Empty\"\x00\x12m\n" +
 	"%AlterReferenceRelationStorageAdvanced\x12*.spqr.AlterReferenceRelationStorageRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
@@ -484,17 +485,19 @@ var file_protos_reference_relation_proto_depIdxs = []int32{
 	2,  // 9: spqr.ReferenceRelationsService.CreateReferenceRelations:input_type -> spqr.CreateReferenceRelationsRequest
 	3,  // 10: spqr.ReferenceRelationsService.DropReferenceRelations:input_type -> spqr.DropReferenceRelationsRequest
 	10, // 11: spqr.ReferenceRelationsService.ListReferenceRelations:input_type -> google.protobuf.Empty
-	6,  // 12: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:input_type -> spqr.AlterReferenceRelationStorageRequest
-	5,  // 13: spqr.ReferenceRelationsService.SyncReferenceRelations:input_type -> spqr.SyncReferenceRelationsRequest
-	6,  // 14: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:input_type -> spqr.AlterReferenceRelationStorageRequest
-	10, // 15: spqr.ReferenceRelationsService.CreateReferenceRelations:output_type -> google.protobuf.Empty
-	10, // 16: spqr.ReferenceRelationsService.DropReferenceRelations:output_type -> google.protobuf.Empty
-	4,  // 17: spqr.ReferenceRelationsService.ListReferenceRelations:output_type -> spqr.ListReferenceRelationsReply
-	10, // 18: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:output_type -> google.protobuf.Empty
-	10, // 19: spqr.ReferenceRelationsService.SyncReferenceRelations:output_type -> google.protobuf.Empty
-	10, // 20: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:output_type -> google.protobuf.Empty
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
+	8,  // 12: spqr.ReferenceRelationsService.GetReferenceRelation:input_type -> spqr.QualifiedName
+	6,  // 13: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:input_type -> spqr.AlterReferenceRelationStorageRequest
+	5,  // 14: spqr.ReferenceRelationsService.SyncReferenceRelations:input_type -> spqr.SyncReferenceRelationsRequest
+	6,  // 15: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:input_type -> spqr.AlterReferenceRelationStorageRequest
+	10, // 16: spqr.ReferenceRelationsService.CreateReferenceRelations:output_type -> google.protobuf.Empty
+	10, // 17: spqr.ReferenceRelationsService.DropReferenceRelations:output_type -> google.protobuf.Empty
+	4,  // 18: spqr.ReferenceRelationsService.ListReferenceRelations:output_type -> spqr.ListReferenceRelationsReply
+	0,  // 19: spqr.ReferenceRelationsService.GetReferenceRelation:output_type -> spqr.ReferenceRelation
+	10, // 20: spqr.ReferenceRelationsService.AlterReferenceRelationStorage:output_type -> google.protobuf.Empty
+	10, // 21: spqr.ReferenceRelationsService.SyncReferenceRelations:output_type -> google.protobuf.Empty
+	10, // 22: spqr.ReferenceRelationsService.AlterReferenceRelationStorageAdvanced:output_type -> google.protobuf.Empty
+	16, // [16:23] is the sub-list for method output_type
+	9,  // [9:16] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name

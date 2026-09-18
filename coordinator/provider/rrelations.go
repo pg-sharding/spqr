@@ -57,6 +57,15 @@ func (rr *ReferenceRelationServer) ListReferenceRelations(ctx context.Context, _
 	return &protos.ListReferenceRelationsReply{Relations: relsProto}, nil
 }
 
+// GetReferenceRelation returns a reference relation by its qualified name.
+func (rr *ReferenceRelationServer) GetReferenceRelation(ctx context.Context, relation *protos.QualifiedName) (*protos.ReferenceRelation, error) {
+	rrel, err := rr.impl.GetReferenceRelation(ctx, rfqn.RelationFQNFromProto(relation))
+	if err != nil {
+		return nil, err
+	}
+	return rrelations.RefRelationToProto(rrel), nil
+}
+
 // AlterReferenceRelationStorage implements [proto.ReferenceRelationsServiceServer].
 func (rr *ReferenceRelationServer) AlterReferenceRelationStorage(context.Context, *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 	return nil, fmt.Errorf("AlterReferenceRelationStorage is unsupported in coordinator")

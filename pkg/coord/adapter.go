@@ -93,8 +93,13 @@ func (a *Adapter) ShareKeyRange(_ string) error {
 }
 
 // GetReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) GetReferenceRelation(_ context.Context, _ *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
+func (a *Adapter) GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	relation, err := c.GetReferenceRelation(ctx, rfqn.RelationFQNToProto(relationFQN))
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
+	return rrelation.RefRelationFromProto(relation), nil
 }
 
 // GetSequenceColumns implements meta.EntityMgr.
