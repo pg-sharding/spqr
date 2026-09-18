@@ -1,9 +1,99 @@
 ---
-Virtual functions
+title: 'Virtual functions'
+description: 'Check router readiness and inspect SPQR metadata through SQL'
 ---
 
+Virtual functions let you check router status and query SPQR metadata from an
+application database connection.
 
-The SPQR router PostgreSQL interface support number of virtual functions, namely
+They require [`router_mode: PROXY`](/configuration/router#mode-settings).
+If the router has only one shard, set `query_routing.always_check_rules` to `true`;
+otherwise, these queries are forwarded directly to PostgreSQL.
 
-    - __spqr__is_ready - readiness check function
-    - __spqr__host_status(host) - check host read-write status
+```yaml
+query_routing:
+  always_check_rules: true
+```
+
+## __spqr__is_ready()
+
+Returns the router's readiness status as a boolean.
+
+```sql
+SELECT __spqr__is_ready();
+```
+
+Readiness is based on cached host health checks. The router is considered ready
+if at least one host is alive or the cache is empty. This does not guarantee
+that every shard is reachable or has a writable host.
+
+## __spqr__shards()
+
+Lists the shards in SPQR metadata, with one row per shard and a single `text`
+column named `shard name`.
+
+```sql
+SELECT __spqr__shards();
+```
+
+```text
+ shard name
+------------
+ sh1
+ sh2
+(2 rows)
+```
+
+For shard configuration details, use `SELECT * FROM __spqr__show('shards_extended');`.
+
+## __spqr__show(target)
+
+Runs a router console [SHOW](/sharding/console/sql_commands#show) command. Pass
+the target as a lowercase string, for example `'key_ranges'`.
+
+Both forms return one row per key range:
+
+```sql
+SELECT __spqr__show('key_ranges');
+SELECT * FROM __spqr__show('key_ranges');
+```
+
+```text
+ key_range_id | shard_id | distribution_id | lower_bound | locked
+--------------+----------+-----------------+-------------+--------
+ k1           | sh1      | ds1             | 1           | false
+ k2           | sh2      | ds1             | 101         | false
+(2 rows)
+```
+
+All columns have type `text`:
+
+| Column | Description |
+| --- | --- |
+| `key_range_id` | Key range identifier. |
+| `shard_id` | Shard assigned to the key range. |
+| `distribution_id` | Distribution containing the key range. |
+| `lower_bound` | Lower bound; multiple components are comma-separated. |
+| `locked` | Lock status: `'true'` or `'false'`. |
+
+Use the function in `FROM` to select columns and filter rows:
+
+```sql
+SELECT key_range_id, shard_id FROM __spqr__show('key_ranges')
+WHERE shard_id = 'sh1';
+
+SELECT * FROM __spqr__show('key_ranges') WHERE locked = 'false';
+```
+
+## __spqr__host_status(host)
+
+Returns a host's cached read-write status. Pass the host address, including its
+port, as a string literal:
+
+```sql
+SELECT __spqr__host_status('spqr_shard_1:6432');
+```
+
+The result has two `text` columns: `host` is the address, and `rw` is `'true'` for
+a writable host or `'false'` otherwise. The call fails if the host has no cached
+health check result.
