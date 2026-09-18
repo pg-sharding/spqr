@@ -6,7 +6,7 @@ HELP CREATE KEY RANGE;
      key space is an ordered set,                                                +
                                                                                  +
  SYNTAX                                                                          +
-     CREATE KEY RANGE [ <keyRangeID> ]                                           +
+     CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]                           +
        FROM <lowerBound>                                                         +
        ROUTE TO <shardID>                                                        +
        FOR DISTRIBUTION <distributionID>                                         +
@@ -23,6 +23,8 @@ HELP CREATE KEY RANGE;
      that correspond                                                             +
      to each column in the distribution.                                         +
                                                                                  +
+     Use IF NOT EXISTS to skip creation when the key range already exists.       +
+                                                                                 +
  PARAMETERS                                                                      +
      <keyRangeID> - Unique identifier for the key range (optional, auto-generated+
          if omitted)                                                             +
@@ -34,6 +36,9 @@ HELP CREATE KEY RANGE;
  EXAMPLES                                                                        +
      Single column key range:                                                    +
          CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;  +
+     Create a key range if it does not exist:                                    +
+         CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000                          +
+           ROUTE TO shard1 FOR DISTRIBUTION ds1;                                 +
      Composite key range with two integers:                                      +
          CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;+
      Composite key range with integer and varchar:                               +
@@ -65,7 +70,7 @@ HELP DROP KEY RANGE;
      range metadata                                                             +
                                                                                 +
  SYNTAX                                                                         +
-     DROP KEY RANGE <keyRangeID>                                                +
+     DROP KEY RANGE [IF EXISTS] <keyRangeID>                                    +
      DROP KEY RANGE ALL                                                         +
                                                                                 +
  DESCRIPTION                                                                    +
@@ -73,6 +78,7 @@ HELP DROP KEY RANGE;
      but does not affect the actual data stored on the shard.                   +
                                                                                 +
      Use DROP KEY RANGE ALL to remove all key ranges at once.                   +
+     Use IF EXISTS to skip the command when the key range does not exist.       +
                                                                                 +
  PARAMETERS                                                                     +
      <keyRangeID> - Identifier of the key range to drop                         +
@@ -81,6 +87,8 @@ HELP DROP KEY RANGE;
  EXAMPLES                                                                       +
      Drop a specific key range:                                                 +
          DROP KEY RANGE krid1;                                                  +
+     Drop a key range if it exists:                                             +
+         DROP KEY RANGE IF EXISTS krid1;                                        +
      Drop all key ranges:                                                       +
          DROP KEY RANGE ALL;                                                    +
                                                                                 +
@@ -422,7 +430,7 @@ HELP CREATE DISTRIBUTION;
      identifier and key column types.                                            +
                                                                                  +
  SYNTAX                                                                          +
-     CREATE DISTRIBUTION <distributionID>                                        +
+     CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>                        +
        [COLUMN TYPES <types> | (<types>)]                                        +
        [DEFAULT SHARD <shardID>]                                                 +
                                                                                  +
@@ -446,6 +454,8 @@ HELP CREATE DISTRIBUTION;
      You can append "hash" after a column type to apply hash-based distribution  +
      to that column.                                                             +
                                                                                  +
+     Use IF NOT EXISTS to skip creation when the distribution already exists.    +
+                                                                                 +
  PARAMETERS                                                                      +
      <distributionID> - Unique identifier of the distribution                    +
      <types> - Distribution key column types in order (single or composite key)  +
@@ -454,6 +464,8 @@ HELP CREATE DISTRIBUTION;
  EXAMPLES                                                                        +
      Single integer key distribution:                                            +
          CREATE DISTRIBUTION ds1 COLUMN TYPES integer;                           +
+     Create a distribution if it does not exist:                                 +
+         CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;             +
      Single varchar key distribution with hash:                                  +
          CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;                      +
      Single uuid key distribution with hash:                                     +
@@ -484,13 +496,14 @@ HELP DROP DISTRIBUTION;
      DROP DISTRIBUTION - Removes a distribution from cluster metadata.         +
                                                                                +
  SYNTAX                                                                        +
-     DROP DISTRIBUTION <distributionID> [CASCADE]                              +
+     DROP DISTRIBUTION [IF EXISTS] <distributionID> [CASCADE]                  +
                                                                                +
  DESCRIPTION                                                                   +
      Removes a distribution from cluster metadata.                             +
                                                                                +
      Use CASCADE to remove dependent metadata objects (key ranges, attached    +
      relations) when required.                                                 +
+     Use IF EXISTS to skip the command when the distribution does not exist.   +
                                                                                +
  WARNINGS                                                                      +
      - Dropping a distribution removes routing metadata and may impact attached+
@@ -503,6 +516,8 @@ HELP DROP DISTRIBUTION;
  EXAMPLES                                                                      +
      Drop one distribution:                                                    +
          DROP DISTRIBUTION ds1;                                                +
+     Drop a distribution if it exists:                                         +
+         DROP DISTRIBUTION IF EXISTS ds1;                                      +
      Drop distribution with dependent metadata:                                +
          DROP DISTRIBUTION ds1 CASCADE;                                        +
                                                                                +
@@ -522,9 +537,9 @@ HELP ALTER DISTRIBUTION;
      ALTER DISTRIBUTION - Modifies distribution metadata.                        +
                                                                                  +
  SYNTAX                                                                          +
-     ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>                +
+     ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>+
        DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                    +
-     ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>                +
+     ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>    +
      ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>                 +
        DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]                    +
      ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>                 +
@@ -547,8 +562,10 @@ HELP ALTER DISTRIBUTION;
      ATTACH TABLE attaches one or more tables to the distribution with a         +
      specified distribution key. For composite sharding keys, specify multiple   +
      column names separated by commas in the DISTRIBUTION KEY clause.            +
+     Use IF NOT EXISTS to skip tables that are already attached.                 +
                                                                                  +
      DETACH TABLE detaches a table from the distribution.                        +
+     Use IF EXISTS to skip tables that are not attached.                         +
                                                                                  +
      ALTER TABLE DISTRIBUTION KEY replaces the entire distribution key of an     +
      already attached table. This overwrites all column names and hash functions +
@@ -601,11 +618,16 @@ HELP ALTER DISTRIBUTION;
  EXAMPLES                                                                        +
      Attach table with single distribution key:                                  +
          ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;   +
+     Attach table if it is not already attached:                                 +
+         ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders                +
+           DISTRIBUTION KEY order_id;                                            +
      Attach table with composite key and hash function:                          +
          ALTER DISTRIBUTION ds2 ATTACH TABLE users                               +
            DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;             +
      Detach table:                                                               +
          ALTER DISTRIBUTION ds1 DETACH TABLE orders;                             +
+     Detach table if it is attached:                                             +
+         ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;                   +
      Replace table distribution key:                                             +
          ALTER DISTRIBUTION ds1 ALTER TABLE orders DISTRIBUTION KEY customer_id; +
      Change table schema:                                                        +
@@ -810,46 +832,49 @@ HELP UNREGISTER ROUTER;
 (1 row)
 
 HELP CREATE REFERENCE TABLE;
-                                      help                                      
---------------------------------------------------------------------------------
- NAME                                                                          +
-     CREATE REFERENCE TABLE - Creates a reference table — a table replicated   +
-     across all or specific shards.                                            +
-                                                                               +
- SYNTAX                                                                        +
-     CREATE REFERENCE TABLE <table_name>                                       +
-         [AUTO INCREMENT <column> [START <value>], ...]                        +
-         [ON <shard_id>, ...]                                                  +
-                                                                               +
- DESCRIPTION                                                                   +
-     Creates a reference table — a table replicated across all or specific     +
-     shards.                                                                   +
-                                                                               +
-     The optional AUTO INCREMENT clause creates a sequence for the specified   +
-     columns.                                                                  +
-     If no shards are specified with ON, the table is created on all shards.   +
-                                                                               +
- PARAMETERS                                                                    +
-     <table_name> - Name of the reference table to create                      +
-     <column> - Column name for auto-increment sequence                        +
-     <value> - Initial value for the auto-increment sequence (default 0)       +
-     <shard_id> - Shard identifiers where the table will be replicated (default+
-         all shards)                                                           +
-                                                                               +
- EXAMPLES                                                                      +
-     Create a reference table on all shards:                                   +
-         CREATE REFERENCE TABLE tax_rates;                                     +
-     Create on specific shards:                                                +
-         CREATE REFERENCE TABLE tax_rates ON sh1, sh2;                         +
-     With auto-increment column:                                               +
-         CREATE REFERENCE TABLE orders AUTO INCREMENT id;                      +
-     With auto-increment starting at a specific value:                         +
-         CREATE REFERENCE TABLE orders AUTO INCREMENT id START 1000;           +
-                                                                               +
- RELATED COMMANDS                                                              +
-     DROP REFERENCE TABLE                                                      +
-     ALTER REFERENCE TABLE STORAGE                                             +
-     SYNC REFERENCE TABLE                                                      +
+                                      help                                       
+---------------------------------------------------------------------------------
+ NAME                                                                           +
+     CREATE REFERENCE TABLE - Creates a reference table — a table replicated    +
+     across all or specific shards.                                             +
+                                                                                +
+ SYNTAX                                                                         +
+     CREATE REFERENCE TABLE [IF NOT EXISTS] <table_name>                        +
+         [AUTO INCREMENT <column> [START <value>], ...]                         +
+         [ON <shard_id>, ...]                                                   +
+                                                                                +
+ DESCRIPTION                                                                    +
+     Creates a reference table — a table replicated across all or specific      +
+     shards.                                                                    +
+                                                                                +
+     The optional AUTO INCREMENT clause creates a sequence for the specified    +
+     columns.                                                                   +
+     If no shards are specified with ON, the table is created on all shards.    +
+     Use IF NOT EXISTS to skip creation when the reference table already exists.+
+                                                                                +
+ PARAMETERS                                                                     +
+     <table_name> - Name of the reference table to create                       +
+     <column> - Column name for auto-increment sequence                         +
+     <value> - Initial value for the auto-increment sequence (default 0)        +
+     <shard_id> - Shard identifiers where the table will be replicated (default +
+         all shards)                                                            +
+                                                                                +
+ EXAMPLES                                                                       +
+     Create a reference table on all shards:                                    +
+         CREATE REFERENCE TABLE tax_rates;                                      +
+     Create a reference table if it does not exist:                             +
+         CREATE REFERENCE TABLE IF NOT EXISTS tax_rates;                        +
+     Create on specific shards:                                                 +
+         CREATE REFERENCE TABLE tax_rates ON sh1, sh2;                          +
+     With auto-increment column:                                                +
+         CREATE REFERENCE TABLE orders AUTO INCREMENT id;                       +
+     With auto-increment starting at a specific value:                          +
+         CREATE REFERENCE TABLE orders AUTO INCREMENT id START 1000;            +
+                                                                                +
+ RELATED COMMANDS                                                               +
+     DROP REFERENCE TABLE                                                       +
+     ALTER REFERENCE TABLE STORAGE                                              +
+     SYNC REFERENCE TABLE                                                       +
      DROP SEQUENCE
 (1 row)
 
@@ -861,11 +886,13 @@ HELP DROP REFERENCE TABLE;
      does not drop the actual                                                   +
                                                                                 +
  SYNTAX                                                                         +
-     DROP REFERENCE TABLE <table_name>                                          +
+     DROP REFERENCE TABLE [IF EXISTS] <table_name>                              +
                                                                                 +
  DESCRIPTION                                                                    +
      Removes a reference table from SPQR metadata. This does not drop the actual+
      table from the shards.                                                     +
+                                                                                +
+     Use IF EXISTS to skip the command when the reference table does not exist. +
                                                                                 +
  PARAMETERS                                                                     +
      <table_name> - Name of the reference table to drop                         +
@@ -873,6 +900,8 @@ HELP DROP REFERENCE TABLE;
  EXAMPLES                                                                       +
      Drop a reference table:                                                    +
          DROP REFERENCE TABLE tax_rates;                                        +
+     Drop a reference table if it exists:                                       +
+         DROP REFERENCE TABLE IF EXISTS tax_rates;                              +
                                                                                 +
  RELATED COMMANDS                                                               +
      CREATE REFERENCE TABLE                                                     +
