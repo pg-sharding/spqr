@@ -92,6 +92,7 @@
                     "group": "Configuration Guide",
                     "pages": [
                         "configuration/router",
+                        "configuration/virtual_function",
                         "configuration/coordinator",
                         "configuration/balancer",
                         "configuration/auth",
