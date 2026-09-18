@@ -47,7 +47,9 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `availability_zone`             | The router's availability zone, matched against zone labels in shard host entries.     | Any zone label  | (none)  |
 | `prefer_same_availability_zone` | Prefer hosts in the router's zone. Takes effect when `availability_zone` is non-empty. | `true`, `false` | `false` |
 
-See [Availability zone preferences](/features/multiple_servers_and_failover#availability-zone-preferences) for an example.
+When `prefer_same_availability_zone` is `false` or `availability_zone` is empty, zone labels do not affect host selection.
+
+See [Shards](#shards) for host zone labels and a configuration example.
 
 ## gRPC TLS Settings
 
@@ -99,6 +101,21 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 | `hosts` | A list of host addresses with optional availability zone labels. | Array of `host:port[:availability_zone]` strings | (none) |
 | `type`  | Use `DATA` always                       | `DATA`, `WORLD`         | (none) |
 | `tls`   | See [auth.mdx](./auth)                  | Object of `TLSConfig`   | (none) |
+
+Example with [availability zone preference](#availability-zone-settings) enabled:
+
+```yaml
+availability_zone: "us-east-1a"
+prefer_same_availability_zone: true
+
+shards:
+  shard1:
+    hosts:
+      - "db1.example.com:5432:us-east-1a"
+      - "db2.example.com:5432:us-east-1b"
+```
+
+SPQR prefers `db1.example.com` and can fall back to `db2.example.com` if no suitable host is available in `us-east-1a`. The selected host must satisfy `target-session-attrs`.
 
 ## Statistics Settings
 
