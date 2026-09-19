@@ -381,26 +381,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
-			case session.SPQR_TARGET_SESSION_ATTRS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("target session attrs"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(string(rst.Client().GetTsa()))
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
 			case session.SPQR_COMMIT_STRATEGY:
 
 				tts := tupleslot.TupleTableSlot{
@@ -618,13 +598,7 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			switch name {
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
-			case session.SPQR_TARGET_SESSION_ATTRS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				rst.Client().SetTsa(lvl, hintVal)
-				/* We also accept pg default tx ro GUC as alias  */
+			/* We also accept pg default tx ro GUC as alias  */
 			case session.PG_DEFAULT_TRANSACTION_READ_ONLY:
 				switch value {
 				case "true", "on", "ok":
