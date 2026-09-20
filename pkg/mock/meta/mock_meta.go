@@ -234,6 +234,20 @@ func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req, issuer, ch)
 }
 
+// Begin mocks base method.
+func (m *MockEntityMgr) Begin(ctx context.Context, someId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Begin", ctx, someId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Begin indicates an expected call of Begin.
+func (mr *MockEntityMgrMockRecorder) Begin(ctx, someId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockEntityMgr)(nil).Begin), ctx, someId)
+}
+
 // BeginTran mocks base method.
 func (m *MockEntityMgr) BeginTran(ctx context.Context) (*transaction.MetaTransaction, error) {
 	m.ctrl.T.Helper()
@@ -261,6 +275,20 @@ func (m *MockEntityMgr) Cache() *cache.SchemaCache {
 func (mr *MockEntityMgrMockRecorder) Cache() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cache", reflect.TypeOf((*MockEntityMgr)(nil).Cache))
+}
+
+// Commit mocks base method.
+func (m *MockEntityMgr) Commit(ctx context.Context, someId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Commit", ctx, someId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Commit indicates an expected call of Commit.
+func (mr *MockEntityMgrMockRecorder) Commit(ctx, someId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockEntityMgr)(nil).Commit), ctx, someId)
 }
 
 // CommitTran mocks base method.
@@ -1110,6 +1138,20 @@ func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string, nowai
 func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
+}
+
+// Rollback mocks base method.
+func (m *MockEntityMgr) Rollback(ctx context.Context, someId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Rollback", ctx, someId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Rollback indicates an expected call of Rollback.
+func (mr *MockEntityMgrMockRecorder) Rollback(ctx, someId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockEntityMgr)(nil).Rollback), ctx, someId)
 }
 
 // SetShardOptions mocks base method.

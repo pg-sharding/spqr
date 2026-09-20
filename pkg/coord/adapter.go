@@ -1312,8 +1312,22 @@ func (a *Adapter) GetTxnBatchSize() uint16 {
 	return a.maxTxnBatch
 }
 
-func (a *Adapter) ApplyXRecords(_ context.Context, _ []*mtran.XRecord) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Adapter ApplyXRecords not implemented")
+func (a *Adapter) ApplyXRecords(ctx context.Context, xrecords []*mtran.XRecord) error {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	_, err := conn.ApplyXRecords(ctx, &proto.ApplyXRecordsRequest{
+		Records: models.ConvertMany(xrecords, mtran.XRecordToProto),
+	})
+	return spqrerror.CleanGrpcError(err)
+}
+
+func (a *Adapter) Begin(_ context.Context) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Begin not implemented in Adapter")
+}
+func (a *Adapter) Commit(_ context.Context) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Commit not implemented in Adapter")
+}
+func (a *Adapter) Rollback(_ context.Context) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Rollback not implemented in Adapter")
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.

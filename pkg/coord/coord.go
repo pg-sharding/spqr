@@ -32,6 +32,8 @@ type Coordinator struct {
 	qdb         qdb.XQDB
 	dcs         qdb.DCStateKeeper
 	maxTxnBatch uint16
+
+	xrecords []*mtran.XRecord
 }
 
 var _ meta.EntityMgr = &Coordinator{}
@@ -41,7 +43,13 @@ func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper, maxTxnBatch uint16) Coordin
 		qdb:         q,
 		dcs:         d,
 		maxTxnBatch: maxTxnBatch,
+
+		xrecords: make([]*mtran.XRecord, 0),
 	}
+}
+
+func (lc *Coordinator) XRecords() []*mtran.XRecord {
+	return lc.xrecords
 }
 
 func (lc *Coordinator) StartupFinished() bool {
@@ -1103,6 +1111,9 @@ func (lc *Coordinator) ShareKeyRange(id string) error {
 // - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	if err := lc.appendXRecord("CreateKeyRange", kr); err != nil {
+		return nil, err
+	}
 	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
@@ -1116,6 +1127,9 @@ func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]q
 // - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	if err := lc.appendXRecord("UpdateKeyRange", kr); err != nil {
+		return nil, err
+	}
 	return lc.qdb.UpdateKeyRange(ctx, kr.ToDB())
 }
 
@@ -1534,6 +1548,31 @@ func (lc *Coordinator) GetTxnBatchSize() uint16 {
 	return lc.maxTxnBatch
 }
 
+func (lc *Coordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	// open transaction
+	// defer rollback
+
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
+			return err
+		}
+	}
+
+	// commit transaction
+
+	return nil
+}
+
+func (lc *Coordinator) Begin(ctx context.Context, someId string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+func (lc *Coordinator) Rollback(ctx context.Context, someId string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+func (lc *Coordinator) Commit(ctx context.Context, someId string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+
 // CreateUniqueIndex implements meta.EntityMgr.
 func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
 	ds, err := lc.GetRelationDistribution(ctx, idx.RelationName)
@@ -1620,15 +1659,6 @@ func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []s
 
 func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
 	return lc.qdb.GetTxMetaStorage(ctx)
-}
-
-func (lc *Coordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
-	for _, record := range records {
-		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.DataShard) error {
@@ -1728,6 +1758,15 @@ func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.
 		}
 	}
 
+	return nil
+}
+
+func (lc *Coordinator) appendXRecord(methodName string, args ...any) error {
+	xrec, err := meta.MakeXRecord(methodName, args...)
+	if err != nil {
+		return err
+	}
+	lc.xrecords = append(lc.xrecords, xrec)
 	return nil
 }
 

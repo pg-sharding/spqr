@@ -1394,11 +1394,32 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.Rename:
 		return processRename(ctx, stmt, mgr)
 	case *spqrparser.Begin:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("begin"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "Begin"),
+			}},
+		}
+		err := mgr.Begin(ctx)
+		return tts, err
 	case *spqrparser.Commit:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("commit"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "Commit"),
+			}},
+		}
+		err := mgr.Commit(ctx)
+		return tts, err
 	case *spqrparser.Rollback:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("rollback"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "Rollback"),
+			}},
+		}
+		err := mgr.Rollback(ctx)
+		return tts, err
 	case *spqrparser.Call:
 		switch stmt.FuncName {
 		case virtual.VirtualCheckRouterMetaHash:
@@ -2531,6 +2552,8 @@ func ApplyXRecords(
 	tx EntityMgr,
 	operation *mtran.XRecord,
 ) error {
+	spqrlog.Zero.Debug().Interface("operation", operation).Msg("here11¡")
+
 	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
 	if !method.IsValid() {
 		return fmt.Errorf("unknown EntityMgr method %q", operation.MethodName)
@@ -2557,10 +2580,11 @@ func ApplyXRecords(
 
 		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
 			return fmt.Errorf(
-				"failed to decode argument %d of %s: %w",
+				"failed to decode argument %d of %s: %w (raw: %s)",
 				i,
 				operation.MethodName,
 				err,
+				raw,
 			)
 		}
 

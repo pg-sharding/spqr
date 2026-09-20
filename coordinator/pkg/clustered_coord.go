@@ -30,6 +30,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -112,6 +113,10 @@ func (ci grpcConnMgr) FailedAuthCount() int64 {
 // FailedInitCount implements RuleRouter.
 func (ci grpcConnMgr) FailedInitCount() int64 {
 	return 0
+}
+
+func (ci grpcConnMgr) ID() string {
+	return "mock_for_now"
 }
 
 // TODO : unit tests
@@ -3555,6 +3560,43 @@ func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *to
 	defer cf()
 	rCl := proto.NewRouterServiceClient(cc)
 	return qc.getRouterMetaHashInternal(ctx, rCl)
+}
+
+func (qc *ClusteredCoordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	// open transaction
+	// defer rollback
+	if err := qc.Begin(ctx); err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, qc, record); err != nil {
+			return err
+		}
+	}
+
+	// commit transaction
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		client := proto.NewMetaTransactionServiceClient(cc)
+		_, err := client.ApplyXRecords(ctx, &proto.ApplyXRecordsRequest{
+			Records: models.ConvertMany(records, mtran.XRecordToProto),
+		})
+		return spqrerror.CleanGrpcError(err)
+	})
+}
+
+func (qc *ClusteredCoordinator) Begin(ctx context.Context) error {
+	return nil
+	// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+func (qc *ClusteredCoordinator) Rollback(ctx context.Context) error {
+	return nil
+	// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+}
+func (qc *ClusteredCoordinator) Commit(ctx context.Context) error {
+	return nil
+	// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
 
 func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {
