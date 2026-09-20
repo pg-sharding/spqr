@@ -29,6 +29,7 @@ type ConnectionMgr interface {
 	ConnectionIterator
 	ConnectionStatMgr
 
+	ID() string
 	StartTime() time.Time
 	LastReloadTime() time.Time
 }

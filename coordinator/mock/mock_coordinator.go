@@ -235,6 +235,20 @@ func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer, ch)
 }
 
+// Begin mocks base method.
+func (m *MockCoordinator) Begin(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Begin", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Begin indicates an expected call of Begin.
+func (mr *MockCoordinatorMockRecorder) Begin(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockCoordinator)(nil).Begin), ctx)
+}
+
 // BeginTran mocks base method.
 func (m *MockCoordinator) BeginTran(ctx context.Context) (*transaction.MetaTransaction, error) {
 	m.ctrl.T.Helper()
@@ -262,6 +276,20 @@ func (m *MockCoordinator) Cache() *cache.SchemaCache {
 func (mr *MockCoordinatorMockRecorder) Cache() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cache", reflect.TypeOf((*MockCoordinator)(nil).Cache))
+}
+
+// Commit mocks base method.
+func (m *MockCoordinator) Commit(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Commit", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Commit indicates an expected call of Commit.
+func (mr *MockCoordinatorMockRecorder) Commit(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockCoordinator)(nil).Commit), ctx)
 }
 
 // CommitTran mocks base method.
@@ -1168,6 +1196,20 @@ func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, now
 func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
+}
+
+// Rollback mocks base method.
+func (m *MockCoordinator) Rollback(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Rollback", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Rollback indicates an expected call of Rollback.
+func (mr *MockCoordinatorMockRecorder) Rollback(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockCoordinator)(nil).Rollback), ctx)
 }
 
 // RunCoordinator mocks base method.
