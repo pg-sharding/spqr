@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -430,6 +431,23 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
+
+	adapter, err := lc.newAdapter(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return adapter.NextRange(ctx, seqName, rangeSize)
+}
+
+func (lc *LocalInstanceMetadataMgr) newAdapter(ctx context.Context) (*Adapter, error) {
+	coordAddr, err := lc.GetCoordinator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if coordAddr == "" {
+		return nil, spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "coordinator address is empty")
+	}
+
 	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
 		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
@@ -443,8 +461,7 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	mgr := NewAdapter(conn, lc.maxTxnBatch)
-	return mgr.NextRange(ctx, seqName, rangeSize)
+	return NewAdapter(conn, lc.maxTxnBatch), nil
 }
 
 func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string) (int64, error) {
@@ -470,6 +487,60 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 	}()
 	mgr := NewAdapter(conn, lc.maxTxnBatch)
 	return mgr.CurrVal(ctx, seqName)
+}
+
+func (lc *LocalInstanceMetadataMgr) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	// open transaction
+	// defer rollback
+
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
+			return err
+		}
+	}
+
+	// commit transaction
+
+	return nil
+}
+
+func (lc *LocalInstanceMetadataMgr) Begin(ctx context.Context) error {
+	tx, err := qdb.NewTransaction()
+	if err != nil {
+		return err
+	}
+	if err := lc.qdb.BeginTransaction(ctx, tx); err != nil {
+		return err
+	}
+
+	// Start transaction in Topology Manager
+	if err := lc.tmgr.Begin(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (lc *LocalInstanceMetadataMgr) Rollback(ctx context.Context) error {
+	// TODO: Rollback transactions in Topology manager and qdb
+	if err := lc.tmgr.Rollback(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+func (lc *LocalInstanceMetadataMgr) Commit(ctx context.Context) error {
+	xrecords := lc.XRecords()
+
+	if err := lc.Rollback(ctx); err != nil {
+		return err
+	}
+
+	adapter, close, err := DistributedMgr(ctx, lc)
+	if err != nil {
+		return err
+	}
+	defer close()
+
+	return adapter.ApplyXRecords(ctx, xrecords)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
