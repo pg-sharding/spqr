@@ -32,7 +32,7 @@ const greeting = `
 
 type Console interface {
 	Serve(ctx context.Context, rc rclient.RouterClient) error
-	ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error
+	ProcessQuery(ctx context.Context, q string, mgr meta.EntityMgr, rc rclient.RouterClient, gc catalog.GrantChecker) error
 	Qlog() qlog.Qlog
 	Mgr() meta.EntityMgr
 }
@@ -72,10 +72,10 @@ func NewLocalInstanceConsole(
 func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	ctx context.Context,
 	tstmt spqrparser.Statement,
+	mgr meta.EntityMgr,
 	rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	/* Should we proxy this request to coordinator? */
 
-	mgr := l.entityMgr
 	var cf func()
 	var err error
 
@@ -149,7 +149,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 }
 
 // TODO : unit tests
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, mgr meta.EntityMgr, rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
@@ -161,7 +161,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		Msg("processQueryInternal: parsed query")
 
 	for _, stmt := range tstmt {
-		if err := l.ExecuteMetadataQuery(ctx, stmt, rc, gc); err != nil {
+		if err := l.ExecuteMetadataQuery(ctx, stmt, mgr, rc, gc); err != nil {
 			return err
 		}
 	}
@@ -210,6 +210,8 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 
 	spqrlog.Zero.Debug().Msg("console.ProcClient start")
 
+	mgr := l.entityMgr
+
 	for {
 		msg, err := rc.Receive()
 
@@ -219,7 +221,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, rc, catalog.GC); err != nil {
+			if err := l.ProcessQuery(ctx, v.String, mgr, rc, catalog.GC); err != nil {
 				_ = rc.ReplyErr(err)
 				// continue to consume input
 			}

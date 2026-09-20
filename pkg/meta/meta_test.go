@@ -481,7 +481,6 @@ func TestApplyXRecords(t *testing.T) {
 		ctx := context.Background()
 		mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
-		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
 		datashard := &topology.DataShard{
 			ID: "sh1",
 		}
@@ -489,7 +488,6 @@ func TestApplyXRecords(t *testing.T) {
 		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
 		assert.NoError(err)
 
-		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
 		referenceRelation := &rrelation.ReferenceRelation{
 			RelationName: &rfqn.RelationFQN{
 				RelationName: "relation",
