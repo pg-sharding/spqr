@@ -8,9 +8,11 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/stretchr/testify/assert"
 )
@@ -132,4 +134,33 @@ func TestAlterDistributionAttach(t *testing.T) {
 			is.True(ok)
 		}
 	}
+}
+
+func TestLocalConsoleTransaction(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(err)
+
+	c := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+
+	sess := meta.NewConsoleSession(c)
+	err = sess.Begin(ctx)
+	assert.NoError(err)
+
+	mgr := sess.EffectiveMgr()
+
+	err = mgr.AlterDistributionAttach(ctx, "ds1", []*distributions.DistributedRelation{
+		distributions.DistributedRelationFromSQL(&spqrparser.DistributedRelation{
+			Relation: rfqn.RelationFQNFromFullName("public", "test"),
+			DistributionKey: []spqrparser.DistributionKeyEntry{
+				{Column: "id"},
+			},
+		}),
+	})
+	assert.NoError(err)
+
+	err = sess.Commit(ctx)
+	assert.NoError(err)
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
@@ -62,4 +63,32 @@ func TestAwaitMoveTaskGroupResultUpdatesErrorStatus(t *testing.T) {
 		assert.Equal(t, string(tasks.TaskGroupError), status.State)
 		assert.Equal(t, taskErr.Error(), status.Message)
 	}
+}
+
+func TestClusteredCoordinatorTx(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.TODO()
+
+	memDB, err := qdb.NewMemQDB("")
+
+	qc, err := NewClusteredCoordinator(nil, memDB, qdb.DefaultMaxTxnSize)
+	assert.NoError(err)
+
+	err = qc.AddRouter(ctx, &topology.Router{
+		ID:    "r",
+		State: qdb.OPENED,
+	})
+	assert.NoError(err)
+
+	sess := meta.NewConsoleSession(qc)
+	err = sess.Begin(ctx)
+	assert.NoError(err)
+
+	mgr := sess.EffectiveMgr()
+
+	err = mgr.DropShard(ctx, "sh1")
+	assert.NoError(err)
+
+	err = sess.Commit(ctx)
+	assert.NoError(err)
 }

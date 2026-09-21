@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	icp "github.com/pg-sharding/spqr/pkg/icp"
+	meta "github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -1239,6 +1240,20 @@ func (mr *MockEntityMgrMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).ShareKeyRange), id)
 }
 
+// Snapshot mocks base method.
+func (m *MockEntityMgr) Snapshot() meta.EntityMgr {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(meta.EntityMgr)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockEntityMgrMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockEntityMgr)(nil).Snapshot))
+}
+
 // Split mocks base method.
 func (m *MockEntityMgr) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 	m.ctrl.T.Helper()
@@ -1449,6 +1464,20 @@ func (m *MockEntityMgr) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks
 func (mr *MockEntityMgrMockRecorder) WriteMoveTaskGroup(ctx, taskGroup any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).WriteMoveTaskGroup), ctx, taskGroup)
+}
+
+// XRecords mocks base method.
+func (m *MockEntityMgr) XRecords() []*transaction.XRecord {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "XRecords")
+	ret0, _ := ret[0].([]*transaction.XRecord)
+	return ret0
+}
+
+// XRecords indicates an expected call of XRecords.
+func (mr *MockEntityMgrMockRecorder) XRecords() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "XRecords", reflect.TypeOf((*MockEntityMgr)(nil).XRecords))
 }
 
 // MockRouterConnector is a mock of RouterConnector interface.
