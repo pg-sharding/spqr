@@ -1,5 +1,5 @@
 Feature: Config reloading works
-
+  @pure_pg
   Scenario: Backend auth works
     Given cluster environment is
     """

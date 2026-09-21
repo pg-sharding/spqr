@@ -8,6 +8,7 @@ Feature: TLS connections to shards via coordinator
     Given cluster is up and running
     And host "coordinator2" is stopped
 
+  @pure_pg
   Scenario: ALTER SHARD enables TLS
     When I run SQL on host "coordinator"
     """
@@ -121,6 +122,7 @@ Feature: TLS connections to shards via coordinator
     "count":0[^0-9]
     """
 
+  @pure_pg
   Scenario: CREATE SHARD with TLS enables encrypted connections
     # Enable SSL on shard1
     When I run command on host "shard1"
@@ -201,6 +203,7 @@ Feature: TLS connections to shards via coordinator
     "count":0[^0-9]
     """
 
+  @pure_pg
   Scenario: SyncRouterMetadata propagates shard config updates on re-register
     When I run SQL on host "coordinator"
     """

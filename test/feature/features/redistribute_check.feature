@@ -237,6 +237,7 @@ Scenario: REDISTRIBUTE KEY RANGE CHECK does not check for spqrhash extension whe
     """
     Then command return code should be "0"
 
+  @pure_pg
   Scenario: REDISTRIBUTE KEY RANGE CHECK checks password correctness
     When I execute SQL on host "coordinator"
     """

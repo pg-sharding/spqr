@@ -148,8 +148,10 @@ Scenario: external writes are blocked in shard
 
     When I run SQL on host "shard1"
     """
+    BEGIN;
     SET spqrguard.prevent_distributed_table_modify TO 'unset';
     INSERT INTO t (id) VALUES (0);
+    COMMIT;
     """
     Then command return code should be "1"
     And SQL error on host "shard1" should match regexp
@@ -158,8 +160,11 @@ Scenario: external writes are blocked in shard
     """
     When I run SQL on host "shard1"
     """
+    ROLLBACK;
+    BEGIN;
     SET spqrguard.prevent_reference_table_modify TO 'unset';
     INSERT INTO rt (id) VALUES (0);
+    COMMIT;
     """
     Then command return code should be "1"
     And SQL error on host "shard1" should match regexp
