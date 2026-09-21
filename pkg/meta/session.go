@@ -73,11 +73,8 @@ func (s *ConsoleSession) Commit(ctx context.Context) error {
 	if err := txMgr.Commit(ctx); err != nil {
 		return err
 	}
-	if err := s.mgr.ApplyXRecords(ctx, xrecords); err != nil {
-		return err
-	}
 
-	return nil
+	return s.mgr.ApplyXRecords(ctx, xrecords)
 }
 
 func (s *ConsoleSession) Rollback(ctx context.Context) error {

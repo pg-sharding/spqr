@@ -116,10 +116,6 @@ func (ci grpcConnMgr) FailedInitCount() int64 {
 	return 0
 }
 
-func (ci grpcConnMgr) ID() string {
-	return "mock_for_now"
-}
-
 // TODO : unit tests
 func (ci grpcConnMgr) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()
@@ -3582,13 +3578,13 @@ func (qc *ClusteredCoordinator) ApplyXRecords(ctx context.Context, records []*mt
 	return nil
 }
 
-func (qc *ClusteredCoordinator) Begin(ctx context.Context) error {
+func (qc *ClusteredCoordinator) Begin(_ context.Context) error {
 	return txNotSupported
 }
-func (qc *ClusteredCoordinator) Rollback(ctx context.Context) error {
+func (qc *ClusteredCoordinator) Rollback(_ context.Context) error {
 	return txNotSupported
 }
-func (qc *ClusteredCoordinator) Commit(ctx context.Context) error {
+func (qc *ClusteredCoordinator) Commit(_ context.Context) error {
 	return txNotSupported
 }
 

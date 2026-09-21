@@ -1463,3 +1463,17 @@ func (mr *MockCoordinatorMockRecorder) WriteMoveTaskGroup(ctx, taskGroup any) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).WriteMoveTaskGroup), ctx, taskGroup)
 }
+
+// XRecords mocks base method.
+func (m *MockCoordinator) XRecords() []*transaction.XRecord {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "XRecords")
+	ret0, _ := ret[0].([]*transaction.XRecord)
+	return ret0
+}
+
+// XRecords indicates an expected call of XRecords.
+func (mr *MockCoordinatorMockRecorder) XRecords() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "XRecords", reflect.TypeOf((*MockCoordinator)(nil).XRecords))
+}

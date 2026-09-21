@@ -600,7 +600,7 @@ func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool, _
 
 // StopMoveTaskGroup implements meta.EntityMgr
 func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
-	return lc.qdb.AddMoveTaskGroupStopFlag(ctx, id, immediate)
+	return lc.QDB().AddMoveTaskGroupStopFlag(ctx, id, immediate)
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
@@ -1119,12 +1119,9 @@ func (lc *Coordinator) ShareKeyRange(id string) error {
 // - kr (*kr.KeyRange): The key range object to be created.
 //
 // Returns:
-// - []qdb.qdb.Statement: qdb statements to apply changes
+// - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
-	if err := lc.appendXRecord("CreateKeyRange", kr); err != nil {
-		return nil, err
-	}
 	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
@@ -1135,12 +1132,9 @@ func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]q
 // - kr (*kr.KeyRange): The key range object to be created.
 //
 // Returns:
-// - []qdb.qdb.Statement: qdb statements to apply changes
+// - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
-	if err := lc.appendXRecord("UpdateKeyRange", kr); err != nil {
-		return nil, err
-	}
 	return lc.qdb.UpdateKeyRange(ctx, kr.ToDB())
 }
 
@@ -1564,27 +1558,22 @@ func (lc *Coordinator) GetTxnBatchSize() uint16 {
 }
 
 func (lc *Coordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
-	// open transaction
-	// defer rollback
-
 	for _, record := range records {
 		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
 			return err
 		}
 	}
 
-	// commit transaction
-
 	return nil
 }
 
-func (lc *Coordinator) Begin(ctx context.Context) error {
+func (lc *Coordinator) Begin(_ context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
-func (lc *Coordinator) Rollback(ctx context.Context) error {
+func (lc *Coordinator) Rollback(_ context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
-func (lc *Coordinator) Commit(ctx context.Context) error {
+func (lc *Coordinator) Commit(_ context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
 
