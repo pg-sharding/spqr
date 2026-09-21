@@ -184,20 +184,6 @@ func (mr *MockRuleRouterMockRecorder) GracShutdown() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GracShutdown", reflect.TypeOf((*MockRuleRouter)(nil).GracShutdown))
 }
 
-// ID mocks base method.
-func (m *MockRuleRouter) ID() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ID")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ID indicates an expected call of ID.
-func (mr *MockRuleRouterMockRecorder) ID() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockRuleRouter)(nil).ID))
-}
-
 // InstanceHealthChecks mocks base method.
 func (m *MockRuleRouter) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	m.ctrl.T.Helper()
