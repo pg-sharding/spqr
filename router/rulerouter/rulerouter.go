@@ -74,10 +74,6 @@ type RuleRouterImpl struct {
 	LastReload        time.Time
 }
 
-func (r *RuleRouterImpl) ID() string {
-	return "mock"
-}
-
 // LastReloadTime implements [RuleRouter].
 func (r *RuleRouterImpl) LastReloadTime() time.Time {
 	return r.LastReload

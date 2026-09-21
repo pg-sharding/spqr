@@ -432,22 +432,6 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
 
-	adapter, err := lc.newAdapter(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return adapter.NextRange(ctx, seqName, rangeSize)
-}
-
-func (lc *LocalInstanceMetadataMgr) newAdapter(ctx context.Context) (*Adapter, error) {
-	coordAddr, err := lc.GetCoordinator(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if coordAddr == "" {
-		return nil, spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "coordinator address is empty")
-	}
-
 	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
 		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
@@ -461,7 +445,8 @@ func (lc *LocalInstanceMetadataMgr) newAdapter(ctx context.Context) (*Adapter, e
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	return NewAdapter(conn, lc.maxTxnBatch), nil
+	mgr := NewAdapter(conn, lc.maxTxnBatch)
+	return mgr.NextRange(ctx, seqName, rangeSize)
 }
 
 func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string) (int64, error) {
@@ -490,17 +475,11 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 }
 
 func (lc *LocalInstanceMetadataMgr) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
-	// open transaction
-	// defer rollback
-	spqrlog.Zero.Debug().Int("count", len(records)).Msg("apply xrecords in local console")
-
 	for _, record := range records {
 		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
 			return err
 		}
 	}
-
-	// commit transaction
 
 	return nil
 }
@@ -512,13 +491,13 @@ func (lc *LocalInstanceMetadataMgr) Snapshot() meta.EntityMgr {
 	lcSnap := NewLocalInstanceMetadataMgr(qdbSnap, lc.dcs, lc.cache, topologySnap, lc.updateTopology, lc.poolShardHosts, lc.maxTxnBatch)
 	return lcSnap
 }
-func (lc *LocalInstanceMetadataMgr) Begin(ctx context.Context) error {
+func (lc *LocalInstanceMetadataMgr) Begin(_ context.Context) error {
 	return nil
 }
-func (lc *LocalInstanceMetadataMgr) Rollback(ctx context.Context) error {
+func (lc *LocalInstanceMetadataMgr) Rollback(_ context.Context) error {
 	return nil
 }
-func (lc *LocalInstanceMetadataMgr) Commit(ctx context.Context) error {
+func (lc *LocalInstanceMetadataMgr) Commit(_ context.Context) error {
 	return nil
 }
 

@@ -1209,7 +1209,7 @@ func ProcMetadataCommand(ctx context.Context,
 	mgr := sess.EffectiveMgr()
 
 	/* TODO: do not accept nil as rc here */
-	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Type("mgr", mgr).Msg("proc query")
+	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
@@ -2745,8 +2745,6 @@ func ApplyXRecords(
 	tx EntityMgr,
 	operation *mtran.XRecord,
 ) error {
-	spqrlog.Zero.Debug().Interface("operation", operation).Msg("here11")
-
 	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
 	if !method.IsValid() {
 		return fmt.Errorf("unknown EntityMgr method %q", operation.MethodName)
@@ -2773,11 +2771,10 @@ func ApplyXRecords(
 
 		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
 			return fmt.Errorf(
-				"failed to decode argument %d of %s: %w (raw: %s)",
+				"failed to decode argument %d of %s: %w",
 				i,
 				operation.MethodName,
 				err,
-				raw,
 			)
 		}
 
