@@ -10,7 +10,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -26,12 +25,15 @@ type TopologyMgr interface {
 	SetOptions(string, []GenericOption)
 
 	Snap() map[string]*DataShard
-
-	transaction.Transactional
+	Snapshot() TopologyMgr
 }
 
 type TopologyMgrImpl struct {
 	shardMapping sync.Map
+}
+
+func (t *TopologyMgrImpl) Snapshot() TopologyMgr {
+	return TopMgrFromMap(t.Snap())
 }
 
 func (t *TopologyMgrImpl) Snap() map[string]*DataShard {
@@ -96,19 +98,6 @@ func (t *TopologyMgrImpl) SetOptions(id string, opt []GenericOption) {
 	shCopy.SetOptions(opt)
 
 	t.shardMapping.Store(id, &shCopy)
-}
-
-func (t *TopologyMgrImpl) Begin(ctx context.Context, someId string) error {
-	// TODO implement
-	return nil
-}
-func (t *TopologyMgrImpl) Rollback(ctx context.Context, someId string) error {
-	// TODO implement
-	return nil
-}
-func (t *TopologyMgrImpl) Commit(ctx context.Context, someId string) error {
-	// TODO implement
-	return nil
 }
 
 var TopMgr TopologyMgr

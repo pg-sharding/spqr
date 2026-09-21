@@ -15,6 +15,7 @@ import (
 	reflect "reflect"
 
 	icp "github.com/pg-sharding/spqr/pkg/icp"
+	meta "github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -236,17 +237,17 @@ func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch an
 }
 
 // Begin mocks base method.
-func (m *MockCoordinator) Begin(ctx context.Context, someId string) error {
+func (m *MockCoordinator) Begin(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Begin", ctx, someId)
+	ret := m.ctrl.Call(m, "Begin", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Begin indicates an expected call of Begin.
-func (mr *MockCoordinatorMockRecorder) Begin(ctx, someId any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) Begin(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockCoordinator)(nil).Begin), ctx, someId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockCoordinator)(nil).Begin), ctx)
 }
 
 // BeginTran mocks base method.
@@ -279,17 +280,17 @@ func (mr *MockCoordinatorMockRecorder) Cache() *gomock.Call {
 }
 
 // Commit mocks base method.
-func (m *MockCoordinator) Commit(ctx context.Context, someId string) error {
+func (m *MockCoordinator) Commit(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Commit", ctx, someId)
+	ret := m.ctrl.Call(m, "Commit", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Commit indicates an expected call of Commit.
-func (mr *MockCoordinatorMockRecorder) Commit(ctx, someId any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) Commit(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockCoordinator)(nil).Commit), ctx, someId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockCoordinator)(nil).Commit), ctx)
 }
 
 // CommitTran mocks base method.
@@ -1170,17 +1171,17 @@ func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH
 }
 
 // Rollback mocks base method.
-func (m *MockCoordinator) Rollback(ctx context.Context, someId string) error {
+func (m *MockCoordinator) Rollback(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rollback", ctx, someId)
+	ret := m.ctrl.Call(m, "Rollback", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Rollback indicates an expected call of Rollback.
-func (mr *MockCoordinatorMockRecorder) Rollback(ctx, someId any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) Rollback(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockCoordinator)(nil).Rollback), ctx, someId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockCoordinator)(nil).Rollback), ctx)
 }
 
 // RunCoordinator mocks base method.
@@ -1235,6 +1236,20 @@ func (m *MockCoordinator) ShareKeyRange(id string) error {
 func (mr *MockCoordinatorMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockCoordinator)(nil).ShareKeyRange), id)
+}
+
+// Snapshot mocks base method.
+func (m *MockCoordinator) Snapshot() meta.EntityMgr {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(meta.EntityMgr)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockCoordinatorMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockCoordinator)(nil).Snapshot))
 }
 
 // Split mocks base method.

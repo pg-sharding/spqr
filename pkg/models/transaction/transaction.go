@@ -23,6 +23,7 @@ type TransactionMgr interface {
 	GetTxnBatchSize() uint16
 
 	Transactional
+	XRecords() []*XRecord
 	ApplyXRecords(ctx context.Context, records []*XRecord) error
 }
 

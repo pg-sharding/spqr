@@ -1320,6 +1320,12 @@ func (a *Adapter) ApplyXRecords(ctx context.Context, xrecords []*mtran.XRecord) 
 	return spqrerror.CleanGrpcError(err)
 }
 
+func (a *Adapter) XRecords() []*mtran.XRecord {
+	return nil
+}
+func (a *Adapter) Snapshot() meta.EntityMgr {
+	return a
+}
 func (a *Adapter) Begin(_ context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Begin not implemented in Adapter")
 }

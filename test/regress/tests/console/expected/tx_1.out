@@ -17,11 +17,7 @@ CREATE KEY RANGE kr2 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 BEGIN;
- begin 
--------
- Begin
-(1 row)
-
+ERROR:  Transactions are not supported in clustered coordinator
 CREATE RELATION test (id) IN ds1;
       attach table       
 -------------------------
@@ -36,11 +32,7 @@ RENAME KEY RANGE kr1 TO kr1_new;
 (1 row)
 
 COMMIT;
- commit 
---------
- Commit
-(1 row)
-
+ERROR:  Transactions are not supported in clustered coordinator
 SHOW DISTRIBUTIONS;
  distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
@@ -61,11 +53,7 @@ SHOW KEY_RANGES;
 (2 rows)
 
 BEGIN;
- begin 
--------
- Begin
-(1 row)
-
+ERROR:  Transactions are not supported in clustered coordinator
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
@@ -73,33 +61,24 @@ DROP DISTRIBUTION ALL CASCADE;
 (1 row)
 
 ROLLBACK;
- rollback 
-----------
- Rollback
-(1 row)
-
+ERROR:  Transactions are not supported in clustered coordinator
 SHOW DISTRIBUTIONS;
  distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
- ds1             | integer      | not exists
-(1 row)
+(0 rows)
 
 SHOW RELATIONS;
  relation_name | distribution_id | distribution_key | schema_name 
 ---------------+-----------------+------------------+-------------
- test          | ds1             | ("id", identity) | public
-(1 row)
+(0 rows)
 
 SHOW KEY_RANGES;
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
- kr1_new      | sh1      | ds1             | 100         | false
- kr2          | sh1      | ds1             | 0           | false
-(2 rows)
+(0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
- ds1
-(1 row)
+(0 rows)
 

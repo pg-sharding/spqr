@@ -30,7 +30,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -61,6 +60,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+var txNotSupported = spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Transactions are not supported in clustered coordinator")
 
 type grpcConnMgr struct {
 	InstanceStartTime time.Time
@@ -563,6 +564,11 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
+}
+
+func (qc *ClusteredCoordinator) Snapshot() meta.EntityMgr {
+	coord, _ := NewClusteredCoordinator(qc.tlsconfig, qc.db, qc.maxTxnBatch)
+	return coord
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
@@ -2948,6 +2954,8 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		return nil
 	}
 
+	sess := meta.NewConsoleSession(qc)
+
 	ci := grpcConnMgr{ClusteredCoordinator: qc, InstanceStartTime: time.Now()}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
@@ -2982,7 +2990,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 					}
 					continue
 				}
-				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
+				tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
 				if err != nil {
 					if err := cli.ReportError(err); err != nil {
 						return err
@@ -3563,11 +3571,7 @@ func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *to
 }
 
 func (qc *ClusteredCoordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
-	// open transaction
-	// defer rollback
-	if err := qc.Begin(ctx); err != nil {
-		return err
-	}
+	spqrlog.Zero.Debug().Int("count", len(records)).Msg("apply xrecords")
 
 	for _, record := range records {
 		if err := meta.ApplyXRecords(ctx, qc, record); err != nil {
@@ -3575,28 +3579,17 @@ func (qc *ClusteredCoordinator) ApplyXRecords(ctx context.Context, records []*mt
 		}
 	}
 
-	// commit transaction
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		client := proto.NewMetaTransactionServiceClient(cc)
-		_, err := client.ApplyXRecords(ctx, &proto.ApplyXRecordsRequest{
-			Records: models.ConvertMany(records, mtran.XRecordToProto),
-		})
-		return spqrerror.CleanGrpcError(err)
-	})
+	return nil
 }
 
 func (qc *ClusteredCoordinator) Begin(ctx context.Context) error {
-	return nil
-	// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+	return txNotSupported
 }
 func (qc *ClusteredCoordinator) Rollback(ctx context.Context) error {
-	return nil
-	// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+	return txNotSupported
 }
 func (qc *ClusteredCoordinator) Commit(ctx context.Context) error {
-	return nil
-	// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
+	return txNotSupported
 }
 
 func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {

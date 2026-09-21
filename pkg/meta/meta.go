@@ -80,6 +80,8 @@ type EntityMgr interface {
 
 	TaskWorkersID() []string
 	TaskState(id string) (*transferworker.TaskGroupWorkerState, error)
+
+	Snapshot() EntityMgr
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
@@ -1052,12 +1054,14 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 // - error: An error if the operation fails, otherwise nil.
 func ProcMetadataCommand(ctx context.Context,
 	tstmt spqrparser.Statement,
-	mgr EntityMgr,
+	sess *ConsoleSession,
 	ci connmgr.ConnectionMgr,
 	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 
+	mgr := sess.EffectiveMgr()
+
 	/* TODO: do not accept nil as rc here */
-	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
+	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Type("mgr", mgr).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
@@ -1400,7 +1404,7 @@ func ProcMetadataCommand(ctx context.Context,
 				fmt.Appendf(nil, "Begin"),
 			}},
 		}
-		err := mgr.Begin(ctx)
+		err := sess.Begin(ctx)
 		return tts, err
 	case *spqrparser.Commit:
 		tts := &tupleslot.TupleTableSlot{
@@ -1409,7 +1413,7 @@ func ProcMetadataCommand(ctx context.Context,
 				fmt.Appendf(nil, "Commit"),
 			}},
 		}
-		err := mgr.Commit(ctx)
+		err := sess.Commit(ctx)
 		return tts, err
 	case *spqrparser.Rollback:
 		tts := &tupleslot.TupleTableSlot{
@@ -1418,7 +1422,7 @@ func ProcMetadataCommand(ctx context.Context,
 				fmt.Appendf(nil, "Rollback"),
 			}},
 		}
-		err := mgr.Rollback(ctx)
+		err := sess.Rollback(ctx)
 		return tts, err
 	case *spqrparser.Call:
 		switch stmt.FuncName {
@@ -2552,7 +2556,7 @@ func ApplyXRecords(
 	tx EntityMgr,
 	operation *mtran.XRecord,
 ) error {
-	spqrlog.Zero.Debug().Interface("operation", operation).Msg("here11¡")
+	spqrlog.Zero.Debug().Interface("operation", operation).Msg("here11")
 
 	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
 	if !method.IsValid() {
