@@ -492,6 +492,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 func (lc *LocalInstanceMetadataMgr) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
 	// open transaction
 	// defer rollback
+	spqrlog.Zero.Debug().Int("count", len(records)).Msg("apply xrecords in local console")
 
 	for _, record := range records {
 		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
@@ -504,43 +505,21 @@ func (lc *LocalInstanceMetadataMgr) ApplyXRecords(ctx context.Context, records [
 	return nil
 }
 
+func (lc *LocalInstanceMetadataMgr) Snapshot() meta.EntityMgr {
+	qdbSnap := lc.qdb.Snapshot()
+	topologySnap := lc.tmgr.Snapshot()
+
+	lcSnap := NewLocalInstanceMetadataMgr(qdbSnap, lc.dcs, lc.cache, topologySnap, lc.updateTopology, lc.poolShardHosts, lc.maxTxnBatch)
+	return lcSnap
+}
 func (lc *LocalInstanceMetadataMgr) Begin(ctx context.Context) error {
-	tx, err := qdb.NewTransaction()
-	if err != nil {
-		return err
-	}
-	if err := lc.qdb.BeginTransaction(ctx, tx); err != nil {
-		return err
-	}
-
-	// Start transaction in Topology Manager
-	if err := lc.tmgr.Begin(ctx); err != nil {
-		return err
-	}
-
 	return nil
 }
 func (lc *LocalInstanceMetadataMgr) Rollback(ctx context.Context) error {
-	// TODO: Rollback transactions in Topology manager and qdb
-	if err := lc.tmgr.Rollback(ctx); err != nil {
-		return err
-	}
 	return nil
 }
 func (lc *LocalInstanceMetadataMgr) Commit(ctx context.Context) error {
-	xrecords := lc.XRecords()
-
-	if err := lc.Rollback(ctx); err != nil {
-		return err
-	}
-
-	adapter, close, err := DistributedMgr(ctx, lc)
-	if err != nil {
-		return err
-	}
-	defer close()
-
-	return adapter.ApplyXRecords(ctx, xrecords)
+	return nil
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.

@@ -232,6 +232,21 @@ func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
 	return nil
 }
 
+func (q *MemQDB) Snapshot() XQDB {
+	b, err := json.Marshal(q.State)
+	if err != nil {
+		return nil
+	}
+	qdb, err := NewMemQDB("")
+	if err != nil {
+		return nil
+	}
+	if err := json.Unmarshal(b, qdb.State); err != nil {
+		return nil
+	}
+	return qdb
+}
+
 // ==============================================================================
 //                               MISC
 // ==============================================================================

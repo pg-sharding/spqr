@@ -1,0 +1,84 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE kr1 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE kr2 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+BEGIN;
+ERROR:  Transactions are not supported in clustered coordinator
+CREATE RELATION test (id) IN ds1;
+      attach table       
+-------------------------
+ relation name   -> test
+ distribution id -> ds1
+(2 rows)
+
+RENAME KEY RANGE kr1 TO kr1_new;
+ key_range_id | new_id  
+--------------+---------
+ kr1          | kr1_new
+(1 row)
+
+COMMIT;
+ERROR:  Transactions are not supported in clustered coordinator
+SHOW DISTRIBUTIONS;
+ distribution_id | column_types | default_shard 
+-----------------+--------------+---------------
+ ds1             | integer      | not exists
+(1 row)
+
+SHOW RELATIONS;
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+ test          | ds1             | ("id", identity) | public
+(1 row)
+
+SHOW KEY_RANGES;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ kr1_new      | sh1      | ds1             | 100         | false
+ kr2          | sh1      | ds1             | 0           | false
+(2 rows)
+
+BEGIN;
+ERROR:  Transactions are not supported in clustered coordinator
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
+ROLLBACK;
+ERROR:  Transactions are not supported in clustered coordinator
+SHOW DISTRIBUTIONS;
+ distribution_id | column_types | default_shard 
+-----------------+--------------+---------------
+(0 rows)
+
+SHOW RELATIONS;
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+(0 rows)
+
+SHOW KEY_RANGES;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+(0 rows)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+(0 rows)
+
