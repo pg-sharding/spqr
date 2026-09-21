@@ -98,9 +98,11 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 | Setting | Description                             | Possible Values         | Default |
 |---------|-----------------------------------------|-------------------------|---------|
-| `hosts` | A list of host addresses with optional availability zone labels. | Array of `host:port[:availability_zone]` strings | (none) |
+| `hosts` | A list of host addresses with optional availability zone labels and a connection priority. | Array of `host:port[:availability_zone] [PRIORITY n]` strings | (none) |
 | `type`  | Use `DATA` always                       | `DATA`, `WORLD`         | (none) |
 | `tls`   | See [auth.mdx](./auth)                  | Object of `TLSConfig`   | (none) |
+
+Hosts can be assigned a connection priority with the `PRIORITY <n>` suffix. A priority of `-1` disables the host entirely (it is treated as dead); any other value is reserved for future use.
 
 Example with [availability zone preference](#availability-zone-settings) enabled:
 
