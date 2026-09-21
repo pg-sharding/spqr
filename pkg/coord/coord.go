@@ -48,6 +48,13 @@ func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper, maxTxnBatch uint16) Coordin
 	}
 }
 
+func (lc *Coordinator) Snapshot() meta.EntityMgr {
+	qdbSnap := lc.qdb.Snapshot()
+
+	coord := NewCoordinator(qdbSnap, lc.dcs, lc.maxTxnBatch)
+	return &coord
+}
+
 func (lc *Coordinator) XRecords() []*mtran.XRecord {
 	return lc.xrecords
 }
@@ -639,6 +646,10 @@ func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
 
 // RenameKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew string) error {
+	if err := lc.appendXRecord("RenameKeyRange", krID, krIDNew); err != nil {
+		return err
+	}
+
 	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
@@ -673,7 +684,7 @@ func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool, _
 
 // StopMoveTaskGroup implements meta.EntityMgr
 func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string, immediate bool) error {
-	return lc.QDB().AddMoveTaskGroupStopFlag(ctx, id, immediate)
+	return lc.qdb.AddMoveTaskGroupStopFlag(ctx, id, immediate)
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
@@ -1192,7 +1203,7 @@ func (lc *Coordinator) ShareKeyRange(id string) error {
 // - kr (*kr.KeyRange): The key range object to be created.
 //
 // Returns:
-// - []qdb.QdbStatement: qdb statements to apply changes
+// - []qdb.qdb.Statement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	if err := lc.appendXRecord("CreateKeyRange", kr); err != nil {
@@ -1208,7 +1219,7 @@ func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]q
 // - kr (*kr.KeyRange): The key range object to be created.
 //
 // Returns:
-// - []qdb.QdbStatement: qdb statements to apply changes
+// - []qdb.qdb.Statement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	if err := lc.appendXRecord("UpdateKeyRange", kr); err != nil {
@@ -1313,6 +1324,10 @@ func (lc *Coordinator) UnlockKeyRangeOps(ctx context.Context, keyRangeID string)
 // Returns:
 // - error: an error if the alteration operation fails.
 func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
+	if err := lc.appendXRecord("AlterDistributionAttach", id, rels); err != nil {
+		return err
+	}
+
 	ds, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return err
@@ -1647,13 +1662,13 @@ func (lc *Coordinator) ApplyXRecords(ctx context.Context, records []*mtran.XReco
 	return nil
 }
 
-func (lc *Coordinator) Begin(ctx context.Context, someId string) error {
+func (lc *Coordinator) Begin(ctx context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
-func (lc *Coordinator) Rollback(ctx context.Context, someId string) error {
+func (lc *Coordinator) Rollback(ctx context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
-func (lc *Coordinator) Commit(ctx context.Context, someId string) error {
+func (lc *Coordinator) Commit(ctx context.Context) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 }
 

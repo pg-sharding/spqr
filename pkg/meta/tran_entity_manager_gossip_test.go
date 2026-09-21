@@ -4,19 +4,15 @@ import (
 	"context"
 	"testing"
 
-	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestTranDropKeyRange(t *testing.T) {
 	is := assert.New(t)
-	ctrl := gomock.NewController(t)
-	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	ctx := context.Background()
 
-	tranMngr := NewTranEntityManager(mmgr)
+	tranMngr := NewTranEntityManager(nil)
 	err := tranMngr.DropKeyRange(ctx, "kr2")
 	is.NoError(err)
 	err = tranMngr.DropKeyRange(ctx, "kr1")
@@ -38,11 +34,9 @@ func TestTranDropKeyRange(t *testing.T) {
 
 func TestTranCreateSequence(t *testing.T) {
 	is := assert.New(t)
-	ctrl := gomock.NewController(t)
-	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	ctx := context.Background()
 
-	tranMngr := NewTranEntityManager(mmgr)
+	tranMngr := NewTranEntityManager(nil)
 	err := tranMngr.CreateSequence(ctx, "seq1", 1)
 	is.NoError(err)
 	err = tranMngr.CreateSequence(ctx, "seq2", 2)
