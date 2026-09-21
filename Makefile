@@ -119,7 +119,7 @@ unittest-race:
 	go test -v -race -count 20 -timeout 120s -run "TestDbPoolRaces|TestShardPoolConnectionAcquireLimit"  ./pkg/pool/
 
 unittest:
-	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
+	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console... ./yacc/hostspec/...
 	$(MAKE) unittest-race
 
 bench:
@@ -152,6 +152,9 @@ regress: build_images build_pg_regress_junit_tool
 
 regress_coord: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose-coord.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-coord.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-coord.yaml run --remove-orphans regress
+
+regress_5node: build_images build_pg_regress_junit_tool
+	docker compose -f test/regress/docker-compose-5node.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-5node.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-5node.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
@@ -252,6 +255,7 @@ mockgen:
 
 yaccgen:
 	make -C ./yacc/console gen
+	make -C ./yacc/hostspec gen
 
 gen: gogen yaccgen mockgen
 
@@ -260,6 +264,7 @@ generate:
 	docker run --name spqr-generator-1 spqr-generator
 	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos
 	docker cp spqr-generator-1:/spqr/yacc/console/. yacc/console
+	docker cp spqr-generator-1:/spqr/yacc/hostspec/. yacc/hostspec
 	docker cp spqr-generator-1:/spqr/pkg/mock/. pkg/mock
 	docker cp spqr-generator-1:/spqr/router/mock/. router/mock
 	docker cp spqr-generator-1:/spqr/coordinator/mock/. coordinator/mock

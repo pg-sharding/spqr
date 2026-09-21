@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -75,19 +74,19 @@ type Router struct {
 	InitSQL                   string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	UseInitSQL                bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
 	ExitOnInitSQLError        bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
+	AutoConf                  string `json:"autoconf" toml:"autoconf" yaml:"autoconf"`
 	UseCoordinatorInit        bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 	ManageShardsByCoordinator bool   `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
 	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
 	UseMetrics                bool   `json:"use_metrics" toml:"use_metrics" yaml:"use_metrics"`
 
-	MemqdbBackupPath   string               `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
-	RouterMode         string               `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	FrontendRules      []*FrontendRule      `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	Qr                 QRouter              `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
-	FrontendTLS        *TLSConfig           `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	CoordinatorGrpcTLS *GRPCClientTLSConfig `json:"coordinator_grpc_tls" yaml:"coordinator_grpc_tls" toml:"coordinator_grpc_tls"`
-	BackendRules       []*BackendRule       `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	ShardMapping       map[string]*Shard    `json:"shards" toml:"shards" yaml:"shards"`
+	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
+	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
+	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	Qr               QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
+	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 
 	SchemaCacheBackendRule *BackendRule `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
 
@@ -159,10 +158,6 @@ func (r *Router) ApplyDefaults() {
 }
 
 func (r *Router) PostProcess() error {
-	if err := r.CoordinatorGrpcTLS.Validate(); err != nil {
-		return fmt.Errorf("invalid coordinator_grpc_tls: %w", err)
-	}
-
 	if err := validateRouterConfig(r); err != nil {
 		cfgRouter = *r
 		return err
@@ -217,19 +212,21 @@ const (
 	TargetSessionAttrsPS      = "prefer-standby"
 	TargetSessionAttrsPR      = "prefer-replica"
 	TargetSessionAttrsAny     = "any"
+	TargetSessionAttrsDClocal = "dc-local" // alias for TargetSessionAttrsAny
 )
 
+type Host struct {
+	Address string // format host:port
+	AZ      string // Availability zone
+
+	Priority int // connection acquire priority
+}
+
 type Shard struct {
-	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
+	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port[:availability_zone]
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-}
-
-type Host struct {
-	Address  string // format host:port
-	AZ       string // Availability zone
-	Priority int    // connection acquire priority
 }
 
 func ValueOrDefaultInt(value int, def int) int {
@@ -334,4 +331,8 @@ func GetHostOrHostname(host string) (string, error) {
 		return os.Hostname()
 	}
 	return host, nil
+}
+
+func (r *Router) WithCoordinatorConfig() bool {
+	return r.WithCoordinator || r.UseCoordinatorInit || r.StoreTxDataPostgresql
 }

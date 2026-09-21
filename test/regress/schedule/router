@@ -37,7 +37,9 @@ test: subplan
 test: subselects
 test: virtual_show
 test: virtual
+test: virtual_filter
 test: auto_distribution
+test: distributed_relation
 test: spqrguard
 test: negative_routing
 test: default_shard
@@ -62,5 +64,10 @@ test: aliasing
 test: flux
 test: autoprotect_2pc
 test: pg_advisory_lock
+test: pg_try_advisory_xact_lock
 test: create_shard
 test: spqr_remote_execute
+test: insert_select_pullup
+test: projection_pullup
+test: insert_select_returning
+test: target_list_alias_routing

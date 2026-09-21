@@ -265,22 +265,23 @@ func calculateCoverage(lowerBound, upperBound any, colType string) string {
 func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("shard", "host", "alive", "rw", "time"),
+		Desc: GetVPHeader("shard", "host", "alive", "rw", "time", "priority"),
 	}
 
 	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
 
 	for _, shard := range shards {
-		for _, h := range shard.Hosts() {
-			hc, ok := ihc[h]
+		for _, h := range shard.HostsAZ() {
+			hc, ok := ihc[h.Address]
 			if !ok {
 
 				tts.Raw = append(tts.Raw, [][]byte{
 					[]byte(shard.ID),
-					[]byte(h),
+					[]byte(h.Address),
 					[]byte("unknown"),
 					[]byte("unknown"),
 					[]byte("unknown"),
+					fmt.Appendf(nil, "%d", h.Priority),
 				})
 
 			} else {
@@ -288,10 +289,11 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 				tts.Raw = append(tts.Raw, [][]byte{
 
 					[]byte(shard.ID),
-					[]byte(h),
+					[]byte(h.Address),
 					fmt.Appendf(nil, "%v", hc.CR.Alive),
 					fmt.Appendf(nil, "%v", hc.CR.RW),
 					fmt.Appendf(nil, "%v", hc.LastCheckTime),
+					fmt.Appendf(nil, "%d", h.Priority),
 				})
 			}
 		}

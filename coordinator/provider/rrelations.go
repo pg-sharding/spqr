@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -16,6 +17,8 @@ type ReferenceRelationServer struct {
 
 	impl coordinator.Coordinator
 }
+
+var _ protos.ReferenceRelationsServiceServer = &ReferenceRelationServer{}
 
 func NewReferenceRelationServer(impl coordinator.Coordinator) *ReferenceRelationServer {
 	return &ReferenceRelationServer{
@@ -40,4 +43,35 @@ func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, r
 
 func (rr *ReferenceRelationServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, req *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 	return nil, rr.impl.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(req.Relation), req.ShardIds)
+}
+
+func (rr *ReferenceRelationServer) ListReferenceRelations(ctx context.Context, _ *emptypb.Empty) (*protos.ListReferenceRelationsReply, error) {
+	rrels, err := rr.impl.ListReferenceRelations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	relsProto := make([]*protos.ReferenceRelation, len(rrels))
+	for i, rel := range rrels {
+		relsProto[i] = rrelations.RefRelationToProto(rel)
+	}
+	return &protos.ListReferenceRelationsReply{Relations: relsProto}, nil
+}
+
+// GetReferenceRelation returns a reference relation by its qualified name.
+func (rr *ReferenceRelationServer) GetReferenceRelation(ctx context.Context, relation *protos.QualifiedName) (*protos.ReferenceRelation, error) {
+	rrel, err := rr.impl.GetReferenceRelation(ctx, rfqn.RelationFQNFromProto(relation))
+	if err != nil {
+		return nil, err
+	}
+	return rrelations.RefRelationToProto(rrel), nil
+}
+
+// AlterReferenceRelationStorage implements [proto.ReferenceRelationsServiceServer].
+func (rr *ReferenceRelationServer) AlterReferenceRelationStorage(context.Context, *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("AlterReferenceRelationStorage is unsupported in coordinator")
+}
+
+// SyncReferenceRelations implements [proto.ReferenceRelationsServiceServer].
+func (rr *ReferenceRelationServer) SyncReferenceRelations(context.Context, *protos.SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("SyncReferenceRelations is unsupported in coordinator")
 }

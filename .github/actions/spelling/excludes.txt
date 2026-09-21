@@ -21,6 +21,11 @@
 ^yacc/console/lex.go$
 ^yacc/console/lex.rl$
 ^yacc/console/Makefile$
+^yacc/hostspec/
+^yacc/hostspec/gram.go$
+^yacc/hostspec/gram.y$
+^yacc/hostspec/lex.go$
+^yacc/hostspec/Makefile$
 test/regress/tests/router/expected/expression_routing.out
 test/regress/tests/router/expected/hash_multicolumn_1.out
 test/regress/tests/router/sql/expression_routing.sql

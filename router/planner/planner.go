@@ -78,6 +78,12 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 					return nil, err
 				}
 			} else {
+				dkGuc, err := rm.SPH.FindStrGUC(session.SPQR_DISTRIBUTION_KEY)
+				if err != nil {
+					return nil, err
+				}
+				distributionKey := dkGuc.Get(rm.SPH)
+
 				if v.IfNotExists {
 					if d, err := rm.Mgr.GetDistribution(ctx, distributionID); err != nil {
 						// ok
@@ -87,14 +93,14 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
 							/* ok */
 						} else {
-							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
+							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, distributionKey)
 							if err != nil {
 								return nil, err
 							}
 						}
 					}
 				} else {
-					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, rm.SPH.DistributionKey())
+					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, distributionKey)
 					if err != nil {
 						return nil, err
 					}
@@ -255,6 +261,19 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
+func unwrapRoutingTupleValue(colVal lyx.Node) (lyx.Node, bool) {
+	for {
+		switch tmp := colVal.(type) {
+		case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+			return colVal, true
+		case *lyx.ResTarget:
+			colVal = tmp.Value
+		default:
+			return nil, false
+		}
+	}
+}
+
 func TuplePlansByDistributionEntry(
 	ctx context.Context,
 	routingList [][]lyx.Node,
@@ -311,16 +330,17 @@ func TuplePlansByDistributionEntry(
 						return nil, nil
 					}
 
-					switch routingList[i][val].(type) {
-					case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-					default:
+					colVal := routingList[i][val]
+
+					colVal, ok = unwrapRoutingTupleValue(colVal)
+					if !ok {
 						return nil, nil
 					}
 
 					/* this is always non-ident hash function */
 					itemVal, err := CalculateRoutingListTupleItemValue(rm,
 						cr.ColType,
-						routingList[i][val],
+						colVal,
 						queryParamsFormatCodes)
 
 					if err != nil {
@@ -355,16 +375,16 @@ func TuplePlansByDistributionEntry(
 				if len(routingList[i]) <= val {
 					return nil, nil
 				}
+				colVal := routingList[i][val]
 
-				switch routingList[i][val].(type) {
-				case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-				default:
+				colVal, ok = unwrapRoutingTupleValue(colVal)
+				if !ok {
 					return nil, nil
 				}
 
 				itemVal, err := CalculateRoutingListTupleItemValue(rm,
 					tp,
-					routingList[i][val],
+					colVal,
 					queryParamsFormatCodes)
 
 				if err != nil {
@@ -707,24 +727,7 @@ func ConsoleFunctionCall(
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: []pgproto3.FieldDescription{
-				{
-					Name:                 []byte("host"),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				},
-				{
-					Name:                 []byte("rw"),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				},
+				engine.TextOidFD("host"), engine.TextOidFD("rw"),
 			},
 		}
 
@@ -742,22 +745,23 @@ func ConsoleFunctionCall(
 				[][]byte{[]byte(k),
 					fmt.Appendf(nil, "%v", v.CR.RW)})
 		} else {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong first argument for %s", fname)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "host %q is not found in topology for %s", k, fname)
 		}
 
 		return tts, nil
 	case virtual.VirtualFuncIsReady:
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: []pgproto3.FieldDescription{pgproto3.FieldDescription{
-				Name:                 []byte(virtual.VirtualFuncIsReady),
-				DataTypeOID:          catalog.BOOLOID,
-				TypeModifier:         -1,
-				DataTypeSize:         1,
-				TableAttributeNumber: 0,
-				TableOID:             0,
-				Format:               0,
-			},
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte(virtual.VirtualFuncIsReady),
+					DataTypeOID:          catalog.BOOLOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
 			},
 		}
 
@@ -988,7 +992,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
 	fname string,
-	args []lyx.Node) (plan.Plan, error) {
+	args []lyx.Node, columns []string) (plan.Plan, error) {
 
 	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
 
@@ -1014,7 +1018,8 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 	switch fname {
 	case virtual.PGAdvisoryLock, virtual.PGAdvisoryUnlockAll,
-		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PgTryAdvisoryLock:
+		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PGTryAdvisoryXactLock,
+		virtual.PgTryAdvisoryLock:
 
 		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
 		if err != nil {
@@ -1043,6 +1048,10 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+		tts, err = engine.Project(tts, columns)
+		if err != nil {
+			return nil, err
+		}
 		return &plan.VirtualPlan{
 			TTS: tts,
 		}, nil
@@ -1053,12 +1062,12 @@ func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
-	n lyx.Node) (plan.Plan, error) {
+	n lyx.Node, columns []string) (plan.Plan, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
 			return MetadataVirtualFunctionCall(ctx,
-				rm, plr, q.Name, q.Args)
+				rm, plr, q.Name, q.Args, columns)
 		}
 	}
 	/* XXX: we should error out here */
@@ -1091,7 +1100,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0])
+				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0], nil)
 				if err != nil {
 					return nil, err
 				}
@@ -1123,13 +1132,15 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
+
 				p, err := RetrieveTuples(
 					ctx,
 					rm,
-					p, q.Arg)
+					p, q.Arg, engine.ExtractProjectionColumns(v.TargetList))
 				if err != nil {
 					return nil, err
 				}
+
 				if p != nil {
 					return p, nil
 				}

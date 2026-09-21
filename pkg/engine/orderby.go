@@ -39,7 +39,8 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 			Order:    ascDesc,
 			Op:       op,
 		}
-		sort.Sort(sortable)
+		/* stable sort is required for multi-key ORDER BY emulation */
+		sort.Stable(sortable)
 	}
 
 	return data, nil

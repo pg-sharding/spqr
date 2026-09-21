@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -55,7 +56,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -316,8 +316,13 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		PermitWithoutStream: true,             // Allow pings even when no active RPCs
 	}
 
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init router gRPC TLS for %q: %w", r.Address, err)
+	}
+
 	return grpc.NewClient(r.Address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		dialOption,
 		grpc.WithKeepaliveParams(keepaliveParams),
 		grpc.WithDefaultServiceConfig(getRouterConnRetryPolicy()),
 	)
@@ -453,6 +458,13 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			currentRouterIDs[r.ID] = true
 		}
 
+		coordHash, err := qdb.GetQDBStateHash(ctx, qc.db)
+		checkRouterHashes := true
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to get etcd QDB hash")
+			checkRouterHashes = false
+		}
+
 		for _, r := range routers {
 			if err := func() error {
 				// Create bounded context for this router's operations
@@ -493,9 +505,22 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					}
 
 				case proto.RouterStatus_OPENED:
-					/* TODO: check router metadata consistency */
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
+					}
+
+					if config.CoordinatorConfig().AutoRebootstrap && checkRouterHashes {
+						routerClient := proto.NewRouterServiceClient(cc)
+						routerHash, err := qc.getRouterMetaHashInternal(ctx, routerClient)
+						if err != nil {
+							return err
+						}
+						if routerHash != coordHash {
+							spqrlog.Zero.Debug().Str("router id", r.ID).Msg("re-bootstrapping router")
+							if _, err := routerClient.Rebootstrap(ctx, nil); err != nil {
+								return fmt.Errorf("failed to re-bootstrap router: %w", err)
+							}
+						}
 					}
 
 					/* Mark router as opened in qdb */
@@ -536,6 +561,10 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
+	if err := grpccreds.ValidateClient(config.CoordinatorConfig().ClientTLS); err != nil {
+		return nil, fmt.Errorf("init router gRPC client TLS: %w", err)
+	}
+
 	return &ClusteredCoordinator{
 		Coordinator:         coord.NewCoordinator(db, nil, maxTxnBatch),
 		db:                  db,
@@ -2461,10 +2490,61 @@ func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNe
 }
 
 // TODO : unit tests
+// TODO: make router do a rebootstrap instead
 func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync router metadata")
+
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+		defer cf()
+
+		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+		if err != nil {
+			return err
+		}
+		rCl := proto.NewTopologyServiceClient(cc)
+		if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
+			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort),
+		}); err != nil {
+			if st, ok := status.FromError(err); ok {
+				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+					return retry.RetryableError(err)
+				}
+			}
+			return err
+		}
+		return nil
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error in sync coordinator")
+		return err
+	}
+
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+		defer cf()
+
+		rCl := proto.NewRouterServiceClient(cc)
+		if _, err := rCl.Rebootstrap(ctx, nil); err != nil {
+			if st, ok := status.FromError(err); ok {
+				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+					return retry.RetryableError(err)
+				}
+			}
+			return err
+		}
+		return nil
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error in sync coordinator")
+		return err
+	}
 
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
@@ -2585,156 +2665,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 		defer cf()
 
-		// Configure distributions
-		dsCl := proto.NewDistributionServiceClient(cc)
-		spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
-		dss, err := qc.ListDistributions(ctx)
-		if err != nil {
-			return err
-		}
-		resp, err := dsCl.ListDistributions(ctx, nil)
-		if err != nil {
-			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-					return retry.RetryableError(err)
-				}
-			}
-			return err
-		}
-		if _, err = dsCl.DropDistribution(ctx, &proto.DropDistributionRequest{
-			Ids: func() []string {
-				res := make([]string, len(resp.Distributions))
-				for i, ds := range resp.Distributions {
-					res[i] = ds.Id
-				}
-				return res
-			}(),
-		}); err != nil {
-			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-					return retry.RetryableError(err)
-				}
-			}
-			return err
-		}
-		spqrlog.Zero.Debug().Msg("clustered coordinator: distributions dropped successfully")
-		gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
-		if len(dss) > 0 {
-			distribsToCreate := make([]*proto.Distribution, len(dss))
-			for i, ds := range dss {
-				distribsToCreate[i] = distributions.DistributionToProto(ds)
-			}
-			commands := []*proto.MetaTransactionGossipCommand{{
-				CreateDistribution: &proto.CreateDistributionGossip{
-					Distributions: distribsToCreate,
-				},
-			}}
-			if _, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands}); err != nil {
-				if st, ok := status.FromError(err); ok {
-					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return retry.RetryableError(err)
-					}
-				}
-				return err
-			}
-			spqrlog.Zero.Debug().Msg("qdb coordinator: distributions created")
-		}
-
-		// Configure key ranges.
-		krClient := proto.NewKeyRangeServiceClient(cc)
-		spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
-		if _, err = krClient.DropAllKeyRanges(ctx, nil); err != nil {
-			return err
-		}
-
-		for _, ds := range dss {
-			krs, err := qc.db.ListKeyRanges(ctx, ds.Id)
-			if err != nil {
-				return err
-			}
-			krsInt := make([]*kr.KeyRange, len(krs))
-			for i, kRange := range krs {
-				krsInt[i], err = kr.KeyRangeFromDB(kRange, ds.ColTypes)
-				if err != nil {
-					return err
-				}
-			}
-			sort.Slice(krsInt, func(i, j int) bool {
-				return !kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
-			})
-			// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
-			for _, kRange := range krsInt {
-				commands := []*proto.MetaTransactionGossipCommand{
-					{CreateKeyRange: &proto.CreateKeyRangeGossip{
-						KeyRangeInfo: kRange.ToProto(),
-						ColumnTypes:  ds.ColTypes,
-					}},
-				}
-				resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})
-				if err != nil {
-					if st, ok := status.FromError(err); ok {
-						if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-							return retry.RetryableError(err)
-						}
-					}
-					return err
-				}
-				spqrlog.Zero.Debug().
-					Interface("response", resp).
-					Msg("got response while adding key range")
-			}
-		}
-
-		spqrlog.Zero.Debug().Msg("successfully add all key ranges")
-		return nil
-	}); err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("error in distribution & key range")
-		return err
-	}
-
-	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewConstant(time.Second)), func(ctx context.Context) error {
-		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
-		if err != nil {
-			return err
-		}
-
-		defer cf()
-
-		storage, err := qc.db.GetTxMetaStorage(ctx)
-		if err != nil {
-			return err
-		}
-
-		s := proto.NewTwoPhaseTxMetaServiceClient(cc)
-		// Ignore the error
-		_, _ = s.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
-		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
-		if err != nil {
-			return err
-		}
-		defer cf()
-
-		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
-		if err != nil {
-			return err
-		}
 		rCl := proto.NewTopologyServiceClient(cc)
-		if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
-			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort),
-		}); err != nil {
-			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-					return retry.RetryableError(err)
-				}
-			}
-			return err
-		}
 
 		if resp, err := rCl.OpenRouter(ctx, nil); err != nil {
 			if st, ok := status.FromError(err); ok {
@@ -3515,6 +3446,24 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxID strin
 			Msg("drop unique index response")
 		return nil
 	})
+}
+
+func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *topology.Router) (uint64, error) {
+	cc, cf, err := qc.getOrCreateRouterConn(r)
+	if err != nil {
+		return 0, err
+	}
+	defer cf()
+	rCl := proto.NewRouterServiceClient(cc)
+	return qc.getRouterMetaHashInternal(ctx, rCl)
+}
+
+func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {
+	resp, err := rCl.GetMetadataHash(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	return resp.Hash, nil
 }
 
 func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, updated []*topology.DataShard) {

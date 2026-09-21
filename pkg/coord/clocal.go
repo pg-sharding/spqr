@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -19,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type LocalInstanceMetadataMgr struct {
@@ -331,6 +331,14 @@ func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.
 	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 
+// GetRouterMetadataHash is disabled in LocalCoordinator
+//
+// Returns:
+// - error: SPQR_INVALID_REQUEST error
+func (lc *LocalInstanceMetadataMgr) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "MoveKeyRange is not available in local coordinator")
+}
+
 // MoveKeyRange is disabled in LocalCoordinator
 //
 // Returns:
@@ -422,7 +430,11 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+	}
+	conn, err := grpc.NewClient(coordAddr, dialOption)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +455,11 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().CurrVal(ctx, seqName)
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return -1, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+	}
+	conn, err := grpc.NewClient(coordAddr, dialOption)
 	if err != nil {
 		return -1, err
 	}

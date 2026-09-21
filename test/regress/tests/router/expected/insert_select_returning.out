@@ -1,0 +1,82 @@
+\c spqr-console
+-- INSERT ... SELECT with nested subselects, computed columns and RETURNING
+-- must route by the pulled-up id value
+CREATE DISTRIBUTION d (int);
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE KEY RANGE k2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 11
+(1 row)
+
+CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION d;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE RELATION t_city (id) FOR DISTRIBUTION d;
+       attach table        
+---------------------------
+ relation name   -> t_city
+ distribution id -> d
+(2 rows)
+
+\c regress
+CREATE TABLE t_city(id int, name text, val text);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+insert into t_city (id, name, val)
+select * from (select *, 'x'::text as val from (select 1 as id, 'n' as name) as a) as b
+returning id;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+(1 row)
+
+insert into t_city (id, name, val)
+select * from (select *, case when 1 = 1 then 'y' else 'z' end as val from (select 12 as id, 'n' as name) as a) as b
+returning id;
+NOTICE: send query to shard(s) : sh2
+ id 
+----
+ 12
+(1 row)
+
+SELECT id FROM t_city WHERE id = 1 ORDER BY 1;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+(1 row)
+
+SELECT id FROM t_city WHERE id = 12 ORDER BY 1;
+NOTICE: send query to shard(s) : sh2
+ id 
+----
+ 12
+(1 row)
+
+DROP TABLE t_city;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DELETE FROM spqr_metadata.spqr_distributed_relations /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ d
+(1 row)
+

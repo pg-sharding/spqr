@@ -102,6 +102,8 @@ var reservedWords = map[string]int{
 	"sleep":        SLEEP,
 	"rename":       RENAME,
 	"system":       SYSTEM,
+	"migration":    MIGRATION,
+	"reset":        RESET,
 	"reload":       RELOAD,
 	"restart":      RESTART,
 	"options":      OPTIONS,
@@ -120,4 +122,7 @@ var reservedWords = map[string]int{
 	"begin":        BEGIN,
 	"commit":       COMMIT,
 	"rollback":     ROLLBACK,
+	"call":         CALL,
+	"if":           IF,
+	"exists":       EXISTS,
 }

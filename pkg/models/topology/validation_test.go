@@ -68,8 +68,8 @@ func TestValidateDataShardHostsRejectsEmptyHosts(t *testing.T) {
 
 func TestValidateDataShardHostsRejectsUnsupportedHostFormat(t *testing.T) {
 	err := ValidateDataShardHosts(context.Background(), DataShardFromConfig("sh-format", &config.Shard{
-		RawHosts: []string{"host:1:az:extra"},
+		RawHosts: []string{"host0:67:az", "host:1:az:extra"},
 		Type:     config.DataShard,
 	}))
-	assert.ErrorContains(t, err, "invalid or unsupported host definitions")
+	assert.ErrorContains(t, err, "invalid host format: expected 'host:port[:availability_zone]', actually 'host:1:az:extra")
 }

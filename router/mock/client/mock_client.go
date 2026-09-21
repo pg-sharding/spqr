@@ -356,20 +356,6 @@ func (mr *MockRouterClientMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockRouterClient)(nil).DefaultReply))
 }
 
-// DistributedRelation mocks base method.
-func (m *MockRouterClient) DistributedRelation() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistributedRelation")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DistributedRelation indicates an expected call of DistributedRelation.
-func (mr *MockRouterClientMockRecorder) DistributedRelation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributedRelation", reflect.TypeOf((*MockRouterClient)(nil).DistributedRelation))
-}
-
 // Distribution mocks base method.
 func (m *MockRouterClient) Distribution() string {
 	m.ctrl.T.Helper()
@@ -382,20 +368,6 @@ func (m *MockRouterClient) Distribution() string {
 func (mr *MockRouterClientMockRecorder) Distribution() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockRouterClient)(nil).Distribution))
-}
-
-// DistributionKey mocks base method.
-func (m *MockRouterClient) DistributionKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistributionKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DistributionKey indicates an expected call of DistributionKey.
-func (mr *MockRouterClientMockRecorder) DistributionKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionKey", reflect.TypeOf((*MockRouterClient)(nil).DistributionKey))
 }
 
 // EnhancedMultiShardProcessing mocks base method.
@@ -1084,20 +1056,6 @@ func (mr *MockRouterClientMockRecorder) Savepoint(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Savepoint", reflect.TypeOf((*MockRouterClient)(nil).Savepoint), arg0)
 }
 
-// ScatterQuery mocks base method.
-func (m *MockRouterClient) ScatterQuery() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ScatterQuery")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ScatterQuery indicates an expected call of ScatterQuery.
-func (mr *MockRouterClientMockRecorder) ScatterQuery() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).ScatterQuery))
-}
-
 // Send mocks base method.
 func (m *MockRouterClient) Send(msg pgproto3.BackendMessage) error {
 	m.ctrl.T.Helper()
@@ -1176,18 +1134,6 @@ func (mr *MockRouterClientMockRecorder) SetCommitStrategy(value any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommitStrategy", reflect.TypeOf((*MockRouterClient)(nil).SetCommitStrategy), value)
 }
 
-// SetDistributedRelation mocks base method.
-func (m *MockRouterClient) SetDistributedRelation(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributedRelation", level, val)
-}
-
-// SetDistributedRelation indicates an expected call of SetDistributedRelation.
-func (mr *MockRouterClientMockRecorder) SetDistributedRelation(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributedRelation", reflect.TypeOf((*MockRouterClient)(nil).SetDistributedRelation), level, val)
-}
-
 // SetDistribution mocks base method.
 func (m *MockRouterClient) SetDistribution(level, val string) {
 	m.ctrl.T.Helper()
@@ -1198,18 +1144,6 @@ func (m *MockRouterClient) SetDistribution(level, val string) {
 func (mr *MockRouterClientMockRecorder) SetDistribution(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), level, val)
-}
-
-// SetDistributionKey mocks base method.
-func (m *MockRouterClient) SetDistributionKey(val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributionKey", val)
-}
-
-// SetDistributionKey indicates an expected call of SetDistributionKey.
-func (mr *MockRouterClientMockRecorder) SetDistributionKey(val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), val)
 }
 
 // SetEnhancedMultiShardProcessing mocks base method.
@@ -1270,18 +1204,6 @@ func (m *MockRouterClient) SetParamFormatCodes(arg0 []int16) {
 func (mr *MockRouterClientMockRecorder) SetParamFormatCodes(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).SetParamFormatCodes), arg0)
-}
-
-// SetScatterQuery mocks base method.
-func (m *MockRouterClient) SetScatterQuery(val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetScatterQuery", val)
-}
-
-// SetScatterQuery indicates an expected call of SetScatterQuery.
-func (mr *MockRouterClientMockRecorder) SetScatterQuery(val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).SetScatterQuery), val)
 }
 
 // SetSeed mocks base method.

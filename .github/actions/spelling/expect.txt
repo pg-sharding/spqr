@@ -14,7 +14,6 @@ Aflake
 aliasname
 anyerr
 AOk
-APITLS
 appdefaults
 APREQ
 argexpr
@@ -35,7 +34,6 @@ benchmem
 Benro
 berule
 BOOLOID
-bootstraping
 Bootstrapper
 buildpackage
 cachedchecker
@@ -96,6 +94,7 @@ dbshard
 dbtpcc
 dbutils
 dcd
+DClocal
 dcs
 ddl
 debian
@@ -113,6 +112,7 @@ dockerhub
 dorny
 dotnet
 DOUBLEOID
+dport
 drb
 drel
 dserr
@@ -204,6 +204,7 @@ healthcheck
 helpgen
 Highload
 hostnossl
+hostspec
 hostssl
 hotspot
 hst
@@ -219,6 +220,7 @@ idxs
 IExecute
 IKill
 inds
+initdb
 initsql
 innerhash
 innerres
@@ -302,6 +304,7 @@ mempgqdb
 memqdb
 metadb
 mintlify
+misrouting
 mmgr
 mngr
 mockcl
@@ -357,7 +360,6 @@ Oids
 oiwejow
 OLAP
 ONCONFLICT
-onehost
 opgejrqr
 optarg
 optval
@@ -410,6 +412,7 @@ ppp
 pppp
 prepstatement
 privs
+prj
 procps
 promhttp
 protobuf
@@ -454,6 +457,7 @@ rerr
 rerrors
 resharding
 reshke
+restarget
 retcode
 retmsg
 retryable
@@ -476,6 +480,7 @@ RPCs
 rport
 rqdn
 rqfn
+rrel
 rrelation
 rrouter
 rulemgr
@@ -493,6 +498,7 @@ screenshots
 sdnotifier
 seqmgr
 serviceprincipal
+sessiontest
 sethvargo
 sevlyar
 shardconn
@@ -583,6 +589,7 @@ tfstate
 tgid
 timeb
 timestamptz
+tlist
 tlsconfig
 tlt
 tmgr
@@ -642,6 +649,7 @@ vasya
 vguoyguoygoyy
 Vitess
 Volkov
+wal
 walreceiver
 Warningf
 workloadlog
@@ -655,6 +663,7 @@ xmove
 xmovestr
 xproto
 XQDB
+xrecord
 xtab
 xxerr
 xxhashuuid

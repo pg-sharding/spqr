@@ -14,8 +14,22 @@ SHOW __spqr__auto_distribution;
 (1 row)
 
 SHOW __spqr__distribution_key;
- __spqr__distribution_key 
---------------------------
+ distribution key 
+------------------
+ 
+(1 row)
+
+SET __spqr__distribution_key TO 'col1';
+SHOW __spqr__distribution_key;
+ distribution key 
+------------------
+ col1
+(1 row)
+
+SET __spqr__distribution_key TO '';
+SHOW __spqr__distribution_key;
+ distribution key 
+------------------
  
 (1 row)
 

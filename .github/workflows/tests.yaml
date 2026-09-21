@@ -140,6 +140,30 @@ jobs:
           path: test-reports/regress-coord/**/*.xml
           if-no-files-found: ignore
 
+  regress-5node-pgdg:
+    name: regress-5node
+    runs-on: ubuntu-latest
+    needs: ['unit', 'gorm-regress', 'jdbc-regress', 'regress-pgdg']
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Run tests
+        run: |
+          if !(make POSTGRES_VERSION=18 codename=noble regress_5node; ); then
+            docker compose -f test/regress/docker-compose-5node.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | awk 'tolower($0) ~ /unhealthy/ {print $1}' | xargs -r -n 1 docker logs;
+            exit 1;
+          fi
+
+      - name: Upload regress 5node test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-regress-5node-noble-18
+          path: test-reports/regress-5node/**/*.xml
+          if-no-files-found: ignore
+
   isolation-regress:
     name: isolation-tests
     runs-on: ubuntu-latest
@@ -336,6 +360,7 @@ jobs:
       - feature
       - regress-pgdg
       - regress-clustered-pgdg
+      - regress-5node-pgdg
       - isolation-regress
     if: always()
     permissions:

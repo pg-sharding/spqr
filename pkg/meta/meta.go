@@ -2,8 +2,11 @@ package meta
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,6 +37,7 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/router_util"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
@@ -42,6 +46,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/virtual"
 
 	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -85,22 +90,55 @@ type RouterConnector interface {
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
+func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	_, err := mngr.GetKeyRange(ctx, id)
+	if err != nil {
+		if keyRangeDoesNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func objectDoesNotExist(err error) bool {
+	var spqrErr *spqrerror.SpqrError
+	return errors.As(err, &spqrErr) && spqrErr.ErrorCode == spqrerror.SPQR_OBJECT_NOT_EXIST
+}
+
+func keyRangeDoesNotExist(err error) bool {
+	if objectDoesNotExist(err) {
+		return true
+	}
+
+	// Key-range backends currently use the generic key-range error code for a
+	// missing object, so preserve their specific messages without hiding other
+	// storage errors reported under the same code.
+	var spqrErr *spqrerror.SpqrError
+	if !errors.As(err, &spqrErr) || spqrErr.ErrorCode != spqrerror.SPQR_KEYRANGE_ERROR {
+		return false
+	}
+	return strings.HasPrefix(err.Error(), "no key range found at ") ||
+		strings.HasPrefix(err.Error(), "there is no key range ")
+}
+
 // TODO : unit tests
 
 // processDrop processes the drop command based on the type of statement provided.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - dstmt (spqrparser.Statement): The statement to be processed.
+// - dstmt (spqrparser.DropSelector): The statement to be processed.
 // - isCascade (bool): Indicates whether cascade is enabled.
+// - ifExists (bool): Indicates whether a missing object should be ignored.
 // - mngr (EntityMgr): The entity manager handling the drop operation.
 //
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
-	dstmt spqrparser.Statement,
-	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	dstmt spqrparser.DropSelector,
+	isCascade, ifExists bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -125,6 +163,19 @@ func processDrop(ctx context.Context,
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
+			if ifExists {
+				exists, err := keyRangeExists(ctx, mngr, stmt.KeyRangeID)
+				if err != nil {
+					return nil, err
+				}
+				if !exists {
+					return &tupleslot.TupleTableSlot{
+						Desc: engine.GetVPHeader("key_range_id"),
+						Raw:  [][][]byte{{[]byte(stmt.KeyRangeID)}},
+					}, nil
+				}
+			}
+
 			tranMngr := NewTranEntityManager(mngr)
 			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
 			if err != nil {
@@ -145,18 +196,33 @@ func processDrop(ctx context.Context,
 			RelationName: stmt.ID,
 		}
 
+		if ifExists {
+			if _, err := mngr.GetReferenceRelation(ctx, relationFQN); err != nil {
+				if !objectDoesNotExist(err) {
+					return nil, err
+				}
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("relation_name"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
+		}
+
 		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
 		if err != nil {
 			return nil, err
 		}
-		for _, seq := range seqs {
-			if err := mngr.DropSequence(ctx, seq, true); err != nil {
-				return nil, err
-			}
-		}
 
 		if err := mngr.DropReferenceRelation(ctx, relationFQN); err != nil {
-			return nil, err
+			if !ifExists || !objectDoesNotExist(err) {
+				return nil, err
+			}
+		} else {
+			for _, seq := range seqs {
+				if err := mngr.DropSequence(ctx, seq, true); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -170,7 +236,21 @@ func processDrop(ctx context.Context,
 		return tts, nil
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
+		var ds *distributions.Distribution
 		var err error
+
+		if stmt.ID != "*" {
+			ds, err = mngr.GetDistribution(ctx, stmt.ID)
+			if err != nil {
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("distribution_id"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
+		}
 
 		if stmt.ID == "*" {
 
@@ -199,10 +279,6 @@ func processDrop(ctx context.Context,
 		}
 
 		if stmt.ID != "*" {
-			ds, err := mngr.GetDistribution(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
 			if len(ds.ListRelations()) != 0 && !isCascade {
 				return nil, spqrerror.Newf(
 					spqrerror.SPQR_INVALID_REQUEST,
@@ -225,7 +301,9 @@ func processDrop(ctx context.Context,
 			}
 
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
-				return nil, err
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
 			}
 
 			tts := &tupleslot.TupleTableSlot{
@@ -498,6 +576,22 @@ func createNonReplicatedDistribution(ctx context.Context,
 
 // TODO : unit tests
 func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrparser.ReferenceRelationDefinition) (*tupleslot.TupleTableSlot, error) {
+	if stmt.IfNotExists {
+		relation, err := mngr.GetReferenceRelation(ctx, stmt.TableName)
+		if err == nil {
+			return &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("create reference table"),
+				Raw: [][][]byte{
+					{fmt.Appendf(nil, "table    -> %s", relation.QualifiedName())},
+					{fmt.Appendf(nil, "shard id -> %s", strings.Join(relation.ShardIDs, ","))},
+				},
+			}, nil
+		}
+		if !objectDoesNotExist(err) {
+			return nil, err
+		}
+	}
+
 	r := &rrelation.ReferenceRelation{
 		RelationName:  stmt.TableName,
 		SchemaVersion: 1,
@@ -556,6 +650,18 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.ID == "default" {
 			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
+		if stmt.IfNotExists {
+			if _, err := mngr.GetDistribution(ctx, stmt.ID); err == nil {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add distribution"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "distribution id -> %s", stmt.ID)},
+					},
+				}, nil
+			} else if !objectDoesNotExist(err) {
+				return nil, err
+			}
+		}
 		if stmt.Replicated {
 			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
 				return nil, err
@@ -590,6 +696,20 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 	case *spqrparser.KeyRangeDefinition:
+		if stmt.IfNotExists {
+			keyRange, err := mngr.GetKeyRange(ctx, stmt.KeyRangeID)
+			if err == nil {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add key range"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "bound -> %s", keyRange.SendRaw()[0])},
+					},
+				}, nil
+			}
+			if !keyRangeDoesNotExist(err) {
+				return nil, err
+			}
+		}
 		tranMngr := NewTranEntityManager(mngr)
 		createdKr, err := createKeyRange(ctx, tranMngr, stmt, true)
 		if err != nil {
@@ -711,6 +831,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.System:
+		if stmt.SetGUC != "" {
+			return processAlterSystemSet(stmt.SetGUC, stmt.SetValue)
+		}
 		if stmt.RotateLog {
 			router_util.ReloadRotateLog()
 		} else if stmt.Reload {
@@ -722,26 +845,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 				return nil, err
 			}
 		} else /* REBOOTSTRAP */ {
-			memqdb, ok := mngr.QDB().(*qdb.MemQDB)
-			if !ok {
-				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for MemQDB and MemPGQDB")
-			}
-
-			if !config.RouterConfig().UseCoordinatorInit {
-				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstraping is only allowed for coordinator-managed routers")
-			}
-
-			etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
-			if err != nil {
-				return nil, err
-			}
-			defer func() {
-				if err := etcdConn.Client().Close(); err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
-				}
-			}()
-
-			if err := rebootstrap.MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			if err := rebootstrap.RebootstrapQDB(ctx, mngr.QDB(), mngr); err != nil {
 				return nil, err
 			}
 		}
@@ -764,6 +868,33 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
+}
+
+func processAlterSystemSet(name, val string) (*tupleslot.TupleTableSlot, error) {
+	path := config.RouterConfig().AutoConf
+	if path == "" {
+		/* XXX: maybe better to use default */
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "autoconf file is not configured")
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}(f)
+
+	if _, err := fmt.Fprintf(f, "%s = %s\n", name, val); err != nil {
+		return nil, err
+	}
+	if err := session.ApplyAutoConfGUC(name, val); err != nil {
+		spqrlog.Zero.Error().Err(err).Str("filename", path).Str("name", name).Str("value", val).Msg("autoconf apply failed")
+		return nil, err
+	}
+	return &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("alter system")}, nil
 }
 
 // processAlterDistribution processes the given alter distribution statement and performs the corresponding operation.
@@ -805,8 +936,32 @@ func processAlterDistribution(ctx context.Context,
 
 		selectedDistribId := dsId
 
-		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
-			return nil, err
+		relsToAttach := rels
+		for _, relation := range stmt.Relations {
+			if relation.IfNotExists {
+				distribution, err := mngr.GetDistribution(ctx, selectedDistribId)
+				if err != nil {
+					return nil, err
+				}
+
+				relsToAttach = make([]*distributions.DistributedRelation, 0, len(rels))
+				for i, candidate := range stmt.Relations {
+					if candidate.IfNotExists {
+						existing, ok := distribution.TryGetRelation(candidate.Relation)
+						if ok && existing != nil && existing.Relation.MetadataKey() == candidate.Relation.MetadataKey() {
+							continue
+						}
+					}
+					relsToAttach = append(relsToAttach, rels[i])
+				}
+				break
+			}
+		}
+
+		if len(relsToAttach) != 0 {
+			if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, relsToAttach); err != nil {
+				return nil, err
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -821,6 +976,22 @@ func processAlterDistribution(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.DetachRelation:
+		if stmt.IfExists {
+			distribution, err := mngr.GetDistribution(ctx, dsId)
+			if err != nil {
+				return nil, err
+			}
+
+			if distribution.GetRelation(stmt.RelationName) == nil {
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("detach relation"),
+				}
+				tts.WriteDataRow(fmt.Sprintf("relation name   -> %s", stmt.RelationName.String()))
+				tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", dsId))
+				return tts, nil
+			}
+		}
+
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return nil, err
 		}
@@ -1116,7 +1287,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, stmt.IfExists, mgr)
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
@@ -1364,6 +1535,43 @@ func ProcMetadataCommand(ctx context.Context,
 		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
 	case *spqrparser.Rollback:
 		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Call:
+		switch stmt.FuncName {
+		case virtual.VirtualCheckRouterMetaHash:
+			if len(stmt.Args) != 1 {
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "function \"%s\" accepts 1 argument, got %d", stmt.FuncName, len(stmt.Args))
+			}
+			routerId := stmt.Args[0]
+			routers, err := mgr.ListRouters(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var router *topology.Router
+			for _, iRouter := range routers {
+				if iRouter.ID == routerId {
+					router = iRouter
+					break
+				}
+			}
+			if router == nil {
+				return nil, spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router \"%s\" not found", routerId)
+			}
+			routerHash, err := mgr.GetRouterMetadataHash(ctx, router)
+			if err != nil {
+				return nil, err
+			}
+			localHash, err := qdb.GetQDBStateHash(ctx, mgr.QDB())
+			if err != nil {
+				return nil, err
+			}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("hash_equal"),
+			}
+			tts.WriteDataRow(strconv.FormatBool(routerHash == localHash))
+			return tts, nil
+		default:
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "incorrect function name \"%s\"", stmt.FuncName)
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1536,6 +1744,16 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.HostsStr:
+		return ProcessShow(ctx, &spqrparser.Show{
+			Kind:    stmt.Kind,
+			Cmd:     spqrparser.HostsExtendedStr,
+			Columns: []string{"shard", "host", "alive", "rw", "time"},
+			Where:   stmt.Where,
+			Order:   stmt.Order,
+			GroupBy: stmt.GroupBy,
+		}, mngr, ci, true)
+
+	case spqrparser.HostsExtendedStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
 			return nil, err
@@ -2452,4 +2670,70 @@ func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector s
 	}
 
 	return tgs, nil
+}
+
+func ApplyXRecords(
+	ctx context.Context,
+	tx EntityMgr,
+	operation *mtran.XRecord,
+) error {
+	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
+	if !method.IsValid() {
+		return fmt.Errorf("unknown EntityMgr method %q", operation.MethodName)
+	}
+
+	methodType := method.Type()
+
+	if methodType.NumIn() != len(operation.Args)+1 {
+		return fmt.Errorf(
+			"invalid argument count for %s. Got %d, expected %d",
+			operation.MethodName,
+			len(operation.Args),
+			methodType.NumIn(),
+		)
+	}
+
+	args := make([]reflect.Value, 0, methodType.NumIn())
+	args = append(args, reflect.ValueOf(ctx))
+
+	for i, raw := range operation.Args {
+		argType := methodType.In(i + 1)
+
+		arg := reflect.New(argType)
+
+		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
+			return fmt.Errorf(
+				"failed to decode argument %d of %s: %w",
+				i,
+				operation.MethodName,
+				err,
+			)
+		}
+
+		args = append(args, arg.Elem())
+	}
+
+	results := method.Call(args)
+
+	if len(results) == 1 && !results[0].IsNil() {
+		return results[0].Interface().(error)
+	}
+
+	return nil
+}
+
+func MakeXRecord(method string, args ...any) (*mtran.XRecord, error) {
+	jsonArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		raw, err := json.Marshal(arg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal args: %s", err)
+		}
+		jsonArgs = append(jsonArgs, string(raw))
+	}
+
+	return &mtran.XRecord{
+		MethodName: method,
+		Args:       jsonArgs,
+	}, nil
 }

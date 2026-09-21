@@ -85,6 +85,65 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
+func (qr *ProxyQrouter) pullupSublist(s *lyx.Select) ([]lyx.Node, error) {
+
+	tlist := s.TargetList
+
+	if len(s.FromClause) != 1 {
+		return tlist, nil
+	}
+
+	replaceIndx := -1
+	for i, n := range tlist {
+		switch n.(type) {
+		case *lyx.AExprEmpty:
+			if replaceIndx != -1 {
+				return tlist, nil
+			}
+			replaceIndx = i
+		}
+	}
+
+	switch sRv := s.FromClause[0].(type) {
+	case *lyx.SubSelect:
+		switch ss := (sRv.Arg).(type) {
+		case *lyx.Select:
+			tl, err := qr.pullupSublist(ss)
+			if err != nil {
+				return nil, err
+			}
+
+			if replaceIndx != -1 {
+				tlist = slices.Replace(tlist, replaceIndx, replaceIndx+1, tl...)
+			}
+
+			offsets := map[string]int{}
+			for i, tle := range tl {
+				switch t := tle.(type) {
+				case *lyx.ResTarget:
+					offsets[t.Name] = i
+				}
+			}
+			for i, tle := range tlist {
+				switch t := tle.(type) {
+				case *lyx.ColumnRef:
+					off, ok := offsets[t.ColName]
+					if !ok {
+						return tlist, nil
+					}
+					tlist[i] = tl[off]
+				}
+			}
+
+			return tlist, nil
+		}
+
+		return tlist, nil
+	default:
+		return tlist, nil
+	}
+}
+
 func (qr *ProxyQrouter) planInsertV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -103,13 +162,13 @@ func (qr *ProxyQrouter) planInsertV1(
 
 	switch subS := selectStmt.(type) {
 	case *lyx.Select:
-		spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
 
 		p, _ = qr.planQueryV1(ctx, rm, subS)
 
 		if len(subS.FromClause) == 1 {
 
 			switch sRv := subS.FromClause[0].(type) {
+
 			case *lyx.RangeVar:
 
 				var ds *distributions.Distribution
@@ -189,8 +248,13 @@ func (qr *ProxyQrouter) planInsertV1(
 		/* try target list, check if
 		* this target list has sharding column for some insert (...) */
 
-		routingList = [][]lyx.Node{subS.TargetList}
 		/* record all values from tl */
+
+		pulledTList, err := qr.pullupSublist(subS)
+		if err != nil {
+			return nil, err
+		}
+		routingList = [][]lyx.Node{pulledTList}
 
 		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
@@ -247,6 +311,7 @@ func (qr *ProxyQrouter) planInsertV1(
 			if err != nil {
 				return nil, err
 			}
+
 			for _, sh := range shs {
 				if sh.Name != shs[0].Name {
 					return nil, rerrors.ErrComplexQuery
@@ -373,6 +438,11 @@ func (qr *ProxyQrouter) planQueryV1(
 			p = plan.Combine(p, tmp)
 		}
 
+		p, err = applyWhere(p, stmt.Where)
+		if err != nil {
+			return nil, err
+		}
+
 		return p, nil
 
 	case *lyx.Insert:
@@ -388,6 +458,10 @@ func (qr *ProxyQrouter) planQueryV1(
 		p, err := qr.planInsertV1(ctx, rm, stmt, qualName)
 		if err != nil {
 			return nil, err
+		}
+
+		if p != nil && len(p.ExecutionTargets()) == 0 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "failed to build insert plan")
 		}
 
 		/* plan one slice per unique index */
@@ -758,6 +832,94 @@ func (qr *ProxyQrouter) CatalogDispatchPlan(seed int) *plan.ShardDispatchPlan {
 	}
 }
 
+func applyWhere(p plan.Plan, where lyx.Node) (plan.Plan, error) {
+	if where == nil {
+		return p, nil
+	}
+	if vp, ok := p.(*plan.VirtualPlan); ok {
+		var err error
+		vp.TTS, err = engine.FilterRows(vp.TTS, where)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+func (qr *ProxyQrouter) routeSelect(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	qs *lyx.Select) (plan.Plan, error) {
+
+	/* Special case for `select __spqr__show('obj')`, or other purely virtual functions */
+
+	if len(qs.FromClause) == 0 {
+		if len(qs.TargetList) == 1 {
+
+			p, err := planner.RetrieveTuples(
+				ctx,
+				rm,
+				qr,
+				qs.TargetList[0],
+				nil)
+			if err != nil {
+				return nil, err
+			}
+
+			if p != nil {
+				return applyWhere(p, qs.Where)
+			}
+		}
+	} else if len(qs.FromClause) == 1 {
+		/* Special case for `select * from __spqr__show('obj')` */
+
+		switch q := qs.FromClause[0].(type) {
+		case *lyx.SubSelect:
+			p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg, engine.ExtractProjectionColumns(qs.TargetList))
+			if err != nil {
+				return nil, err
+			}
+			if p != nil {
+				return applyWhere(p, qs.Where)
+			}
+		default:
+			break
+		}
+	}
+
+	/*
+	 *  Sometimes we have problems with some cases. For example, if a client
+	 *  tries to access information schema AND other relation in same TX.
+	 *  We are unable to serve this properly.
+	 *  But if this is a catalog-only query, we can route it to any shard.
+	 */
+	hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
+
+	for rqfn := range rm.Rels {
+		if strings.HasPrefix(strings.ToLower(rqfn.RelationName), "pg_") {
+			anyCatalog = true
+		} else {
+			onlyCatalog = false
+		}
+		if rqfn.SchemaName == "information_schema" {
+			hasInfSchema = true
+		} else {
+			hasOtherSchema = true
+		}
+	}
+
+	if onlyCatalog && anyCatalog {
+		return qr.CatalogDispatchPlan(rm.SPH.GetCatalogSeed()), nil
+	}
+	if hasInfSchema && hasOtherSchema {
+		return nil, rerrors.ErrInformationSchemaCombinedQuery
+	}
+	if hasInfSchema {
+		return &plan.RandomDispatchPlan{}, nil
+	}
+
+	return qr.planQueryV1(ctx, rm, qs)
+}
+
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -773,9 +935,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	/* TODO: delay this until step 2. */
 
-	var pl plan.Plan
-	pl = nil
-
 	/*
 	 * Step 1: traverse query tree and deparse mapping from
 	 * columns to their values (either constant or expression).
@@ -788,104 +947,22 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	/* TDB: comments? */
 	case *lyx.Insert:
 
-		rs, err := qr.planQueryV1(ctx, rm, stmt)
-		if err != nil {
-			return nil, err
-		}
-
-		pl = plan.Combine(pl, rs)
+		return qr.planQueryV1(ctx, rm, stmt)
 
 	case *lyx.Select:
 
-		/* Special case for `select __spqr__show('obj')`, or other purely virtual functions */
-
-		if len(qs.FromClause) == 0 {
-			if len(qs.TargetList) == 1 {
-
-				p, err := planner.RetrieveTuples(
-					ctx,
-					rm,
-					qr,
-					qs.TargetList[0])
-				if err != nil {
-					return nil, err
-				}
-
-				if p != nil {
-					return p, nil
-				}
-			}
-		} else if len(qs.FromClause) == 1 {
-			/* Special case for `select * from __spqr__show('obj')` */
-
-			switch q := qs.FromClause[0].(type) {
-			case *lyx.SubSelect:
-				p, err := planner.RetrieveTuples(ctx, rm, qr, q.Arg)
-				if err != nil {
-					return nil, err
-				}
-				if p != nil {
-					return p, nil
-				}
-			default:
-				break
-			}
-		}
-
-		/*
-		 *  Sometimes we have problems with some cases. For example, if a client
-		 *  tries to access information schema AND other relation in same TX.
-		 *  We are unable to serve this properly.
-		 *  But if this is a catalog-only query, we can route it to any shard.
-		 */
-		hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
-
-		for rqfn := range rm.Rels {
-			if strings.HasPrefix(strings.ToLower(rqfn.RelationName), "pg_") {
-				anyCatalog = true
-			} else {
-				onlyCatalog = false
-			}
-			if rqfn.SchemaName == "information_schema" {
-				hasInfSchema = true
-			} else {
-				hasOtherSchema = true
-			}
-		}
-
-		if onlyCatalog && anyCatalog {
-			return qr.CatalogDispatchPlan(rm.SPH.GetCatalogSeed()), nil
-		}
-		if hasInfSchema && hasOtherSchema {
-			return nil, rerrors.ErrInformationSchemaCombinedQuery
-		}
-		if hasInfSchema {
-			return &plan.RandomDispatchPlan{}, nil
-		}
-
-		p, err := qr.planQueryV1(ctx, rm, stmt)
-
-		if err != nil {
-			return nil, err
-		}
-
-		pl = plan.Combine(pl, p)
+		return qr.routeSelect(ctx, rm, qs)
 
 	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
-		rs, err := qr.planQueryV1(ctx, rm, stmt)
-		if err != nil {
-			return nil, err
-		}
-		pl = plan.Combine(pl, rs)
+		return qr.planQueryV1(ctx, rm, stmt)
+
 	case *lyx.ExplainStmt:
 		return qr.RouteWithRules(ctx, rm, qs.Query)
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
-
-	return pl, nil
 }
 
 func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
@@ -1518,6 +1595,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	if guc.Get(rm.SPH) {
+
 		p, err = qr.addSortToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err

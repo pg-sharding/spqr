@@ -393,7 +393,11 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 		return kr.ShardKey{}, err
 	}
 
-	dRel := rm.SPH.DistributedRelation()
+	dRelGuc, err := rm.SPH.FindStrGUC(session.SPQR_DISTRIBUTED_RELATION)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+	dRel := dRelGuc.Get(rm.SPH)
 
 	hf := hashfunction.HashFunctionIdent
 
@@ -418,6 +422,7 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 			}
 			if first {
 				hf = hfLocal
+				first = false
 			} else {
 				if hf != hfLocal {
 					return kr.ShardKey{}, fmt.Errorf("failed to resolve hint hash function")
@@ -435,16 +440,20 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 }
 
 func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
-	if rm.SPH.ScatterQuery() {
+	guc, err := rm.SPH.FindBoolGUC(session.SPQR_SCATTER_QUERY)
+	if err != nil {
+		return nil, err
+	}
+	if guc.Get(rm.SPH) {
 		return &plan.ScatterPlan{
 			Forced: true,
 		}, nil
 	}
-	guc, err := rm.SPH.FindStrGUC(session.SPQR_SHARDING_KEY)
+	shardingGuc, err := rm.SPH.FindStrGUC(session.SPQR_SHARDING_KEY)
 	if err != nil {
 		return nil, err
 	}
-	if val := guc.Get(rm.SPH); val != "" {
+	if val := shardingGuc.Get(rm.SPH); val != "" {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
 		dsId := rm.SPH.Distribution()

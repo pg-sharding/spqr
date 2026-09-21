@@ -1,6 +1,7 @@
 package spqrparser_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 	"time"
@@ -70,6 +71,28 @@ func TestSimple(t *testing.T) {
 			query: "\nSHOW \n relations",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "SHOW hosts (alive, rw, time)",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.HostsStr,
+				Columns: []string{"alive", "rw", "time"},
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "SHOW hosts_extended",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.HostsExtendedStr,
+				Columns: nil,
 				Where:   &lyx.AExprEmpty{},
 				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
@@ -1191,6 +1214,72 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "ALTER SYSTEM RELOAD",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					Reload: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET kek = 'on'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "kek",
+					SetValue: "on",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params = 'true'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "true",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params TO 'true'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "true",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params TO 'on'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "on",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION SET init = abc123;",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "init", Value: "abc123"}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION SET 'MixedCase' TO 'sha256:abc';",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "MixedCase", Value: "sha256:abc"}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION RESET init;",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "init", Reset: true}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION RESET 'MixedCase'",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "MixedCase", Reset: true}},
+		},
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
@@ -2276,8 +2365,13 @@ func TestDropTaskGroup(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "DROP MOVE TASK GROUP",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `group`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
 		},
 		{
 			query: "DROP MOVE TASK mt_id",
@@ -2893,5 +2987,177 @@ func TestRename(t *testing.T) {
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
+	}
+}
+
+func TestCall(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	val1 := make([]byte, 10)
+	binary.PutVarint(val1, 1)
+
+	for _, tt := range []tcase{
+		{
+			query: "CALL f(1, asd)",
+
+			exp: &spqrparser.Call{
+				FuncName: "f",
+				Args: []string{
+					string(val1),
+					"asd",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CALL no_args()",
+
+			exp: &spqrparser.Call{
+				FuncName: "no_args",
+				Args:     []string{},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+	}
+}
+
+// TestIdempotentDDLFlags checks that the optional IF [NOT] EXISTS flags are
+// parsed into the AST for every command that supports them, and that omitting
+// the flag preserves the previous (flag-less) behaviour.
+func TestIdempotentDDLFlags(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE DISTRIBUTION IF NOT EXISTS ds COLUMN TYPES varchar",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:          "ds",
+					ColTypes:    []string{"varchar"},
+					IfNotExists: true,
+				},
+			},
+		},
+		{
+			query: "CREATE DISTRIBUTION ds COLUMN TYPES varchar",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:       "ds",
+					ColTypes: []string{"varchar"},
+				},
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION IF EXISTS ds",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.DistributionSelector{ID: "ds"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION IF EXISTS ds CASCADE",
+			exp: &spqrparser.Drop{
+				Element:       &spqrparser.DistributionSelector{ID: "ds"},
+				CascadeDelete: true,
+				IfExists:      true,
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION ds",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.DistributionSelector{ID: "ds"},
+			},
+		},
+		{
+			query: "CREATE KEY RANGE IF NOT EXISTS kr1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					KeyRangeID: "kr1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{{2, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+					},
+					ShardID:      "sh1",
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					IfNotExists:  true,
+				},
+			},
+		},
+		{
+			query: "DROP KEY RANGE IF EXISTS kr1",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.KeyRangeSelector{KeyRangeID: "kr1"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "CREATE REFERENCE TABLE IF NOT EXISTS rr",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName:   &rfqn.RelationFQN{RelationName: "rr"},
+					IfNotExists: true,
+				},
+			},
+		},
+		{
+			query: "DROP REFERENCE TABLE IF EXISTS rr",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.ReferenceRelationSelector{ID: "rr"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds ATTACH RELATION IF NOT EXISTS t DISTRIBUTION KEY id",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Relation:        &rfqn.RelationFQN{RelationName: "t"},
+								DistributionKey: []spqrparser.DistributionKeyEntry{{Column: "id"}},
+								IfNotExists:     true,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds DETACH RELATION IF EXISTS t",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					Element: &spqrparser.DetachRelation{
+						RelationName: &rfqn.RelationFQN{RelationName: "t"},
+						IfExists:     true,
+					},
+				},
+			},
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+		assert.NoError(err, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }

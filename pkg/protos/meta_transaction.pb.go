@@ -536,6 +536,102 @@ func (x *ExecNoTranRequest) GetMetaCmdList() []*MetaTransactionGossipCommand {
 	return nil
 }
 
+type XRecord struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MethodName    string                 `protobuf:"bytes,1,opt,name=MethodName,proto3" json:"MethodName,omitempty"`
+	Args          []string               `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *XRecord) Reset() {
+	*x = XRecord{}
+	mi := &file_protos_meta_transaction_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *XRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*XRecord) ProtoMessage() {}
+
+func (x *XRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_meta_transaction_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use XRecord.ProtoReflect.Descriptor instead.
+func (*XRecord) Descriptor() ([]byte, []int) {
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *XRecord) GetMethodName() string {
+	if x != nil {
+		return x.MethodName
+	}
+	return ""
+}
+
+func (x *XRecord) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+type ApplyXRecordsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Records       []*XRecord             `protobuf:"bytes,1,rep,name=records,proto3" json:"records,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApplyXRecordsRequest) Reset() {
+	*x = ApplyXRecordsRequest{}
+	mi := &file_protos_meta_transaction_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApplyXRecordsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApplyXRecordsRequest) ProtoMessage() {}
+
+func (x *ApplyXRecordsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_meta_transaction_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApplyXRecordsRequest.ProtoReflect.Descriptor instead.
+func (*ApplyXRecordsRequest) Descriptor() ([]byte, []int) {
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ApplyXRecordsRequest) GetRecords() []*XRecord {
+	if x != nil {
+		return x.Records
+	}
+	return nil
+}
+
 var File_protos_meta_transaction_proto protoreflect.FileDescriptor
 
 const file_protos_meta_transaction_proto_rawDesc = "" +
@@ -569,15 +665,23 @@ const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\rtransactionId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rtransactionId\x12D\n" +
 	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"Y\n" +
 	"\x11ExecNoTranRequest\x12D\n" +
-	"\vmetaCmdList\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList2i\n" +
+	"\vmetaCmdList\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"=\n" +
+	"\aXRecord\x12\x1e\n" +
+	"\n" +
+	"MethodName\x18\x01 \x01(\tR\n" +
+	"MethodName\x12\x12\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\"?\n" +
+	"\x14ApplyXRecordsRequest\x12'\n" +
+	"\arecords\x18\x01 \x03(\v2\r.spqr.XRecordR\arecords2i\n" +
 	"\x1cMetaTransactionGossipService\x12I\n" +
-	"\tApplyMeta\x12\".spqr.MetaTransactionGossipRequest\x1a\x16.google.protobuf.Empty\"\x002\xe2\x01\n" +
+	"\tApplyMeta\x12\".spqr.MetaTransactionGossipRequest\x1a\x16.google.protobuf.Empty\"\x002\xa9\x02\n" +
 	"\x16MetaTransactionService\x12?\n" +
 	"\n" +
 	"ExecNoTran\x12\x17.spqr.ExecNoTranRequest\x1a\x16.google.protobuf.Empty\"\x00\x12D\n" +
 	"\n" +
 	"CommitTran\x12\x1c.spqr.MetaTransactionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12A\n" +
-	"\tBeginTran\x12\x16.google.protobuf.Empty\x1a\x1a.spqr.MetaTransactionReply\"\x00B\fZ\n" +
+	"\tBeginTran\x12\x16.google.protobuf.Empty\x1a\x1a.spqr.MetaTransactionReply\"\x00\x12E\n" +
+	"\rApplyXRecords\x12\x1a.spqr.ApplyXRecordsRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (
@@ -592,7 +696,7 @@ func file_protos_meta_transaction_proto_rawDescGZIP() []byte {
 	return file_protos_meta_transaction_proto_rawDescData
 }
 
-var file_protos_meta_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_protos_meta_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_protos_meta_transaction_proto_goTypes = []any{
 	(*CreateDistributionGossip)(nil),     // 0: spqr.CreateDistributionGossip
 	(*CreateKeyRangeGossip)(nil),         // 1: spqr.CreateKeyRangeGossip
@@ -604,14 +708,16 @@ var file_protos_meta_transaction_proto_goTypes = []any{
 	(*MetaTransactionReply)(nil),         // 7: spqr.MetaTransactionReply
 	(*MetaTransactionRequest)(nil),       // 8: spqr.MetaTransactionRequest
 	(*ExecNoTranRequest)(nil),            // 9: spqr.ExecNoTranRequest
-	(*Distribution)(nil),                 // 10: spqr.Distribution
-	(*KeyRangeInfo)(nil),                 // 11: spqr.KeyRangeInfo
-	(*emptypb.Empty)(nil),                // 12: google.protobuf.Empty
+	(*XRecord)(nil),                      // 10: spqr.XRecord
+	(*ApplyXRecordsRequest)(nil),         // 11: spqr.ApplyXRecordsRequest
+	(*Distribution)(nil),                 // 12: spqr.Distribution
+	(*KeyRangeInfo)(nil),                 // 13: spqr.KeyRangeInfo
+	(*emptypb.Empty)(nil),                // 14: google.protobuf.Empty
 }
 var file_protos_meta_transaction_proto_depIdxs = []int32{
-	10, // 0: spqr.CreateDistributionGossip.distributions:type_name -> spqr.Distribution
-	11, // 1: spqr.CreateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
-	11, // 2: spqr.UpdateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
+	12, // 0: spqr.CreateDistributionGossip.distributions:type_name -> spqr.Distribution
+	13, // 1: spqr.CreateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
+	13, // 2: spqr.UpdateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
 	0,  // 3: spqr.MetaTransactionGossipCommand.createDistribution:type_name -> spqr.CreateDistributionGossip
 	1,  // 4: spqr.MetaTransactionGossipCommand.createKeyRange:type_name -> spqr.CreateKeyRangeGossip
 	2,  // 5: spqr.MetaTransactionGossipCommand.dropKeyRange:type_name -> spqr.DropKeyRangeGossip
@@ -621,19 +727,22 @@ var file_protos_meta_transaction_proto_depIdxs = []int32{
 	5,  // 9: spqr.MetaTransactionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
 	5,  // 10: spqr.MetaTransactionRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
 	5,  // 11: spqr.ExecNoTranRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	6,  // 12: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
-	9,  // 13: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
-	8,  // 14: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
-	12, // 15: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
-	12, // 16: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
-	12, // 17: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
-	12, // 18: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
-	7,  // 19: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	10, // 12: spqr.ApplyXRecordsRequest.records:type_name -> spqr.XRecord
+	6,  // 13: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
+	9,  // 14: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
+	8,  // 15: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
+	14, // 16: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
+	11, // 17: spqr.MetaTransactionService.ApplyXRecords:input_type -> spqr.ApplyXRecordsRequest
+	14, // 18: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
+	14, // 19: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
+	14, // 20: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
+	7,  // 21: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
+	14, // 22: spqr.MetaTransactionService.ApplyXRecords:output_type -> google.protobuf.Empty
+	18, // [18:23] is the sub-list for method output_type
+	13, // [13:18] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_protos_meta_transaction_proto_init() }
@@ -649,7 +758,7 @@ func file_protos_meta_transaction_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_meta_transaction_proto_rawDesc), len(file_protos_meta_transaction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

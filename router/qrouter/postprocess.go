@@ -127,6 +127,26 @@ func (qr *ProxyQrouter) addSortToPlan(
 		return p, nil
 	}
 
+	switch v := p.(type) {
+	case *plan.VirtualPlan:
+		switch stmt := rm.Stmt.(type) {
+		case *lyx.Select:
+			/* sort keys in reverse order for correct multi-key ORDER BY */
+			for i := len(stmt.SortClause) - 1; i >= 0; i-- {
+				sb, ok := stmt.SortClause[i].(*lyx.SortBy)
+				if !ok {
+					continue
+				}
+				var err error
+				v.TTS.Raw, err = engine.ProcessOrderBy(v.TTS.Raw, v.TTS.Desc.GetColumnsMap(), sb)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		return p, nil
+	}
+
 	scatterSlice, ok := p.(*plan.ScatterPlan)
 
 	if !ok {

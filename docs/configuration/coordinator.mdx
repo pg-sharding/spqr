@@ -2,6 +2,8 @@
 title: Coordinator
 ---
 
+import GRPCTLS from '/snippets/grpc_tls.mdx';
+
 The SPQR Coordinator configuration can be specified in JSON, TOML, or YAML format. The configuration file passing as a parameter to run command:
 
 ```
@@ -21,6 +23,8 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `coordinator_port`         | The port number for the coordinator.                                                         | Any valid port number                         | (none)  |
 | `grpc_api_port`            | The port number for the gRPC API.                                                            | Any valid port number                         | (none)  |
 | `frontend_tls`             | See [auth.mdx](./auth).                                                                      | Object of `TLSConfig`                         | (none)  |
+| `client_tls`               | TLS for outgoing internal gRPC connections. See [gRPC TLS Settings](#grpc-tls-settings).      | Object of `GRPCClientTLSConfig`               | disabled |
+| `server_tls`               | TLS for the internal gRPC API. See [gRPC TLS Settings](#grpc-tls-settings).                   | Object of `GRPCServerTLSConfig`               | disabled |
 | `frontend_rules`           | The rules for frontend connections.                                                          | List of `FrontendRule`                        | (none)  |
 | `shard_data`               | Path to shard metadata used for data moves and distribution.                                 | Any valid file path                           | (none)  |
 | `use_systemd_notifier`     | Whether to use systemd notifier.                                                             | `true`, `false`                               | `false` |
@@ -29,6 +33,7 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `lock_iteration_timeout`   | Sleep duration between attempts to acquire the coordinator lock when starting up. | Duration string (e.g., `500ms`, `1s`, `5s`)   | `1s` |
 | `router_keepalive_time`    | Interval for sending gRPC keepalive pings to routers. Prevents idle connection closure by network intermediaries. | Duration string (e.g., `15s`, `30s`, `1m`) | `30s` |
 | `router_keepalive_timeout` | Time to wait for keepalive ping response before considering connection dead.  | Duration string (e.g., `10s`, `20s`)    | `20s` |
+| `auto_rebootstrap`        | Whether to check router's QDB contents and perform automatic re-bootstrapping. | `true`, `false` | `false` |
 | `enable_role_system`       | Whether to enable the [role-based access control system](./roles).                           | `true`, `false`                               | `false` |
 | `roles_file`               | The file path to the [roles](./roles) configuration.                                         | Any valid file path                           | (none) |
 | `etcd_max_send_bytes`      | Maximum request size in bytes that the etcd client (QDB implementation) is allowed to send. | Integer (bytes), use `0` for the etcd default | `0` |
@@ -39,6 +44,10 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `data_move_await_pid_exception` | Whether to await PID exception during data moves.                                           | `"true"`, `"false"` (as strings)              | `"true"` |
 | `use_spqrguard`            | Maintains [`spqrguard`](/deployment/spqrguard) metadata for key ranges and distributed and reference tables during topology changes and data moves. | `true`, `false` | `false` |
 | `forbid_direct_shard_queries` | Enables global `spqrguard` protection against direct writes to distributed and reference tables. | `true`, `false` | `false` |
+
+## gRPC TLS Settings
+
+<GRPCTLS />
 
 ## Coordinator Timing Settings
 
@@ -52,10 +61,11 @@ On each iteration, the coordinator:
 1. Queries QDB for the list of active routers
 2. Connects to each router via gRPC (using cached connections)
 3. Calls `GetRouterStatus()` to check router health
-4. Syncs coordinator address and metadata if needed
-5. Opens/closes routers in QDB based on their status
-6. Cleans up connections for removed routers
-7. Sleeps for `iteration_timeout` before the next cycle
+4. Syncs coordinator address if needed
+5. Sync router QDB metadata if enabled via `auto_rebootstrap`
+6. Opens/closes routers in QDB based on their status
+7. Cleans up connections for removed routers
+8. Sleeps for `iteration_timeout` before the next cycle
 
 <Warning>
 When using high `iteration_timeout` values (e.g., 5m+), ensure `router_keepalive_time` is configured appropriately to prevent cached connections from being closed by network devices. See [gRPC Keepalive Settings](#grpc-keepalive-settings).

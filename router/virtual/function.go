@@ -10,6 +10,7 @@ const (
 	VirtualRun2PCRecover        = "__spqr__run_2pc_recover"
 	VirtualClear2PCData         = "__spqr__clear_2pc_data"
 	VirtualCleanOutdated2PCData = "__spqr__clean_outdated_2pc_data"
+	VirtualCheckRouterMetaHash  = "__spqr__check_router_metadata_hash"
 
 	VirtualCTID      = "__spqr__ctid"
 	VirtualFuncHosts = "__spqr__host_status"
@@ -21,6 +22,7 @@ const (
 	VirtualAwaitTask                = "__spqr__await_task"
 	PGIsolationTestSessionIsBlocked = "pg_isolation_test_session_is_blocked"
 	PGAdvisoryXactLock              = "pg_advisory_xact_lock"
+	PGTryAdvisoryXactLock           = "pg_try_advisory_xact_lock"
 	PGAdvisoryLock                  = "pg_advisory_lock"
 	PGAdvisoryUnlock                = "pg_advisory_unlock"
 	PGAdvisoryUnlockAll             = "pg_advisory_unlock_all"
@@ -34,7 +36,7 @@ func IsVirtualFuncName(n string) bool {
 		VirtualRouteKey, VirtualRemoteExecute, VirtualRun2PCRecover,
 		VirtualClear2PCData, VirtualCleanOutdated2PCData,
 		PGIsolationTestSessionIsBlocked,
-		PGAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock, PgTryAdvisoryLock, PGAdvisoryUnlockAll,
+		PGAdvisoryXactLock, PGTryAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock, PgTryAdvisoryLock, PGAdvisoryUnlockAll,
 		VirtualSetNextTwoPhaseCommitGID:
 		return true
 	default:

@@ -135,6 +135,10 @@ func randomHex(n int) (string, error) {
 	begin 					*Begin
 	commit 					*Commit
 	rollback 				*Rollback
+
+	call                    *Call
+
+	drop_selector           DropSelector
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -195,7 +199,7 @@ func randomHex(n int) (string, error) {
 
 %type<integer> opt_show_kind
 
-%type<str> any_val any_id shard_id opt_any_id
+%type<str> any_val any_id shard_id opt_any_id reserved_keyword
 
 %type<uinteger> any_uint
 // CMDS
@@ -206,7 +210,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME CALL
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS SHARD COLUMNS HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
@@ -221,6 +225,9 @@ func randomHex(n int) (string, error) {
 %token <str> OPTIONS FORCE
 %token <str> META ONLY
 %token <str> BEGIN COMMIT ROLLBACK
+%token <str> MIGRATION RESET
+
+%token <str> IF EXISTS
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -248,7 +255,8 @@ func randomHex(n int) (string, error) {
 
 %type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
-%type<statement> distribution_drop_selector redistribute_task_drop_selector
+%type<statement> create_target
+%type<drop_selector> drop_target
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -318,6 +326,7 @@ func randomHex(n int) (string, error) {
 %type<options> options opt_options alter_generic_options generic_option_list alter_generic_option_list
 %type<option> generic_option_elem alter_generic_option_elem
 %type<bool> opt_force
+%type<bool> opt_if_not_exists opt_if_exists
 
 %type<statement> alter_sys_target
 
@@ -350,6 +359,8 @@ func randomHex(n int) (string, error) {
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
+
+%type<call> call_stmt
 
 %left		OR
 %left		AND
@@ -508,6 +519,9 @@ command:
 	} | rollback_stmt
 	{
 		$$ = $1
+	} | call_stmt
+	{
+		$$ = $1
 	}
 
 any_uint:
@@ -515,13 +529,9 @@ any_uint:
 		$$ = uint($1)
 	}
 
-any_val: SCONST
+any_val: any_id
 	{
-		$$ = string($1)
-	} | 
-	IDENT
-	{
-		$$ = string($1)
+		$$ = $1
 	} | ICONST {
 		if $1 > uint(math.MaxInt64) {
 			yylex.Error(SIGNED_INT_RANGE_ERROR)
@@ -548,6 +558,378 @@ any_id: IDENT
 	} | SCONST
 	{
 		$$ = string($1)
+	} | reserved_keyword
+	{
+		$$ = $1
+	}
+
+reserved_keyword:
+	SHOW
+	{
+		$$ = $1
+	} | KILL
+	{
+		$$ = $1
+	} | HELP
+	{
+		$$ = $1
+	} | WHERE
+	{
+		$$ = $1
+	} | OR
+	{
+		$$ = $1
+	} | AND
+	{
+		$$ = $1
+	} | NOT
+	{
+		$$ = $1
+	} | SHUTDOWN
+	{
+		$$ = $1
+	} | LISTEN
+	{
+		$$ = $1
+	} | REGISTER
+	{
+		$$ = $1
+	} | UNREGISTER
+	{
+		$$ = $1
+	} | ROUTER
+	{
+		$$ = $1
+	} | ROUTE
+	{
+		$$ = $1
+	} | CREATE
+	{
+		$$ = $1
+	} | ADD
+	{
+		$$ = $1
+	} | DROP
+	{
+		$$ = $1
+	} | LOCK
+	{
+		$$ = $1
+	} | UNLOCK
+	{
+		$$ = $1
+	} | SPLIT
+	{
+		$$ = $1
+	} | MOVE
+	{
+		$$ = $1
+	} | SET
+	{
+		$$ = $1
+	} | CASCADE
+	{
+		$$ = $1
+	} | ATTACH
+	{
+		$$ = $1
+	} | ALTER
+	{
+		$$ = $1
+	} | DETACH
+	{
+		$$ = $1
+	} | REDISTRIBUTE
+	{
+		$$ = $1
+	} | REFERENCE
+	{
+		$$ = $1
+	} | CHECK
+	{
+		$$ = $1
+	} | APPLY
+	{
+		$$ = $1
+	} | UNIQUE
+	{
+		$$ = $1
+	} | RENAME
+	{
+		$$ = $1
+	} | CALL
+	{
+		$$ = $1
+	} | COLUMN
+	{
+		$$ = $1
+	} | TABLE
+	{
+		$$ = $1
+	} | TABLES
+	{
+		$$ = $1
+	} | RELATIONS
+	{
+		$$ = $1
+	} | BACKENDS
+	{
+		$$ = $1
+	} | HASH
+	{
+		$$ = $1
+	} | FUNCTION
+	{
+		$$ = $1
+	} | KEY
+	{
+		$$ = $1
+	} | RANGE
+	{
+		$$ = $1
+	} | RANGES
+	{
+		$$ = $1
+	} | USING
+	{
+		$$ = $1
+	} | DISTRIBUTION
+	{
+		$$ = $1
+	} | RELATION
+	{
+		$$ = $1
+	} | REPLICATED
+	{
+		$$ = $1
+	} | AUTO
+	{
+		$$ = $1
+	} | INCREMENT
+	{
+		$$ = $1
+	} | SEQUENCE
+	{
+		$$ = $1
+	} | SCHEMA
+	{
+		$$ = $1
+	} | INDEX
+	{
+		$$ = $1
+	} | STORAGE
+	{
+		$$ = $1
+	} | SHARDS
+	{
+		$$ = $1
+	} | SHARD
+	{
+		$$ = $1
+	} | COLUMNS
+	{
+		$$ = $1
+	} | HOSTS
+	{
+		$$ = $1
+	} | BY
+	{
+		$$ = $1
+	} | FROM
+	{
+		$$ = $1
+	} | TO
+	{
+		$$ = $1
+	} | WITH
+	{
+		$$ = $1
+	} | UNITE
+	{
+		$$ = $1
+	} | ADDRESS
+	{
+		$$ = $1
+	} | FOR
+	{
+		$$ = $1
+	} | BETWEEN
+	{
+		$$ = $1
+	} | CLIENT
+	{
+		$$ = $1
+	} | BATCH
+	{
+		$$ = $1
+	} | SIZE
+	{
+		$$ = $1
+	} | NOWAIT
+	{
+		$$ = $1
+	} | INVALIDATE
+	{
+		$$ = $1
+	} | CACHE
+	{
+		$$ = $1
+	} | SYNC
+	{
+		$$ = $1
+	} | RETRY
+	{
+		$$ = $1
+	} | DISTRIBUTED
+	{
+		$$ = $1
+	} | IN
+	{
+		$$ = $1
+	} | ON
+	{
+		$$ = $1
+	} | DEFAULT
+	{
+		$$ = $1
+	} | STALE
+	{
+		$$ = $1
+	} | CLIENTS
+	{
+		$$ = $1
+	} | OPTIONS
+	{
+		$$ = $1
+	} | FORCE
+	{
+		$$ = $1
+	} | META
+	{
+		$$ = $1
+	} | ONLY
+	{
+		$$ = $1
+	} | BEGIN
+	{
+		$$ = $1
+	} | COMMIT
+	{
+		$$ = $1
+	} | ROLLBACK
+	{
+		$$ = $1
+	} | MIGRATION
+	{
+		$$ = $1
+	} | RESET
+	{
+		$$ = $1
+	} | IF
+	{
+		$$ = $1
+	} | EXISTS
+	{
+		$$ = $1
+	} | IDENTITY
+	{
+		$$ = $1
+	} | MURMUR
+	{
+		$$ = $1
+	} | CITY
+	{
+		$$ = $1
+	} | START
+	{
+		$$ = $1
+	} | STOP
+	{
+		$$ = $1
+	} | TRACE
+	{
+		$$ = $1
+	} | MESSAGES
+	{
+		$$ = $1
+	} | IMMEDIATE
+	{
+		$$ = $1
+	} | TASK
+	{
+		$$ = $1
+	} | GROUP
+	{
+		$$ = $1
+	} | SYSTEM
+	{
+		$$ = $1
+	} | RELOAD
+	{
+		$$ = $1
+	} | RESTART
+	{
+		$$ = $1
+	} | REBOOTSTRAP
+	{
+		$$ = $1
+	} | ROTATE
+	{
+		$$ = $1
+	} | SECONDS
+	{
+		$$ = $1
+	} | WAIT
+	{
+		$$ = $1
+	} | PANIC
+	{
+		$$ = $1
+	} | SLEEP
+	{
+		$$ = $1
+	} | GRANT
+	{
+		$$ = $1
+	} | LOCAL
+	{
+		$$ = $1
+	} | GLOBAL
+	{
+		$$ = $1
+	} | VARCHAR
+	{
+		$$ = $1
+	} | INTEGER
+	{
+		$$ = $1
+	} | INT
+	{
+		$$ = $1
+	} | TYPES
+	{
+		$$ = $1
+	} | UUID
+	{
+		$$ = $1
+	} | TYPE
+	{
+		$$ = $1
+	} | CONTROL
+	{
+		$$ = $1
+	} | POINT
+	{
+		$$ = $1
+	} | ASC
+	{
+		$$ = $1
+	} | DESC
+	{
+		$$ = $1
+	} | ORDER
+	{
+		$$ = $1
 	}
 
 opt_any_id:
@@ -783,7 +1165,7 @@ show_statement_type:
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
 			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
-			ShardsExtendedStr, MeanKRLockTimeStr:
+			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr, MigrationsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -820,56 +1202,45 @@ kill_statement_type:
 opt_cascade:
 	CASCADE { $$ = true } | {$$ = false}
 
+opt_if_not_exists:
+	IF NOT EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
+
+opt_if_exists:
+	IF EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
+
 drop_stmt:
-	DROP key_range_stmt
+	DROP drop_target opt_if_exists any_id opt_cascade
 	{
-		$$ = &Drop{Element: $2}
-	}
-	| DROP distribution_drop_selector opt_cascade
+		el := $2
+		el.SetID($4)
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
+	} |
+	DROP drop_target opt_if_exists ALL opt_cascade
 	{
-		$$ = &Drop{Element: $2, CascadeDelete: $3}
+		el := $2
+		el.SetID("*")
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
 	}
-	| DROP SHARD any_id opt_cascade
-	{
-		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
-	}
-	| DROP TASK GROUP any_id opt_cascade
-	{
-		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }, CascadeDelete: $5}
-	}
-	| DROP SEQUENCE any_id opt_cascade
-	{
-		$$ = &Drop{Element: &SequenceSelector{Name: $3}, CascadeDelete: $4}
-	}
-	| DROP REFERENCE table_or_relation any_id
-	{
-		$$ = &Drop{
-			Element: &ReferenceRelationSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP UNIQUE INDEX any_id 
-	{
-		$$ = &Drop{
-			Element: &UniqueIndexSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP redistribute_task_drop_selector opt_cascade
-	{
-		$$ = &Drop{Element: $2, CascadeDelete: $3}
-	}
-	| DROP MOVE TASK any_id opt_cascade
-	{
-		$$ = &Drop{
-			Element: &MoveTaskSelector{
-				ID: $4,
-			},
-			CascadeDelete: $5,
-		}
-	}
+
+drop_target:
+	KEY RANGE
+	{ $$ = &KeyRangeSelector{} }
+	| SHARD
+	{ $$ = &ShardSelector{} }
+	| TASK GROUP 
+	{ $$ = &TaskGroupSelector{} }
+	| SEQUENCE
+	{ $$ = &SequenceSelector{} }
+	| REFERENCE table_or_relation
+	{ $$ = &ReferenceRelationSelector{} }
+	| UNIQUE INDEX
+	{ $$ = &UniqueIndexSelector{} }
+	| MOVE TASK 
+	{ $$ = &MoveTaskSelector{} }
+	| DISTRIBUTION
+	{ $$ = &DistributionSelector{} }
+	| REDISTRIBUTE TASK
+	{ $$ = &RedistributeTaskSelector{} }
 
 
 /*
@@ -885,29 +1256,6 @@ distribution_select_stmt:
 	DISTRIBUTION any_id
 	{
 		$$ = &DistributionSelector{ID: $2}
-	}
-
-/*
- * Selectors used by DROP that accept either a concrete id or ALL ("*").
- */
-distribution_drop_selector:
-	DISTRIBUTION any_id
-	{
-		$$ = &DistributionSelector{ID: $2}
-	}
-	| DISTRIBUTION ALL
-	{
-		$$ = &DistributionSelector{ID: `*`}
-	}
-
-redistribute_task_drop_selector:
-	REDISTRIBUTE TASK any_id
-	{
-		$$ = &RedistributeTaskSelector{ID: $3}
-	}
-	| REDISTRIBUTE TASK ALL
-	{
-		$$ = &RedistributeTaskSelector{ID: `*`}
 	}
 
 add_stmt:
@@ -964,6 +1312,22 @@ alter_sys_target:
 		$$ = &System{
 			RotateLog: true,
 		}
+	} | SYSTEM SET any_id TEQ any_val {
+		$$ = &System{
+			SetGUC: $3,
+			SetValue: $5,
+		}
+	} | SYSTEM SET any_id TO any_val {
+		$$ = &System{
+			SetGUC: $3,
+			SetValue: $5,
+		}
+	} | SYSTEM MIGRATION SET any_id TEQ any_id {
+		$$ = &AlterSystemMigration{Name: $4, Value: $6}
+	} | SYSTEM MIGRATION SET any_id TO any_id {
+		$$ = &AlterSystemMigration{Name: $4, Value: $6}
+	} | SYSTEM MIGRATION RESET any_id {
+		$$ = &AlterSystemMigration{Name: $4, Reset: true}
 	}
 
 /*****************************************************************************
@@ -1052,13 +1416,13 @@ privilege:
 		{
 			$$ = "create"
 		} | ALTER SYSTEM
-			{
-				$$ = "alter system";
-			}
+		{
+			$$ = "alter system";
+		}
 		| any_id
-			{
-				$$ = $1;
-			}
+		{
+			$$ = $1;
+		}
 		;
 
 
@@ -1169,12 +1533,13 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DETACH table_or_relation qualified_name
+	distribution_select_stmt DETACH table_or_relation opt_if_exists qualified_name
 	{
 		$$ = &AlterDistribution{
 			Distribution: $1,
 			Element: &DetachRelation{
-				RelationName: $4,
+				RelationName: $5,
+				IfExists: $4,
 			},
 		}
 	} |
@@ -1249,22 +1614,24 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	table_or_relation opt_if_not_exists qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
-			Relation:    	 $2,
+			Relation:    	 $3,
+			DistributionKey: $6,
+			AutoIncrementEntries: $7,
+			IfNotExists: $2,
+		}
+	}
+	| table_or_relation opt_if_not_exists qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
+	{
+		$$ = &DistributedRelation{
+			Relation:    	 $3,
 			DistributionKey: $5,
 			AutoIncrementEntries: $6,
+			IfNotExists: $2,
 		}
-	} 
-	| table_or_relation qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
-	{
-		$$ = &DistributedRelation{
-			Relation:    	 $2,
-			DistributionKey: $4,
-			AutoIncrementEntries: $5,
-		}
-	} 
+	}
 
 opt_auto_increment:
     AUTO INCREMENT auto_inc_argument_list {
@@ -1355,45 +1722,35 @@ opt_on_shards:
 	ON SHARDS any_id_list { $$ = $3 } | /* nothing */ {}
 
 create_stmt:
-	CREATE distribution_define_stmt
+	CREATE create_target
 	{
 		$$ = &Create{Element: $2}
 	}
-	|
-	CREATE key_range_define_stmt
+
+create_target:
+	distribution_define_stmt
+	{ $$ = $1 }
+	| key_range_define_stmt
+	{ $$ = $1 }
+	| key_ranges_for_distribution_define_stmt
+	{ $$ = $1 }
+	| shard_define_stmt
+	{ $$ = $1 }
+	| REFERENCE table_or_relation opt_if_not_exists qualified_name opt_auto_increment opt_on_shards
 	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE key_ranges_for_distribution_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE shard_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE REFERENCE table_or_relation qualified_name opt_auto_increment opt_on_shards
-	{
-		$$ = &Create{
-			Element: &ReferenceRelationDefinition{
+		$$ = &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
 				ShardIDs: $6,
-			},
-		}
+				IfNotExists: $3,
+			}
 	}
-	|
-	CREATE UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
+	| UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
 	{
-		$$ = &Create{
-			Element: &UniqueIndexDefinition{
-				ID:        $4,
-				TableName: $6,
-				Columns:    $9,
-			},
+		$$ = &UniqueIndexDefinition{
+			ID:        $3,
+			TableName: $5,
+			Columns:   $8,
 		}
 	}
 
@@ -1487,6 +1844,10 @@ help_command_name:
 // help_word matches keywords and identifiers that can appear in command names
 help_word:
 	IDENT { $$ = $1 }
+	| SYSTEM { $$ = "SYSTEM" }
+	| MIGRATION { $$ = "MIGRATION" }
+	| SET { $$ = "SET" }
+	| RESET { $$ = "RESET" }
 	| CREATE { $$ = "CREATE" }
 	| DROP { $$ = "DROP" }
 	| ALTER { $$ = "ALTER" }
@@ -1539,12 +1900,13 @@ lock_stmt:
 
 
 distribution_define_stmt:
-	DISTRIBUTION any_id opt_col_types opt_default_shard
+	DISTRIBUTION opt_if_not_exists any_id opt_col_types opt_default_shard
 	{
 		$$ = &DistributionDefinition{
-			ID: $2,
-			ColTypes: $3,
-			DefaultShard: $4,
+			ID: $3,
+			ColTypes: $4,
+			DefaultShard: $5,
+			IfNotExists: $2,
 		}
 	}
 
@@ -1663,13 +2025,14 @@ key_range_bound:
 
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
+	KEY RANGE opt_if_not_exists any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
 	{
 		$$ = &KeyRangeDefinition{
-			KeyRangeID: $3,
-			LowerBound: $5,
-			ShardID: $8,
-			Distribution: $9,
+			KeyRangeID: $4,
+			LowerBound: $6,
+			ShardID: $9,
+			Distribution: $10,
+			IfNotExists: $3,
 		}
 	}
 	| KEY RANGE FROM key_range_bound ROUTE TO any_id opt_distribution_selector
@@ -2052,6 +2415,20 @@ rollback_stmt:
 	ROLLBACK
 	{
 		$$ = &Rollback{}
+	}
+
+call_stmt:
+	CALL any_id TOPENBR any_id_list TCLOSEBR
+	{
+		$$ = &Call{
+			FuncName: $2,
+			Args: $4,
+		}
+	} | CALL any_id TOPENBR TCLOSEBR {
+		$$ = &Call{
+			FuncName: $2,
+			Args: []string{},
+		}
 	}
 
 %%

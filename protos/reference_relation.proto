@@ -53,6 +53,7 @@ service ReferenceRelationsService {
   rpc CreateReferenceRelations(CreateReferenceRelationsRequest) returns (google.protobuf.Empty) {}
   rpc DropReferenceRelations(DropReferenceRelationsRequest) returns (google.protobuf.Empty) {}
   rpc ListReferenceRelations(google.protobuf.Empty) returns (ListReferenceRelationsReply) {}
+  rpc GetReferenceRelation(QualifiedName) returns (ReferenceRelation) {}
 
   rpc AlterReferenceRelationStorage(AlterReferenceRelationStorageRequest) returns (google.protobuf.Empty) {}
 

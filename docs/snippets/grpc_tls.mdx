@@ -1,0 +1,14 @@
+`client_tls` configures outgoing internal gRPC connections, `server_tls` configures the internal gRPC API:
+
+```yaml coordinator.yaml
+client_tls:
+  mode: tls # disabled, tls, or mtls
+  root_ca_file: /path/to/ca.crt
+  server_name: spqr.internal # optional certificate name override
+  # cert_file and key_file are required for mtls
+server_tls:
+  mode: tls # disabled, tls, or mtls
+  cert_file: /path/to/server.crt
+  key_file: /path/to/server.key
+  # client_ca_file is required for mtls
+```

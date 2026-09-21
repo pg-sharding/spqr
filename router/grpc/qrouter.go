@@ -16,7 +16,9 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -107,6 +109,15 @@ func (l *LocalQrouterServer) ListReferenceRelations(ctx context.Context, _ *empt
 	return &protos.ListReferenceRelationsReply{
 		Relations: ret,
 	}, nil
+}
+
+// GetReferenceRelation implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) GetReferenceRelation(ctx context.Context, relation *protos.QualifiedName) (*protos.ReferenceRelation, error) {
+	refRelation, err := l.mgr.GetReferenceRelation(ctx, rfqn.RelationFQNFromProto(relation))
+	if err != nil {
+		return nil, err
+	}
+	return rrelation.RefRelationToProto(refRelation), nil
 }
 
 // SyncReferenceRelations implements proto.ReferenceRelationsServiceServer.
@@ -313,6 +324,32 @@ func (l *LocalQrouterServer) ListRouters(_ context.Context, _ *emptypb.Empty) (*
 func (l *LocalQrouterServer) OpenRouter(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	l.qr.Initialize()
 	return nil, nil
+}
+
+// GetMetadataHash implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Empty) (*protos.MetadataHashReply, error) {
+	hash, err := qdb.GetQDBStateHash(ctx, l.mgr.QDB())
+	return &protos.MetadataHashReply{Hash: hash}, err
+}
+
+// Rebootstrap implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, rebootstrap.RebootstrapQDB(ctx, l.mgr.QDB(), l.mgr)
+}
+
+// SyncMetadata implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) SyncMetadata(context.Context, *protos.SyncMetadataRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// AddRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) AddRouter(context.Context, *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// RemoveRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) RemoveRouter(context.Context, *protos.RemoveRouterRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
 }
 
 // TODO : unit tests

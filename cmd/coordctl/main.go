@@ -190,7 +190,7 @@ var listShardCmd = &cobra.Command{
 				if err != nil {
 					return err
 				}
-				fmt.Printf("router %s serving on host group %+v\n", shard.Id, ds.Hosts())
+				fmt.Printf("router %s serving on host group %+v\n", shard.Id, ds.HostsAZ())
 			}
 
 			fmt.Printf("-------------------------------------\n")

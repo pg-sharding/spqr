@@ -17,19 +17,19 @@ func ValidateDataShardHosts(ctx context.Context, shard *DataShard) error {
 		return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "shard definition is nil")
 	}
 
-	hosts := retrieveRawHostsFromOptions(shard.Options())
+	hosts, err := retrieveHostsFromOptions(shard.Options())
+	if err != nil {
+		return err
+	}
 	if len(hosts) == 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has no valid hosts configured", shard.ID)
-	}
-	if len(hosts) != len(shard.Hosts()) {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard %q has invalid or unsupported host definitions", shard.ID)
 	}
 
 	dialer := &net.Dialer{Timeout: defaultShardHostValidationTimeout}
 	errCh := make(chan error, len(hosts))
 	var wg sync.WaitGroup
 
-	for _, host := range shard.Hosts() {
+	for _, host := range shard.HostsAZ() {
 		wg.Add(1)
 		go func(h string) {
 			defer wg.Done()
@@ -41,7 +41,7 @@ func ValidateDataShardHosts(ctx context.Context, shard *DataShard) error {
 			if err := conn.Close(); err != nil {
 				spqrlog.Zero.Warn().Err(err).Str("host", h).Msg("failed to close validation connection to shard host")
 			}
-		}(host)
+		}(host.Address)
 	}
 
 	wg.Wait()

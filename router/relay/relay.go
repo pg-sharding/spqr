@@ -355,6 +355,10 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
 		if err != nil {
+			switch se := err.(type) {
+			case *spqrerror.SpqrError:
+				return nil, se.Query(rst.plainQ)
+			}
 			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
 		}
 

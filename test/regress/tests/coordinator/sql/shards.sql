@@ -15,7 +15,13 @@ ALTER SHARD sh1 OPTIONS (ADD sslmode 'require');
 ALTER SHARD sh1 OPTIONS (SET SSLMODE 'allow');
 SHOW shards_extended;
 
-ALTER SHARD sh1 OPTIONS (SET HOST 'onehost:6432');
+ALTER SHARD sh1 OPTIONS (SET HOST 'spqr_shard_1:6432 PRIORITY 5');
+SHOW shards_extended;
+ALTER SHARD sh1 OPTIONS (SET HOST 'spqr_shard_1_replica:6432 PRIORITY 10');
+SHOW shards_extended;
+ALTER SHARD sh1 OPTIONS (SET HOST 'spqr_shard_1:6432 PRIORITY -1');
+SHOW shards_extended;
+ALTER SHARD sh1 OPTIONS (SET HOST 'unknown:6432 PRIORITY 1');
 ALTER SHARD sh1 OPTIONS (DROP HOST 'spqr_shard_1_replica:6432');
 SHOW shards_extended;
 

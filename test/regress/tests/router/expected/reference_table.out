@@ -455,6 +455,14 @@ SELECT * FROM __spqr__show('reference_relations');
  test_ref_rel_rel  | sh1         | 1              | [sh1 sh2 sh3 sh4] | map[]
 (3 rows)
 
+SELECT table_name, shards FROM __spqr__show('reference_relations');
+    table_name     |      shards       
+-------------------+-------------------
+ test_ref_rel      | [sh1 sh2 sh3 sh4]
+ test_ref_rel_part | [sh1 sh3]
+ test_ref_rel_rel  | [sh1 sh2 sh3 sh4]
+(3 rows)
+
 SET __spqr__preferred_engine TO '';
 SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
     table_name     | schema_name | schema_version |      shards       | column_sequence_mapping 
@@ -462,6 +470,14 @@ SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
  test_ref_rel      | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
  test_ref_rel_part | public      | 1              | [sh1 sh3]         | map[]
  test_ref_rel_rel  | sh1         | 1              | [sh1 sh2 sh3 sh4] | map[]
+(3 rows)
+
+SELECT table_name, schema_name FROM __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
+    table_name     | schema_name 
+-------------------+-------------
+ test_ref_rel      | public
+ test_ref_rel_part | public
+ test_ref_rel_rel  | sh1
 (3 rows)
 
 DROP TABLE test_ref_rel;

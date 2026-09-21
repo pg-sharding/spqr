@@ -206,6 +206,20 @@ func (mr *MockEntityMgrMockRecorder) AlterShardOptions(ctx, shardID, options any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockEntityMgr)(nil).AlterShardOptions), ctx, shardID, options)
 }
 
+// ApplyXRecords mocks base method.
+func (m *MockEntityMgr) ApplyXRecords(ctx context.Context, records []*transaction.XRecord) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplyXRecords", ctx, records)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplyXRecords indicates an expected call of ApplyXRecords.
+func (mr *MockEntityMgrMockRecorder) ApplyXRecords(ctx, records any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyXRecords", reflect.TypeOf((*MockEntityMgr)(nil).ApplyXRecords), ctx, records)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
@@ -668,6 +682,21 @@ func (m *MockEntityMgr) GetRelationDistribution(ctx context.Context, relationFQN
 func (mr *MockEntityMgrMockRecorder) GetRelationDistribution(ctx, relationFQN any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockEntityMgr)(nil).GetRelationDistribution), ctx, relationFQN)
+}
+
+// GetRouterMetadataHash mocks base method.
+func (m *MockEntityMgr) GetRouterMetadataHash(ctx context.Context, r *topology.Router) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRouterMetadataHash", ctx, r)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRouterMetadataHash indicates an expected call of GetRouterMetadataHash.
+func (mr *MockEntityMgrMockRecorder) GetRouterMetadataHash(ctx, r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouterMetadataHash", reflect.TypeOf((*MockEntityMgr)(nil).GetRouterMetadataHash), ctx, r)
 }
 
 // GetSequenceRelations mocks base method.

@@ -93,8 +93,13 @@ func (a *Adapter) ShareKeyRange(_ string) error {
 }
 
 // GetReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) GetReferenceRelation(_ context.Context, _ *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
+func (a *Adapter) GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	relation, err := c.GetReferenceRelation(ctx, rfqn.RelationFQNToProto(relationFQN))
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
+	return rrelation.RefRelationFromProto(relation), nil
 }
 
 // GetSequenceColumns implements meta.EntityMgr.
@@ -591,6 +596,10 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 		Router: topology.RouterToProto(router),
 	})
 	return spqrerror.CleanGrpcError(err)
+}
+
+func (a *Adapter) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, fmt.Errorf("not implemented")
 }
 
 // AddDataShard adds a data shard to the system.
@@ -1306,6 +1315,10 @@ func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error)
 
 func (a *Adapter) GetTxnBatchSize() uint16 {
 	return a.maxTxnBatch
+}
+
+func (a *Adapter) ApplyXRecords(_ context.Context, _ []*mtran.XRecord) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Adapter ApplyXRecords not implemented")
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.

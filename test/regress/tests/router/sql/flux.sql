@@ -19,6 +19,11 @@ SELECT __spqr__console_execute('LOCK KEY RANGE k0');
 SELECT * FROM flux_access_t1 WHERE i = 67;
 INSERT INTO flux_access_t1(i) VALUES(67);
 
+-- check sqlstate also
+\set VERBOSITY sqlstate
+SELECT * FROM flux_access_t1 WHERE i = 67;
+\unset VERBOSITY
+
 SET __spqr__flux_access TO true;
 SHOW __spqr__flux_access;
 

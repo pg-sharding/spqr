@@ -22,3 +22,11 @@ DROP SHARD sh5;
 
 SHOW shards_extended;
 SHOW hosts;
+
+CREATE SHARD sh5 OPTIONS (HOST "spqr_shard_1:6432 PRIORITY 5", HOST "spqr_shard_1_replica:6432 PRIORITY -1") FORCE;
+
+SHOW hosts_extended;
+
+DROP SHARD sh5;
+
+SHOW hosts_extended;
