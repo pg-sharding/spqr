@@ -29,6 +29,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/console"
@@ -749,6 +750,33 @@ func ConsoleFunctionCall(
 		}
 
 		return tts, nil
+	case virtual.VirtualPreheatTsaCache:
+		if len(args) != 1 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+		}
+
+		value, err := parseStringFuncArg(fname, args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		target := tsa.TSA(value)
+		switch target {
+		case config.TargetSessionAttrsAny,
+			config.TargetSessionAttrsDClocal,
+			config.TargetSessionAttrsPS,
+			config.TargetSessionAttrsPR,
+			config.TargetSessionAttrsRW,
+			config.TargetSessionAttrsRO:
+		default:
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "unsupported target session attrs %q for %s", target, fname)
+		}
+
+		rm.CSM.PreheatTsaCache(target)
+
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(virtual.VirtualPreheatTsaCache),
+		}, nil
 	case virtual.VirtualFuncIsReady:
 
 		tts := &tupleslot.TupleTableSlot{

@@ -77,6 +77,7 @@ type MultiShardTSAPool interface {
 
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry
+	PreheatTsaCache(target tsa.TSA)
 
 	StopCacheWatchdog()
 }
