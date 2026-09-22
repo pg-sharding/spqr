@@ -85,6 +85,12 @@ WHERE shard_id = 'sh1';
 SELECT * FROM __spqr__show('key_ranges') WHERE locked = 'false';
 ```
 
+`ORDER BY` works only when postprocessing is enabled in one of these ways:
+
+- Set `query_routing.allow_postprocessing` to `true` in the router configuration.
+- Run `SET __spqr__allow_postprocessing TO true` for the current session.
+- Add the `/* __spqr__allow_postprocessing: true */` query hint.
+
 ## __spqr__host_status(host)
 
 Returns a host's cached read-write status. Pass the host address, including its
