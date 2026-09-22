@@ -458,6 +458,8 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 			}
 			defer cf()
 		}
+	case *spqrparser.Begin, *spqrparser.Commit, *spqrparser.Rollback:
+		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Transactions are not supported via virtual functions")
 	default:
 		/* TODO - fix
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {

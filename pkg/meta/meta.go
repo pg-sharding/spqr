@@ -1061,7 +1061,7 @@ func ProcMetadataCommand(ctx context.Context,
 	mgr := sess.EffectiveMgr()
 
 	/* TODO: do not accept nil as rc here */
-	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
+	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Type("type", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {

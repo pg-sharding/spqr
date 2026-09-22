@@ -133,13 +133,8 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		}
 		defer cf()
 
-	case *spqrparser.Commit:
-		mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
-		if err != nil {
-			return err
-		}
-		defer cf()
-
+	case *spqrparser.Begin:
+		mgr = l.entityMgr
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
