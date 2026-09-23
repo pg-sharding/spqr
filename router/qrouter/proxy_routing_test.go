@@ -862,6 +862,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 						},
 					},
 				},
+				FilterShard: kr.ShardKey{
+					Name: "sh1",
+				},
 			},
 		},
 		{

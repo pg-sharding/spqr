@@ -211,6 +211,11 @@ func (qr *ProxyQrouter) planInsertV1(
 				switch p.(type) {
 				case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
 					if stmt.Returning != nil {
+						routes := rel.ListStorageRoutes()
+						filterShard := kr.ShardKey{}
+						if len(routes) > 0 {
+							filterShard = routes[0]
+						}
 						return &plan.DataRowFilter{
 							Plan: &plan.ScatterPlan{
 								BasePlan: plan.BasePlan{
@@ -220,7 +225,7 @@ func (qr *ProxyQrouter) planInsertV1(
 								},
 								ExecTargets: rel.ListStorageRoutes(),
 							},
-							FilterIndex: 0,
+							FilterShard: filterShard,
 						}, nil
 					}
 					return &plan.ScatterPlan{
@@ -275,9 +280,17 @@ func (qr *ProxyQrouter) planInsertV1(
 				return nil, err
 			}
 			if stmt.Returning != nil {
+				rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+				if err != nil {
+					return nil, err
+				}
+				filterShard := kr.ShardKey{}
+				if routes := rel.ListStorageRoutes(); len(routes) > 0 {
+					filterShard = routes[0]
+				}
 				return &plan.DataRowFilter{
 					Plan:        p,
-					FilterIndex: 0,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, nil
@@ -903,7 +916,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 
 		return &plan.DataRowFilter{
 			Plan:        sp,
-			FilterIndex: 0,
+			FilterShard: v.FilterShard,
 		}, err
 	case *plan.ShardDispatchPlan:
 		return v, nil

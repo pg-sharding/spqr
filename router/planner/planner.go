@@ -118,6 +118,28 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	return p, nil
 }
 
+func ReferenceRelationFilterShard(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	qualName *rfqn.RelationFQN) (kr.ShardKey, error) {
+
+	var sh kr.ShardKey
+
+	if rmeta.IsRelationCatalog(qualName) {
+		return sh, nil
+	}
+
+	rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+	if err != nil {
+		return sh, err
+	}
+
+	if routes := rel.ListStorageRoutes(); len(routes) > 0 {
+		sh = routes[0]
+	}
+
+	return sh, nil
+}
+
 func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	qualName *rfqn.RelationFQN, subquery lyx.Node,
@@ -1242,9 +1264,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
+				filterShard, err := ReferenceRelationFilterShard(ctx, rm, qualName)
+				if err != nil {
+					return nil, err
+				}
 				return &plan.DataRowFilter{
 					Plan:        p,
-					FilterIndex: 0,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, err
@@ -1279,9 +1305,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
+				filterShard, err := ReferenceRelationFilterShard(ctx, rm, qualName)
+				if err != nil {
+					return nil, err
+				}
 				return &plan.DataRowFilter{
 					Plan:        p,
-					FilterIndex: 0,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, err
