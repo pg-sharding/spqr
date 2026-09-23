@@ -51,6 +51,9 @@ func UnrouteCommon(
 	}
 
 	if serv.TxStatus() != txstatus.TXIDLE {
+		if err := serv.Cleanup(); err != nil {
+			return err
+		}
 		if err := serv.Reset(); err != nil {
 			return err
 		}
