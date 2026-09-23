@@ -63,6 +63,12 @@ var (
 				_, _ = fmt.Println("0;no shard data file found, skipping...")
 				return
 			}
+			for id, shardConf := range shardData.ShardsData {
+				if shardConf.User == "" && routerUser == "" {
+					_, _ = fmt.Printf("0;no credentials found for shard \"%s\" in shard data file, skipping...\n", id)
+					return
+				}
+			}
 			db, err := qdb.NewEtcdQDB(qdbAddrs, 0)
 			if err != nil {
 				_, _ = fmt.Println("2;could not connect to QDB")
