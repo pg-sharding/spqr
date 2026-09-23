@@ -1,6 +1,8 @@
 package server
 
 import (
+
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/planopts"
@@ -41,6 +43,7 @@ type Server interface {
 	Reset() error
 	Sync() int64
 
+	Cleanup(rule *config.FrontendRule) error
 	DataPending() bool
 }
 
