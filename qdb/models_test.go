@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,7 +76,10 @@ func TestIdRanges(t *testing.T) {
 			assert.NoError(err, "test name: %s", tt.name)
 			assert.Equal(tt.expected, actual, "test name %s", tt.name)
 		} else {
-			assert.Error(err, "test name: %s", tt.name)
+			var spErr *spqrerror.SpqrError
+			if assert.ErrorAs(err, &spErr, "test name: %s", tt.name) {
+				assert.Equal(spqrerror.SPQR_VALUE_ERROR, spErr.ErrorCode)
+			}
 		}
 	}
 }

@@ -206,7 +206,7 @@ func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
 // GetDistribution implements [EntityMgr].
 func (t *TranEntityManager) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	if _, ok := t.distributions.DeletedItems()[id]; ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return nil, spqrerror.DistributionNotFound(id)
 	}
 	if savedDs, ok := t.distributions.Items()[id]; ok {
 		return savedDs, nil

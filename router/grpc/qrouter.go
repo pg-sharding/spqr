@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
@@ -266,7 +267,7 @@ func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, reque
 	}
 	curRel, ok := ds.TryGetRelation(relationFQN)
 	if !ok {
-		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
+		return nil, spqrerror.RelationNotFound(relationFQN.String(), ds.Id)
 	}
 	rel, err := distributions.DistributedRelationFromProto(request.GetRelation(), curRel.UniqueIndexesByColumn)
 	if err != nil {

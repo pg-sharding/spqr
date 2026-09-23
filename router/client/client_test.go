@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"testing"
@@ -12,7 +13,9 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/conn"
 	mock_conn "github.com/pg-sharding/spqr/pkg/mock/conn"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCancel(t *testing.T) {
@@ -170,4 +173,32 @@ func TestNoGSSAPI(t *testing.T) {
 
 	err := client.Init(nil)
 	assert.Equal(exprErr, err)
+}
+
+func TestReplyErrMsgPurePreservesWrappedMetadata(t *testing.T) {
+	original := spqrerror.DistributionNotFound("ds").Detail("cannot create index").Context("metadata operation").Pos(7).Query("CREATE UNIQUE INDEX")
+	wrapped := fmt.Errorf("coordinator: %w", original)
+	rconn := mock_conn.NewMockRawConn(gomock.NewController(t))
+	var response pgproto3.ErrorResponse
+	rconn.EXPECT().Write(gomock.Any()).DoAndReturn(func(data []byte) (int, error) {
+		require.Equal(t, byte('E'), data[0])
+		require.NoError(t, response.Decode(data[5:]))
+		return len(data), nil
+	})
+	startup := &pgproto3.StartupMessage{ProtocolVersion: pgproto3.ProtocolVersion30, Parameters: map[string]string{"user": "test"}}
+	data, err := startup.Encode(nil)
+	require.NoError(t, err)
+	reader := bytes.NewReader(data)
+	rconn.EXPECT().Read(gomock.Any()).DoAndReturn(reader.Read).Times(2)
+	cl := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+	require.NoError(t, cl.Init(nil))
+	require.NoError(t, cl.ReplyErrMsgPure(wrapped))
+	assert.Equal(t, wrapped.Error(), response.Message)
+	assert.Equal(t, original.ErrorCode, response.Code)
+	assert.Equal(t, original.ErrHint, response.Hint)
+	assert.Equal(t, original.ErrDetail, response.Detail)
+	assert.Equal(t, original.ErrContext, response.Where)
+	assert.Equal(t, original.Position, response.Position)
+	assert.Equal(t, original.InternalQuery, response.InternalQuery)
+	assert.Equal(t, `distribution "ds" not found`, original.Error())
 }

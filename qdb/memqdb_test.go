@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const MemQDBPath = ""
@@ -1039,4 +1040,62 @@ func TestMemQDBKeyRangeVersions(t *testing.T) {
 	assert.NoError(t, err)
 
 	qdb.RunTestKeyRangeChangeVersion(t, memqdb)
+}
+
+func TestMemQDBMetadataErrors(t *testing.T) {
+	ctx := context.Background()
+	db, err := qdb.NewMemQDB("")
+	require.NoError(t, err)
+	relation := &rfqn.RelationFQN{SchemaName: "sales", RelationName: "countries"}
+	for _, tt := range []struct {
+		name    string
+		run     func() error
+		message string
+	}{
+		{"distribution", func() error { _, err := db.GetDistribution(ctx, "missing"); return err }, `distribution "missing" not found`},
+		{"drop distribution", func() error { return db.DropDistribution(ctx, "missing") }, `distribution "missing" not found`},
+		{"reference relation", func() error { _, err := db.GetReferenceRelation(ctx, relation); return err }, `reference relation "sales.countries" not found`},
+		{"index", func() error { return db.DropUniqueIndex(ctx, "missing") }, `unique index "missing" not found`},
+		{"index distribution", func() error { return db.CreateUniqueIndex(ctx, &qdb.UniqueIndex{ID: "idx", DistributionId: "missing"}) }, `distribution "missing" not found`},
+		{"router", func() error { return db.CloseRouter(ctx, "missing") }, `router "missing" not found`},
+		{"move task", func() error { return db.UpdateMoveTask(ctx, &qdb.MoveTask{ID: "missing"}) }, `move task "missing" not found`},
+		{"redistribute task", func() error { return db.UpdateRedistributeTask(ctx, &qdb.RedistributeTask{ID: "missing"}) }, `redistribute task "missing" not found`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run()
+			var spErr *spqrerror.SpqrError
+			require.ErrorAs(t, err, &spErr)
+			assert.Equal(t, spqrerror.SPQR_OBJECT_NOT_EXIST, spErr.ErrorCode)
+			assert.Equal(t, tt.message, spErr.Error())
+			assert.NotEmpty(t, spErr.ErrHint)
+		})
+	}
+	for _, tt := range []struct {
+		name    string
+		create  func() error
+		message string
+	}{
+		{"shard", func() error { return db.AddShard(ctx, &qdb.Shard{ID: "sh1"}) }, `shard "sh1" already exists`},
+		{"group", func() error { return db.WriteMoveTaskGroup(ctx, "group1", &qdb.MoveTaskGroup{}, 0, nil) }, `task group "group1" already exists`},
+		{"move task", func() error { return db.WriteMoveTask(ctx, &qdb.MoveTask{ID: "task1"}) }, `move task "task1" already exists`},
+		{"redistribute task", func() error {
+			return db.CreateRedistributeTask(ctx, &qdb.RedistributeTask{ID: "task1", KeyRangeId: "kr1"})
+		}, `redistribute task "task1" already exists`},
+	} {
+		t.Run("duplicate "+tt.name, func(t *testing.T) {
+			require.NoError(t, tt.create())
+			var spErr *spqrerror.SpqrError
+			require.ErrorAs(t, tt.create(), &spErr)
+			assert.Equal(t, spqrerror.SPQR_INVALID_REQUEST, spErr.ErrorCode)
+			assert.Equal(t, tt.message, spErr.Error())
+			assert.NotEmpty(t, spErr.ErrHint)
+		})
+	}
+	// Missing optional tasks are used to detect completed work.
+	task, err := db.GetMoveTask(ctx, "absent")
+	require.NoError(t, err)
+	assert.Nil(t, task)
+	group, err := db.GetMoveTaskGroup(ctx, "absent")
+	require.NoError(t, err)
+	assert.Nil(t, group)
 }

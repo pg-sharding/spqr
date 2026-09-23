@@ -161,7 +161,7 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	serverOptions := append([]grpc.ServerOption{}, app.grpcServerOptions...)
 	serverOptions = append(serverOptions,
 		grpc.ChainUnaryInterceptor(
-			spqrErrorUnaryServerInterceptor,
+			spqrerror.UnaryServerInterceptor,
 			protovalidate_middleware.UnaryServerInterceptor(validator),
 		),
 	)
@@ -203,19 +203,6 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 		Msg("serve grpc coordinator service")
 
 	return serv.Serve(listener)
-}
-
-func spqrErrorUnaryServerInterceptor(
-	ctx context.Context,
-	req any,
-	_ *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (any, error) {
-	resp, err := handler(ctx, req)
-	if err != nil {
-		return resp, spqrerror.ToGrpcError(err)
-	}
-	return resp, nil
 }
 
 func (app *App) ServeUnixSocket(wg *sync.WaitGroup) error {

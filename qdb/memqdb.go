@@ -339,7 +339,7 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSta
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
 		if _, ok := q.State.Distributions[keyRange.DistributionId]; !ok {
-			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
+			return nil, spqrerror.DistributionNotFound(keyRange.DistributionId)
 		}
 	}
 
@@ -765,7 +765,7 @@ func (q *MemQDB) CloseRouter(_ context.Context, id string) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.Routers[id]; !ok {
-		return fmt.Errorf("failed to close router: router \"%s\" not found", id)
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "router %q not found", id).Hint("Run 'SHOW routers' to see registered routers.")
 	}
 	q.State.Routers[id].State = CLOSED
 
@@ -802,7 +802,7 @@ func (q *MemQDB) AddShard(_ context.Context, shard *Shard) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.Shards[shard.ID]; ok {
-		return fmt.Errorf("shard with id %s already exists", shard.ID)
+		return spqrerror.ObjectAlreadyExists("shard", shard.ID)
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.Shards, shard.ID, shard))
@@ -881,7 +881,7 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, relationFQN *rfqn.Relat
 	defer q.mu.RUnlock()
 
 	if rr, ok := q.State.ReferenceRelations[tableName]; !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+		return nil, spqrerror.ReferenceRelationNotFound(relationFQN.String())
 	} else {
 		return rr, nil
 	}
@@ -894,7 +894,7 @@ func (q *MemQDB) AlterReferenceRelationStorage(_ context.Context, relationFQN *r
 	defer q.mu.Unlock()
 	rel, ok := q.State.ReferenceRelations[tableName]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+		return spqrerror.ReferenceRelationNotFound(relationFQN.String())
 	}
 	rel.ShardIDs = shs
 	rel.Version++
@@ -908,7 +908,7 @@ func (q *MemQDB) DropReferenceRelation(_ context.Context, relationFQN *rfqn.Rela
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, ok := q.State.ReferenceRelations[tableName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+		return spqrerror.ReferenceRelationNotFound(relationFQN.String())
 	}
 	delete(q.State.ReferenceRelations, tableName)
 	return nil
@@ -982,7 +982,7 @@ func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.Distributions[id]; !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.DistributionNotFound(id)
 	}
 
 	for t, ds := range q.State.RelationDistribution {
@@ -1003,7 +1003,7 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 	defer q.mu.Unlock()
 
 	if ds, ok := q.State.Distributions[id]; !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.DistributionNotFound(id)
 	} else {
 
 		if ds.FQNRelations == nil {
@@ -1062,7 +1062,7 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relatio
 
 	ds, ok := q.State.Distributions[id]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return spqrerror.DistributionNotFound(id)
 	}
 
 	ds.Version++
@@ -1088,7 +1088,7 @@ func (q *MemQDB) AlterDistributedRelation(_ context.Context, id string, rel *Dis
 
 	ds, ok := q.State.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.DistributionNotFound(id)
 	}
 	ds.Version++
 	if dsID, ok := q.State.RelationDistribution[rel.Name]; !ok {
@@ -1115,7 +1115,7 @@ func (q *MemQDB) AlterDistributedRelationSchema(_ context.Context, id string, re
 
 	ds, ok := q.State.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.DistributionNotFound(id)
 	}
 	ds.Version++
 	if dsID, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
@@ -1145,7 +1145,7 @@ func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, rel
 
 	ds, ok := q.State.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.DistributionNotFound(id)
 	}
 	if dsID, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
@@ -1158,7 +1158,7 @@ func (q *MemQDB) AlterReplicatedRelationSchema(_ context.Context, id string, rel
 
 	rel, ok := q.State.ReferenceRelations[relation.RelationName]
 	if !ok {
-		return fmt.Errorf("reference relation \"%s\" not found", relation.String())
+		return spqrerror.ReferenceRelationNotFound(relation.String())
 	}
 
 	dsRel, ok := ds.Relations[relation.RelationName]
@@ -1181,7 +1181,7 @@ func (q *MemQDB) AlterDistributedRelationDistributionKey(_ context.Context, id s
 
 	ds, ok := q.State.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+		return spqrerror.DistributionNotFound(id)
 	}
 	if dsID, ok := q.State.RelationDistribution[relation.RelationName]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
@@ -1208,7 +1208,7 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 
 	if ds, ok := q.State.Distributions[id]; !ok {
 		// DEPRECATE this
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
+		return nil, spqrerror.DistributionNotFound(id)
 	} else {
 		return ds.Copy(), nil
 	}
@@ -1262,7 +1262,7 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 
 	ds, ok := q.State.Distributions[idx.DistributionId]
 	if !ok {
-		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
+		return spqrerror.DistributionNotFound(idx.DistributionId).Detail(fmt.Sprintf("cannot create unique index %q", idx.ID))
 	}
 	ds.UniqueIndexes[idx.ID] = idx
 
@@ -1286,7 +1286,7 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 
 	idx, ok := q.State.UniqueIndexes[id]
 	if !ok {
-		return fmt.Errorf("unique index \"%s\" not found", id)
+		return spqrerror.UniqueIndexNotFound(id)
 	}
 
 	ds, ok := q.State.Distributions[idx.DistributionId]
@@ -1351,7 +1351,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.MoveTaskGroups[id]; ok {
-		return fmt.Errorf("could not write move task group: task group with ID \"%s\" already exists", id)
+		return spqrerror.ObjectAlreadyExists("task group", id)
 	}
 
 	q.State.MoveTaskGroups[id] = group
@@ -1447,7 +1447,7 @@ func (q *MemQDB) GetMoveTaskByGroup(_ context.Context, taskGroupID string) (*Mov
 	}
 	task, ok := q.State.MoveTasks[id]
 	if !ok {
-		return nil, fmt.Errorf("move task \"%s\" not found", id)
+		return nil, spqrerror.TaskNotFound("move task", id).Detail(fmt.Sprintf("referenced by task group %q", taskGroupID))
 	}
 	return task, nil
 }
@@ -1481,7 +1481,7 @@ func (q *MemQDB) WriteMoveTask(_ context.Context, task *MoveTask) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.MoveTasks[task.ID]; ok {
-		return fmt.Errorf("failed to write move task: another task already exists")
+		return spqrerror.ObjectAlreadyExists("move task", task.ID)
 	}
 	q.State.MoveTasks[task.ID] = task
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.MoveTasks, task.ID, task))
@@ -1496,7 +1496,7 @@ func (q *MemQDB) UpdateMoveTask(_ context.Context, task *MoveTask) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.MoveTasks[task.ID]; !ok {
-		return fmt.Errorf("failed to update move task: IDs differ")
+		return spqrerror.TaskNotFound("move task", task.ID).Hint("Run 'SHOW move_tasks' to see existing move tasks.")
 	}
 
 	q.State.MoveTasks[task.ID] = task
@@ -1544,10 +1544,10 @@ func (q *MemQDB) CreateRedistributeTask(_ context.Context, task *RedistributeTas
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.RedistributeTasks[task.ID]; ok {
-		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+		return spqrerror.ObjectAlreadyExists("redistribute task", task.ID)
 	}
 	if _, ok := q.State.KeyRangeRedistributeTasks[task.KeyRangeId]; ok {
-		return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "redistribute task for key range %q already exists", task.KeyRangeId).Hint("Run 'SHOW redistribute_tasks' to see existing redistribute tasks.")
 	}
 	q.State.RedistributeTasks[task.ID] = task
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RedistributeTasks, task.ID, task))
@@ -1560,7 +1560,7 @@ func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTas
 	defer q.mu.Unlock()
 
 	if _, ok := q.State.RedistributeTasks[task.ID]; !ok {
-		return fmt.Errorf("could not update redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
+		return spqrerror.TaskNotFound("redistribute task", task.ID).Hint("Run 'SHOW redistribute_tasks' to see existing redistribute tasks.")
 	}
 	q.State.RedistributeTasks[task.ID] = task
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.RedistributeTasks, task.ID, task))
@@ -1687,7 +1687,7 @@ func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relation
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
 	if _, ok := q.State.Sequences[seqName]; !ok {
-		return fmt.Errorf("sequence %s does not exist", seqName)
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "sequence %q not found", seqName).Hint("Run 'SHOW sequences' to see configured sequences.")
 	}
 
 	key := fmt.Sprintf("%s_%s", relationFQN, colName)
@@ -1779,7 +1779,7 @@ func (q *MemQDB) NextRange(_ context.Context, seqName string, rangeSize uint64) 
 	nextval := q.State.SequenceToValues[seqName] + 1
 
 	if idRange, err := NewRangeBySize(nextval, rangeSize); err != nil {
-		return nil, fmt.Errorf("invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
+		return nil, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
 	} else {
 
 		q.State.SequenceToValues[seqName] = idRange.Right
@@ -2097,7 +2097,7 @@ func (q *MemQDB) TXCohortShards(_ context.Context, gid string) ([]string, error)
 	defer q.mu.Unlock()
 
 	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
-		return nil, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "two-phase transaction %q not found", gid)
 	} else {
 		return tx.ShardsIDs, nil
 	}
@@ -2108,7 +2108,7 @@ func (q *MemQDB) TXStatus(_ context.Context, gid string) (TwoPhaseTxState, error
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
-		return "", fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+		return "", spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "two-phase transaction %q not found", gid)
 	} else {
 		return tx.State, nil
 	}
@@ -2137,7 +2137,7 @@ func (q *MemQDB) TXInfo(_ context.Context, gid string) (TwoPCInfo, error) {
 	defer q.mu.RUnlock()
 
 	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
-		return TwoPCInfo{}, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+		return TwoPCInfo{}, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "two-phase transaction %q not found", gid)
 	} else {
 		return *tx, nil
 	}

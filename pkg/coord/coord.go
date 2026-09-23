@@ -317,7 +317,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	/* XXX: fix this */
 
 	if _, err := lc.qdb.GetReferenceRelation(ctx, r.RelationName); err == nil {
-		return fmt.Errorf("reference relation %+v already exists", r.RelationName)
+		return spqrerror.ObjectAlreadyExists("reference relation", r.RelationName.String())
 	}
 
 	selectedDistribId := distributions.REPLICATED
@@ -349,7 +349,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 			return err
 		}
 		if ok {
-			return fmt.Errorf("the sequence %s already exists", seqName)
+			return spqrerror.ObjectAlreadyExists("sequence", seqName)
 		}
 		statements, err := lc.qdb.CreateSequence(ctx, seqName, int64(entry.Start))
 		if err != nil {
@@ -1146,7 +1146,7 @@ func (lc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, r
 	}
 	rel, ok := ds.Relations[relationFQN.RelationName]
 	if !ok {
-		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relationFQN.RelationName, ds.Id)
+		return spqrerror.RelationNotFound(relationFQN.String(), ds.Id)
 	}
 	if len(rel.UniqueIndexesByColumn) > 0 {
 		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relationFQN.RelationName)
@@ -1531,21 +1531,21 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		krOld.IsLocked = false
 		err = tranMngr.CreateKeyRange(ctx, krOld, ds.ColTypes)
 		if err != nil {
-			return fmt.Errorf("could not update source key range in left key range split: %s", err)
+			return fmt.Errorf("could not update source key range in left key range split: %w", err)
 		}
 		err = tranMngr.UpdateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
-			return fmt.Errorf("could not create new key range in left key range split: %s", err)
+			return fmt.Errorf("could not create new key range in left key range split: %w", err)
 		}
 	} else {
 		krTemp.ID = req.KeyRangeID
 		err = tranMngr.CreateKeyRange(ctx, krTemp, ds.ColTypes)
 		if err != nil {
-			return fmt.Errorf("could not create new key range in right key range split: %s", err)
+			return fmt.Errorf("could not create new key range in right key range split: %w", err)
 		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range")
 	}
 	return nil
 }
@@ -1613,11 +1613,11 @@ func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *
 		return err
 	}
 	if _, ok := ds.UniqueIndexesByID[idx.ID]; ok {
-		return fmt.Errorf("unique index with ID \"%s\" already exists", idx.ID)
+		return spqrerror.ObjectAlreadyExists("unique index", idx.ID)
 	}
 	rel, ok := ds.Relations[idx.RelationName.RelationName]
 	if !ok {
-		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.Id)
+		return spqrerror.RelationNotFound(idx.RelationName.String(), ds.Id)
 	}
 
 	/* Current implementation restriction. */
@@ -1634,7 +1634,7 @@ func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *
 	/* Is this a problem? */
 	for _, col := range idx.Columns {
 		if _, ok := rel.UniqueIndexesByColumn[col]; ok {
-			return fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", idx.RelationName.String(), col)
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "unique index for table %q, column %q already exists", idx.RelationName.String(), col).Hint("Run 'SHOW unique_indexes' to see existing unique indexes.")
 		}
 	}
 	return lc.qdb.CreateUniqueIndex(ctx, distributions.UniqueIndexToDB(dsId, idx))

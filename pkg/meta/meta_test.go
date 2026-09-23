@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -215,7 +216,11 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
-	assert.Equal(t, err, fmt.Errorf("shard '%s' does not exist", "notExistShard"))
+	var spErr *spqrerror.SpqrError
+	if assert.ErrorAs(t, err, &spErr) {
+		assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		assert.Equal(t, spqrerror.ShardNotFound("notExistShard").ErrHint, spErr.ErrHint)
+	}
 
 }
 
@@ -570,4 +575,90 @@ func TestApplyXRecords(t *testing.T) {
 		assert.Error(err)
 		assert.Contains(err.Error(), "unknown EntityMgr method")
 	})
+}
+
+func TestConditionalMetadataCommands(t *testing.T) {
+	ctx := context.Background()
+	db, err := prepareDB(ctx)
+	require.NoError(t, err)
+	mgr := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+	for _, query := range []string{
+		"DROP DISTRIBUTION IF EXISTS missing",
+		"DROP REFERENCE TABLE IF EXISTS missing",
+		"DROP KEY RANGE IF EXISTS missing",
+		"CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer",
+		"CREATE DISTRIBUTION IF NOT EXISTS new_ds COLUMN TYPES integer",
+	} {
+		t.Run(query, func(t *testing.T) {
+			stmt, err := spqrparser.Parse(query)
+			require.NoError(t, err)
+			_, err = meta.ProcMetadataCommand(ctx, stmt[0], mgr, nil, nil, nil, false, nil)
+			require.NoError(t, err)
+		})
+	}
+	for _, tt := range []struct{ query, code string }{
+		{"DROP DISTRIBUTION missing", spqrerror.SPQR_OBJECT_NOT_EXIST},
+		{"CREATE DISTRIBUTION ds1 COLUMN TYPES integer", spqrerror.SPQR_INVALID_REQUEST},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			stmt, err := spqrparser.Parse(tt.query)
+			require.NoError(t, err)
+			_, err = meta.ProcMetadataCommand(ctx, stmt[0], mgr, nil, nil, nil, false, nil)
+			var spErr *spqrerror.SpqrError
+			require.ErrorAs(t, err, &spErr)
+			assert.Equal(t, tt.code, spErr.ErrorCode)
+			assert.NotEmpty(t, spErr.ErrHint)
+		})
+	}
+}
+
+func TestDefaultShardPreservesBackendError(t *testing.T) {
+	ctx := context.Background()
+	backendErr := fmt.Errorf("storage unavailable")
+	mgr := mockmgr.NewMockEntityMgr(gomock.NewController(t))
+	mgr.EXPECT().GetShard(ctx, "sh1").Return(nil, backendErr).Times(2)
+	mgr.EXPECT().ListDistributions(ctx).Return(nil, nil)
+	mgr.EXPECT().GetKeyRange(ctx, "ds.DEFAULT").Return(nil, backendErr)
+	manager := meta.NewDefaultShardManager(distributions.NewDistribution("ds", []string{qdb.ColumnTypeInteger}), mgr)
+	assert.ErrorIs(t, manager.CreateDefaultShard(ctx, "sh1"), backendErr)
+	_, err := manager.DropDefaultShard(ctx)
+	assert.ErrorIs(t, err, backendErr)
+	_, err = meta.CreateNonReplicatedDistribution(ctx, spqrparser.DistributionDefinition{ID: "ds", ColTypes: []string{qdb.ColumnTypeInteger}, DefaultShard: "sh1"}, mgr)
+	assert.ErrorIs(t, err, backendErr)
+}
+
+func TestUnknownCommandErrorIsPerRequest(t *testing.T) {
+	stmt := &spqrparser.Show{Cmd: "unknown"}
+	_, err := meta.ProcessShow(context.Background(), stmt, nil, nil, false)
+	var first *spqrerror.SpqrError
+	require.ErrorAs(t, err, &first)
+	first = first.Query("SELECT __spqr__show('unknown')")
+
+	_, err = meta.ProcessShow(context.Background(), stmt, nil, nil, false)
+	var second *spqrerror.SpqrError
+	require.ErrorAs(t, err, &second)
+	assert.ErrorIs(t, err, meta.ErrUnknownCoordinatorCommand)
+	assert.Equal(t, spqrerror.SPQR_INVALID_REQUEST, second.ErrorCode)
+	assert.Empty(t, second.InternalQuery)
+	assert.NotSame(t, first, second)
+}
+
+func TestDefaultShardCommitPreservesDiagnostics(t *testing.T) {
+	ctx := context.Background()
+	ds := distributions.NewDistribution("ds", []string{qdb.ColumnTypeInteger})
+	cause := spqrerror.DistributionNotFound(ds.Id).Detail("distribution was removed before commit")
+	mgr := mockmgr.NewMockEntityMgr(gomock.NewController(t))
+	mgr.EXPECT().GetShard(ctx, "sh1").Return(&topology.DataShard{ID: "sh1"}, nil)
+	mgr.EXPECT().GetKeyRange(ctx, "ds.DEFAULT").Return(nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range ds.DEFAULT"))
+	mgr.EXPECT().GetDistribution(ctx, ds.Id).Return(ds, nil)
+	mgr.EXPECT().ListKeyRanges(ctx, ds.Id).Return(nil, nil)
+	mgr.EXPECT().ExecNoTran(ctx, gomock.Any()).Return(cause)
+
+	err := meta.NewDefaultShardManager(ds, mgr).CreateDefaultShardNoCheck(ctx, &topology.DataShard{ID: "sh1"})
+	require.ErrorIs(t, err, cause)
+	var spErr *spqrerror.SpqrError
+	require.ErrorAs(t, err, &spErr)
+	assert.Equal(t, spqrerror.SPQR_KEYRANGE_ERROR, spErr.ErrorCode)
+	assert.Equal(t, cause.ErrHint, spErr.ErrHint)
+	assert.Equal(t, cause.ErrDetail, spErr.ErrDetail)
 }

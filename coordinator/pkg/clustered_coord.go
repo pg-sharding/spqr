@@ -905,7 +905,7 @@ func (qc *ClusteredCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID s
 // TODO : unit tests
 func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err := qc.Coordinator.Split(ctx, req); err != nil {
-		return fmt.Errorf("failed to split key range in coordinator: %s", err)
+		return fmt.Errorf("failed to split key range in coordinator: %w", err)
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -920,7 +920,7 @@ func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange
 			Interface("response", resp).
 			Msg("split key range response")
 		if err != nil {
-			return fmt.Errorf("failed to split key range in router \"%s\": %s", cc.Target(), err)
+			return fmt.Errorf("failed to split key range in router %q: %w", cc.Target(), spqrerror.CleanGrpcError(err))
 		}
 		return nil
 	}); err != nil {
@@ -1445,7 +1445,7 @@ func (qc *ClusteredCoordinator) TaskState(id string) (*transferworker.TaskGroupW
 		return state, nil
 	}
 
-	return nil, fmt.Errorf("no such task \"%v\"", id)
+	return nil, spqrerror.TaskNotFound("task", id)
 }
 
 func (qc *ClusteredCoordinator) awaitMoveTaskGroupResult(ctx context.Context, taskGroupID string, resultCh <-chan error) error {
@@ -1933,7 +1933,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 
 	stop, _, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
+		return nil, fmt.Errorf("failed to check for stop flag: %w", err)
 	}
 	// TODO create special error type here, use it to stop redistribute/balancer tasks
 	if stop {
@@ -1963,7 +1963,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	/* Getting next key range bound can be costly (seq scan) */
 	stop, _, err = qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
+		return nil, fmt.Errorf("failed to check for stop flag: %w", err)
 	}
 
 	// TODO create special error type here, use it to stop redistribute/balancer tasks
@@ -2094,7 +2094,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	}
 	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort)
 	if err := qc.db.TryTaskGroupLock(ctx, taskGroup.ID, addr); err != nil {
-		return fmt.Errorf("failed to acquire lock on task group \"%s\": %s", taskGroup.ID, err)
+		return fmt.Errorf("failed to acquire lock on task group %q: %w", taskGroup.ID, err)
 	}
 	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning), Message: fmt.Sprintf("executed by \"%s\"", addr)}); err != nil {
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
@@ -2110,7 +2110,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err := sourceConn.Ping(ctx); err != nil {
 				sourceConn, err = datatransfers.GetMasterConnection(ctx, sourceShardConn, "move_task_group_service_conn")
 				if err != nil {
-					return fmt.Errorf("failed to re-setup connection with source shard: %s", err)
+					return fmt.Errorf("failed to re-setup connection with source shard: %w", err)
 				}
 				defer func() {
 					_ = sourceConn.Close(ctx)
@@ -2122,13 +2122,13 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					delayedError = te
 				} else {
-					return fmt.Errorf("failed to get new move task: %s", err)
+					return fmt.Errorf("failed to get new move task: %w", err)
 				}
 			}
 			if newTask != nil {
 				taskGroup.CurrentTask = newTask
 				if err := qc.QDB().WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
-					return fmt.Errorf("failed to save move task: %s", err)
+					return fmt.Errorf("failed to save move task: %w", err)
 				}
 			} else {
 				break
@@ -2292,7 +2292,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 			return nil
 		}
 		if task == nil {
-			return fmt.Errorf("failed to redistribute key range \"%s\": it's linked to redistribute task \"%s\" not present in qdb", req.KeyRangeID, taskID)
+			return spqrerror.TaskNotFound("redistribute task", taskID).Detail(fmt.Sprintf("referenced by key range %q", req.KeyRangeID))
 		}
 		taskGroupID, err := qc.db.GetRedistributeTaskTaskGroupId(ctx, task.ID)
 		if err != nil {
@@ -2308,7 +2308,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	spqrlog.Zero.Debug().Msg("process redistribute in clustered coordinator")
 
 	if _, err = qc.GetShard(ctx, req.ShardID); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error getting destination shard: %s", err.Error())
+		return spqrerror.Wrap(err, spqrerror.SPQR_TRANSFER_ERROR, "error getting destination shard")
 	}
 
 	tss, err := qc.ListMoveTaskGroups(ctx)
@@ -2368,7 +2368,7 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 	execCtx, cancel := context.WithCancel(context.TODO())
 	if err := qc.db.LockRedistributeTask(execCtx, task.ID, addr); err != nil {
 		cancel()
-		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
+		return fmt.Errorf("failed to execute redistribute task %q: unable to acquire lock in qdb: %w", task.ID, err)
 	}
 	// TODO: update batch size if exists
 	if !exists {
@@ -3086,7 +3086,7 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 	if len(shardsIntersect) < len(rel.ShardIDs) {
 		// We need to drop shards
 		if err := qc.db.AlterReferenceRelationStorage(ctx, relationFQN, shardsIntersect); err != nil {
-			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %w", err)
 		}
 		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 			c := proto.NewReferenceRelationsServiceClient(cc)
@@ -3096,14 +3096,14 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx contex
 			})
 			return err
 		}); err != nil {
-			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %s", err)
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %w", spqrerror.CleanGrpcError(err))
 		}
 	}
 
 	rels := []*rfqn.RelationFQN{relationFQN}
 	for _, sh := range shardsToAdd {
 		if err := qc.SyncReferenceRelations(ctx, rels, sh); err != nil {
-			return fmt.Errorf("failed to alter reference relation storage: failed to sync relation on shard \"%s\": %s", sh, err)
+			return fmt.Errorf("failed to alter reference relation storage: failed to sync relation on shard %q: %w", sh, spqrerror.CleanGrpcError(err))
 		}
 	}
 	return nil
@@ -3358,7 +3358,7 @@ func gossipMetaChanges(ctx context.Context, gossip *proto.MetaTransactionGossipR
 func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
 	for _, gossipRequest := range chunk.GossipRequests {
 		if _, ok := mtran.GetGossipRequestType(gossipRequest); !ok {
-			return fmt.Errorf("invalid meta transaction request (exec no tran)")
+			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "invalid meta transaction request (exec no tran)")
 		}
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
@@ -3377,7 +3377,7 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
 	for _, gossipRequest := range transaction.Operations.GossipRequests {
 		if _, ok := mtran.GetGossipRequestType(gossipRequest); !ok {
-			return fmt.Errorf("invalid meta transaction request (commit tran)")
+			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "invalid meta transaction request (commit tran)")
 		}
 	}
 

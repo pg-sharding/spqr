@@ -12,7 +12,9 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -414,4 +416,92 @@ func TestKeyRangeVersion(t *testing.T) {
 	is.NoError(err)
 
 	qdb.RunTestKeyRangeChangeVersion(t, db)
+}
+
+func TestMetadataErrors(t *testing.T) {
+	require.NoError(t, setupTestSet(t))
+	t.Cleanup(func() { require.NoError(t, Down()) })
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
+	defer cancel()
+	db, err := setupSubTest(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Client().Close()) })
+	relation := &rfqn.RelationFQN{SchemaName: "sales", RelationName: "countries"}
+	for _, tt := range []struct {
+		name          string
+		run           func() error
+		code, message string
+	}{
+		{"distribution", func() error { _, err := db.GetDistribution(ctx, "missing"); return err }, spqrerror.SPQR_OBJECT_NOT_EXIST, `distribution "missing" not found`},
+		{"reference relation", func() error { _, err := db.GetReferenceRelation(ctx, relation); return err }, spqrerror.SPQR_OBJECT_NOT_EXIST, `reference relation "sales.countries" not found`},
+		{"index", func() error { return db.DropUniqueIndex(ctx, "missing") }, spqrerror.SPQR_OBJECT_NOT_EXIST, `unique index "missing" not found`},
+		{"shard", func() error { return db.AlterShard(ctx, &qdb.Shard{ID: "missing"}) }, spqrerror.SPQR_NO_DATASHARD, `Shard "missing" not found.`},
+		{"move task", func() error { return db.UpdateMoveTask(ctx, &qdb.MoveTask{ID: "missing"}) }, spqrerror.SPQR_OBJECT_NOT_EXIST, `move task "missing" not found`},
+		{"task group", func() error { return db.WriteMoveTask(ctx, &qdb.MoveTask{ID: "task1", TaskGroupID: "missing"}) }, spqrerror.SPQR_OBJECT_NOT_EXIST, `task group "missing" not found`},
+		{"redistribute task", func() error { return db.UpdateRedistributeTask(ctx, &qdb.RedistributeTask{ID: "missing"}) }, spqrerror.SPQR_OBJECT_NOT_EXIST, `redistribute task "missing" not found`},
+		{"key range move", func() error { return db.DeleteKeyRangeMove(ctx, "missing", false) }, spqrerror.SPQR_OBJECT_NOT_EXIST, `key range move "missing" not found`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var spErr *spqrerror.SpqrError
+			require.ErrorAs(t, tt.run(), &spErr)
+			assert.Equal(t, tt.code, spErr.ErrorCode)
+			assert.Equal(t, tt.message, spErr.Error())
+		})
+	}
+	t.Run("alter reference relation schema", func(t *testing.T) {
+		statements, err := db.CreateDistribution(ctx, qdb.NewDistribution("REPLICATED", nil))
+		require.NoError(t, err)
+		require.NoError(t, db.ExecNoTransaction(ctx, statements))
+		require.NoError(t, db.AlterDistributionAttach(ctx, "REPLICATED", []*qdb.DistributedRelation{{
+			Name: relation.RelationName, SchemaName: relation.SchemaName, ReplicatedRelation: true,
+		}}))
+		require.NoError(t, db.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
+			TableName: relation.RelationName, SchemaName: relation.SchemaName,
+		}))
+		// DROP deletes the reference record before its distribution mapping.
+		_, err = db.Client().Delete(ctx, "/reference_relations/"+relation.RelationName)
+		require.NoError(t, err)
+
+		err = db.AlterReplicatedRelationSchema(ctx, "REPLICATED", relation, "archive")
+		var spErr *spqrerror.SpqrError
+		require.ErrorAs(t, err, &spErr)
+		assert.Equal(t, spqrerror.SPQR_OBJECT_NOT_EXIST, spErr.ErrorCode)
+		assert.Equal(t, "Run 'SHOW reference_relations' to see all configured reference relations.", spErr.ErrHint)
+		assert.EqualError(t, err, `failed to get reference table: reference relation "sales.countries" not found`)
+	})
+	require.NoError(t, db.WriteMoveTaskGroup(ctx, "group1", &qdb.MoveTaskGroup{}, 0, nil))
+	for _, tt := range []struct {
+		name    string
+		create  func() error
+		message string
+	}{
+		{"shard", func() error { return db.AddShard(ctx, &qdb.Shard{ID: "sh1"}) }, `shard "sh1" already exists`},
+		{"group", func() error { return db.WriteMoveTaskGroup(ctx, "group2", &qdb.MoveTaskGroup{}, 0, nil) }, `task group "group2" already exists`},
+		{"move task", func() error { return db.WriteMoveTask(ctx, &qdb.MoveTask{ID: "task1", TaskGroupID: "group1"}) }, `move task "task1" already exists`},
+	} {
+		t.Run("duplicate "+tt.name, func(t *testing.T) {
+			require.NoError(t, tt.create())
+			var spErr *spqrerror.SpqrError
+			require.ErrorAs(t, tt.create(), &spErr)
+			assert.Equal(t, spqrerror.SPQR_INVALID_REQUEST, spErr.ErrorCode)
+			assert.Equal(t, tt.message, spErr.Error())
+			assert.NotEmpty(t, spErr.ErrHint)
+		})
+	}
+	require.NoError(t, db.CreateRedistributeTask(ctx, &qdb.RedistributeTask{ID: "rt1", KeyRangeId: "kr1"}))
+	for _, tt := range []struct {
+		task    *qdb.RedistributeTask
+		message string
+	}{
+		{&qdb.RedistributeTask{ID: "rt1", KeyRangeId: "kr2"}, `redistribute task "rt1" already exists`},
+		{&qdb.RedistributeTask{ID: "rt2", KeyRangeId: "kr1"}, `redistribute task for key range "kr1" already exists`},
+	} {
+		var spErr *spqrerror.SpqrError
+		require.ErrorAs(t, db.CreateRedistributeTask(ctx, tt.task), &spErr)
+		assert.Equal(t, spqrerror.SPQR_INVALID_REQUEST, spErr.ErrorCode)
+		assert.Equal(t, tt.message, spErr.Error())
+	}
+	group, err := db.GetMoveTaskGroup(ctx, "absent")
+	require.NoError(t, err)
+	assert.Nil(t, group)
 }

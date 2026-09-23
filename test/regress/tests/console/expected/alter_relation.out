@@ -104,7 +104,8 @@ SHOW relations;
 (2 rows)
 
 ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh_no_exist;
-ERROR:  shard 'sh_no_exist' does not exist
+ERROR:  Shard "sh_no_exist" not found.
+HINT:  Run 'SHOW shards' to see all configured shards.
 ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
   create default shard  
 ------------------------

@@ -1,9 +1,8 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 )
 
@@ -43,7 +42,7 @@ func Project(tts *tupleslot.TupleTableSlot, columns []string) (*tupleslot.TupleT
 		for _, c := range columns {
 			off, ok := colMp[c]
 			if !ok {
-				return &tupleslot.TupleTableSlot{}, fmt.Errorf("no such column %s", c)
+				return &tupleslot.TupleTableSlot{}, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "column %q not found", c).Hint("Use SHOW without a column list to see the available columns.")
 			}
 			offsets = append(offsets, off)
 			tuplesProjected.Desc = append(tuplesProjected.Desc, tts.Desc[off])

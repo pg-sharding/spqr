@@ -1,0 +1,34 @@
+\set VERBOSITY verbose
+\pset format unaligned
+DROP DISTRIBUTION missing_error_ds;
+ERROR:  SPQRN: distribution "missing_error_ds" not found
+HINT:  Run 'SHOW distributions' to see all configured distributions.
+DROP UNIQUE INDEX missing_error_idx;
+ERROR:  SPQRN: unique index "missing_error_idx" not found
+HINT:  Run 'SHOW unique_indexes' to see all configured unique indexes.
+CREATE DISTRIBUTION error_ds COLUMN TYPES integer DEFAULT SHARD missing_error_shard;
+ERROR:  SPQRD: Shard "missing_error_shard" not found.
+HINT:  Run 'SHOW shards' to see all configured shards.
+CREATE DISTRIBUTION error_ds COLUMN TYPES integer;
+add distribution
+distribution id -> error_ds
+(1 row)
+CREATE DISTRIBUTION error_ds COLUMN TYPES integer;
+ERROR:  SPQRJ: distribution "error_ds" already exists
+HINT:  Choose a different name or use the existing object.
+ALTER DISTRIBUTION error_ds DETACH RELATION missing_error_relation;
+ERROR:  SPQRN: relation "missing_error_relation" not found in distribution "error_ds"
+HINT:  Run 'SHOW relations' to see the attached relations and their distributions.
+DROP DISTRIBUTION IF EXISTS missing_error_ds;
+distribution_id
+missing_error_ds
+(1 row)
+CREATE DISTRIBUTION IF NOT EXISTS error_ds COLUMN TYPES integer;
+add distribution
+distribution id -> error_ds
+(1 row)
+DROP DISTRIBUTION error_ds;
+distribution_id
+error_ds
+(1 row)
+\set VERBOSITY default

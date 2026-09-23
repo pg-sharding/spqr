@@ -1,12 +1,14 @@
 package spqrerror
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -196,8 +198,48 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 	return err
 }
 
+func Wrap(err error, errorCode, message string) *SpqrError {
+	var result SpqrError
+	var cause *SpqrError
+	if errors.As(err, &cause) {
+		result = *cause
+	}
+	result.Err = fmt.Errorf("%s: %w", message, err)
+	result.ErrorCode = errorCode
+	return &result
+}
+
 func ShardNotFound(shardID string) *SpqrError {
 	return Newf(SPQR_NO_DATASHARD, "Shard %q not found.", shardID).Hint(shardNotFoundHintText)
+}
+
+func DistributionNotFound(id string) *SpqrError {
+	return Newf(SPQR_OBJECT_NOT_EXIST, "distribution %q not found", id).
+		Hint("Run 'SHOW distributions' to see all configured distributions.")
+}
+
+func RelationNotFound(relation, distribution string) *SpqrError {
+	return Newf(SPQR_OBJECT_NOT_EXIST, "relation %q not found in distribution %q", relation, distribution).
+		Hint("Run 'SHOW relations' to see the attached relations and their distributions.")
+}
+
+func ReferenceRelationNotFound(relation string) *SpqrError {
+	return Newf(SPQR_OBJECT_NOT_EXIST, "reference relation %q not found", relation).
+		Hint("Run 'SHOW reference_relations' to see all configured reference relations.")
+}
+
+func UniqueIndexNotFound(id string) *SpqrError {
+	return Newf(SPQR_OBJECT_NOT_EXIST, "unique index %q not found", id).
+		Hint("Run 'SHOW unique_indexes' to see all configured unique indexes.")
+}
+
+func TaskNotFound(kind, id string) *SpqrError {
+	return Newf(SPQR_OBJECT_NOT_EXIST, "%s %q not found", kind, id)
+}
+
+func ObjectAlreadyExists(kind, id string) *SpqrError {
+	return Newf(SPQR_INVALID_REQUEST, "%s %q already exists", kind, id).
+		Hint("Choose a different name or use the existing object.")
 }
 
 // Error returns the error message associated with the SpqrError.
@@ -242,7 +284,7 @@ func ToGrpcError(err error) error {
 		metadata[grpcErrorQueryKey] = spErr.InternalQuery
 	}
 
-	st, detailErr := status.New(codes.Unknown, spErr.Error()).WithDetails(&errdetails.ErrorInfo{
+	st, detailErr := status.New(codes.Unknown, err.Error()).WithDetails(&errdetails.ErrorInfo{
 		Reason:   spErr.ErrorCode,
 		Domain:   grpcErrorDomain,
 		Metadata: metadata,
@@ -254,6 +296,11 @@ func ToGrpcError(err error) error {
 	return st.Err()
 }
 
+func UnaryServerInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	resp, err := handler(ctx, req)
+	return resp, ToGrpcError(err)
+}
+
 // Try convert grpc error to error without "rpc error: code..."
 //
 // Returns:
@@ -261,6 +308,10 @@ func ToGrpcError(err error) error {
 func CleanGrpcError(err error) error {
 	if err == nil {
 		return nil
+	}
+	var spErr *SpqrError
+	if errors.As(err, &spErr) {
+		return err
 	}
 	if st, ok := status.FromError(err); ok {
 		for _, detail := range st.Details() {

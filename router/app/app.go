@@ -12,6 +12,7 @@ import (
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/grpccreds"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
@@ -31,6 +32,7 @@ func NewApp(sg *instance.InstanceImpl) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init router gRPC server TLS: %w", err)
 	}
+	serverOptions = append(serverOptions, grpc.UnaryInterceptor(spqrerror.UnaryServerInterceptor))
 	return &App{spqr: sg, grpcServerOptions: serverOptions}, nil
 }
 
