@@ -1132,3 +1132,42 @@ Feature: spqr-monitor test
     """
     Corruption found: row \[1 001\], rel "xMove" shard "sh2"
     """
+
+  Scenario: spqr-monitor exits when no credentials provided
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    SET __spqr__execute_on TO sh2;
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    echo > /etc/shard_data_no_creds.yaml <<EOF
+shards:
+  sh1:
+    hosts: 
+    - 'spqr_shard_1:6432'
+    - 'spqr_shard_1_replica:6432'
+  sh2:
+    hosts: 
+    - 'spqr_shard_2:6432'
+    - 'spqr_shard_2_replica:6432'
+EOF
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /etc/shard_data_no_creds.yaml --tablesample-size 100 --host regress_router
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    0;no credentials found for shard .sh1. in shard data, skipping
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    Corruption found: row \[1 001\], rel "xMove" shard "sh2"
+    """
