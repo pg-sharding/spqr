@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -430,6 +431,7 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
+
 	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
 		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
@@ -470,6 +472,33 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 	}()
 	mgr := NewAdapter(conn, lc.maxTxnBatch)
 	return mgr.CurrVal(ctx, seqName)
+}
+
+func (lc *LocalInstanceMetadataMgr) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (lc *LocalInstanceMetadataMgr) Snapshot() meta.EntityMgr {
+	qdbSnap := lc.qdb.Snapshot()
+	topologySnap := lc.tmgr.Snapshot()
+
+	lcSnap := NewLocalInstanceMetadataMgr(qdbSnap, lc.dcs, lc.cache, topologySnap, lc.updateTopology, lc.poolShardHosts, lc.maxTxnBatch)
+	return lcSnap
+}
+func (lc *LocalInstanceMetadataMgr) Begin(_ context.Context) error {
+	return nil
+}
+func (lc *LocalInstanceMetadataMgr) Rollback(_ context.Context) error {
+	return nil
+}
+func (lc *LocalInstanceMetadataMgr) Commit(_ context.Context) error {
+	return nil
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.

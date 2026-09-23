@@ -33,7 +33,7 @@ const greeting = `
 
 type Console interface {
 	Serve(ctx context.Context, rc rclient.RouterClient) error
-	ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error
+	ProcessQuery(ctx context.Context, q string, sess *meta.ConsoleSession, rc rclient.RouterClient, gc catalog.GrantChecker) error
 	Qlog() qlog.Qlog
 	Mgr() meta.EntityMgr
 }
@@ -73,10 +73,12 @@ func NewLocalInstanceConsole(
 func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	ctx context.Context,
 	tstmt spqrparser.Statement,
+	sess *meta.ConsoleSession,
 	rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	/* Should we proxy this request to coordinator? */
 
-	mgr := l.entityMgr
+	mgr := sess.EffectiveMgr()
+
 	var cf func()
 	var err error
 
@@ -96,14 +98,14 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
 				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
 				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
-				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+				mgr, cf, err = coord.DistributedMgr(ctx, mgr)
 				if err != nil {
 					return err
 				}
 				defer cf()
 			}
 		case spqrparser.SHOW_KIND_GLOBAL:
-			mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
 			if err != nil {
 				return err
 			}
@@ -131,6 +133,8 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		}
 		defer cf()
 
+	case *spqrparser.Begin:
+		mgr = l.entityMgr
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
@@ -142,7 +146,9 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		defer cf()
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false, rc)
+	sess.SetMgr(mgr)
+
+	tts, err := meta.ProcMetadataCommand(ctx, tstmt, sess, l.rrouter, rc.Rule(), l.writer, false, rc)
 	if err != nil {
 		return cli.ReportError(err)
 	}
@@ -150,7 +156,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 }
 
 // TODO : unit tests
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, sess *meta.ConsoleSession, rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
@@ -162,7 +168,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		Msg("processQueryInternal: parsed query")
 
 	for _, stmt := range tstmt {
-		if err := l.ExecuteMetadataQuery(ctx, stmt, rc, gc); err != nil {
+		if err := l.ExecuteMetadataQuery(ctx, stmt, sess, rc, gc); err != nil {
 			return err
 		}
 	}
@@ -211,6 +217,9 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 
 	spqrlog.Zero.Debug().Msg("console.ProcClient start")
 
+	mgr := l.entityMgr
+	sess := meta.NewConsoleSession(mgr)
+
 	for {
 		msg, err := rc.Receive()
 
@@ -220,7 +229,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, rc, catalog.GC); err != nil {
+			if err := l.ProcessQuery(ctx, v.String, sess, rc, catalog.GC); err != nil {
 				_ = rc.ReplyErr(err)
 				// continue to consume input
 			}

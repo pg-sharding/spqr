@@ -22,7 +22,15 @@ type TransactionMgr interface {
 	// Gets txn batch size
 	GetTxnBatchSize() uint16
 
+	Transactional
+	XRecords() []*XRecord
 	ApplyXRecords(ctx context.Context, records []*XRecord) error
+}
+
+type Transactional interface {
+	Begin(ctx context.Context) error
+	Rollback(ctx context.Context) error
+	Commit(ctx context.Context) error
 }
 
 type MetaTransaction struct {
@@ -158,6 +166,17 @@ func XRecordFromProto(record *proto.XRecord) *XRecord {
 	}
 
 	return &XRecord{
+		MethodName: record.MethodName,
+		Args:       record.Args,
+	}
+}
+
+func XRecordToProto(record *XRecord) *proto.XRecord {
+	if record == nil {
+		return nil
+	}
+
+	return &proto.XRecord{
 		MethodName: record.MethodName,
 		Args:       record.Args,
 	}

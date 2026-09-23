@@ -26,10 +26,15 @@ type TopologyMgr interface {
 	SetOptions(string, []GenericOption)
 
 	Snap() map[string]*DataShard
+	Snapshot() TopologyMgr
 }
 
 type TopologyMgrImpl struct {
 	shardMapping sync.Map
+}
+
+func (t *TopologyMgrImpl) Snapshot() TopologyMgr {
+	return TopMgrFromMap(t.Snap())
 }
 
 func (t *TopologyMgrImpl) Snap() map[string]*DataShard {

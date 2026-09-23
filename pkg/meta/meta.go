@@ -80,6 +80,8 @@ type EntityMgr interface {
 
 	TaskWorkersID() []string
 	TaskState(id string) (*transferworker.TaskGroupWorkerState, error)
+
+	Snapshot() EntityMgr
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
@@ -1188,12 +1190,14 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 // - error: An error if the operation fails, otherwise nil.
 func ProcMetadataCommand(ctx context.Context,
 	tstmt spqrparser.Statement,
-	mgr EntityMgr,
+	sess *ConsoleSession,
 	ci connmgr.ConnectionMgr,
 	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 
+	mgr := sess.EffectiveMgr()
+
 	/* TODO: do not accept nil as rc here */
-	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
+	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Type("type", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
@@ -1530,11 +1534,32 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.Rename:
 		return processRename(ctx, stmt, mgr)
 	case *spqrparser.Begin:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("begin"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "Begin"),
+			}},
+		}
+		err := sess.Begin(ctx)
+		return tts, err
 	case *spqrparser.Commit:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("commit"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "Commit"),
+			}},
+		}
+		err := sess.Commit(ctx)
+		return tts, err
 	case *spqrparser.Rollback:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("rollback"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "Rollback"),
+			}},
+		}
+		err := sess.Rollback(ctx)
+		return tts, err
 	case *spqrparser.Call:
 		switch stmt.FuncName {
 		case virtual.VirtualCheckRouterMetaHash:
