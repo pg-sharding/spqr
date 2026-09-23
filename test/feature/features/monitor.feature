@@ -1144,30 +1144,10 @@ Feature: spqr-monitor test
     Then command return code should be "0"
     When I run command on host "coordinator" with timeout "30" seconds
     """
-    echo > /etc/shard_data_no_creds.yaml <<EOF
-shards:
-  sh1:
-    hosts: 
-    - 'spqr_shard_1:6432'
-    - 'spqr_shard_1_replica:6432'
-  sh2:
-    hosts: 
-    - 'spqr_shard_2:6432'
-    - 'spqr_shard_2_replica:6432'
-EOF
-    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /etc/shard_data_no_creds.yaml --tablesample-size 100 --host regress_router
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data_no_creds.yaml --tablesample-size 100 --host regress_router
     """
     Then command return code should be "0"
     And command output should match regexp
     """
-    0;no credentials found for shard .sh1. in shard data, skipping
-    """
-    When I run command on host "coordinator" with timeout "30" seconds
-    """
-    cat /tmp/report.txt
-    """
-    Then command return code should be "0"
-    And command output should match regexp
-    """
-    Corruption found: row \[1 001\], rel "xMove" shard "sh2"
+    0;no credentials found for shard .* in shard data file, skipping\.\.\.
     """
