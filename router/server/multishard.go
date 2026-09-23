@@ -675,7 +675,10 @@ func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, 
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
 }
 
-func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
+func (m *MultiShardServer) Cleanup(rule *config.FrontendRule) error {
+	if m.TxStatus() == txstatus.TXIDLE {
+		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("multishard server tx status idle on cleanup")
+	}
 	if rule.PoolRollback {
 		if err := m.Send(&pgproto3.Query{
 			String: "ROLLBACK",
