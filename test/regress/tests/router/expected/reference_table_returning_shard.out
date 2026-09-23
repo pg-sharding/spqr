@@ -14,7 +14,6 @@ CREATE TABLE t(id int, name text);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 BEGIN;
-BEGIN;
 -- route to sh2 first, so the first slot of the shared multi shard
 -- gang is occupied by sh2, not by the reference relation storage shard
 SELECT * FROM t /* __spqr__execute_on: sh2 */;
@@ -30,7 +29,6 @@ NOTICE: send query to shard(s) : sh1
   1 | test1
 (1 row)
 
-ROLLBACK;
 ROLLBACK;
 -- after rollback data should be gone
 SELECT id, name FROM t /* __spqr__execute_on: sh1 */;
