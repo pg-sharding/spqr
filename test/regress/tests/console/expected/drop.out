@@ -131,6 +131,7 @@ ALTER DISTRIBUTION ds1 DETACH RELATION IF EXISTS rel;
 
 ALTER DISTRIBUTION missing DETACH RELATION IF EXISTS rel;
 ERROR:  distribution "missing" not found
+HINT:  Run 'SHOW distributions' to see all configured distributions.
 DROP REFERENCE TABLE IF EXISTS zz;
  relation_name 
 ---------------

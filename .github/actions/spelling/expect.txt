@@ -36,6 +36,7 @@ berule
 BOOLOID
 Bootstrapper
 buildpackage
+bufconn
 cachedchecker
 Cagent
 caio
@@ -314,6 +315,7 @@ mockgen
 mockinst
 mockmgr
 mockpool
+mockqdb
 mockqr
 mocksh
 mockshard
@@ -418,6 +420,7 @@ promhttp
 protobuf
 protoc
 protovalidate
+pset
 psswd
 pstmt
 PYTHONUNBUFFERED

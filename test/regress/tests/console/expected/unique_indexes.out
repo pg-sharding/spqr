@@ -57,6 +57,7 @@ CREATE UNIQUE INDEX ui2 ON t2 COLUMNS (col_uniq_2 varchar HASH);
 
 CREATE UNIQUE INDEX ui_same_col ON t2 COLUMNS (col_uniq_2 integer HASH);
 ERROR:  unique index for table "t2", column "col_uniq_2" already exists
+HINT:  Run 'SHOW unique_indexes' to see existing unique indexes.
 -- reject that
 CREATE UNIQUE INDEX uiu ON t COLUMNS (col_uniq integer);
 ERROR:  unique indexes are not supported non-hashed distribution

@@ -47,7 +47,8 @@ CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6
 (1 row)
 
 CREATE SHARD sh1 OPTIONS (HOST "localhost:6432") FORCE;
-ERROR:  shard with id sh1 already exists
+ERROR:  shard "sh1" already exists
+HINT:  Choose a different name or use the existing object.
 SHOW shards_extended;
  shard |                         options                         
 -------+---------------------------------------------------------

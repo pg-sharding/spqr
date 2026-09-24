@@ -13,7 +13,8 @@ CREATE REFERENCE TABLE zz2 ON sh3, sh4;
 (2 rows)
 
 CREATE REFERENCE RELATION zz2;
-ERROR:  reference relation zz2 already exists
+ERROR:  reference relation "zz2" already exists
+HINT:  Choose a different name or use the existing object.
 SYNC REFERENCE TABLES ON sh1;
 ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
 SYNC REFERENCE TABLE zz2 ON sh1;
@@ -57,6 +58,7 @@ DROP REFERENCE RELATION zz2;
 --should fail
 DROP REFERENCE RELATION zz2;
 ERROR:  reference relation "zz2" not found
+HINT:  Run 'SHOW reference_relations' to see all configured reference relations.
 CREATE REFERENCE RELATION zzx;
    create reference table    
 -----------------------------

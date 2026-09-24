@@ -2,12 +2,12 @@ package rmeta
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -226,7 +226,7 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 
 		relation, exists := ds.TryGetRelation(&qualName)
 		if !exists {
-			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
+			return nil, spqrerror.RelationNotFound(qualName.String(), ds.Id)
 		}
 		/* XXX: do better here */
 		relation.Relation.SchemaName = qualName.SchemaName

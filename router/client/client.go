@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -985,15 +986,16 @@ func (cl *PsqlClient) ReplyErrMsg(msg string, code string, pos int32) error {
 }
 
 func (cl *PsqlClient) ReplyErrMsgPure(e error) error {
-	switch er := e.(type) {
-	case *spqrerror.SpqrError:
+	var er *spqrerror.SpqrError
+	if errors.As(e, &er) {
 		if cl.ec != nil {
 			cl.ec.ReportError(er.ErrorCode)
 		}
-		return cl.replySpqrErr(er)
-	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0)
+		response := *er
+		response.Err = e
+		return cl.replySpqrErr(&response)
 	}
+	return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0)
 }
 
 func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {

@@ -69,7 +69,7 @@ func (manager *DefaultShardManager) keyRangeDefault(defaultShardId string) (*kr.
 
 func (manager *DefaultShardManager) CreateDefaultShard(ctx context.Context, defaultShardId string) error {
 	if defaultShard, err := manager.mngr.GetShard(ctx, defaultShardId); err != nil {
-		return fmt.Errorf("shard '%s' does not exist", defaultShardId)
+		return err
 	} else {
 		return manager.CreateDefaultShardNoCheck(ctx, defaultShard)
 	}
@@ -90,14 +90,17 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 		return err
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range as default: %s", err.Error())
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range as default")
 	}
 	return nil
 }
 
 func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (string, error) {
 	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, DefaultKeyRangeId(manager.distribution)); err != nil {
-		return "", fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
+		if !keyRangeDoesNotExist(err) {
+			return "", err
+		}
+		return "", spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution %q has no default shard", manager.distribution.Id).Hint("Use ALTER DISTRIBUTION ... ADD DEFAULT SHARD to configure a default shard.")
 	} else {
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
 		tranMngr := NewTranEntityManager(manager.mngr)

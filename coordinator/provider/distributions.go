@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -86,7 +87,7 @@ func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req 
 	}
 	curRel, ok := ds.TryGetRelation(relationFQN)
 	if !ok {
-		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.Id)
+		return nil, spqrerror.RelationNotFound(relationFQN.String(), ds.Id)
 	}
 	rel, err := distributions.DistributedRelationFromProto(req.GetRelation(), curRel.UniqueIndexesByColumn)
 	if err != nil {

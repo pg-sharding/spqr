@@ -88,7 +88,11 @@ type RouterConnector interface {
 	GetRouterConn(r *topology.Router) (*grpc.ClientConn, func(), error)
 }
 
-var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
+var ErrUnknownCoordinatorCommand = errors.New("unknown coordinator cmd")
+
+func unknownCoordinatorCommand() *spqrerror.SpqrError {
+	return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "%w", ErrUnknownCoordinatorCommand)
+}
 
 func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
 	_, err := mngr.GetKeyRange(ctx, id)
@@ -482,7 +486,7 @@ func processDrop(ctx context.Context,
 		}
 		return tts, nil
 	default:
-		return nil, fmt.Errorf("unknown drop statement")
+		return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "unknown drop statement")
 	}
 }
 
@@ -515,7 +519,7 @@ func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distrib
 		}
 		return distribution, nil
 	} else {
-		return nil, fmt.Errorf("REPLICATED distribution already exist")
+		return nil, spqrerror.ObjectAlreadyExists("distribution", distributions.REPLICATED)
 	}
 }
 
@@ -543,7 +547,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 	var defaultShard *topology.DataShard
 	if stmt.DefaultShard != "" {
 		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
-			return nil, fmt.Errorf("shard '%s' does not exist", stmt.DefaultShard)
+			return nil, err
 		} else {
 			defaultShard = ds
 		}
@@ -552,7 +556,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 	for _, ds := range dds {
 		if ds.Id == distribution.Id {
 			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
-			return nil, fmt.Errorf("attempt to create existing distribution")
+			return nil, spqrerror.ObjectAlreadyExists("distribution", distribution.Id)
 		}
 	}
 	tranMngr := NewTranEntityManager(mngr)
@@ -566,8 +570,8 @@ func createNonReplicatedDistribution(ctx context.Context,
 	if defaultShard != nil {
 		defaultShardManager := NewDefaultShardManager(distribution, mngr)
 		if defShardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defShardRes != nil {
-			return nil, fmt.Errorf("distribution %s created, but keyrange not. Error: %s",
-				distribution.Id, defShardRes.Error())
+			return nil, fmt.Errorf("distribution %s created, but key range not: %w",
+				distribution.Id, defShardRes)
 		}
 	}
 
@@ -744,7 +748,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ShardDefinition:
 		_, err := mngr.GetShard(ctx, stmt.Id)
 		if err == nil {
-			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard with id %s already exists", stmt.Id)
+			return nil, spqrerror.ObjectAlreadyExists("shard", stmt.Id)
 		}
 
 		err = spqrerror.CleanGrpcError(err)
@@ -814,7 +818,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			},
 		}, nil
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 
@@ -857,16 +861,16 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 		return tts, nil
 	case *spqrparser.AlterDistribution:
 		if stmt.Distribution == nil {
-			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
+			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
 	case *spqrparser.AlterShard:
 		if stmt.Shard == nil {
-			return nil, fmt.Errorf("failed to process 'ALTER SHARD' statement: shard ID is nil")
+			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "failed to process 'ALTER SHARD' statement: shard ID is nil")
 		}
 		return processAlterShard(ctx, stmt.Element, mngr, stmt.Shard.ID)
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 
@@ -1066,7 +1070,7 @@ func processAlterDistribution(ctx context.Context,
 		}
 		return tts, nil
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 
@@ -1167,7 +1171,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 
 		return tts, nil
 	default:
-		return nil, fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
+		return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "unexpected 'ALTER RELATION' request type %T", stmt)
 	}
 }
 
@@ -1210,7 +1214,7 @@ func ProcMetadataCommand(ctx context.Context,
 	}
 
 	if ro {
-		return nil, fmt.Errorf("console is in read only mode")
+		return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "console is in read only mode").Hint("Connect to the active coordinator to change metadata.")
 	}
 
 	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rule); err != nil {
@@ -1219,7 +1223,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 	switch stmt := tstmt.(type) {
 	case nil:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	case *spqrparser.InstanceControlPoint:
 		/* create control point */
 		if stmt.Enable {
@@ -1316,11 +1320,11 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		if err := mgr.RegisterRouter(ctx, newRouter); err != nil {
-			return nil, fmt.Errorf("failed to register router: %s", err)
+			return nil, fmt.Errorf("failed to register router: %w", err)
 		}
 
 		if err := mgr.SyncRouterMetadata(ctx, newRouter); err != nil {
-			return nil, fmt.Errorf("failed to sync router metadata: %s", err)
+			return nil, fmt.Errorf("failed to sync router metadata: %w", err)
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1499,7 +1503,7 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
 		if stmt.RelationSelector == "*" {
-			return nil, fmt.Errorf("SYNC REFERENCE TABLES/RELATIONS currently unsupported")
+			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "SYNC REFERENCE TABLES/RELATIONS currently unsupported")
 		}
 		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
 			{RelationName: stmt.RelationSelector},
@@ -1573,7 +1577,7 @@ func ProcMetadataCommand(ctx context.Context,
 			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "incorrect function name \"%s\"", stmt.FuncName)
 		}
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 
@@ -1611,7 +1615,7 @@ func ProcessKill(_ context.Context,
 			return nil, err
 		}
 		if !ok {
-			return nil, fmt.Errorf("no such client %d", trg)
+			return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "client %d not found", trg).Hint("Run 'SHOW clients' to see connected clients.")
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1667,7 +1671,7 @@ func ProcessKill(_ context.Context,
 		}
 
 		if !ok {
-			return nil, fmt.Errorf("no such backend %d", trg)
+			return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "backend %d not found", trg).Hint("Run 'SHOW backend_connections' to see backend connections.")
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1678,7 +1682,7 @@ func ProcessKill(_ context.Context,
 
 		return tts, cancelErr
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 
@@ -1947,7 +1951,7 @@ func ProcessShowExtended(ctx context.Context,
 
 	case spqrparser.TsaCacheStr:
 		if ci == nil {
-			return nil, ErrUnknownCoordinatorCommand
+			return nil, unknownCoordinatorCommand()
 		}
 
 		cacheEntries := ci.TsaCacheEntries()
@@ -1984,7 +1988,7 @@ func ProcessShowExtended(ctx context.Context,
 				return nil, err
 			}
 			if group == nil {
-				return nil, fmt.Errorf("task group for task \"%s\" not found", task.ID)
+				return nil, spqrerror.TaskNotFound("task group", task.TaskGroupID).Detail(fmt.Sprintf("referenced by move task %q", task.ID))
 			}
 			taskGroups[group.ID] = group
 		}
@@ -1994,7 +1998,7 @@ func ProcessShowExtended(ctx context.Context,
 		for _, task := range taskList {
 			taskGroup, ok := taskGroups[task.TaskGroupID]
 			if !ok {
-				return nil, fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
+				return nil, spqrerror.TaskNotFound("task group", task.TaskGroupID)
 			}
 			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
@@ -2002,7 +2006,7 @@ func ProcessShowExtended(ctx context.Context,
 					var err2 error
 					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %w, nor destination key range \"%s\": %w", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -2033,7 +2037,7 @@ func ProcessShowExtended(ctx context.Context,
 					var err2 error
 					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %w, nor destination key range \"%s\": %w", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -2096,7 +2100,7 @@ func ProcessShowExtended(ctx context.Context,
 		}
 		tts.WriteDataRow(t.String())
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 
 	if stmt.Where != nil {
@@ -2613,7 +2617,7 @@ func processAlterShard(ctx context.Context,
 
 		return tts, nil
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 
@@ -2633,7 +2637,7 @@ func processRename(ctx context.Context, astmt *spqrparser.Rename, mngr EntityMgr
 			},
 		}, nil
 	default:
-		return nil, ErrUnknownCoordinatorCommand
+		return nil, unknownCoordinatorCommand()
 	}
 }
 

@@ -13,3 +13,16 @@ Administrative Console is the place where you configure the sharding logic. The 
 
 To inspect metadata from an application database connection, use
 [virtual functions](/configuration/virtual_function).
+
+Console errors include an SQLSTATE and can include a `HINT` with a recovery action
+or `DETAIL` with operation context. In psql, use `\set VERBOSITY verbose` to display
+the SQLSTATE along with the message:
+
+```text
+ERROR:  SPQRN: distribution "missing_ds" not found
+HINT:  Run 'SHOW distributions' to see all configured distributions.
+```
+
+These fields are preserved when a router forwards a metadata operation to the
+coordinator. Applications should use the SQLSTATE to classify errors instead of
+matching the message text.
