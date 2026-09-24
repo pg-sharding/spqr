@@ -1247,7 +1247,8 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
 				case *plan.DataRowFilter:
-					if v.FilterIndex == recvIndex {
+					if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
+						shs[recvIndex].SHKey().Name == v.FilterShard.Name {
 						err = s.Client().Send(msg)
 						if err != nil {
 							return err

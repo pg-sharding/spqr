@@ -1,0 +1,55 @@
+\c spqr-console
+-- Regression test: INSERT ... RETURNING on a reference relation must return
+-- data rows from the shard the reference relation is stored on, not from
+-- the first shard routed inside transaction
+CREATE REFERENCE TABLE t ON sh1;
+ create reference table 
+------------------------
+ table    -> t
+ shard id -> sh1
+(2 rows)
+
+\c regress
+CREATE TABLE t(id int, name text);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+BEGIN;
+-- route to sh2 first, so the first slot of the shared multi shard
+-- gang is occupied by sh2, not by the reference relation storage shard
+SELECT * FROM t /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id | name 
+----+------
+(0 rows)
+
+INSERT INTO t (id, name) VALUES (1, 'test1') RETURNING id, name;
+NOTICE: send query to shard(s) : sh1
+ id | name  
+----+-------
+  1 | test1
+(1 row)
+
+ROLLBACK;
+-- after rollback data should be gone
+SELECT id, name FROM t /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id | name 
+----+------
+(0 rows)
+
+SELECT id, name FROM t /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id | name 
+----+------
+(0 rows)
+
+DROP TABLE t;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+(1 row)
+
