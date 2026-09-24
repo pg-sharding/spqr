@@ -522,6 +522,18 @@ func (mr *MockMultiShardTSAPoolMockRecorder) InstanceHealthChecks() *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHealthChecks", reflect.TypeOf((*MockMultiShardTSAPool)(nil).InstanceHealthChecks))
 }
 
+// PreheatTsaCache mocks base method.
+func (m *MockMultiShardTSAPool) PreheatTsaCache(target tsa.TSA) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "PreheatTsaCache", target)
+}
+
+// PreheatTsaCache indicates an expected call of PreheatTsaCache.
+func (mr *MockMultiShardTSAPoolMockRecorder) PreheatTsaCache(target any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreheatTsaCache", reflect.TypeOf((*MockMultiShardTSAPool)(nil).PreheatTsaCache), target)
+}
+
 // Put mocks base method.
 func (m *MockMultiShardTSAPool) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()

@@ -242,6 +242,18 @@ func (mr *MockRuleRouterMockRecorder) PreRoute(conn, pt any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreRoute", reflect.TypeOf((*MockRuleRouter)(nil).PreRoute), conn, pt)
 }
 
+// PreheatTsaCache mocks base method.
+func (m *MockRuleRouter) PreheatTsaCache(target tsa.TSA) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "PreheatTsaCache", target)
+}
+
+// PreheatTsaCache indicates an expected call of PreheatTsaCache.
+func (mr *MockRuleRouterMockRecorder) PreheatTsaCache(target any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreheatTsaCache", reflect.TypeOf((*MockRuleRouter)(nil).PreheatTsaCache), target)
+}
+
 // Put mocks base method.
 func (m *MockRuleRouter) Put(arg0 client.Client) error {
 	m.ctrl.T.Helper()
