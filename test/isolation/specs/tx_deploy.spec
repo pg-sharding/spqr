@@ -14,8 +14,8 @@ teardown { select __spqr__console_execute('INVALIDATE BACKENDS') /*__spqr__prefe
 
 
 session s2
-step s2_cancel          { select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */; } 
-step s2_cancel_all      { select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and pid != pg_backend_pid()  /* __spqr__scatter_query: true */; } 
+step s2_cancel          { select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and state = 'idle in transaction' and pid != pg_backend_pid()  /* __spqr__execute_on: sh1 */; }
+step s2_cancel_all      { select BOOL_AND(pg_terminate_backend(pid)) from pg_stat_activity  where backend_type = 'client backend' and state = 'idle in transaction' and pid != pg_backend_pid()  /* __spqr__scatter_query: true */; }
 
 permutation s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_commit s1_commit
 permutation s1_report s1_s_s s1_begin s1_s_s s2_cancel s1_rollback s1_rollback
