@@ -352,16 +352,31 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 func DistributionKeyFromSQL(dsKey []spqrparser.DistributionKeyEntry) []DistributionKeyEntry {
 	res := make([]DistributionKeyEntry, len(dsKey))
 	for i, e := range dsKey {
+		colRefs := TypedColRefFromSQL(e.Expr)
+		for j := range colRefs {
+			colRefs[j].ColType = hashedColumnType(colRefs[j].ColType)
+		}
 		res[i] = DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
 			Expr: RoutingExpr{
-				ColRefs: TypedColRefFromSQL(e.Expr),
+				ColRefs: colRefs,
 			},
 		}
 	}
 
 	return res
+}
+
+func hashedColumnType(colType string) string {
+	switch colType {
+	case qdb.ColumnTypeVarchar:
+		return qdb.ColumnTypeVarcharHashed
+	case qdb.ColumnTypeUUID:
+		return qdb.ColumnTypeUUIDHashed
+	default:
+		return colType
+	}
 }
 
 // DistributionKeyToDB converts an array of DistributionKeyEntry's to qdb.DistributionKeyEntry objects.
