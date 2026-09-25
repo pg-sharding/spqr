@@ -1,0 +1,86 @@
+\c spqr-console
+CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE RELATION old_composite (murmur [s varchar hash, i int hash]);
+           attach table           
+----------------------------------
+ relation name   -> old_composite
+ distribution id -> ds1
+(2 rows)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION new_composite
+  DISTRIBUTION KEY murmur [s varchar, i uinteger];
+           attach table           
+----------------------------------
+ relation name   -> new_composite
+ distribution id -> ds1
+(2 rows)
+
+CREATE KEY RANGE FROM 3221225472 ROUTE TO sh4;
+    add key range    
+---------------------
+ bound -> 3221225472
+(1 row)
+
+CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2;
+    add key range    
+---------------------
+ bound -> 1073741824
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+\c regress
+CREATE TABLE old_composite (s varchar, i bigint);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE new_composite (s varchar, i bigint);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO old_composite (s, i) VALUES ('entity', 0), ('entity', 1), ('entity', 42);
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: send query to shard(s) : sh1,sh3
+INSERT INTO new_composite (s, i) VALUES ('entity', 0), ('entity', 1), ('entity', 42);
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: send query to shard(s) : sh1,sh3
+SELECT * FROM old_composite WHERE s = 'entity' AND i = 42;
+NOTICE: send query to shard(s) : sh3
+   s    | i  
+--------+----
+ entity | 42
+(1 row)
+
+SELECT * FROM new_composite WHERE s = 'entity' AND i = 42;
+NOTICE: send query to shard(s) : sh3
+   s    | i  
+--------+----
+ entity | 42
+(1 row)
+
+DROP TABLE old_composite;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE new_composite;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+

@@ -8,8 +8,30 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestDistributionKeyFromSQLHashTypes(t *testing.T) {
+	key := distributions.DistributionKeyFromSQL([]spqrparser.DistributionKeyEntry{{
+		HashFunction: "murmur",
+		Expr: []spqrparser.TypedColRef{
+			{Column: "i", Type: qdb.ColumnTypeInteger},
+			{Column: "u", Type: qdb.ColumnTypeUinteger},
+			{Column: "s", Type: qdb.ColumnTypeVarchar},
+			{Column: "id", Type: qdb.ColumnTypeUUID},
+		},
+	}})
+	assert.Equal(t, []distributions.DistributionKeyEntry{{
+		HashFunction: "murmur",
+		Expr: distributions.RoutingExpr{ColRefs: []distributions.TypedColRef{
+			{ColName: "i", ColType: qdb.ColumnTypeInteger},
+			{ColName: "u", ColType: qdb.ColumnTypeUinteger},
+			{ColName: "s", ColType: qdb.ColumnTypeVarcharHashed},
+			{ColName: "id", ColType: qdb.ColumnTypeUUIDHashed},
+		}},
+	}}, key)
+}
 
 func TestGetHashedColumn(t *testing.T) {
 	assert := assert.New(t)

@@ -548,6 +548,10 @@ HELP ALTER DISTRIBUTION;
      specified distribution key. For composite sharding keys, specify multiple   +
      column names separated by commas in the DISTRIBUTION KEY clause.            +
                                                                                  +
+     A routing expression such as MURMUR [entity_type VARCHAR, entity_id         +
+     UINTEGER] hashes each typed column and then hashes the combined result.     +
+     Its column types need no HASH annotation.                                   +
+                                                                                 +
      DETACH TABLE detaches a table from the distribution.                        +
                                                                                  +
      ALTER TABLE DISTRIBUTION KEY replaces the entire distribution key of an     +

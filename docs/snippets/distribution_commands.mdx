@@ -77,6 +77,7 @@ ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
 
 where keys is a comma-separated list of column names
 (e.g., "col1, col2" for composite keys)
+or a routing expression <hashFunction> [<column_name> <type>, ...]
 where hashFunction is one of: IDENTITY, MURMUR, CITY
 ```
 
@@ -90,6 +91,10 @@ ALTER DISTRIBUTION ds1 ATTACH TABLE orders
 -- Composite sharding key with two columns
 ALTER DISTRIBUTION ds2 ATTACH TABLE users 
  DISTRIBUTION KEY tenant_id, user_id;
+
+-- Combine typed columns into one hashed key
+ALTER DISTRIBUTION ds1 ATTACH TABLE table1
+  DISTRIBUTION KEY MURMUR [entity_type VARCHAR, entity_id UINTEGER];
 
 -- Composite key with hash function
 ALTER DISTRIBUTION ds3 ATTACH TABLE events 
@@ -129,7 +134,7 @@ CREATE DISTRIBUTED TABLE table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;
 -- Composite key with multiple columns
 CREATE TABLE t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
 -- Routing expression syntax for composite keys with typed columns
-CREATE TABLE tr (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
+CREATE TABLE tr (MURMUR [id1 UINTEGER, id2 VARCHAR]);
 -- Schema-qualified table name
 CREATE DISTRIBUTED TABLE sh1.r (i) IN d;
 -- DISTRIBUTION KEY syntax
@@ -180,7 +185,7 @@ ALTER DISTRIBUTION ds1 ALTER TABLE events
 
 -- Fix an expression-routing entry (RENAME DISTRIBUTION COLUMN cannot do this)
 ALTER DISTRIBUTION ds1 ALTER TABLE tr 
-  DISTRIBUTION KEY MURMUR [correct_id INT HASH, id2 VARCHAR HASH];
+  DISTRIBUTION KEY MURMUR [correct_id UINTEGER, id2 VARCHAR];
 
 ```
 
