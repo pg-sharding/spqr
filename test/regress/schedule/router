@@ -45,6 +45,7 @@ test: spqrguard
 test: negative_routing
 test: default_shard
 test: expression_routing
+test: relation_hash
 test: rename_column_routing
 test: show_backend_connections
 test: split_update

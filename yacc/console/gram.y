@@ -244,7 +244,7 @@ func randomHex(n int) (string, error) {
 %token<str> LOCAL GLOBAL
 
 /* types */
-%token<str> VARCHAR INTEGER INT TYPES UUID TYPE
+%token<str> VARCHAR INTEGER INT TYPES UUID TYPE UINTEGER
 
 /* ICP */
 %token<str> CONTROL POINT
@@ -901,6 +901,9 @@ reserved_keyword:
 	{
 		$$ = $1
 	} | INTEGER
+	{
+		$$ = $1
+	} | UINTEGER
 	{
 		$$ = $1
 	} | INT
@@ -1583,6 +1586,11 @@ typed_col_ref:
 		$$ = TypedColRef{
 			Column: $1,
 			Type: $2,
+		}
+	} | any_id UINTEGER {
+		$$ = TypedColRef{
+			Column: $1,
+			Type: qdb.ColumnTypeUinteger,
 		}
 	}
 

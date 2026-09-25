@@ -10,6 +10,7 @@ SYNTAX
 
     where keys is a comma-separated list of column names
     (e.g., "col1, col2" for composite keys)
+    or a routing expression <hashFunction> [<column_name> <type>, ...]
     where hashFunction is one of: IDENTITY, MURMUR, CITY
 
 DESCRIPTION
@@ -26,6 +27,9 @@ EXAMPLES
     Composite sharding key with two columns:
         ALTER DISTRIBUTION ds2 ATTACH TABLE users 
          DISTRIBUTION KEY tenant_id, user_id;
+    Combine typed columns into one hashed key:
+        ALTER DISTRIBUTION ds1 ATTACH TABLE table1
+          DISTRIBUTION KEY MURMUR [entity_type VARCHAR, entity_id UINTEGER];
     Composite key with hash function:
         ALTER DISTRIBUTION ds3 ATTACH TABLE events 
          DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
