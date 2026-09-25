@@ -1390,8 +1390,21 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
+		sourceKr, err := mgr.GetKeyRange(ctx, stmt.KeyRangeFromID)
+		if err != nil {
+			return nil, err
+		}
+		ds, err := mgr.GetDistribution(ctx, sourceKr.Distribution)
+		if err != nil {
+			return nil, err
+		}
+
+		krTemp, err := kr.KeyRangeFromSQL(&spqrparser.KeyRangeDefinition{LowerBound: stmt.Border, Distribution: &spqrparser.DistributionSelector{}}, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
 		splitKeyRange := &kr.SplitKeyRange{
-			Bound:      stmt.Border.Pivots,
+			Bound:      krTemp.Raw(),
 			SourceID:   stmt.KeyRangeFromID,
 			KeyRangeID: stmt.KeyRangeID,
 		}
