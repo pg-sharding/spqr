@@ -211,11 +211,18 @@ func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, co
 		return nil, plan.ErrResolvingValue
 	}
 
-	ind := inds[0]
+	/* resolve all params referencing the distribution column
+	 * e.g. distribution_key IN ($1, $2) */
+	vals := make([]any, 0, len(inds))
+	for _, ind := range inds {
+		v, err := rm.ResolveTypedParamRef(paramResCodes, ind, tp)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
 
-	singleVal, err := rm.ResolveTypedParamRef(paramResCodes, ind, tp)
-
-	return []any{singleVal}, err
+	return vals, nil
 }
 
 func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) AuxValuesKey {

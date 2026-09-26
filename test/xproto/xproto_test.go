@@ -7080,3 +7080,325 @@ func TestDescribeNonDefaultPortals(t *testing.T) {
 	}
 	protoTestRunner(t, frontend, tt)
 }
+
+func TestParametrizedInShardingKeyRouting(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__engine_v2 TO true",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES (15)",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES (2500)",
+				},
+
+				&pgproto3.Parse{
+					Name:  "routing_in_stmt",
+					Query: "SELECT count(*) FROM t WHERE id IN ($1, $2)",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "routing_in_stmt",
+					Parameters: [][]byte{
+						[]byte("15"),
+						[]byte("2500"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText, xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "routing_in_stmt",
+					Parameters: [][]byte{
+						[]byte("2500"),
+						[]byte("15"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText, xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Close{
+					Name:       "routing_in_stmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestParametrizedShardingKeyRoutingOperators(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__engine_v2 TO true",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES (15)",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES (2500)",
+				},
+
+				&pgproto3.Parse{
+					Name:  "routing_or_stmt",
+					Query: "SELECT count(*) FROM t WHERE id = $2 or id = $1",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "routing_or_stmt",
+					Parameters: [][]byte{
+						[]byte("2500"),
+						[]byte("15"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText, xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "routing_or_stmt",
+					Parameters: [][]byte{
+						[]byte("15"),
+						[]byte("2500"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText, xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "routing_in_side_stmt",
+					Query: "SELECT count(*) FROM t WHERE id IN ($1, $3) and $2",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "routing_in_side_stmt",
+					Parameters: [][]byte{
+						[]byte("15"),
+						[]byte("true"),
+						[]byte("2500"),
+					},
+					ParameterFormatCodes: []int16{
+						xproto.FormatCodeText,
+						xproto.FormatCodeText,
+						xproto.FormatCodeText,
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Close{
+					Name:       "routing_or_stmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Close{
+					Name:       "routing_in_side_stmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
