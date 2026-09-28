@@ -1280,11 +1280,26 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 		expandCurrentTx = true
 	}
+	guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return nil, err
+	}
+
+	doReport := guc.Get(rst.Client())
+
+	tBef := time.Now()
 
 	q, err := rst.CreateSlicedPlan(ctx, rm)
 
+	if doReport {
+		_ = rst.Client().ReplyNotice(fmt.Sprintf("planning time %v", time.Now().Sub(tBef)))
+	}
+
 	switch err {
 	case nil:
+
+		tBef := time.Now()
+
 		q, err := rst.QueryExecutor().TryMatchExecTargets(q, rst.Qr.DataShardsRoutes())
 		if err != nil {
 			return nil, err
@@ -1306,6 +1321,10 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 		if err := rst.initExecutor(q); err != nil {
 			return nil, err
+		}
+
+		if doReport {
+			_ = rst.Client().ReplyNotice(fmt.Sprintf("init executor time %v", time.Now().Sub(tBef)))
 		}
 
 		return q, nil
