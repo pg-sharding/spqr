@@ -1383,10 +1383,10 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 
 	statements, err := lc.qdb.DropKeyRange(ctx, krAppendage.ID)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err)
 	}
 	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err)
 	}
 
 	tranMngr := meta.NewTranEntityManager(lc)
@@ -1545,7 +1545,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err)
 	}
 	return nil
 }

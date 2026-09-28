@@ -83,7 +83,7 @@ func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string
 	}
 
 	if len(errs) > 0 {
-		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail(fmt.Sprintf("failed to update key range metadata on shard: %s", strings.Join(errs, "; ")))
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to update key range metadata on shard: %s", strings.Join(errs, "; "))
 	}
 	return nil
 }

@@ -630,7 +630,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 
 	fromTx, err := from.Begin(ctx)
 	if err != nil {
-		return spqrerror.NewByCode(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR).Detail("failed to begin transaction on the source shard")
+		return spqrerror.New(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to begin transaction on the source shard")
 	}
 	defer func() { _ = fromTx.Rollback(ctx) }()
 	rels := make([]struct {

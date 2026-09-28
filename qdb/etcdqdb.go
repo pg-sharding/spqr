@@ -2744,7 +2744,7 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force b
 	}
 
 	if !txResp.Succeeded {
-		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("key range move updated concurrently")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "key range move updated concurrently")
 	}
 
 	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
