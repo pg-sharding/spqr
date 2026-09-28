@@ -305,6 +305,7 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 		var err error
 
 		for retry := 0; retry < s.AcquireRetryCount; retry++ {
+			tBef := time.Now()
 			sh, err = s.pool.ConnectionHost(params.Clid, key, host)
 			if err != nil {
 
@@ -318,6 +319,10 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 					Int("retry", retry).
 					Msg("failed to get connection to host for client")
 				continue
+			}
+
+			if params.ReplyNotice != nil {
+				_ = params.ReplyNotice(fmt.Sprintf("acquired host %s in %v", host.Address, time.Now().Sub(tBef)))
 			}
 
 			/* Bail out quickly, if told so */
@@ -490,10 +495,15 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 	}
 
 	effectiveParams := ConnAllocParams{
-		Clid:       params.Clid,
-		Tsa:        effectiveTargetSessionAttrs,
-		HostFilter: params.HostFilter,
+		Clid:        params.Clid,
+		Tsa:         effectiveTargetSessionAttrs,
+		HostFilter:  params.HostFilter,
+		ReplyNotice: params.ReplyNotice,
 	}
+
+	tBef := time.Now()
+
+	var res shard.ShardHostInstance
 
 	/* pool.Connection will reorder hosts in such way, that preferred tsa will go first */
 	switch effectiveTargetSessionAttrs {
@@ -502,23 +512,31 @@ func (s *DBPool) ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (sha
 	case config.TargetSessionAttrsAny:
 		fallthrough
 	case config.TargetSessionAttrsDClocal: // alias for any
-		return s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindANY)
+		res, err = s.selectShardHost(effectiveParams, key, hostOrder, AcquireHostKindANY)
 
 	case config.TargetSessionAttrsRO:
-		return s.selectReadOnlyShardHost(effectiveParams, key, hostOrder)
+		res, err = s.selectReadOnlyShardHost(effectiveParams, key, hostOrder)
 	case config.TargetSessionAttrsPS:
 		fallthrough
 	case config.TargetSessionAttrsPR:
-		if res, err := s.selectReadOnlyShardHost(effectiveParams, key, hostOrder); err != nil {
-			return s.selectReadWriteShardHost(effectiveParams, key, hostOrder)
-		} else {
-			return res, nil
+		if res, err = s.selectReadOnlyShardHost(effectiveParams, key, hostOrder); err != nil {
+			res, err = s.selectReadWriteShardHost(effectiveParams, key, hostOrder)
 		}
 	case config.TargetSessionAttrsRW:
-		return s.selectReadWriteShardHost(effectiveParams, key, hostOrder)
+		res, err = s.selectReadWriteShardHost(effectiveParams, key, hostOrder)
 	default:
-		return nil, fmt.Errorf("failed to match correct target session attrs")
+		err = fmt.Errorf("failed to match correct target session attrs")
 	}
+
+	if params.ReplyNotice != nil {
+		if res != nil {
+			_ = params.ReplyNotice(fmt.Sprintf("acquired shard host %s matching time %v", res.InstanceHostname(), time.Now().Sub(tBef)))
+		} else {
+			_ = params.ReplyNotice(fmt.Sprintf("shard host matching time %v", time.Now().Sub(tBef)))
+		}
+	}
+
+	return res, err
 }
 
 // XXX: find better place to this (config/host.go?)

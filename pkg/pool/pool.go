@@ -64,6 +64,10 @@ type ConnAllocParams struct {
 	Clid       uint
 	Tsa        tsa.TSA
 	HostFilter string
+
+	// ReplyNotice reports allocation progress (e.g. acquired host)
+	// back to the client. Optional, may be nil.
+	ReplyNotice func(msg string) error
 }
 
 type ConnectionProvider interface {
