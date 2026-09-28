@@ -10,8 +10,10 @@ description: |
   For composite sharding keys (multiple columns), specify multiple types separated by commas.
   You can append "hash" after a column type to apply hash-based distribution to that column.
 
+  Use IF NOT EXISTS to skip creation when the distribution already exists.
+
 syntax: |
-  CREATE DISTRIBUTION <distributionID>
+  CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
     [COLUMN TYPES <types> | (<types>)]
     [DEFAULT SHARD <shardID>]
 
@@ -32,6 +34,8 @@ parameters:
 examples:
   - description: Single integer key distribution
     code: CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  - description: Create a distribution if it does not exist
+    code: CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
   - description: Single varchar key distribution with hash
     code: CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
   - description: Single uuid key distribution with hash

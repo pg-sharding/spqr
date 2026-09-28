@@ -10,9 +10,11 @@ Optionally, specify a default shard to route records that do not match any key r
 For composite sharding keys (multiple columns), specify multiple types separated by commas.
 You can append "hash" after a column type to apply hash-based distribution to that column.
 
+Use IF NOT EXISTS to skip creation when the distribution already exists.
+
 
 ```sql
-CREATE DISTRIBUTION <distributionID>
+CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
   [COLUMN TYPES <types> | (<types>)]
   [DEFAULT SHARD <shardID>]
 
@@ -28,6 +30,8 @@ where <shardID> is a default shard identifier. The <shardID> must exist.
 ```sql
 -- Single integer key distribution
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+-- Create a distribution if it does not exist
+CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
 -- Single varchar key distribution with hash
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
 -- Single uuid key distribution with hash
@@ -45,13 +49,14 @@ CREATE DISTRIBUTION ds5 (integer, varchar hash) DEFAULT SHARD sh1;
 Removes a distribution from cluster metadata.
 
 Use CASCADE to remove dependent metadata objects (key ranges, attached relations) when required.
+Use IF EXISTS to skip the command when the distribution does not exist.
 
 
 <Warning>Dropping a distribution removes routing metadata and may impact attached relations.</Warning>
 
 
 ```sql
-DROP DISTRIBUTION <distributionID> [CASCADE]
+DROP DISTRIBUTION [IF EXISTS] <distributionID> [CASCADE]
 ```
 
 **Examples:**
@@ -59,6 +64,8 @@ DROP DISTRIBUTION <distributionID> [CASCADE]
 ```sql
 -- Drop one distribution
 DROP DISTRIBUTION ds1;
+-- Drop a distribution if it exists
+DROP DISTRIBUTION IF EXISTS ds1;
 -- Drop distribution with dependent metadata
 DROP DISTRIBUTION ds1 CASCADE;
 ```
@@ -68,10 +75,11 @@ DROP DISTRIBUTION ds1 CASCADE;
 Attaches one or more [tables](/sharding/sharded_tables) to an existing distribution using the ATTACH TABLE clause.
 
 For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
+Use IF NOT EXISTS to skip tables that are already attached.
 
 
 ```sql
-ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
   [, <tableName> ...]
   DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
@@ -85,6 +93,10 @@ where hashFunction is one of: IDENTITY, MURMUR, CITY
 ```sql
 -- Single column sharding key
 ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+ DISTRIBUTION KEY order_id;
+
+-- Attach table if it is not already attached
+ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
  DISTRIBUTION KEY order_id;
 
 -- Composite sharding key with two columns
@@ -143,10 +155,18 @@ CREATE DISTRIBUTED TABLE copy_test (id1, id2) IN ds2;
 ### ALTER DISTRIBUTION DETACH TABLE
 
 Detaches a table from the distribution using the DETACH TABLE clause.
+Use IF EXISTS to skip the command when the table is not attached.
 
 
 ```sql
-ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
+```
+
+**Examples:**
+
+```sql
+-- Detach table if it is attached
+ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;
 ```
 
 ### ALTER DISTRIBUTION ALTER TABLE DISTRIBUTION KEY

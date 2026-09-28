@@ -3,7 +3,7 @@ NAME
     across all or specific shards.
 
 SYNTAX
-    CREATE REFERENCE TABLE <table_name>
+    CREATE REFERENCE TABLE [IF NOT EXISTS] <table_name>
         [AUTO INCREMENT <column> [START <value>], ...]
         [ON <shard_id>, ...]
 
@@ -14,6 +14,7 @@ DESCRIPTION
     The optional AUTO INCREMENT clause creates a sequence for the specified
     columns.
     If no shards are specified with ON, the table is created on all shards.
+    Use IF NOT EXISTS to skip creation when the reference table already exists.
 
 PARAMETERS
     <table_name> - Name of the reference table to create
@@ -25,6 +26,8 @@ PARAMETERS
 EXAMPLES
     Create a reference table on all shards:
         CREATE REFERENCE TABLE tax_rates;
+    Create a reference table if it does not exist:
+        CREATE REFERENCE TABLE IF NOT EXISTS tax_rates;
     Create on specific shards:
         CREATE REFERENCE TABLE tax_rates ON sh1, sh2;
     With auto-increment column:

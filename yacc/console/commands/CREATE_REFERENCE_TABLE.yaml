@@ -6,9 +6,10 @@ description: |
 
   The optional AUTO INCREMENT clause creates a sequence for the specified columns.
   If no shards are specified with ON, the table is created on all shards.
+  Use IF NOT EXISTS to skip creation when the reference table already exists.
 
 syntax: |
-  CREATE REFERENCE TABLE <table_name>
+  CREATE REFERENCE TABLE [IF NOT EXISTS] <table_name>
       [AUTO INCREMENT <column> [START <value>], ...]
       [ON <shard_id>, ...]
 
@@ -25,6 +26,8 @@ parameters:
 examples:
   - description: Create a reference table on all shards
     code: CREATE REFERENCE TABLE tax_rates;
+  - description: Create a reference table if it does not exist
+    code: CREATE REFERENCE TABLE IF NOT EXISTS tax_rates;
   - description: Create on specific shards
     code: CREATE REFERENCE TABLE tax_rates ON sh1, sh2;
   - description: With auto-increment column

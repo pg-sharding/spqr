@@ -7,8 +7,10 @@ description: |
   For composite sharding keys, specify multiple values separated by commas that correspond 
   to each column in the distribution.
 
+  Use IF NOT EXISTS to skip creation when the key range already exists.
+
 syntax: |
-  CREATE KEY RANGE [ <keyRangeID> ]
+  CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
     FROM <lowerBound>
     ROUTE TO <shardID> 
     FOR DISTRIBUTION <distributionID>
@@ -29,6 +31,10 @@ parameters:
 examples:
   - description: Single column key range
     code: CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+  - description: Create a key range if it does not exist
+    code: |
+      CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+        ROUTE TO shard1 FOR DISTRIBUTION ds1;
   - description: Composite key range with two integers
     code: CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
   - description: Composite key range with integer and varchar
