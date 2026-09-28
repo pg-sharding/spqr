@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -313,4 +314,13 @@ type RedistributeTaskDependentObjectError struct {
 
 func (RedistributeTaskDependentObjectError) Error() string {
 	return "cannot drop redistribute task because other objects depend on it"
+}
+
+func Wrap(err error, errorCode string, msg string, args ...any) *SpqrError {
+	switch ierr := err.(type) {
+	case *spqrerror.SpqrError:
+		return spqrerror.Newf(ierr.ErrorCode, msg, args).Detail(ierr.ErrDetail).Hint(ierr.ErrHint).Context(ierr.ErrContext)
+	default:
+		return spqrerror.Newf(errorCode, msg, args)
+	}
 }
