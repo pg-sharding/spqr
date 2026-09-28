@@ -2291,8 +2291,8 @@ func processShowInner(ctx context.Context,
 				"idle_connections",
 				"queue_residual_size",
 				"discard_count",
-			"acquire_count",
-			"reuse_count"),
+				"acquire_count",
+				"reuse_count"),
 		}
 
 		if err := ci.ForEachPool(func(p pool.Pool) error {
@@ -2308,10 +2308,10 @@ func processShowInner(ctx context.Context,
 				fmt.Sprintf("%d", statistics.UsedConnections),
 				fmt.Sprintf("%d", statistics.IdleConnections),
 				fmt.Sprintf("%d", statistics.QueueResidualSize),
-			fmt.Sprintf("%d", statistics.DiscardCount),
-			fmt.Sprintf("%d", statistics.AcquireCount),
-			fmt.Sprintf("%d", statistics.ReuseCount),
-		)
+				fmt.Sprintf("%d", statistics.DiscardCount),
+				fmt.Sprintf("%d", statistics.AcquireCount),
+				fmt.Sprintf("%d", statistics.ReuseCount),
+			)
 			return nil
 		}); err != nil {
 			return nil, err
