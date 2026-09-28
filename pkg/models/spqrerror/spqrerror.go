@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -317,10 +316,10 @@ func (RedistributeTaskDependentObjectError) Error() string {
 }
 
 func Wrap(err error, errorCode string, msg string, args ...any) *SpqrError {
-	switch ierr := err.(type) {
-	case *spqrerror.SpqrError:
-		return spqrerror.Newf(ierr.ErrorCode, msg, args).Detail(ierr.ErrDetail).Hint(ierr.ErrHint).Context(ierr.ErrContext)
+	switch internalErr := err.(type) {
+	case *SpqrError:
+		return Newf(internalErr.ErrorCode, msg, args...).Detail(internalErr.ErrDetail).Hint(internalErr.ErrHint).Context(internalErr.ErrContext)
 	default:
-		return spqrerror.Newf(errorCode, msg, args)
+		return Newf(errorCode, msg, args...)
 	}
 }
