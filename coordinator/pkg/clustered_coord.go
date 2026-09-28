@@ -61,6 +61,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var txNotSupported = spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Transactions are not supported in clustered coordinator")
+
 type grpcConnMgr struct {
 	InstanceStartTime time.Time
 	*ClusteredCoordinator
@@ -558,6 +560,11 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
+}
+
+func (qc *ClusteredCoordinator) Snapshot() meta.EntityMgr {
+	coord, _ := NewClusteredCoordinator(qc.tlsconfig, qc.db, qc.maxTxnBatch)
+	return coord
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
@@ -2844,6 +2851,8 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		return nil
 	}
 
+	sess := meta.NewConsoleSession(qc)
+
 	ci := grpcConnMgr{ClusteredCoordinator: qc, InstanceStartTime: time.Now()}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
@@ -2878,7 +2887,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 					}
 					continue
 				}
-				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
+				tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
 				if err != nil {
 					if err := cli.ReportError(err); err != nil {
 						return err
@@ -3456,6 +3465,28 @@ func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *to
 	defer cf()
 	rCl := proto.NewRouterServiceClient(cc)
 	return qc.getRouterMetaHashInternal(ctx, rCl)
+}
+
+func (qc *ClusteredCoordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	spqrlog.Zero.Debug().Int("count", len(records)).Msg("apply xrecords")
+
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, qc, record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (qc *ClusteredCoordinator) Begin(_ context.Context) error {
+	return txNotSupported
+}
+func (qc *ClusteredCoordinator) Rollback(_ context.Context) error {
+	return txNotSupported
+}
+func (qc *ClusteredCoordinator) Commit(_ context.Context) error {
+	return txNotSupported
 }
 
 func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {

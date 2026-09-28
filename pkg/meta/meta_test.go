@@ -257,7 +257,8 @@ func TestMoveKeyRangeReplyDoesntIncludeHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, cl.Rule(), nil, false, nil)
 	assert.NoError(t, err)
 
 	cli := clientinteractor.NewPSQLInteractor(cl)
@@ -390,7 +391,8 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, nil, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, tts)
 }
@@ -431,7 +433,8 @@ func TestRenameDistributionColumnNotFound(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
 }
@@ -466,7 +469,8 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
 }
@@ -481,7 +485,6 @@ func TestApplyXRecords(t *testing.T) {
 		ctx := context.Background()
 		mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
-		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
 		datashard := &topology.DataShard{
 			ID: "sh1",
 		}
@@ -489,7 +492,6 @@ func TestApplyXRecords(t *testing.T) {
 		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
 		assert.NoError(err)
 
-		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
 		referenceRelation := &rrelation.ReferenceRelation{
 			RelationName: &rfqn.RelationFQN{
 				RelationName: "relation",

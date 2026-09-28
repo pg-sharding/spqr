@@ -28,3 +28,4 @@ test: unite
 test: split
 test: key_range
 test: key_range_for_distr
+test: tx

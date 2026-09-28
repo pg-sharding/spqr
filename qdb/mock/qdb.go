@@ -3608,6 +3608,20 @@ func (mr *MockXQDBMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockXQDB)(nil).ShareKeyRange), id)
 }
 
+// Snapshot mocks base method.
+func (m *MockXQDB) Snapshot() qdb.XQDB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(qdb.XQDB)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockXQDBMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockXQDB)(nil).Snapshot))
+}
+
 // TryCoordinatorLock mocks base method.
 func (m *MockXQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 	m.ctrl.T.Helper()
@@ -5250,6 +5264,20 @@ func (m *MockStateKeeperQDB) ShareKeyRange(id string) error {
 func (mr *MockStateKeeperQDBMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).ShareKeyRange), id)
+}
+
+// Snapshot mocks base method.
+func (m *MockStateKeeperQDB) Snapshot() qdb.XQDB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(qdb.XQDB)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockStateKeeperQDBMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockStateKeeperQDB)(nil).Snapshot))
 }
 
 // TXCohortShards mocks base method.
