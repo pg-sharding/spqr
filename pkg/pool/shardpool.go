@@ -32,6 +32,8 @@ type shardHostPool struct {
 	az   string
 
 	discardCount int64
+	acquireCount int64
+	reuseCount   int64
 
 	connectionLimit            int
 	connectionRetries          int
@@ -99,6 +101,8 @@ func (h *shardHostPool) View() Statistics {
 		IdleConnections:   int64(len(h.pool)),
 		QueueResidualSize: int64(len(h.queue)),
 		DiscardCount:      h.discardCount,
+		AcquireCount:      h.acquireCount,
+		ReuseCount:        h.reuseCount,
 	}
 }
 
@@ -182,6 +186,8 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 		}
 
 		h.active[sh.ID()] = sh
+		h.reuseCount++
+		h.acquireCount++
 		h.mu.Unlock()
 
 		spqrlog.Zero.Debug().
@@ -212,6 +218,7 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	h.acquireCount++
 	h.active[sh.ID()] = sh
 
 	return sh, nil
