@@ -17,6 +17,8 @@ type PoolView struct {
 	IdleConnCount int64
 	QueueSize     int64
 	DiscardCount  int64
+	AcquireCount  int64
+	ReuseCount    int64
 }
 
 var _ Pool = &PoolView{}
@@ -34,6 +36,8 @@ func NewPoolView(info *protos.PoolInfo) *PoolView {
 		IdleConnCount: info.IdleConnCount,
 		QueueSize:     info.QueueSize,
 		DiscardCount:  0,
+		AcquireCount:  0,
+		ReuseCount:    0,
 	}
 }
 
@@ -64,5 +68,7 @@ func (r *PoolView) View() Statistics {
 		IdleConnections:   r.IdleConnCount,
 		QueueResidualSize: r.QueueSize,
 		DiscardCount:      r.DiscardCount,
+		AcquireCount:      r.AcquireCount,
+		ReuseCount:        r.ReuseCount,
 	}
 }
