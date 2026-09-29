@@ -42,7 +42,7 @@ const (
 
 var (
 	cancelRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().CancelRateLimit, defaultCancelRateLimit)), defaultCancelRateLimit)
-	acceptRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().AcceptRateLimit, defaultAcceptRateLimit)), defaultAcceptRateLimit)
+	acceptRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().AcceptRateLimit, defaultAcceptRateLimit)), 0)
 )
 
 // Accept connection and send it to channel.
