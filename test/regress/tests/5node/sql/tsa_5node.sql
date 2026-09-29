@@ -39,6 +39,8 @@ SELECT __spqr__host_status('127.0.0.1:6434');
 SELECT __spqr__host_status('127.0.0.1:6435');
 SELECT __spqr__host_status('127.0.0.1:6436');
 SELECT __spqr__host_status('127.0.0.1:6437');
+-- read-write lookups stop at the primary, so check the replicas they skipped
+SELECT __spqr__preheat_tsa_cache('read-write');
 -- tsa_cache: dump identity (tsa, host, az) + health (alive, match) before the cut-off
 SET __spqr__allow_postprocessing TO true;
 SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> 'any' ORDER BY tsa, host;

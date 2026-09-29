@@ -30,4 +30,6 @@ type ConnectionMgr interface {
 
 	StartTime() time.Time
 	LastReloadTime() time.Time
+
+	PreheatTsaCache(target tsa.TSA)
 }

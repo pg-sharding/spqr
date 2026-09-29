@@ -255,6 +255,37 @@ func (s *DBPool) TsaCacheEntries() map[TsaKey]CachedEntry {
 	return s.cache.GetAllCachedEntries()
 }
 
+// PreheatTsaCache checks hosts that have no fresh TSA cache entry for target.
+func (s *DBPool) PreheatTsaCache(target tsa.TSA) {
+	for shardName, dataShard := range s.tmgr.Snap() {
+		for _, host := range dataShard.HostsAZ() {
+			if _, ok := s.cache.Match(target, host.Address, host.AZ); ok {
+				continue
+			}
+
+			sh, err := s.createShardInstanceForHost(shardName, host.Address, host.AZ)
+			if err != nil {
+				s.cache.MarkUnmatched(target, host.Address, host.AZ, false, err.Error())
+				continue
+			}
+
+			tcr, err := s.checker.CheckTSA(sh, s.CheckTimeout)
+			if err != nil {
+				_ = s.pool.Discard(sh)
+				s.cache.MarkUnmatched(target, host.Address, host.AZ, false, err.Error())
+				continue
+			}
+			_ = s.Put(sh)
+
+			if s.evaluateTSAMatch(tcr.CR, target) {
+				s.cache.MarkMatched(target, host.Address, host.AZ, tcr.CR.Alive, tcr.CR.Reason)
+			} else {
+				s.cache.MarkUnmatched(target, host.Address, host.AZ, tcr.CR.Alive, tcr.CR.Reason)
+			}
+		}
+	}
+}
+
 // View implements MultiShardPool.
 func (s *DBPool) View() Statistics {
 	return s.pool.View()

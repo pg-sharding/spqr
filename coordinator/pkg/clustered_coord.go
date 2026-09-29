@@ -86,6 +86,9 @@ func (ci grpcConnMgr) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return map[pool.TsaKey]pool.CachedEntry{}
 }
 
+// PreheatTsaCache implements [connmgr.ConnectionMgr].
+func (ci grpcConnMgr) PreheatTsaCache(_ tsa.TSA) {}
+
 // TODO implement it
 // ActiveTCPCount implements connmgr.ConnectionStatMgr.
 func (ci grpcConnMgr) ActiveTCPCount() int64 {

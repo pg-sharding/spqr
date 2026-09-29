@@ -2,6 +2,7 @@ package pool_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -830,4 +831,63 @@ func TestBuildHostOrderNonExistentShard(t *testing.T) {
 	_, err := dbpool.BuildHostOrder(key, config.TargetSessionAttrsAny)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "shard with name \"non_existent_shard\" not found")
+}
+
+func TestPreheatTsaCacheChecksHostsWithoutEntries(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	key := kr.ShardKey{Name: "sh1"}
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
+	dbpool := pool.NewDBPoolFromMultiPool(
+		topology.TopMgrFromMap(map[string]*topology.DataShard{
+			key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
+				RawHosts: []string{
+					"primary:6432:far",
+					"replica:6432:local",
+					"dead:6432:far",
+					"unreachable:6432:far",
+				},
+			}),
+		}), &startup.StartupParams{}, underlyingPool, time.Hour)
+
+	newHost := func(address string, readOnly string) *mockshard.MockShardHostInstance {
+		instance := mockinst.NewMockDBInstance(ctrl)
+		instance.EXPECT().Hostname().AnyTimes().Return(address)
+
+		sh := mockshard.NewMockShardHostInstance(ctrl)
+		sh.EXPECT().ID().AnyTimes().Return(uint(1))
+		sh.EXPECT().Instance().AnyTimes().Return(instance)
+		sh.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
+		sh.EXPECT().Receive().Return(&pgproto3.RowDescription{}, nil)
+		sh.EXPECT().Receive().Return(&pgproto3.DataRow{Values: [][]byte{[]byte(readOnly)}}, nil)
+		sh.EXPECT().Receive().Return(&pgproto3.CommandComplete{}, nil)
+		sh.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
+		sh.EXPECT().Sync().Return(int64(0))
+		sh.EXPECT().IsStale().Return(false)
+		sh.EXPECT().TxStatus().Return(txstatus.TXIDLE)
+		underlyingPool.EXPECT().Put(sh).Return(nil)
+
+		return sh
+	}
+
+	underlyingPool.EXPECT().
+		ConnectionHost(uint(0), key, config.Host{Address: "primary:6432", AZ: "far"}).
+		Return(newHost("primary:6432", "off"), nil)
+	underlyingPool.EXPECT().
+		ConnectionHost(uint(0), key, config.Host{Address: "replica:6432", AZ: "local"}).
+		Return(newHost("replica:6432", "on"), nil)
+	underlyingPool.EXPECT().
+		ConnectionHost(uint(0), key, config.Host{Address: "unreachable:6432", AZ: "far"}).
+		Return(nil, errors.New("connection refused"))
+
+	dbpool.Cache().MarkUnmatched(config.TargetSessionAttrsRW, "dead:6432", "far", false, "connection timed out")
+
+	dbpool.PreheatTsaCache(config.TargetSessionAttrsRW)
+
+	assert.Equal(t, map[pool.TsaKey]pool.LocalCheckResult{
+		{Tsa: config.TargetSessionAttrsRW, Host: "primary:6432", AZ: "far"}:     {Alive: true, Match: true, Reason: "primary"},
+		{Tsa: config.TargetSessionAttrsRW, Host: "replica:6432", AZ: "local"}:   {Alive: true, Match: false, Reason: "replica"},
+		{Tsa: config.TargetSessionAttrsRW, Host: "dead:6432", AZ: "far"}:        {Alive: false, Match: false, Reason: "connection timed out"},
+		{Tsa: config.TargetSessionAttrsRW, Host: "unreachable:6432", AZ: "far"}: {Alive: false, Match: false, Reason: "connection refused"},
+	}, dbpool.Cache().GetAllEntries())
 }
