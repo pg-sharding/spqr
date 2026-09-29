@@ -357,7 +357,7 @@ func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *r
 		return err
 	}
 	if !toTableExists {
-		return fmt.Errorf("relation %s does not exist on receiving shard", rel.QualifiedName())
+		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
 	}
 
 	return nil
@@ -766,7 +766,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		if !toTableExists {
-			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on receiving shard", rel.Relation)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on the destination shard", rel.Relation)
 		}
 		relFullName := rel.QualifiedName().String()
 		toCount, err := GetEntriesCount(ctx, tx, relFullName, krCondition)
@@ -872,7 +872,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return err
 	}
 	if !toTableExists {
-		return fmt.Errorf("relation %s does not exist on receiving shard", rel.QualifiedName())
+		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
 	}
 	toCount, err := GetEntriesCount(ctx, tx, relFullName, "true")
 	if err != nil {

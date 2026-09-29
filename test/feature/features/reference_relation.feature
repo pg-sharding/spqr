@@ -529,3 +529,36 @@ Scenario: Dropping shard from reference relation metadata works
     """
     unable to modify SPQR reference relation within read-only transaction
     """
+
+Scenario: Ref relation sync fails when table does not exist on destination shard
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "shard1"
+    """
+    CREATE TABLE t(id int, name text[]);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY[]::text[]);
+    INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
+    INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
+    INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    relation t does not exist on the destination shard
+    """
+    
