@@ -314,3 +314,12 @@ type RedistributeTaskDependentObjectError struct {
 func (RedistributeTaskDependentObjectError) Error() string {
 	return "cannot drop redistribute task because other objects depend on it"
 }
+
+func Wrap(err error, errorCode string, msg string, args ...any) *SpqrError {
+	switch internalErr := err.(type) {
+	case *SpqrError:
+		return Newf(internalErr.ErrorCode, msg, args...).Detail(internalErr.ErrDetail).Hint(internalErr.ErrHint).Context(internalErr.ErrContext)
+	default:
+		return Newf(errorCode, msg, args...)
+	}
+}
