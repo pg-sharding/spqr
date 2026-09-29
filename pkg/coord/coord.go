@@ -88,7 +88,7 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 			destShards = append(rel.ShardIDs, destShard)
 		}
 
-		if err = datatransfers.SyncReferenceRelationCheck(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
+		if err = datatransfers.SyncReferenceRelationCheck(ctx, fromShard, destShard, rel); err != nil {
 			return err
 		}
 

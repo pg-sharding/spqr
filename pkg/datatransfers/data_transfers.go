@@ -312,7 +312,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
-func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
+func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
