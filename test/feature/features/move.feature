@@ -396,7 +396,7 @@ Feature: Move test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    relation xMove does not exist on receiving shard
+    relation xMove does not exist on the destination shard
     """
   
   Scenario: MOVE KEY RANGE works with hashed int keys, murmur3 hash

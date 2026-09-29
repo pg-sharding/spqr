@@ -312,6 +312,57 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
+func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+	fromCfg, ok := shards.ShardsData[fromId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
+	}
+	from, err := GetMasterConnection(ctx, fromCfg, "")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+	defer func() {
+		_ = from.Close(ctx)
+	}()
+	toCfg, ok := shards.ShardsData[toId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
+	}
+	to, err := GetMasterConnection(ctx, toCfg, "reference_table_sync")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+	defer func() {
+		_ = to.Close(ctx)
+	}()
+
+	fromTableExists, err := CheckTableExists(ctx, from, rel.RelationName)
+	if err != nil {
+		return err
+	}
+	if !fromTableExists {
+		return nil
+	}
+
+	toTableExists, err := CheckTableExists(ctx, to, rel.RelationName)
+	if err != nil {
+		return err
+	}
+	if !toTableExists {
+		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
+	}
+
+	return nil
+}
+
 func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
 	tx, err := db.GetTransferTx(ctx, rel.RelationName.String())
 	if err != nil {
@@ -715,7 +766,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		if !toTableExists {
-			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on receiving shard", rel.Relation)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on the destination shard", rel.Relation)
 		}
 		relFullName := rel.QualifiedName().String()
 		toCount, err := GetEntriesCount(ctx, tx, relFullName, krCondition)
@@ -821,7 +872,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return err
 	}
 	if !toTableExists {
-		return fmt.Errorf("relation %s does not exist on receiving shard", rel.QualifiedName())
+		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
 	}
 	toCount, err := GetEntriesCount(ctx, tx, relFullName, "true")
 	if err != nil {
