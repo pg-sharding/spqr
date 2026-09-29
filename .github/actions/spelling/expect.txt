@@ -393,6 +393,8 @@ PIDs
 pids
 pitr
 pkgclient
+planopts
+plpgsql
 podman
 poolers
 poolmgr
