@@ -67,11 +67,6 @@ func acceptLoop(l net.Listener, cChan chan net.Conn,
 	errCount := 0
 	var backoff time.Duration
 	for {
-
-		if err := acceptRateLim.Wait(context.Background()); err != nil {
-			continue
-		}
-
 		c, err := l.Accept()
 
 		/* Most of net error are already filtered out by
@@ -118,6 +113,8 @@ func acceptLoop(l net.Listener, cChan chan net.Conn,
 
 		/*  XXX: what if channel is closed? */
 		cChan <- c
+
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
