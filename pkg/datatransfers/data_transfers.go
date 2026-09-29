@@ -458,7 +458,24 @@ func SetupFDW(
 	if err != nil {
 		return err
 	}
-	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING IF NOT EXISTS FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
+	if _, err = to.Exec(ctx, `
+CREATE FUNCTION pg_temp.setup_fdw(v_local_user text, v_server_name text, v_remote_user text, v_remote_pass text) RETURNS VOID AS $$
+BEGIN
+    EXECUTE format(
+        'CREATE USER MAPPING IF NOT EXISTS FOR %I SERVER %I OPTIONS (user %L, password %L)',
+        v_local_user,
+        v_server_name,
+        v_remote_user,
+        v_remote_pass
+    );
+END; 
+$$ LANGUAGE plpgsql;`); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, `SELECT pg_temp.setup_fdw($1, $2, $3, $4);`, toShard.User, serverName, fromShard.User, fromShard.Password); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, `DROP FUNCTION pg_temp.setup_fdw(text, text, text, text);`); err != nil {
 		return err
 	}
 	// create foreign tables corresponding to such on sending shard
