@@ -3385,11 +3385,11 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 		}
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
-		return err
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to execute chunk in QDB: %w", err)
 	}
 
 	if err := coord.UpdateKeyRangeMeta(ctx, chunk.GossipRequests); err != nil {
-		return err
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to update key range metadata: %w", err)
 	}
 
 	return qc.traverseRouters(ctx,
