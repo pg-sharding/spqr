@@ -35,12 +35,14 @@ const (
 	defaultAcceptorMaxRetries = 10
 
 	defaultCancelRateLimit       = 100000 /* 100k per second is basically no limit */
+	defaultAcceptRateLimit       = 100000
 	defaultAcceptorRetrySleep    = 50 * time.Millisecond
 	defaultAcceptorRetrySleepMax = 1 * time.Second
 )
 
 var (
 	cancelRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().CancelRateLimit, defaultCancelRateLimit)), defaultCancelRateLimit)
+	acceptRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().AcceptRateLimit, defaultAcceptRateLimit)), defaultAcceptRateLimit)
 )
 
 // Accept connection and send it to channel.
@@ -65,6 +67,11 @@ func acceptLoop(l net.Listener, cChan chan net.Conn,
 	errCount := 0
 	var backoff time.Duration
 	for {
+
+		if err := acceptRateLim.Wait(context.Background()); err != nil {
+			continue
+		}
+
 		c, err := l.Accept()
 
 		/* Most of net error are already filtered out by

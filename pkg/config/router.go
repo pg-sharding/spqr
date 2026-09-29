@@ -111,6 +111,8 @@ type Router struct {
 	IgnoreCancel    bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
 	CancelRateLimit int  `json:"cancel_rate_limit" toml:"cancel_rate_limit" yaml:"cancel_rate_limit"`
 
+	AcceptRateLimit int `json:"accept_rate_limit" toml:"accept_rate_limit" yaml:"accept_rate_limit"`
+
 	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
