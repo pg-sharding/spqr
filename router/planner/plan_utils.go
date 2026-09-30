@@ -536,14 +536,17 @@ func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, rou
 		return nil
 	}
 
-	if _, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+	if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 		return err
-	}
+	} else {
+		rm.Rels[*qualName] = struct{}{}
 
-	rm.Rels[*qualName] = struct{}{}
-
-	if routable {
-		rm.RoutableRels[*qualName] = struct{}{}
+		if ds.Id == distributions.REPLICATED {
+			/* reference relations are tracked separately */
+			rm.RefRels[*qualName] = struct{}{}
+		} else if routable {
+			rm.RoutableRels[*qualName] = struct{}{}
+		}
 	}
 
 	rfqnNew := *rfqn.RelationFQNFromRangeRangeVar(q)
