@@ -103,11 +103,6 @@ credentials and database from each shard's configuration.
 
 ## Limitations and related commands
 
-- **Current range-boundary limitation:** `getQDBData` in [main.go](main.go) leaves
-  upper bounds unset. Rows above a shard's assigned ranges can therefore go
-  undetected even at 100% sampling. For example, with `sh1` owning `[0, 10)` and
-  `sh2` owning `[10, +infinity)`, key `20` on `sh1` is missed. Treat `0;OK` as a
-  diagnostic result, not proof that all rows are correctly placed.
 - Only configured shards and relations attached to distributions with key ranges
   are checked. Missing tables are skipped. Multidimensional key ranges are not
   supported by the condition builder.
