@@ -298,7 +298,7 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB, shardData *config.Datatran
 			return 1
 		})
 		for i := range len(krsInternal) - 1 {
-			krsInternal[i].UpperBound = krsInternal[i+1].UpperBound
+			krsInternal[i].UpperBound = krsInternal[i+1].LowerBound
 		}
 		for _, keyRange := range krsInternal {
 			if _, ok := keyRangesMap[keyRange.ShardID]; !ok {
