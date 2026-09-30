@@ -1151,3 +1151,31 @@ Feature: spqr-monitor test
     """
     0;no credentials found for shard .* in shard data file, skipping\.\.\.
     """
+
+  Scenario: spqr-monitor check works correctly with upper bounds
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    SET __spqr__execute_on TO sh1;
+    insert into xMove(w_id, s) values(101, '001');
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data.yaml --tablesample-size 100
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    2;corruption found, check "/tmp/report.txt" file
+    """
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    Corruption found: row \[101 001\], rel "xMove" shard "sh1"
+    """
