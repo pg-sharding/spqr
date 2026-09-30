@@ -1536,7 +1536,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return nil, err
 	}
 
-	if guc.Get(rm.SPH) {
+	if guc.Get(rm.SPH) && !rm.HasOnlyReferenceRels() {
+
 		p, err = qr.addSortToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err

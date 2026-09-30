@@ -1,0 +1,74 @@
+\c spqr-console
+CREATE REFERENCE TABLE test_ref_rel;
+    create reference table    
+------------------------------
+ table    -> test_ref_rel
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+\c regress
+CREATE TABLE test_ref_rel(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY test_ref_rel FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+set __spqr__allow_postprocessing to on;
+-- used to fail with "in-router postprocessing for GROUP BY aggregate is not yet supported"
+SELECT i, COUNT(*) FROM test_ref_rel WHERE i IN (1, 2) GROUP BY i ORDER BY i /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i | count 
+---+-------
+ 1 |     1
+ 2 |     1
+(2 rows)
+
+SELECT i, SUM(j) FROM test_ref_rel GROUP BY i ORDER BY i /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i | sum 
+---+-----
+ 1 |   2
+ 2 |   3
+ 3 |   4
+ 4 |   5
+(4 rows)
+
+SELECT i, MIN(j), MAX(j) FROM test_ref_rel GROUP BY i ORDER BY i /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ i | min | max 
+---+-----+-----
+ 1 |   2 |   2
+ 2 |   3 |   3
+ 3 |   4 |   4
+ 4 |   5 |   5
+(4 rows)
+
+SELECT COUNT(j) FROM test_ref_rel /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ count 
+-------
+     4
+(1 row)
+
+SELECT i FROM test_ref_rel ORDER BY i DESC LIMIT 2 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+ 4
+ 3
+(2 rows)
+
+SELECT i, COUNT(*) FROM test_ref_rel WHERE i > 100 GROUP BY i /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i | count 
+---+-------
+(0 rows)
+
+DROP TABLE test_ref_rel;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+(1 row)

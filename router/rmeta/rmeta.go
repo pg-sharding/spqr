@@ -46,8 +46,10 @@ type RoutingMetadataContext struct {
 	// can be routed with different rules
 	Rels         map[rfqn.RelationFQN]struct{}
 	RoutableRels map[rfqn.RelationFQN]struct{}
-	Exprs        map[rfqn.RelationFQN]map[string][]any
-	ParamRefs    map[rfqn.RelationFQN]map[string][]int
+	// RefRels tracks reference (replicated) relations of the query
+	RefRels  map[rfqn.RelationFQN]struct{}
+	Exprs    map[rfqn.RelationFQN]map[string][]any
+	ParamRefs map[rfqn.RelationFQN]map[string][]int
 
 	// cached CTE names
 	CteNames map[string]*lyx.CommonTableExpr
@@ -121,6 +123,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	return &RoutingMetadataContext{
 		Rels:            map[rfqn.RelationFQN]struct{}{},
 		RoutableRels:    map[rfqn.RelationFQN]struct{}{},
+		RefRels:         map[rfqn.RelationFQN]struct{}{},
 		CteNames:        map[string]*lyx.CommonTableExpr{},
 		TableAliases:    map[string]rfqn.RelationFQN{},
 		CTEAliases:      map[string]string{},
@@ -273,6 +276,10 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) bool {
 	_, ok := rm.CteNames[resolvedRelation.RelationName]
 	return len(resolvedRelation.SchemaName) == 0 && ok
+}
+
+func (rm *RoutingMetadataContext) HasOnlyReferenceRels() bool {
+	return len(rm.Rels) != 0 && len(rm.Rels) == len(rm.RefRels)
 }
 
 // TODO : unit tests
