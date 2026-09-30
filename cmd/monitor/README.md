@@ -15,8 +15,7 @@ make build_monitor
 
 Create `shard-data.yaml` with every shard you want to check. Shard IDs must match
 SPQR metadata; replace the example hosts, database, and credentials with yours.
-The database user needs access to the distributed tables and permission to
-`SELECT` from them.
+The database user needs access to the distributed tables and `SELECT` privilege on them.
 
 ```yaml
 shards:
