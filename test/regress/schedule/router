@@ -27,6 +27,7 @@ test: part_table
 test: target_list_routing
 test: reference_table
 test: reference_table_returning_shard
+test: reference_table_postprocessing
 test: insert_processing
 test: insert_processing_hash
 test: sequence
