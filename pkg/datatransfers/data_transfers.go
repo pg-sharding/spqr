@@ -497,12 +497,18 @@ func SetupFDW(
 	if err != nil {
 		return err
 	}
-	// create postgres_fdw server on receiving shard
-	_, err = to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', options '-c idle_in_transaction_session_timeout=0 -c idle_session_timeout=0')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
-	if err != nil {
-		return err
-	}
-	if _, err = to.Exec(ctx, `
+	if err := func() error {
+		tx, err := to.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		// create postgres_fdw server on receiving shard
+		_, err = tx.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', options '-c idle_in_transaction_session_timeout=0 -c idle_session_timeout=0')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `
 CREATE FUNCTION pg_temp.setup_fdw(v_local_user text, v_server_name text, v_remote_user text, v_remote_pass text) RETURNS VOID AS $$
 BEGIN
     EXECUTE format(
@@ -514,14 +520,19 @@ BEGIN
     );
 END; 
 $$ LANGUAGE plpgsql;`); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `SELECT pg_temp.setup_fdw($1, $2, $3, $4);`, toShard.User, serverName, fromShard.User, fromShard.Password); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `DROP FUNCTION pg_temp.setup_fdw(text, text, text, text);`); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}(); err != nil {
 		return err
 	}
-	if _, err = to.Exec(ctx, `SELECT pg_temp.setup_fdw($1, $2, $3, $4);`, toShard.User, serverName, fromShard.User, fromShard.Password); err != nil {
-		return err
-	}
-	if _, err = to.Exec(ctx, `DROP FUNCTION pg_temp.setup_fdw(text, text, text, text);`); err != nil {
-		return err
-	}
+
 	// create foreign tables corresponding to such on sending shard
 	// TODO check if schemaName is not used by relations (needs schemas in distributions)
 	for schema := range schemas {
