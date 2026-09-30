@@ -366,17 +366,17 @@ func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *r
 		return err
 	}
 
-	relsToCheck := make([]string, 0)
+	alreadySyncedRels := make([]string, 0)
 	for _, rrel := range rrels {
-		if !slices.Contains(rrel.ShardIDs, toId) {
-			relsToCheck = append(relsToCheck, rrel.QualifiedName().String())
+		if slices.Contains(rrel.ShardIDs, toId) {
+			alreadySyncedRels = append(alreadySyncedRels, rrel.QualifiedName().String())
 		}
 	}
-	found, constraintName, err := CheckConstraints(ctx, to, []string{rel.QualifiedName().String()}, relsToCheck)
+	ok, constraintName, err := CheckConstraints(ctx, to, []string{rel.QualifiedName().String()}, alreadySyncedRels)
 	if err != nil {
 		return err
 	}
-	if found {
+	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing replicated relation not on shard: \"%s\"", constraintName)
 	}
 
