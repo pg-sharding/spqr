@@ -508,6 +508,10 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 	if err != nil {
 		return nil, err
 	}
+	conn, err := db.Conn(context.Background())
+	defer func() {
+		_ = conn.Close()
+	}()
 	// sqlx is not used now. try remove split
 	queries := strings.Split(query, ";")
 	var result []map[string]any
@@ -518,7 +522,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 			continue
 		}
 		tctx.sqlQueryResult = nil
-		result, err = tctx.doPostgresqlQuery(db, q, timeout, args)
+		result, err = tctx.doPostgresqlQuery(conn, q, timeout, args)
 		tctx.commandRetcode = 0
 		tctx.sqlQueryResult = result
 		if err != nil {
@@ -592,7 +596,9 @@ func (tctx *testContext) stepIExecuteSQLInParallel(host string, timeout int, bod
 	return execErr
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
+func (tctx *testContext) doPostgresqlQuery(db interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var rows *sql.Rows
