@@ -600,7 +600,7 @@ Scenario: Ref relation sync fails when table has constraints on not-yet-synced t
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    found non.deferrable constraint or constraint referencing replicated relation not on shard: .asd.
+    found non.deferrable constraint or constraint referencing replicated relation not on shard: ..asd..
     """
 
 Scenario: Ref relation sync fails when table has constraints on not-yet-synced table
