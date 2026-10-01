@@ -509,6 +509,9 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 		return nil, err
 	}
 	conn, err := db.Conn(context.Background())
+	if err != nil {
+		return nil, err
+	}
 	defer func() {
 		_ = conn.Close()
 	}()
