@@ -1444,6 +1444,38 @@ func TestAlter(t *testing.T) {
 		},
 
 		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY murmur [entity_type varchar, entity_id uinteger];",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Relation: &rfqn.RelationFQN{RelationName: "table1"},
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										HashFunction: "murmur",
+										Expr: []spqrparser.TypedColRef{
+											{
+												Column: "entity_type",
+												Type:   "varchar",
+											},
+											{
+												Column: "entity_id",
+												Type:   "uinteger",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
 			query: "CREATE DISTRIBUTED RELATION 'ss' (uid HASH MURMUR) IN dd;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{

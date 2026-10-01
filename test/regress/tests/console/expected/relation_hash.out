@@ -1,0 +1,26 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION table1
+  DISTRIBUTION KEY murmur [entity_type varchar, entity_id uinteger];
+       attach table        
+---------------------------
+ relation name   -> table1
+ distribution id -> ds1
+(2 rows)
+
+SHOW RELATIONS;
+ relation_name | distribution_id | distribution_key | schema_name 
+---------------+-----------------+------------------+-------------
+ table1        | ds1             | ("", murmur)     | public
+(1 row)
+
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+
