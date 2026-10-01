@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -312,7 +313,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
-func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation) error {
+func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, mgr rrelation.ReferenceRelationMgr) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -358,6 +359,25 @@ func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *r
 	}
 	if !toTableExists {
 		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
+	}
+
+	rrels, err := mgr.ListReferenceRelations(ctx)
+	if err != nil {
+		return err
+	}
+
+	alreadySyncedRels := make([]string, 0)
+	for _, rrel := range rrels {
+		if slices.Contains(rrel.ShardIDs, toId) {
+			alreadySyncedRels = append(alreadySyncedRels, rrel.QualifiedName().String())
+		}
+	}
+	ok, constraintName, err := CheckConstraints(ctx, to, []string{rel.QualifiedName().String()}, alreadySyncedRels)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing replicated relation not on shard: \"%s\"", constraintName)
 	}
 
 	return nil
