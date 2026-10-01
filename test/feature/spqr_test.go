@@ -503,7 +503,7 @@ func (tctx *testContext) doPrepQueryPostgresql(host, query string, args []any) (
 	}
 }
 
-func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.Duration, args []any, inTx bool) ([]map[string]any, error) {
+func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
 	db, err := tctx.getPostgresqlConnection(user, host)
 	if err != nil {
 		return nil, err
@@ -514,18 +514,37 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 
 	var dbQ Queryable = db
 	var tx *sql.Tx
-	if inTx {
-		tx, err = db.Begin()
-		if err != nil {
-			return nil, err
-		}
-		defer func() { _ = tx.Rollback() }()
-		dbQ = tx
-	}
 
 	for _, q := range queries {
 		q = strings.TrimSpace(q)
 		if q == "" {
+			continue
+		}
+		if strings.ToLower(q) == "begin" {
+			if tx != nil {
+				return nil, fmt.Errorf("already in transaction")
+			}
+			tx, err = db.Begin()
+			if err != nil {
+				return nil, err
+			}
+			defer func(tx *sql.Tx) { _ = tx.Rollback() }(tx)
+			dbQ = tx
+			continue
+		}
+		if strings.ToLower(q) == "commit" {
+			if tx == nil {
+				return nil, fmt.Errorf("transaction not open")
+			}
+			if err := tx.Commit(); err != nil {
+				tctx.commandRetcode = 1
+				tctx.commandOutput = err.Error()
+				tctx.sqlUserQueryError.Store(host, err.Error())
+				tx = nil
+				break
+			}
+			tx = nil
+			dbQ = db
 			continue
 		}
 		tctx.sqlQueryResult = nil
@@ -537,12 +556,6 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 			tctx.commandOutput = err.Error()
 			tctx.sqlUserQueryError.Store(host, err.Error())
 			break
-		}
-	}
-
-	if inTx {
-		if err := tx.Commit(); err != nil {
-			return nil, err
 		}
 	}
 
@@ -902,7 +915,7 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	const trials = 10
 	const timeout = 20 * time.Second
 	for range trials {
-		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", postgresqlQueryTimeout, make([]any, 0), false)
+		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", postgresqlQueryTimeout, make([]any, 0))
 		if err == nil {
 			return nil
 		}
@@ -968,28 +981,28 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]any, 0), false)
+	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]any, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, time.Duration(timeout)*time.Second, make([]any, 0), false)
+	_, err := tctx.queryPostgresql(host, shardUser, query, time.Duration(timeout)*time.Second, make([]any, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]any, 0), false)
+	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]any, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostInTx(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]any, 0), true)
+	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]any, 0))
 	return err
 }
 
@@ -1301,7 +1314,7 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 func (tctx *testContext) stepWaitForCoordinatorAddressToBe(host string, leader string) error {
 	retryRes := testutil.Retry(
 		func() bool {
-			res, err := tctx.queryPostgresql(host, shardUser, "SHOW "+spqrparser.CoordinatorAddrStr, postgresqlQueryTimeout, make([]any, 0), false)
+			res, err := tctx.queryPostgresql(host, shardUser, "SHOW "+spqrparser.CoordinatorAddrStr, postgresqlQueryTimeout, make([]any, 0))
 			if err != nil {
 				log.Printf("error waiting for coordinator address: %s", err)
 				return false
@@ -1581,7 +1594,7 @@ func (tctx *testContext) stepWaitForHostToFinishStartup(host string) error {
 
 func (tctx *testContext) checkStartupFinished(host string) func() bool {
 	return func() bool {
-		_, err := tctx.queryPostgresql(host, shardUser, "SHOW startup_finished", postgresqlQueryTimeout, make([]any, 0), false)
+		_, err := tctx.queryPostgresql(host, shardUser, "SHOW startup_finished", postgresqlQueryTimeout, make([]any, 0))
 		if err != nil {
 			log.Printf("failed to check for finished startup on host \"%s\": %s", host, err)
 			return false
