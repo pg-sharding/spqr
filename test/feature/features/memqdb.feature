@@ -180,7 +180,7 @@ Feature: MemQDB save state into a file
     CREATE REFERENCE RELATION ref_2pc;
     """
     Then command return code should be "0"
-    When I execute SQL on host "router"
+    When I run SQL on host "router"
     """
     CREATE TABLE ref_2pc(i INT);
     SET __spqr__engine_v2 TO true;
@@ -233,7 +233,7 @@ Feature: MemQDB save state into a file
     CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
     """
     Then command return code should be "0"
-    When I execute SQL on host "router"
+    When I run SQL on host "router"
     """
     CREATE TABLE ref_2pc(i INT);
     SET __spqr__engine_v2 TO true;
