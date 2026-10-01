@@ -538,6 +538,13 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		return err
 	}
 
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+
 	// sqlx is not used now. try remove split
 	queries := strings.SplitSeq(query, ";")
 
@@ -546,7 +553,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		if q == "" {
 			continue
 		}
-		_, err := db.Exec(q)
+		_, err := conn.ExecContext(ctx, q)
 		if err != nil {
 			return err
 		}
