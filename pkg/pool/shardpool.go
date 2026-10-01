@@ -252,6 +252,7 @@ func (h *shardHostPool) Discard(sh shard.ShardHostInstance) error {
 	defer h.mu.Unlock()
 
 	if _, ok := h.active[sh.ID()]; !ok {
+		spqrlog.CloseLogger()
 		// double free
 		panic(fmt.Sprintf("data corruption: connection already discarded: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
 	}
@@ -290,6 +291,8 @@ func (h *shardHostPool) Put(sh shard.ShardHostInstance) error {
 	defer h.mu.Unlock()
 
 	if _, ok := h.active[sh.ID()]; !ok {
+		spqrlog.CloseLogger()
+		// most probably double-free like problems
 		panic(fmt.Sprintf("data corruption: connection already put: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
 	}
 

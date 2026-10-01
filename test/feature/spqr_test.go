@@ -26,8 +26,8 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/cucumber/godog"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
+	pgxv4 "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -286,13 +286,17 @@ func (tctx *testContext) connectRouterConsoleWithCredentials(username string, pa
 
 func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sql.DB) bool) (*sql.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
-	connCfg, _ := pgx.ParseConfig(dsn)
-	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	connCfg, _ := pgxv4.ParseConfig(dsn)
+	connCfg.PreferSimpleProtocol = true
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connCfg.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
 	connCfg.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
-	db := stdlib.OpenDB(*connCfg)
+	connStr := stdlib.RegisterConnConfig(connCfg)
+	db, err := sql.Open("pgx", connStr)
+	if err != nil {
+		return nil, err
+	}
 	success := false
 	// sql is lazy in go, so we need ping db
 	testutil.Retry(func() bool {

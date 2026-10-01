@@ -40,6 +40,13 @@ echo "======== RUN CONNECTION PIN TEST ========"
     exit 1
 }
 
+echo "======== RUN CONNECTION PIN KILL TEST ========"
+
+./pins_kill.sh || {
+    echo "pins_kill.sh failed" >&2
+    exit 1
+}
+
 echo "======== RUN ADVISORY LOCK TEST ========"
 ./advisory.sh
 
