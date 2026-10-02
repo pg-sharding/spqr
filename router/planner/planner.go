@@ -593,7 +593,7 @@ func ConsoleFunctionCall(
 
 			tstmt, err := spqrparser.Parse(v.Value)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
+				return nil, err
 			}
 			/* Here we return only last TTS. this is intended */
 			var tts *tupleslot.TupleTableSlot

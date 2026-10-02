@@ -166,7 +166,9 @@ ALTER SHARD sh1 OPTIONS (ADD SSLMODE 'verify-full', DROP SSLMODE 'verify-full');
 (2 rows)
 
 ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');
-ERROR:  SPQRU: failed to parse query "ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');": syntax error
+ERROR:  42601: failed to parse query "ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');": syntax error
+LINE 1: ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');
+                                              ^
 ALTER SHARD sh1 OPTIONS (DROP HOST 'unknown:6432');
 ERROR:  SPQRV: malformed options array
 HINT:  option "host" with value "unknown:6432" not found

@@ -133,6 +133,7 @@ elephantsql
 Elts
 emptypb
 ENONET
+ents
 epn
 EQR
 errcounter
@@ -511,6 +512,7 @@ shardpool
 shardproxy
 shkey
 shname
+SHOWW
 shq
 singleshard
 siteid

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -129,6 +130,40 @@ func TestSimple(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+	}
+}
+
+// TestSyntaxErrorPosition verifies that parse errors carry 1-based
+// position of the offending token (or end of input), so psql can
+// draw the error cursor.
+func TestSyntaxErrorPosition(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, tt := range []struct {
+		query string
+		pos   int32
+	}{
+		{query: "SELECT 1", pos: 1},
+		{query: "SHOWW clients", pos: 1},
+		{query: "SHOW clients extra", pos: 14},
+		{query: "  SHOW clients extra;", pos: 16},
+		{query: "SHOW ;", pos: 6},
+		{query: "SHOW cl@ents", pos: 8},
+		{query: "CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra", pos: 46},
+		{query: "REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;", pos: 48},
+		/* unexpected end of input points right past the last character */
+		{query: "SHOW", pos: 5},
+		{query: "CREATE DISTRIBUTION", pos: 20},
+	} {
+		_, err := spqrparser.Parse(tt.query)
+
+		var spErr *spqrerror.SpqrError
+		if !assert.ErrorAs(err, &spErr, "query %q", tt.query) {
+			continue
+		}
+		assert.Equal(spqrerror.PG_SYNTAX_ERROR, spErr.ErrorCode, "query %q", tt.query)
+		assert.Equal(tt.pos, spErr.Position, "query %q", tt.query)
+		assert.ErrorContains(err, "syntax error", "query %q", tt.query)
 	}
 }
 
@@ -683,7 +718,7 @@ func TestMoveKeyRange(t *testing.T) {
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if tt.err != nil {
-			assert.EqualError(err, tt.err.Error())
+			assert.ErrorContains(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
@@ -1117,7 +1152,7 @@ func TestSplitKeyRange(t *testing.T) {
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if tt.err != nil {
-			assert.EqualError(err, tt.err.Error())
+			assert.ErrorContains(err, tt.err.Error())
 		} else {
 
 			assert.NoError(err, "query %s", tt.query)
@@ -1156,7 +1191,7 @@ func TestUniteKeyRange(t *testing.T) {
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if tt.err != nil {
-			assert.EqualError(err, tt.err.Error())
+			assert.ErrorContains(err, tt.err.Error())
 		} else {
 
 			assert.NoError(err, "query %s", tt.query)
