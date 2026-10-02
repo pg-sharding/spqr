@@ -399,6 +399,7 @@ pgxpool
 PGXS
 pgxv
 PIDs
+pids
 pitr
 pkgclient
 planopts
@@ -543,6 +544,7 @@ SPQRQ
 spqrql
 SPQRR
 SPQRT
+SPQRt
 SPQRU
 SPQRV
 SPQRX
