@@ -133,6 +133,7 @@ elephantsql
 Elts
 emptypb
 ENONET
+ents
 epn
 EQR
 errcounter
@@ -398,7 +399,6 @@ pgxpool
 PGXS
 pgxv
 PIDs
-pids
 pitr
 pkgclient
 planopts
@@ -511,6 +511,7 @@ shardpool
 shardproxy
 shkey
 shname
+SHOWW
 shq
 singleshard
 siteid
@@ -542,7 +543,6 @@ SPQRQ
 spqrql
 SPQRR
 SPQRT
-SPQRt
 SPQRU
 SPQRV
 SPQRX
