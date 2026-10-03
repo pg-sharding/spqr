@@ -36,7 +36,7 @@ func drainTillConnClosed(t *testing.T, frontend *pgproto3.Frontend, conn net.Con
 	for {
 		msg, err := frontend.Receive()
 		if err != nil {
-			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				t.Fatalf("router hung on malformed 'Q' message: %v", err)
 			}
 			return
