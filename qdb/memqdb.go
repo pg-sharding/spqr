@@ -59,6 +59,7 @@ type MemQDBState struct {
 	TaskGroupMoveTaskID         map[string]string                   `json:"task_group_move_task"`
 	UniqueIndexes               map[string]*UniqueIndex             `json:"unique_indexes"`
 	UniqueIndexesByRel          map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
+	Migrations                  map[string]string                   `json:"migrations"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 }
@@ -105,6 +106,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 			TwoPhaseTx:                  map[string]*TwoPCInfo{},
 			UniqueIndexes:               map[string]*UniqueIndex{},
 			UniqueIndexesByRel:          map[string]map[string]*UniqueIndex{},
+			Migrations:                  map[string]string{},
 		},
 
 		backupPath: backupPath,
