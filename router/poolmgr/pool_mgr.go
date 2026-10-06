@@ -50,6 +50,8 @@ func UnrouteCommon(
 		return nil
 	}
 
+	// TODO: maybe try cleanup without reset here
+
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
