@@ -1,9 +1,8 @@
 package server
 
 import (
-
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/pool"
