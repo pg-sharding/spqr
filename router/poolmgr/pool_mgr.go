@@ -82,12 +82,6 @@ func UnrouteCommon(
 	}
 
 	if len(serv.Datashards()) != 0 {
-		if err := serv.Cleanup(&config.FrontendRule{
-			PoolRollback: true,
-		}); err != nil {
-			return err
-		}
-
 		if err := serv.Reset(); err != nil {
 			return err
 		}
