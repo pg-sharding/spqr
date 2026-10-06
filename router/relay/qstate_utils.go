@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -103,35 +104,42 @@ func DispatchSlice(qd *QueryDesc,
 				return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "dispatch slice sync lost")
 			}
 
-			if p != nil {
-				if p.Opts().AutoLinearize {
-					// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "auto-linearize for extended protocol is not yet supported")
-				}
-				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
-					/* Uh, oh, this is very ugly hack */
-					/* Parse in unnamed */
-					if err := serv.SendShard(&pgproto3.Parse{
-						Query:         ovMsg,
-						ParameterOIDs: qd.savedParamOids,
-					}, targ); err != nil {
-						return err
-					}
+			if config.RouterConfig().Qr.DispatchNonSimpleInnerSlice {
 
-					if err := serv.SendShard(&pgproto3.Bind{
-						ParameterFormatCodes: bnd.ParameterFormatCodes,
-						Parameters:           bnd.Parameters,
-						ResultFormatCodes:    bnd.ResultFormatCodes,
-					}, targ); err != nil {
-						return err
+				if p != nil {
+					if p.Opts().AutoLinearize {
+						// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "auto-linearize for extended protocol is not yet supported")
 					}
+					if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
+						/* Uh, oh, this is very ugly hack */
+						/* Parse in unnamed */
+						if err := serv.SendShard(&pgproto3.Parse{
+							Query:         ovMsg,
+							ParameterOIDs: qd.savedParamOids,
+						}, targ); err != nil {
+							return err
+						}
 
+						if err := serv.SendShard(&pgproto3.Bind{
+							ParameterFormatCodes: bnd.ParameterFormatCodes,
+							Parameters:           bnd.Parameters,
+							ResultFormatCodes:    bnd.ResultFormatCodes,
+						}, targ); err != nil {
+							return err
+						}
+
+					} else {
+						if err := serv.SendShard(bnd, targ); err != nil {
+							return err
+						}
+					}
 				} else {
 					if err := serv.SendShard(bnd, targ); err != nil {
 						return err
 					}
 				}
 			} else {
-				if err := serv.SendShard(bnd, targ); err != nil {
+				if err := serv.SendShard(qd.Msg, targ); err != nil {
 					return err
 				}
 			}

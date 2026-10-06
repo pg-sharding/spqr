@@ -203,6 +203,8 @@ type QRouter struct {
 	// Deprecated. Use UseSPQRGuard instead
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 	AllowFluxChunkAccess     bool `json:"allow_flux_chunk_access" toml:"allow_flux_chunk_access" yaml:"allow_flux_chunk_access"`
+
+	DispatchNonSimpleInnerSlice bool `json:"dispatch_non_simple_inner_slice" toml:"dispatch_non_simple_inner_slice" yaml:"dispatch_non_simple_inner_slice"`
 }
 
 const (
