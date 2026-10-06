@@ -392,8 +392,15 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 	if s.poolMgr.ConnectionActive(s) {
 		return s.DeploySliceTransactionQuery(query)
 	}
-
-	s.SetTxStatus(txstatus.TXIDLE)
+	guc, err := s.cl.FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+	if err != nil {
+		return err
+	}
+	if guc.Get(s.cl) {
+		s.SetTxStatus(txstatus.TXIDLE)
+	} else {
+		s.SetTxStatus(txstatus.TXACT)
+	}
 	s.cl.StartTx()
 
 	// explicitly set silent query message, as it can differ from query begin in xproto
