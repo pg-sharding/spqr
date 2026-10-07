@@ -17,6 +17,7 @@ const (
 
 	/* XXX: debug-only */
 	VirtualSetNextTwoPhaseCommitGID = "__spqr__set_next_2pc_gid"
+	VirtualPreheatTsaCache          = "__spqr__preheat_tsa_cache"
 
 	/* isolation tester support function */
 	VirtualAwaitTask                = "__spqr__await_task"
@@ -37,7 +38,7 @@ func IsVirtualFuncName(n string) bool {
 		VirtualClear2PCData, VirtualCleanOutdated2PCData,
 		PGIsolationTestSessionIsBlocked,
 		PGAdvisoryXactLock, PGTryAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock, PgTryAdvisoryLock, PGAdvisoryUnlockAll,
-		VirtualSetNextTwoPhaseCommitGID:
+		VirtualSetNextTwoPhaseCommitGID, VirtualPreheatTsaCache:
 		return true
 	default:
 		return false

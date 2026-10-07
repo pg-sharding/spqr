@@ -131,6 +131,14 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return rt
 }
 
+// PreheatTsaCache implements [connmgr.ConnectionMgr].
+func (r *RuleRouterImpl) PreheatTsaCache(target tsa.TSA) {
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		r.MultiShardPool().PreheatTsaCache(target)
+		return true, nil
+	})
+}
+
 // ReleaseConnection implements RuleRouter.
 func (r *RuleRouterImpl) ReleaseConnection() {
 	r.activeTCPCount.Add(-1)
