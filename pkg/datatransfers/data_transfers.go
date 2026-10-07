@@ -214,13 +214,13 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err := awaitPIDsInternal(execCtx, from); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
-			tx.Status = qdb.Locked
+			tx.Status = qdb.AwaitedPIDs
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
 			statistics.RecordShardOperation("awaitPIDs", time.Since(t))
 			if err != nil {
 				return err
 			}
-		case qdb.Locked:
+		case qdb.Locked, qdb.AwaitedPIDs:
 			t := time.Now()
 			if _, err := db.CheckLockedKeyRange(ctx, krg.ID); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "cannot copy data because key range \"%s\" is not locked", krg.ID).Hint("possible incorrect move task group recovery")
@@ -446,6 +446,18 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 				return err
 			}
 		case qdb.Locked:
+			// await running transactions to avoid data corruption
+			execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
+			defer cancel()
+			if err := awaitPIDsInternal(execCtx, from); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
+			}
+			tx.Status = qdb.AwaitedPIDs
+			err = db.RecordTransferTx(ctx, transferKey, tx)
+			if err != nil {
+				return err
+			}
+		case qdb.AwaitedPIDs:
 			// copy data of key range to receiving shard
 			if err = copyReferenceRelationData(ctx, from, to, fromId, toId, rel); err != nil {
 				return err
