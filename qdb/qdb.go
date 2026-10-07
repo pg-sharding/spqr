@@ -278,9 +278,10 @@ func NewDataPlaneTwoPhaseStateKeeper(qdbType string) (XDCStateKeeper, error) {
 type TxStatus string
 
 const (
-	Planned    = TxStatus("planned")
-	Locked     = TxStatus("locked")
-	DataCopied = TxStatus("data_copied")
+	Planned     = TxStatus("planned")
+	Locked      = TxStatus("locked")
+	AwaitedPIDs = TxStatus("awaited_pids")
+	DataCopied  = TxStatus("data_copied")
 )
 
 // DataTransferTransaction contains information about data transfer
