@@ -433,6 +433,13 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		_ = to.Close(ctx)
 	}()
 
+	if config.CoordinatorConfig().DataMoveOptimisticPIDAwait {
+		if err := awaitPIDsInternal(ctx, from); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to await virtual transactions before sync reference relation")
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
+		}
+	}
+
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
