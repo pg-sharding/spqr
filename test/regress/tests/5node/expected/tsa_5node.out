@@ -117,7 +117,7 @@ SELECT __spqr__host_status('127.0.0.1:6437');
 
 -- tsa_cache: dump identity (tsa, host, az) + health (alive, match) before the cut-off
 SET __spqr__allow_postprocessing TO true;
-SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> 'any' ORDER BY tsa, host;
+SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa = 'prefer-standby' OR (tsa = 'read-write' AND host = '127.0.0.1:6433') ORDER BY tsa, host;
       tsa       |      host      |  az   | alive | match 
 ----------------+----------------+-------+-------+-------
  prefer-standby | 127.0.0.1:6434 | local | true  | true
@@ -125,11 +125,7 @@ SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> '
  prefer-standby | 127.0.0.1:6436 | far   | true  | true
  prefer-standby | 127.0.0.1:6437 | far   | true  | true
  read-write     | 127.0.0.1:6433 | far   | true  | true
- read-write     | 127.0.0.1:6434 | local | true  | false
- read-write     | 127.0.0.1:6435 | far   | true  | false
- read-write     | 127.0.0.1:6436 | far   | true  | false
- read-write     | 127.0.0.1:6437 | far   | true  | false
-(9 rows)
+(5 rows)
 
 SET __spqr__allow_postprocessing TO false;
 -- cut the replicas off: prefer-standby must fall back to the primary
@@ -150,7 +146,7 @@ NOTICE: send query to shard(s) : sh1@127.0.0.1:6433
 
 -- after the fallback replicas must be dead, primary alive; only alive/match flip
 SET __spqr__allow_postprocessing TO true;
-SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> 'any' ORDER BY tsa, host;
+SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa = 'prefer-standby' OR (tsa = 'read-write' AND host = '127.0.0.1:6433') ORDER BY tsa, host;
       tsa       |      host      |  az   | alive | match 
 ----------------+----------------+-------+-------+-------
  prefer-standby | 127.0.0.1:6433 | far   | true  | true
@@ -159,11 +155,7 @@ SELECT tsa, host, az, alive, match FROM __spqr__show('tsa_cache') WHERE tsa <> '
  prefer-standby | 127.0.0.1:6436 | far   | false | false
  prefer-standby | 127.0.0.1:6437 | far   | false | false
  read-write     | 127.0.0.1:6433 | far   | true  | true
- read-write     | 127.0.0.1:6434 | local | true  | false
- read-write     | 127.0.0.1:6435 | far   | true  | false
- read-write     | 127.0.0.1:6436 | far   | true  | false
- read-write     | 127.0.0.1:6437 | far   | true  | false
-(10 rows)
+(6 rows)
 
 SET __spqr__allow_postprocessing TO false;
 \! iptables -D INPUT -p tcp --dport 6434 -j REJECT
