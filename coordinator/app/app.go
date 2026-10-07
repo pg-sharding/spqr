@@ -188,6 +188,7 @@ func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
 	protos.RegisterTwoPhaseTxMetaServiceServer(serv, twoPhaseTxServ)
+	protos.RegisterMigrationServiceServer(serv, provider.NewMigrationServer(app.coordinator))
 
 	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
