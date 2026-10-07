@@ -68,10 +68,22 @@ const (
 	StopTaskGroupImmediate = "cancel immediate"
 )
 
+// MigrationJournal stores migration names and their caller-supplied values.
+type MigrationJournal interface {
+	SetMigration(ctx context.Context, name, value string) error
+	ResetMigration(ctx context.Context, name string) error
+	ListMigrations(ctx context.Context) (map[string]string, error)
+}
+
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
 type QDB interface {
+	// Migration journal
+	SetMigration(ctx context.Context, name, value string) error
+	ResetMigration(ctx context.Context, name string) error
+	ListMigrations(ctx context.Context) (map[string]string, error)
+
 	// Key ranges
 	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)

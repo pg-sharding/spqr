@@ -60,6 +60,7 @@ const (
 )
 
 type EntityMgr interface {
+	qdb.MigrationJournal
 	kr.KeyRangeMgr
 	topology.RouterMgr
 	topology.ShardsMgr
@@ -830,6 +831,17 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 // - error: An error if the operation fails, otherwise nil.
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
+	case *spqrparser.AlterSystemMigration:
+		var err error
+		if stmt.Reset {
+			err = mngr.ResetMigration(ctx, stmt.Name)
+		} else {
+			err = mngr.SetMigration(ctx, stmt.Name, stmt.Value)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("alter system migration")}, nil
 	case *spqrparser.System:
 		if stmt.SetGUC != "" {
 			return processAlterSystemSet(stmt.SetGUC, stmt.SetValue)
@@ -2075,6 +2087,20 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 
+	case spqrparser.MigrationsStr:
+		migrations, err := mngr.ListMigrations(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("name", "value")}
+		names := make([]string, 0, len(migrations))
+		for name := range migrations {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			tts.WriteDataRow(name, migrations[name])
+		}
 	case spqrparser.FileSettingsStr:
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader(

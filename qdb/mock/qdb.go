@@ -508,6 +508,73 @@ func (mr *MockTaskStateKeeperMockRecorder) TryTaskGroupLock(ctx, tgId, holder an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockTaskStateKeeper)(nil).TryTaskGroupLock), ctx, tgId, holder)
 }
 
+// MockMigrationJournal is a mock of MigrationJournal interface.
+type MockMigrationJournal struct {
+	ctrl     *gomock.Controller
+	recorder *MockMigrationJournalMockRecorder
+	isgomock struct{}
+}
+
+// MockMigrationJournalMockRecorder is the mock recorder for MockMigrationJournal.
+type MockMigrationJournalMockRecorder struct {
+	mock *MockMigrationJournal
+}
+
+// NewMockMigrationJournal creates a new mock instance.
+func NewMockMigrationJournal(ctrl *gomock.Controller) *MockMigrationJournal {
+	mock := &MockMigrationJournal{ctrl: ctrl}
+	mock.recorder = &MockMigrationJournalMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMigrationJournal) EXPECT() *MockMigrationJournalMockRecorder {
+	return m.recorder
+}
+
+// ListMigrations mocks base method.
+func (m *MockMigrationJournal) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockMigrationJournalMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockMigrationJournal)(nil).ListMigrations), ctx)
+}
+
+// ResetMigration mocks base method.
+func (m *MockMigrationJournal) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockMigrationJournalMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockMigrationJournal)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockMigrationJournal) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockMigrationJournalMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockMigrationJournal)(nil).SetMigration), ctx, name, value)
+}
+
 // MockQDB is a mock of QDB interface.
 type MockQDB struct {
 	ctrl     *gomock.Controller
@@ -1291,6 +1358,21 @@ func (mr *MockQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMigrations mocks base method.
+func (m *MockQDB) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockQDBMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockQDB)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTasks mocks base method.
 func (m *MockQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -1468,6 +1550,34 @@ func (m *MockQDB) RenameKeyRange(ctx context.Context, krId, ktIdNew string) erro
 func (mr *MockQDBMockRecorder) RenameKeyRange(ctx, krId, ktIdNew any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockQDB)(nil).RenameKeyRange), ctx, krId, ktIdNew)
+}
+
+// ResetMigration mocks base method.
+func (m *MockQDB) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockQDBMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockQDB)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockQDB) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockQDBMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockQDB)(nil).SetMigration), ctx, name, value)
 }
 
 // ShareKeyRange mocks base method.
@@ -3316,6 +3426,21 @@ func (mr *MockXQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMigrations mocks base method.
+func (m *MockXQDB) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockXQDBMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockXQDB)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTasks mocks base method.
 func (m *MockXQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -3578,6 +3703,34 @@ func (m *MockXQDB) RenameKeyRange(ctx context.Context, krId, ktIdNew string) err
 func (mr *MockXQDBMockRecorder) RenameKeyRange(ctx, krId, ktIdNew any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockXQDB)(nil).RenameKeyRange), ctx, krId, ktIdNew)
+}
+
+// ResetMigration mocks base method.
+func (m *MockXQDB) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockXQDBMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockXQDB)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockXQDB) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockXQDBMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockXQDB)(nil).SetMigration), ctx, name, value)
 }
 
 // SetTxMetaStorage mocks base method.
@@ -4903,6 +5056,21 @@ func (mr *MockStateKeeperQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockStateKeeperQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMigrations mocks base method.
+func (m *MockStateKeeperQDB) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockStateKeeperQDBMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockStateKeeperQDB)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTasks mocks base method.
 func (m *MockStateKeeperQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -5222,6 +5390,34 @@ func (m *MockStateKeeperQDB) RenameKeyRange(ctx context.Context, krId, ktIdNew s
 func (mr *MockStateKeeperQDBMockRecorder) RenameKeyRange(ctx, krId, ktIdNew any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).RenameKeyRange), ctx, krId, ktIdNew)
+}
+
+// ResetMigration mocks base method.
+func (m *MockStateKeeperQDB) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockStateKeeperQDBMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockStateKeeperQDB)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockStateKeeperQDB) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockStateKeeperQDBMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockStateKeeperQDB)(nil).SetMigration), ctx, name, value)
 }
 
 // SetTxMetaStorage mocks base method.

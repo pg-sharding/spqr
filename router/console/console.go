@@ -93,7 +93,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		case spqrparser.SHOW_KIND_UNSPEC:
 			switch tstmt.Cmd {
 			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
-				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
+				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MigrationsStr,
 				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
 				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 				if err != nil {

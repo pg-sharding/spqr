@@ -1,0 +1,122 @@
+SHOW migrations;
+ name | value 
+------+-------
+(0 rows)
+
+-- Both SET forms, quoted names, and empty values.
+ALTER SYSTEM MIGRATION SET init = abc123;
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION SET 'MixedCase' TO 'sha256:abc';
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION SET 'init/next.sql' = '';
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION SET '../init' TO 'sha256:def';
+ alter system migration 
+------------------------
+(0 rows)
+
+SHOW migrations;
+     name      |   value    
+---------------+------------
+ ../init       | sha256:def
+ MixedCase     | sha256:abc
+ init          | abc123
+ init/next.sql | 
+(4 rows)
+
+-- SET replaces an existing value without adding another entry.
+ALTER SYSTEM MIGRATION SET init TO 'sha256:updated';
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION SET init = 'sha256:updated';
+ alter system migration 
+------------------------
+(0 rows)
+
+SHOW migrations WHERE name = 'init';
+ name |     value      
+------+----------------
+ init | sha256:updated
+(1 row)
+
+SHOW migrations (name) WHERE value = 'sha256:abc';
+   name    
+-----------
+ MixedCase
+(1 row)
+
+SHOW migrations ORDER BY name DESC;
+     name      |     value      
+---------------+----------------
+ init/next.sql | 
+ init          | sha256:updated
+ MixedCase     | sha256:abc
+ ../init       | sha256:def
+(4 rows)
+
+-- A new console connection sees the same journal.
+\connect
+SHOW migrations;
+     name      |     value      
+---------------+----------------
+ ../init       | sha256:def
+ MixedCase     | sha256:abc
+ init          | sha256:updated
+ init/next.sql | 
+(4 rows)
+
+-- RESET is exact and idempotent; init/next.sql must survive resetting init.
+ALTER SYSTEM MIGRATION RESET init;
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION RESET init;
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION RESET missing;
+ alter system migration 
+------------------------
+(0 rows)
+
+SHOW migrations;
+     name      |   value    
+---------------+------------
+ ../init       | sha256:def
+ MixedCase     | sha256:abc
+ init/next.sql | 
+(3 rows)
+
+ALTER SYSTEM MIGRATION RESET 'MixedCase';
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION RESET 'init/next.sql';
+ alter system migration 
+------------------------
+(0 rows)
+
+ALTER SYSTEM MIGRATION RESET '../init';
+ alter system migration 
+------------------------
+(0 rows)
+
+SHOW migrations;
+ name | value 
+------+-------
+(0 rows)
+
