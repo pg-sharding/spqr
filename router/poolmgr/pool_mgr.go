@@ -50,6 +50,14 @@ func UnrouteCommon(
 		return nil
 	}
 
+	if serv.TxStatus() != txstatus.TXIDLE {
+		if err := serv.Cleanup(&config.FrontendRule{
+			PoolRollback: true,
+		}); err != nil {
+			return err
+		}
+	}
+
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
