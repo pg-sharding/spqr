@@ -1,2 +1,3 @@
 test: tsa_5node
 test: priority
+test: recheck_hosts
