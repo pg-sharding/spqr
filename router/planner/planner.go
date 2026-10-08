@@ -991,6 +991,31 @@ func ConsoleFunctionCall(
 			tts.WriteDataRow(gid)
 		}
 		return tts, nil
+	case virtual.VirtualRunRecheckHosts:
+		if rm.CSM == nil {
+			return nil, fmt.Errorf("spqr metadata uninitialized")
+		}
+
+		if len(args) != 0 {
+			return nil, fmt.Errorf("%s function accepts no args", fname)
+		}
+
+		results := rm.CSM.RunRecheckHosts()
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("tsa", "host", "az", "alive", "match", "reason"),
+		}
+
+		for _, res := range results {
+			tts.WriteDataRow(string(res.Tsa),
+				res.Host,
+				res.AZ,
+				fmt.Sprintf("%v", res.Alive),
+				fmt.Sprintf("%v", res.Match),
+				res.Reason)
+		}
+
+		return tts, nil
 	case virtual.VirtualSetNextTwoPhaseCommitGID:
 		if len(args) != 1 {
 			return nil, fmt.Errorf("%s function accepts one arg", fname)

@@ -131,6 +131,16 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return rt
 }
 
+// RunRecheckHosts implements ConnectionStatsMgr.
+func (r *RuleRouterImpl) RunRecheckHosts() []pool.HostRecheckResult {
+	var res []pool.HostRecheckResult
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		res = append(res, r.MultiShardPool().RunRecheckHosts()...)
+		return true, nil
+	})
+	return res
+}
+
 // ReleaseConnection implements RuleRouter.
 func (r *RuleRouterImpl) ReleaseConnection() {
 	r.activeTCPCount.Add(-1)

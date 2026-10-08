@@ -86,6 +86,11 @@ func (ci grpcConnMgr) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return map[pool.TsaKey]pool.CachedEntry{}
 }
 
+// RunRecheckHosts implements connmgr.ConnectionStatsMgr.
+func (ci grpcConnMgr) RunRecheckHosts() []pool.HostRecheckResult {
+	return nil
+}
+
 // TODO implement it
 // ActiveTCPCount implements connmgr.ConnectionStatMgr.
 func (ci grpcConnMgr) ActiveTCPCount() int64 {
