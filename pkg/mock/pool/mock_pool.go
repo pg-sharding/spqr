@@ -536,6 +536,20 @@ func (mr *MockMultiShardTSAPoolMockRecorder) Put(host any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockMultiShardTSAPool)(nil).Put), host)
 }
 
+// RunRecheckHosts mocks base method.
+func (m *MockMultiShardTSAPool) RunRecheckHosts() []pool.HostRecheckResult {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunRecheckHosts")
+	ret0, _ := ret[0].([]pool.HostRecheckResult)
+	return ret0
+}
+
+// RunRecheckHosts indicates an expected call of RunRecheckHosts.
+func (mr *MockMultiShardTSAPoolMockRecorder) RunRecheckHosts() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunRecheckHosts", reflect.TypeOf((*MockMultiShardTSAPool)(nil).RunRecheckHosts))
+}
+
 // SetRule mocks base method.
 func (m *MockMultiShardTSAPool) SetRule(rule *config.BackendRule) {
 	m.ctrl.T.Helper()

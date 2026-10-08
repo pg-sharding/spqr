@@ -7,6 +7,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -35,6 +36,16 @@ type LocalCheckResult struct {
 	Reason string
 }
 
+// HostRecheckResult is the new status of a rechecked host.
+type HostRecheckResult struct {
+	Tsa    tsa.TSA
+	Host   string
+	AZ     string
+	Alive  bool
+	Match  bool
+	Reason string
+}
+
 type DBPool struct {
 	pool    ShardHostsPool
 	tmgr    topology.TopologyMgr
@@ -48,6 +59,9 @@ type DBPool struct {
 
 	recheckTCP   bool
 	CheckTimeout time.Duration
+
+	// recheckMu serializes recheck runs.
+	recheckMu sync.Mutex
 
 	// Background health checking
 	healthCheckCtx    context.Context
@@ -104,29 +118,48 @@ func (s *DBPool) backgroundHealthCheckLoop() {
 	}
 }
 
+// RunRecheckHosts rechecks all failed hosts, ignoring the recheck interval.
+func (s *DBPool) RunRecheckHosts() []HostRecheckResult {
+	s.recheckMu.Lock()
+	defer s.recheckMu.Unlock()
+	return s.recheckFailedHostsLocked(0)
+}
+
 // recheckFailedHosts scans cache for failed hosts and rechecks them
-func (s *DBPool) recheckFailedHosts() {
+func (s *DBPool) recheckFailedHosts() []HostRecheckResult {
+	s.recheckMu.Lock()
+	defer s.recheckMu.Unlock()
+	return s.recheckFailedHostsLocked(s.deadCheckInterval)
+}
+
+// recheckFailedHostsLocked rechecks hosts unchecked for longer than interval
+// (0 disables the gate). Caller must hold recheckMu.
+func (s *DBPool) recheckFailedHostsLocked(recheckInterval time.Duration) []HostRecheckResult {
 	// Get all cache entries
 	cacheEntries := s.cache.GetAllCachedEntries()
-	recheckCount := 0
+	var results []HostRecheckResult
 
 	for tsaKey, entry := range cacheEntries {
 		// Only recheck dead hosts that haven't been checked recently
-		if !entry.Result.Alive && time.Since(entry.LastCheckTime) > s.deadCheckInterval {
-			s.recheckSingleHost(tsaKey, entry)
-			recheckCount++
+		if !entry.Result.Alive && time.Since(entry.LastCheckTime) > recheckInterval {
+			if res, ok := s.recheckSingleHost(tsaKey, entry); ok {
+				results = append(results, res)
+			}
 		}
 	}
 
-	if recheckCount > 0 {
+	if len(results) > 0 {
 		spqrlog.Zero.Debug().
-			Int("hosts_rechecked", recheckCount).
+			Int("hosts_rechecked", len(results)).
 			Msg("DBPool background health check completed")
 	}
+
+	return results
 }
 
-// recheckSingleHost performs health check on a specific host
-func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
+// recheckSingleHost health-checks a single host, returning its new status.
+// Returns false if the host could not be checked.
+func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) (HostRecheckResult, bool) {
 	// Find the shard that contains this host
 	var targetShard *topology.DataShard
 	var shardName string
@@ -149,7 +182,7 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 			Str("host", tsaKey.Host).
 			Str("az", tsaKey.AZ).
 			Msg("host not found in any shard during background check")
-		return
+		return HostRecheckResult{}, false
 	}
 
 	// Create a temporary shard instance for health checking
@@ -160,7 +193,14 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 			Str("az", tsaKey.AZ).
 			Err(err).
 			Msg("failed to create shard instance for background check")
-		return
+		res := HostRecheckResult{
+			Tsa:    tsaKey.Tsa,
+			Host:   tsaKey.Host,
+			AZ:     tsaKey.AZ,
+			Reason: err.Error(),
+		}
+		s.cache.MarkUnmatched(tsaKey.Tsa, tsaKey.Host, tsaKey.AZ, false, res.Reason)
+		return res, true
 	}
 	defer func() {
 		if err := s.pool.Put(shardInstance); err != nil {
@@ -172,6 +212,12 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 		}
 	}()
 
+	res := HostRecheckResult{
+		Tsa:  tsaKey.Tsa,
+		Host: tsaKey.Host,
+		AZ:   tsaKey.AZ,
+	}
+
 	// Perform TSA check using existing checker
 	tcr, err := s.checker.CheckTSA(shardInstance, tsa.DefaultTSATimeout)
 	if err != nil {
@@ -181,7 +227,9 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 			Str("tsa", string(tsaKey.Tsa)).
 			Err(err).
 			Msg("background health check failed")
-		return
+		res.Reason = err.Error()
+		s.cache.MarkUnmatched(tsaKey.Tsa, tsaKey.Host, tsaKey.AZ, false, res.Reason)
+		return res, true
 	}
 
 	// Determine if this is a match based on TSA requirements
@@ -194,6 +242,10 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 		s.cache.MarkUnmatched(tsaKey.Tsa, tsaKey.Host, tsaKey.AZ, tcr.CR.Alive, tcr.CR.Reason)
 	}
 
+	res.Alive = tcr.CR.Alive
+	res.Match = tcr.CR.Alive && isMatch
+	res.Reason = tcr.CR.Reason
+
 	// Log if host status changed
 	if oldEntry.Result.Alive != tcr.CR.Alive {
 		spqrlog.Zero.Info().
@@ -205,6 +257,8 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 			Str("reason", tcr.CR.Reason).
 			Msg("host status changed via DBPool background check")
 	}
+
+	return res, true
 }
 
 // createShardInstanceForHost creates a shard instance for a specific host
