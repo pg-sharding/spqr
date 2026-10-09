@@ -141,14 +141,13 @@ func (m *MultiShardServer) expandGangUtil(params pool.ConnAllocParams,
 	spqrlog.Zero.Debug().Uint("shard-id", sh.ID()).Msg("acquired gang member")
 
 	if deployTX {
-		retst, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
+		_, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
 			String: "BEGIN",
 		}, "multishard gang dispatch", txstatus.TXACT)
 
 		if err != nil {
+			_ = m.pool.Put(sh)
 			return err
-		} else if retst != txstatus.TXACT {
-			return fmt.Errorf("failed to expand transaction on shard")
 		}
 	}
 
