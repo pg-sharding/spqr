@@ -181,7 +181,7 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 //
 // Returns:
 // - error: an error if the operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard, force bool) error {
+func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard, force bool, apply bool) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
 		Bool("updateTopology", lc.updateTopology).
@@ -190,7 +190,7 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 	if lc.updateTopology {
 		lc.tmgr.AddShard(ds)
 	}
-	return lc.Coordinator.AddDataShard(ctx, ds, force)
+	return lc.Coordinator.AddDataShard(ctx, ds, force, apply)
 }
 
 func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {

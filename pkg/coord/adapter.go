@@ -610,7 +610,7 @@ func (a *Adapter) GetRouterMetadataHash(context.Context, *topology.Router) (uint
 //
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
-func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool, apply bool) error {
 	client := proto.NewShardServiceClient(a.conn)
 	protoShard, err := topology.DataShardToProto(shard, true)
 	if err != nil {
@@ -619,6 +619,7 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, f
 	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{
 		Shard: protoShard,
 		Force: force,
+		Apply: apply,
 	})
 	return spqrerror.CleanGrpcError(err)
 }

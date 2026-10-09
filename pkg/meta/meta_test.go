@@ -123,6 +123,7 @@ func TestCreateShardValidatesReachableHosts(t *testing.T) {
 		Id:      "sh-new",
 		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
 		Force:   true,
+		Apply:   true,
 	}
 
 	memqdb, err := prepareDB(ctx)
@@ -185,6 +186,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
 
 		Force: true,
+		Apply: true,
 	}
 
 	ctrl := gomock.NewController(t)
@@ -192,7 +194,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 
 	mngr := mockmgr.NewMockEntityMgr(ctrl)
 	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
-	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
+	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force, statement.Apply).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _, _ bool) error {
 		assert.Equal(t, "sh-new", shard.ID)
 		assert.Equal(t, []config.Host{config.Host{Address: listener.Addr().String()}}, shard.HostsAZ())
 		return nil
@@ -485,8 +487,8 @@ func TestApplyXRecords(t *testing.T) {
 		datashard := &topology.DataShard{
 			ID: "sh1",
 		}
-		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false).Times(1).Return(nil)
-		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
+		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false, true).Times(1).Return(nil)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false, true)
 		assert.NoError(err)
 
 		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
@@ -526,7 +528,7 @@ func TestApplyXRecords(t *testing.T) {
 
 		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
 		assert.Error(err)
-		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 3")
+		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 4")
 	})
 
 	t.Run("invalid xrecord - argument type mismatch", func(t *testing.T) {
@@ -542,7 +544,7 @@ func TestApplyXRecords(t *testing.T) {
 		datashard := &topology.DataShard{
 			ID: "sh1",
 		}
-		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1, false)
 		assert.NoError(err)
 
 		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)

@@ -105,7 +105,7 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 }
 
 // AddDataShard implements meta.EntityMgr.
-func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool, apply bool) error {
 	for _, opt := range shard.Options() {
 		if opt.Name == "host" {
 			if _, err := topology.ParseSingleHostSpec(opt.Arg); err != nil {
@@ -118,6 +118,10 @@ func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataSha
 		if err := lc.checkShardMigration(ctx, shard); err != nil {
 			return err
 		}
+	}
+
+	if !apply {
+		return nil
 	}
 
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))

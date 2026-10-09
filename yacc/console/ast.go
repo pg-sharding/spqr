@@ -153,6 +153,7 @@ type ShardDefinition struct {
 	Options []GenericOption
 
 	Force bool
+	Apply bool
 }
 
 type GenericOption struct {

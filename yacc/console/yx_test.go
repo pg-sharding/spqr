@@ -2107,6 +2107,7 @@ func TestShard(t *testing.T) {
 					Options: []spqrparser.GenericOption{
 						{Name: "host", Arg: "localhost:6432"},
 					},
+					Apply: true,
 				},
 			},
 			err: nil,
@@ -2120,6 +2121,7 @@ func TestShard(t *testing.T) {
 						{Name: "host", Arg: "localhost:6432"},
 						{Name: "host", Arg: "other_hosts:6432"},
 					},
+					Apply: true,
 				},
 			},
 			err: nil,
@@ -2134,6 +2136,7 @@ func TestShard(t *testing.T) {
 						{Name: "host", Arg: "other_hosts:6432"},
 					},
 					Force: true,
+					Apply: true,
 				},
 			},
 			err: nil,
@@ -2159,6 +2162,24 @@ func TestShard(t *testing.T) {
 						{Name: "key_file", Arg: "/key.pem"},
 						{Name: "root_cert_file", Arg: "/ca.pem"},
 					},
+					Apply: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: `CREATE SHARD sh1 OPTIONS (HOST "host1:6432", SSLMODE 'verify-full', CERT_FILE '/cert.pem', KEY_FILE '/key.pem', ROOT_CERT_FILE '/ca.pem') CHECK;`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id: "sh1",
+					Options: []spqrparser.GenericOption{
+						{Name: "host", Arg: "host1:6432"},
+						{Name: "sslmode", Arg: "verify-full"},
+						{Name: "cert_file", Arg: "/cert.pem"},
+						{Name: "key_file", Arg: "/key.pem"},
+						{Name: "root_cert_file", Arg: "/ca.pem"},
+					},
+					Apply: false,
 				},
 			},
 			err: nil,
