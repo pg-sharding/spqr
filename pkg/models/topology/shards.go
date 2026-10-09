@@ -125,7 +125,7 @@ type DataShard struct {
 }
 
 type ShardsMgr interface {
-	AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+	AddDataShard(ctx context.Context, shard *DataShard, force bool, apply bool) error
 	AddWorldShard(ctx context.Context, shard *DataShard) error
 	ListShards(ctx context.Context) ([]*DataShard, error)
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)

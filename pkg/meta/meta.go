@@ -762,7 +762,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force); err != nil {
+		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force, stmt.Apply); err != nil {
 			return nil, err
 		}
 

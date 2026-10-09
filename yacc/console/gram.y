@@ -326,6 +326,7 @@ func randomHex(n int) (string, error) {
 %type<options> options opt_options alter_generic_options generic_option_list alter_generic_option_list
 %type<option> generic_option_elem alter_generic_option_elem
 %type<bool> opt_force
+%type<str> opt_shard_name
 %type<bool> opt_if_not_exists opt_if_exists
 
 %type<statement> alter_sys_target
@@ -2092,30 +2093,39 @@ opt_custom_distr_range:
 	| /* nothing */ { $$ = nil }
 
 shard_define_stmt:
-	SHARD any_id opt_options opt_force
+	SHARD opt_shard_name opt_options opt_force
 	{
 		$$ = &ShardDefinition{
 			Id: $2,
 			Options: $3,
 			Force: $4,
+			Apply: true,
 		}
 	}
 	|
-	SHARD opt_options opt_force
+	SHARD opt_shard_name opt_options CHECK
+	{
+		$$ = &ShardDefinition{
+			Id: $2,
+			Options: $3,
+			Force: false,
+			Apply: false,
+		}
+	}	
+
+opt_force:
+	FORCE { $$ = true } | {$$ = false}
+
+opt_shard_name:
+	any_id { $$ = $1 }
+	|
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{
-			Id: "shard" + str,
-			Options: $2,
-			Force: $3,
-		}
+		$$ = "shard" + str
 	}
-
-opt_force:
-	FORCE { $$ = true } | {$$ = false}
 
 any_id_list:
 	any_val

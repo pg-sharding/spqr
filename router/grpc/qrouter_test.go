@@ -28,7 +28,7 @@ func TestAddDataShardPassesRequestToManager(t *testing.T) {
 	defer ctrl.Finish()
 
 	mgr := metaMock.NewMockEntityMgr(ctrl)
-	mgr.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), false).Times(1).Return(nil)
+	mgr.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), false, true).Times(1).Return(nil)
 
 	server := &LocalQrouterServer{
 		mgr: mgr,
@@ -41,6 +41,7 @@ func TestAddDataShardPassesRequestToManager(t *testing.T) {
 				{Name: "host", Value: "127.0.0.1"},
 			},
 		},
+		Apply: true,
 	})
 
 	assert.NoError(t, err)

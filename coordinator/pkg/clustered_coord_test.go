@@ -32,7 +32,7 @@ func TestClusteredCoordinatorAddDataShardStoresShardMetadata(t *testing.T) {
 	err = qc.AddDataShard(context.Background(), topology.DataShardFromConfig("sh-bad", &config.Shard{
 		RawHosts: []string{"127.0.0.1:1"},
 		Type:     config.DataShard,
-	}), true)
+	}), true, true)
 	assert.NoError(t, err)
 
 	sh, err := db.GetShard(context.Background(), "sh-bad")
