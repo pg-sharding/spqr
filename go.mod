@@ -22,7 +22,7 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/pg-sharding/lyx v0.0.0-20260901143418-c3643eda2fa5
 	github.com/rs/zerolog v1.35.1
-	github.com/sethvargo/go-retry v0.4.0
+	github.com/sethvargo/go-retry v0.5.0
 	github.com/sevlyar/go-daemon v0.1.7
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.10.2

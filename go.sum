@@ -170,8 +170,8 @@ github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7
 github.com/rs/zerolog v1.35.1 h1:m7xQeoiLIiV0BCEY4Hs+j2NG4Gp2o2KPKmhnnLiazKI=
 github.com/rs/zerolog v1.35.1/go.mod h1:EjML9kdfa/RMA7h/6z6pYmq1ykOuA8/mjWaEvGI+jcw=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/sethvargo/go-retry v0.4.0 h1:9qy1OoIAxBL+gBYnkTnTnWle5wlfsXQlwRzIbbpdqPw=
-github.com/sethvargo/go-retry v0.4.0/go.mod h1:tvsjdKG6xfiCx4LSiUZ06kcv38xvdVQwv8R6/VnnVWg=
+github.com/sethvargo/go-retry v0.5.0 h1:JYfFKmVJ8ER06GReN1efzc5cm52BrVsFVzmcHiKJwfY=
+github.com/sethvargo/go-retry v0.5.0/go.mod h1:tvsjdKG6xfiCx4LSiUZ06kcv38xvdVQwv8R6/VnnVWg=
 github.com/sevlyar/go-daemon v0.1.7 h1:+HAteQuzDBCMkU+re3e73PltoguwDBaRWEGJVGAX3VM=
 github.com/sevlyar/go-daemon v0.1.7/go.mod h1:XFAAg6dLmyBIYW7Gss91IQoNmbvZXAVdrXRP9u9AQu8=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
