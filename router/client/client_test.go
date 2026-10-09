@@ -1,11 +1,14 @@
 package client_test
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"go.uber.org/mock/gomock"
@@ -13,7 +16,61 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	mock_conn "github.com/pg-sharding/spqr/pkg/mock/conn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestSendErrorResponseHints(t *testing.T) {
+	originalConfig := *config.RouterConfig()
+	t.Cleanup(func() { *config.RouterConfig() = originalConfig })
+
+	for _, showHints := range []bool{true, false} {
+		for _, spqrError := range []bool{false, true} {
+			t.Run(fmt.Sprintf("show_hints=%t/spqr_error=%t", showHints, spqrError), func(t *testing.T) {
+				config.RouterConfig().ShowHints = showHints
+				ctrl := gomock.NewController(t)
+				rconn := mock_conn.NewMockRawConn(ctrl)
+				startup := &pgproto3.StartupMessage{
+					ProtocolVersion: pgproto3.ProtocolVersion30,
+					Parameters:      map[string]string{"user": "u", "database": "d"},
+				}
+				startupBytes, err := startup.Encode(nil)
+				require.NoError(t, err)
+				reader := bytes.NewReader(startupBytes)
+				rconn.EXPECT().Read(gomock.Any()).DoAndReturn(reader.Read).Times(2)
+				cl := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+				require.NoError(t, cl.Init(nil))
+
+				response := &pgproto3.ErrorResponse{
+					Severity: "ERROR", Code: spqrerror.SPQR_UNEXPECTED,
+					Message: "test error", Hint: "test hint", Detail: "test detail",
+					Position: 7, InternalQuery: "SELECT 1", Where: "test context",
+				}
+				original := *response
+				internalError := spqrerror.New(response.Code, response.Message).
+					Hint(response.Hint).Detail(response.Detail).Pos(response.Position).
+					Query(response.InternalQuery).Context(response.Where)
+				expected := original
+				if !showHints {
+					expected.Hint = ""
+				}
+				expectedBytes, err := expected.Encode(nil)
+				require.NoError(t, err)
+				rconn.EXPECT().Write(gomock.Any()).DoAndReturn(func(b []byte) (int, error) {
+					assert.Equal(t, expectedBytes, b)
+					return len(b), nil
+				}).Times(1)
+
+				if spqrError {
+					require.NoError(t, cl.ReplyErrMsgPure(internalError))
+				} else {
+					require.NoError(t, cl.Send(response))
+				}
+				assert.Equal(t, original, *response)
+				assert.Equal(t, original.Hint, internalError.ErrHint)
+			})
+		}
+	}
+}
 
 func TestCancel(t *testing.T) {
 	assert := assert.New(t)

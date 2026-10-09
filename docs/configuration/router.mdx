@@ -178,6 +178,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 |------------------|-------------------------------------------------------|--------------------|---------------------|--------------------|
 | `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | Yes | `false` |
 | `display_greeting` | Whether to display greeting message on client connection. | `true`, `false`    | No | `true` |
+| `show_hints` | Whether to send HINT fields in error responses to clients. Disabling this leaves hints in SPQR logs unchanged. | `true`, `false` | No | `true` |
 | `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | No | `"{shard}@{host}"` |
 | `pid_filename`   | The file name to store the process ID.                | Any valid filepath | No | (none) |
 | `log_filename`   | The file name for logging output.                     | Any valid filepath | No | (none) |

@@ -874,6 +874,13 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 		Type("msg-type", msg).
 		Msg("sending msg to client")
 
+	if errResponse, ok := msg.(*pgproto3.ErrorResponse); ok && !config.RouterConfig().ShowHints {
+		// Preserve the original error for logging and internal processing.
+		response := *errResponse
+		response.Hint = ""
+		msg = &response
+	}
+
 	cl.be.Send(msg)
 
 	switch msg.(type) {

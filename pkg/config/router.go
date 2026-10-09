@@ -68,6 +68,7 @@ type Router struct {
 
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
+	ShowHints          bool `json:"show_hints" toml:"show_hints" yaml:"show_hints"`
 
 	NoticeMessageFormat string `json:"notice_message_format" toml:"notice_message_format" yaml:"notice_message_format"`
 
@@ -155,6 +156,7 @@ var _ Config = &Router{}
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
+	r.ShowHints = true
 }
 
 func (r *Router) PostProcess() error {

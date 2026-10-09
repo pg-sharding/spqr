@@ -4,6 +4,7 @@ admin_console_port: '8433'
 grpc_api_port: '7001'
 
 world_shard_fallback: true
+show_hints: true
 
 workload_file: myworkloadlog.txt
 workload_batch_size: 500000
