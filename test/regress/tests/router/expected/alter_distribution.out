@@ -51,6 +51,7 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 
 ALTER DISTRIBUTION ds3 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  distribution "ds3" not found
+HINT:  Run 'SHOW distributions' to see all configured distributions.
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  relation "xx" is already attached
 \c regress

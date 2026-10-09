@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
@@ -259,19 +260,19 @@ func NewSequenceIdRange(left int64, right int64) (*SequenceIdRange, error) {
 	if left <= right {
 		return &SequenceIdRange{Left: left, Right: right}, nil
 	}
-	return nil, fmt.Errorf("invalid id range: start=%d > end=%d", left, right)
+	return nil, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "invalid id range: start=%d > end=%d", left, right)
 }
 
 func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, error) {
 	if rangeSize >= math.MaxInt64 {
-		return nil, fmt.Errorf("invalid (case 0) id-range request: current=%d, request for=%d", currentRight, rangeSize)
+		return nil, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "invalid (case 0) id-range request: current=%d, request for=%d", currentRight, rangeSize)
 	}
 	if rangeSize < 1 {
-		return nil, fmt.Errorf("invalid (case 1) id-range request: current=%d, request for=%d", currentRight, rangeSize)
+		return nil, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "invalid (case 1) id-range request: current=%d, request for=%d", currentRight, rangeSize)
 	}
 	newRight := currentRight + int64(rangeSize) - 1
 	if currentRight > newRight {
-		return nil, fmt.Errorf("invalid (case 2) id-range request: current=%d, request for=%d", currentRight, rangeSize)
+		return nil, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "invalid (case 2) id-range request: current=%d, request for=%d", currentRight, rangeSize)
 	}
 	return NewSequenceIdRange(currentRight, newRight)
 }
