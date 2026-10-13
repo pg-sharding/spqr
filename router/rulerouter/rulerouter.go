@@ -233,6 +233,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	cl := rclient.NewPsqlClient(conn,
 		pt,
 		config.RouterConfig().ShowNoticeMessages,
+		config.RouterConfig().ShowHints,
 		config.RouterConfig().Qr.DefaultTSA)
 
 	tlsConfig := r.tlsconfig

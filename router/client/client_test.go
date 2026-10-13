@@ -26,7 +26,8 @@ func TestSendErrorResponseHints(t *testing.T) {
 	for _, showHints := range []bool{true, false} {
 		for _, spqrError := range []bool{false, true} {
 			t.Run(fmt.Sprintf("show_hints=%t/spqr_error=%t", showHints, spqrError), func(t *testing.T) {
-				config.RouterConfig().ShowHints = showHints
+				// Client behavior must be independent of the global router config.
+				*config.RouterConfig() = config.Router{ShowHints: !showHints}
 				ctrl := gomock.NewController(t)
 				rconn := mock_conn.NewMockRawConn(ctrl)
 				startup := &pgproto3.StartupMessage{
@@ -37,7 +38,7 @@ func TestSendErrorResponseHints(t *testing.T) {
 				require.NoError(t, err)
 				reader := bytes.NewReader(startupBytes)
 				rconn.EXPECT().Read(gomock.Any()).DoAndReturn(reader.Read).Times(2)
-				cl := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+				cl := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, showHints, "")
 				require.NoError(t, cl.Init(nil))
 
 				response := &pgproto3.ErrorResponse{
@@ -101,7 +102,7 @@ func TestCancel(t *testing.T) {
 			return 12, nil
 		}).Times(1)
 
-	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, true, "")
 
 	err := client.Init(nil)
 	assert.Equal(uint32(7), client.CancelMsg().ProcessID)
@@ -161,7 +162,7 @@ func TestPeek(t *testing.T) {
 			return len(bytesQ2), nil
 		}).Times(1)
 
-	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, true, "")
 
 	err := client.Init(nil)
 	assert.NoError(err)
@@ -223,7 +224,7 @@ func TestNoGSSAPI(t *testing.T) {
 		return 4, nil
 	}).Times(1)
 
-	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, true, "")
 
 	err := client.Init(nil)
 	assert.Equal(exprErr, err)
