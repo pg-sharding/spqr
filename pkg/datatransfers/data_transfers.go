@@ -406,11 +406,9 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		_ = to.Close(ctx)
 	}()
 
-	if config.CoordinatorConfig().DataMoveOptimisticPIDAwait {
-		if err := awaitPIDsInternal(ctx, from); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to await virtual transactions before sync reference relation")
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
-		}
+	if err := awaitPIDs(ctx, from); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to await virtual transactions before sync reference relation")
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
 	}
 
 	for tx != nil {
@@ -429,7 +427,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 			// await running transactions to avoid data corruption
 			execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
 			defer cancel()
-			if err := awaitPIDsInternal(execCtx, from); err != nil {
+			if err := awaitPIDs(execCtx, from); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
 			tx.Status = qdb.AwaitedPIDs
