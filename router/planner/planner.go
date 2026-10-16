@@ -1203,6 +1203,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 		/* we only support reference relation here */
 
 		s := plan.Scan{}
+		var shs []kr.ShardKey
 		switch q := v.FromClause[0].(type) {
 		case *lyx.RangeVar:
 			s.Relation = q
@@ -1219,6 +1220,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 				return nil, err
 			} else if ds.ID() != distributions.REPLICATED {
 				return nil, rerrors.ErrComplexQuery
+			} else {
+				r, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+				if err != nil {
+					return nil, err
+				}
+
+				shs = r.ListStorageRoutes()
 			}
 		default:
 			return nil, rerrors.ErrComplexQuery
@@ -1229,6 +1237,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 		/* Todo: support grouping columns */
 		return &plan.ScatterPlan{
 			SubPlan: s,
+			ExecTargets: shs,
 		}, nil
 	case *lyx.Insert:
 		switch q := v.TableRef.(type) {

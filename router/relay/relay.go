@@ -394,7 +394,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 
 	switch v := queryPlan.(type) {
 	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowFilter:
-		spqrlog.Zero.Trace().Msgf("created plan %+v", queryPlan.ExecutionTargets())
+		spqrlog.Zero.Trace().Uint("client", rst.Client().ID()).Msgf("created plan %+v", queryPlan.ExecutionTargets())
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
