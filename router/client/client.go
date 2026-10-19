@@ -83,6 +83,7 @@ type PsqlClient struct {
 	cancelKey []byte
 
 	ReplyClientId bool
+	showHints     bool
 
 	rule *config.FrontendRule
 
@@ -192,7 +193,7 @@ func (cl *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessages bool, showHints bool, instanceDefaultTsa string) RouterClient {
 	var targetSessionAttrs string
 	if instanceDefaultTsa != "" {
 		targetSessionAttrs = instanceDefaultTsa
@@ -214,6 +215,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessag
 		startupMsg:          &pgproto3.StartupMessage{},
 		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash:       map[string]uint64{},
+
+		showHints: showHints,
 
 		icpChan: make(chan struct{}),
 
@@ -873,6 +876,13 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("sending msg to client")
+
+	if errResponse, ok := msg.(*pgproto3.ErrorResponse); ok && !cl.showHints {
+		// Preserve the original error for logging and internal processing.
+		response := *errResponse
+		response.Hint = ""
+		msg = &response
+	}
 
 	cl.be.Send(msg)
 
