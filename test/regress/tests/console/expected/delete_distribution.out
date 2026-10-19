@@ -38,6 +38,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id;
 -- drop non-existing one
 DROP DISTRIBUTION ds23223;
 ERROR:  distribution "ds23223" not found
+HINT:  Run 'SHOW distributions' to see all configured distributions.
 -- non-cascade drop with dependent key ranges
 DROP DISTRIBUTION ds1;
 ERROR:  cannot drop distribution ds1 because other objects depend on it
