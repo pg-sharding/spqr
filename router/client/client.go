@@ -429,8 +429,13 @@ func (cl *PsqlClient) ID() uint {
 // AllocParams implements [RouterClient].
 func (cl *PsqlClient) AllocParams() pool.ConnAllocParams {
 	params := pool.ConnAllocParams{
-		Clid: cl.ID(),
-		Tsa:  cl.GetTsa(),
+		Clid:        cl.ID(),
+		Tsa:         cl.GetTsa(),
+		ReplyNotice: cl.ReplyNotice,
+	}
+
+	if guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE); err == nil && guc.Get(cl) {
+		params.DoReport = true
 	}
 
 	if guc, err := cl.FindStrGUC(session.SPQR_EXECUTE_ON); err == nil &&
