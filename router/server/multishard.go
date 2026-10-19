@@ -679,18 +679,11 @@ func (m *MultiShardServer) Cleanup(rule *config.FrontendRule) error {
 	if m.TxStatus() == txstatus.TXIDLE {
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("multishard server tx status idle on cleanup")
 	}
-	if rule.PoolRollback {
-		if err := m.Send(&pgproto3.Query{
-			String: "ROLLBACK",
-		}); err != nil {
-			return err
-		}
-	}
-
-	if rule.PoolDiscard {
-		if err := m.Send(&pgproto3.Query{
-			String: "DISCARD ALL",
-		}); err != nil {
+	for _, shard := range m.activeShards {
+		spqrlog.Zero.Debug().
+			Msg("cleanup shard")
+		if err := shard.Cleanup(rule); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 	}
