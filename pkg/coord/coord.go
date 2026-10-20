@@ -106,6 +106,14 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+	for _, opt := range shard.Options() {
+		if opt.Name == "host" {
+			if _, err := topology.ParseSingleHostSpec(opt.Arg); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", opt.Arg)
+			}
+		}
+	}
+
 	if !force {
 		if err := lc.checkShardMigration(ctx, shard); err != nil {
 			return err

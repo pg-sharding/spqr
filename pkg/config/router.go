@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/yacc/hostspec"
 )
 
 type PoolMode string
@@ -281,6 +282,12 @@ func validateRouterConfig(cfg *Router) error {
 	for sh, shCfg := range cfg.ShardMapping {
 		if shCfg == nil {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)
+		}
+
+		for _, host := range shCfg.RawHosts {
+			if _, err := hostspec.Parse(host); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", host)
+			}
 		}
 	}
 	for _, rule := range cfg.BackendRules {

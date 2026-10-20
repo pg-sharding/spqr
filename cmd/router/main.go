@@ -449,8 +449,9 @@ var runCmd = &cobra.Command{
 
 		go func() {
 			for {
-				_ = <-errCh
+				err := <-errCh
 
+				spqrlog.Zero.Error().Err(err).Msg("exiting")
 				spqrlog.CloseLogger()
 
 				/* XXXX: be slightly tidier here*/
