@@ -191,6 +191,42 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `dbpool_cache_ttl`          | Time-to-live for database pool cache entries                              | Any valid duration (e.g., `30s`, `1m`) | `5m`    |
 | `dbpool_check_interval`     | Interval for checking database pool health and cleanup                    | Any valid duration (e.g., `30s`, `1m`) | `30s`   |
 | `dbpool_dead_check_interval`| Background health check interval for dead hosts (enables faster recovery) | Any valid duration (e.g., `15s`, `30s`) or a negative duration to disable | `15s` |
+| `dbpool_tsa_recheck_period` | Cache period for foreground target-session-attrs checks | Any valid duration | `1s` |
+| `dbpool_primary_check_interval` | Target interval for background discovery and verification of a writable host per route and shard; `0` disables monitoring | Duration >= `0` | `0` |
+| `dbpool_primary_check_timeout` | Total deadline for one probe, from worker start through DNS, TCP, TLS, authentication, and the SQL check | Duration > `0` | `2s` |
+| `dbpool_primary_check_concurrency` | Maximum simultaneous probe connections across the router, separate from application connection limits | Integer > `0` | `4` |
+
+Timeout and concurrency must be positive even when primary monitoring is disabled. An omitted setting uses its default; an explicitly configured zero timeout or concurrency is invalid. The existing dead-host check interval and foreground TSA cache period keep their meanings.
+
+Enable primary monitoring in YAML:
+
+```yaml
+dbpool_primary_check_interval: 5s
+dbpool_primary_check_timeout: 2s
+dbpool_primary_check_concurrency: 4
+```
+
+The equivalent TOML settings are:
+
+```toml
+dbpool_primary_check_interval = "5s"
+dbpool_primary_check_timeout = "2s"
+dbpool_primary_check_concurrency = 4
+```
+
+JSON duration values are integer nanoseconds, as for the other router duration settings:
+
+```json
+{
+  "dbpool_primary_check_interval": 5000000000,
+  "dbpool_primary_check_timeout": 2000000000,
+  "dbpool_primary_check_concurrency": 4
+}
+```
+
+Each probe opens and closes a fresh backend connection, so reserve capacity for up to `dbpool_primary_check_concurrency` additional database connections per router. These connections use the route's backend credentials and shard TLS settings, bypass application pool limits, and do not warm the application pool. Queueing for a probe worker is measured separately from the probe timeout.
+
+See [Multiple servers and failover](/features/multiple_servers_and_failover#background-primary-monitoring) for startup coverage, status inspection, failure behavior, and sizing.
 
 ## QDB Settings
 

@@ -31,6 +31,9 @@ const (
 	AdvisoryLockBehaviourScatter = AdvisoryLockBehaviour("SCATTER")
 	AdvisoryLockBehaviourDeploy  = AdvisoryLockBehaviour("DEPLOY")
 	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
+
+	DefaultDbpoolPrimaryCheckTimeout     = 2 * time.Second
+	DefaultDbpoolPrimaryCheckConcurrency = 4
 )
 
 var cfgRouter Router
@@ -92,12 +95,15 @@ type Router struct {
 
 	MultiDBPoolSize int `json:"multidb_pool_size" toml:"multidb_pool_size" yaml:"multidb_pool_size"`
 
-	DbpoolCacheTTL             time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
-	DbpoolCheckInterval        time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
-	DbpoolDeadCheckInterval    time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
-	DbpoolTSARecheckPeriod     time.Duration `json:"dbpool_tsa_recheck_period" toml:"dbpool_tsa_recheck_period" yaml:"dbpool_tsa_recheck_period"`
-	DbpoolAcquireRetryCount    int           `json:"dbpool_acquire_retry_count" toml:"dbpool_acquire_retry_count" yaml:"dbpool_acquire_retry_count"`
-	DefaultRecheckTCPAliveness bool          `json:"dbpool_recheck_tcp" toml:"dbpool_recheck_tcp" yaml:"dbpool_recheck_tcp"`
+	DbpoolCacheTTL                time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
+	DbpoolCheckInterval           time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
+	DbpoolDeadCheckInterval       time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
+	DbpoolTSARecheckPeriod        time.Duration `json:"dbpool_tsa_recheck_period" toml:"dbpool_tsa_recheck_period" yaml:"dbpool_tsa_recheck_period"`
+	DbpoolPrimaryCheckInterval    time.Duration `json:"dbpool_primary_check_interval" toml:"dbpool_primary_check_interval" yaml:"dbpool_primary_check_interval"`
+	DbpoolPrimaryCheckTimeout     time.Duration `json:"dbpool_primary_check_timeout" toml:"dbpool_primary_check_timeout" yaml:"dbpool_primary_check_timeout"`
+	DbpoolPrimaryCheckConcurrency int           `json:"dbpool_primary_check_concurrency" toml:"dbpool_primary_check_concurrency" yaml:"dbpool_primary_check_concurrency"`
+	DbpoolAcquireRetryCount       int           `json:"dbpool_acquire_retry_count" toml:"dbpool_acquire_retry_count" yaml:"dbpool_acquire_retry_count"`
+	DefaultRecheckTCPAliveness    bool          `json:"dbpool_recheck_tcp" toml:"dbpool_recheck_tcp" yaml:"dbpool_recheck_tcp"`
 
 	ClientPoolDeadCheckInterval time.Duration `json:"client_pool_dead_check_interval" toml:"client_pool_dead_check_interval" yaml:"client_pool_dead_check_interval"`
 
@@ -155,6 +161,9 @@ var _ Config = &Router{}
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
+	r.DbpoolPrimaryCheckInterval = 0
+	r.DbpoolPrimaryCheckTimeout = DefaultDbpoolPrimaryCheckTimeout
+	r.DbpoolPrimaryCheckConcurrency = DefaultDbpoolPrimaryCheckConcurrency
 }
 
 func (r *Router) PostProcess() error {
@@ -278,6 +287,15 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 //   - string: JSON-formatted config
 //   - error: an error if config is invalid, nil otherwise
 func validateRouterConfig(cfg *Router) error {
+	if cfg.DbpoolPrimaryCheckInterval < 0 {
+		return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "dbpool_primary_check_interval must not be negative")
+	}
+	if cfg.DbpoolPrimaryCheckTimeout <= 0 {
+		return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "dbpool_primary_check_timeout must be positive")
+	}
+	if cfg.DbpoolPrimaryCheckConcurrency <= 0 {
+		return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "dbpool_primary_check_concurrency must be positive")
+	}
 	for sh, shCfg := range cfg.ShardMapping {
 		if shCfg == nil {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)

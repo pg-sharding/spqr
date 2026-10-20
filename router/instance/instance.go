@@ -208,6 +208,12 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16, metricRegis
 
 	// request router
 	rr := rulerouter.NewRouter(topology.TopMgr, frTLS, config.RouterConfig(), notifier)
+	initialized := false
+	defer func() {
+		if !initialized {
+			_ = rr.Shutdown()
+		}
+	}()
 	lc := coord.NewLocalInstanceMetadataMgr(
 		db,
 		db,
@@ -252,6 +258,10 @@ func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16, metricRegis
 		Writer:     writ,
 		notifier:   notifier,
 	}
+	if err := metricRegistry.GetRegistry().Register(rr.PrimaryMonitorCollector()); err != nil {
+		return nil, fmt.Errorf("register primary monitor metrics: %w", err)
+	}
+	initialized = true
 
 	return r, nil
 }

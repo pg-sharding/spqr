@@ -2,11 +2,49 @@ package rulemgr
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestDefaultRulesKeepSettingsAtStartupAndReload(t *testing.T) {
+	frontend := &config.FrontendRule{
+		PoolDefault: true, SearchPath: "tenant", PoolMode: config.PoolModeTransaction,
+		AuthRule: &config.AuthCfg{Method: config.AuthOK}, PoolDiscard: true,
+		PoolRollback: true, PoolPreparedStatement: true,
+	}
+	backend := &config.BackendRule{
+		PoolDefault: true, DefaultAuthRule: &config.AuthBackendCfg{Password: "secret"},
+		AuthRules:       map[string]*config.AuthBackendCfg{"shard": {Usr: "backend-user"}},
+		ConnectionLimit: 7, ConnectionRetries: 3, ConnectionTimeout: 4 * time.Second,
+		ServerLifetime: time.Minute, KeepAlive: 5 * time.Second, TCPUserTimeout: 6 * time.Second,
+		DisableJitter: true,
+	}
+	key := *route.NewRouteKey("tenant-user", "tenant-db")
+	mgr := NewMgr([]*config.FrontendRule{frontend}, []*config.BackendRule{backend})
+	for _, phase := range []string{"startup", "reload"} {
+		t.Run(phase, func(t *testing.T) {
+			if phase == "reload" {
+				mgr.Reload([]*config.FrontendRule{frontend}, []*config.BackendRule{backend})
+			}
+			fr, err := mgr.MatchKeyFrontend(key)
+			require.NoError(t, err)
+			wantFrontend := *frontend
+			wantFrontend.Usr, wantFrontend.DB = key.Usr(), key.DB()
+			require.Equal(t, wantFrontend, *fr)
+			be, err := mgr.MatchKeyBackend(key)
+			require.NoError(t, err)
+			wantBackend := *backend
+			wantBackend.Usr, wantBackend.DB = key.Usr(), key.DB()
+			require.Equal(t, wantBackend, *be)
+			require.Empty(t, frontend.Usr)
+			require.Empty(t, backend.DB)
+		})
+	}
+}
 
 func TestParseRules(t *testing.T) {
 	tests := []struct {

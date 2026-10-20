@@ -1,6 +1,9 @@
 package spqrlog
 
-import "time"
+import (
+	"sync/atomic"
+	"time"
+)
 
 type StmtType string
 
@@ -14,22 +17,23 @@ const (
 var SLogger = NewStmtLogger(-1)
 
 type StmtLogger struct {
-	logMinDurationStatement time.Duration
+	logMinDurationStatement atomic.Int64
 }
 
 func NewStmtLogger(logMinDurationStatement time.Duration) *StmtLogger {
-	return &StmtLogger{
-		logMinDurationStatement: logMinDurationStatement,
-	}
+	logger := &StmtLogger{}
+	logger.logMinDurationStatement.Store(int64(logMinDurationStatement))
+	return logger
 }
 
 func ReloadSLogger(logMinDurationStatement time.Duration) {
-	SLogger = NewStmtLogger(logMinDurationStatement)
+	SLogger.logMinDurationStatement.Store(int64(logMinDurationStatement))
 }
 
 // TODO unit tests
 func (s *StmtLogger) shouldLogStatement(t time.Duration) bool {
-	return s.logMinDurationStatement != -1 && t > s.logMinDurationStatement
+	minimum := time.Duration(s.logMinDurationStatement.Load())
+	return minimum != -1 && t > minimum
 }
 
 func (s *StmtLogger) ReportStatement(typ StmtType, stmt string, t time.Duration) {

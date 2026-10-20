@@ -17,3 +17,78 @@ NOTICE: send query to shard(s) : sh1
 ## Availability zone preferences
 
 SPQR can prefer hosts in the router's availability zone and fall back to other zones when no suitable local host is available. See [Availability Zone Settings](/configuration/router#availability-zone-settings) for configuration details and an example.
+
+## Background primary monitoring
+
+Set [`dbpool_primary_check_interval`](/configuration/router#dbpool-settings) to a positive duration to discover and verify writable candidates independently of application queries. It defaults to `0`, which disables this feature. A primary is a host for which `SHOW transaction_read_only` returns `off`; SPQR does not elect or promote PostgreSQL servers.
+
+At startup, the router starts discovery for configured, concrete user/database routes with matching frontend and backend rules. A default rule cannot enumerate future users or databases: a route created from default rules starts monitoring after its concrete identity is first resolved and its backend rule is installed. Health observations are scoped to that route, shard, host, and availability zone, so authentication failures for one route do not replace another route's state.
+
+Discovery uses the configured host preferences, including availability zones. After it finds a writable candidate, the router checks that candidate periodically with a real SQL query, regardless of the foreground TSA cache period. An unreachable or read-only candidate triggers a search of the shard's configured alternatives. When no candidate is writable, failures remain visible and discovery repeats automatically. Foreground failures can request an early check; repeated requests are coalesced.
+
+The interval is a target cadence with jitter. Checks for separate shards share a router-wide worker budget, so a busy queue can delay a check. The probe timeout begins when a worker starts the probe and covers its entire connection establishment and SQL exchange. Each probe closes its connection when it finishes, fails, times out, or is canceled. Removed routes and obsolete topology cancel their checks and discard old results.
+
+Applications continue to acquire connections with foreground TSA checks and candidate fallback. They do not wait for background monitoring jobs. A recent successful observation cannot guarantee that a later connection will succeed. Monitoring does not replay application queries and does not change the router's readiness policy.
+
+### Inspecting results and failures
+
+Use the router's admin console to inspect its local observations:
+
+```sql
+SHOW HOSTS;
+SHOW tsa_cache;
+```
+
+Accepted background results update reachability, read-write status, and observation time, including failed checks. Healthy replicas may remain unknown if discovery stops after finding a primary and application traffic has not checked them. These are router-local observations; coordinator aggregation is outside this feature.
+
+State transition logs include the route, shard, host, failure stage, and reason. If an application cannot find a suitable primary, its error includes host connection-acquisition failures to help distinguish network, TLS, and authentication problems from a read-only server. The existing `__spqr__run_recheck_hosts()` function retains its arguments, result columns, and failed-host scope; it is not a command to discover every unchecked host.
+
+[Probe metrics](/features/metrics#primary-monitoring) expose outcomes, duration, queue delay, and the time of the most recent successful writable check. Investigate growing queue delay before reducing the interval or increasing the timeout.
+
+### Connection budget and operating limits
+
+Probes use fresh connections with backend authentication and TLS. They consume up to `dbpool_primary_check_concurrency` additional connections per router, outside the configured application `connection_limit`; reserve this capacity on PostgreSQL and in network connection limits. A saturated application pool does not consume probe worker slots. Fresh probes verify new connection establishment but do not prefill application pools.
+
+For `R` resolved routes, `S` shards per route, and interval `I` seconds, a healthy deployment normally needs about `R × S / I` new probe connections per second per router. Discovery after startup or failure can check every configured candidate, increasing connection churn. With `H` candidates per shard, one full discovery sweep can use `R × S × H` connections. The concurrency limit bounds simultaneous connections, not the number of connections opened per second.
+
+For example, at a five-second interval:
+
+| Resolved routes | Shards per route | Healthy probe connection rate per router | Connections in a full three-candidate discovery sweep |
+| --- | --- | --- | --- |
+| 1 | 16 | About 3.2/s | Up to 48 |
+| 10 | 16 | About 32/s | Up to 480 |
+| 100 | 32 | About 640/s | Up to 9,600 |
+
+These are capacity estimates, not measured throughput. Actual rates depend on probe latency, jitter, early failure checks, and queueing. With a two-second timeout and four workers, four stalled probes occupy the whole worker budget for up to two seconds; 32 stalled probes need roughly 16 seconds of worker time. Increase the interval, concurrency, or backend capacity according to observed scheduling delay and connection churn.
+
+If a shard has only one configured address, recovery requires that address to reach a writable server again. Discovering a different primary requires additional configured candidates or an endpoint that directs new connections to the current primary. Monitoring cannot make an unavailable host writable and does not continuously check every healthy replica.
+
+### Measured connection overhead
+
+`BenchmarkPrimaryMonitorFreshConnections` measures one initial discovery sweep with four workers and one writable host per shard. Every probe uses a fresh loopback TCP connection, PostgreSQL startup messages, and a TSA query against a small protocol responder. The measurement includes router scheduling, accepted observations, and metric publication. It excludes PostgreSQL server work, TLS, and password authentication; logging is disabled. Allocated bytes include both the router and responder and measure allocation volume rather than retained memory.
+
+One run on an Apple M3 Pro, macOS/arm64, Go 1.26 produced:
+
+| Resolved routes | Shards per route | Fresh connections per sweep | Sweep duration | Connections per second | Allocated bytes per target |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 16 | 16 | 3.16 ms | 4,967 | 33,102 |
+| 10 | 16 | 160 | 23.24 ms | 6,867 | 31,542 |
+| 100 | 32 | 3,200 | 519.38 ms | 6,161 | 31,772 |
+
+All sizes reached a peak of four in-flight probes and used five monitor goroutines: four workers and one scheduler. These are local discovery-throughput measurements, not a production connection-rate guarantee. Actual PostgreSQL startup, authentication, TLS, and network latency require additional capacity and should be measured in the deployment environment before considering persistent probe sessions.
+
+Reproduce the measurement with:
+
+```sh
+go test -mod=mod ./pkg/pool -run '^$' -bench BenchmarkPrimaryMonitorFreshConnections -benchtime=1x -benchmem
+```
+
+### Reproducing integration coverage
+
+The PostgreSQL integration test creates two temporary clusters and demonstrates startup discovery, periodic checks, writable-role changes, complete outage, and recovery while both application host pools remain at their connection limit. It uses `default_transaction_read_only` to change writability according to SPQR's TSA definition; it does not set up physical replication. The test passed against PostgreSQL 14.17 on macOS in about two seconds, including a run with Go's race detector.
+
+```sh
+go test -mod=mod ./pkg/pool -run TestPrimaryMonitorPostgresIdleFailover -count=1 -v
+```
+
+The test requires `initdb` and `pg_ctl` on `PATH`, or `PG_BINDIR` pointing to their directory, and permission to create temporary files and listen on loopback TCP ports. It skips when the tools are missing, when run as root, or with `-short`. It owns and removes its temporary database clusters and does not connect to an existing database.

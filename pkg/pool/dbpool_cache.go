@@ -122,7 +122,22 @@ func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalC
 
 	value, exists := c.cache.Load(key)
 	if !exists {
-		return LocalCheckResult{}, false
+		// The public host-only view aggregates scoped entries for compatibility.
+		var newest CachedEntry
+		c.cache.Range(func(rawKey, rawValue any) bool {
+			candidate := rawKey.(TsaKey)
+			if candidate.Tsa == targetSessionAttrs && candidate.Host == host && candidate.AZ == az {
+				entry := rawValue.(CachedEntry)
+				if newest.LastCheckTime.Before(entry.LastCheckTime) {
+					newest = entry
+				}
+			}
+			return true
+		})
+		if newest.LastCheckTime.IsZero() || time.Since(newest.LastCheckTime) > c.cacheTTL {
+			return LocalCheckResult{}, false
+		}
+		return newest.Result, true
 	}
 
 	entry, ok := value.(CachedEntry)

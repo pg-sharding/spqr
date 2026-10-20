@@ -9,6 +9,12 @@ workload_file: myworkloadlog.txt
 workload_batch_size: 500000
 
 router_mode: PROXY
+# Set the interval to 5s to discover and verify writable hosts while idle.
+# Monitoring uses up to 4 extra backend connections, outside application pools.
+dbpool_primary_check_interval: 0s
+dbpool_primary_check_timeout: 2s
+dbpool_primary_check_concurrency: 4
+
 time_quantiles:
   - 0.5
   - 0.9

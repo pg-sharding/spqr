@@ -25,9 +25,10 @@ import (
 )
 
 type TsaKey struct {
-	Tsa  tsa.TSA
-	Host string
-	AZ   string
+	Shard string
+	Tsa   tsa.TSA
+	Host  string
+	AZ    string
 }
 
 type LocalCheckResult struct {
@@ -63,10 +64,24 @@ type DBPool struct {
 	// recheckMu serializes recheck runs.
 	recheckMu sync.Mutex
 
+	backgroundMu sync.Mutex
+	backgroundWG sync.WaitGroup
 	// Background health checking
 	healthCheckCtx    context.Context
 	healthCheckCancel context.CancelFunc
 	deadCheckInterval time.Duration
+
+	observationMu      sync.Mutex
+	monitor            *PrimaryMonitor
+	monitorDisabled    bool
+	backendRule        *config.BackendRule
+	startupParams      *startup.StartupParams
+	generation         uint64
+	shardGenerations   map[string]uint64
+	attemptSequence    uint64
+	attempts           map[hostIdentity]uint64
+	observations       map[hostIdentity]tsa.CachedCheckResult
+	observationsClosed bool
 }
 
 type AcquireHostKind int
@@ -79,7 +94,9 @@ const (
 
 // StartBackgroundHealthCheck starts background health checking for failed hosts
 func (s *DBPool) StartBackgroundHealthCheck() {
-	if s.deadCheckInterval <= 0 {
+	s.backgroundMu.Lock()
+	defer s.backgroundMu.Unlock()
+	if s.deadCheckInterval <= 0 || s.healthCheckCancel != nil || s.monitorDisabled {
 		return // Disabled
 	}
 
@@ -88,17 +105,19 @@ func (s *DBPool) StartBackgroundHealthCheck() {
 	s.healthCheckCancel = cancel
 	s.healthCheckCtx = ctx
 
-	go s.backgroundHealthCheckLoop()
+	s.backgroundWG.Add(1)
+	go s.backgroundHealthCheckLoop(ctx)
 }
 
 // backgroundHealthCheckLoop runs the background health checking
-func (s *DBPool) backgroundHealthCheckLoop() {
+func (s *DBPool) backgroundHealthCheckLoop(ctx context.Context) {
+	defer s.backgroundWG.Done()
 	ticker := time.NewTicker(s.deadCheckInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.healthCheckCtx.Done():
+		case <-ctx.Done():
 			spqrlog.Zero.Info().Msg("DBPool background health check stopped")
 			return
 		case <-ticker.C:
@@ -137,6 +156,16 @@ func (s *DBPool) recheckFailedHosts() []HostRecheckResult {
 func (s *DBPool) recheckFailedHostsLocked(recheckInterval time.Duration) []HostRecheckResult {
 	// Get all cache entries
 	cacheEntries := s.cache.GetAllCachedEntries()
+	s.observationMu.Lock()
+	monitor := s.monitor
+	closed := s.observationsClosed
+	s.observationMu.Unlock()
+	if closed {
+		return nil
+	}
+	if monitor != nil {
+		return s.recheckMonitoredHosts(monitor, cacheEntries, recheckInterval)
+	}
 	var results []HostRecheckResult
 
 	for tsaKey, entry := range cacheEntries {
@@ -294,18 +323,31 @@ func (s *DBPool) evaluateTSAMatch(cr tsa.CheckResult, requiredTSA tsa.TSA) bool 
 
 // StopBackgroundHealthCheck stops the background health checking
 func (s *DBPool) StopBackgroundHealthCheck() {
+	s.backgroundMu.Lock()
 	if s.healthCheckCancel != nil {
 		s.healthCheckCancel()
 	}
+	s.backgroundMu.Unlock()
+	s.backgroundWG.Wait()
 }
 
 // InstanceHealthChecks implements MultiShardTSAPool.
 func (s *DBPool) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
-	return s.checker.InstanceHealthChecks()
+	s.observationMu.Lock()
+	defer s.observationMu.Unlock()
+	snapshot := map[string]tsa.CachedCheckResult{}
+	for id, value := range s.observations {
+		if old, ok := snapshot[id.host]; !ok || old.LastCheckTime.Before(value.LastCheckTime) {
+			snapshot[id.host] = value
+		}
+	}
+	return snapshot
 }
 
 // TsaCacheEntries implements MultiShardTSAPool.
 func (s *DBPool) TsaCacheEntries() map[TsaKey]CachedEntry {
+	s.observationMu.Lock()
+	defer s.observationMu.Unlock()
 	return s.cache.GetAllCachedEntries()
 }
 
@@ -338,7 +380,7 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 //   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
 //
 // TODO : unit tests
-func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, cb func(shard.ShardHostInstance) bool) shard.ShardHostInstance {
+func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, cb func(shard.ShardHostInstance) bool, hostToReason map[string]string) shard.ShardHostInstance {
 	for _, host := range hosts {
 
 		/* skip	hosts whose hostname does not match the filter. */
@@ -359,10 +401,14 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 		var err error
 
 		for retry := 0; retry < s.AcquireRetryCount; retry++ {
+			token := s.newObservation(key.Name, host, false)
+			token.required = params.Tsa
 			sh, err = s.pool.ConnectionHost(params.Clid, key, host)
 			if err != nil {
 
-				s.cache.MarkUnmatched(params.Tsa, host.Address, host.AZ, false, err.Error())
+				hostToReason[host.Address] = err.Error()
+				s.publishObservation(token, tsa.CheckResult{Reason: err.Error()}, "acquire", token.started)
+				s.requestPrimaryCheck(key.Name)
 
 				spqrlog.Zero.Debug().
 					Err(err).
@@ -390,8 +436,13 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 					Uint("client", params.Clid).
 					Int("retry", retry).
 					Msg("rechecking connection unsuccessful, dropping")
-				if err := s.pool.Discard(sh); err != nil {
-					/* Uhh, this may be fatal.. */
+				hostToReason[host.Address] = "TCP aliveness check failed"
+				s.publishObservation(token, tsa.CheckResult{Reason: hostToReason[host.Address]}, "connection", token.started)
+				s.requestPrimaryCheck(key.Name)
+				discardErr := s.pool.Discard(sh)
+				sh = nil
+				if discardErr != nil {
+					hostToReason[host.Address] = discardErr.Error()
 					return nil
 				}
 			}
@@ -445,50 +496,49 @@ func (s *DBPool) selectReadWriteShardHost(params ConnAllocParams, key kr.ShardKe
 func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, kind AcquireHostKind) (shard.ShardHostInstance, error) {
 	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(params, key, hosts, func(shard shard.ShardHostInstance) bool {
+		host := config.Host{Address: shard.Instance().Hostname(), AZ: shard.Instance().AvailabilityZone()}
 		if kind == AcquireHostKindANY {
-			s.cache.MarkMatched(params.Tsa,
-				shard.Instance().Hostname(),
-				shard.Instance().AvailabilityZone(),
-				true, "target session attrs any")
+			s.cache.MarkMatched(params.Tsa, host.Address, host.AZ, true, "target session attrs any")
 			return true
 		}
-
-		tcr, err := s.checker.CheckTSA(shard, s.CheckTimeout)
-		good := tcr.CR.RW == (kind == AcquireHostKindRW)
-
+		tcr, cached := s.checker.CachedScoped(key.Name, host.Address, host.AZ)
+		// A successful acquisition can recover an unavailable endpoint immediately.
+		// Verify it on the wire instead of reusing an earlier connection failure.
+		if cached && !tcr.CR.Alive {
+			cached = false
+		}
+		var err error
+		if !cached {
+			token := s.beginObservation(key.Name, host)
+			token.required = params.Tsa
+			tcr, err = s.checker.CheckTSAUncached(shard, s.CheckTimeout)
+			if err != nil && tcr.LastCheckTime.IsZero() {
+				tcr.LastCheckTime = token.started
+			}
+			token.matchOverride = true
+			token.requiredMatch = tcr.CR.RW == (kind == AcquireHostKindRW)
+			s.publishObservation(token, tcr.CR, tcr.FailureStage, tcr.LastCheckTime)
+		} else {
+			s.seedTSA(key.Name, host, params.Tsa, tcr, tcr.CR.RW == (kind == AcquireHostKindRW))
+			if !tcr.CR.Alive {
+				err = fmt.Errorf("%s", tcr.CR.Reason)
+			}
+		}
+		good := tcr.CR.Alive && tcr.CR.RW == (kind == AcquireHostKindRW)
 		if err != nil {
-			hostToReason[shard.Instance().Hostname()] = err.Error()
+			hostToReason[host.Address] = err.Error()
+			s.requestPrimaryCheck(key.Name)
 			_ = s.pool.Discard(shard)
-
-			s.cache.MarkUnmatched(params.Tsa,
-				shard.Instance().Hostname(),
-				shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
-
 			return false
 		}
-
 		if good {
-			s.cache.MarkMatched(params.Tsa,
-				shard.Instance().Hostname(),
-				shard.Instance().AvailabilityZone(),
-				tcr.CR.Alive, tcr.CR.Reason)
-		} else {
-			s.cache.MarkUnmatched(params.Tsa,
-				shard.Instance().Hostname(),
-				shard.Instance().AvailabilityZone(),
-				tcr.CR.Alive, tcr.CR.Reason)
-		}
-
-		if tcr.CR.Alive && good {
 			return true
 		}
-
-		// Host is not suitable
-		hostToReason[shard.Instance().Hostname()] = tcr.CR.Reason
+		hostToReason[host.Address] = tcr.CR.Reason
+		s.requestPrimaryCheck(key.Name)
 		_ = s.Put(shard)
 		return false
-
-	})
+	}, hostToReason)
 	if sh != nil {
 		return sh, nil
 	}
@@ -498,6 +548,10 @@ func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts 
 		messages = append(messages, fmt.Sprintf("host %s: %s", host, reason))
 	}
 
+	sort.Strings(messages)
+	if len(messages) == 0 {
+		messages = append(messages, "no eligible configured hosts")
+	}
 	roleType := "replica"
 	if kind == AcquireHostKindRW {
 		roleType = "primary"
@@ -600,7 +654,7 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 			deadCache = append(deadCache, host)
 			continue
 		}
-		cr, ok := s.cache.Match(targetSessionAttrs, host.Address, host.AZ)
+		cr, ok := s.cache.matchShard(key.Name, targetSessionAttrs, host.Address, host.AZ)
 		if ok {
 			if !cr.Alive {
 				deadCache = append(deadCache, host)
@@ -663,6 +717,10 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 //   - rule: A pointer to a BackendRule representing the backend rule to be initialized.
 func (s *DBPool) SetRule(rule *config.BackendRule) {
 	s.pool.SetRule(rule)
+	s.observationMu.Lock()
+	s.backendRule = rule
+	s.observationMu.Unlock()
+	s.StartBackgroundHealthCheck()
 }
 
 // ShardMapping returns the shard mapping of the instance pool.
@@ -750,6 +808,12 @@ func (s *DBPool) Cache() *DbpoolCache {
 
 // StopCacheWatchdog stops the cache cleanup goroutine and background health checking
 func (s *DBPool) StopCacheWatchdog() {
+	s.observationMu.Lock()
+	monitor := s.monitor
+	s.observationMu.Unlock()
+	if monitor != nil {
+		monitor.Unregister(s)
+	}
 	s.cache.StopWatchdog()
 	s.StopBackgroundHealthCheck()
 }
@@ -788,11 +852,16 @@ func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, 
 			return nil, err
 		}
 
-		return datashard.NewShardHostInstance(shardKey, pgi, shardConfig, rule, startupParams)
+		instance, err := datashard.NewShardHostInstance(shardKey, pgi, shardConfig, rule, startupParams)
+		if err != nil {
+			_ = pgi.Close()
+		}
+		return instance, err
 	}
 
 	dbPool := &DBPool{
 		pool:              NewPool(allocator),
+		startupParams:     startupParams,
 		tmgr:              tmgr,
 		ShuffleHosts:      true,
 		PreferAZ:          preferAZ,
@@ -805,9 +874,6 @@ func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, 
 	}
 
 	dbPool.cache = NewDbpoolCacheWithCleanup(hostCheckTTL, hostCheckInterval)
-
-	// Start background health checking if enabled
-	dbPool.StartBackgroundHealthCheck()
 
 	return dbPool
 }
@@ -824,5 +890,8 @@ func NewDBPool(tmgr topology.TopologyMgr, startupParams *startup.StartupParams, 
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
 func NewDBPoolWithDisabledFeatures(tmgr topology.TopologyMgr) MultiShardTSAPool {
-	return NewDBPool(tmgr, &startup.StartupParams{}, "", time.Duration(0), time.Duration(0))
+	p := NewDBPool(tmgr, &startup.StartupParams{}, "", time.Duration(0), time.Duration(0)).(*DBPool)
+	p.StopBackgroundHealthCheck()
+	p.monitorDisabled = true
+	return p
 }

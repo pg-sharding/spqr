@@ -14,6 +14,8 @@ type CheckResult struct {
 }
 
 type CachedCheckResult struct {
-	CR            CheckResult
-	LastCheckTime time.Time
+	CR              CheckResult
+	LastCheckTime   time.Time
+	LastSuccessTime time.Time
+	FailureStage    string
 }

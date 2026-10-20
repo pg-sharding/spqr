@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/router_util"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -58,6 +59,10 @@ type RuleRouterImpl struct {
 
 	rcfg *config.Router
 
+	// Keep rule resolution and route creation in the same reload generation.
+	rulesMu   sync.RWMutex
+	routePool *RoutePoolImpl
+
 	clmp sync.Map
 
 	notifier *notifier.Notifier
@@ -72,6 +77,10 @@ type RuleRouterImpl struct {
 
 	InstanceStartTime time.Time
 	LastReload        time.Time
+}
+
+func (r *RuleRouterImpl) PrimaryMonitorCollector() prometheus.Collector {
+	return r.routePool
 }
 
 // LastReloadTime implements [RuleRouter].
@@ -111,7 +120,7 @@ func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult
 		m := r.MultiShardPool().InstanceHealthChecks()
 		for k, v := range m {
 			// we are interested in most recent check
-			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
+			if v2, ok := rt[k]; !ok || v.LastCheckTime.After(v2.LastCheckTime) {
 				rt[k] = v
 			}
 		}
@@ -173,6 +182,8 @@ func (r *RuleRouterImpl) FailedInitCount() int64 {
 
 // TODO : unit tests
 func (r *RuleRouterImpl) Reload(configPath string) error {
+	r.rulesMu.Lock()
+	defer r.rulesMu.Unlock()
 	/*
 			* Reload config changes:
 			* While reloading router config we need
@@ -197,6 +208,9 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	router_util.ReloadRotateLog()
 
 	r.rmgr.Reload(rcfg.FrontendRules, rcfg.BackendRules)
+	r.rcfg = rcfg
+	previousKeys := r.routePool.reconfigure(topology.TopMgr, rcfg)
+	r.initializeConfiguredRoutes(previousKeys)
 
 	if r.notifier != nil {
 		if err = r.notifier.Ready(); err != nil {
@@ -221,8 +235,10 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 }
 
 func NewRouter(tmgr topology.TopologyMgr, tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
-	return &RuleRouterImpl{
-		RoutePool: NewRouterPoolImpl(tmgr),
+	routePool := NewRouterPoolImpl(tmgr, rcfg)
+	r := &RuleRouterImpl{
+		RoutePool: routePool,
+		routePool: routePool,
 		rcfg:      rcfg,
 		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,
@@ -233,6 +249,61 @@ func NewRouter(tmgr topology.TopologyMgr, tlsconfig *tls.Config, rcfg *config.Ro
 		LastReload:        time.Now(),
 		initSem:           *semaphore.NewWeighted(config.ValueOrDefaultInt64(rcfg.ClientInitMax, defaultInstanceClientInitMax)),
 	}
+	r.initializeConfiguredRoutes(nil)
+	return r
+}
+
+// initializeConfiguredRoutes discovers concrete identities from either side of
+// the rule configuration, including matches supplied by a default rule. Default
+// rules alone have no concrete identity and are registered on first resolution.
+func (r *RuleRouterImpl) initializeConfiguredRoutes(previousKeys []route.Key) {
+	if r.rcfg.DbpoolPrimaryCheckInterval <= 0 {
+		return
+	}
+	keys := make(map[route.Key]struct{}, len(previousKeys))
+	for _, key := range previousKeys {
+		keys[key] = struct{}{}
+	}
+	for _, rule := range r.rcfg.FrontendRules {
+		if !rule.PoolDefault && rule.Usr != "" && rule.DB != "" && rule.DB != "spqr-console" && rule.DB != "spqr-ping" {
+			keys[*route.NewRouteKey(rule.Usr, rule.DB)] = struct{}{}
+		}
+	}
+	for _, rule := range r.rcfg.BackendRules {
+		if !rule.PoolDefault && rule.Usr != "" && rule.DB != "" && rule.DB != "spqr-console" && rule.DB != "spqr-ping" {
+			keys[*route.NewRouteKey(rule.Usr, rule.DB)] = struct{}{}
+		}
+	}
+	for key := range keys {
+		frRule, err := r.rmgr.MatchKeyFrontend(key)
+		if err != nil {
+			continue
+		}
+		beRule, err := r.rmgr.MatchKeyBackend(key)
+		if err != nil {
+			continue
+		}
+		if _, err := r.MatchRoute(key, beRule, frRule); err != nil {
+			spqrlog.Zero.Error().Err(err).Str("user", key.Usr()).Str("db", key.DB()).Msg("initialize primary monitoring route")
+		}
+	}
+}
+
+// resolveRoute holds the rule snapshot until the pool has installed the matched
+// backend configuration and registered the resulting route with its monitor.
+func (r *RuleRouterImpl) resolveRoute(key route.Key) (*route.Route, *config.FrontendRule, error) {
+	r.rulesMu.RLock()
+	defer r.rulesMu.RUnlock()
+	frRule, err := r.rmgr.MatchKeyFrontend(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	beRule, err := r.rmgr.MatchKeyBackend(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	rt, err := r.MatchRoute(key, beRule, frRule)
+	return rt, frRule, err
 }
 
 // TODO : unit tests
@@ -286,22 +357,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	// match client to frontend rule
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
-	frRule, err := r.rmgr.MatchKeyFrontend(key)
-	if err != nil {
-		for _, msg := range []pgproto3.BackendMessage{
-			&pgproto3.ErrorResponse{
-				Severity: "ERROR",
-				Message:  err.Error(),
-			},
-		} {
-			if err := cl.Send(msg); err != nil {
-				return nil, fmt.Errorf("failed to make route failure response: %w", err)
-			}
-		}
-		return nil, err
-	}
-
-	beRule, err := r.rmgr.MatchKeyBackend(key)
+	rt, frRule, err := r.resolveRoute(key)
 	if err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
@@ -317,11 +373,6 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	_ = cl.AssignRule(frRule)
-
-	rt, err := r.MatchRoute(key, beRule, frRule)
-	if err != nil {
-		return nil, err
-	}
 
 	if err := cl.Auth(rt); err != nil {
 		r.clientAuthFailCount.Add(1)
@@ -349,7 +400,9 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 // TODO : unit tests
 func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error) {
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
+	r.rulesMu.RLock()
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
+	r.rulesMu.RUnlock()
 	if err != nil {
 		_ = cl.ReplyErr(err)
 		return nil, err

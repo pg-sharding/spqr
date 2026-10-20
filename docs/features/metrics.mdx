@@ -18,3 +18,16 @@ Exporter HTTP-endpoint can be enabled by `use_metrics` router configuration para
 | `spqr_canceled_requests_total`              | Counter        | Number of requests canceled from client side         | []          |
 | `spqr_client_init_fail_count_total`         | Counter        | Failed client connection initialisation count        | []          |
 | `spqr_client_auth_fail_count_total`         | Counter        | Failed client connection authentication count        | []          |
+
+## Primary monitoring
+
+With [background primary monitoring](/features/multiple_servers_and_failover#background-primary-monitoring) enabled, the router exports probe outcomes and timing alongside its other metrics:
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `spqr_primary_probe_total` | Counter | Probe attempts, separated by outcome: `writable`, `read_only`, or `failure`. |
+| `spqr_primary_probe_duration_seconds` | Histogram | Time spent establishing a fresh connection and executing its TSA check. |
+| `spqr_primary_probe_scheduling_delay_seconds` | Histogram | Time a scheduled probe waits for an available worker. |
+| `spqr_primary_last_success_timestamp_seconds` | Gauge | Unix timestamp of the last accepted successful writable check; `0` before the first success. |
+
+All four metrics have `user`, `database`, and `shard` labels. The probe counter also has an `outcome` label. Use `time() - spqr_primary_last_success_timestamp_seconds` to observe the age of the last successful writable check, treating a timestamp of `0` as never successfully checked. A failure does not refresh that timestamp. Check scheduling delay alongside age: an interval shorter than the available worker capacity can create overdue work even when individual probes meet their timeout. Metric state associated with a removed monitoring target is removed with that target.

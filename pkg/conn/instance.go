@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -52,7 +53,8 @@ type PostgreSQLInstance struct {
 	shardname string
 	status    InstanceStatus
 
-	tlsconfig *tls.Config
+	tlsconfig   *tls.Config
+	stopContext func() bool
 }
 
 // SetStatus sets the status of the PostgreSQLInstance.
@@ -108,6 +110,9 @@ func (pgi *PostgreSQLInstance) Status() InstanceStatus {
 // Returns:
 // - error: An error if there was a problem closing the connection.
 func (pgi *PostgreSQLInstance) Close() error {
+	if pgi.stopContext != nil {
+		pgi.stopContext()
+	}
 	return pgi.conn.Close()
 }
 
@@ -183,6 +188,11 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 }
 
 func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) error {
+	// TCP_USER_TIMEOUT (option 18) is Linux-specific. Other platforms still
+	// enforce the connection's absolute socket deadline.
+	if runtime.GOOS != "linux" || d <= 0 {
+		return nil
+	}
 	return func(_, _ string, c syscall.RawConn) error {
 		var sysErr error
 		var err = c.Control(func(fd uintptr) {
@@ -239,6 +249,7 @@ func NewInstanceConn(host string, availabilityZone string, shardname string, tls
 	if tlsconfig != nil {
 		err := instance.ReqBackendSsl(tlsconfig)
 		if err != nil {
+			_ = netconn.Close()
 			return nil, err
 		}
 	}

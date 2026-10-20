@@ -17,7 +17,8 @@ type NetChecker struct {
 
 // CheckTSA checks the TSA for a given shard and returns the result, comment, and error.
 // CheckTSA do not use the cache, it always check the TSA.
-// The check will timeout after DefaultTSATimeout (500ms) and consider the host dead.
+// A nonzero timeout bounds the entire query, including writes. Zero preserves
+// any deadline already installed by the caller on a dedicated connection.
 //
 // Parameters:
 //   - sh: The shard to check the TSA for.
@@ -26,6 +27,12 @@ type NetChecker struct {
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
 func (NetChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (CheckResult, error) {
+	if timeout != 0 {
+		if err := sh.Instance().Conn().SetDeadline(time.Now().Add(timeout)); err != nil {
+			return CheckResult{Reason: err.Error()}, err
+		}
+		defer func() { _ = sh.Instance().Conn().SetDeadline(time.Time{}) }()
+	}
 
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
@@ -42,20 +49,10 @@ func (NetChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (C
 	}
 
 	readWrite := false
+	gotRow := false
 	reason := "empty"
 
-	if timeout != 0 {
-		// Reset deadline so connection will be re-usable after storing in the pool/
-		defer func() { _ = sh.Instance().Conn().SetReadDeadline(time.Time{}) }()
-	}
-
 	for {
-		if timeout != 0 {
-			if err := sh.Instance().Conn().SetReadDeadline(time.Now().Add(DefaultTSATimeout)); err != nil {
-				return CheckResult{}, err
-			}
-		}
-
 		msg, err := sh.Receive()
 
 		if err != nil {
@@ -78,6 +75,11 @@ func (NetChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (C
 
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
+			if gotRow {
+				err := fmt.Errorf("multiple rows received for transaction_read_only")
+				return CheckResult{Reason: err.Error()}, err
+			}
+			gotRow = true
 			if len(qt.Values) == 1 && len(qt.Values[0]) == 3 && qt.Values[0][0] == 'o' && qt.Values[0][1] == 'f' && qt.Values[0][2] == 'f' {
 				readWrite = true
 				reason = "primary"
@@ -107,6 +109,11 @@ func (NetChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (C
 				}, fmt.Errorf("the connection was unsynced while acquiring it")
 			}
 
+			if !gotRow {
+				err := fmt.Errorf("no transaction_read_only result received")
+				return CheckResult{Reason: err.Error()}, err
+			}
+
 			spqrlog.Zero.Debug().
 				Uint("shard", sh.ID()).
 				Bool("read-write", readWrite).
@@ -117,6 +124,14 @@ func (NetChecker) CheckTSA(sh shard.ShardHostInstance, timeout time.Duration) (C
 				RW:     readWrite,
 				Reason: reason,
 			}, nil
+		case *pgproto3.ErrorResponse:
+			err := fmt.Errorf("transaction_read_only: %s (%s)", qt.Message, qt.Code)
+			return CheckResult{Reason: err.Error()}, err
+		case *pgproto3.RowDescription, *pgproto3.CommandComplete, *pgproto3.NoticeResponse, *pgproto3.ParameterStatus:
+			// The query result and asynchronous status messages are expected.
+		default:
+			err := fmt.Errorf("unexpected transaction_read_only message: %T", msg)
+			return CheckResult{Reason: err.Error()}, err
 		}
 	}
 }

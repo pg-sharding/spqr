@@ -176,6 +176,8 @@ func (r *Route) ForEachPool(cb func(pool.Pool) error) error {
 }
 
 func (r *Route) Close() error {
-	r.MultiShardPool().StopCacheWatchdog()
+	if r.MultiShardPool() != nil {
+		r.MultiShardPool().StopCacheWatchdog()
+	}
 	return r.ClientPool().Shutdown()
 }
