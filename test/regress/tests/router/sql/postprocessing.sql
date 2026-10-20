@@ -29,6 +29,7 @@ SELECT * FROM r_pp limit 2;
 
 SELECT count(1) FROM r_pp;
 SELECT count(*) FROM r_pp;
+SELECT COUNT(*) FROM r_pp;
 SELECT count(i) FROM r_pp;
 SELECT count(i), count(1), count(*) FROM r_pp;
 
