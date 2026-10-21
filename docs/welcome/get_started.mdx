@@ -82,9 +82,9 @@ And at the end specify a list of ranges: which values to route to which shard. N
 ```sql
 CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
 ```
-<Warning>
-Order is important. If you reverse the order, you will get an error "key range krid2 intersects with key range krid1 in QDB".
-</Warning>
+<Tip>
+`CREATE KEY RANGES FOR DISTRIBUTION` automatically handles the creation order. If you create key ranges manually with `CREATE KEY RANGE`, you must create them in descending order by lower bound (highest first).
+</Tip>
 
 Here we go! You can play with some SELECTs or INSERTs.
 
