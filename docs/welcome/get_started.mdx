@@ -81,12 +81,8 @@ And at the end specify a list of ranges: which values to route to which shard.
 The following command creates the ranges automatically:
 
 ```sql
-CREATE KEY RANGES FOR DISTRIBUTION ds1
-  BETWEEN 0 AND 2000 USING SHARDS shard2, shard1;
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
 ```
-
-This routes keys from `0` up to `1000` (exclusive) to `shard1`, and keys
-from `1000` onward to `shard2`.
 
 To define ranges individually with `CREATE KEY RANGE`, follow the
 [key-range creation order](/sharding/console/sql_commands#create-key-range).
@@ -107,7 +103,7 @@ demo=> CREATE TABLE orders (
     customer_id INT,
     order_date DATE
 );
-NOTICE: send query to shard(s) : shard01,shard02
+NOTICE: send query to shard(s) : shard1,shard2
 CREATE TABLE
 
 demo=> CREATE TABLE items (
@@ -115,7 +111,7 @@ demo=> CREATE TABLE items (
     order_id SERIAL NOT NULL,
     name VARCHAR
 );
-NOTICE: send query to shard(s) : shard01,shard02
+NOTICE: send query to shard(s) : shard1,shard2
 CREATE TABLE
 ```
 
@@ -125,7 +121,7 @@ Then, populate it with an order:
 demo=> BEGIN;
 BEGIN
 demo=> INSERT INTO orders (id, customer_id, order_date) VALUES (777, 123456, '2024-01-08');
-NOTICE: send query to shard(s) : shard01
+NOTICE: send query to shard(s) : shard2
 INSERT 0 1
 demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
 INSERT 0 1
@@ -135,11 +131,11 @@ COMMIT
 
 > NOTICE messages are disabled by default, specify `show_notice_messages` setting in the router config to enable them
 
-The order can be found on the first shard:
+The order can be found on the second shard:
 
 ```bash
 demo=> SELECT * FROM orders WHERE id = 777;
-NOTICE: send query to shard(s) : shard01
+NOTICE: send query to shard(s) : shard2
   id  | customer_id | order_date 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
@@ -150,7 +146,7 @@ SPQR can handle such queries as `SELECT * FROM table` but we don't recommend usi
 
 ```bash
 demo=> SELECT * FROM orders;
-NOTICE: send query to shard(s) : shard01,shard02
+NOTICE: send query to shard(s) : shard1,shard2
   id  | customer_id | order_date 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'

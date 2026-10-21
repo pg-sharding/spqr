@@ -79,9 +79,8 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
 
--- Route [0, 10000) to shard1 and [10000, +infinity) to shard2
-CREATE KEY RANGES FOR DISTRIBUTION ds1
-  BETWEEN 0 AND 20000 USING SHARDS shard2, shard1;
+-- Automatically create key ranges for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 20000;
 ```
 
 ### 3. Start the Router

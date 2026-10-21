@@ -66,9 +66,7 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
 
--- Route [0, 10000) to shard1 and [10000, +infinity) to shard2
-CREATE KEY RANGES FOR DISTRIBUTION ds1
-  BETWEEN 0 AND 20000 USING SHARDS shard2, shard1;
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 20000;
 ```
 
 ### 5. Configure the Router
@@ -141,7 +139,7 @@ REGISTER ROUTER router2 ADDRESS '[localhost]:7011';
 All configuration changes are made through the Coordinator's admin console:
 
 To place keys from `20000` onward on a new shard, split the automatically
-created `ds1-0` range on `shard2` and redistribute the new range:
+created `ds1-0` range and redistribute the new range:
 
 ```sql
 CREATE SHARD shard3 OPTIONS (HOST 'shard3-host:5432');

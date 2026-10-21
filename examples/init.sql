@@ -12,5 +12,5 @@ CREATE REFERENCE TABLE product_categories;
 CREATE REFERENCE TABLE products;
 CREATE REFERENCE TABLE currencies;
 
--- Automatically route [0, 50000) to sh1 and [50000, +infinity) to sh2
-CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 100000 USING SHARDS sh2, sh1;
+-- Automatically create key ranges for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 100000;
