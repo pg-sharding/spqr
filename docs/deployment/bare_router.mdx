@@ -69,7 +69,7 @@ shards:
 
 Create an SQL file with your sharding configuration (e.g., `init.sql`):
 
-Follow the [key-range creation order](/sharding/console/sql_commands#create-key-range) when defining ranges.
+Use [automatic key-range creation](/sharding/console/sql_commands#create-key-ranges-for-distribution) to split the key space between the shards.
 
 ```sql init.sql
 -- Create a distribution for your sharding key
@@ -79,9 +79,9 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
 
--- Define key ranges
-CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+-- Route [0, 10000) to shard1 and [10000, +infinity) to shard2
+CREATE KEY RANGES FOR DISTRIBUTION ds1
+  BETWEEN 0 AND 20000 USING SHARDS shard2, shard1;
 ```
 
 ### 3. Start the Router

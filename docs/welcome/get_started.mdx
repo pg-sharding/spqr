@@ -81,8 +81,12 @@ And at the end specify a list of ranges: which values to route to which shard.
 The following command creates the ranges automatically:
 
 ```sql
-CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
+CREATE KEY RANGES FOR DISTRIBUTION ds1
+  BETWEEN 0 AND 2000 USING SHARDS shard2, shard1;
 ```
+
+This routes keys from `0` up to `1000` (exclusive) to `shard1`, and keys
+from `1000` onward to `shard2`.
 
 To define ranges individually with `CREATE KEY RANGE`, follow the
 [key-range creation order](/sharding/console/sql_commands#create-key-range).
