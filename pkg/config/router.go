@@ -34,6 +34,12 @@ const (
 	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
 )
 
+const (
+	CommitStrategyBestEffort = "best-effort"
+	CommitStrategy1pc        = "1pc"
+	CommitStrategy2pc        = "2pc"
+)
+
 var cfgRouter Router
 
 type Router struct {
@@ -318,6 +324,12 @@ func validateRouterConfig(cfg *Router) error {
 		default:
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid auth method \"%s\"", rule.AuthRule.Method)
 		}
+	}
+
+	switch cfg.DefaultCommitStrategy {
+	case "", CommitStrategyBestEffort, CommitStrategy1pc, CommitStrategy2pc:
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid default_commit_strategy \"%s\": expected one of \"best-effort\", \"1pc\", \"2pc\"", cfg.DefaultCommitStrategy)
 	}
 	return nil
 }
