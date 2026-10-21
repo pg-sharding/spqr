@@ -43,7 +43,7 @@ func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "spqr-coordinator run --config `path-to-config`",
+	Use:   "spqr-coordinator --config `path-to-config`",
 	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
