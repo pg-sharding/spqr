@@ -24,8 +24,7 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer, integer;
 CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar hash;
 ```
 
-Create key ranges with comma-separated values, following the
-[key-range creation order](/sharding/console/sql_commands#create-key-range):
+Create key ranges with comma-separated values:
 
 ```sql
 CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;

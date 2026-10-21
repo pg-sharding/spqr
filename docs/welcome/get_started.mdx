@@ -84,9 +84,6 @@ The following command creates the ranges automatically:
 CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
 ```
 
-To define ranges individually with `CREATE KEY RANGE`, follow the
-[key-range creation order](/sharding/console/sql_commands#create-key-range).
-
 Here we go! You can play with some SELECTs or INSERTs.
 
 ## Connect to SPQR router
@@ -131,7 +128,7 @@ COMMIT
 
 > NOTICE messages are disabled by default, specify `show_notice_messages` setting in the router config to enable them
 
-The order can be found on the second shard:
+The order can be found on the first shard:
 
 ```bash
 demo=> SELECT * FROM orders WHERE id = 777;

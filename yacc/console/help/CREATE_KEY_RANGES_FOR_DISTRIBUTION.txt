@@ -16,21 +16,17 @@ DESCRIPTION
     into equal
     parts, and creates one key range per target shard.
 
-    The key space is divided evenly across the selected shards. Ranges are
-    created from highest to lowest lower bound. With USING SHARDS, the first
-    listed shard receives the highest range, followed by the next lower range
-    on the next shard. Generated key ranges are named
-    `<distributionID>-<index>`, where index starts at 0 for the highest range.
+    The key space is divided evenly across the selected shards, and each
+    resulting key
+    range is assigned to one shard in order. Generated key ranges are named
+    `<distributionID>-<index>`, where index starts at 0.
 
     By default the command uses the full value range of the distribution column
     type.
-    Use the optional BETWEEN clause to calculate lower bounds for a specified
+    Use the optional BETWEEN clause to bound the generated key ranges to a
+    specific
     interval. When no shard selection is given, key ranges are created for all
     shards.
-
-    BETWEEN determines the lower bounds used to divide the interval. As with
-    manually created key ranges, the range with the highest lower bound
-    extends to positive infinity; the upper value does not limit routing.
 
     This command only supports distributions with a single, hashable (numeric)
     sharding
