@@ -16,9 +16,23 @@ DESCRIPTION
     ordered set,
     it is enough to specify only one end of the range.
 
+    The lower bound is inclusive. The upper bound is the next higher lower
+    bound in the same distribution, or positive infinity for the highest range.
+
+    When initializing a distribution, create key ranges in descending order
+    by lower bound (highest first). A higher bound created after a lower bound
+    on another shard is rejected, even when the shards contain no data:
+    "key range ... intersects with key range ... in QDB".
+
     For composite sharding keys, specify multiple values separated by commas
     that correspond
-    to each column in the distribution.
+    to each column in the distribution. Compare bounds lexicographically,
+    from left to right, and create the highest bound first.
+
+    For supported distributions, CREATE KEY RANGES FOR DISTRIBUTION handles the
+    creation order automatically. To add a boundary within an existing key
+    range, use SPLIT KEY RANGE, then REDISTRIBUTE KEY RANGE to move the new
+    range's data to another shard if needed.
 
     Use IF NOT EXISTS to skip creation when the key range already exists.
 

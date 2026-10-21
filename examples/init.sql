@@ -12,5 +12,6 @@ CREATE REFERENCE TABLE product_categories;
 CREATE REFERENCE TABLE products;
 CREATE REFERENCE TABLE currencies;
 
-CREATE KEY RANGE kr1 FROM 0     ROUTE TO sh1 FOR DISTRIBUTION ds1;
+-- Create key ranges highest first; see https://docs.pg-sharding.tech/sharding/console/sql_commands#create-key-range
 CREATE KEY RANGE kr2 FROM 50000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE kr1 FROM 0     ROUTE TO sh1 FOR DISTRIBUTION ds1;

@@ -18,18 +18,19 @@ To set up composite sharding keys, specify multiple column types when creating t
 
 ```sql
 -- Two integer columns
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer, integer;
 
 -- With hash on second column
 CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar hash;
 ```
 
-Create key ranges with comma-separated values:
+Create key ranges with comma-separated values, following the
+[key-range creation order](/sharding/console/sql_commands#create-key-range):
 
 ```sql
-CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 ```
 
 Attach tables with multiple columns in the `DISTRIBUTION KEY` clause:
@@ -45,10 +46,10 @@ You can also use composite keys with hash-based sharding:
 CREATE DISTRIBUTION ds1 COLUMN TYPES INT, VARCHAR hash;
 
 -- Create key ranges
-CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE FROM 0, 2147483648 ROUTE TO shard2 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE FROM 1, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 1, 2147483648 ROUTE TO shard4 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 2147483648 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 
 -- Attach table with hash function
 ALTER DISTRIBUTION ds1 ATTACH RELATION events 

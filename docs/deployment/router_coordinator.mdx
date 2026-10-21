@@ -55,7 +55,7 @@ Connect to the Coordinator's admin console:
 psql "host=localhost port=7002 dbname=spqr_console user=spqr-console sslmode=disable"
 ```
 
-Configure your sharding setup:
+Configure your sharding setup, following the [key-range creation order](/sharding/console/sql_commands#create-key-range):
 
 ```sql
 CREATE SHARD shard1 OPTIONS (HOST 'shard1-host:5432');
@@ -66,8 +66,8 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
 
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 ```
 
 ### 5. Configure the Router
@@ -139,9 +139,13 @@ REGISTER ROUTER router2 ADDRESS '[localhost]:7011';
 
 All configuration changes are made through the Coordinator's admin console:
 
+To place keys from `20000` onward on a new shard, split the existing `krid2`
+range and redistribute the new range:
+
 ```sql
 CREATE SHARD shard3 OPTIONS (HOST 'shard3-host:5432');
-CREATE KEY RANGE krid3 FROM 20000 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+SPLIT KEY RANGE krid3 FROM krid2 BY 20000;
+REDISTRIBUTE KEY RANGE krid3 TO shard3;
 ```
 
 Changes are automatically propagated to all registered routers.
