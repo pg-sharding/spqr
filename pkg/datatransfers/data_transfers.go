@@ -214,6 +214,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err := awaitPIDsInternal(execCtx, from); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
+			if err := awaitTwoPhaseInternal(ctx, from); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await two phase commit transactions to commit/rollback: %v", err)
+			}
 			tx.Status = qdb.AwaitedPIDs
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
 			statistics.RecordShardOperation("awaitPIDs", time.Since(t))
@@ -458,6 +461,9 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 			defer cancel()
 			if err := awaitPIDsInternal(execCtx, from); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
+			}
+			if err := awaitTwoPhaseInternal(ctx, from); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await two phase commit transactions to commit/rollback: %v", err)
 			}
 			tx.Status = qdb.AwaitedPIDs
 			err = db.RecordTransferTx(ctx, transferKey, tx)
@@ -1010,10 +1016,13 @@ func awaitPIDsInternal(ctx context.Context, conn *pgx.Conn) error {
 			spqrlog.Zero.Info().Str("cp", icp.AwaitPidCP).Err(err).Msg("error while checking control point")
 		}
 	}
-	if _, err := conn.Exec(ctx, getAwaitPIDsQuery()); err != nil {
-		return err
-	}
-	return nil
+	_, err := conn.Exec(ctx, getAwaitPIDsQuery())
+	return err
+}
+
+func awaitTwoPhaseInternal(ctx context.Context, conn *pgx.Conn) error {
+	_, err := conn.Exec(ctx, getAwaitTwoPhaseQuery())
+	return err
 }
 
 type Queryable interface {

@@ -84,6 +84,32 @@ $$
 language plpgsql;`, spqrTransferApplicationName, config.CoordinatorConfig().DataMoveAwaitPIDException)
 }
 
+func getAwaitTwoPhaseQuery() string {
+	return `
+	do $$
+declare
+	v_gids text;
+begin
+	SELECT coalesce(array_agg(gid), '{}') INTO v_gids
+	FROM pg_prepared_xacts
+	WHERE database = current_database();
+
+	RAISE NOTICE 'v_gids = %', v_gids;
+
+	loop
+		if (
+			SELECT count(1) FROM pg_prepared_xacts WHERE gid = ANY(v_gids::text[])
+		) = 0 then
+			return;
+		end if;
+		perform pg_sleep(0.5);
+	end loop;
+
+end;
+$$
+language plpgsql;`
+}
+
 func checkColumnExistsQuery(relationFQN *rfqn.RelationFQN, colName string) string {
 	return fmt.Sprintf(`
 	SELECT
