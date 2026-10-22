@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -178,23 +179,53 @@ func DumpKeyRanges() error {
 
 	rCl := protos.NewKeyRangeServiceClient(cc)
 	dCl := protos.NewDistributionServiceClient(cc)
-	if keys, err := rCl.ListAllKeyRanges(context.Background(), nil); err != nil {
+	keys, err := rCl.ListAllKeyRanges(context.Background(), nil)
+	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Msg("failed to dump endpoint rules")
-	} else {
-		for _, krg := range keys.KeyRangesInfo {
+	}
+	dsIDToKr := map[string][]*kr.KeyRange{}
+	dsIDToColTypes := map[string][]string{}
+	for _, krg := range keys.KeyRangesInfo {
+		dsID := krg.DistributionId
+		colTypes, ok := dsIDToColTypes[dsID]
+		if !ok {
 			ds, err := dCl.GetDistribution(context.Background(), &protos.GetDistributionRequest{
-				Id: krg.DistributionId,
+				Id: dsID,
 			})
 			if err != nil {
 				return err
 			}
-			krCurr, err := kr.KeyRangeFromProto(krg, ds.Distribution.ColumnTypes)
-			if err != nil {
-				return err
+			colTypes = ds.Distribution.ColumnTypes
+			dsIDToColTypes[dsID] = ds.Distribution.ColumnTypes
+		}
+		krCurr, err := kr.KeyRangeFromProto(krg, colTypes)
+		if err != nil {
+			return err
+		}
+		if _, ok := dsIDToKr[dsID]; !ok {
+			dsIDToKr[dsID] = make([]*kr.KeyRange, 0)
+		}
+		dsIDToKr[dsID] = append(dsIDToKr[dsID], krCurr)
+	}
+
+	for _, krs := range dsIDToKr {
+		slices.SortFunc(krs, func(l, r *kr.KeyRange) int {
+			colTypes, ok := dsIDToColTypes[l.Distribution]
+			if !ok {
+				return 0
 			}
-			fmt.Println(decode.KeyRange(krCurr))
+			if kr.CmpRangesEqual(l.LowerBound, r.LowerBound, colTypes) {
+				return 0
+			}
+			if kr.CmpRangesLess(l.LowerBound, r.LowerBound, colTypes) {
+				return 1
+			}
+			return -1
+		})
+		for _, kr := range krs {
+			fmt.Println(decode.KeyRange(kr))
 		}
 	}
 
