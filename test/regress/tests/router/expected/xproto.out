@@ -76,7 +76,7 @@ NOTICE: send query to shard(s) : sh1
 PREPARE d_p_exec AS SELECT i FROM d_p_exec /* __spqr__execute_on: sh1 */;
 EXECUTE d_p_exec;
 NOTICE: send query to shard(s) : sh1
- i
+ i 
 ---
  1
 (1 row)
