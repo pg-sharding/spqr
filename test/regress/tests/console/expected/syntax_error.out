@@ -5,7 +5,7 @@ LINE 1: SHOW clients extra;
 SELECT 1;
 ERROR:  failed to parse query "SELECT 1;": syntax error
 LINE 1: SELECT 1;
-        ^
+               ^
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra;
 ERROR:  failed to parse query "CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra;": syntax error
 LINE 1: CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra;

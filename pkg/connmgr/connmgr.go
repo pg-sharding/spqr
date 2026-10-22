@@ -10,6 +10,7 @@ import (
 type ConnectionStatMgr interface {
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry
+	RunRecheckHosts() []pool.HostRecheckResult
 
 	/*
 		user-facing connection stat callbacks.

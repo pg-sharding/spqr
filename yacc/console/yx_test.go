@@ -143,7 +143,7 @@ func TestSyntaxErrorPosition(t *testing.T) {
 		query string
 		pos   int32
 	}{
-		{query: "SELECT 1", pos: 1},
+		{query: "SELECT 1", pos: 8},
 		{query: "SHOWW clients", pos: 1},
 		{query: "SHOW clients extra", pos: 14},
 		{query: "  SHOW clients extra;", pos: 16},
@@ -210,6 +210,7 @@ func TestEmptyQuery(t *testing.T) {
 		{query: "; SHOW clients", exp: []spqrparser.Statement{nil, showClients()}},
 		{query: "SHOW clients; SHOW pools", exp: []spqrparser.Statement{showClients(), showPools()}},
 		{query: "SHOW clients;; SHOW pools", exp: []spqrparser.Statement{showClients(), nil, showPools()}},
+		{query: "SELECT * FROM clients", exp: []spqrparser.Statement{showClients()}},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 		assert.NoError(err, "query %q", tt.query)
