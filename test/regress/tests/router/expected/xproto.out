@@ -72,6 +72,16 @@ NOTICE: send query to shard(s) : sh1
  aaaa
 (1 row)
 
+-- gh#3082: PREPARE name equals relation name used in the query body
+PREPARE d_p_exec AS SELECT i FROM d_p_exec /* __spqr__execute_on: sh1 */;
+EXECUTE d_p_exec;
+NOTICE: send query to shard(s) : sh1
+ i
+---
+ 1
+(1 row)
+
+DEALLOCATE d_p_exec;
 DROP TABLE d_p_exec;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
