@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -178,7 +179,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msg("process relay state advanced")
 
 	statistics.IncTotalRequest()
 
@@ -533,6 +534,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				switch q := p.(type) {
 				case *lyx.AExprSConst:
 					params = append(params, []byte(q.Value))
+				case *lyx.AExprIConst:
+					params = append(params, []byte(strconv.FormatInt(q.Value, 10)))
+				case *lyx.AExprBConst:
+					params = append(params, []byte(strconv.FormatBool(q.Value)))
+				case *lyx.AExprNConst:
+					/* NULL const */
+					params = append(params, nil)
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
