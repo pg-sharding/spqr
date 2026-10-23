@@ -118,4 +118,4 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 )
 
-replace github.com/pg-sharding/lyx => github.com/Denchick/lyx v0.0.0-20261022083300-b8ba343d6b32
+replace github.com/pg-sharding/lyx => github.com/Denchick/lyx v0.0.0-20261023061116-d3100d31b073

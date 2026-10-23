@@ -12,8 +12,8 @@ github.com/Azure/go-ntlmssp v0.1.1 h1:l+FM/EEMb0U9QZE7mKNEDw5Mu3mFiaa2GKOoTSsNDP
 github.com/Azure/go-ntlmssp v0.1.1/go.mod h1:NYqdhxd/8aAct/s4qSYZEerdPuH1liG2/X9DiVTbhpk=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Denchick/lyx v0.0.0-20261022083300-b8ba343d6b32 h1:TLUHqzYmgHihTwKYhRH8sdo8doqENEwHwbhNQBehtzs=
-github.com/Denchick/lyx v0.0.0-20261022083300-b8ba343d6b32/go.mod h1:GpoHq0FWCBlBlxAGrzH4R39zu/8sMyzACDEXvrkPThI=
+github.com/Denchick/lyx v0.0.0-20261023061116-d3100d31b073 h1:MrTE8ak+0ZVGPQbZVAwJEj9lgj3G10BKfpdbfVFNYQw=
+github.com/Denchick/lyx v0.0.0-20261023061116-d3100d31b073/go.mod h1:GpoHq0FWCBlBlxAGrzH4R39zu/8sMyzACDEXvrkPThI=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e h1:4dAU9FXIyQktpoUAgOJK3OTFc/xug0PCXYCqU0FgDKI=
