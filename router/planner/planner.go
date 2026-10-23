@@ -246,8 +246,8 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 				ResultRelationIsRef: true,
 			},
 		},
-		OverwriteQuery: mp,
-		ExecTargets:    rel.ListStorageRoutes(),
+		// OverwriteQuery: mp,
+		ExecTargets: rel.ListStorageRoutes(),
 	}, nil
 }
 
