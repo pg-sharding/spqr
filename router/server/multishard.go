@@ -180,7 +180,7 @@ func (m *MultiShardServer) ExpandGang(params pool.ConnAllocParams, shkey kr.Shar
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error) {
 	for i, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
-			m.activeShards = slices.Delete(m.activeShards, i, i)
+			m.activeShards = slices.Delete(m.activeShards, i, i+1)
 			return activeShard, nil
 		}
 	}
