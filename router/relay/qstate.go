@@ -508,8 +508,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			// prepare *name* as *query*
-			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
+			// Extract the inner query using the token location recorded
+			// by the parser: PrepareStmt.QueryLoc points right at the
+			// first token of the query after the AS keyword.
+			ss := query[st.QueryLoc:]
 
 			if _, err := rst.relayParsePrepared(context.TODO(), st.Name, ss, nil); err != nil {
 				return nil, err
