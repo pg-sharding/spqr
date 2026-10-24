@@ -117,3 +117,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688
 	gotest.tools/v3 v3.5.1 // indirect
 )
+
+replace github.com/pg-sharding/lyx => github.com/Denchick/lyx v0.0.0-20261023061116-d3100d31b073

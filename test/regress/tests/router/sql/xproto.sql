@@ -31,6 +31,11 @@ PREPARE p5 AS SELECT $1 FROM d_p_exec /* __spqr__execute_on: sh1 */;
 
 EXECUTE p5 ('aaaa');
 
+-- gh#3082: PREPARE name equals relation name used in the query body
+PREPARE d_p_exec AS SELECT i FROM d_p_exec /* __spqr__execute_on: sh1 */;
+EXECUTE d_p_exec;
+DEALLOCATE d_p_exec;
+
 DROP TABLE d_p_exec;
 DROP TABLE ref_p_exec;
 
