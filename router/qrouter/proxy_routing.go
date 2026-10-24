@@ -202,10 +202,11 @@ func (qr *ProxyQrouter) planInsertV1(
 							continue
 						}
 
-						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
+						auxKey := rmeta.AuxValuesKey{
 							CTEName:    sRv.RelationName,
 							ColRefName: cc.ColName,
-						}]; ok {
+						}
+						if v, ok := rm.AuxValues[auxKey]; ok {
 
 							rList := [][]lyx.Node{}
 							for _, vv := range v {
@@ -226,7 +227,22 @@ func (qr *ProxyQrouter) planInsertV1(
 
 									/* try to rewrite, but only for simple protocol */
 									if len(rm.ParamRefs) == 0 {
-										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs, false)
+										for {
+											parent, ok := rm.AuxValuesParent[auxKey]
+											if !ok {
+												break
+											}
+											auxKey = parent
+										}
+										cte, ok := rm.CteNames[auxKey.CTEName]
+										if !ok {
+											return nil, rerrors.ErrComplexQuery
+										}
+										values, ok := cte.SubQuery.(*lyx.ValueClause)
+										if !ok {
+											return nil, rerrors.ErrComplexQuery
+										}
+										return planner.CommonValuesRewrite(rm.Query, values.ValuesLoc, shs, false)
 									}
 
 									return nil, rerrors.ErrComplexQuery
@@ -375,7 +391,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					/* try to rewrite,
 					* but only for simple protocol or unparametrized xproto */
 					if len(rm.ParamRefs) == 0 {
-						return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
+						return planner.CommonValuesRewrite(rm.Query, subS.ValuesLoc, shs, false)
 					}
 					return nil, rerrors.ErrComplexQuery
 				}
