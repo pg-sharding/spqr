@@ -878,7 +878,7 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			loc := parseValuesLocation(t, tt.query, "")
-			result, err := CommonValuesRewrite(tt.query, loc, tt.shs, false)
+			result, err := RewriteDistributedRelBatchInsert(tt.query, loc, tt.shs)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
@@ -1027,7 +1027,7 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 	} {
 		t.Run("rewrite", func(t *testing.T) {
 			loc := parseValuesLocation(t, tt.query, tt.cteName)
-			result, err := CommonValuesRewrite(tt.query, loc, tt.shs, false)
+			result, err := RewriteDistributedRelWithValues(tt.query, loc, tt.shs, false)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery expected error, got nil. Plan: %+v", result)
@@ -1239,7 +1239,7 @@ func buildCTEInsertLargeValues(tuples, strLen int) (string, []kr.ShardKey) {
 	return b.String(), shs
 }
 
-func BenchmarkCommonValuesRewriteCTE(b *testing.B) {
+func BenchmarkRewriteDistributedRelWithValues(b *testing.B) {
 	for _, tt := range []struct {
 		name  string
 		build func() (string, []kr.ShardKey)
@@ -1264,7 +1264,7 @@ func BenchmarkCommonValuesRewriteCTE(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				_, _ = CommonValuesRewrite(query, loc, shs, false)
+				_, _ = RewriteDistributedRelWithValues(query, loc, shs, false)
 			}
 		})
 	}

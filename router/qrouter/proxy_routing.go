@@ -242,7 +242,7 @@ func (qr *ProxyQrouter) planInsertV1(
 										if !ok {
 											return nil, rerrors.ErrComplexQuery
 										}
-										return planner.CommonValuesRewrite(rm.Query, values.ValuesLoc, shs, false)
+										return planner.RewriteDistributedRelWithValues(rm.Query, values.ValuesLoc, shs, false)
 									}
 
 									return nil, rerrors.ErrComplexQuery
@@ -391,7 +391,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					/* try to rewrite,
 					* but only for simple protocol or unparametrized xproto */
 					if len(rm.ParamRefs) == 0 {
-						return planner.CommonValuesRewrite(rm.Query, subS.ValuesLoc, shs, false)
+						return planner.RewriteDistributedRelBatchInsert(rm.Query, subS.ValuesLoc, shs)
 					}
 					return nil, rerrors.ErrComplexQuery
 				}

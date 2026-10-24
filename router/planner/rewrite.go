@@ -173,6 +173,14 @@ func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey
 	return p, nil
 }
 
+func RewriteDistributedRelBatchInsert(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+	return CommonValuesRewrite(query, valuesLoc, shs, false)
+}
+
+func RewriteDistributedRelWithValues(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
+	return CommonValuesRewrite(query, valuesLoc, shs, ro)
+}
+
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
 	// Find the position of the opening parenthesis for the column list
 	colsOpenInd := strings.Index(query, "(")
