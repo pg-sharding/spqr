@@ -82,6 +82,26 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 DEALLOCATE d_p_exec;
+-- PREPARE must also find the start of INSERT, UPDATE and DELETE after a type clause.
+PREPARE d_p_exec(int) AS INSERT INTO d_p_exec(i) VALUES ($1);
+EXECUTE d_p_exec('2');
+NOTICE: send query to shard(s) : sh1
+DEALLOCATE d_p_exec;
+PREPARE d_p_exec(int) AS UPDATE d_p_exec SET i = $1 WHERE i = 2;
+EXECUTE d_p_exec('3');
+NOTICE: send query to shard(s) : sh1
+DEALLOCATE d_p_exec;
+PREPARE d_p_exec(int) AS DELETE FROM d_p_exec WHERE i = $1;
+EXECUTE d_p_exec('1');
+NOTICE: send query to shard(s) : sh1
+DEALLOCATE d_p_exec;
+SELECT i FROM d_p_exec /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+ 3
+(1 row)
+
 DROP TABLE d_p_exec;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

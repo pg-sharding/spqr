@@ -20,7 +20,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/lib/pq v1.12.3
 	github.com/libp2p/go-reuseport v0.4.0
-	github.com/pg-sharding/lyx v0.0.0-20260901143418-c3643eda2fa5
+	github.com/pg-sharding/lyx v0.0.0-20261024181819-56287c35080e
 	github.com/rs/zerolog v1.35.1
 	github.com/sethvargo/go-retry v0.5.0
 	github.com/sevlyar/go-daemon v0.1.7
@@ -117,5 +117,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688
 	gotest.tools/v3 v3.5.1 // indirect
 )
-
-replace github.com/pg-sharding/lyx => github.com/Denchick/lyx v0.0.0-20261023061116-d3100d31b073

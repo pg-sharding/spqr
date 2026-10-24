@@ -36,6 +36,21 @@ PREPARE d_p_exec AS SELECT i FROM d_p_exec /* __spqr__execute_on: sh1 */;
 EXECUTE d_p_exec;
 DEALLOCATE d_p_exec;
 
+-- PREPARE must also find the start of INSERT, UPDATE and DELETE after a type clause.
+PREPARE d_p_exec(int) AS INSERT INTO d_p_exec(i) VALUES ($1);
+EXECUTE d_p_exec('2');
+DEALLOCATE d_p_exec;
+
+PREPARE d_p_exec(int) AS UPDATE d_p_exec SET i = $1 WHERE i = 2;
+EXECUTE d_p_exec('3');
+DEALLOCATE d_p_exec;
+
+PREPARE d_p_exec(int) AS DELETE FROM d_p_exec WHERE i = $1;
+EXECUTE d_p_exec('1');
+DEALLOCATE d_p_exec;
+
+SELECT i FROM d_p_exec /* __spqr__execute_on: sh1 */;
+
 DROP TABLE d_p_exec;
 DROP TABLE ref_p_exec;
 
