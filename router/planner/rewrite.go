@@ -240,7 +240,8 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 	originalContent := query[colsOpenInd+1 : colsCloseInd]
 	newColumnList := formatInsertValue(colname, originalContent)
 	var newQuery strings.Builder
-	newQuery.WriteString(query[:colsOpenInd+1] + newColumnList)
+	newQuery.WriteString(query[:colsOpenInd+1])
+	newQuery.WriteString(newColumnList)
 
 	// Find the VALUES keyword
 	valuesKeywordStart := strings.Index(strings.ToUpper(query[colsCloseInd:]), "VALUES")
@@ -296,10 +297,15 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		if first {
 			// First VALUES clause - preserve original spacing after VALUES keyword
 			spaceBetween := query[valuesKeywordStart+6 : valuesOpenInd]
-			newQuery.WriteString(spaceBetween + "(" + newValuesContent + ")")
+			newQuery.WriteString(spaceBetween)
+			newQuery.WriteString("(")
+			newQuery.WriteString(newValuesContent)
+			newQuery.WriteString(")")
 			first = false
 		} else {
-			newQuery.WriteString(", (" + newValuesContent + ")")
+			newQuery.WriteString(", (")
+			newQuery.WriteString(newValuesContent)
+			newQuery.WriteString(")")
 		}
 
 		// Move past this VALUES clause
