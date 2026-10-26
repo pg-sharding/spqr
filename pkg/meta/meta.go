@@ -1824,22 +1824,7 @@ func ProcessShowExtended(ctx context.Context,
 		tts = engine.InstanceVirtualRelationScan(ci)
 
 	case spqrparser.ClientsStr:
-		var resp []client.ClientInfo
-		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
-			resp = append(resp, client)
-			/* XXX: should we do this un-conditionally  or under separate setting? */
-			/*  When this is executed by coordinator, c is (validly) nil*/
-			if c := client.Conn(); c != nil && !netutil.TCPCheckAliveness(c) {
-				if err := client.Cancel(); err != nil {
-					return err
-				}
-			}
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-
-		tts, err = engine.ClientsVirtualRelationScan(ctx, resp)
+		tts, err = engine.ClientsVirtualRelationScan(ctx, ci)
 		if err != nil {
 			return nil, err
 		}

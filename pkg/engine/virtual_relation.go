@@ -507,7 +507,7 @@ func BackendConnectionsVirtualRelationScan(shs []shard.ShardHostCtl) (*tupleslot
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) (*tupleslot.TupleTableSlot, error) {
+func ClientsVirtualRelationScan(_ context.Context, ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
@@ -545,21 +545,26 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 	}
 
 	var data [][][]byte
-	for _, cl := range clients {
-		if len(cl.Shards()) > 0 {
-			for _, sh := range cl.Shards() {
-				if sh == nil {
-					continue
+	if err := ci.ClientPoolForeach(
+		func(cl client.ClientInfo) error {
+			if len(cl.Shards()) > 0 {
+				for _, sh := range cl.Shards() {
+					if sh == nil {
+						continue
+					}
+					row := getRow(cl, sh.Instance().Hostname(), cl.RAddr())
+
+					data = append(data, row)
 				}
-				row := getRow(cl, sh.Instance().Hostname(), cl.RAddr())
+			} else {
+				row := getRow(cl, "no backend connection", cl.RAddr())
 
 				data = append(data, row)
 			}
-		} else {
-			row := getRow(cl, "no backend connection", cl.RAddr())
-
-			data = append(data, row)
-		}
+			return nil
+		},
+	); err != nil {
+		return nil, err
 	}
 
 	tts.Raw = data
