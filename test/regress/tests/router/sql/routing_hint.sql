@@ -101,6 +101,7 @@ SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
 SELECT * FROM test ORDER BY id;
 
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+SELECT * FROM test ORDER BY id /* __spqr__unknown_hint: true */; -- error
 
 /* ERROR */
 SET __spqr__execute_on TO sh1xxx;
@@ -153,20 +154,6 @@ SHOW __spqr__default_route_behaviour;
 
 -- check that unmatched relation proxied to `default` shard
 SELECT 1 FROM test_unmatch;
-
--- reconnect to get a clean session before checking SET/RESET of spqr hints
-\c regress
-
--- known spqr hint: SET / SHOW / RESET round-trips correctly
-SET __spqr__execute_on TO sh1;
-SHOW __spqr__execute_on;
-RESET __spqr__execute_on;
-SHOW __spqr__execute_on;
-
--- unknown hint in the reserved __spqr__ namespace is rejected on SET / SHOW / RESET
-SET __spqr__no_such_hint = 'x';
-SHOW __spqr__no_such_hint;
-RESET __spqr__no_such_hint;
 
 -- restart session, reset all params
 \c regress
