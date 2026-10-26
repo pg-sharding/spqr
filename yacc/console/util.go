@@ -57,7 +57,7 @@ func Parse(sql string) ([]Statement, error) {
 			"failed to parse query \"%s\": %s", sql, tokenizer.LastError).
 			Pos(tokenizer.errorPosition())
 		if _, _, pgErr := lyx.Parse(sql); pgErr == nil {
-			err.Hint("To run PostgreSQL queries, connect to your application database on the router's PostgreSQL port instead of the spqr-console database or admin console port.")
+			return nil, err.Hint("To run PostgreSQL queries, connect to your application database on the router's PostgreSQL port instead of the spqr-console database or admin console port.")
 		}
 		return nil, err
 	}
