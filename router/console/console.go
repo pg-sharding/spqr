@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -226,9 +227,11 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		case *pgproto3.Terminate:
 			return nil
 		default:
+			_ = rc.ReplyErr(spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected postgresql proto message with type: %T", v))
+
 			spqrlog.Zero.Info().
 				Type("message type", v).
-				Msg("got unexpected postgresql proto message with type")
+				Msg("unexpected postgresql proto message with type")
 		}
 	}
 
