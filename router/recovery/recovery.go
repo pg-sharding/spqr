@@ -64,17 +64,18 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 	coveredShardDbs := map[shardDb]bool{}
 
 	for _, beRule := range d.be {
-		if err := func() error {
-			d.p.SetRule(beRule)
+		d.p.SetRule(beRule)
 
-			for _, sh := range shs {
-				key := shardDb{shard: sh.ID, db: beRule.DB}
+		for _, sh := range shs {
+			key := shardDb{shard: sh.ID, db: beRule.DB}
 
-				if isCovered, ok := coveredShardDbs[key]; !ok {
-					coveredShardDbs[key] = false
-				} else if isCovered {
-					continue
-				}
+			if isCovered, ok := coveredShardDbs[key]; !ok {
+				coveredShardDbs[key] = false
+			} else if isCovered {
+				continue
+			}
+
+			if err := func() error {
 
 				spqrlog.Zero.Info().Str("shard", sh.ID).Str("user", beRule.Usr).Str("db", beRule.DB).Msg("fetching stale two phase commit data")
 
@@ -140,13 +141,12 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 					_ = d.p.Discard(serv)
 					return err
 				}
-
-				coveredShardDbs[key] = true
+				return nil
+			}(); err != nil {
+				spqrlog.Zero.Error().Str("db", beRule.DB).Str("shard", sh.ID).Err(err).Msg("failed to list prepared TX for 2pc recovery")
 			}
 
-			return nil
-		}(); err != nil {
-			spqrlog.Zero.Error().Str("db", beRule.DB).Err(err).Msg("failed to list prepared TX for 2pc recovery")
+			coveredShardDbs[key] = true
 		}
 	}
 
