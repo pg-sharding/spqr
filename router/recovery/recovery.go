@@ -57,11 +57,26 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 
 	gids := map[string]struct{}{}
 
-	for _, beRule := range d.be {
-		if err := func() error {
-			d.p.SetRule(beRule)
+	type shardDb struct {
+		shard string
+		db    string
+	}
+	coveredShardDbs := map[shardDb]bool{}
 
-			for _, sh := range shs {
+	for _, beRule := range d.be {
+		d.p.SetRule(beRule)
+
+		for _, sh := range shs {
+			key := shardDb{shard: sh.ID, db: beRule.DB}
+
+			if isCovered, ok := coveredShardDbs[key]; !ok {
+				coveredShardDbs[key] = false
+			} else if isCovered {
+				continue
+			}
+
+			if err := func() error {
+
 				spqrlog.Zero.Info().Str("shard", sh.ID).Str("user", beRule.Usr).Str("db", beRule.DB).Msg("fetching stale two phase commit data")
 
 				serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
@@ -126,12 +141,23 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 					_ = d.p.Discard(serv)
 					return err
 				}
-
+				return nil
+			}(); err != nil {
+				spqrlog.Zero.Error().Str("db", beRule.DB).Str("shard", sh.ID).Err(err).Msg("failed to list prepared TX for 2pc recovery")
 			}
-			return nil
-		}(); err != nil {
-			return nil, err
+
+			coveredShardDbs[key] = true
 		}
+	}
+
+	uncovered := []string{}
+	for key, isCovered := range coveredShardDbs {
+		if !isCovered {
+			uncovered = append(uncovered, fmt.Sprintf("[shard %q, db %q]", key.shard, key.db))
+		}
+	}
+	if len(uncovered) > 0 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to get all prepared TX for 2pc recovery, uncovered: %s", strings.Join(uncovered, ", "))
 	}
 
 	var recoverErr error
