@@ -1,0 +1,3 @@
+SELECT 1 /* __spqr__unknown_hint: true */;
+ERROR:  hint "__spqr__unknown_hint" does not exist
+QUERY:  SELECT 1 /* __spqr__unknown_hint: true */;
