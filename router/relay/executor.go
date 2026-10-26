@@ -227,19 +227,18 @@ func (s *QueryStateExecutorImpl) TryMatchExecTargets(p plan.Plan, ds []kr.ShardK
 			/* check if ref relation storage shards and out active shards
 			* have intersection */
 
-			activeOK := false
+			intersection := make([]kr.ShardKey, 0)
 
 			for _, curr := range s.ActiveShards() {
 				if slices.ContainsFunc(v.ExecTargets, func(sh kr.ShardKey) bool {
 					return sh.Name == curr.Name
 				}) {
-					activeOK = true
-					break
+					intersection = append(intersection, curr)
 				}
 			}
 
-			if activeOK {
-				return planner.SelectRandomDispatchPlan(s.ActiveShards())
+			if len(intersection) > 0 {
+				return planner.SelectRandomDispatchPlan(intersection)
 
 			} else {
 				/* reference relation case */
