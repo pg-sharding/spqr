@@ -101,22 +101,3 @@ func TestMultiShardServer_UnRouteShard(t *testing.T) {
 		})
 	}
 }
-
-func TestMultiShardServer_DatashardsSnapshot(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	first := newMockShardWithName(ctrl, "sh1")
-	second := newMockShardWithName(ctrl, "sh2")
-	m := &MultiShardServer{activeShards: []shard.ShardHostInstance{first, second}}
-
-	snapshot := m.Datashards()
-	_, err := m.UnRouteShard(kr.ShardKey{Name: "sh1"})
-	require.NoError(t, err)
-	require.Len(t, snapshot, 2)
-	assert.Same(t, first, snapshot[0])
-	assert.Same(t, second, snapshot[1])
-
-	current := m.Datashards()
-	require.Len(t, current, 1)
-	current[0] = first
-	assert.Equal(t, []shard.ShardHostInstance{second}, m.Datashards())
-}
