@@ -1161,7 +1161,7 @@ show_statement_type:
 			DistributionsStr, CoordinatorAddrStr, VersionStr,
 			ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr,
 			PreparedStatementsStr, QuantilesStr, SequencesStr,
-			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
+			IsReadOnlyStr, TransactionReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,

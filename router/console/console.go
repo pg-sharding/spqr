@@ -186,6 +186,8 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
 		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.ParameterStatus{Name: "default_transaction_read_only", Value: "off"},
+		&pgproto3.ParameterStatus{Name: "in_hot_standby", Value: "off"},
 		&pgproto3.BackendKeyData{ProcessID: rc.GetCancelPid(), SecretKey: rc.GetCancelKey()},
 	}...)
 
