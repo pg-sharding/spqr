@@ -73,3 +73,4 @@ test: insert_select_pullup
 test: projection_pullup
 test: insert_select_returning
 test: target_list_alias_routing
+test: prepare_execute

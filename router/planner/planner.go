@@ -1260,7 +1260,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 						if sh.Name != shs[0].Name {
 							/* try to rewrite, but only for simple protocol */
 							if len(rm.ParamRefs) == 0 {
-								return RewriteDistributedRelBatchInsert(rm.Query, shs)
+								return RewriteDistributedRelBatchInsert(rm.Query, q.ValuesLoc, shs)
 							}
 							return nil, rerrors.ErrComplexQuery
 						}

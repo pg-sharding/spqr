@@ -3,6 +3,7 @@
 package prep_stmt_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 	"time"
@@ -406,7 +407,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	for testInd, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -672,6 +673,332 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Parse{
+					Name:  "autoinc_p_1",
+					Query: "INSERT INTO xproto_ref_autoinc (a) VALUES($1)",
+				},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "autoinc_p_1",
+					Parameters:        [][]byte{fmt.Appendf(nil, "%d", 112)},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "autoinc_p_1",
+					Parameters:        [][]byte{fmt.Appendf(nil, "%d", 113)},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "TABLE xproto_ref_autoinc",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("a"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 1,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("b"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 2,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 3,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x32},
+						nil,
+						{0x37},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x33},
+						nil,
+						{0x39},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Parse{
+					Name:  "autoinc_p_1",
+					Query: "INSERT INTO xproto_ref_autoinc (a) VALUES($1)",
+				},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement:    "autoinc_p_1",
+					ParameterFormatCodes: []int16{1},
+					Parameters: [][]byte{
+						func() []byte {
+							b := make([]byte, 4)
+							binary.BigEndian.PutUint32(b, 112)
+							return b
+						}(),
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement:    "autoinc_p_1",
+					ParameterFormatCodes: []int16{1},
+					Parameters: [][]byte{
+						func() []byte {
+							b := make([]byte, 4)
+							binary.BigEndian.PutUint32(b, 113)
+							return b
+						}(),
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "TABLE xproto_ref_autoinc",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("a"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 1,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("b"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 2,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 3,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x32},
+						nil,
+						{0x31, 0x31},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x33},
+						nil,
+						{0x31, 0x33},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
@@ -701,7 +1028,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				break
 			}
 
-			assert.Equal(t, msg, retMsg, "iter %d", i)
+			assert.Equal(t, msg, retMsg, "test: %d, iter %d", testInd, i)
 		}
 	}
 }

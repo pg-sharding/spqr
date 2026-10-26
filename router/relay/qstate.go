@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -177,6 +178,8 @@ var (
 func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comments []string, binderQ func() error, _ bool) (*PortalDesc, error) {
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
+
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msg("process relay state advanced")
 
 	statistics.IncTotalRequest()
 
@@ -505,8 +508,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			// prepare *name* as *query*
-			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
+			// Extract the inner query using the token location recorded
+			// by the parser: PrepareStmt.QueryLoc points right at the
+			// first token of the query after the AS keyword.
+			ss := query[st.QueryLoc:]
 
 			if _, err := rst.relayParsePrepared(context.TODO(), st.Name, ss, nil); err != nil {
 				return nil, err
@@ -531,6 +536,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				switch q := p.(type) {
 				case *lyx.AExprSConst:
 					params = append(params, []byte(q.Value))
+				case *lyx.AExprIConst:
+					params = append(params, []byte(strconv.FormatInt(q.Value, 10)))
+				case *lyx.AExprBConst:
+					params = append(params, []byte(strconv.FormatBool(q.Value)))
+				case *lyx.AExprNConst:
+					/* NULL const */
+					params = append(params, nil)
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
