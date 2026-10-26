@@ -87,10 +87,10 @@ SHOW relations;
  expr_rel      | ds_expr         | ("", murmur)              | public
 (2 rows)
 
+\set VERBOSITY terse
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
-ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error
-LINE 1: ...ION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA sch...
-                                                             ^
+ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error at character 66
+\set VERBOSITY default
 ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
           alter relation          
 ----------------------------------
