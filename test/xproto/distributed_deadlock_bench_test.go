@@ -16,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// BenchmarkDistributedUpsert runs concurrent extended-protocol upserts on four shards.
+// BenchmarkDistributedUpsert runs concurrent extended-protocol upsert queries on four shards.
 func BenchmarkDistributedUpsert(b *testing.B) {
 	if isPurePGTesting() {
 		b.Skip("requires the four-shard xproto environment")
