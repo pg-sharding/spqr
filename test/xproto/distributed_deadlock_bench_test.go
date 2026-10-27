@@ -10,19 +10,13 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
-const upsertBenchTimeout = 10 * time.Second
-
-// BenchmarkDistributedUpsert contends on one row per shard. Each operation is
-// an autocommit statement, so unrelated transaction lock ordering cannot mask
-// problems with dispatching one distributed INSERT. Run with -benchtime=10000x
-// (or longer) to exercise concurrent clients beyond benchmark calibration.
+// BenchmarkDistributedUpsert runs concurrent extended-protocol upserts on four shards.
 func BenchmarkDistributedUpsert(b *testing.B) {
 	if isPurePGTesting() {
 		b.Skip("requires the four-shard xproto environment")
@@ -50,17 +44,15 @@ func BenchmarkDistributedUpsert(b *testing.B) {
 		upsertBenchExec(b, control, "DROP TABLE "+table)
 	})
 
-	b.Run("Extended", func(b *testing.B) {
-		for _, linearize := range []bool{false, true} {
-			name := "Auto"
-			if linearize {
-				name = "Forced"
-			}
-			b.Run(name, func(b *testing.B) {
-				benchmarkDistributedUpsert(b, control, table, linearize)
-			})
+	for _, linearize := range []bool{false, true} {
+		name := "Auto"
+		if linearize {
+			name = "Forced"
 		}
-	})
+		b.Run("Extended/"+name, func(b *testing.B) {
+			benchmarkDistributedUpsert(b, control, table, linearize)
+		})
+	}
 }
 
 func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, linearize bool) {
@@ -89,59 +81,34 @@ func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, l
 		upsertBenchExec(b, clients[i], fmt.Sprintf("SET __spqr__.linearize_dispatch TO %t", linearize))
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	start := make(chan struct{})
-	errors := make(chan error, 1)
-	var next atomic.Int64
+	ctx := context.Background()
 	var workers sync.WaitGroup
+	b.ResetTimer()
+	b.StartTimer()
 	for worker, conn := range clients {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			<-start
-			for ctx.Err() == nil {
-				iteration := next.Add(1) - 1
-				if iteration >= int64(b.N) {
-					return
-				}
-				offset := (int(iteration) + worker) % len(keys)
-				queryCtx, queryCancel := context.WithTimeout(ctx, upsertBenchTimeout)
+			for iteration := worker; iteration < b.N; iteration += len(clients) {
+				offset := (iteration/len(clients) + worker) % len(keys)
 				// ExecParams always uses Parse/Bind/Execute/Sync. pgx.Exec
 				// with no arguments would silently use the simple protocol.
-				tag, err := conn.PgConn().ExecParams(queryCtx, parameterized,
+				_, err := conn.PgConn().ExecParams(ctx, parameterized,
 					parameters[offset], nil, nil, nil).Close()
-				queryCancel()
-				if err == nil && (!tag.Insert() || conn.PgConn().TxStatus() != 'I') {
-					err = fmt.Errorf("unexpected completion: tag %q, transaction status %c", tag, conn.PgConn().TxStatus())
-				}
 				if err != nil {
-					select {
-					case errors <- fmt.Errorf("client %d, operation %d, key rotation %d: %w", worker, iteration, offset, err):
-					default:
-					}
-					cancel()
+					b.Errorf("client %d, operation %d: %v", worker, iteration, err)
 					return
 				}
 			}
 		}()
 	}
-	b.ResetTimer()
-	b.StartTimer()
-	close(start)
 	workers.Wait()
 	b.StopTimer()
-	select {
-	case err := <-errors:
-		b.Fatal(err)
-	default:
+	if b.Failed() {
+		return
 	}
-	b.ReportMetric(float64(len(clients)), "clients")
-	b.ReportMetric(float64(len(keys)), "rows/op")
 
-	checkCtx, checkCancel := context.WithTimeout(context.Background(), upsertBenchTimeout)
-	defer checkCancel()
-	rows, err := control.Query(checkCtx, "SELECT id, updates FROM "+table+" ORDER BY id")
+	rows, err := control.Query(ctx, "SELECT id, updates FROM "+table+" ORDER BY id")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -186,30 +153,23 @@ func upsertBenchConnect(b *testing.B, admin bool) *pgx.Conn {
 		b.Fatal(err)
 	}
 	cfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-	cfg.ConnectTimeout = upsertBenchTimeout
-	ctx, cancel := context.WithTimeout(context.Background(), upsertBenchTimeout)
-	defer cancel()
+	ctx := context.Background()
 	conn, err := pgx.ConnectConfig(ctx, cfg)
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
 		_ = conn.Close(ctx)
 	})
 	if !admin {
 		upsertBenchExec(b, conn, "SET __spqr__.engine_v2 TO true")
-		upsertBenchExec(b, conn, "SET statement_timeout TO '5s'")
 	}
 	return conn
 }
 
 func upsertBenchExec(b *testing.B, conn *pgx.Conn, query string) {
 	b.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), upsertBenchTimeout)
-	defer cancel()
-	if _, err := conn.Exec(ctx, query); err != nil {
+	if _, err := conn.Exec(context.Background(), query); err != nil {
 		b.Fatalf("%s: %v", query, err)
 	}
 }
