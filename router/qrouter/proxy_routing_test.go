@@ -438,7 +438,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: false */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: false */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: false */;`,
@@ -457,7 +458,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}'), (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}') /* __spqr__engine_v2: false */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
@@ -476,7 +478,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: true */;`,
@@ -1916,7 +1919,8 @@ func TestInsertOffsets(t *testing.T) {
 		{
 			query: `/* VALUES (99) */ INSERT INTO xx(i) VALUES (1), (20);`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `/* VALUES (99) */ INSERT INTO xx(i) VALUES (1);`,
 					"sh2": `/* VALUES (99) */ INSERT INTO xx(i) VALUES (20);`,

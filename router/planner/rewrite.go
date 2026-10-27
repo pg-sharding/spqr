@@ -174,7 +174,12 @@ func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey
 }
 
 func RewriteDistributedRelBatchInsert(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	return CommonValuesRewrite(query, valuesLoc, shs, false)
+	p, err := CommonValuesRewrite(query, valuesLoc, shs, false)
+	if err != nil {
+		return nil, err
+	}
+	p.Opts().AutoLinearize = true
+	return p, nil
 }
 
 func RewriteDistributedRelWithValues(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
