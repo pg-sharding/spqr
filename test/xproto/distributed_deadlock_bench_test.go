@@ -1,4 +1,4 @@
-//go:build simple || xproto || all
+//go:build xproto || all
 
 package prep_stmt_test
 
@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const upsertBenchTimeout = 10 * time.Second
@@ -51,41 +50,34 @@ func BenchmarkDistributedUpsert(b *testing.B) {
 		upsertBenchExec(b, control, "DROP TABLE "+table)
 	})
 
-	for _, protocol := range []string{"Simple", "Extended"} {
-		b.Run(protocol, func(b *testing.B) {
-			for _, linearize := range []bool{false, true} {
-				name := "Auto"
-				if linearize {
-					name = "Forced"
-				}
-				b.Run(name, func(b *testing.B) {
-					benchmarkDistributedUpsert(b, control, table, protocol == "Extended", linearize)
-				})
+	b.Run("Extended", func(b *testing.B) {
+		for _, linearize := range []bool{false, true} {
+			name := "Auto"
+			if linearize {
+				name = "Forced"
 			}
-		})
-	}
+			b.Run(name, func(b *testing.B) {
+				benchmarkDistributedUpsert(b, control, table, linearize)
+			})
+		}
+	})
 }
 
-func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, extended, linearize bool) {
+func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, linearize bool) {
 	b.StopTimer()
 	upsertBenchExec(b, control, "TRUNCATE "+table)
 	upsertBenchExec(b, control, "INSERT INTO "+table+" VALUES (1, 0), (12, 0), (1001, 0), (2001, 0)")
 
 	// Rotate the key order across clients and iterations. INSERT SELECT reads
-	// each shard's local key and needs no multi-VALUES rewriting in either
+	// each shard's local key and needs no multi-VALUES rewriting in extended
 	// protocol. One key per shard avoids intra-shard row-order deadlocks.
 	keys := []int{1, 12, 1001, 2001}
-	queries := make([]string, len(keys))
 	parameters := make([][][]byte, len(keys))
 	for offset := range keys {
 		parameters[offset] = make([][]byte, len(keys))
 		for i := range keys {
 			parameters[offset][i] = []byte(strconv.Itoa(keys[(i+offset)%len(keys)]))
 		}
-		queries[offset] = fmt.Sprintf(
-			"INSERT INTO %s (id, updates) SELECT id, 1 FROM %s WHERE id IN (%s, %s, %s, %s) "+
-				"ON CONFLICT (id) DO UPDATE SET updates = %s.updates + 1",
-			table, table, parameters[offset][0], parameters[offset][1], parameters[offset][2], parameters[offset][3], table)
 	}
 	parameterized := fmt.Sprintf(
 		"INSERT INTO %s (id, updates) SELECT id, 1 FROM %s WHERE id IN ($1, $2, $3, $4) "+
@@ -115,16 +107,10 @@ func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, e
 				}
 				offset := (int(iteration) + worker) % len(keys)
 				queryCtx, queryCancel := context.WithTimeout(ctx, upsertBenchTimeout)
-				var tag pgconn.CommandTag
-				var err error
-				if extended {
-					// ExecParams always uses Parse/Bind/Execute/Sync. pgx.Exec
-					// with no arguments would silently use the simple protocol.
-					tag, err = conn.PgConn().ExecParams(queryCtx, parameterized,
-						parameters[offset], nil, nil, nil).Close()
-				} else {
-					tag, err = conn.Exec(queryCtx, queries[offset])
-				}
+				// ExecParams always uses Parse/Bind/Execute/Sync. pgx.Exec
+				// with no arguments would silently use the simple protocol.
+				tag, err := conn.PgConn().ExecParams(queryCtx, parameterized,
+					parameters[offset], nil, nil, nil).Close()
 				queryCancel()
 				if err == nil && (!tag.Insert() || conn.PgConn().TxStatus() != 'I') {
 					err = fmt.Errorf("unexpected completion: tag %q, transaction status %c", tag, conn.PgConn().TxStatus())
