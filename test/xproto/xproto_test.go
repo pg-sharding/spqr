@@ -2379,7 +2379,7 @@ func TestPrepStmt(t *testing.T) {
 					Parameters: [][]byte{
 						[]byte("statement_timeout"),
 						[]byte("19"),
-						[]byte("false"),
+						[]byte("true"),
 					},
 				},
 				&pgproto3.Describe{ObjectType: 'P'},
