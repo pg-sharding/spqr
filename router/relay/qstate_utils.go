@@ -43,17 +43,26 @@ func DispatchSlice(qd *QueryDesc,
 		}
 	}
 
+	forceLinearize := false
+	if p != nil {
+		forceLinearize = p.Opts().AutoLinearize
+	}
+
+	guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+	if err != nil {
+		return err
+	}
+
+	forceLinearize = forceLinearize || guc.Get(cl)
+
 	for _, targ := range et {
 
 		if qd.simple {
-
-			forceLinearize := false
 
 			/*
 			* This is only execution path for non-top level slice
 			 */
 			if p != nil {
-				forceLinearize = p.Opts().AutoLinearize
 				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
 					/* Uh, oh, this is very ugly hack */
 
@@ -76,12 +85,7 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			}
 
-			guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
-			if err != nil {
-				return err
-			}
-
-			if guc.Get(cl) || forceLinearize {
+			if forceLinearize {
 				guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
 				if err != nil {
 					return err
@@ -139,10 +143,26 @@ func DispatchSlice(qd *QueryDesc,
 			if err := serv.SendShard(qd.exec, targ); err != nil {
 				return err
 			}
+
 			if qd.exec.MaxRows == 0 {
 				if err := serv.SendShard(pgsync, targ); err != nil {
 					return err
 				}
+
+				if forceLinearize {
+					guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+					if err != nil {
+						return err
+					}
+					if guc.Get(cl) {
+						_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+					}
+
+					if err := serv.PrefetchResult(targ, 1); err != nil {
+						return err
+					}
+				}
+
 			} else {
 				msg, err := cl.Peek()
 				if err != nil {
@@ -154,6 +174,21 @@ func DispatchSlice(qd *QueryDesc,
 					if err := serv.SendShard(pgsync, targ); err != nil {
 						return err
 					}
+
+					if forceLinearize {
+						guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+						if err != nil {
+							return err
+						}
+						if guc.Get(cl) {
+							_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+						}
+
+						if err := serv.PrefetchResult(targ, 1); err != nil {
+							return err
+						}
+					}
+
 				case *pgproto3.Flush:
 					/* empty buffer */
 					_, _ = cl.Receive()
@@ -177,11 +212,11 @@ func DispatchSlice(qd *QueryDesc,
 		}
 	}
 
-	guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	rGuc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
 	if err != nil {
 		return err
 	}
-	if guc.Get(cl) && replyCl {
+	if rGuc.Get(cl) && replyCl {
 		_ = replyShardMatchesWithHosts(cl, serv, et)
 	}
 	return nil
