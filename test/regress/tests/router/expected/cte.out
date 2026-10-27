@@ -352,7 +352,12 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
 NOTICE: send query to shard(s) : sh1

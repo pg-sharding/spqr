@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -168,6 +169,69 @@ func BenchmarkDistributedBatchInsert(b *testing.B) {
 	}
 	workers.Wait()
 	b.StopTimer()
+}
+
+func BenchmarkReferenceRelationModify(b *testing.B) {
+	if isPurePGTesting() {
+		b.Skip("requires the xproto sharding environment")
+	}
+	admin := upsertBenchConnect(b, true)
+	control := upsertBenchConnect(b, false)
+	table := fmt.Sprintf("xproto_ref_modify_%x", time.Now().UnixNano())
+	upsertBenchExec(b, admin, "CREATE REFERENCE RELATION "+table+" ON sh1, sh2")
+	upsertBenchExec(b, control, "CREATE TABLE "+table+" (id integer PRIMARY KEY, value integer DEFAULT 0)")
+	b.Cleanup(func() {
+		upsertBenchExec(b, control, "DROP TABLE "+table)
+		upsertBenchExec(b, admin, "DROP REFERENCE RELATION "+table)
+	})
+
+	for _, operation := range []string{"Insert", "Update", "Delete"} {
+		b.Run(operation, func(b *testing.B) {
+			b.StopTimer()
+			upsertBenchExec(b, control, "TRUNCATE "+table)
+			clients := make([]*pgx.Conn, min(8, b.N))
+			for i := range clients {
+				clients[i] = upsertBenchConnect(b, false)
+			}
+			if operation != "Insert" {
+				values := make([]string, (b.N-1)/len(clients)+1)
+				for key := range values {
+					values[key] = fmt.Sprintf("(%d)", key)
+				}
+				upsertBenchExec(b, control, "INSERT INTO "+table+" (id) VALUES "+strings.Join(values, ","))
+			}
+
+			ctx := context.Background()
+			var workers sync.WaitGroup
+			b.ResetTimer()
+			b.StartTimer()
+			for worker, conn := range clients {
+				workers.Add(1)
+				go func() {
+					defer workers.Done()
+					for iteration := worker; iteration < b.N; iteration += len(clients) {
+						key := iteration / len(clients)
+						var query string
+						switch operation {
+						case "Insert":
+							query = fmt.Sprintf("INSERT INTO %s (id) VALUES (%d) ON CONFLICT DO NOTHING", table, key)
+						case "Update":
+							query = fmt.Sprintf("UPDATE %s SET value = value + 1 WHERE id = %d", table, key)
+						case "Delete":
+							query = fmt.Sprintf("DELETE FROM %s WHERE id = %d", table, key)
+						}
+						query += fmt.Sprintf(" /* client %d */", worker)
+						if _, err := conn.Exec(ctx, query); err != nil {
+							b.Errorf("client %d, operation %d: %v", worker, iteration, err)
+							return
+						}
+					}
+				}()
+			}
+			workers.Wait()
+			b.StopTimer()
+		})
+	}
 }
 
 func upsertBenchConnect(b *testing.B, admin bool) *pgx.Conn {

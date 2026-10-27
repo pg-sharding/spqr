@@ -757,6 +757,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				OverwriteQuery: map[string]string{
@@ -850,6 +851,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 					BasePlan: plan.BasePlan{
 						H: planopts.PlanOpts{
 							ResultRelationIsRef: true,
+							AutoLinearize:       true,
 						},
 					},
 					OverwriteQuery: map[string]string{
@@ -876,6 +878,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				OverwriteQuery: map[string]string{
@@ -896,6 +899,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
 				SubPlan: &plan.ScatterPlan{
 					BasePlan: plan.BasePlan{
 						H: planopts.PlanOpts{
@@ -939,6 +943,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				SubPlan: &plan.ModifyTable{
@@ -967,6 +972,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				SubPlan: &plan.ModifyTable{
@@ -1015,6 +1021,41 @@ func TestReferenceRelationRouting(t *testing.T) {
 			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
+		}
+	}
+
+	for _, preferredEngine := range []string{"", planner.EnhancedEngineVersion} {
+		for _, query := range []string{
+			"INSERT INTO test_ref_rel VALUES (1) ON CONFLICT DO NOTHING",
+			"INSERT INTO test_ref_rel SELECT 1",
+			"UPDATE test_ref_rel SET i = i + 1",
+			"UPDATE test_ref_rel SET i = i + 1 WHERE i = 1 RETURNING *",
+			"DELETE FROM test_ref_rel",
+			"DELETE FROM test_ref_rel WHERE i = 1 RETURNING *",
+			"SELECT * FROM test_ref_rel",
+		} {
+			stmts, _, err := lyx.Parse(query)
+			if !assert.NoError(err) {
+				return
+			}
+			dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
+			dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+			guc, err := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+			if !assert.NoError(err) || !assert.NoError(guc.Set(dh, preferredEngine, "")) {
+				return
+			}
+			rm, err := pr.AnalyzeQuery(context.Background(), dh, &config.FrontendRule{}, query, stmts[0], &rmeta.MetadataCache{
+				Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+			})
+			if !assert.NoError(err) {
+				return
+			}
+			p, err := pr.PlanQuery(context.Background(), rm)
+			if !assert.NoError(err) || !assert.NotNil(p) {
+				return
+			}
+			_, readOnly := stmts[0].(*lyx.Select)
+			assert.Equal(!readOnly, p.Opts().AutoLinearize, "engine %q: %s", preferredEngine, query)
 		}
 	}
 }
