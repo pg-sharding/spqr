@@ -1,5 +1,7 @@
 # Distributed upsert stress benchmark
 
+CI runs both benchmark cases after the tests in the `proto-extended` job.
+
 Run against a disposable xproto environment with shards `sh1` through `sh4`:
 
 ```sh

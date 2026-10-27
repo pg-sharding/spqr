@@ -58,7 +58,7 @@ func BenchmarkDistributedUpsert(b *testing.B) {
 func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, linearize bool) {
 	b.StopTimer()
 	upsertBenchExec(b, control, "TRUNCATE "+table)
-	upsertBenchExec(b, control, "INSERT INTO "+table+" VALUES (1, 0), (12, 0), (1001, 0), (2001, 0)")
+	upsertBenchExec(b, control, "INSERT INTO "+table+" (id, updates) VALUES (1, 0), (12, 0), (1001, 0), (2001, 0)")
 
 	// Rotate the key order across clients and iterations. INSERT SELECT reads
 	// each shard's local key and needs no multi-VALUES rewriting in extended
