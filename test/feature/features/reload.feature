@@ -45,3 +45,36 @@ Feature: Config reloading works
     """
     1
     """
+
+  @pure_pg
+  Scenario: Show notice messages reload works
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_incorrect_password.yaml
+    """
+    Given cluster is up and running
+    When I run SQL on host "router" as user "regress"
+    """
+    SELECT 1
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1
+    """
+    # Edit config to toggle show_notice_messages and reload spqr-router via SIGHUP
+    When I run command on host "router"
+    """
+    sed -i 's/show_notice_messages: true/show_notice_messages: false/g' $ROUTER_CONFIG
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router" as user "regress"
+    """
+    SELECT 1
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1
+    """
