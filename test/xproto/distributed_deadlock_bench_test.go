@@ -91,8 +91,6 @@ func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, l
 			defer workers.Done()
 			for iteration := worker; iteration < b.N; iteration += len(clients) {
 				offset := (iteration/len(clients) + worker) % len(keys)
-				// ExecParams always uses Parse/Bind/Execute/Sync. pgx.Exec
-				// with no arguments would silently use the simple protocol.
 				_, err := conn.PgConn().ExecParams(ctx, parameterized,
 					parameters[offset], nil, nil, nil).Close()
 				if err != nil {
