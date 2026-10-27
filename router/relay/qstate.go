@@ -582,6 +582,12 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	mp map[string]string, isLocal bool, isStmt bool) error {
+	for hintName := range mp {
+		name := virtualParamTransformName(hintName)
+		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
+			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+		}
+	}
 
 	lvl := session.VirtualParamLevelTxBlock
 

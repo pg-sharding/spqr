@@ -80,5 +80,7 @@ SELECT * FROM spqr_metadata.spqr_local_key_ranges;
 SET __spqr__execute_on=sh2;
 SELECT * FROM spqr_metadata.spqr_local_key_ranges;
 
+DROP TABLE t;
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

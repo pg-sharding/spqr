@@ -139,6 +139,51 @@ const (
 
 //revive:enable:var-naming
 
+// HintType indicates whether a hint accepts a boolean or string value.
+type HintType int
+
+const (
+	HintTypeBoolean HintType = iota
+	HintTypeString
+)
+
+// hintRegistry lists supported SPQR hints and their value types.
+var hintRegistry = map[string]HintType{
+	SPQR_ALLOW_SPLIT_UPDATE:           HintTypeBoolean,
+	SPQR_ALLOW_POSTPROCESSING:         HintTypeBoolean,
+	SPQR_LINEARIZE_DISPATCH:           HintTypeBoolean,
+	SPQR_ALLOW_AUTOPROTECT_2PC:        HintTypeBoolean,
+	SPQR_ALLOW_FLUX_ACCESS:            HintTypeBoolean,
+	SPQR_SESSION_CONNECTIONS_PIN:      HintTypeBoolean,
+	SPQR_REPLY_NOTICE:                 HintTypeBoolean,
+	SPQR_MAINTAIN_PARAMS:              HintTypeBoolean,
+	SPQR_EAGER_CLEANUP_2PC:            HintTypeBoolean,
+	SPQR_SCATTER_QUERY:                HintTypeBoolean,
+	SPQR_AUTONOMOUS_TX:                HintTypeBoolean,
+	SPQR_ENGINE_V2:                    HintTypeBoolean,
+	SPQR_DISTRIBUTION:                 HintTypeString,
+	SPQR_DISTRIBUTED_RELATION:         HintTypeString,
+	SPQR_DEFAULT_ROUTE_BEHAVIOUR:      HintTypeString,
+	SPQR_AUTO_DISTRIBUTION:            HintTypeString,
+	SPQR_DISTRIBUTION_KEY:             HintTypeString,
+	SPQR_SHARDING_KEY:                 HintTypeString,
+	SPQR_PREFERRED_ENGINE:             HintTypeString,
+	SPQR_COMMIT_STRATEGY:              HintTypeString,
+	SPQR_TARGET_SESSION_ATTRS:         HintTypeString,
+	SPQR_EXECUTE_ON:                   HintTypeString,
+	SPQR_EXECUTE_HOST_FILTER:          HintTypeString,
+	SPQR_TARGET_SESSION_ATTRS_ALIAS:   HintTypeString,
+	SPQR_TARGET_SESSION_ATTRS_ALIAS_2: HintTypeString,
+	SPQR_ADVISORY_LOCK_BEHAVIOUR:      HintTypeString,
+	SPQR_NOTICE_MESSAGE_FORMAT:        HintTypeString,
+}
+
+// IsKnownSPQRHint reports whether the hint is registered.
+func IsKnownSPQRHint(name string) bool {
+	_, ok := hintRegistry[name]
+	return ok
+}
+
 func ApplyAutoConfGUC(name, val string) error {
 	if ParamIsBoolean(name) {
 		if guc, err := FindBoolGUC(name); err == nil {
@@ -162,36 +207,14 @@ func ApplyAutoConfGUC(name, val string) error {
 }
 
 func ParamIsBoolean(n string) bool {
-	switch n {
-	case SPQR_ALLOW_SPLIT_UPDATE,
-		SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH,
-		SPQR_ALLOW_FLUX_ACCESS, SPQR_ALLOW_AUTOPROTECT_2PC, SPQR_SESSION_CONNECTIONS_PIN,
-		SPQR_REPLY_NOTICE, SPQR_MAINTAIN_PARAMS, SPQR_EAGER_CLEANUP_2PC,
-		SPQR_SCATTER_QUERY, SPQR_AUTONOMOUS_TX:
-		return true
-	default:
-		return false
-	}
+	paramType, ok := hintRegistry[n]
+	return ok && paramType == HintTypeBoolean && n != SPQR_ENGINE_V2
 }
 
 func ParamIsString(n string) bool {
-	switch n {
-	case SPQR_ADVISORY_LOCK_BEHAVIOUR,
-		SPQR_DEFAULT_ROUTE_BEHAVIOUR,
-		SPQR_PREFERRED_ENGINE,
-		SPQR_EXECUTE_ON,
-		SPQR_EXECUTE_HOST_FILTER,
-		SPQR_SHARDING_KEY,
-		SPQR_DISTRIBUTION_KEY,
-		SPQR_DISTRIBUTED_RELATION,
-		SPQR_TARGET_SESSION_ATTRS,
-		SPQR_TARGET_SESSION_ATTRS_ALIAS,
-		SPQR_TARGET_SESSION_ATTRS_ALIAS_2,
-		SPQR_NOTICE_MESSAGE_FORMAT:
-		return true
-	default:
-		return false
-	}
+	paramType, ok := hintRegistry[n]
+	return ok && paramType == HintTypeString &&
+		n != SPQR_DISTRIBUTION && n != SPQR_AUTO_DISTRIBUTION && n != SPQR_COMMIT_STRATEGY
 }
 
 func ParseBoolGUCValue(val string) (bool, error) {

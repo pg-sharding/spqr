@@ -2451,6 +2451,13 @@ func processShowInner(ctx context.Context,
 		}
 
 		return tts, nil
+	case spqrparser.TransactionReadOnlyStr:
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("transaction_read_only"),
+		}
+		tts.WriteDataRow("off")
+
+		return tts, nil
 	case spqrparser.IsReadOnlyStr:
 
 		tts := &tupleslot.TupleTableSlot{
