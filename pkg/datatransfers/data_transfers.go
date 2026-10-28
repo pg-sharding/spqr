@@ -361,7 +361,7 @@ func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *r
 		return err
 	}
 	if !toTableExists {
-		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation %s does not exist on the destination shard", rel.QualifiedName())
 	}
 
 	rrels, err := mgr.ListReferenceRelations(ctx)

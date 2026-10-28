@@ -54,6 +54,21 @@ func TestMemQDBGetShardReturnsShardNotFound(t *testing.T) {
 	}
 }
 
+func TestMemQDBDropMissingUniqueIndex(t *testing.T) {
+	memqdb, err := qdb.NewMemQDB("")
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	err = memqdb.DropUniqueIndex(context.Background(), "missing_index")
+	var spErr *spqrerror.SpqrError
+	if assert.ErrorAs(t, err, &spErr) {
+		assert.Equal(t, spqrerror.SPQR_OBJECT_NOT_EXIST, spErr.ErrorCode)
+		assert.Equal(t, `unique index "missing_index" not found`, spErr.Error())
+		assert.Empty(t, spErr.ErrHint)
+	}
+}
+
 // must run with -race
 func TestMemqdbRacing(t *testing.T) {
 	assert := assert.New(t)
