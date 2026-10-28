@@ -75,3 +75,4 @@ test: insert_select_returning
 test: target_list_alias_routing
 test: prepare_execute
 test: single_shard_reference
+test: meta
