@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -213,13 +214,16 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err := awaitPIDsInternal(execCtx, from); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
 			}
-			tx.Status = qdb.Locked
+			if err := awaitTwoPhaseInternal(ctx, from); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await two phase commit transactions to commit/rollback: %v", err)
+			}
+			tx.Status = qdb.AwaitedPIDs
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
 			statistics.RecordShardOperation("awaitPIDs", time.Since(t))
 			if err != nil {
 				return err
 			}
-		case qdb.Locked:
+		case qdb.Locked, qdb.AwaitedPIDs:
 			t := time.Now()
 			if _, err := db.CheckLockedKeyRange(ctx, krg.ID); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "cannot copy data because key range \"%s\" is not locked", krg.ID).Hint("possible incorrect move task group recovery")
@@ -312,6 +316,76 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
+func SyncReferenceRelationCheck(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, mgr rrelation.ReferenceRelationMgr) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+	fromCfg, ok := shards.ShardsData[fromId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
+	}
+	from, err := GetMasterConnection(ctx, fromCfg, "")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+	defer func() {
+		_ = from.Close(ctx)
+	}()
+	toCfg, ok := shards.ShardsData[toId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
+	}
+	to, err := GetMasterConnection(ctx, toCfg, "reference_table_sync")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+	defer func() {
+		_ = to.Close(ctx)
+	}()
+
+	fromTableExists, err := CheckTableExists(ctx, from, rel.RelationName)
+	if err != nil {
+		return err
+	}
+	if !fromTableExists {
+		return nil
+	}
+
+	toTableExists, err := CheckTableExists(ctx, to, rel.RelationName)
+	if err != nil {
+		return err
+	}
+	if !toTableExists {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation %s does not exist on the destination shard", rel.QualifiedName())
+	}
+
+	rrels, err := mgr.ListReferenceRelations(ctx)
+	if err != nil {
+		return err
+	}
+
+	alreadySyncedRels := make([]string, 0)
+	for _, rrel := range rrels {
+		if slices.Contains(rrel.ShardIDs, toId) {
+			alreadySyncedRels = append(alreadySyncedRels, rrel.QualifiedName().String())
+		}
+	}
+	ok, constraintName, err := CheckConstraints(ctx, to, []string{rel.QualifiedName().String()}, alreadySyncedRels)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing replicated relation not on shard: \"%s\"", constraintName)
+	}
+
+	return nil
+}
+
 func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
 	tx, err := db.GetTransferTx(ctx, rel.RelationName.String())
 	if err != nil {
@@ -362,6 +436,13 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		_ = to.Close(ctx)
 	}()
 
+	if config.CoordinatorConfig().DataMoveOptimisticPIDAwait {
+		if err := awaitPIDsInternal(ctx, from); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to await virtual transactions before sync reference relation")
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
+		}
+	}
+
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
@@ -375,6 +456,21 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 				return err
 			}
 		case qdb.Locked:
+			// await running transactions to avoid data corruption
+			execCtx, cancel := context.WithTimeout(ctx, config.CoordinatorConfig().DataMoveAwaitPIDTimeout)
+			defer cancel()
+			if err := awaitPIDsInternal(execCtx, from); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await virtual transactions to exit: %v", err)
+			}
+			if err := awaitTwoPhaseInternal(ctx, from); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to await two phase commit transactions to commit/rollback: %v", err)
+			}
+			tx.Status = qdb.AwaitedPIDs
+			err = db.RecordTransferTx(ctx, transferKey, tx)
+			if err != nil {
+				return err
+			}
+		case qdb.AwaitedPIDs:
 			// copy data of key range to receiving shard
 			if err = copyReferenceRelationData(ctx, from, to, fromId, toId, rel); err != nil {
 				return err
@@ -453,14 +549,42 @@ func SetupFDW(
 	if err != nil {
 		return err
 	}
-	// create postgres_fdw server on receiving shard
-	_, err = to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', options '-c idle_in_transaction_session_timeout=0 -c idle_session_timeout=0')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
-	if err != nil {
+	if err := func() error {
+		tx, err := to.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		// create postgres_fdw server on receiving shard
+		_, err = tx.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s', options '-c idle_in_transaction_session_timeout=0 -c idle_session_timeout=0')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `
+CREATE FUNCTION pg_temp.setup_fdw(v_local_user text, v_server_name text, v_remote_user text, v_remote_pass text) RETURNS VOID AS $$
+BEGIN
+    EXECUTE format(
+        'CREATE USER MAPPING IF NOT EXISTS FOR %I SERVER %I OPTIONS (user %L, password %L)',
+        v_local_user,
+        v_server_name,
+        v_remote_user,
+        v_remote_pass
+    );
+END; 
+$$ LANGUAGE plpgsql;`); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `SELECT pg_temp.setup_fdw($1, $2, $3, $4);`, toShard.User, serverName, fromShard.User, fromShard.Password); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `DROP FUNCTION pg_temp.setup_fdw(text, text, text, text);`); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}(); err != nil {
 		return err
 	}
-	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING IF NOT EXISTS FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
-		return err
-	}
+
 	// create foreign tables corresponding to such on sending shard
 	// TODO check if schemaName is not used by relations (needs schemas in distributions)
 	for schema := range schemas {
@@ -630,7 +754,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 
 	fromTx, err := from.Begin(ctx)
 	if err != nil {
-		return spqrerror.NewByCode(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR).Detail("failed to begin transaction on the source shard")
+		return spqrerror.New(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to begin transaction on the source shard")
 	}
 	defer func() { _ = fromTx.Rollback(ctx) }()
 	rels := make([]struct {
@@ -698,7 +822,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		if !toTableExists {
-			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on receiving shard", rel.Relation)
+			return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "relation %s does not exist on the destination shard", rel.Relation)
 		}
 		relFullName := rel.QualifiedName().String()
 		toCount, err := GetEntriesCount(ctx, tx, relFullName, krCondition)
@@ -804,7 +928,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return err
 	}
 	if !toTableExists {
-		return fmt.Errorf("relation %s does not exist on receiving shard", rel.QualifiedName())
+		return fmt.Errorf("relation %s does not exist on the destination shard", rel.QualifiedName())
 	}
 	toCount, err := GetEntriesCount(ctx, tx, relFullName, "true")
 	if err != nil {
@@ -892,10 +1016,13 @@ func awaitPIDsInternal(ctx context.Context, conn *pgx.Conn) error {
 			spqrlog.Zero.Info().Str("cp", icp.AwaitPidCP).Err(err).Msg("error while checking control point")
 		}
 	}
-	if _, err := conn.Exec(ctx, getAwaitPIDsQuery()); err != nil {
-		return err
-	}
-	return nil
+	_, err := conn.Exec(ctx, getAwaitPIDsQuery())
+	return err
+}
+
+func awaitTwoPhaseInternal(ctx context.Context, conn *pgx.Conn) error {
+	_, err := conn.Exec(ctx, getAwaitTwoPhaseQuery())
+	return err
 }
 
 type Queryable interface {

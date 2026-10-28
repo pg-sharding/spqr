@@ -37,6 +37,7 @@ var (
 	routerUser        string
 	routerDatabase    string
 	routerPassword    string
+	simpleProtocol    bool
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-monitor command args...",
@@ -228,6 +229,7 @@ func init() {
 	checkCmd.Flags().StringVar(&routerUser, "user", "", "router username")
 	checkCmd.Flags().StringVar(&routerDatabase, "database", "", "router database")
 	checkCmd.Flags().StringVar(&routerPassword, "password", "", "router password")
+	checkCmd.Flags().BoolVar(&simpleProtocol, "simple-protocol", true, "use simple protocol in queries")
 
 	recoverKeyRangesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "only check key ranges, do not delete anything")
 	recoverKeyRangesCmd.Flags().StringVar(&coordAddr, "coordinator-addr", "localhost:7003", "coordinator grpc api address")
@@ -298,7 +300,7 @@ func getQDBData(ctx context.Context, db *qdb.EtcdQDB, shardData *config.Datatran
 			return 1
 		})
 		for i := range len(krsInternal) - 1 {
-			krsInternal[i].UpperBound = krsInternal[i+1].UpperBound
+			krsInternal[i].UpperBound = krsInternal[i+1].LowerBound
 		}
 		for _, keyRange := range krsInternal {
 			if _, ok := keyRangesMap[keyRange.ShardID]; !ok {
@@ -399,6 +401,9 @@ func connectRouter(ctx context.Context, tsa string, shardConn *config.ShardConne
 	}
 	if err != nil {
 		return nil, err
+	}
+	if simpleProtocol {
+		connConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	}
 	return pgx.ConnectConfig(ctx, connConfig)
 }

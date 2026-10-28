@@ -848,6 +848,21 @@ func (mr *MockEntityMgrMockRecorder) ListKeyRanges(ctx, distribution any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockEntityMgr)(nil).ListKeyRanges), ctx, distribution)
 }
 
+// ListMigrations mocks base method.
+func (m *MockEntityMgr) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockEntityMgrMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockEntityMgr)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTaskGroups mocks base method.
 func (m *MockEntityMgr) ListMoveTaskGroups(ctx context.Context) (map[string]*tasks.MoveTaskGroup, error) {
 	m.ctrl.T.Helper()
@@ -1098,6 +1113,20 @@ func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krid, kridNew any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RenameKeyRange), ctx, krid, kridNew)
 }
 
+// ResetMigration mocks base method.
+func (m *MockEntityMgr) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockEntityMgrMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockEntityMgr)(nil).ResetMigration), ctx, name)
+}
+
 // RetryMoveTaskGroup mocks base method.
 func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, icpCH icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
@@ -1110,6 +1139,20 @@ func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string, nowai
 func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
+}
+
+// SetMigration mocks base method.
+func (m *MockEntityMgr) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockEntityMgrMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockEntityMgr)(nil).SetMigration), ctx, name, value)
 }
 
 // SetShardOptions mocks base method.

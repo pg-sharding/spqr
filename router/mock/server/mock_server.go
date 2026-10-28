@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
+	config "github.com/pg-sharding/spqr/pkg/config"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	planopts "github.com/pg-sharding/spqr/pkg/planopts"
 	pool "github.com/pg-sharding/spqr/pkg/pool"
@@ -87,6 +88,20 @@ func (m *MockServer) CancellableIDs() []uint32 {
 func (mr *MockServerMockRecorder) CancellableIDs() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancellableIDs", reflect.TypeOf((*MockServer)(nil).CancellableIDs))
+}
+
+// Cleanup mocks base method.
+func (m *MockServer) Cleanup(rule *config.FrontendRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cleanup", rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Cleanup indicates an expected call of Cleanup.
+func (mr *MockServerMockRecorder) Cleanup(rule any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockServer)(nil).Cleanup), rule)
 }
 
 // DataPending mocks base method.

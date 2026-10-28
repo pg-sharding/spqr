@@ -88,6 +88,10 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 			destShards = append(rel.ShardIDs, destShard)
 		}
 
+		if err = datatransfers.SyncReferenceRelationCheck(ctx, fromShard, destShard, rel, lc); err != nil {
+			return err
+		}
+
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err
 		}
@@ -102,6 +106,14 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+	for _, opt := range shard.Options() {
+		if opt.Name == "host" {
+			if _, err := topology.ParseSingleHostSpec(opt.Arg); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", opt.Arg)
+			}
+		}
+	}
+
 	if !force {
 		if err := lc.checkShardMigration(ctx, shard); err != nil {
 			return err
@@ -1383,10 +1395,10 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 
 	statements, err := lc.qdb.DropKeyRange(ctx, krAppendage.ID)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err)
 	}
 	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err)
 	}
 
 	tranMngr := meta.NewTranEntityManager(lc)
@@ -1545,7 +1557,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err)
 	}
 	return nil
 }

@@ -51,11 +51,11 @@ func UnrouteCommon(
 	}
 
 	if serv.TxStatus() != txstatus.TXIDLE {
-		if err := serv.Reset(); err != nil {
+		if err := serv.Cleanup(&config.FrontendRule{
+			PoolRollback: true,
+		}); err != nil {
 			return err
 		}
-		// TODO: figure out if we need this
-		// return fmt.Errorf("failed to unroute client from connection with active TX")
 	}
 
 	for _, shkey := range sh {
@@ -78,6 +78,12 @@ func UnrouteCommon(
 
 				anyerr = err
 			}
+		}
+	}
+
+	if len(serv.Datashards()) != 0 {
+		if err := serv.Reset(); err != nil {
+			return err
 		}
 	}
 

@@ -1,0 +1,80 @@
+\c spqr-console
+CREATE DISTRIBUTION ds1 COLUMN TYPES INT hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+-- test sql-level prepared statements routing
+ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
+      attach table      
+------------------------
+ relation name   -> xx
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+DROP TABLE IF EXISTS xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE xx (col1 INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO xx (col1) VALUES (1);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (2);
+NOTICE: send query to shard(s) : sh2
+PREPARE p1(int) AS SELECT col1 FROM xx WHERE col1 = $1;
+EXECUTE p1(1);
+NOTICE: send query to shard(s) : sh1
+ col1 
+------
+    1
+(1 row)
+
+EXECUTE p1(2);
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+    2
+(1 row)
+
+PREPARE p2(int) AS INSERT INTO xx (col1) VALUES ($1);
+EXECUTE p2(3);
+NOTICE: send query to shard(s) : sh2
+EXECUTE p2(4);
+NOTICE: send query to shard(s) : sh2
+SELECT col1 FROM xx ORDER BY col1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ col1 
+------
+    1
+    2
+    3
+    4
+(4 rows)
+
+DEALLOCATE p1;
+DEALLOCATE p2;
+DROP TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ds1 CASCADE;
+ distribution_id 
+-----------------
+ ds1
+(1 row)
+

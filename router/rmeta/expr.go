@@ -152,29 +152,21 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, error) {
 	var p plan.Plan
 	/**/
-	for qualName := range rm.Rels {
-		// TODO: check by whole RFQN
-		ds, err := rm.GetRelationDistribution(ctx, &qualName)
-		if err != nil {
-			return nil, err
-		}
-
-		if ds.Id == distributions.REPLICATED {
-			var shs []kr.ShardKey
-			if IsRelationCatalog(&qualName) {
-				shs = nil
-			} else {
-				r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
-				if err != nil {
-					return nil, err
-				}
-				shs = r.ListStorageRoutes()
+	for qualName := range rm.RefRels {
+		var shs []kr.ShardKey
+		if IsRelationCatalog(&qualName) {
+			shs = nil
+		} else {
+			r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
+			if err != nil {
+				return nil, err
 			}
-
-			p = plan.Combine(p, &plan.RandomDispatchPlan{
-				ExecTargets: shs,
-			})
+			shs = r.ListStorageRoutes()
 		}
+
+		p = plan.Combine(p, &plan.RandomDispatchPlan{
+			ExecTargets: shs,
+		})
 	}
 
 	return p, nil
@@ -215,13 +207,9 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	var rs []*distributions.DistributedRelation
 	for qualName := range rm.RoutableRels {
 
-		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)
 		if err != nil {
 			return nil, err
-		}
-		if ds.Id == distributions.REPLICATED {
-			continue
 		}
 
 		relation, exists := ds.TryGetRelation(&qualName)

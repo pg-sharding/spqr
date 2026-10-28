@@ -546,6 +546,11 @@ var BoolGUCs = []*BoolGUCimpl{
 			}
 		},
 	},
+	{
+		n:         SPQR_AUTONOMOUS_TX,
+		shortName: "autonomous transactions",
+		initBoot:  func() bool { return false },
+	},
 }
 
 var StrGUCs = []*StrGUCimpl{

@@ -11,8 +11,10 @@ description: |
   ATTACH TABLE attaches one or more tables to the distribution with a
   specified distribution key. For composite sharding keys, specify multiple
   column names separated by commas in the DISTRIBUTION KEY clause.
+  Use IF NOT EXISTS to skip tables that are already attached.
 
   DETACH TABLE detaches a table from the distribution.
+  Use IF EXISTS to skip tables that are not attached.
 
   ALTER TABLE DISTRIBUTION KEY replaces the entire distribution key of an
   already attached table. This overwrites all column names and hash functions
@@ -35,9 +37,9 @@ description: |
   do not match any key range. DROP DEFAULT SHARD removes the default shard setting.
 
 syntax: |
-  ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName>
+  ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
     DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
-  ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+  ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
   ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
     DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
   ALTER DISTRIBUTION <distributionID> ALTER TABLE <tableName>
@@ -71,12 +73,18 @@ parameters:
 examples:
   - description: Attach table with single distribution key
     code: ALTER DISTRIBUTION ds1 ATTACH TABLE orders DISTRIBUTION KEY order_id;
+  - description: Attach table if it is not already attached
+    code: |
+      ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
+        DISTRIBUTION KEY order_id;
   - description: Attach table with composite key and hash function
     code: |
       ALTER DISTRIBUTION ds2 ATTACH TABLE users 
         DISTRIBUTION KEY tenant_id, user_id HASH FUNCTION MURMUR;
   - description: Detach table
     code: ALTER DISTRIBUTION ds1 DETACH TABLE orders;
+  - description: Detach table if it is attached
+    code: ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;
   - description: Replace table distribution key
     code: ALTER DISTRIBUTION ds1 ALTER TABLE orders DISTRIBUTION KEY customer_id;
   - description: Change table schema
@@ -116,8 +124,9 @@ subcommands:
       Attaches one or more [tables](/sharding/sharded_tables) to an existing distribution using the ATTACH TABLE clause.
 
       For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
+      Use IF NOT EXISTS to skip tables that are already attached.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+      ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
         [, <tableName> ...]
         DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
@@ -128,6 +137,10 @@ subcommands:
       - description: Single column sharding key
         code: |
           ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+           DISTRIBUTION KEY order_id;
+      - description: Attach table if it is not already attached
+        code: |
+          ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
            DISTRIBUTION KEY order_id;
       - description: Composite sharding key with two columns
         code: |
@@ -176,8 +189,12 @@ subcommands:
   - name: ALTER DISTRIBUTION DETACH TABLE
     description: |
       Detaches a table from the distribution using the DETACH TABLE clause.
+      Use IF EXISTS to skip the command when the table is not attached.
     syntax: |
-      ALTER DISTRIBUTION <distributionID> DETACH TABLE <tableName>
+      ALTER DISTRIBUTION <distributionID> DETACH TABLE [IF EXISTS] <tableName>
+    examples:
+      - description: Detach table if it is attached
+        code: ALTER DISTRIBUTION ds1 DETACH TABLE IF EXISTS orders;
 
   - name: ALTER DISTRIBUTION ALTER TABLE DISTRIBUTION KEY
     description: |

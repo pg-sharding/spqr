@@ -31,6 +31,7 @@ bebc
 bemp
 benchbase
 benchmem
+benchtime
 Benro
 berule
 BOOLOID
@@ -133,6 +134,7 @@ elephantsql
 Elts
 emptypb
 ENONET
+ents
 epn
 EQR
 errcounter
@@ -402,6 +404,7 @@ pids
 pitr
 pkgclient
 planopts
+plpgsql
 podman
 poolers
 poolmgr
@@ -510,6 +513,7 @@ shardpool
 shardproxy
 shkey
 shname
+SHOWW
 shq
 singleshard
 siteid

@@ -60,6 +60,7 @@ const (
 )
 
 type EntityMgr interface {
+	qdb.MigrationJournal
 	kr.KeyRangeMgr
 	topology.RouterMgr
 	topology.ShardsMgr
@@ -830,6 +831,17 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 // - error: An error if the operation fails, otherwise nil.
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
+	case *spqrparser.AlterSystemMigration:
+		var err error
+		if stmt.Reset {
+			err = mngr.ResetMigration(ctx, stmt.Name)
+		} else {
+			err = mngr.SetMigration(ctx, stmt.Name, stmt.Value)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("alter system migration")}, nil
 	case *spqrparser.System:
 		if stmt.SetGUC != "" {
 			return processAlterSystemSet(stmt.SetGUC, stmt.SetValue)
@@ -1390,8 +1402,21 @@ func ProcMetadataCommand(ctx context.Context,
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
+		sourceKr, err := mgr.GetKeyRange(ctx, stmt.KeyRangeFromID)
+		if err != nil {
+			return nil, err
+		}
+		ds, err := mgr.GetDistribution(ctx, sourceKr.Distribution)
+		if err != nil {
+			return nil, err
+		}
+
+		krTemp, err := kr.KeyRangeFromSQL(&spqrparser.KeyRangeDefinition{LowerBound: stmt.Border, Distribution: &spqrparser.DistributionSelector{}}, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
 		splitKeyRange := &kr.SplitKeyRange{
-			Bound:      stmt.Border.Pivots,
+			Bound:      krTemp.Raw(),
 			SourceID:   stmt.KeyRangeFromID,
 			KeyRangeID: stmt.KeyRangeID,
 		}
@@ -2062,6 +2087,20 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 
+	case spqrparser.MigrationsStr:
+		migrations, err := mngr.ListMigrations(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("name", "value")}
+		names := make([]string, 0, len(migrations))
+		for name := range migrations {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			tts.WriteDataRow(name, migrations[name])
+		}
 	case spqrparser.FileSettingsStr:
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader(
@@ -2277,7 +2316,9 @@ func processShowInner(ctx context.Context,
 				"used_connections",
 				"idle_connections",
 				"queue_residual_size",
-				"discard_count"),
+				"discard_count",
+				"acquire_count",
+				"reuse_count"),
 		}
 
 		if err := ci.ForEachPool(func(p pool.Pool) error {
@@ -2294,6 +2335,8 @@ func processShowInner(ctx context.Context,
 				fmt.Sprintf("%d", statistics.IdleConnections),
 				fmt.Sprintf("%d", statistics.QueueResidualSize),
 				fmt.Sprintf("%d", statistics.DiscardCount),
+				fmt.Sprintf("%d", statistics.AcquireCount),
+				fmt.Sprintf("%d", statistics.ReuseCount),
 			)
 			return nil
 		}); err != nil {
@@ -2406,6 +2449,13 @@ func processShowInner(ctx context.Context,
 		for i, seq := range seqs {
 			tts.WriteDataRow(seq, fmt.Sprintf("%d", sequenceVals[i]))
 		}
+
+		return tts, nil
+	case spqrparser.TransactionReadOnlyStr:
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("transaction_read_only"),
+		}
+		tts.WriteDataRow("off")
 
 		return tts, nil
 	case spqrparser.IsReadOnlyStr:

@@ -15,6 +15,8 @@ const (
 	VirtualCTID      = "__spqr__ctid"
 	VirtualFuncHosts = "__spqr__host_status"
 
+	VirtualRunRecheckHosts = "__spqr__run_recheck_hosts"
+
 	/* XXX: debug-only */
 	VirtualSetNextTwoPhaseCommitGID = "__spqr__set_next_2pc_gid"
 
@@ -37,7 +39,8 @@ func IsVirtualFuncName(n string) bool {
 		VirtualClear2PCData, VirtualCleanOutdated2PCData,
 		PGIsolationTestSessionIsBlocked,
 		PGAdvisoryXactLock, PGTryAdvisoryXactLock, PGAdvisoryLock, PGAdvisoryUnlock, PgTryAdvisoryLock, PGAdvisoryUnlockAll,
-		VirtualSetNextTwoPhaseCommitGID:
+		VirtualSetNextTwoPhaseCommitGID,
+		VirtualRunRecheckHosts:
 		return true
 	default:
 		return false

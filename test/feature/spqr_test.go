@@ -26,8 +26,8 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/cucumber/godog"
-	pgxv4 "github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -286,17 +286,13 @@ func (tctx *testContext) connectRouterConsoleWithCredentials(username string, pa
 
 func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sql.DB) bool) (*sql.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
-	connCfg, _ := pgxv4.ParseConfig(dsn)
-	connCfg.PreferSimpleProtocol = true
+	connCfg, _ := pgx.ParseConfig(dsn)
+	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connCfg.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
 	connCfg.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
-	connStr := stdlib.RegisterConnConfig(connCfg)
-	db, err := sql.Open("pgx", connStr)
-	if err != nil {
-		return nil, err
-	}
+	db := stdlib.OpenDB(*connCfg)
 	success := false
 	// sql is lazy in go, so we need ping db
 	testutil.Retry(func() bool {
@@ -512,6 +508,13 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 	if err != nil {
 		return nil, err
 	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
 	// sqlx is not used now. try remove split
 	queries := strings.Split(query, ";")
 	var result []map[string]any
@@ -522,7 +525,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 			continue
 		}
 		tctx.sqlQueryResult = nil
-		result, err = tctx.doPostgresqlQuery(db, q, timeout, args)
+		result, err = tctx.doPostgresqlQuery(conn, q, timeout, args)
 		tctx.commandRetcode = 0
 		tctx.sqlQueryResult = result
 		if err != nil {
@@ -542,6 +545,13 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		return err
 	}
 
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+
 	// sqlx is not used now. try remove split
 	queries := strings.SplitSeq(query, ";")
 
@@ -550,7 +560,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		if q == "" {
 			continue
 		}
-		_, err := db.Exec(q)
+		_, err := conn.ExecContext(ctx, q)
 		if err != nil {
 			return err
 		}
@@ -589,7 +599,9 @@ func (tctx *testContext) stepIExecuteSQLInParallel(host string, timeout int, bod
 	return execErr
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
+func (tctx *testContext) doPostgresqlQuery(db interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var rows *sql.Rows

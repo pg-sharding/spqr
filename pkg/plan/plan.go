@@ -279,7 +279,7 @@ var _ Plan = &VirtualPlan{}
 type DataRowFilter struct {
 	Plan
 	stmt        lyx.Node
-	FilterIndex uint
+	FilterShard kr.ShardKey
 }
 
 func (rf *DataRowFilter) Stmt() lyx.Node {
@@ -378,7 +378,8 @@ func Combine(p1, p2 Plan) Plan {
 	switch v := p1.(type) {
 	case *DataRowFilter:
 		return &DataRowFilter{
-			Plan: Combine(v.Plan, p2),
+			Plan:        Combine(v.Plan, p2),
+			FilterShard: v.FilterShard,
 		}
 	}
 
@@ -388,7 +389,8 @@ func Combine(p1, p2 Plan) Plan {
 		p1, p2 = p2, p1
 	case *DataRowFilter:
 		return &DataRowFilter{
-			Plan: Combine(p1, v.Plan),
+			Plan:        Combine(p1, v.Plan),
+			FilterShard: v.FilterShard,
 		}
 	}
 

@@ -33,6 +33,8 @@ type Statistics struct {
 	IdleConnections   int64
 	QueueResidualSize int64
 	DiscardCount      int64
+	AcquireCount      int64
+	ReuseCount        int64
 }
 
 /* dedicated host connection pool */
@@ -77,6 +79,7 @@ type MultiShardTSAPool interface {
 
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry
+	RunRecheckHosts() []HostRecheckResult
 
 	StopCacheWatchdog()
 }

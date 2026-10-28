@@ -3,7 +3,7 @@ NAME
     key space is an ordered set,
 
 SYNTAX
-    CREATE KEY RANGE [ <keyRangeID> ]
+    CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
       FROM <lowerBound>
       ROUTE TO <shardID> 
       FOR DISTRIBUTION <distributionID>
@@ -20,6 +20,8 @@ DESCRIPTION
     that correspond
     to each column in the distribution.
 
+    Use IF NOT EXISTS to skip creation when the key range already exists.
+
 PARAMETERS
     <keyRangeID> - Unique identifier for the key range (optional, auto-generated
         if omitted)
@@ -31,6 +33,9 @@ PARAMETERS
 EXAMPLES
     Single column key range:
         CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+    Create a key range if it does not exist:
+        CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+          ROUTE TO shard1 FOR DISTRIBUTION ds1;
     Composite key range with two integers:
         CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
     Composite key range with integer and varchar:

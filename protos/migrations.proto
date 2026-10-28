@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+import "google/protobuf/empty.proto";
+
+message SetMigrationRequest {
+    string name = 1;
+    string value = 2;
+}
+
+message ResetMigrationRequest {
+    string name = 1;
+}
+
+message ListMigrationsReply {
+    map<string, string> migrations = 1;
+}
+
+service MigrationService {
+    rpc SetMigration(SetMigrationRequest) returns (google.protobuf.Empty);
+    rpc ResetMigration(ResetMigrationRequest) returns (google.protobuf.Empty);
+    rpc ListMigrations(google.protobuf.Empty) returns (ListMigrationsReply);
+}

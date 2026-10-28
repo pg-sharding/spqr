@@ -165,8 +165,10 @@ ALTER SHARD sh1 OPTIONS (ADD SSLMODE 'verify-full', DROP SSLMODE 'verify-full');
  options  -> {sslmode=verify-full,sslmode=verify-full}
 (2 rows)
 
+\set VERBOSITY terse
 ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');
-ERROR:  SPQRU: failed to parse query "ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');": syntax error
+ERROR:  failed to parse query "ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');": syntax error at character 39
+\set VERBOSITY verbose
 ALTER SHARD sh1 OPTIONS (DROP HOST 'unknown:6432');
 ERROR:  SPQRV: malformed options array
 HINT:  option "host" with value "unknown:6432" not found

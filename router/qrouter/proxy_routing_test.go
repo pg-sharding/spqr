@@ -438,7 +438,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: false */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: false */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: false */;`,
@@ -457,7 +458,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}'), (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}') /* __spqr__engine_v2: false */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
@@ -476,7 +478,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: true */;`,
@@ -861,6 +864,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 							Name: "sh2",
 						},
 					},
+				},
+				FilterShard: kr.ShardKey{
+					Name: "sh1",
 				},
 			},
 		},
@@ -1339,6 +1345,27 @@ func TestCTE(t *testing.T) {
 			},
 		},
 
+		{
+			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)) INSERT INTO t(i) SELECT x FROM vals;`,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)) INSERT INTO t(i) SELECT x FROM vals;`,
+					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)) INSERT INTO t(i) SELECT x FROM vals;`,
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh3"}},
+			},
+		},
+		{
+			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
+			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{
+					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
+					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh3"}},
+			},
+		},
 		{
 			query: `
 			WITH xxxx AS (
@@ -1889,6 +1916,18 @@ func TestInsertOffsets(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+		{
+			query: `/* VALUES (99) */ INSERT INTO xx(i) VALUES (1), (20);`,
+			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `/* VALUES (99) */ INSERT INTO xx(i) VALUES (1);`,
+					"sh2": `/* VALUES (99) */ INSERT INTO xx(i) VALUES (20);`,
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}},
+			},
+		},
 
 		{
 			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,

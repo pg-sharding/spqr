@@ -125,6 +125,9 @@ recvLoop:
 }
 
 func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind *pgproto3.Bind) (*PortalDesc, error) {
+	if serv == nil {
+		return nil, fmt.Errorf("failed to describe portal for unrouted client")
+	}
 
 	shards := serv.Datashards()
 	if len(shards) == 0 {

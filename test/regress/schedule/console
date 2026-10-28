@@ -4,10 +4,12 @@ test: show_routers
 test: show_key_ranges
 test: show_distributions
 test: show_file_settings
+test: migrations
 test: show_version
 test: show_relations
 test: show_time_quantiles
 test: show_is_read_only
+test: show_transaction_read_only
 test: show_move_stats
 test: drop
 test: add
@@ -28,3 +30,4 @@ test: unite
 test: split
 test: key_range
 test: key_range_for_distr
+test: syntax_error

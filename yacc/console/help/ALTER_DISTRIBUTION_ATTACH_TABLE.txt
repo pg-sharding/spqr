@@ -4,7 +4,7 @@ NAME
     ATTACH TABLE clause.
 
 SYNTAX
-    ALTER DISTRIBUTION <distributionID> ATTACH TABLE <tableName> 
+    ALTER DISTRIBUTION <distributionID> ATTACH TABLE [IF NOT EXISTS] <tableName>
       [, <tableName> ...]
       DISTRIBUTION KEY <keys> [HASH FUNCTION <hashFunction>]
 
@@ -18,10 +18,14 @@ DESCRIPTION
 
     For composite sharding keys, specify multiple column names separated by
     commas in the DISTRIBUTION KEY clause.
+    Use IF NOT EXISTS to skip tables that are already attached.
 
 EXAMPLES
     Single column sharding key:
         ALTER DISTRIBUTION ds1 ATTACH TABLE orders 
+         DISTRIBUTION KEY order_id;
+    Attach table if it is not already attached:
+        ALTER DISTRIBUTION ds1 ATTACH TABLE IF NOT EXISTS orders
          DISTRIBUTION KEY order_id;
     Composite sharding key with two columns:
         ALTER DISTRIBUTION ds2 ATTACH TABLE users 

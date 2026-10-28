@@ -143,7 +143,11 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 
 // TODO : unit tests
 func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.ShardKey) error {
-	localKey := (*srv.shard.Load()).SHKey().Name
+	v := srv.shard.Load()
+	if v == nil {
+		return ErrShardUnavailable
+	}
+	localKey := (*v).SHKey().Name
 	if localKey != shkey.Name {
 		return spqrerror.Newf(spqrerror.SPQR_CROSS_SHARD_QUERY, "mismatched single-shard destination: %s vs %s", localKey, shkey.Name)
 	}
@@ -208,7 +212,11 @@ func (srv *ShardServer) Receive(*planopts.PlanOpts) (pgproto3.BackendMessage, ui
 
 // TODO : unit tests
 func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
-	if (*srv.shard.Load()).ID() != shardId {
+	v := srv.shard.Load()
+	if v == nil {
+		return nil, ErrShardUnavailable
+	}
+	if (*v).ID() != shardId {
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
 	msg, _, err := srv.Receive(nil)
@@ -217,7 +225,11 @@ func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, err
 
 // TODO : unit tests
 func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
-	return srv.cleanupLockFree(*srv.shard.Load(), rule)
+	v := srv.shard.Load()
+	if v == nil {
+		return ErrShardUnavailable
+	}
+	return srv.cleanupLockFree(*v, rule)
 }
 
 // TODO : unit tests

@@ -1,0 +1,116 @@
+\c spqr-console
+CREATE DISTRIBUTION ds1 (int);
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE TABLE t (id);
+      attach table      
+------------------------
+ relation name   -> t
+ distribution id -> ds1
+(2 rows)
+
+CREATE REFERENCE TABLE ref_t ON SHARDS sh1;
+ create reference table 
+------------------------
+ table    -> ref_t
+ shard id -> sh1
+(2 rows)
+
+\c regress
+CREATE TABLE t(id INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE ref_t (id INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+BEGIN;
+SELECT * FROM t;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id 
+----
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+SELECT 1 FROM ref_t LIMIT 1;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+(0 rows)
+
+COMMIT;
+DROP TABLE t;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ref_t;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ REPLICATED
+ ds1
+(2 rows)
+

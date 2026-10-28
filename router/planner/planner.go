@@ -124,6 +124,28 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	return p, nil
 }
 
+func ReferenceRelationFilterShard(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	qualName *rfqn.RelationFQN) (kr.ShardKey, error) {
+
+	var sh kr.ShardKey
+
+	if rmeta.IsRelationCatalog(qualName) {
+		return sh, nil
+	}
+
+	rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+	if err != nil {
+		return sh, err
+	}
+
+	if routes := rel.ListStorageRoutes(); len(routes) > 0 {
+		sh = routes[0]
+	}
+
+	return sh, nil
+}
+
 func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	qualName *rfqn.RelationFQN, subquery lyx.Node,
@@ -571,7 +593,7 @@ func ConsoleFunctionCall(
 
 			tstmt, err := spqrparser.Parse(v.Value)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
+				return nil, err
 			}
 			/* Here we return only last TTS. this is intended */
 			var tts *tupleslot.TupleTableSlot
@@ -969,6 +991,31 @@ func ConsoleFunctionCall(
 			tts.WriteDataRow(gid)
 		}
 		return tts, nil
+	case virtual.VirtualRunRecheckHosts:
+		if rm.CSM == nil {
+			return nil, fmt.Errorf("spqr metadata uninitialized")
+		}
+
+		if len(args) != 0 {
+			return nil, fmt.Errorf("%s function accepts no args", fname)
+		}
+
+		results := rm.CSM.RunRecheckHosts()
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("tsa", "host", "az", "alive", "match", "reason"),
+		}
+
+		for _, res := range results {
+			tts.WriteDataRow(string(res.Tsa),
+				res.Host,
+				res.AZ,
+				fmt.Sprintf("%v", res.Alive),
+				fmt.Sprintf("%v", res.Match),
+				res.Reason)
+		}
+
+		return tts, nil
 	case virtual.VirtualSetNextTwoPhaseCommitGID:
 		if len(args) != 1 {
 			return nil, fmt.Errorf("%s function accepts one arg", fname)
@@ -1213,7 +1260,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 						if sh.Name != shs[0].Name {
 							/* try to rewrite, but only for simple protocol */
 							if len(rm.ParamRefs) == 0 {
-								return RewriteDistributedRelBatchInsert(rm.Query, shs)
+								return RewriteDistributedRelBatchInsert(rm.Query, q.ValuesLoc, shs)
 							}
 							return nil, rerrors.ErrComplexQuery
 						}
@@ -1264,9 +1311,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
+				filterShard, err := ReferenceRelationFilterShard(ctx, rm, qualName)
+				if err != nil {
+					return nil, err
+				}
 				return &plan.DataRowFilter{
 					Plan:        p,
-					FilterIndex: 0,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, err
@@ -1301,9 +1352,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 
 			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
+				filterShard, err := ReferenceRelationFilterShard(ctx, rm, qualName)
+				if err != nil {
+					return nil, err
+				}
 				return &plan.DataRowFilter{
 					Plan:        p,
-					FilterIndex: 0,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, err

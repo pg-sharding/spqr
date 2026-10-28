@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -178,7 +179,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msg("process relay state advanced")
 
 	statistics.IncTotalRequest()
 
@@ -225,7 +226,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				guc, err := rst.Client().FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+				if err != nil {
+					return nil, err
+				}
+
+				ok := guc.Get(rst.Client())
+				if !ok {
+					_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				}
 				rst.QueryExecutor().SetCommandCompleteTag("COMMIT")
 
 				return noDataPd, nil
@@ -234,7 +243,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				guc, err := rst.Client().FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+				if err != nil {
+					return nil, err
+				}
+
+				ok := guc.Get(rst.Client())
+				if !ok {
+					_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				}
 				rst.QueryExecutor().SetCommandCompleteTag("ROLLBACK")
 				return noDataPd, nil
 			}
@@ -491,8 +508,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			// prepare *name* as *query*
-			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
+			// Extract the inner query using the token location recorded
+			// by the parser: PrepareStmt.QueryLoc points right at the
+			// first token of the query after the AS keyword.
+			ss := query[st.QueryLoc:]
 
 			if _, err := rst.relayParsePrepared(context.TODO(), st.Name, ss, nil); err != nil {
 				return nil, err
@@ -517,6 +536,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				switch q := p.(type) {
 				case *lyx.AExprSConst:
 					params = append(params, []byte(q.Value))
+				case *lyx.AExprIConst:
+					params = append(params, []byte(strconv.FormatInt(q.Value, 10)))
+				case *lyx.AExprBConst:
+					params = append(params, []byte(strconv.FormatBool(q.Value)))
+				case *lyx.AExprNConst:
+					/* NULL const */
+					params = append(params, nil)
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
@@ -556,6 +582,12 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	mp map[string]string, isLocal bool, isStmt bool) error {
+	for hintName := range mp {
+		name := virtualParamTransformName(hintName)
+		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
+			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+		}
+	}
 
 	lvl := session.VirtualParamLevelTxBlock
 

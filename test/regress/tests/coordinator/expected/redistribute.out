@@ -52,6 +52,8 @@ SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;
 ERROR:  failed to parse query "REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;": syntax error
+LINE 1: REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;
+                                                       ^
 REDISTRIBUTE KEY RANGE krid1 TO sh2;
     redistribute key range     
 -------------------------------

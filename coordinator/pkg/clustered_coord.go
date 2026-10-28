@@ -86,6 +86,11 @@ func (ci grpcConnMgr) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return map[pool.TsaKey]pool.CachedEntry{}
 }
 
+// RunRecheckHosts implements connmgr.ConnectionStatsMgr.
+func (ci grpcConnMgr) RunRecheckHosts() []pool.HostRecheckResult {
+	return nil
+}
+
 // TODO implement it
 // ActiveTCPCount implements connmgr.ConnectionStatMgr.
 func (ci grpcConnMgr) ActiveTCPCount() int64 {
@@ -2865,7 +2870,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				_ = cli.ReportError(fmt.Errorf("failed to parse query \"%s\": %w", v.String, err))
+				_ = cli.ReportError(err)
 				continue
 			}
 
@@ -3362,11 +3367,11 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 		}
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
-		return err
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to execute chunk in QDB: %w", err)
 	}
 
 	if err := coord.UpdateKeyRangeMeta(ctx, chunk.GossipRequests); err != nil {
-		return err
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to update key range metadata: %w", err)
 	}
 
 	return qc.traverseRouters(ctx,

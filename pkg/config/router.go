@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/yacc/hostspec"
 )
 
 type PoolMode string
@@ -31,6 +32,12 @@ const (
 	AdvisoryLockBehaviourScatter = AdvisoryLockBehaviour("SCATTER")
 	AdvisoryLockBehaviourDeploy  = AdvisoryLockBehaviour("DEPLOY")
 	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
+)
+
+const (
+	CommitStrategyBestEffort = "best-effort"
+	CommitStrategy1pc        = "1pc"
+	CommitStrategy2pc        = "2pc"
 )
 
 var cfgRouter Router
@@ -123,7 +130,7 @@ type Router struct {
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
 	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
 
-	/* Should we eagerly cleanup tow phase commit metadata on revert(happy-path rollback?) */
+	/* Should we eagerly cleanup two phase commit metadata on revert(happy-path rollback?) */
 	EagerCleanup2PC bool `json:"eager_cleanup_2pc" toml:"eager_cleanup_2pc" yaml:"eager_cleanup_2pc"`
 
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
@@ -282,6 +289,12 @@ func validateRouterConfig(cfg *Router) error {
 		if shCfg == nil {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)
 		}
+
+		for _, host := range shCfg.RawHosts {
+			if _, err := hostspec.Parse(host); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", host)
+			}
+		}
 	}
 	for _, rule := range cfg.BackendRules {
 		for name, authRule := range rule.AuthRules {
@@ -311,6 +324,12 @@ func validateRouterConfig(cfg *Router) error {
 		default:
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid auth method \"%s\"", rule.AuthRule.Method)
 		}
+	}
+
+	switch cfg.DefaultCommitStrategy {
+	case "", CommitStrategyBestEffort, CommitStrategy1pc, CommitStrategy2pc:
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid default_commit_strategy \"%s\": expected one of \"best-effort\", \"1pc\", \"2pc\"", cfg.DefaultCommitStrategy)
 	}
 	return nil
 }

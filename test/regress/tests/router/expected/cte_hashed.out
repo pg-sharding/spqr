@@ -131,7 +131,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (3 rows)
 
 INSERT INTO table2 (a,b,c) VALUES (1, 22, 33), (2, 23, 34), (3, 24, 35), (4, 25, 36);
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh2,sh3,sh4
 WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
 NOTICE: send query to shard(s) : sh2

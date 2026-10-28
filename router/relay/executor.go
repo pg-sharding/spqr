@@ -227,19 +227,18 @@ func (s *QueryStateExecutorImpl) TryMatchExecTargets(p plan.Plan, ds []kr.ShardK
 			/* check if ref relation storage shards and out active shards
 			* have intersection */
 
-			activeOK := false
+			intersection := make([]kr.ShardKey, 0)
 
 			for _, curr := range s.ActiveShards() {
 				if slices.ContainsFunc(v.ExecTargets, func(sh kr.ShardKey) bool {
 					return sh.Name == curr.Name
 				}) {
-					activeOK = true
-					break
+					intersection = append(intersection, curr)
 				}
 			}
 
-			if activeOK {
-				return planner.SelectRandomDispatchPlan(s.ActiveShards())
+			if len(intersection) > 0 {
+				return planner.SelectRandomDispatchPlan(intersection)
 
 			} else {
 				/* reference relation case */
@@ -392,8 +391,15 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 	if s.poolMgr.ConnectionActive(s) {
 		return s.DeploySliceTransactionQuery(query)
 	}
-
-	s.SetTxStatus(txstatus.TXACT)
+	guc, err := s.cl.FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+	if err != nil {
+		return err
+	}
+	if guc.Get(s.cl) {
+		s.SetTxStatus(txstatus.TXIDLE)
+	} else {
+		s.SetTxStatus(txstatus.TXACT)
+	}
 	s.cl.StartTx()
 
 	// explicitly set silent query message, as it can differ from query begin in xproto
@@ -1247,7 +1253,8 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
 				case *plan.DataRowFilter:
-					if v.FilterIndex == recvIndex {
+					if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
+						shs[recvIndex].SHKey().Name == v.FilterShard.Name {
 						err = s.Client().Send(msg)
 						if err != nil {
 							return err

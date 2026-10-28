@@ -91,7 +91,7 @@ func TestFrontendSimple(t *testing.T) {
 	}()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().DataShardsRoutes().Return([]kr.ShardKey{kr.ShardKey{
+	qr.EXPECT().DataShardsRoutes().Return([]kr.ShardKey{{
 		Name: "sh1",
 	}}).AnyTimes()
 
@@ -134,6 +134,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().ID().AnyTimes()
 
+	srv.EXPECT().Cleanup(&config.FrontendRule{PoolRollback: true}).Times(1)
 	cl.EXPECT().Close().Times(1)
 	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(
@@ -262,6 +263,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().ID().AnyTimes()
 
+	srv.EXPECT().Cleanup(&config.FrontendRule{PoolRollback: true}).AnyTimes()
 	cl.EXPECT().Close().Times(1)
 	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(frrule)

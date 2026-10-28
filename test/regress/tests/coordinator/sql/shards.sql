@@ -31,7 +31,9 @@ SHOW shards_extended;
 ALTER SHARD unknown OPTIONS (ADD SSLMODE 'require');
 ALTER SHARD sh1 OPTIONS (DROP SSLMODE 'require', ADD SSLMODE 'verify-full');
 ALTER SHARD sh1 OPTIONS (ADD SSLMODE 'verify-full', DROP SSLMODE 'verify-full');
+\set VERBOSITY terse
 ALTER SHARD sh1 OPTIONS (UNKNOWN USER 'user1');
+\set VERBOSITY verbose
 ALTER SHARD sh1 OPTIONS (DROP HOST 'unknown:6432');
 ALTER SHARD sh1 OPTIONS (ADD HOST 'spqr_shard_1_replica:6432', ADD HOST 'spqr_shard_1_replica:6432');
 ALTER SHARD sh1 OPTIONS (SET unknown 'unknown');

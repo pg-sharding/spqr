@@ -2,13 +2,14 @@ NAME
     DROP DISTRIBUTION - Removes a distribution from cluster metadata.
 
 SYNTAX
-    DROP DISTRIBUTION <distributionID> [CASCADE]
+    DROP DISTRIBUTION [IF EXISTS] <distributionID> [CASCADE]
 
 DESCRIPTION
     Removes a distribution from cluster metadata.
 
     Use CASCADE to remove dependent metadata objects (key ranges, attached
     relations) when required.
+    Use IF EXISTS to skip the command when the distribution does not exist.
 
 WARNINGS
     - Dropping a distribution removes routing metadata and may impact attached
@@ -21,6 +22,8 @@ PARAMETERS
 EXAMPLES
     Drop one distribution:
         DROP DISTRIBUTION ds1;
+    Drop a distribution if it exists:
+        DROP DISTRIBUTION IF EXISTS ds1;
     Drop distribution with dependent metadata:
         DROP DISTRIBUTION ds1 CASCADE;
 

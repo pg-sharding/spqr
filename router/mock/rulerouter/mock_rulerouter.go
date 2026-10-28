@@ -306,6 +306,20 @@ func (mr *MockRuleRouterMockRecorder) ReportError(errtype any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReportError", reflect.TypeOf((*MockRuleRouter)(nil).ReportError), errtype)
 }
 
+// RunRecheckHosts mocks base method.
+func (m *MockRuleRouter) RunRecheckHosts() []pool.HostRecheckResult {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunRecheckHosts")
+	ret0, _ := ret[0].([]pool.HostRecheckResult)
+	return ret0
+}
+
+// RunRecheckHosts indicates an expected call of RunRecheckHosts.
+func (mr *MockRuleRouterMockRecorder) RunRecheckHosts() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunRecheckHosts", reflect.TypeOf((*MockRuleRouter)(nil).RunRecheckHosts))
+}
+
 // Shutdown mocks base method.
 func (m *MockRuleRouter) Shutdown() error {
 	m.ctrl.T.Helper()

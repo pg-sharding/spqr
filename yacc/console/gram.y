@@ -226,6 +226,7 @@ func randomHex(n int) (string, error) {
 %token <str> META ONLY
 %token <str> BEGIN COMMIT ROLLBACK
 %token <str> MIGRATION RESET
+%token <str> SELECT
 
 %token <str> IF EXISTS
 
@@ -1160,7 +1161,7 @@ show_statement_type:
 			DistributionsStr, CoordinatorAddrStr, VersionStr,
 			ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr,
 			PreparedStatementsStr, QuantilesStr, SequencesStr,
-			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
+			IsReadOnlyStr, TransactionReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
@@ -1817,6 +1818,10 @@ show_stmt:
 	SHOW opt_show_kind show_statement_type opt_show_columns where_clause group_clause order_clause
 	{
 		$$ = &Show{Kind: $2, Cmd: $3, Columns: $4, Where: $5, GroupBy: $6, Order: $7}
+	}
+	| SELECT TMUL FROM opt_show_kind show_statement_type opt_show_columns where_clause group_clause order_clause
+	{
+		$$ = &Show{Kind: $4, Cmd: $5, Columns: $6, Where: $7, GroupBy: $8, Order: $9}
 	}
 
 help_stmt:

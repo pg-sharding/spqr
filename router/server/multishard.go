@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -41,7 +42,10 @@ const (
 )
 
 type MultiShardServer struct {
-	activeShards []shard.ShardHostInstance
+	// The query goroutine owns activeShards. Protect its mutations and
+	// snapshots used by concurrent SHOW clients and cancellation requests.
+	activeShardsMu sync.Mutex
+	activeShards   []shard.ShardHostInstance
 
 	states []ShardState
 
@@ -152,7 +156,9 @@ func (m *MultiShardServer) expandGangUtil(params pool.ConnAllocParams,
 		}
 	}
 
+	m.activeShardsMu.Lock()
 	m.activeShards = append(m.activeShards, sh)
+	m.activeShardsMu.Unlock()
 
 	return nil
 }
@@ -178,9 +184,12 @@ func (m *MultiShardServer) ExpandGang(params pool.ConnAllocParams, shkey kr.Shar
 
 /* Unattach shard server connection pointed by shard key. */
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error) {
+	m.activeShardsMu.Lock()
+	defer m.activeShardsMu.Unlock()
+
 	for i, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
-			m.activeShards = slices.Delete(m.activeShards, i, i)
+			m.activeShards = slices.Delete(m.activeShards, i, i+1)
 			return activeShard, nil
 		}
 	}
@@ -675,7 +684,10 @@ func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, 
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
 }
 
-func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
+func (m *MultiShardServer) Cleanup(rule *config.FrontendRule) error {
+	if m.TxStatus() == txstatus.TXIDLE {
+		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("multishard server tx status idle on cleanup")
+	}
 	if rule.PoolRollback {
 		if err := m.Send(&pgproto3.Query{
 			String: "ROLLBACK",
@@ -705,7 +717,7 @@ func (m *MultiShardServer) Sync() int64 {
 
 func (m *MultiShardServer) Cancel() error {
 	var errs []error
-	for _, sh := range m.activeShards {
+	for _, sh := range m.Datashards() {
 		if err := sh.Cancel(); err != nil {
 			errs = append(errs, err)
 		}
@@ -719,7 +731,7 @@ func (m *MultiShardServer) Cancel() error {
 // CancellableIDs implements [Server].
 func (m *MultiShardServer) CancellableIDs() []uint32 {
 	var ids []uint32
-	for _, sh := range m.activeShards {
+	for _, sh := range m.Datashards() {
 		ids = append(ids, sh.CancellableIDs()...)
 	}
 	return ids
@@ -738,7 +750,10 @@ func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
 }
 
 func (m *MultiShardServer) Datashards() []shard.ShardHostInstance {
-	return m.activeShards
+	m.activeShardsMu.Lock()
+	defer m.activeShardsMu.Unlock()
+
+	return slices.Clone(m.activeShards)
 }
 
 var _ Server = &MultiShardServer{}

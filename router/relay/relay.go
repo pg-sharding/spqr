@@ -912,10 +912,17 @@ func (rst *RelayStateImpl) BindPrepared(
 			return err
 		}
 
-		parameters = append(parameters, fmt.Appendf(nil, "%d", v))
 		if len(parameterFormatCodes) > 1 {
 			parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
+		} else if len(parameterFormatCodes) == 1 && parameterFormatCodes[0] != xproto.FormatCodeText {
+			paramFormatCode := parameterFormatCodes[0]
+			parameterFormatCodes = make([]int16, len(parameters))
+			for i := range parameterFormatCodes {
+				parameterFormatCodes[i] = paramFormatCode
+			}
+			parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
 		}
+		parameters = append(parameters, fmt.Appendf(nil, "%d", v))
 	}
 
 	// We implicitly assume that there is always Execute after Bind for the same portal.
