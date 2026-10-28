@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,17 +31,28 @@ var (
 	logLevel      string
 )
 
+func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
+	maxTxnBatchSize := qdb.DefaultMaxTxnSize
+	if configCoord.EtcdMaxTxnOps > math.MaxUint16 {
+		maxTxnBatchSize = math.MaxUint16
+	} else if configCoord.EtcdMaxTxnOps > 0 {
+		maxTxnBatchSize = uint16(configCoord.EtcdMaxTxnOps)
+	}
+	spqrlog.Zero.Info().Str("maxTxnBatchSize", fmt.Sprintf("%d", maxTxnBatchSize))
+	return maxTxnBatchSize
+}
+
 var rootCmd = &cobra.Command{
-	Use:   "spqr-coordinator run --config `path-to-config`",
+	Use:   "spqr-coordinator --config `path-to-config`",
 	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  false,
-	SilenceErrors: false,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
 		if err != nil {
 			return err
@@ -65,7 +77,7 @@ var rootCmd = &cobra.Command{
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
 
-		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -86,7 +98,9 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("init frontend TLS: %w", err)
 		}
 
-		coordinator, err := coord.NewClusteredCoordinator(frTLS, db)
+		maxTxnBatchSize := getMaxTxnBatchSize(config.CoordinatorConfig())
+
+		coordinator, err := coord.NewClusteredCoordinator(frTLS, db, maxTxnBatchSize)
 		if err != nil {
 			return err
 		}
@@ -100,17 +114,22 @@ var rootCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
 				default:
 					return
 				}
 			}
 		}()
 
-		app := app.NewApp(coordinator)
+		app, err := app.NewApp(coordinator)
+		if err != nil {
+			return err
+		}
 		// run pprof without wait group
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
+			}
 		}()
 		return app.Run(true)
 	},
@@ -119,7 +138,7 @@ var rootCmd = &cobra.Command{
 var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			cfgPath = args[0]
 		}

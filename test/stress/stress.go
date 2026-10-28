@@ -77,7 +77,7 @@ var cmd = &cobra.Command{
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		wg := &sync.WaitGroup{}
 
 		for range par {
@@ -102,7 +102,7 @@ var cmdTest = &cobra.Command{
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 
 		ctx, f := context.WithTimeout(context.Background(), 10*time.Second)
 		defer f()

@@ -17,6 +17,48 @@ const (
 	MoveStatsQDBTotalTime   = "qdb.Total"
 )
 
+var LockStats = &keyRangeLockStats{
+	mu:               sync.RWMutex{},
+	keyRangeLockTime: map[string]time.Time{},
+}
+
+type keyRangeLockStats struct {
+	mu               sync.RWMutex
+	keyRangeLockTime map[string]time.Time
+
+	opsCount     int
+	opsTotalTime time.Duration
+}
+
+func (s *keyRangeLockStats) RecordLockKeyRange(keyRangeID string, t time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.keyRangeLockTime[keyRangeID] = t
+}
+
+func (s *keyRangeLockStats) RecordUnlockKeyRange(keyRangeID string, t time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	lockTime, ok := s.keyRangeLockTime[keyRangeID]
+	if !ok {
+		return
+	}
+	s.opsCount++
+	s.opsTotalTime += t.Sub(lockTime)
+}
+
+func (s *keyRangeLockStats) GetMeanLockTime() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.opsCount == 0 {
+		return 0
+	}
+	return s.opsTotalTime / time.Duration(s.opsCount)
+}
+
 type statisticsInt struct {
 	CurrentExecTimes     sync.Map
 	TotalTimes           map[string]*MoveStatisticsElem
@@ -55,8 +97,14 @@ func RecordMoveFinish(t time.Time) error {
 	defer moveStatistics.totalTimesMu.Unlock()
 	moveStatistics.MoveInProgress = false
 	moveStatistics.CurrentExecTimes.Range(func(key, value any) bool {
-		stat := key.(string)
-		duration := value.(time.Duration)
+		stat, ok := key.(string)
+		if !ok {
+			return true
+		}
+		duration, ok := value.(time.Duration)
+		if !ok {
+			return true
+		}
 		if _, ok := moveStatistics.TotalTimes[stat]; !ok {
 			moveStatistics.TotalTimes[stat] = &MoveStatisticsElem{}
 		}

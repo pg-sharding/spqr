@@ -18,19 +18,22 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
+	"github.com/pg-sharding/spqr/router/qparser"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/slice"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/virtual"
-	"golang.org/x/exp/slices"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 type RelayStateMgr interface {
@@ -40,10 +43,15 @@ type RelayStateMgr interface {
 	QueryRouter() qrouter.QueryRouter
 	PoolMgr() poolmgr.PoolMgr
 
+	/* Cleanup is same as reset, but no tx management */
+	Cleanup() error
 	Reset() error
 	ResetWithError(err error) error
 
-	Parse(query string, doCaching bool) (parser.ParseState, string, error)
+	Parse(query string, doCaching bool) ([]lyx.Node, []string, error)
+
+	Cache() *rmeta.MetadataCache
+	Parser() *qparser.QParser
 
 	CompleteRelay() error
 	CompleteRelayClient() error
@@ -61,8 +69,9 @@ type RelayStateMgr interface {
 	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
-	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
-	ProcessExtendedBuffer(ctx context.Context) error
+	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
+
+	PipelineCleanup()
 
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
@@ -73,8 +82,8 @@ type PortalDesc struct {
 }
 
 type ParseCacheEntry struct {
-	ps   parser.ParseState
-	comm string
+	ps   []lyx.Node
+	comm []string
 	stmt lyx.Node
 }
 
@@ -83,27 +92,34 @@ type RelayStateImpl struct {
 
 	Qr      qrouter.QueryRouter
 	qse     QueryStateExecutor
-	qp      parser.QParser
+	qp      qparser.QParser
 	plainQ  string
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
 
 	msgBuf []pgproto3.FrontendMessage
 
-	bindQueryPlan       plan.Plan
-	bindQueryPlanMP     map[string]plan.Plan
+	bindQueryPlan   plan.Plan
+	bindQueryPlanMP map[string]plan.Plan
+
+	/* Client-side names */
 	lastBindName        string
+	lastBindNameMP      map[string]string
 	unnamedPortalExists bool
 
-	execute   func() error
-	executeMp map[string]func() error
+	execute   func(maxrows uint32) error
+	executeMp map[string]func(maxrows uint32) error
 
 	saveBind        pgproto3.Bind
 	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
+	WaitSync bool
+
 	parseCache map[string]ParseCacheEntry
 	savedRM    map[string]*rmeta.RoutingMetadataContext
+
+	mCache *rmeta.MetadataCache
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -135,20 +151,33 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Cl:                  client,
 		poolMgr:             manager,
 		execute:             nil,
-		executeMp:           map[string]func() error{},
+		executeMp:           map[string]func(uint32) error{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
+		lastBindNameMP:      map[string]string{},
 		bindQueryPlan:       nil,
 		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
+		WaitSync:            false,
+		mCache: &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		},
 	}
 }
 
 func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 	return rst.Qr
+}
+
+func (rst *RelayStateImpl) Cache() *rmeta.MetadataCache {
+	return rst.mCache
+}
+
+func (rst *RelayStateImpl) Parser() *qparser.QParser {
+	return &rst.qp
 }
 
 func (rst *RelayStateImpl) QueryExecutor() QueryStateExecutor {
@@ -207,14 +236,13 @@ func pstmtDoesNotExistsErr(name string) error {
 
 func (rst *RelayStateImpl) Close() error {
 	_ = rst.Reset()
+	rst.QueryExecutor().Close()
 
 	return rst.Cl.Close()
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) Reset() error {
-
-	err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+func (rst *RelayStateImpl) Cleanup() error {
+	err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 
 	if err != nil {
 		spqrlog.Zero.Debug().Err(err).Msg("reset relay server err")
@@ -223,13 +251,17 @@ func (rst *RelayStateImpl) Reset() error {
 	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
 
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
-
 	_ = rst.Client().Reset()
 
-	if rerr := rst.Client().Unroute(); rerr != nil {
-		return rerr
-	}
+	return rst.Client().Unroute()
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) Reset() error {
+	err := rst.Cleanup()
+
+	/* See flush vs sync */
+	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
 	return err
 }
@@ -255,11 +287,7 @@ func (rst *RelayStateImpl) initExecutor(p plan.Plan) error {
 	}
 
 	/* if transaction is explicitly requested, deploy */
-	if err := rst.QueryExecutor().DeploySliceTransactionBlock(); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.QueryExecutor().DeploySliceTransactionBlock()
 }
 
 // TODO : unit tests
@@ -302,15 +330,18 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Str("drb", rst.Client().DefaultRouteBehaviour()).
-		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("create plan for current statement")
-
 	var queryPlan plan.Plan
 
-	if v := rst.Client().ExecuteOn(); v != "" {
+	guc, err := rst.Client().FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return nil, err
+	}
+	if v := guc.Get(rst.Client()); v != "" {
+
+		spqrlog.Zero.Debug().
+			Str("exec_on", v).
+			Msg("forcing current statement to execute on dedicated shard")
+
 		queryPlan = &plan.ShardDispatchPlan{
 			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{
@@ -324,7 +355,11 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
 		if err != nil {
-			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+			switch se := err.(type) {
+			case *spqrerror.SpqrError:
+				return nil, se.Query(rst.plainQ)
+			}
+			return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "%w", err).Query(rst.plainQ)
 		}
 
 		/* XXX: fix this. This behaviour break regression tests */
@@ -345,8 +380,20 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		}
 	}
 
+	rGuc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return nil, err
+	}
+	if rm != nil && rm.UsedSelectQueryAdjust && rGuc.Get(rst.Client()) {
+		_ = rst.Client().ReplyNotice("query used select adjust for JOIN semantics")
+	}
+
+	if queryPlan.Opts().AutoLinearize && rGuc.Get(rst.Client()) {
+		_ = rst.Client().ReplyNotice("auto-linearize query dispatch because of hazard upsert")
+	}
+
 	switch v := queryPlan.(type) {
-	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.DataRowFilter:
+	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowFilter:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -391,8 +438,13 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 		shardInstanceMap[shardInstance.SHKey().Name] = shardInstance
 	}
 
-	// Get the notice message format from config
-	messageFormat := config.RouterConfig().NoticeMessageFormat
+	// Resolve the notice message format from the per-session GUC
+	var messageFormat string
+	if guc, err := client.FindStrGUC(session.SPQR_NOTICE_MESSAGE_FORMAT); err == nil {
+		messageFormat = guc.Get(client)
+	} else {
+		messageFormat = config.RouterConfig().NoticeMessageFormat
+	}
 
 	// Build shard info with the configured format
 	var shardInfos []string
@@ -409,6 +461,11 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	sort.Strings(shardInfos)
 	shardMatches := strings.Join(shardInfos, ",")
 
+	if config.RouterConfig().LogDispatch {
+		spqrlog.Zero.Info().Uint("client", client.ID()).
+			Str("shards", shardMatches).Time("time", time.Now()).Msg("dispatched query to shards")
+	}
+
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
@@ -422,7 +479,23 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("txstatus", rst.qse.TxStatus().String()).
+		Bool("implicitTx", rst.QueryExecutor().ImplicitTx()).
 		Msg("complete relay iter")
+
+	if rst.QueryExecutor().ImplicitTx() {
+		if err := rst.QueryExecutor().ExecCommit("COMMIT"); err != nil {
+			spqrlog.Zero.Error().
+				Uint("client", rst.Client().ID()).
+				Str("txstatus", rst.qse.TxStatus().String()).
+				Err(err).
+				Msg("failed to complete relay implicit commit")
+
+			if err := rst.Reset(); err != nil {
+				return err
+			}
+			return err
+		}
+	}
 
 	if err := rst.QueryExecutor().CompleteTx(rst.QueryExecutor()); err != nil {
 		spqrlog.Zero.Error().
@@ -469,6 +542,7 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatemen
 	spqrlog.Zero.Debug().
 		Str("name", qname).
 		Str("query", def.Query).
+		Uints32("params", def.ParameterOIDs).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
 		Msg("deploy prepared statement")
@@ -483,43 +557,47 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatemen
 var (
 	pgexec   = &pgproto3.Execute{}
 	pgsync   = &pgproto3.Sync{}
+	pgflush  = &pgproto3.Flush{}
 	pgNoData = &pgproto3.NoData{}
 
 	portalClose = &pgproto3.Close{
 		ObjectType: 'P',
 	}
 
-	emptyExecFunc = func() error {
+	emptyExecFunc = func(uint32) error {
 		return nil
 	}
 )
 
-func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *pgproto3.Parse) error {
+func (rst *RelayStateImpl) relayParsePrepared(
+	ctx context.Context,
+	name, query string, parameterOIDs []uint32) (pgproto3.BackendMessage, error) {
 
 	startTime := time.Now()
 
 	// analyze statement and maybe rewrite query
-
-	query := currentMsg.Query
-	_, _, err := rst.Parse(query, true)
+	stmts, _, err := rst.Parse(query, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	/* XXX: check that we have reference relation insert here */
-	stmt := rst.qp.Stmt()
+	stmt := stmts[0]
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt)
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Client(), rst.Client().Rule(), query, stmt, rst.Cache())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	rst.savedRM[currentMsg.Name] = rm
+	/* From now, our cached portal description is stale */
+	delete(rst.savedPortalDesc, name)
+
+	rst.savedRM[name] = rm
 
 	def := &prepstatement.PreparedStatementDefinition{
-		Name:          currentMsg.Name,
+		Name:          name,
 		Query:         query,
-		ParameterOIDs: currentMsg.ParameterOIDs,
+		ParameterOIDs: parameterOIDs,
 	}
 
 	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
@@ -532,16 +610,16 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 			switch rf := parsed.TableRef.(type) {
 			case *lyx.RangeVar:
 				qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-				if ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, qualName); err != nil {
-					return err
+				if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+					return nil, err
 				} else if ds.Id == distributions.REPLICATED {
 					rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName)
 					if err != nil {
-						return err
+						return nil, err
 					}
 
 					if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
-						return err
+						return nil, err
 					}
 				}
 				/* else distributed relation. */
@@ -556,11 +634,11 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 					rst.Client().StorePreparedStatement(def)
 
 					if err := rst.Client().Send(&pgproto3.ParseComplete{}); err != nil {
-						return err
+						return nil, err
 					}
 
 					/* Do not deploy our virtual functions to postgres. */
-					return nil
+					return nil, nil
 				}
 			}
 		}
@@ -568,473 +646,584 @@ func (rst *RelayStateImpl) relayParsePrepared(ctx context.Context, currentMsg *p
 
 	p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rst.routingDecisionPlan = p
 
 	rst.Client().StorePreparedStatement(def)
 
-	hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.Name)
+	hash := rst.Client().PreparedStatementQueryHashByName(name)
 
 	spqrlog.Zero.Debug().
-		Str("name", currentMsg.Name).
-		Str("query", currentMsg.Query).
+		Str("name", name).
+		Str("query", query).
+		Uints32("params", parameterOIDs).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
 		Msg("Parsing prepared statement")
 
 	if config.RouterConfig().PgprotoDebug {
-		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", currentMsg.Name, currentMsg.Query, hash); err != nil {
-			return err
+		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", name, query, hash); err != nil {
+			return nil, err
 		}
 	}
 
 	/* TODO: refactor code to make this less ugly */
 	saveTxStatus := rst.qse.TxStatus()
 
-	_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
+	_, retMsg, err := rst.gangDeployPrepStmtByName(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rst.qse.SetTxStatus(saveTxStatus)
 
 	// tdb: fix this
-	rst.plainQ = currentMsg.Query
-
-	if err := rst.Client().Send(retMsg); err != nil {
-		return err
-	}
+	rst.plainQ = query
 
 	if err := fin(); err != nil {
-		return err
+		return nil, err
 	}
 
-	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
-	return nil
+	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, query, time.Since(startTime))
+	return retMsg, nil
 }
 
-// TODO : unit tests
-// If we enter this function, then we need to process whole messages buffer
-// in current statement pipeline bounds.
-func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Int("xBuf", len(rst.xBuf)).
-		Msg("process extended buffer")
-
-	defer func() {
-		// cleanup
-		rst.xBuf = nil
-		rst.bindQueryPlan = nil
-	}()
-
-	for _, msg := range rst.xBuf {
-
-		switch currentMsg := msg.(type) {
-		case *pgproto3.Parse:
-			if err := rst.relayParsePrepared(ctx, currentMsg); err != nil {
-				return err
-			}
-		case *pgproto3.Bind:
-			startTime := time.Now()
-
-			spqrlog.Zero.Debug().
-				Str("name", currentMsg.PreparedStatement).
-				Str("portal", currentMsg.DestinationPortal).
-				Uint("client", rst.Client().ID()).
-				Msg("Binding prepared statement")
-
-			// Here we are going to actually redirect the query to the execution shard.
-			// However, to execute commit, rollbacks, etc., we need to wait for the next query
-			// or process it locally (set statement)
-
-			def := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
-
-			if def == nil {
-				/* this prepared statement was not prepared by client */
-				return pstmtDoesNotExistsErr(currentMsg.PreparedStatement)
-			}
-
-			if def.OverwriteRemoveParamIds != nil {
-				// we did query overwrite for sole reason -
-				// to insert next sequence value.
-				// XXX: this needs a massive refactor later
-
-				v, err := rst.Qr.IdRange().NextVal(ctx, def.SeqName)
-				if err != nil {
-					return err
-				}
-
-				currentMsg.Parameters = append(currentMsg.Parameters, fmt.Appendf(nil, "%d", v))
-			}
-
-			// We implicitly assume that there is always Execute after Bind for the same portal.
-			// however, postgresql protocol allows some more cases.
-			if err := rst.Client().ReplyBindComplete(); err != nil {
-				return err
-			}
-
-			rst.lastBindName = currentMsg.PreparedStatement
-			rst.unnamedPortalExists = true
-
-			/* only populate map for non-empty portal */
-			if currentMsg.DestinationPortal == "" {
-				rst.execute = emptyExecFunc
-			} else {
-				rst.executeMp[currentMsg.DestinationPortal] = emptyExecFunc
-			}
-
-			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
-				var bnd *pgproto3.Bind
-
-				if currentMsg.DestinationPortal == "" {
-					bnd = &rst.saveBind
-				} else {
-					rst.saveBindNamed[currentMsg.DestinationPortal] = &pgproto3.Bind{}
-					bnd = rst.saveBindNamed[currentMsg.DestinationPortal]
-				}
-
-				bnd.DestinationPortal = currentMsg.DestinationPortal
-
-				rm := rst.savedRM[currentMsg.PreparedStatement]
-
-				hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
-
-				bnd.PreparedStatement = fmt.Sprintf("%d", hash)
-				bnd.ParameterFormatCodes = currentMsg.ParameterFormatCodes
-				rst.Client().SetBindParams(currentMsg.Parameters)
-				rst.Client().SetParamFormatCodes(currentMsg.ParameterFormatCodes)
-				bnd.ResultFormatCodes = currentMsg.ResultFormatCodes
-				bnd.Parameters = currentMsg.Parameters
-
-				ctx := context.TODO()
-
-				// Do not respond with BindComplete, as the relay step should take care of itself.
-				queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
-
-				if err != nil {
-					return err
-				}
-
-				rst.routingDecisionPlan = queryPlan
-
-				if currentMsg.DestinationPortal == "" {
-					rst.bindQueryPlan = rst.routingDecisionPlan
-				} else {
-					rst.bindQueryPlanMP[currentMsg.DestinationPortal] = rst.routingDecisionPlan
-				}
-
-				if rst.routingDecisionPlan == nil {
-					return fmt.Errorf("extended xproto state out of sync")
-				}
-
-				f := func() error {
-					p := rst.bindQueryPlan
-					if currentMsg.DestinationPortal != "" {
-						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
-					}
-					forceSimple := false
-
-					switch q := p.(type) {
-					case *plan.ScatterPlan:
-						forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
-					default:
-					}
-					switch p.(type) {
-					case *plan.VirtualPlan:
-					default:
-						err := rst.PrepareTargetDispatchExecutionSlice(p)
-						if err != nil {
-							return err
-						}
-
-						def := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
-						hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
-						name := fmt.Sprintf("%d", hash)
-
-						_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
-							Name:          name,
-							Query:         def.Query,
-							ParameterOIDs: def.ParameterOIDs,
-						})
-
-						if err != nil {
-							return err
-						}
-					}
-
-					return BindAndReadSliceResult(rst, forceSimple, bnd, currentMsg.DestinationPortal)
-				}
-
-				/* only populate map for non-empty portal */
-				if currentMsg.DestinationPortal == "" {
-					rst.execute = f
-				} else {
-					rst.executeMp[currentMsg.DestinationPortal] = f
-				}
-
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
-
-				return nil
-
-			}, true /* cache parsing for prep statement */)
-
-			if err != nil {
-				return err
-			}
-
-			if pd != nil {
-				rst.savedPortalDesc[currentMsg.PreparedStatement] = pd
-			}
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
-
-		case *pgproto3.Describe:
-			// save txstatus because it may be overwritten if we have no backend connection
-			saveTxStat := rst.qse.TxStatus()
-
-			if currentMsg.ObjectType == 'P' {
-
-				if !rst.unnamedPortalExists {
-					return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
-				}
-
-				spqrlog.Zero.Debug().
-					Uint("client", rst.Client().ID()).
-					Str("last-bind-name", rst.lastBindName).
-					Msg("Describe portal")
-
-				if portDesc, ok := rst.savedPortalDesc[rst.lastBindName]; ok {
-					if portDesc.rd != nil {
-						// send to the client
-						if err := rst.Client().Send(portDesc.rd); err != nil {
-							return err
-						}
-					}
-					if portDesc.nodata != nil {
-						// send to the client
-						if err := rst.Client().Send(portDesc.nodata); err != nil {
-							return err
-						}
-					}
-				} else {
-
-					p := rst.bindQueryPlan
-					if currentMsg.Name != "" {
-						if _, ok := rst.executeMp[currentMsg.Name]; !ok {
-							return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, fmt.Sprintf("portal \"%s\" does not exists", currentMsg.Name))
-						}
-						p = rst.bindQueryPlanMP[currentMsg.Name]
-					}
-
-					switch q := p.(type) {
-					case *plan.VirtualPlan:
-						// skip deploy
-
-						// send to the client
-						if err := rst.Client().Send(&pgproto3.RowDescription{
-							Fields: q.TTS.Desc,
-						}); err != nil {
-							return err
-						}
-
-					default:
-						/* SingleShard or random shard plans */
-
-						err := rst.PrepareTargetDispatchExecutionSlice(p)
-						if err != nil {
-							return err
-						}
-
-						rst.routingDecisionPlan = p
-
-						if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
-							return err
-						}
-
-						var bnd *pgproto3.Bind
-
-						if currentMsg.Name == "" {
-							bnd = &rst.saveBind
-						} else {
-							bnd = rst.saveBindNamed[currentMsg.Name]
-						}
-
-						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, bnd)
-						if err != nil {
-							return err
-						}
-						if cachedPd.rd != nil {
-							// send to the client
-							if err := rst.Client().Send(cachedPd.rd); err != nil {
-								return err
-							}
-						}
-						if cachedPd.nodata != nil {
-							// send to the client
-							if err := rst.Client().Send(cachedPd.nodata); err != nil {
-								return err
-							}
-						}
-
-						rst.savedPortalDesc[rst.lastBindName] = cachedPd
-					}
-				}
-			} else {
-
-				/* q.ObjectType == 'S' */
-				spqrlog.Zero.Debug().
-					Uint("client", rst.Client().ID()).
-					Str("stmt-name", currentMsg.Name).
-					Msg("Describe prep statement")
-
-				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
-
-				if def == nil {
-					/* this prepared statement was not prepared by client */
-					return pstmtDoesNotExistsErr(currentMsg.Name)
-				}
-
-				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
-				if err != nil {
-					return err
-				}
-
-				rst.routingDecisionPlan = p
-
-				rd, _, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
-				if err != nil {
-					return err
-				}
-
-				desc := rd.ParamDesc
-				if desc != nil {
-					// if we did overwrite something - remove our
-					// columns from output
-					for ind := range def.OverwriteRemoveParamIds {
-						// NB: ind are zero - indexed
-						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
-					}
-
-					if err := rst.Client().Send(desc); err != nil {
-						return err
-					}
-				}
-
-				if rd.NoData {
-					if err := rst.Client().Send(pgNoData); err != nil {
-						return err
-					}
-				} else {
-					if rd.RowDesc != nil {
-						if err := rst.Client().Send(rd.RowDesc); err != nil {
-							return err
-						}
-					}
-				}
-
-				if err := fin(); err != nil {
-					return err
-				}
-			}
-
-			rst.qse.SetTxStatus(saveTxStat)
-
-		case *pgproto3.Execute:
-
-			startTime := time.Now()
-			q := rst.plainQ
-			spqrlog.Zero.Debug().
-				Uint("client", rst.Client().ID()).
-				Str("portal", currentMsg.Portal).
-				Msg("Execute prepared statement, reset saved bind")
-
-			var err error
-
-			if currentMsg.Portal == "" {
-				/* NB: unnamed portals are quite different is a sence of that they are
-				* auto-closed on new bind msgs
-				* From PostgreSQL doc:
-				* Named portals must be explicitly closed before
-				* they can be redefined by another Bind message,
-				* but this is not required for the unnamed portal. */
-				err = rst.execute()
-				rst.execute = nil
-				rst.bindQueryPlan = nil
-			} else {
-				err = rst.executeMp[currentMsg.Portal]()
-				/* Note we do not delete from executeMP, this is intentional */
-				rst.bindQueryPlanMP[currentMsg.Portal] = nil
-			}
-
-			if rst.lastBindName == "" {
-				delete(rst.savedPortalDesc, rst.lastBindName)
-			}
-			rst.lastBindName = ""
-			if err != nil {
-				return err
-			}
-
-			/* Okay, respond with CommandComplete first. */
-			if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
-				return err
-			}
-
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
-		case *pgproto3.Close:
-			/* Validate ObjectType */
-			switch currentMsg.ObjectType {
-			case 'P':
-				/* Portal */
-				if currentMsg.Name != "" {
-					delete(rst.executeMp, currentMsg.Name)
-				}
-				if err := rst.Client().ReplyCloseComplete(); err != nil {
-					return err
-				}
-			case 'S':
-				/* Statement */
-
-				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
-
-				if def == nil {
-					/* this prepared statement was not prepared by client */
-					return pstmtDoesNotExistsErr(currentMsg.Name)
-				} else {
-					rst.Client().ClosePreparedStatement(currentMsg.Name)
-					if err := rst.Client().ReplyCloseComplete(); err != nil {
-						return err
-					}
-				}
-			default:
-				/* Send proper protocol error. */
-				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
-			}
-		default:
-			return fmt.Errorf("unexpected query type %v", msg)
+func (rst *RelayStateImpl) describeDeployablePlan(
+	objType byte,
+	name string,
+	dMsg *pgproto3.Describe, p plan.Plan) (*PortalDesc, error) {
+
+	/* SingleShard or random shard plans */
+
+	err := rst.PrepareTargetDispatchExecutionSlice(p)
+	if err != nil {
+		return nil, err
+	}
+
+	var bnd *pgproto3.Bind
+	var bindName string
+	if name == "" {
+		bnd = &rst.saveBind
+		bindName = rst.lastBindName
+	} else {
+		bnd = rst.saveBindNamed[name]
+		bindName = rst.lastBindNameMP[name]
+	}
+
+	rst.routingDecisionPlan = p
+
+	if _, _, err := rst.gangDeployPrepStmtByName(bindName); err != nil {
+		return nil, err
+	}
+
+	/* XXX: maybe optimize allocation here */
+
+	if dMsg == nil {
+		dMsg = &pgproto3.Describe{
+			ObjectType: objType,
+			Name:       name,
 		}
 	}
 
+	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
+	if err != nil {
+		return nil, err
+	}
+
+	rst.savedPortalDesc[bindName] = cachedPd
+	return cachedPd, nil
+}
+
+func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
+	var err error
+	// save txstatus because it may be overwritten if we have no backend connection
+	saveTxStat := rst.qse.TxStatus()
+
+	if objType == xproto.ObjectTypePortal {
+
+		if !rst.unnamedPortalExists && name == "" {
+			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
+		}
+
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Str("last-bind-name", rst.lastBindName).
+			Str("name", name).
+			Msg("Describe portal")
+
+		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
+
+		if !ok {
+
+			p := rst.bindQueryPlan
+			if name != "" {
+				if _, ok := rst.executeMp[name]; !ok {
+					return spqrerror.New(
+						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
+						fmt.Sprintf("portal \"%s\" does not exist", name))
+				}
+				p = rst.bindQueryPlanMP[name]
+			}
+
+			switch q := p.(type) {
+			case *plan.VirtualPlan:
+				// skip deploy
+
+				if q.SubPlan == nil {
+					// send to the client
+					portDesc = &PortalDesc{
+						rd: &pgproto3.RowDescription{
+							Fields: q.TTS.Desc,
+						},
+					}
+				} else {
+					// like default
+					if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+						return err
+					}
+				}
+
+			default:
+				if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
+					return err
+				}
+			}
+		}
+
+		if portDesc.rd != nil {
+			// send to the client
+			if err := rst.Client().Send(portDesc.rd); err != nil {
+				return err
+			}
+		}
+		if portDesc.nodata != nil {
+			// send to the client
+			if err := rst.Client().Send(portDesc.nodata); err != nil {
+				return err
+			}
+		}
+	} else {
+
+		/* q.ObjectType == 'S' */
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Str("stmt-name", name).
+			Msg("Describe prep statement")
+
+		def := rst.Client().PreparedStatementDefinitionByName(name)
+
+		if def == nil {
+			/* this prepared statement was not prepared by client */
+			return pstmtDoesNotExistsErr(name)
+		}
+
+		p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
+		if err != nil {
+			return err
+		}
+
+		rst.routingDecisionPlan = p
+
+		rd, _, err := rst.gangDeployPrepStmtByName(name)
+		if err != nil {
+			return err
+		}
+
+		desc := rd.ParamDesc
+		if desc != nil {
+			// if we did overwrite something - remove our
+			// columns from output
+			var filteredOids []uint32
+			// NB: ind are zero - indexed
+			for ind, val := range desc.ParameterOIDs {
+				if _, ok := def.OverwriteRemoveParamIDs[ind+1]; ok {
+					continue
+				}
+				filteredOids = append(filteredOids, val)
+			}
+			desc.ParameterOIDs = filteredOids
+
+			if err := rst.Client().Send(desc); err != nil {
+				return err
+			}
+		}
+
+		if rd.NoData {
+			if err := rst.Client().Send(pgNoData); err != nil {
+				return err
+			}
+		} else {
+			if rd.RowDesc != nil {
+				if err := rst.Client().Send(rd.RowDesc); err != nil {
+					return err
+				}
+			}
+		}
+
+		if err := fin(); err != nil {
+			return err
+		}
+	}
+
+	rst.qse.SetTxStatus(saveTxStat)
+	return nil
+}
+
+func (rst *RelayStateImpl) BindPrepared(
+	ctx context.Context,
+	preparedStatement string,
+	destinationPortal string,
+	parameters [][]byte,
+	parameterFormatCodes []int16,
+	resultFormatCodes []int16,
+) error {
+	startTime := time.Now()
+
+	spqrlog.Zero.Debug().
+		Str("name", preparedStatement).
+		Str("portal", destinationPortal).
+		Uint("client", rst.Client().ID()).
+		Msg("Binding prepared statement")
+
+	// Here we are going to actually redirect the query to the execution shard.
+	// However, to execute commit, rollbacks, etc., we need to wait for the next query
+	// or process it locally (set statement)
+
+	def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
+
+	if def == nil {
+		/* this prepared statement was not prepared by client */
+		return pstmtDoesNotExistsErr(preparedStatement)
+	}
+
+	if _, err := prepstatement.GetParams(parameterFormatCodes, parameters); err != nil {
+		return err
+	}
+
+	if def.OverwriteRemoveParamIDs != nil {
+		// we did query overwrite for sole reason -
+		// to insert next sequence value.
+		// XXX: this needs a massive refactor later
+
+		v, err := rst.Qr.IdRange().NextVal(ctx, def.SeqName)
+		if err != nil {
+			return err
+		}
+
+		if len(parameterFormatCodes) > 1 {
+			parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
+		} else if len(parameterFormatCodes) == 1 && parameterFormatCodes[0] != xproto.FormatCodeText {
+			paramFormatCode := parameterFormatCodes[0]
+			parameterFormatCodes = make([]int16, len(parameters))
+			for i := range parameterFormatCodes {
+				parameterFormatCodes[i] = paramFormatCode
+			}
+			parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
+		}
+		parameters = append(parameters, fmt.Appendf(nil, "%d", v))
+	}
+
+	// We implicitly assume that there is always Execute after Bind for the same portal.
+	// however, postgresql protocol allows some more cases.
+	if err := rst.Client().ReplyBindComplete(); err != nil {
+		return err
+	}
+
+	if destinationPortal != "" {
+		rst.lastBindNameMP[destinationPortal] = preparedStatement
+	} else {
+		rst.lastBindName = preparedStatement
+	}
+
+	rst.unnamedPortalExists = false
+
+	/* only populate map for non-empty portal */
+	if destinationPortal == "" {
+		rst.unnamedPortalExists = true
+		rst.execute = emptyExecFunc
+	} else {
+		rst.executeMp[destinationPortal] = emptyExecFunc
+	}
+
+	pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
+		var bnd *pgproto3.Bind
+
+		if destinationPortal == "" {
+			bnd = &rst.saveBind
+		} else {
+			rst.saveBindNamed[destinationPortal] = &pgproto3.Bind{}
+			bnd = rst.saveBindNamed[destinationPortal]
+		}
+
+		bnd.DestinationPortal = destinationPortal
+
+		rm := rst.savedRM[preparedStatement]
+
+		rm.LastResultFormatCodes = resultFormatCodes
+
+		hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
+
+		bnd.PreparedStatement = fmt.Sprintf("%d", hash)
+		bnd.ParameterFormatCodes = parameterFormatCodes
+		rst.Client().SetBindParams(parameters)
+		rst.Client().SetParamFormatCodes(parameterFormatCodes)
+		bnd.ResultFormatCodes = resultFormatCodes
+		bnd.Parameters = parameters
+
+		ctx := context.TODO()
+
+		// Do not respond with BindComplete, as the relay step should take care of itself.
+		queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
+
+		if err != nil {
+			return err
+		}
+
+		rst.routingDecisionPlan = queryPlan
+
+		if destinationPortal == "" {
+			rst.bindQueryPlan = rst.routingDecisionPlan
+		} else {
+			rst.bindQueryPlanMP[destinationPortal] = rst.routingDecisionPlan
+		}
+
+		if rst.routingDecisionPlan == nil {
+			return fmt.Errorf("extended xproto state out of sync")
+		}
+
+		f := func(maxrows uint32) error {
+			p := rst.bindQueryPlan
+			if destinationPortal != "" {
+				p = rst.bindQueryPlanMP[destinationPortal]
+			}
+			forceSimple := false
+
+			switch q := p.(type) {
+			case *plan.ScatterPlan:
+				forceSimple = len(q.OverwriteQuery) != 0 && len(bnd.Parameters) == 0
+			default:
+			}
+			switch p.(type) {
+			case *plan.VirtualPlan:
+			default:
+				err := rst.PrepareTargetDispatchExecutionSlice(p)
+				if err != nil {
+					return err
+				}
+
+				def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
+				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
+				name := fmt.Sprintf("%d", hash)
+
+				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+					Name:          name,
+					Query:         def.Query,
+					ParameterOIDs: def.ParameterOIDs,
+				})
+
+				if err != nil {
+					return err
+				}
+			}
+
+			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, maxrows)
+		}
+
+		/* only populate map for non-empty portal */
+		if destinationPortal == "" {
+			rst.execute = f
+		} else {
+			rst.executeMp[destinationPortal] = f
+		}
+
+		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
+
+		return nil
+
+	}, true /* cache parsing for prep statement */)
+
+	if err != nil {
+		return err
+	}
+
+	if pd != nil {
+		rst.savedPortalDesc[preparedStatement] = pd
+	}
+	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
+	return nil
+}
+
+func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
+	startTime := time.Now()
+	q := rst.plainQ
+	spqrlog.Zero.Debug().
+		Uint("client", rst.Client().ID()).
+		Str("portal", portal).
+		Msg("Execute prepared statement, reset saved bind")
+
+	var err error
+
+	if portal == "" {
+
+		if !rst.unnamedPortalExists {
+			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
+		}
+
+		/* NB: unnamed portals are quite different is a sence of that they are
+		* auto-closed on new bind msgs
+		* From PostgreSQL doc:
+		* Named portals must be explicitly closed before
+		* they can be redefined by another Bind message,
+		* but this is not required for the unnamed portal. */
+		if rst.execute == nil {
+			return rerrors.ErrRelaySyncLost
+		}
+		err = rst.execute(maxrows)
+		rst.execute = nil
+		rst.bindQueryPlan = nil
+	} else {
+		f, ok := rst.executeMp[portal]
+		if !ok {
+			return spqrerror.New(
+				spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
+				fmt.Sprintf("portal \"%s\" does not exist", portal))
+		}
+
+		err = f(maxrows)
+		/* Note we do not delete from executeMP, this is intentional */
+		rst.bindQueryPlanMP[portal] = nil
+	}
+
+	if rst.lastBindName == "" {
+		delete(rst.savedPortalDesc, rst.lastBindName)
+	}
+	rst.lastBindName = ""
+	if err != nil {
+		return err
+	}
+
+	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
+	return nil
+}
+
+func (rst *RelayStateImpl) PipelineCleanup() {
+	rst.bindQueryPlan = nil
+
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		/* XXX: normally these two map should be either both empty
+		* either both not */
+		if len(rst.bindQueryPlanMP) > 0 {
+			rst.bindQueryPlanMP = map[string]plan.Plan{}
+		}
+		if len(rst.executeMp) > 0 {
+			rst.executeMp = map[string]func(maxrows uint32) error{}
+		}
+	}
+	rst.WaitSync = false
+}
+
+func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
+
+	if rst.WaitSync {
+		return nil
+	}
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+		return errAbortedTx
+	}
+
+	switch currentMsg := msg.(type) {
+	case *pgproto3.Parse:
+
+		if retMsg, err := rst.relayParsePrepared(ctx, currentMsg.Name, currentMsg.Query, currentMsg.ParameterOIDs); err != nil {
+			return err
+		} else if retMsg != nil {
+			if err := rst.Client().Send(retMsg); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	case *pgproto3.Bind:
+		return rst.BindPrepared(ctx,
+			currentMsg.PreparedStatement,
+			currentMsg.DestinationPortal,
+			currentMsg.Parameters,
+			currentMsg.ParameterFormatCodes,
+			currentMsg.ResultFormatCodes)
+
+	case *pgproto3.Describe:
+		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)
+	case *pgproto3.Execute:
+		if err := rst.ExecutePortal(currentMsg.Portal, currentMsg.MaxRows); err != nil {
+			return err
+		}
+
+		/* Okay, respond with CommandComplete first. */
+		return rst.QueryExecutor().DeriveCommandComplete()
+
+	case *pgproto3.Close:
+		/* Validate ObjectType */
+		switch currentMsg.ObjectType {
+		case 'P':
+			/* Portal */
+			if currentMsg.Name != "" {
+				delete(rst.executeMp, currentMsg.Name)
+			}
+			if err := rst.Client().ReplyCloseComplete(); err != nil {
+				return err
+			}
+		case 'S':
+			/* Statement */
+
+			rst.Client().ClosePreparedStatement(currentMsg.Name)
+			if err := rst.Client().ReplyCloseComplete(); err != nil {
+				return err
+			}
+
+		default:
+			/* Send proper protocol error. */
+			/* this prepared statement was not prepared by client */
+			return spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION, "invalid CLOSE message subtype %d", currentMsg.ObjectType)
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("unexpected query type %v", msg)
+	}
+}
+
+func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error {
+
+	if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		/* XXX: support implicit tx semantics here */
+		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+	}
+
+	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.WaitSync = true
+		return err
+	}
 	return nil
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseState, string, error) {
+func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, []string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
 		rst.qp.SetOriginQuery(query)
 		return cache.ps, cache.comm, nil
 	}
 
-	state, comm, err := rst.qp.Parse(query)
+	stmts, comm, err := rst.qp.Parse(query)
 
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 
+	/* XXX remove from here */
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
 		// load columns from information schema
@@ -1047,7 +1236,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName))
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
-						return state, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
+						return stmts, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", schemaErr)
 					}
 				}
 			}
@@ -1060,7 +1249,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 		switch stmt.(type) {
 		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
 			rst.parseCache[query] = ParseCacheEntry{
-				ps:   state,
+				ps:   stmts,
 				comm: comm,
 				stmt: stmt,
 			}
@@ -1068,7 +1257,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	rst.plainQ = query
-	return state, comm, nil
+	return stmts, comm, nil
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}
@@ -1103,6 +1292,11 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 	switch err {
 	case nil:
+		q, err := rst.QueryExecutor().TryMatchExecTargets(q, rst.Qr.DataShardsRoutes())
+		if err != nil {
+			return nil, err
+		}
+
 		if expandCurrentTx {
 			execTarg := q.ExecutionTargets()
 
@@ -1152,12 +1346,12 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	}
 
 	if bindPlan == nil {
-		return fmt.Errorf("failed to use hint route")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "failed to use hint route")
 	}
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 	if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return err
 		}
 		rst.QueryExecutor().ActiveShardsReset()
@@ -1193,7 +1387,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	cf := func() error {
 		/* Active shards should be same as p.ExecutionTargets */
-		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+		err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 		rst.QueryExecutor().ActiveShardsReset()
 		return err
 	}
@@ -1202,7 +1396,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if len(rst.QueryExecutor().ActiveShards()) == 1 {
 		return currentPlan, cf, nil
 	} else if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return nil, noopCloseRouteFunc, err
 		}
 		rst.QueryExecutor().ActiveShardsReset()
@@ -1229,12 +1423,12 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 	ctx := context.TODO()
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), q.String, rst.qp.Stmt())
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Client(), rst.Client().Rule(), q.String, rst.Parser().Stmt(), rst.Cache())
 	if err != nil {
 		return err
 	}
 
-	// Do not respond with BindComplete, as the relay step should take care of itself.
+	/* Now we can create plan for this statement */
 	queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
 
 	if err != nil {
@@ -1244,6 +1438,21 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	}
 
 	rst.routingDecisionPlan = queryPlan
+
+	/* exec target = empty is a default for all shards */
+	if rm.HasWriteTargets && len(queryPlan.ExecutionTargets()) != 1 && rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		if err := rst.QueryExecutor().ExecBegin("BEGIN", &lyx.TransactionStmt{}, true); err != nil {
+			return err
+		}
+
+		guc, err := rst.Client().FindBoolGUC(session.SPQR_REPLY_NOTICE)
+		if err != nil {
+			return err
+		}
+		if guc.Get(rst.Client()) {
+			_ = rst.Client().ReplyNotice("start implicit transaction because of multishard modify plan")
+		}
+	}
 
 	es := &QueryDesc{
 		Msg:    q,

@@ -135,6 +135,7 @@ NOTICE: send query to shard(s) : sh2
 
 DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 -- check that uuid type works
 CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
@@ -210,11 +211,20 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 INSERT INTO xxmixeduuid (id) VALUES('something');
-ERROR:  error processing query 'INSERT INTO xxmixeduuid (id) VALUES('something');': invalid UUID length: 9
+ERROR:  invalid UUID length: 9
+QUERY:  INSERT INTO xxmixeduuid (id) VALUES('something');
 INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-ERROR:  error processing query 'INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');': invalid UUID format
+ERROR:  invalid UUID format
+QUERY:  INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
 DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

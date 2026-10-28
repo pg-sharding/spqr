@@ -31,18 +31,31 @@ var _ protos.ShardServiceServer = &ShardServer{}
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
 	newShard := request.GetShard()
 
-	if err := s.impl.AddDataShard(ctx, topology.DataShardFromProto(newShard)); err != nil {
+	shard, err := topology.DataShardFromProto(newShard)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.impl.AddDataShard(ctx, shard, request.Force); err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
+}
+
+func (s *ShardServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
+	options, err := topology.GenericOptionsFromProto(request.GetOptions())
+	if err != nil {
+		return nil, err
+	}
+	err = s.impl.AlterShardOptions(ctx, request.GetId(), options)
+	return &emptypb.Empty{}, err
 }
 
 func (s *ShardServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
 	return nil, s.impl.DropShard(ctx, request.Id)
 }
 
-func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
+func (s *ShardServer) AddWorldShard(_ context.Context, _ *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("ShardServer.AddWorldShard not implemented")
 }
 
@@ -56,7 +69,11 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos
 	protoShards := make([]*protos.Shard, 0, len(shardList))
 
 	for _, sh := range shardList {
-		protoShards = append(protoShards, topology.DataShardToProto(sh))
+		protoShard, err := topology.DataShardToProto(sh, false)
+		if err != nil {
+			return nil, err
+		}
+		protoShards = append(protoShards, protoShard)
 	}
 
 	return &protos.ListShardsReply{
@@ -71,14 +88,23 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 		return nil, err
 	}
 
+	protoShard, err := topology.DataShardToProto(sh, false)
+	if err != nil {
+		return nil, err
+	}
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh),
+		Shard: protoShard,
 	}, nil
 }
 
 type CoordShardInfo struct {
 	underlying *protos.BackendConnectionsInfo
 	router     string
+}
+
+// ServerLifetime implements [shard.ShardHostCtl].
+func (c *CoordShardInfo) ServerLifetime() time.Duration {
+	return time.Duration(0)
 }
 
 // Cancel implements [shard.ShardHostCtl].
@@ -95,6 +121,7 @@ func (c *CoordShardInfo) CreatedAt() time.Time {
 func (c *CoordShardInfo) MarkStale() {
 	/* noop */
 }
+
 func (c *CoordShardInfo) IsStale() bool {
 	return false
 }

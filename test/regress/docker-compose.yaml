@@ -2,14 +2,13 @@ services:
     x-shard-common:
         &shard-common
         image: ${SHARD_IMAGE:-spqr-shard-image}
-        # depends_on:
-            # - shard-image-mdb
 
     shard1:
         <<: *shard-common
         environment: &shard-env-common
             POSTGRES_USER: regress
             POSTGRES_DB: regress
+            PG_SYNC_REPLICA: true
         ports:
             - "7432:6432"
         hostname: spqr_shard_1
@@ -128,6 +127,11 @@ services:
             - ROUTER_LOG=/var/log/spqr-router.log
         hostname: regress_router
         container_name: regress_router
+        healthcheck:
+            test: 'pg_isready -p 6432 -U regress -d regress'
+            interval: 10s
+            timeout: 3s
+            retries: 20
         depends_on:
             shard1:
                 condition: service_healthy
@@ -177,8 +181,11 @@ services:
             context: .
         hostname: regress_tests
         container_name: regress_tests
+        environment:
+            - REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress}
+        volumes:
+            - ../../test-reports/regress:/regress/test-reports/regress
         depends_on:
             - router
             - coordinator
             - pooler
-            # - regress-mdb-image

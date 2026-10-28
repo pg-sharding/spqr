@@ -11,8 +11,14 @@ const DOUBLEOID = 701 /* #no-spell-check-line */
 // INT8OID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L55 /* #no-spell-check-line */
 const INT8OID = 20 /* #no-spell-check-line */
 
+// INT2OID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L60 /* #no-spell-check-line */
+const INT2OID = 21
+
 // INT4OID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L72 /* #no-spell-check-line */
 const INT4OID = 23 /* #no-spell-check-line */
 
 // BOOLOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L34 /* #no-spell-check-line */
 const BOOLOID = 16 /* #no-spell-check-line */
+
+// INTERVALOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L312 /* #no-spell-check-line */
+const INTERVALOID = 1186

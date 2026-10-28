@@ -8,15 +8,17 @@ it is enough to specify only one end of the range.
 For composite sharding keys, specify multiple values separated by commas that correspond 
 to each column in the distribution.
 
+Use IF NOT EXISTS to skip creation when the key range already exists.
+
 
 ```sql
-CREATE KEY RANGE [ <keyRangeID> ]
+CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
   FROM <lowerBound>
   ROUTE TO <shardID> 
   FOR DISTRIBUTION <distributionID>
 
-where lowerBound is a single value or comma-separated values for composite keys 
-(e.g., "100, 'value'" for a two-column key)
+where lowerBound is a single value or comma-separated values
+for composite keys (e.g., "100, 'value'" for a two-column key)
 ```
 
 **Examples:**
@@ -24,10 +26,60 @@ where lowerBound is a single value or comma-separated values for composite keys
 ```sql
 -- Single column key range
 CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+-- Create a key range if it does not exist
+CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+  ROUTE TO shard1 FOR DISTRIBUTION ds1;
+
 -- Composite key range with two integers
 CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
 -- Composite key range with integer and varchar
-CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;
+CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
+    ROUTE TO shard3 FOR DISTRIBUTION ds3;
+```
+
+### CREATE KEY RANGES FOR DISTRIBUTION
+
+Automatically creates a set of uniformly distributed key ranges for a distribution.
+Instead of defining each key range manually, this command inspects the distribution's
+column type, splits the whole key space (or an explicitly supplied range) into equal
+parts, and creates one key range per target shard.
+
+The key space is divided evenly across the selected shards, and each resulting key
+range is assigned to one shard in order. Generated key ranges are named
+`<distributionID>-<index>`, where index starts at 0.
+
+By default the command uses the full value range of the distribution column type.
+Use the optional BETWEEN clause to bound the generated key ranges to a specific
+interval. When no shard selection is given, key ranges are created for all shards.
+
+This command only supports distributions with a single, hashable (numeric) sharding
+column. Composite keys and non-hashable types such as varchar or uuid are not
+supported; use CREATE KEY RANGE to define those ranges manually.
+
+
+```sql
+CREATE KEY RANGES FOR DISTRIBUTION <distributionID>
+  [ BETWEEN <lowerBound> AND <upperBound> ]
+  [ USING ALL SHARDS | USING SHARDS <shardID> [, ...] ]
+```
+
+**Examples:**
+
+```sql
+-- Create key ranges for all shards (default)
+CREATE KEY RANGES FOR DISTRIBUTION ds1;
+-- Create key ranges explicitly for all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+-- Create key ranges for a subset of shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS sh1, sh2;
+-- Split a bounded interval across all shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 
+BETWEEN 0 AND 1000 USING ALL SHARDS;
+
+-- Split a bounded interval across selected shards
+CREATE KEY RANGES FOR DISTRIBUTION ds1 
+BETWEEN 0 AND 1000 USING SHARDS sh1, sh2;
+
 ```
 
 ### DROP KEY RANGE
@@ -36,10 +88,11 @@ Removes a key range from the cluster. This deletes the key range metadata
 but does not affect the actual data stored on the shard.
 
 Use DROP KEY RANGE ALL to remove all key ranges at once.
+Use IF EXISTS to skip the command when the key range does not exist.
 
 
 ```sql
-DROP KEY RANGE <keyRangeID>
+DROP KEY RANGE [IF EXISTS] <keyRangeID>
 DROP KEY RANGE ALL
 ```
 
@@ -48,6 +101,8 @@ DROP KEY RANGE ALL
 ```sql
 -- Drop a specific key range
 DROP KEY RANGE krid1;
+-- Drop a key range if it exists
+DROP KEY RANGE IF EXISTS krid1;
 -- Drop all key ranges
 DROP KEY RANGE ALL;
 ```
@@ -58,8 +113,8 @@ Locks a key range to prevent concurrent modifications. This is typically
 used before performing operations like SPLIT or UNITE that require
 exclusive access to the key range.
 
-While a key range is locked, queries routed to it will wait until the
-lock is released.
+While a key range is locked, queries routed to it will receive a
+`key range is locked` error.
 
 
 ```sql
@@ -68,16 +123,15 @@ LOCK KEY RANGE <keyRangeID>
 
 ### MOVE KEY RANGE
 
-Updates the routing metadata to assign a key range to a different shard.
-This only changes where new queries for this key range are routed — it does NOT
-migrate the actual data between shards.
-
-
-<Warning>MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.</Warning>
+Moves the data belonging to a key range to the specified shard.
+If META ONLY key word is given, then the command only updates the metadata i.e. changes query routing, NOT the data placement.
+MOVE KEY RANGE ... META ONLY requires the key range to be locked prior.
+Non-META ONLY version locks all the data for update & lacks pre-run checks, so it's discouraged to use
+in favour of REDISTRIBUTE KEY RANGE. This version is only available in installations with SPQR-coordinator.
 
 
 ```sql
-MOVE KEY RANGE <keyRangeID> TO <shardID>
+MOVE KEY RANGE <keyRangeID> TO <shardID> [META ONLY]
 ```
 
 **Examples:**
@@ -126,13 +180,15 @@ Splits an existing key range into two key ranges at the specified boundary value
 The new key range takes the upper portion of the original range (from the split
 point to the original upper bound), while the source range keeps the lower portion.
 
-Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE afterwards to relocate one of them if needed.
+Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE
+afterwards to relocate one of them if needed.
 
 
 ```sql
 SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
 
-where splitBound is a single value or comma-separated values for composite keys
+where splitBound is a single value or comma-separated values
+for composite keys
 ```
 
 **Examples:**
@@ -141,7 +197,8 @@ where splitBound is a single value or comma-separated values for composite keys
 -- Split a key range at integer boundary
 SPLIT KEY RANGE krid2 FROM krid1 BY 100;
 -- Split a key range at UUID boundary
-SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';
+SPLIT KEY RANGE krid4 FROM krid3
+    BY 'FF000000-0000-0000-0000-000000000000';
 ```
 
 ### UNITE KEY RANGE
@@ -172,12 +229,5 @@ After unlocking, queries routed to this key range will resume normal processing.
 
 ```sql
 UNLOCK KEY RANGE <keyRangeID>
-```
-
-**Examples:**
-
-```sql
--- Unlock a key range after a split operation
-UNLOCK KEY RANGE krid1;
 ```
 

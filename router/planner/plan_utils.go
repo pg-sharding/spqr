@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -77,6 +78,38 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			}, nil
 		}
 
+		isReferenceRel := false
+		dsRel := node.TableRv
+		if node.PartitionOf != nil {
+			dsRel = node.PartitionOf
+		}
+		rv, ok := dsRel.(*lyx.RangeVar)
+		if !ok {
+			return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
+		}
+		relname := rfqn.RelationFQNFromRangeRangeVar(rv)
+		iis, err := rm.Mgr.ListUniqueIndexes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		found := false
+		for _, is := range iis {
+			if is.ID == relname.String() {
+				/* this is an index table */
+				found = true
+				break
+			}
+		}
+		if !found {
+			ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+			if err != nil {
+				return nil, err
+			}
+			if ds.Id == distributions.REPLICATED {
+				isReferenceRel = true
+			}
+		}
+
 		tmpPlan := &plan.ScatterPlan{
 			IsDDL:    true,
 			SubSlice: p,
@@ -122,9 +155,13 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		relFQN := rfqn.RelationFQNFromFullName(rvNode.SchemaName, rvNode.RelationName)
 		tmpPlan.OverwriteQuery = make(map[string]string)
 		p.OverwriteQuery = make(map[string]string)
-		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", relFQN.String())
+		relType := "distributed"
+		if isReferenceRel {
+			relType = "reference"
+		}
+		oq := fmt.Sprintf("SELECT spqr_metadata.mark_%s_relation('%s')", relType, relFQN.String())
 		if node.IfNotExists {
-			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relFQN.String())
+			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_%s_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relType, relFQN.String())
 		}
 		shards, err := rm.Mgr.ListShards(ctx)
 		if err != nil {
@@ -191,6 +228,145 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			IsDDL: true,
 		}, nil
 
+	case *lyx.DropTable:
+		if !setUpSpqrguard {
+			return &plan.ScatterPlan{
+				IsDDL: true,
+			}, nil
+		}
+		// DROP TABLE, need to modify spqr_metadata
+
+		p := &plan.ScatterPlan{
+			IsDDL: true,
+		}
+		isReferenceRel := false
+		tmpPlan := &plan.ScatterPlan{
+			IsDDL:    true,
+			SubSlice: p,
+			OverwriteCC: &pgproto3.CommandComplete{
+				CommandTag: []byte("DROP TABLE"),
+			},
+		}
+
+		/* TODO: do we need this? */
+		p.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level drop table slice")
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("%s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		/* TODO: do we need this? */
+		tmpPlan.RunF = func(serv server.Server) error {
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run DROP TABLE outer slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						/* TODO: add setting for ignoring this error */
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		oq := make([]string, 0, len(node.TableRv))
+
+		for _, dsRel := range node.TableRv {
+			rv, ok := dsRel.(*lyx.RangeVar)
+			if !ok {
+				return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
+			}
+			relname := rfqn.RelationFQNFromRangeRangeVar(rv)
+			iis, err := rm.Mgr.ListUniqueIndexes(ctx)
+			if err != nil {
+				return nil, err
+			}
+			found := false
+			for _, is := range iis {
+				if is.ID == relname.String() {
+					/* this is an index table */
+					found = true
+					break
+				}
+			}
+			if !found {
+				ds, err := rm.Mgr.GetRelationDistribution(ctx, relname)
+				if err != nil {
+					return nil, err
+				}
+				if ds.Id == distributions.REPLICATED {
+					isReferenceRel = true
+				}
+			}
+			relFQN := rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName)
+			tmpPlan.OverwriteQuery = make(map[string]string)
+			p.OverwriteQuery = make(map[string]string)
+			relType := "distributed"
+			if isReferenceRel {
+				relType = "reference"
+			}
+			if node.MissingOk {
+				oq = append(oq, fmt.Sprintf("DELETE FROM spqr_metadata.spqr_%s_relations WHERE reloid in (SELECT c.oid FROM pg_class c JOIN pg_namespace n ON c.oid = n.oid WHERE c.relname = '%s' AND n.nspname = '%s')", relType, relFQN.RelationName, relFQN.GetSchema()))
+			} else {
+				oq = append(oq, fmt.Sprintf("SELECT spqr_metadata.unmark_%s_relation('%s')", relType, relFQN.String()))
+			}
+		}
+
+		shards, err := rm.Mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		targets := make([]kr.ShardKey, len(shards))
+		for i, sh := range shards {
+			p.OverwriteQuery[sh.ID] = strings.Join(oq, ";")
+			tmpPlan.OverwriteQuery[sh.ID] = rm.Query
+			targets[i] = kr.ShardKey{
+				Name: sh.ID,
+			}
+		}
+		p.ExecTargets = targets
+
+		return tmpPlan, nil
+
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
@@ -213,19 +389,19 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail(fmt.Sprintf("%T is not yet supported", stmt))
 	}
 }
 
 func ProcessInsertFromSelectOffsets(
-	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
+	_ context.Context, stmt *lyx.Insert, _ *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
 		Strs("insert columns", insertCols).
 		Msg("deparsed insert statement columns")
 
-	var curr_rfqn *rfqn.RelationFQN
+	var currRFQN *rfqn.RelationFQN
 
 	switch q := stmt.TableRef.(type) {
 	case *lyx.RangeVar:
@@ -235,14 +411,14 @@ func ProcessInsertFromSelectOffsets(
 			Str("schemaname", q.SchemaName).
 			Msg("deparsed insert statement table ref")
 
-		curr_rfqn = rfqn.RelationFQNFromRangeRangeVar(q)
+		currRFQN = rfqn.RelationFQNFromRangeRangeVar(q)
 
 		insertColsPos := map[string]int{}
 		for i, c := range insertCols {
 			insertColsPos[c] = i
 		}
 
-		return insertColsPos, curr_rfqn, nil
+		return insertColsPos, currRFQN, nil
 	default:
 		return nil, nil, rerrors.ErrComplexQuery
 	}
@@ -307,7 +483,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 			return nil
 		}
 	default:
-		return fmt.Errorf("wrong type of table range var")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "wrong type of table range var")
 	}
 
 	entries := make(map[string]struct{})
@@ -350,7 +526,7 @@ func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.
 	return fmt.Errorf("create table stmt ignored: no matching distribution found")
 }
 
-func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, modify bool, q *lyx.RangeVar) error {
+func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, routable bool, q *lyx.RangeVar) error {
 	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
 	// CTE, skip
@@ -360,19 +536,29 @@ func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, mod
 		return nil
 	}
 
-	if _, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+	if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 		return err
+	} else {
+		rm.Rels[*qualName] = struct{}{}
+
+		if ds.Id == distributions.REPLICATED {
+			/* reference relations are tracked separately */
+			rm.RefRels[*qualName] = struct{}{}
+		} else if routable {
+			rm.RoutableRels[*qualName] = struct{}{}
+		}
 	}
 
-	rm.Rels[*qualName] = struct{}{}
+	rfqnNew := *rfqn.RelationFQNFromRangeRangeVar(q)
 
-	if modify {
-
-		rm.ModifyRels[*qualName] = struct{}{}
-	}
 	if q.Alias != "" {
 		/* remember table alias */
-		rm.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
+		rm.TableAliases[q.Alias] = rfqnNew
+	} else {
+		if rr, ok := rm.TableAliases[q.RelationName]; ok && rr.String() != rfqnNew.String() {
+			return rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation aliasing ambiguity: %s vs %s", rfqnNew.String(), rr.String()))
+		}
+		rm.TableAliases[q.RelationName] = rfqnNew
 	}
 	return nil
 }

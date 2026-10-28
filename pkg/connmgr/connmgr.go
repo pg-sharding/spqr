@@ -1,6 +1,8 @@
 package connmgr
 
 import (
+	"time"
+
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -8,6 +10,7 @@ import (
 type ConnectionStatMgr interface {
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry
+	RunRecheckHosts() []pool.HostRecheckResult
 
 	/*
 		user-facing connection stat callbacks.
@@ -15,12 +18,17 @@ type ConnectionStatMgr interface {
 		- handshake counter
 		- unexpected eof error counter
 	*/
-	TotalTcpCount() int64
-	ActiveTcpCount() int64
+	TotalTCPCount() int64
+	ActiveTCPCount() int64
 	TotalCancelCount() int64
+	FailedInitCount() int64
+	FailedAuthCount() int64
 }
 
 type ConnectionMgr interface {
 	ConnectionIterator
 	ConnectionStatMgr
+
+	StartTime() time.Time
+	LastReloadTime() time.Time
 }

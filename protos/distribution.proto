@@ -4,7 +4,9 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
+
 import "protos/qualified_name.proto";
 import "protos/meta_transaction.proto";
 import "protos/distribution_entities.proto";
@@ -26,34 +28,34 @@ message DropDistributionRequest {
 }
 
 message AlterDistributionAttachRequest{
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
   repeated DistributedRelation relations = 3;
 }
 
 message AlterDistributionDetachRequest{
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
   repeated QualifiedName relNames = 2;
 }
 
 message AlterDistributedRelationSchemaRequest{
-  string id = 1;
-  string relationName = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  string relationName = 2 [(buf.validate.field).required = true];
   string schemaName = 3;
 }
 
 message AlterDistributedRelationDistributionKeyRequest{
-  string id = 1;
-  string relationName = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  string relationName = 2 [(buf.validate.field).required = true];
   repeated DistributionKeyEntry distributionKey = 3;
 }
 
 message AlterDistributedRelationRequest{
-  string id = 1;
-  DistributedRelation relation = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  DistributedRelation relation = 2 [(buf.validate.field).required = true];
 }
 
 message GetDistributionRequest{
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message GetDistributionReply {
@@ -61,7 +63,7 @@ message GetDistributionReply {
 }
 
 message GetRelationDistributionRequest {
-  string name = 1;
+  string name = 1 [(buf.validate.field).required = true];
   string schemaName = 2;
 }
 
@@ -70,7 +72,7 @@ message GetRelationDistributionReply {
 }
 
 message NextRangeRequest {
-  string seq = 1;
+  string seq = 1 [(buf.validate.field).required = true];
   int64 rangeSize = 2;
 }
 
@@ -80,7 +82,7 @@ message NextRangeReply {
 }
 
 message CurrValRequest {
-  string seq = 1;
+  string seq = 1 [(buf.validate.field).required = true];
 }
 
 message CurrValReply {
@@ -92,12 +94,12 @@ message ListSequencesReply {
 }
 
 message DropSequenceRequest {
-  string name = 1;
+  string name = 1 [(buf.validate.field).required = true];
   bool force = 2;
 }
 
 message ListRelationSequencesRequest {
-  string name = 1;
+  string name = 1 [(buf.validate.field).required = true];
   string schemaName = 2;
 }
 
@@ -106,16 +108,16 @@ message ListRelationSequencesReply {
 }
 
 message CreateUniqueIndexRequest {
-  string distributionId = 1;
-  UniqueIndex idx = 2;
+  string distributionId = 1 [(buf.validate.field).required = true];
+  UniqueIndex idx = 2 [(buf.validate.field).required = true];
 }
 
 message DropUniqueIndexRequest {
-  string idxId = 2;
+  string idxId = 2 [(buf.validate.field).required = true];
 }
 
 message ListDistributionUniqueIndexesRequest {
-  string distributionId = 1;
+  string distributionId = 1 [(buf.validate.field).required = true];
 }
 
 message ListUniqueIndexesReply {
@@ -123,15 +125,15 @@ message ListUniqueIndexesReply {
 }
 
 message ListRelationUniqueIndexesRequest {
-  string relationName = 1;
+  string relationName = 1 [(buf.validate.field).required = true];
 }
 
 message AlterSequenceDetachRelationRequest {
-  QualifiedName relationName = 1;
+  QualifiedName relationName = 1 [(buf.validate.field).required = true];
 }
 
 message GetSequenceRelationsRequest {
-  string name  = 1;
+  string name  = 1 [(buf.validate.field).required = true];
 }
 
 message GetSequenceRelationsReply {

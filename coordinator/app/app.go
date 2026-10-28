@@ -9,15 +9,19 @@ import (
 	"sync"
 	"time"
 
+	"buf.build/go/protovalidate"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/port"
 
+	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 
@@ -25,19 +29,26 @@ import (
 )
 
 type App struct {
-	coordinator coordinator.Coordinator
-	sem         *semaphore.Weighted
+	coordinator       coordinator.Coordinator
+	sem               *semaphore.Weighted
+	grpcServerOptions []grpc.ServerOption
 }
 
 const (
 	maxWorkers = 50
 )
 
-func NewApp(c coordinator.Coordinator) *App {
-	return &App{
-		coordinator: c,
-		sem:         semaphore.NewWeighted(int64(maxWorkers)),
+func NewApp(c coordinator.Coordinator) (*App, error) {
+	serverOptions, err := grpccreds.ServerOptions(config.CoordinatorConfig().ServerTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC server TLS: %w", err)
 	}
+
+	return &App{
+		coordinator:       c,
+		sem:               semaphore.NewWeighted(int64(maxWorkers)),
+		grpcServerOptions: serverOptions,
+	}, nil
 }
 
 func (app *App) Run(withPsql bool) error {
@@ -72,7 +83,7 @@ func (app *App) Run(withPsql bool) error {
 
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
-		if err := app.ServeGrpcApi(wg); err != nil {
+		if err := app.ServeGrpcAPI(wg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
@@ -135,14 +146,26 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 	}
 }
 
-func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
+func (app *App) ServeGrpcAPI(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	for app.coordinator.IsReadOnly() {
 		time.Sleep(time.Second)
 	}
 
-	serv := grpc.NewServer()
+	validator, err := protovalidate.New()
+	if err != nil {
+		return err
+	}
+
+	serverOptions := append([]grpc.ServerOption{}, app.grpcServerOptions...)
+	serverOptions = append(serverOptions,
+		grpc.ChainUnaryInterceptor(
+			spqrErrorUnaryServerInterceptor,
+			protovalidate_middleware.UnaryServerInterceptor(validator),
+		),
+	)
+	serv := grpc.NewServer(serverOptions...)
 	reflection.Register(serv)
 
 	krServ := provider.NewKeyRangeService(app.coordinator)
@@ -153,6 +176,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	tasksServ := provider.NewTasksServer(app.coordinator)
 	refRelServ := provider.NewReferenceRelationServer(app.coordinator)
 	metaTranServ := provider.NewMetaTransactionServer(app.coordinator)
+	twoPhaseTxServ := provider.NewTwoPhaseTxMetaServer(app.coordinator)
 	protos.RegisterKeyRangeServiceServer(serv, krServ)
 	protos.RegisterRouterServiceServer(serv, rrServ)
 	protos.RegisterTopologyServiceServer(serv, topServ)
@@ -163,8 +187,10 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	protos.RegisterRedistributeTaskServiceServer(serv, tasksServ)
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
+	protos.RegisterTwoPhaseTxMetaServiceServer(serv, twoPhaseTxServ)
+	protos.RegisterMigrationServiceServer(serv, provider.NewMigrationServer(app.coordinator))
 
-	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)
+	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		spqrlog.Zero.Error().
@@ -178,6 +204,19 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 		Msg("serve grpc coordinator service")
 
 	return serv.Serve(listener)
+}
+
+func spqrErrorUnaryServerInterceptor(
+	ctx context.Context,
+	req any,
+	_ *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		return resp, spqrerror.ToGrpcError(err)
+	}
+	return resp, nil
 }
 
 func (app *App) ServeUnixSocket(wg *sync.WaitGroup) error {

@@ -22,11 +22,13 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
-const defaultDockerTimeout = 30 * time.Second
-const defaultDockerComposeTimeout = 90 * time.Second
-const defaultContainerStopTimeout = 30 * time.Second
-const shell = "/bin/bash"
-const FEATURE_TEST_NETWORK = "feature_test_network"
+const (
+	defaultDockerTimeout        = 30 * time.Second
+	defaultDockerComposeTimeout = 90 * time.Second
+	defaultContainerStopTimeout = 30 * time.Second
+	featureTestNetwork          = "feature_test_network"
+	shell                       = "/bin/bash"
+)
 
 // Composer manipulate images/vm's during integration tests
 type Composer interface {
@@ -235,7 +237,7 @@ func (dc *DockerComposer) GetMappedPort(testHost string, internalPort string) (u
 		return 0, apiErr
 	}
 	for _, cnt := range containers {
-		if _, ok := cnt.NetworkSettings.Networks[FEATURE_TEST_NETWORK]; !ok {
+		if _, ok := cnt.NetworkSettings.Networks[featureTestNetwork]; !ok {
 			continue
 		}
 		cntName := strings.Replace(cnt.Names[0], "/", "", 1)
@@ -303,6 +305,7 @@ func (dc *DockerComposer) runCommand(service string, cmd []string, timeout time.
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmd,
+		Privileged:   true,
 	}
 	execResp, err := dc.api.ContainerExecCreate(ctx, cont.ID, execCfg)
 	if err != nil {
@@ -343,8 +346,7 @@ func (dc *DockerComposer) RunAsyncCommand(service string, cmd string) error {
 		return fmt.Errorf("no such service: %s", service)
 	}
 	execCfg := container.ExecOptions{
-		Detach: true,
-		Cmd:    []string{shell, "-c", cmd},
+		Cmd: []string{shell, "-c", cmd},
 	}
 	execResp, err := dc.api.ContainerExecCreate(context.Background(), cont.ID, execCfg)
 	if err != nil {

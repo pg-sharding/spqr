@@ -1,0 +1,840 @@
+//go:build xproto_suspend || all
+
+package prep_stmt_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestExecuteMaxRows(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt",
+				},
+				&pgproto3.Execute{
+					MaxRows: 5,
+				},
+				&pgproto3.Flush{},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("3"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("4"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("5"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt1",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt1",
+				},
+				&pgproto3.Execute{
+					MaxRows: 5,
+				},
+				&pgproto3.Flush{},
+
+				&pgproto3.Execute{
+					MaxRows: 3,
+				},
+				&pgproto3.Flush{},
+
+				&pgproto3.Execute{
+					MaxRows: 2,
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("3"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("4"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("5"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("6"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("7"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("8"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("9"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("10"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt2",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt2",
+				},
+				&pgproto3.Execute{
+					MaxRows: 5,
+				},
+				&pgproto3.Flush{},
+
+				&pgproto3.Execute{
+					MaxRows: 3,
+				},
+				&pgproto3.Flush{},
+
+				&pgproto3.Execute{
+					MaxRows: 2,
+				},
+				&pgproto3.Flush{},
+
+				&pgproto3.Execute{
+					MaxRows: 2,
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("3"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("4"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("5"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("6"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("7"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("8"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("9"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("10"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt3",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt3",
+					Query: "select * from generate_series(1, 10) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt3",
+				},
+				&pgproto3.Execute{
+					MaxRows: 5,
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Execute{
+					MaxRows: 5,
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("3"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("4"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("5"),
+					},
+				},
+				&pgproto3.PortalSuspended{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Message:  "portal \"\" does not exist",
+					Severity: "ERROR",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt4",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt4",
+					Query: "select * from generate_series(1, 3) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt4",
+				},
+				&pgproto3.Execute{
+					MaxRows: 0,
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("3"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 3"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "pstmt5",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt5",
+					Query: "select * from generate_series(1, 3) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt5",
+				},
+				&pgproto3.Execute{
+					MaxRows: 2,
+				},
+
+				&pgproto3.Parse{
+					Name:  "pstmt6",
+					Query: "select * from generate_series(1, 4) /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt6",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+
+				&pgproto3.PortalSuspended{},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt7",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt7",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt7",
+				},
+				&pgproto3.Execute{
+					MaxRows: 1,
+				},
+
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt7",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt7",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt7",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{
+					MaxRows: 1,
+				},
+
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt7",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt7",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt7",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{
+					MaxRows: 0,
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt78",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+
+				&pgproto3.Close{
+					Name:       "pstmt78",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt8",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt8",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt8",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{
+					MaxRows: 1,
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt78",
+					Query: "UPDATE t SET id = 1 /* __spqr__scatter_query: true */",
+				},
+
+				&pgproto3.Close{
+					Name:       "pstmt78",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) values(1000)",
+				},
+				&pgproto3.Close{
+					Name:       "pstmt9",
+					ObjectType: 'S',
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt9",
+					Query: "UPDATE t SET id = 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "pstmt9",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{
+					MaxRows: 1,
+				},
+				&pgproto3.Parse{
+					Name:  "pstmt789",
+					Query: "UPDATE t SET id = 1",
+				},
+
+				&pgproto3.Close{
+					Name:       "pstmt789",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}

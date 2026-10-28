@@ -103,7 +103,7 @@ Feature: Proxy console
         """
         Then SQL error on host "router2" should match regexp
         """
-        key range .* is locked
+        key range is locked
         """
 
         When I run SQL on host "router-admin"
@@ -129,7 +129,7 @@ Feature: Proxy console
 
         When I run SQL on host "router2-admin"
         """
-        SHOW key_ranges;
+        SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
         """
         Then SQL result should match json_exactly
         """
@@ -314,18 +314,60 @@ Feature: Proxy console
     Scenario: add and drop shard on router-admin
         When I run SQL on host "router-admin"
         """
-        CREATE SHARD sh5 WITH HOSTS klepov:6432;
+        CREATE SHARD sh5 OPTIONS (HOST 'spqr_shard_1:6432:spqr') FORCE;
         """
         Then command return code should be "0"
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [{"shard":"sh1"}, {"shard":"sh2"} ,{"shard":"sh5"}]
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh5",
+                "options": "{host=spqr_shard_1:6432:spqr}"
+            }
+        ]
+        """
+
+        When I run SQL on host "router-admin"
+        """
+        ALTER SHARD sh5 OPTIONS (ADD sslmode 'verify-full', drop host 'spqr_shard_1:6432:spqr', add host 'spqr_shard_2:6432:spqr');
+        """
+        Then command return code should be "0"
+
+        When I run SQL on host "router-admin"
+        """
+        SHOW shards_extended;
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh5",
+                "options": "{host=spqr_shard_2:6432:spqr,sslmode=verify-full}"
+            }
+        ]
         """
 
         When I run SQL on host "router-admin"
@@ -336,11 +378,19 @@ Feature: Proxy console
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [{"shard":"sh1"}, {"shard":"sh2"}]
+        [
+            {
+                "shard":"sh1",
+                "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
+            },
+            {
+                "shard":"sh2",
+                "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
+            }
+        ]
         """
-    

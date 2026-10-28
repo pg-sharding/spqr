@@ -2,7 +2,6 @@ package console
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -10,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -21,11 +21,14 @@ import (
 )
 
 const greeting = `
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
+   ███████╗██████╗  ██████╗ ██████╗
+   ██╔════╝██╔══██╗██╔═══██╗██╔══██╗
+   ███████╗██████╔╝██║   ██║██████╔╝
+   ╚════██║██╔═══╝ ██║▄▄ ██║██╔══██╗
+   ███████║██║     ╚██████╔╝██║  ██║
+   ╚══════╝╚═╝      ╚══▀▀═╝ ╚═╝  ╚═╝
+
+   docs: https://pg-sharding.tech
 `
 
 type Console interface {
@@ -41,6 +44,8 @@ type LocalInstanceConsole struct {
 	qlogger   qlog.Qlog
 	writer    workloadlog.WorkloadLog
 
+	displayGreeting bool
+
 	stchan chan struct{}
 }
 
@@ -50,13 +55,18 @@ func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
 	return l.entityMgr
 }
 
-func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
+func NewLocalInstanceConsole(
+	mgr meta.EntityMgr,
+	rrouter rulerouter.RuleRouter,
+	stchan chan struct{},
+	writer workloadlog.WorkloadLog) (Console, error) { // add writer class
 	return &LocalInstanceConsole{
-		entityMgr: mgr,
-		rrouter:   rrouter,
-		qlogger:   qlogprovider.NewLocalQlog(),
-		stchan:    stchan,
-		writer:    writer,
+		entityMgr:       mgr,
+		rrouter:         rrouter,
+		qlogger:         qlogprovider.NewLocalQlog(),
+		stchan:          stchan,
+		writer:          writer,
+		displayGreeting: config.RouterConfig().DisplayGreeting,
 	}, nil
 }
 
@@ -70,21 +80,57 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	var cf func()
 	var err error
 
+	cli := clientinteractor.NewPSQLInteractor(rc)
 	switch tstmt := tstmt.(type) {
+	case nil:
+		/* ProcMetadataCommand can be called inside router's planned, so it
+		* will normally reject nil statement. Handle this ourselves */
+		return cli.ReplyEQR()
 	case *spqrparser.Show:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
-		switch tstmt.Cmd {
-		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
-			spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
-			spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+		switch tstmt.Kind {
+		case spqrparser.SHOW_KIND_UNSPEC:
+			switch tstmt.Cmd {
+			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
+				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MigrationsStr,
+				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+				if err != nil {
+					return err
+				}
+				defer cf()
+			}
+		case spqrparser.SHOW_KIND_GLOBAL:
 			mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 			if err != nil {
 				return err
 			}
 			defer cf()
+		} // else local
+	case *spqrparser.Alter:
+		distr := true
+		switch el := tstmt.Element.(type) {
+		case *spqrparser.System:
+			if el.Rebootstrap || el.SetGUC != "" {
+				distr = false
+				break
+			}
 		}
+
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
+		if !distr {
+			break
+		}
+		mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
+		if err != nil {
+			return err
+		}
+		defer cf()
+
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
@@ -96,9 +142,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		defer cf()
 	}
 
-	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	cli := clientinteractor.NewPSQLInteractor(rc)
-	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false)
+	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false, rc)
 	if err != nil {
 		return cli.ReportError(err)
 	}
@@ -110,15 +154,19 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
-		return fmt.Errorf("failed to parse query \"%s\": %w", q, err)
+		return err
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("query", q).
-		Type("type", tstmt).
-		Msg("processQueryInternal: parsed query with type")
+		Msg("processQueryInternal: parsed query")
 
-	return l.ExecuteMetadataQuery(ctx, tstmt, rc, gc)
+	for _, stmt := range tstmt {
+		if err := l.ExecuteMetadataQuery(ctx, stmt, rc, gc); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -138,10 +186,12 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
 		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.ParameterStatus{Name: "default_transaction_read_only", Value: "off"},
+		&pgproto3.ParameterStatus{Name: "in_hot_standby", Value: "off"},
 		&pgproto3.BackendKeyData{ProcessID: rc.GetCancelPid(), SecretKey: rc.GetCancelKey()},
 	}...)
 
-	if config.RouterConfig().DisplayGreeting {
+	if l.displayGreeting {
 		msgs = append(msgs,
 			&pgproto3.NoticeResponse{
 				Message: greeting,
@@ -161,7 +211,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		}
 	}
 
-	spqrlog.Zero.Info().Msg("console.ProcClient start")
+	spqrlog.Zero.Debug().Msg("console.ProcClient start")
 
 	for {
 		msg, err := rc.Receive()
@@ -179,9 +229,11 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		case *pgproto3.Terminate:
 			return nil
 		default:
+			_ = rc.ReplyErr(spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected postgresql proto message with type: %T", v))
+
 			spqrlog.Zero.Info().
 				Type("message type", v).
-				Msg("got unexpected postgresql proto message with type")
+				Msg("unexpected postgresql proto message with type")
 		}
 	}
 

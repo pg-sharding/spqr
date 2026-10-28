@@ -25,7 +25,7 @@ func NewDistributionServer(impl coordinator.Coordinator) *DistributionsServer {
 
 var _ protos.DistributionServiceServer = &DistributionsServer{}
 
-func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+func (d *DistributionsServer) CreateDistribution(_ context.Context, _ *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateDistribution in DistributionsServer). Use ExecuteNoTran or CommitTran")
 }
 
@@ -78,13 +78,13 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 }
 
 func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	rfqn := &rfqn.RelationFQN{RelationName: req.Relation.Name, SchemaName: req.Relation.SchemaName}
+	relationFQN := &rfqn.RelationFQN{RelationName: req.Relation.Name, SchemaName: req.Relation.SchemaName}
 
-	ds, err := d.impl.GetRelationDistribution(ctx, rfqn)
+	ds, err := d.impl.GetRelationDistribution(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.TryGetRelation(rfqn)
+	curRel, ok := ds.TryGetRelation(relationFQN)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.Id)
 	}

@@ -77,9 +77,8 @@ func TestCompareConfigs(t *testing.T) {
 			cfg2: &Router{
 				ShardMapping: map[string]*Shard{
 					"sh1": &Shard{
-						Type:            "DATA",
-						RawHosts:        []string{"shard1:6432:a", "shard2:6432:b"},
-						parsedAddresses: []string{"parsed_addr"},
+						Type:     "DATA",
+						RawHosts: []string{"shard1:6432:a", "shard2:6432:b"},
 					},
 				},
 				FrontendRules: []*FrontendRule{

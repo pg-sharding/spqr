@@ -80,7 +80,7 @@ func (w *WorldMock) Run() error {
 }
 
 func (w *WorldMock) serv(netconn net.Conn) error {
-	cl := client.NewPsqlClient(netconn, rport.DefaultRouterPortType, "", false, "")
+	cl := client.NewPsqlClient(netconn, rport.DefaultRouterPortType, false, "")
 
 	err := cl.Init(nil)
 
@@ -257,7 +257,8 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("error serving client")
 			}
-
+		case *pgproto3.Terminate:
+			return nil
 		default:
 		}
 	}

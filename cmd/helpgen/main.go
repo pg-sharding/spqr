@@ -18,21 +18,37 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
 
+const maxLineWidth = 80
+
 // Command represents a console command from YAML source
 type Command struct {
-	Name            string    `yaml:"name"`
-	Description     string    `yaml:"description"`
-	Syntax          string    `yaml:"syntax"`
-	Parameters      []Param   `yaml:"parameters"`
-	Examples        []Example `yaml:"examples"`
-	Tips            []string  `yaml:"tips"`
-	Warnings        []string  `yaml:"warnings"`
-	Notes           []string  `yaml:"notes"`
-	RelatedCommands []string  `yaml:"related_commands"`
+	Name            string       `yaml:"name"`
+	Order           int          `yaml:"order"`
+	Description     string       `yaml:"description"`
+	Syntax          string       `yaml:"syntax"`
+	Parameters      []Param      `yaml:"parameters"`
+	Examples        []Example    `yaml:"examples"`
+	Tips            []string     `yaml:"tips"`
+	Warnings        []string     `yaml:"warnings"`
+	Notes           []string     `yaml:"notes"`
+	RelatedCommands []string     `yaml:"related_commands"`
+	Snippet         string       `yaml:"snippet"`
+	Subcommands     []Subcommand `yaml:"subcommands"`
+}
+
+// Subcommand represents a sub-variant of a command rendered as a separate MDX section
+type Subcommand struct {
+	Name        string    `yaml:"name"`
+	Description string    `yaml:"description"`
+	Syntax      string    `yaml:"syntax"`
+	Examples    []Example `yaml:"examples"`
+	Warnings    []string  `yaml:"warnings"`
+	Notes       []string  `yaml:"notes"`
 }
 
 type Param struct {
@@ -47,25 +63,25 @@ type Example struct {
 }
 
 const helpTemplate = `NAME
-    {{.Name}} - {{firstLine .Description}}
+{{wrap (printf "%s - %s" .Name (firstLine .Description)) 4 4}}
 
 SYNTAX
 {{indent .Syntax 4}}
 
 DESCRIPTION
-{{indent .Description 4}}
+{{wrapIndent .Description 4}}
 {{- if .Warnings}}
 
 WARNINGS
 {{- range .Warnings}}
-    - {{.}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 {{- if .Parameters}}
 
 PARAMETERS
 {{- range .Parameters}}
-    <{{.Name}}> - {{.Description}}
+{{wrap (printf "<%s> - %s" .Name .Description) 4 8}}
 {{- end}}
 {{- end}}
 {{- if .Examples}}
@@ -80,11 +96,18 @@ EXAMPLES
 {{- end}}
 {{- end}}
 {{- end}}
+{{- if .Subcommands}}
+
+SUBCOMMANDS
+{{- range .Subcommands}}
+    {{.Name}}
+{{- end}}
+{{- end}}
 {{- if .Tips}}
 
 TIPS
 {{- range .Tips}}
-    - {{.}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 {{- if .RelatedCommands}}
@@ -92,6 +115,42 @@ TIPS
 RELATED COMMANDS
 {{- range .RelatedCommands}}
     {{.}}
+{{- end}}
+{{- end}}
+`
+
+const subcommandHelpTemplate = `NAME
+{{wrap (printf "%s - %s" .Name (firstLine .Description)) 4 4}}
+
+SYNTAX
+{{indent .Syntax 4}}
+
+DESCRIPTION
+{{wrapIndent .Description 4}}
+{{- if .Warnings}}
+
+WARNINGS
+{{- range .Warnings}}
+{{wrap (printf "- %s" .) 4 6}}
+{{- end}}
+{{- end}}
+{{- if .Examples}}
+
+EXAMPLES
+{{- range .Examples}}
+    {{.Description}}:
+{{indent .Code 8}}
+{{- if .Output}}
+    Output:
+{{indent .Output 8}}
+{{- end}}
+{{- end}}
+{{- end}}
+{{- if .Notes}}
+
+NOTES
+{{- range .Notes}}
+{{wrap (printf "- %s" .) 4 6}}
 {{- end}}
 {{- end}}
 `
@@ -130,6 +189,74 @@ const mdxCommandTemplate = `### {{.Name}}
 
 `
 
+const mdxSubcommandTemplate = `### {{.Name}}
+
+{{.Description}}
+{{- if .Warnings}}
+{{range .Warnings}}
+<Warning>{{.}}</Warning>
+{{end}}
+{{- end}}
+{{- if .Notes}}
+{{range .Notes}}
+<Note>{{.}}</Note>
+{{end}}
+{{- end}}
+
+` + "```sql" + `
+{{trimSpace .Syntax}}
+` + "```" + `
+{{- if .Examples}}
+
+**Examples:**
+
+` + "```sql" + `
+{{- range .Examples}}
+-- {{.Description}}
+{{.Code}}
+{{- if .Output}}
+{{.Output}}
+{{- end}}
+{{- end}}
+` + "```" + `
+{{- end}}
+
+`
+
+// wrapLine word-wraps a single line of text to fit within maxLineWidth.
+// firstPrefix is used for the first output line, contPrefix for continuation lines.
+func wrapLine(text string, firstPrefix, contPrefix string) string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return firstPrefix
+	}
+
+	var lines []string
+	currentLine := firstPrefix + words[0]
+
+	for _, word := range words[1:] {
+		candidate := currentLine + " " + word
+		if utf8.RuneCountInString(candidate) <= maxLineWidth {
+			currentLine = candidate
+		} else {
+			lines = append(lines, currentLine)
+			// If contPrefix+word alone exceeds maxLineWidth, force-split the word.
+			prefix := contPrefix
+			for utf8.RuneCountInString(prefix+word) > maxLineWidth {
+				available := maxLineWidth - utf8.RuneCountInString(prefix)
+				runes := []rune(word)
+				lines = append(lines, prefix+string(runes[:available]))
+				word = string(runes[available:])
+				prefix = contPrefix
+			}
+			currentLine = prefix + word
+		}
+	}
+	lines = append(lines, currentLine)
+
+	return strings.Join(lines, "\n")
+}
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "helpgen: %v\n", err)
@@ -161,9 +288,21 @@ func run() error {
 		return fmt.Errorf("generating help files: %w", err)
 	}
 
-	snippetPath := filepath.Join(root, "docs", "snippets", "key_range_commands.mdx")
-	if err := generateMDXSnippet(commands, snippetPath); err != nil {
-		return fmt.Errorf("generating MDX snippet: %w", err)
+	snippetsDir := filepath.Join(root, "docs", "snippets")
+
+	snippetGroups := make(map[string][]*Command)
+	for _, cmd := range commands {
+		if cmd.Snippet == "" {
+			return fmt.Errorf("command %q is missing required 'snippet' field", cmd.Name)
+		}
+		snippetGroups[cmd.Snippet] = append(snippetGroups[cmd.Snippet], cmd)
+	}
+
+	for snippet, cmds := range snippetGroups {
+		snippetPath := filepath.Join(snippetsDir, snippet+".mdx")
+		if err := generateMDXSnippet(cmds, snippetPath); err != nil {
+			return fmt.Errorf("generating MDX snippet %s: %w", snippet, err)
+		}
 	}
 
 	fmt.Println("Done!")
@@ -244,11 +383,35 @@ func generateHelpFiles(commands []*Command, dir string) error {
 			}
 			return strings.Join(lines, "\n")
 		},
+		"wrap": func(text string, firstIndent, contIndent int) string {
+			firstPrefix := strings.Repeat(" ", firstIndent)
+			contPrefix := strings.Repeat(" ", contIndent)
+			return wrapLine(strings.TrimSpace(text), firstPrefix, contPrefix)
+		},
+		"wrapIndent": func(s string, spaces int) string {
+			prefix := strings.Repeat(" ", spaces)
+			lines := strings.Split(strings.TrimSpace(s), "\n")
+			var result []string
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if trimmed == "" {
+					result = append(result, "")
+				} else {
+					result = append(result, wrapLine(trimmed, prefix, prefix))
+				}
+			}
+			return strings.Join(result, "\n")
+		},
 	}
 
 	tmpl, err := template.New("help").Funcs(funcMap).Parse(helpTemplate)
 	if err != nil {
 		return fmt.Errorf("parsing help template: %w", err)
+	}
+
+	subTmpl, err := template.New("subHelp").Funcs(funcMap).Parse(subcommandHelpTemplate)
+	if err != nil {
+		return fmt.Errorf("parsing subcommand help template: %w", err)
 	}
 
 	for _, cmd := range commands {
@@ -265,6 +428,23 @@ func generateHelpFiles(commands []*Command, dir string) error {
 		}
 
 		fmt.Printf("  Generated help/%s\n", filename)
+
+		// Generate individual .txt files for each subcommand
+		for _, sub := range cmd.Subcommands {
+			subFilename := strings.ReplaceAll(sub.Name, " ", "_") + ".txt"
+			subPath := filepath.Join(dir, subFilename)
+
+			var subBuf bytes.Buffer
+			if err := subTmpl.Execute(&subBuf, sub); err != nil {
+				return fmt.Errorf("executing subcommand template for %s: %w", sub.Name, err)
+			}
+
+			if err := os.WriteFile(subPath, subBuf.Bytes(), 0644); err != nil {
+				return fmt.Errorf("writing %s: %w", subPath, err)
+			}
+
+			fmt.Printf("  Generated help/%s\n", subFilename)
+		}
 	}
 
 	return nil
@@ -275,21 +455,42 @@ func generateMDXSnippet(commands []*Command, path string) error {
 		"trimSpace": strings.TrimSpace,
 	}
 
-	tmpl, err := template.New("mdx").Funcs(funcMap).Parse(mdxCommandTemplate)
+	cmdTmpl, err := template.New("mdx").Funcs(funcMap).Parse(mdxCommandTemplate)
 	if err != nil {
 		return fmt.Errorf("parsing MDX template: %w", err)
+	}
+
+	subTmpl, err := template.New("mdxSub").Funcs(funcMap).Parse(mdxSubcommandTemplate)
+	if err != nil {
+		return fmt.Errorf("parsing MDX subcommand template: %w", err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("creating directory for %s: %w", path, err)
 	}
 
+	sort.Slice(commands, func(i, j int) bool {
+		if commands[i].Order != commands[j].Order {
+			return commands[i].Order < commands[j].Order
+		}
+		return commands[i].Name < commands[j].Name
+	})
+
 	var buf bytes.Buffer
 	buf.WriteString("{/* Auto-generated by cmd/helpgen. Do not edit manually. */}\n\n")
 
 	for _, cmd := range commands {
-		if err := tmpl.Execute(&buf, cmd); err != nil {
-			return fmt.Errorf("executing template for %s: %w", cmd.Name, err)
+		if len(cmd.Subcommands) > 0 {
+			// Render each subcommand as a separate ### section
+			for _, sub := range cmd.Subcommands {
+				if err := subTmpl.Execute(&buf, sub); err != nil {
+					return fmt.Errorf("executing subcommand template for %s: %w", sub.Name, err)
+				}
+			}
+		} else {
+			if err := cmdTmpl.Execute(&buf, cmd); err != nil {
+				return fmt.Errorf("executing template for %s: %w", cmd.Name, err)
+			}
 		}
 	}
 

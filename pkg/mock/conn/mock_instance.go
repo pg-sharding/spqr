@@ -196,16 +196,16 @@ func (mr *MockDBInstanceMockRecorder) Status() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockDBInstance)(nil).Status))
 }
 
-// Tls mocks base method.
-func (m *MockDBInstance) Tls() *tls.Config {
+// TLS mocks base method.
+func (m *MockDBInstance) TLS() *tls.Config {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Tls")
+	ret := m.ctrl.Call(m, "TLS")
 	ret0, _ := ret[0].(*tls.Config)
 	return ret0
 }
 
-// Tls indicates an expected call of Tls.
-func (mr *MockDBInstanceMockRecorder) Tls() *gomock.Call {
+// TLS indicates an expected call of TLS.
+func (mr *MockDBInstanceMockRecorder) TLS() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tls", reflect.TypeOf((*MockDBInstance)(nil).Tls))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TLS", reflect.TypeOf((*MockDBInstance)(nil).TLS))
 }

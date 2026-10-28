@@ -35,10 +35,10 @@ type Client interface {
 
 	ID() uint
 
-	ReplyErrMsg(e string, c string, p int32, s txstatus.TXStatus) error
 	ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error
 	ReplyErrMsgByCode(code string) error
 	ReplyErr(errmsg error) error
+	ReplyErrMsgPure(errmsg error) error
 	ReplyRFQ(txstatus txstatus.TXStatus) error
 	ReplyNotice(message string) error
 	ReplyDebugNotice(msg string) error
@@ -62,6 +62,10 @@ type Client interface {
 
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
+	/* Await and parse next message, but do not "Receive" it */
+	Peek() (pgproto3.FrontendMessage, error)
+
+	Flush() error
 
 	Shutdown() error
 	Reset() error

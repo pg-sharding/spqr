@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
@@ -32,6 +31,8 @@ type ExecutorState struct {
 	eMsg       *pgproto3.ErrorResponse
 
 	replyEmptyQuery bool
+	portalSuspended bool
+	implicitTx      bool
 
 	/* misc for Copy */
 	copyStmt lyx.Node
@@ -52,25 +53,30 @@ type QueryStateExecutor interface {
 	/* Do all gang allocation required for plan processing */
 	InitPlan(p plan.Plan) error
 
+	/* Try route to already acquired routes */
+	TryMatchExecTargets(p plan.Plan, ds []kr.ShardKey) (plan.Plan, error)
+
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
 
-	ExecBegin(query string, st *parser.ParseStateTXBegin) error
+	ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error
 	ExecCommit(query string) error
 	ExecRollback(query string) error
 
-	ReplyCommandComplete(commandTag string) error
+	SetCommandCompleteTag(commandTag string)
 
 	/* Copy execution */
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
-	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
+	ProcCopyComplete(query pgproto3.FrontendMessage, s bool) (txstatus.TXStatus, error)
 
 	ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
 	RFQ() *pgproto3.ReadyForQuery
+
+	ImplicitTx() bool
 
 	ReplyEmptyQuery()
 	FailStatement(err *pgproto3.ErrorResponse)
@@ -82,4 +88,7 @@ type QueryStateExecutor interface {
 	ExpandRoutes(routes []kr.ShardKey) error
 
 	Reset()
+
+	/* Release session cache */
+	Close()
 }

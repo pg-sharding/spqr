@@ -21,6 +21,9 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__
 CREATE TABLE test_h(id TEXT, age int);
 INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
 SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT /* random comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT /* random: comment */ * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT /* random: comment */ * FROM test_h /* __spqr__execute_on: sh2  */;
 
 INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
 SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
@@ -97,9 +100,36 @@ SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
 -- After stmt select from sh1, not sh2
 SELECT * FROM test ORDER BY id;
 
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+SELECT * FROM test ORDER BY id /* __spqr__unknown_hint: true */; -- error
+
+/* ERROR */
+SET __spqr__execute_on TO sh1xxx;
+
+SET __spqr__notice_message_format = '{shard}@{host}';
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
+RESET __spqr__notice_message_format;
+
+-- test __spqr__execute_host_filter: route to a specific host within the shard
+SET __spqr__notice_message_format = '{shard}@{host}';
+SET __spqr__execute_on TO sh2;
+SET __spqr__execute_host_filter TO 'spqr_shard_2_replica';
+SELECT * FROM test ORDER BY id;
+SET __spqr__target_session_attrs TO 'any';
+SELECT * FROM test ORDER BY id;
+RESET __spqr__execute_host_filter;
+RESET __spqr__execute_on;
+RESET __spqr__notice_message_format;
+RESET __spqr__target_session_attrs;
+
+SET __spqr__execute_on TO ''; -- reset
+SHOW __spqr__execute_on;
+
 SHOW __spqr__scatter_query; -- error
 SHOW __spqr__default_route_behaviour;
 
+SET __spqr__execute_on TO sh1;
+SHOW __spqr__execute_on;
 RESET __spqr__execute_on;
 SHOW __spqr__execute_on;
 
@@ -111,6 +141,12 @@ SET __spqr__default_route_behaviour to 'ALLOW';
 SHOW __spqr__default_route_behaviour;
 
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
+
+-- test SET-based scatter query (not hint)
+SET __spqr__scatter_query TO true;
+SELECT * FROM test WHERE id = 1;
+SET __spqr__scatter_query TO false;
+SELECT * FROM test WHERE id = 1;
 
 CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
 SET __spqr__default_route_behaviour to 'sh2';
@@ -124,7 +160,9 @@ SELECT 1 FROM test_unmatch;
 
 DROP TABLE test;
 DROP TABLE test_h;
-DROP TABLE test_unmatch;
+DROP TABLE test_unmatch /* __spqr__scatter_query: true */;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

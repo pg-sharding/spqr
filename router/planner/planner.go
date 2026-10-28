@@ -3,31 +3,44 @@ package planner
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/console"
+	"github.com/pg-sharding/spqr/router/recovery"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/sethvargo/go-retry"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -49,7 +62,7 @@ func (p *PlannerV2) Ready() bool {
 }
 
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (*plan.ScatterPlan, error) {
-	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
+	if distributionID := rm.SPH.AutoDistribution(); distributionID != "" {
 
 		switch q := v.TableRv.(type) {
 		case *lyx.RangeVar:
@@ -57,16 +70,22 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			/* pre-attach relation to its distribution
 			 * sic! this is not transactional nor abortable
 			 */
-			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionId).Msg("attaching relation")
+			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionID).Msg("attaching relation")
 
-			if distributionId == distributions.REPLICATED {
+			if distributionID == distributions.REPLICATED {
 				err := console.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}
 			} else {
+				dkGuc, err := rm.SPH.FindStrGUC(session.SPQR_DISTRIBUTION_KEY)
+				if err != nil {
+					return nil, err
+				}
+				distributionKey := dkGuc.Get(rm.SPH)
+
 				if v.IfNotExists {
-					if d, err := rm.Mgr.GetDistribution(ctx, distributionId); err != nil {
+					if d, err := rm.Mgr.GetDistribution(ctx, distributionID); err != nil {
 						// ok
 						return nil, err
 					} else {
@@ -74,14 +93,14 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
 							/* ok */
 						} else {
-							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, distributionKey)
 							if err != nil {
 								return nil, err
 							}
 						}
 					}
 				} else {
-					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionID, distributionKey)
 					if err != nil {
 						return nil, err
 					}
@@ -103,6 +122,28 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	}
 
 	return p, nil
+}
+
+func ReferenceRelationFilterShard(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	qualName *rfqn.RelationFQN) (kr.ShardKey, error) {
+
+	var sh kr.ShardKey
+
+	if rmeta.IsRelationCatalog(qualName) {
+		return sh, nil
+	}
+
+	rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+	if err != nil {
+		return sh, err
+	}
+
+	if routes := rel.ListStorageRoutes(); len(routes) > 0 {
+		sh = routes[0]
+	}
+
+	return sh, nil
 }
 
 func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
@@ -130,6 +171,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 
 	if subquery == nil {
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -144,6 +190,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	switch subPlan.(type) {
 	case *plan.VirtualPlan:
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -151,6 +202,11 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		}, nil
 	case *plan.ScatterPlan:
 		return &plan.ScatterPlan{
+			BasePlan: plan.BasePlan{
+				H: planopts.PlanOpts{
+					ResultRelationIsRef: true,
+				},
+			},
 			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
@@ -165,7 +221,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
 	qualName *rfqn.RelationFQN,
-	values *lyx.ValueClause,
+	_ *lyx.ValueClause,
 	idCache IdentityRouterCache,
 ) (plan.Plan, error) {
 
@@ -185,6 +241,11 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	}
 
 	return &plan.ScatterPlan{
+		BasePlan: plan.BasePlan{
+			H: planopts.PlanOpts{
+				ResultRelationIsRef: true,
+			},
+		},
 		OverwriteQuery: mp,
 		ExecTargets:    rel.ListStorageRoutes(),
 	}, nil
@@ -192,7 +253,6 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 
 func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
-	relation *distributions.DistributedRelation,
 	tp string,
 	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 
@@ -207,7 +267,7 @@ func CalculateRoutingListTupleItemValue(
 		// TODO: switch column type here
 		// only works for one value
 		ind := q.Indx
-		if len(queryParamsFormatCodes) < ind {
+		if ind < 0 || ind >= len(queryParamsFormatCodes) {
 			return nil, plan.ErrResolvingValue
 		}
 
@@ -223,37 +283,37 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
-func PlanDistributedRelationInsert(
+func unwrapRoutingTupleValue(colVal lyx.Node) (lyx.Node, bool) {
+	for {
+		switch tmp := colVal.(type) {
+		case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+			return colVal, true
+		case *lyx.ResTarget:
+			colVal = tmp.Value
+		default:
+			return nil, false
+		}
+	}
+}
+
+func TuplePlansByDistributionEntry(
 	ctx context.Context,
 	routingList [][]lyx.Node,
+	ds *distributions.Distribution,
 	rm *rmeta.RoutingMetadataContext,
-	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
-
-	var ds *distributions.Distribution
-	var err error
-
-	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
-		return nil, err
-	}
-
-	/* Omit distributed relations */
-	if ds.Id == distributions.REPLICATED {
-		/* should not happen */
-		return nil, rerrors.ErrComplexQuery
-	}
+	routingListPos map[string]int, distribKey []distributions.DistributionKeyEntry) ([]kr.ShardKey, error) {
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
-	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation, ok := ds.TryGetRelation(qualName)
-	if !ok {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	if err != nil {
+		return nil, err
 	}
 
+	tupleShards := make([]kr.ShardKey, len(routingList))
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
 
@@ -266,23 +326,23 @@ func PlanDistributedRelationInsert(
 			* we have no insert cols specified, but still able to route on select
 			 */
 
-			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
+			hf, err := hashfunction.HashFunctionByName(distribKey[j].HashFunction)
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 				return nil, err
 			}
 
-			if len(relation.DistributionKey[j].Column) == 0 {
+			if len(distribKey[j].Column) == 0 {
 
-				if len(relation.DistributionKey[j].Expr.ColRefs) == 0 {
+				if len(distribKey[j].Expr.ColRefs) == 0 {
 					return nil, rerrors.ErrComplexQuery
 				}
 
 				acc := []byte{}
 
-				for _, cr := range relation.DistributionKey[j].Expr.ColRefs {
+				for _, cr := range distribKey[j].Expr.ColRefs {
 
-					val, ok := insertColsPos[cr.ColName]
+					val, ok := routingListPos[cr.ColName]
 
 					if !ok {
 						return nil, nil
@@ -292,16 +352,17 @@ func PlanDistributedRelationInsert(
 						return nil, nil
 					}
 
-					switch routingList[i][val].(type) {
-					case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-					default:
+					colVal := routingList[i][val]
+
+					colVal, ok = unwrapRoutingTupleValue(colVal)
+					if !ok {
 						return nil, nil
 					}
 
 					/* this is always non-ident hash function */
 					itemVal, err := CalculateRoutingListTupleItemValue(rm,
-						relation, cr.ColType,
-						routingList[i][val],
+						cr.ColType,
+						colVal,
 						queryParamsFormatCodes)
 
 					if err != nil {
@@ -323,12 +384,11 @@ func PlanDistributedRelationInsert(
 				tup[j], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 
 			} else {
-				val, ok := insertColsPos[relation.DistributionKey[j].Column]
+				val, ok := routingListPos[distribKey[j].Column]
 
 				if !ok {
 					return nil, nil
@@ -337,27 +397,25 @@ func PlanDistributedRelationInsert(
 				if len(routingList[i]) <= val {
 					return nil, nil
 				}
+				colVal := routingList[i][val]
 
-				switch routingList[i][val].(type) {
-				case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-				default:
+				colVal, ok = unwrapRoutingTupleValue(colVal)
+				if !ok {
 					return nil, nil
 				}
 
 				itemVal, err := CalculateRoutingListTupleItemValue(rm,
-					relation, tp,
-					routingList[i][val],
+					tp,
+					colVal,
 					queryParamsFormatCodes)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 
 				tup[j], err = hashfunction.ApplyHashFunction(itemVal, ds.ColTypes[j], hf)
 
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 					return nil, err
 				}
 			}
@@ -379,15 +437,96 @@ func PlanDistributedRelationInsert(
 	return tupleShards, nil
 }
 
-func MetadataVirtualFunctionCall(ctx context.Context,
+func PlanDistributedRelationForKeys(
+	ctx context.Context,
+	routingList [][]lyx.Node,
+	rm *rmeta.RoutingMetadataContext,
+	insertColsPos map[string]int, qualName *rfqn.RelationFQN) ([]kr.ShardKey, error) {
+
+	var ds *distributions.Distribution
+	var err error
+
+	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
+		return nil, err
+	}
+
+	/* Omit distributed relations */
+	if ds.Id == distributions.REPLICATED {
+		/* should not happen */
+		return nil, rerrors.ErrComplexQuery
+	}
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+
+	return TuplePlansByDistributionEntry(ctx, routingList, ds, rm, insertColsPos, relation.DistributionKey)
+}
+
+func parseStringFuncArg(fname string, arg lyx.Node) (string, error) {
+	switch vv := arg.(type) {
+	case *lyx.AExprSConst:
+		return vv.Value, nil
+	default:
+		return "", spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong argument type for %s", fname)
+	}
+}
+
+func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm *rmeta.RoutingMetadataContext) (*tupleslot.TupleTableSlot, error) {
+	var cf func()
+
+	var err error
+
+	mgr := rm.Mgr
+
+	switch tstmt := tstmt.(type) {
+	case *spqrparser.Show:
+		/* TODO - fix
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
+		*/
+		switch tstmt.Cmd {
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MeanKRLockTimeStr:
+			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+			if err != nil {
+				return nil, err
+			}
+			defer cf()
+		}
+	default:
+		/* TODO - fix
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return nil, err
+		}
+		*/
+		mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+		if err != nil {
+			return nil, err
+		}
+		defer cf()
+	}
+
+	return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
+		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false, nil)
+		if err != nil {
+			if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+				return nil, retry.RetryableError(err)
+			}
+			return nil, err
+		}
+		return tts, nil
+	})
+}
+
+func ConsoleFunctionCall(
+	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
 	fname string,
 	args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
-
-	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
-
 	switch fname {
+
 	case virtual.VirtualAwaitTask:
 
 		if len(args) != 1 {
@@ -422,7 +561,11 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 				/* Still ongoing */
 				spqrlog.Zero.Info().Str("id", tg.ID).Str("status", string(st.State)).Msgf("move task still in-progress")
 
-				/* Assert status == RUNNING here? */
+				/* RUNNING or PLANNING here are ok */
+
+				if st.State == tasks.TaskGroupError {
+					break
+				}
 
 				/* Maybe notify client here */
 
@@ -450,41 +593,17 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 			tstmt, err := spqrparser.Parse(v.Value)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
+				return nil, err
 			}
+			/* Here we return only last TTS. this is intended */
+			var tts *tupleslot.TupleTableSlot
 
-			mgr := rm.Mgr
-			var cf func()
-
-			switch tstmt := tstmt.(type) {
-			case *spqrparser.Show:
-				/* TODO - fix
-				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
-					return err
-				}
-				*/
-				switch tstmt.Cmd {
-				case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr:
-					mgr, cf, err = coord.DistributedMgr(ctx, mgr)
-					if err != nil {
-						return nil, err
-					}
-					defer cf()
-				}
-			default:
-				/* TODO - fix
-				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			for _, stmt := range tstmt {
+				if tts, err = executeSingleMetaQuery(ctx, stmt, rm); err != nil {
 					return nil, err
 				}
-				*/
-				mgr, cf, err = coord.DistributedMgr(ctx, mgr)
-				if err != nil {
-					return nil, err
-				}
-				defer cf()
 			}
-
-			return meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
+			return tts, nil
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -502,9 +621,12 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			lockedVirtualPID = uint32(v.Value)
 		case *lyx.ParamRef:
 
-			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+			if err != nil {
+				return nil, err
+			}
 
-			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeUinteger)
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeUinteger)
 			if err != nil {
 				return nil, err
 			}
@@ -518,16 +640,17 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			if client.CancelPID() == lockedVirtualPID {
 				lockedByVirtualPIDs = client.CancellableIDs()
 
-				spqrlog.Zero.Debug().Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
+				spqrlog.Zero.Debug().Uint("client", client.ID()).Uint32("pid", lockedVirtualPID).Msgf("resolved virtual pid from param: %+v", lockedByVirtualPIDs)
 			}
 			return nil
 		})
 		res := byte('f')
 
-		/* Not attached? XXX: fix this, support proper handling of second arg */
+		/* Not attached?
 		if len(lockedByVirtualPIDs) != 0 {
 			res = byte('t')
 		}
+		 XXX: fix this, support proper handling of second arg */
 
 		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
 			res = byte('t')
@@ -565,15 +688,20 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		switch v := args[0].(type) {
 		case *lyx.ParamRef:
 
-			queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
-
-			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, v.Number-1, qdb.ColumnTypeVarchar)
+			queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 			if err != nil {
 				return nil, err
 			}
 
-			/* Assert here? */
-			val := sVal.(string)
+			sVal, err := rm.ResolveTypedParamRef(queryParamsFormatCodes, int(v.Number-1), qdb.ColumnTypeVarchar)
+			if err != nil {
+				return nil, err
+			}
+
+			val, ok := sVal.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string param, got %T", sVal)
+			}
 
 			target = val
 		case *lyx.AExprSConst:
@@ -621,61 +749,41 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: []pgproto3.FieldDescription{
-				{
-					Name:                 []byte("host"),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				},
-				{
-					Name:                 []byte("rw"),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				},
+				engine.TextOidFD("host"), engine.TextOidFD("rw"),
 			},
 		}
 
-		if len(args) == 1 {
-			var k string
+		if len(args) != 1 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+		}
 
-			switch vv := args[0].(type) {
-			case *lyx.AExprSConst:
-				k = vv.Value
-			default:
-				return nil, fmt.Errorf("incorrect argument type for %s", virtual.VirtualFuncHosts)
-			}
+		k, err := parseStringFuncArg(fname, args[0])
+		if err != nil {
+			return nil, err
+		}
 
-			if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
-				tts.Raw = append(tts.Raw,
-					[][]byte{[]byte(k),
-						fmt.Appendf(nil, "%v", v.CR.RW)})
-			} else {
-				return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
-			}
+		if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
+			tts.Raw = append(tts.Raw,
+				[][]byte{[]byte(k),
+					fmt.Appendf(nil, "%v", v.CR.RW)})
 		} else {
-			return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "host %q is not found in topology for %s", k, fname)
 		}
 
 		return tts, nil
 	case virtual.VirtualFuncIsReady:
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: []pgproto3.FieldDescription{pgproto3.FieldDescription{
-				Name:                 []byte(virtual.VirtualFuncIsReady),
-				DataTypeOID:          catalog.BOOLOID,
-				TypeModifier:         -1,
-				DataTypeSize:         1,
-				TableAttributeNumber: 0,
-				TableOID:             0,
-				Format:               0,
-			},
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte(virtual.VirtualFuncIsReady),
+					DataTypeOID:          catalog.BOOLOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
 			},
 		}
 
@@ -686,21 +794,327 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 		}
 
 		return tts, nil
+	case virtual.VirtualRouteKey:
+
+		/* First arg is SPQR distribution name, second arg is
+		* routing key itself */
+		if len(args) != 2 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "wrong number of arguments for %s", fname)
+		}
+
+		id, err := parseStringFuncArg(fname, args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		d, err := rm.Mgr.GetDistribution(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+
+		strVal, err := parseStringFuncArg(fname, args[1])
+		if err != nil {
+			return nil, err
+		}
+
+		et, err := rm.ResolveKeyShard(ctx, d, strVal)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte(fname),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+		}
+
+		tts.WriteDataRow(et.Name)
+
+		return tts, nil
+	case virtual.VirtualRemoteExecute:
+		if len(args) != 2 {
+			return nil, fmt.Errorf("%s function accepts two arguments", virtual.VirtualRemoteExecute)
+		}
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		dsn := strVal.Value
+		strVal, ok = args[1].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		queriesStr := strVal.Value
+		queries := strings.Split(queriesStr, ";")
+		connConfig, err := pgx.ParseConfig(dsn)
+		if err != nil {
+			return nil, err
+		}
+		connConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		connConfig.RuntimeParams["standard_conforming_strings"] = "on"
+		connConfig.RuntimeParams["idle_session_timeout"] = "10000"
+		level, err := tracelog.LogLevelFromString(tracelog.LogLevelDebug.String())
+		if err != nil {
+			return nil, err
+		}
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		return func() (*tupleslot.TupleTableSlot, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conn, err := pgx.ConnectConfig(ctx, connConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to connect to remote host: %w", err)
+			}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: tupleslot.TupleDesc{},
+			}
+			for i, q := range queries {
+				if err := func() error {
+					rows, err := conn.Query(ctx, q)
+					if err != nil {
+						return err
+					}
+					defer rows.Close()
+					for _, desc := range rows.FieldDescriptions() {
+						tts.Desc = append(tts.Desc, engine.TextOidFD(desc.Name))
+					}
+					for rows.Next() {
+						if i == len(queries)-1 {
+							vals, err := rows.Values()
+							if err != nil {
+								return err
+							}
+							strVals := make([]string, len(vals))
+							for i, val := range vals {
+								strVals[i] = fmt.Sprintf("%v", val)
+							}
+							tts.WriteDataRow(strVals...)
+						}
+					}
+					return nil
+				}(); err != nil {
+					return nil, err
+				}
+			}
+			return tts, nil
+		}()
+	case virtual.VirtualRun2PCRecover:
+		if len(args) > 1 {
+			return nil, fmt.Errorf("%s function accepts no more than one arg", fname)
+		}
+
+		wd, err := recovery.NewTwoPCWatchDog(recovery.GetWatchdogBackendRules(), topology.TopMgr)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{Desc: tupleslot.TupleDesc{engine.TextOidFD("run_2pc_recover")}}
+		if len(args) == 1 {
+			strVal, ok := args[0].(*lyx.AExprSConst)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
+			gid := strVal.Value
+
+			if err := wd.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(gid)
+		} else {
+			gids, err := wd.RecoverDistributedTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+			for range gids {
+				tts.WriteDataRow("")
+			}
+		}
+		return tts, nil
+	case virtual.VirtualClear2PCData:
+		if len(args) > 1 {
+			return nil, fmt.Errorf("%s function accepts 0 one or arg", fname)
+		}
+		db, err := qdb.GetStateKeeperQDB()
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("clear_2pc_data"),
+		}
+		if len(args) == 0 {
+			if err := db.ClearTxStatuses(ctx); err != nil {
+				return nil, err
+			}
+		} else {
+			strVal, ok := args[0].(*lyx.AExprSConst)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
+			if err := db.RemoveTXData(ctx, strVal.Value); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(strVal.Value)
+		}
+		return tts, nil
+	case virtual.VirtualCleanOutdated2PCData:
+		if len(args) > 0 {
+			return nil, fmt.Errorf("%s function accepts no arg", fname)
+		}
+		wd, err := recovery.NewTwoPCWatchDog(recovery.GetWatchdogBackendRules(), topology.TopMgr)
+		if err != nil {
+			return nil, err
+		}
+		gids, err := wd.CleanUpOldTXs(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("gid"),
+		}
+
+		sort.Slice(gids, func(i, j int) bool {
+			return gids[i] < gids[j]
+		})
+
+		for _, gid := range gids {
+			tts.WriteDataRow(gid)
+		}
+		return tts, nil
+	case virtual.VirtualRunRecheckHosts:
+		if rm.CSM == nil {
+			return nil, fmt.Errorf("spqr metadata uninitialized")
+		}
+
+		if len(args) != 0 {
+			return nil, fmt.Errorf("%s function accepts no args", fname)
+		}
+
+		results := rm.CSM.RunRecheckHosts()
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("tsa", "host", "az", "alive", "match", "reason"),
+		}
+
+		for _, res := range results {
+			tts.WriteDataRow(string(res.Tsa),
+				res.Host,
+				res.AZ,
+				fmt.Sprintf("%v", res.Alive),
+				fmt.Sprintf("%v", res.Match),
+				res.Reason)
+		}
+
+		return tts, nil
+	case virtual.VirtualSetNextTwoPhaseCommitGID:
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function accepts one arg", fname)
+		}
+		strVal, ok := args[0].(*lyx.AExprSConst)
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("__spqr__set_next_2pc_gid"),
+		}
+
+		rm.SPH.SetNextGID(strVal.Value)
+		return tts, nil
+	default:
+		return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 	}
-	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
+}
+
+func MetadataVirtualFunctionCall(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	plr QueryPlanner,
+	fname string,
+	args []lyx.Node, columns []string) (plan.Plan, error) {
+
+	spqrlog.Zero.Debug().Str("func name", fname).Msg("running MetadataVirtualFunctionCall")
+
+	switch fname {
+	case virtual.PGAdvisoryLock:
+		/* Pin connections */
+
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+		if err != nil {
+			return nil, err
+		}
+
+		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true)
+	case virtual.PGAdvisoryUnlockAll:
+		/* Unpin connections */
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+		if err != nil {
+			return nil, err
+		}
+
+		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false)
+	}
+
+	switch fname {
+	case virtual.PGAdvisoryLock, virtual.PGAdvisoryUnlockAll,
+		virtual.PGAdvisoryUnlock, virtual.PGAdvisoryXactLock, virtual.PGTryAdvisoryXactLock,
+		virtual.PgTryAdvisoryLock:
+
+		g, err := rm.SPH.FindStrGUC(session.SPQR_ADVISORY_LOCK_BEHAVIOUR)
+		if err != nil {
+			return nil, err
+		}
+		/* For now, only scatter-out and reject is supported */
+		switch strings.ToUpper(g.Get(rm.SPH)) {
+		case string(config.AdvisoryLockBehaviourBlock):
+			return nil, spqrerror.
+				Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+				Detail("advisory_lock_behaviour is BLOCK").
+				Hint("try to switch advisory_lock_behaviour")
+		case string(config.AdvisoryLockBehaviourScatter):
+			if !rm.SPH.EnhancedMultiShardProcessing() {
+				return nil, spqrerror.
+					Newf(spqrerror.SPQR_QUERY_BLOCKED, "%s function execution is prohibited", fname).
+					Detail("engine V2 is OFF").
+					Hint("try to turn engine V2 to ON")
+			}
+			return &plan.ScatterPlan{}, nil
+		default:
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_COMPLEX_QUERY)
+		}
+	default:
+		tts, err := ConsoleFunctionCall(ctx, rm, plr, fname, args)
+		if err != nil {
+			return nil, err
+		}
+		tts, err = engine.Project(tts, columns)
+		if err != nil {
+			return nil, err
+		}
+		return &plan.VirtualPlan{
+			TTS: tts,
+		}, nil
+	}
 }
 
 func RetrieveTuples(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	plr QueryPlanner,
-	n lyx.Node) (*tupleslot.TupleTableSlot, error) {
+	n lyx.Node, columns []string) (plan.Plan, error) {
 	switch q := n.(type) {
 	case *lyx.FuncApplication:
 		if virtual.IsVirtualFuncName(q.Name) {
-			tts, err := MetadataVirtualFunctionCall(ctx,
-				rm, plr, q.Name, q.Args)
-			return tts, err
+			return MetadataVirtualFunctionCall(ctx,
+				rm, plr, q.Name, q.Args, columns)
 		}
 	}
 	/* XXX: we should error out here */
@@ -708,7 +1122,7 @@ func RetrieveTuples(
 	return nil, nil
 }
 
-func (plr *PlannerV2) PlanDistributedQuery(
+func (p *PlannerV2) PlanDistributedQuery(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
@@ -720,9 +1134,9 @@ func (plr *PlannerV2) PlanDistributedQuery(
 			IsDDL: true,
 		}, nil
 	case *lyx.ExplainStmt:
-		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+		return p.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
 	case *lyx.SubLink:
-		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
+		return p.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
@@ -733,15 +1147,13 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			if len(v.TargetList) == 1 {
 
-				tts, err := RetrieveTuples(ctx, rm, plr, v.TargetList[0])
+				p, err := RetrieveTuples(ctx, rm, p, v.TargetList[0], nil)
 				if err != nil {
 					return nil, err
 				}
 
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+				if p != nil {
+					return p, nil
 				}
 			}
 
@@ -750,7 +1162,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 			if len(v.FromClause) == 0 && (v.LArg == nil || v.RArg == nil) && v.WithClause == nil {
-				p, err := PlanTargetList(ctx, rm, plr, v)
+				p, err := PlanTargetList(ctx, rm, p, v)
 				if err != nil {
 					return nil, err
 				}
@@ -767,17 +1179,17 @@ func (plr *PlannerV2) PlanDistributedQuery(
 
 			switch q := v.FromClause[0].(type) {
 			case *lyx.SubSelect:
-				tts, err := RetrieveTuples(
+
+				p, err := RetrieveTuples(
 					ctx,
 					rm,
-					plr, q.Arg)
+					p, q.Arg, engine.ExtractProjectionColumns(v.TargetList))
 				if err != nil {
 					return nil, err
 				}
-				if tts != nil {
-					return &plan.VirtualPlan{
-						TTS: tts,
-					}, nil
+
+				if p != nil {
+					return p, nil
 				}
 			default:
 				break
@@ -839,7 +1251,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 						return nil, err
 					}
 
-					shs, err := PlanDistributedRelationInsert(ctx, q.Values, rm, insertColsPos, qualName)
+					shs, err := PlanDistributedRelationForKeys(ctx, q.Values, rm, insertColsPos, qualName)
 					if err != nil {
 						return nil, err
 					}
@@ -848,7 +1260,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 						if sh.Name != shs[0].Name {
 							/* try to rewrite, but only for simple protocol */
 							if len(rm.ParamRefs) == 0 {
-								return RewriteDistributedRelBatchInsert(rm.Query, shs)
+								return RewriteDistributedRelBatchInsert(rm.Query, q.ValuesLoc, shs)
 							}
 							return nil, rerrors.ErrComplexQuery
 						}
@@ -868,7 +1280,7 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}
 			}
 
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
+			return p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -885,6 +1297,11 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: false,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},
@@ -892,11 +1309,15 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}, nil
 			}
 
-			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
+				filterShard, err := ReferenceRelationFilterShard(ctx, rm, qualName)
+				if err != nil {
+					return nil, err
+				}
 				return &plan.DataRowFilter{
-					SubPlan:     p,
-					FilterIndex: 0,
+					Plan:        p,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, err
@@ -917,6 +1338,11 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: false,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},
@@ -924,11 +1350,15 @@ func (plr *PlannerV2) PlanDistributedQuery(
 				}, nil
 			}
 
-			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 			if v.Returning != nil {
+				filterShard, err := ReferenceRelationFilterShard(ctx, rm, qualName)
+				if err != nil {
+					return nil, err
+				}
 				return &plan.DataRowFilter{
-					SubPlan:     p,
-					FilterIndex: 0,
+					Plan:        p,
+					FilterShard: filterShard,
 				}, nil
 			}
 			return p, err
@@ -936,6 +1366,6 @@ func (plr *PlannerV2) PlanDistributedQuery(
 			return nil, rerrors.ErrComplexQuery
 		}
 	default:
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail(fmt.Sprintf("%T is not yet supported in planner V2", stmt))
 	}
 }

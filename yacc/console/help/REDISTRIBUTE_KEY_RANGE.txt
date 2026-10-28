@@ -1,5 +1,6 @@
 NAME
-    REDISTRIBUTE KEY RANGE - Moves a key range to a different shard, including the actual data migration.
+    REDISTRIBUTE KEY RANGE - Moves a key range to a different shard, including
+    the actual data migration.
 
 SYNTAX
     REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID>
@@ -23,7 +24,8 @@ PARAMETERS
     <taskGroupID> - Task group identifier for tracking the operation (optional)
     <CHECK> - Only validate the redistribution without applying changes
     <APPLY> - Validate and apply the redistribution (default behavior)
-    <NOWAIT> - Start the redistribution and return immediately without waiting for completion
+    <NOWAIT> - Start the redistribution and return immediately without waiting
+        for completion
 
 EXAMPLES
     Redistribute with default settings:
@@ -41,7 +43,8 @@ TIPS
     - Use CHECK mode first to validate before applying in production
     - Adjust BATCH SIZE to balance migration speed vs. cluster load
     - Use NOWAIT for large migrations and monitor progress with SHOW task_group
-    - For metadata-only changes (when data is already on the target), use MOVE KEY RANGE instead
+    - For metadata-only changes (when data is already on the target), use MOVE
+      KEY RANGE instead
 
 RELATED COMMANDS
     MOVE KEY RANGE

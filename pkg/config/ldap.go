@@ -41,7 +41,7 @@ type LDAPCfg struct {
 	Suffix string `json:"suffix" yaml:"suffix" toml:"suffix"`
 
 	BindDN          string `json:"bind_dn" yaml:"bind_dn" toml:"bind_dn"`
-	BindPassword    string `json:"bind_password" yaml:"bind_password" toml:"bind_password"`
+	BindPassword    string `json:"bind_password" yaml:"bind_password" toml:"bind_password" secret:"true"`
 	BaseDN          string `json:"base_dn" yaml:"base_dn" toml:"base_dn"`
 	SearchAttribute string `json:"search_attribute" yaml:"search_attribute" toml:"search_attribute"`
 	SearchFilter    string `json:"search_filter" yaml:"search_filter" toml:"search_filter"`
@@ -65,7 +65,7 @@ func (l *LDAPCfg) ServerConn() (*ldap.Conn, error) {
 	switch l.ConnConfig.ConnMode {
 	case UnencryptedMode, SchemeMode, StartTLSMode:
 		for _, server := range l.Servers {
-			conn, err := ldap.DialURL(l.ldapUrl(server))
+			conn, err := ldap.DialURL(l.ldapURL(server))
 			if err != nil {
 				continue
 			}
@@ -119,7 +119,7 @@ func (l *LDAPCfg) ModifySearchAttribute() string {
 	}
 }
 
-func (l *LDAPCfg) ModifySearchFilter(searchAttribute string, username string) string {
+func (l *LDAPCfg) ModifySearchFilter(_ string, username string) string {
 	switch l.SearchFilter {
 	case "":
 		return fmt.Sprintf("(%s=%s)", l.SearchAttribute, ldap.EscapeFilter(username))
@@ -212,7 +212,7 @@ func (l *LDAPCfg) loadCaCertPool() (*x509.CertPool, error) {
 	return caCertPool, nil
 }
 
-func (l *LDAPCfg) ldapUrl(server string) string {
+func (l *LDAPCfg) ldapURL(server string) string {
 	return fmt.Sprintf("%s://%s:%s", l.ConnConfig.Scheme, server, l.ConnConfig.Port)
 }
 

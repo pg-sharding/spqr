@@ -7,6 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,8 +29,9 @@ func TestDefaultRangeLowerBound(t *testing.T) {
 			colTypes: []string{"varchar",
 				"integer",
 				"uuid",
+				qdb.ColumnTypeUUIDHashed,
 			},
-			expected:    kr.KeyRangeBound{"", int64(math.MinInt64), "00000000-0000-0000-0000-000000000000"},
+			expected:    kr.KeyRangeBound{"", int64(math.MinInt64), "00000000-0000-0000-0000-000000000000", uint64(0)},
 			expectedErr: nil,
 		},
 		{

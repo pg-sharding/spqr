@@ -361,7 +361,7 @@ Feature: Move test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    no key range found at /keyranges/krid3
+    failed to acquire key range operation lock: failed to acquire key range operation lock for key range .*krid3.*: key range does not exist \(SQLSTATE SPQRt\)
     """
 
   Scenario: Move fails when table does not exist on receiver
@@ -396,7 +396,7 @@ Feature: Move test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    relation xMove does not exist on receiving shard
+    relation xMove does not exist on the destination shard
     """
   
   Scenario: MOVE KEY RANGE works with hashed int keys, murmur3 hash

@@ -5,6 +5,9 @@ qdb_addr: 'localhost:2379'
 log_level: info
 shard_data: 'examples/shard_data.yaml'
 
+forbid_direct_shard_queries: true
+use_spqrguard: true
+
 # Coordinator timing settings (optional)
 # iteration_timeout: 1s           # How often to check router status (default: 1s)
                                    # Increase to 10s-5m for production to reduce overhead
@@ -15,6 +18,20 @@ shard_data: 'examples/shard_data.yaml'
 # IMPORTANT: If iteration_timeout is high (e.g., 5m), keepalive must be lower than network timeouts
 # router_keepalive_time: 30s      # How often to send keepalive pings (default: 30s)
 # router_keepalive_timeout: 20s   # How long to wait for ping response (default: 20s)
+
+# TLS for coordinator connections to router gRPC APIs
+# client_tls:
+#   mode: tls                  # disabled, tls, mtls
+#   root_ca_file: /path/to/grpc/ca.crt
+#   # server_name may override the registered router address for certificate checks
+#   # cert_file and key_file are required in mtls mode
+
+# TLS for the gRPC API used for router/coordinator interconnect
+# server_tls:
+#   mode: tls                  # disabled, tls, mtls
+#   cert_file: /path/to/grpc/coordinator-server.crt
+#   key_file: /path/to/grpc/coordinator-server.key
+#   # client_ca_file is required in mtls mode
 
 frontend_rules:
   - pool_default: true

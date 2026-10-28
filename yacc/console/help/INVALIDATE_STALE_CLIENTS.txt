@@ -1,0 +1,17 @@
+NAME
+    INVALIDATE STALE CLIENTS - Identifies clients with dead TCP connections and
+    signals them to close.
+
+SYNTAX
+    INVALIDATE STALE CLIENTS
+
+DESCRIPTION
+    Identifies clients with dead TCP connections and signals them to close.
+
+EXAMPLES
+    Clean up stale client connections:
+        INVALIDATE STALE CLIENTS;
+
+RELATED COMMANDS
+    INVALIDATE CACHE
+    INVALIDATE BACKENDS

@@ -1,22 +1,19 @@
 package config
 
 import (
-	"fmt"
-	"log"
 	"os"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/yacc/hostspec"
 )
 
 type PoolMode string
 type ShardType string
 type RouterMode string
 type DefaultRouteBehaviour string
+type AdvisoryLockBehaviour string
 
 const (
 	PoolModeSession     = PoolMode("SESSION")
@@ -31,18 +28,28 @@ const (
 
 	DefaultRouteBehaviourBlock = DefaultRouteBehaviour("BLOCK")
 	DefaultRouteBehaviourAllow = DefaultRouteBehaviour("ALLOW")
+
+	AdvisoryLockBehaviourScatter = AdvisoryLockBehaviour("SCATTER")
+	AdvisoryLockBehaviourDeploy  = AdvisoryLockBehaviour("DEPLOY")
+	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
+)
+
+const (
+	CommitStrategyBestEffort = "best-effort"
+	CommitStrategy1pc        = "1pc"
+	CommitStrategy2pc        = "2pc"
 )
 
 var cfgRouter Router
 
 type Router struct {
 	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
+	LogQuery      bool   `json:"log_query" toml:"log_query" yaml:"log_query"`
+	LogDispatch   bool   `json:"log_dispatch" toml:"log_dispatch" yaml:"log_dispatch"`
 	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 
-	// TimeQuantiles is deprecated, use TimeQuantilesStr instead
-	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
-	// TimeQuantilesStr is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
-	TimeQuantilesStr []string `json:"time_quantiles_str" toml:"time_quantiles_str" yaml:"time_quantiles_str"`
+	// TimeQuantiles is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
+	TimeQuantiles []string `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
 
 	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
 
@@ -62,7 +69,9 @@ type Router struct {
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
-	GrpcApiPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	GrpcAPIPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	MetricPath       string `json:"metric_path" toml:"metric_path" yaml:"metric_path"`
+	MetricPort       string `json:"metric_port" toml:"metric_port" yaml:"metric_port"`
 
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
@@ -72,8 +81,11 @@ type Router struct {
 	InitSQL                   string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	UseInitSQL                bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
 	ExitOnInitSQLError        bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
+	AutoConf                  string `json:"autoconf" toml:"autoconf" yaml:"autoconf"`
 	UseCoordinatorInit        bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 	ManageShardsByCoordinator bool   `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
+	QdbMaxTxnOps              int    `json:"qdb_max_txn_ops" toml:"qdb_max_txn_ops" yaml:"qdb_max_txn_ops"`
+	UseMetrics                bool   `json:"use_metrics" toml:"use_metrics" yaml:"use_metrics"`
 
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
@@ -90,6 +102,7 @@ type Router struct {
 	DbpoolCacheTTL             time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
 	DbpoolCheckInterval        time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
 	DbpoolDeadCheckInterval    time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
+	DbpoolTSARecheckPeriod     time.Duration `json:"dbpool_tsa_recheck_period" toml:"dbpool_tsa_recheck_period" yaml:"dbpool_tsa_recheck_period"`
 	DbpoolAcquireRetryCount    int           `json:"dbpool_acquire_retry_count" toml:"dbpool_acquire_retry_count" yaml:"dbpool_acquire_retry_count"`
 	DefaultRecheckTCPAliveness bool          `json:"dbpool_recheck_tcp" toml:"dbpool_recheck_tcp" yaml:"dbpool_recheck_tcp"`
 
@@ -102,11 +115,23 @@ type Router struct {
 
 	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
 
-	IgnoreCancel          bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
+	IgnoreCancel    bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
+	CancelRateLimit int  `json:"cancel_rate_limit" toml:"cancel_rate_limit" yaml:"cancel_rate_limit"`
+
 	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
+	AcceptorMaxRetries    int           `json:"acceptor_max_retries" toml:"acceptor_max_retries" yaml:"acceptor_max_retries"`
+	AcceptorRetrySleep    time.Duration `json:"acceptor_retry_sleep" toml:"acceptor_retry_sleep" yaml:"acceptor_retry_sleep"`
+	AcceptorRetrySleepMax time.Duration `json:"acceptor_retry_sleep_max" toml:"acceptor_retry_sleep_max" yaml:"acceptor_retry_sleep_max"`
+
+	ForceConnectionCleanup bool `json:"force_connection_cleanup" toml:"force_connection_cleanup" yaml:"force_connection_cleanup"`
+
 	DefaultCommitStrategy string `json:"default_commit_strategy" toml:"default_commit_strategy" yaml:"default_commit_strategy"`
+	AllowTwoPhaseCommit   bool   `json:"allow_two_phase_commit" toml:"allow_two_phase_commit" yaml:"allow_two_phase_commit"`
+
+	/* Should we eagerly cleanup two phase commit metadata on revert(happy-path rollback?) */
+	EagerCleanup2PC bool `json:"eager_cleanup_2pc" toml:"eager_cleanup_2pc" yaml:"eager_cleanup_2pc"`
 
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
 
@@ -122,7 +147,12 @@ type Router struct {
 	WatchdogBackendRule   *BackendRule  `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 
-	StoreTxDataPostgresql bool `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+	StoreTxDataPostgresql    bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
+	AdvisoryLockTwoPhaseTx   bool          `json:"2pc_tx_advisory_lock" yaml:"2pc_tx_advisory_lock" toml:"2pc_tx_advisory_lock"`
+	TxDataTTL                time.Duration `json:"tx_data_ttl" toml:"tx_data_ttl" yaml:"tx_data_ttl"`
+	AllowAutoprotectTwoPhase bool          `json:"allow_autoprotect_two_phase" yaml:"allow_autoprotect_two_phase" toml:"allow_autoprotect_two_phase"`
+	SessionConnectionsPin    bool          `json:"session_connections_pin" yaml:"session_connections_pin" toml:"session_connections_pin"`
+	BackupTxDataOnly         bool          `json:"backup_tx_data_only" toml:"backup_tx_data_only" yaml:"backup_tx_data_only"`
 
 	DisplayGreeting bool `json:"display_greeting" toml:"display_greeting" yaml:"display_greeting"`
 }
@@ -140,15 +170,11 @@ func (r *Router) PostProcess() error {
 		return err
 	}
 
-	if len(r.TimeQuantilesStr) > 0 {
-		if err := statistics.InitStatisticsStr(r.TimeQuantilesStr); err != nil {
+	if len(r.TimeQuantiles) > 0 {
+		if err := statistics.InitStatisticsStr(r.TimeQuantiles); err != nil {
 			return err
 		}
-	} else {
-		statistics.InitStatistics(r.TimeQuantiles)
 	}
-
-	rps.SetEnableRPSAggregation(r.Qr.RouterRpsAggregation)
 
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if r.Qr.DefaultTSA == "" {
@@ -174,14 +200,16 @@ type QRouter struct {
 	AllowSplitUpdate    bool `json:"allow_split_update" toml:"allow_split_update" yaml:"allow_split_update"`
 	AllowPostProcessing bool `json:"allow_postprocessing" toml:"allow_postprocessing" yaml:"allow_postprocessing"`
 
+	AdvisoryLockBehaviour AdvisoryLockBehaviour `json:"advisory_lock_behaviour" toml:"advisory_lock_behaviour" yaml:"advisory_lock_behaviour"`
+
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 
-	// Controls whether to calculate sliding window RPS stats (requires mutex).
-	// Total requests are always counted atomically.
-	RouterRpsAggregation bool `json:"router_rps_aggregation" toml:"router_rps_aggregation" yaml:"router_rps_aggregation"`
-
+	// TODO: make use_spqrguard and forbid_direct_shard_queries mutually exclusive
+	UseSPQRGuard bool `json:"use_spqrguard" toml:"use_spqrguard" yaml:"use_spqrguard"`
+	// Deprecated. Use UseSPQRGuard instead
 	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
+	AllowFluxChunkAccess     bool `json:"allow_flux_chunk_access" toml:"allow_flux_chunk_access" yaml:"allow_flux_chunk_access"`
 }
 
 const (
@@ -191,56 +219,21 @@ const (
 	TargetSessionAttrsPS      = "prefer-standby"
 	TargetSessionAttrsPR      = "prefer-replica"
 	TargetSessionAttrsAny     = "any"
+	TargetSessionAttrsDClocal = "dc-local" // alias for TargetSessionAttrsAny
 )
-
-type Shard struct {
-	RawHosts        []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
-	parsedHosts     []Host
-	parsedAddresses []string
-	once            sync.Once
-
-	Type ShardType  `json:"type" toml:"type" yaml:"type"`
-	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-}
 
 type Host struct {
 	Address string // format host:port
 	AZ      string // Availability zone
+
+	Priority int // connection acquire priority
 }
 
-// parseHosts parses the raw hosts into a slice of Hosts.
-// The format of the RawHost is host:port:availability_zone.
-// If the availability_zone is not provided, it is empty.
-// If the port is not provided, it does not matter
-func (s *Shard) parseHosts() {
-	for _, rawHost := range s.RawHosts {
-		host := Host{}
-		parts := strings.Split(rawHost, ":")
-		if len(parts) > 3 {
-			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
-			continue
-		} else if len(parts) == 3 {
-			host.AZ = parts[2]
-			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
-		} else {
-			host.Address = rawHost
-		}
+type Shard struct {
+	RawHosts []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port[:availability_zone]
 
-		s.parsedHosts = append(s.parsedHosts, host)
-		s.parsedAddresses = append(s.parsedAddresses, host.Address)
-	}
-}
-
-func (s *Shard) Hosts() []string {
-	s.once.Do(s.parseHosts)
-
-	return s.parsedAddresses
-}
-
-func (s *Shard) HostsAZ() []Host {
-	s.once.Do(s.parseHosts)
-
-	return s.parsedHosts
+	Type ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
 func ValueOrDefaultInt(value int, def int) int {
@@ -296,6 +289,12 @@ func validateRouterConfig(cfg *Router) error {
 		if shCfg == nil {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)
 		}
+
+		for _, host := range shCfg.RawHosts {
+			if _, err := hostspec.Parse(host); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", host)
+			}
+		}
 	}
 	for _, rule := range cfg.BackendRules {
 		for name, authRule := range rule.AuthRules {
@@ -326,6 +325,12 @@ func validateRouterConfig(cfg *Router) error {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid auth method \"%s\"", rule.AuthRule.Method)
 		}
 	}
+
+	switch cfg.DefaultCommitStrategy {
+	case "", CommitStrategyBestEffort, CommitStrategy1pc, CommitStrategy2pc:
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid default_commit_strategy \"%s\": expected one of \"best-effort\", \"1pc\", \"2pc\"", cfg.DefaultCommitStrategy)
+	}
 	return nil
 }
 
@@ -345,4 +350,8 @@ func GetHostOrHostname(host string) (string, error) {
 		return os.Hostname()
 	}
 	return host, nil
+}
+
+func (r *Router) WithCoordinatorConfig() bool {
+	return r.WithCoordinator || r.UseCoordinatorInit || r.StoreTxDataPostgresql
 }

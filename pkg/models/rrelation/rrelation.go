@@ -1,6 +1,7 @@
 package rrelation
 
 import (
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -12,7 +13,10 @@ type ReferenceRelation struct {
 	RelationName          *rfqn.RelationFQN
 	SchemaVersion         uint64
 	ColumnSequenceMapping map[string]string
-	ShardIds              []string
+	ShardIDs              []string
+
+	Version uint64
+	ACL     []acl.ACLItem
 }
 
 type AutoIncrementEntry struct {
@@ -23,7 +27,7 @@ type AutoIncrementEntry struct {
 func (r *ReferenceRelation) ListStorageRoutes() []kr.ShardKey {
 	var ret []kr.ShardKey
 
-	for _, id := range r.ShardIds {
+	for _, id := range r.ShardIDs {
 		ret = append(ret, kr.ShardKey{
 			Name: id,
 		})
@@ -79,7 +83,10 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 		RelationName:          rfqn.RelationFQNFromProto(p.RelName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
-		ShardIds:              p.ShardIds,
+		ShardIDs:              p.ShardIds,
+
+		Version: p.Version,
+		ACL:     acl.ACLFromProto(p.Acl),
 	}
 }
 
@@ -88,7 +95,10 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 		RelName:         rfqn.RelationFQNToProto(p.RelationName),
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
-		ShardIds:        p.ShardIds,
+		ShardIds:        p.ShardIDs,
+
+		Version: p.Version,
+		Acl:     acl.ACLTOProto(p.ACL),
 	}
 }
 
@@ -98,7 +108,10 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 		SchemaName:            p.RelationName.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
-		ShardIds:              p.ShardIds,
+		ShardIDs:              p.ShardIDs,
+
+		Version: p.Version,
+		ACL:     acl.ACLTODB(p.ACL),
 	}
 }
 
@@ -107,6 +120,9 @@ func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
 		RelationName:          rfqn.RelationFQNFromFullName(p.SchemaName, p.TableName),
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
-		ShardIds:              p.ShardIds,
+		ShardIDs:              p.ShardIDs,
+
+		Version: p.Version,
+		ACL:     acl.ACLFromDB(p.ACL),
 	}
 }

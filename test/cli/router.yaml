@@ -40,5 +40,3 @@ backend_rules:
   - db: stress
     usr: stress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true

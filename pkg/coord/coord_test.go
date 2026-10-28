@@ -5,17 +5,15 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
 const MemQDBPath = ""
-
-var boolFalse bool = false
 
 var mockShard1 = &qdb.Shard{
 	ID:       "sh1",
@@ -54,7 +52,10 @@ func TestSplitKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
-		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := NewLocalInstanceMetadataMgr(memqdb,
+			nil,
+			nil,
+			topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -66,7 +67,7 @@ func TestSplitKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(1)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolFalse,
+			IsLocked:     false,
 		}
 		err = tranMngr.CreateKeyRange(ctx, kr1, ds1.ColTypes)
 		is.NoError(err)
@@ -78,21 +79,24 @@ func TestSplitKeyRange(t *testing.T) {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64(1))
 		splitData := &kr.SplitKeyRange{
-			Bound:     [][]byte{buf},
-			SourceID:  "kr1",
-			Krid:      "kr2",
-			SplitLeft: true,
+			Bound:      [][]byte{buf},
+			SourceID:   "kr1",
+			KeyRangeID: "kr2",
+			SplitLeft:  true,
 		}
 
 		err = mngr.Split(ctx, splitData)
-		is.EqualError(err, "key range kr1 is locked")
+		is.EqualError(err, "failed to split key range: key range \"kr1\" is locked")
 	})
 	t.Run("split happy path", func(t *testing.T) {
 		is := assert.New(t)
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
-		mngr := NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := NewLocalInstanceMetadataMgr(memqdb,
+			nil,
+			nil,
+			topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
@@ -104,7 +108,7 @@ func TestSplitKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(1)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolFalse,
+			IsLocked:     false,
 			Version:      1,
 		}
 		err = tranMngr.CreateKeyRange(ctx, kr1, []string{qdb.ColumnTypeInteger})
@@ -115,10 +119,10 @@ func TestSplitKeyRange(t *testing.T) {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64(5))
 		splitData := &kr.SplitKeyRange{
-			Bound:     [][]byte{buf},
-			SourceID:  "kr1",
-			Krid:      "kr2",
-			SplitLeft: false,
+			Bound:      [][]byte{buf},
+			SourceID:   "kr1",
+			KeyRangeID: "kr2",
+			SplitLeft:  false,
 		}
 
 		err = mngr.Split(ctx, splitData)
@@ -133,14 +137,50 @@ func TestSplitKeyRange(t *testing.T) {
 				Distribution: "ds1",
 				LowerBound:   []any{int64(5)},
 				ColumnTypes:  []string{qdb.ColumnTypeInteger},
-				IsLocked:     &boolFalse,
+				IsLocked:     false,
 				Version:      1,
 			},
 		}
-		// IsLocked is not values of bool :(
-		is.Equal([]bool{false, false}, []bool{*actual[0].IsLocked, *actual[0].IsLocked})
-		actual[0].IsLocked = &boolFalse
-		actual[1].IsLocked = &boolFalse
+		is.Equal([]bool{false, false}, []bool{actual[0].IsLocked, actual[0].IsLocked})
+		actual[0].IsLocked = false
+		actual[1].IsLocked = false
 		is.Equal(expected, []kr.KeyRange{*actual[0], *actual[1]})
 	})
+}
+
+func TestAlterOptions(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.Background()
+	memqdb, err := prepareDB(ctx)
+	is.NoError(err)
+	mngr := NewLocalInstanceMetadataMgr(memqdb,
+		nil,
+		nil,
+		topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+
+	err = mngr.SetShardOptions(ctx, "sh1", []topology.GenericOption{
+		{Name: "host", Arg: "localhost:6432"},
+		{Name: "password", Arg: "password"},
+		{Name: "user", Arg: "user1"},
+		{Name: "host", Arg: "another_host:6432"},
+		{Name: "password", Arg: "changed_password"},
+	})
+	is.NoError(err)
+	err = mngr.AlterShardOptions(ctx, "sh1", []topology.GenericOption{
+		{Name: "host", Arg: "another_host:6432", Action: topology.GenericOptionActionDrop},
+		{Name: "user", Arg: "regress", Action: topology.GenericOptionActionSet},
+		{Name: "dbname", Arg: "regress", Action: topology.GenericOptionActionAdd},
+		{Name: "sslmode", Arg: "require"},
+		{Name: "password", Action: topology.GenericOptionActionDrop},
+	})
+	is.NoError(err)
+
+	shard, err := mngr.GetShard(ctx, "sh1")
+	is.NoError(err)
+	is.Equal([]topology.GenericOption{
+		{Name: "host", Arg: "localhost:6432"},
+		{Name: "user", Arg: "regress"},
+		{Name: "dbname", Arg: "regress"},
+		{Name: "sslmode", Arg: "require"},
+	}, shard.Options())
 }

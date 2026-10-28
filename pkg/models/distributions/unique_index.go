@@ -1,6 +1,7 @@
 package distributions
 
 import (
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -11,6 +12,10 @@ type UniqueIndex struct {
 	RelationName *rfqn.RelationFQN
 	Columns      []string
 	ColTypes     []string
+
+	Version uint64
+	/* XXX: should we have implicit acl here? */
+	ACL []acl.ACLItem
 }
 
 func UniqueIndexToProto(idx *UniqueIndex) *proto.UniqueIndex {
@@ -31,12 +36,12 @@ func UniqueIndexFromProto(idx *proto.UniqueIndex) *UniqueIndex {
 	}
 }
 
-func UniqueIndexToDB(dsId string, idx *UniqueIndex) *qdb.UniqueIndex {
+func UniqueIndexToDB(dsid string, idx *UniqueIndex) *qdb.UniqueIndex {
 	return &qdb.UniqueIndex{
 		ID:             idx.ID,
 		Relation:       idx.RelationName,
 		ColumnNames:    idx.Columns,
-		DistributionId: dsId,
+		DistributionId: dsid,
 		ColTypes:       idx.ColTypes,
 	}
 }

@@ -1,4 +1,5 @@
 name: CREATE KEY RANGE
+snippet: key_range_commands
 description: |
   This command is used to create a new key range. Since the key space is an ordered set, 
   it is enough to specify only one end of the range.
@@ -6,14 +7,16 @@ description: |
   For composite sharding keys, specify multiple values separated by commas that correspond 
   to each column in the distribution.
 
+  Use IF NOT EXISTS to skip creation when the key range already exists.
+
 syntax: |
-  CREATE KEY RANGE [ <keyRangeID> ]
+  CREATE KEY RANGE [IF NOT EXISTS] [ <keyRangeID> ]
     FROM <lowerBound>
     ROUTE TO <shardID> 
     FOR DISTRIBUTION <distributionID>
   
-  where lowerBound is a single value or comma-separated values for composite keys 
-  (e.g., "100, 'value'" for a two-column key)
+  where lowerBound is a single value or comma-separated values
+  for composite keys (e.g., "100, 'value'" for a two-column key)
 
 parameters:
   - name: keyRangeID
@@ -28,10 +31,16 @@ parameters:
 examples:
   - description: Single column key range
     code: CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+  - description: Create a key range if it does not exist
+    code: |
+      CREATE KEY RANGE IF NOT EXISTS krid1 FROM 1000
+        ROUTE TO shard1 FOR DISTRIBUTION ds1;
   - description: Composite key range with two integers
     code: CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
   - description: Composite key range with integer and varchar
-    code: "CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;"
+    code: |-
+      CREATE KEY RANGE krid3 FROM 100, 'aaaaa'
+          ROUTE TO shard3 FOR DISTRIBUTION ds3;
 
 tips:
   - Value bounds should be continuous and non-overlapping

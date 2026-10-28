@@ -2,14 +2,15 @@ package relay
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
-	distribution "github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/session/sessiontest"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -26,6 +27,10 @@ func TestAutoDistributionSetFail(t *testing.T) {
 
 	client := mockcl.NewMockRouterClient(ctrl)
 	client.EXPECT().CleanupStatementSet().AnyTimes()
+
+	client.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_DISTRIBUTION_KEY), nil)
+	client.EXPECT().ResolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, gomock.Any()).AnyTimes().Return("i")
+
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
@@ -39,7 +44,7 @@ func TestAutoDistributionSetFail(t *testing.T) {
 		Cl:                  client,
 		poolMgr:             cmngr,
 		execute:             nil,
-		executeMp:           map[string]func() error{},
+		executeMp:           map[string]func(uint32) error{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
 		bindQueryPlan:       nil,
@@ -49,7 +54,7 @@ func TestAutoDistributionSetFail(t *testing.T) {
 		unnamedPortalExists: false,
 	}
 	ctx := context.Background()
-	err := rst.processSpqrHint(ctx, "__spqr__auto_distribution", "distrNotFound", false)
+	err := rst.processSpqrHint(ctx, map[string]string{"__spqr__auto_distribution": "distrNotFound"}, false, false)
 	is.Error(err)
 }
 
@@ -61,13 +66,17 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 
 	client := mockcl.NewMockRouterClient(ctrl)
 	client.EXPECT().CleanupStatementSet().AnyTimes()
+
+	client.EXPECT().FindStrGUC(session.SPQR_DISTRIBUTION_KEY).AnyTimes().Return(sessiontest.MustFindStrGUC(session.SPQR_DISTRIBUTION_KEY), nil)
+	client.EXPECT().ResolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, gomock.Any()).AnyTimes().Return("i")
+
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	existsDistr := distribution.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
-	mmgr.EXPECT().GetDistribution(gomock.Any(), "ds1").Return(existsDistr, nil)
+	d := distributions.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
+	mmgr.EXPECT().GetDistribution(gomock.Any(), "ds1").Return(d, nil)
 
-	client.EXPECT().SetParam("__spqr__auto_distribution", "ds1", false)
+	client.EXPECT().SetAutoDistribution("ds1")
 
 	rst := RelayStateImpl{
 		msgBuf:              nil,
@@ -76,7 +85,7 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 		Cl:                  client,
 		poolMgr:             cmngr,
 		execute:             nil,
-		executeMp:           map[string]func() error{},
+		executeMp:           map[string]func(uint32) error{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
 		bindQueryPlan:       nil,
@@ -86,7 +95,10 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 		unnamedPortalExists: false,
 	}
 	ctx := context.Background()
-	err := rst.processSpqrHint(ctx, "__spqr__auto_distribution", "ds1", false)
+	err := rst.processSpqrHint(
+		ctx,
+		map[string]string{"__spqr__auto_distribution": "ds1"},
+		false, false)
 	is.NoError(err)
 }
 
@@ -101,9 +113,8 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	mmgr.EXPECT().GetDistribution(gomock.Any(), "REPLICATED").Return(nil, fmt.Errorf("not found"))
 
-	client.EXPECT().SetParam("__spqr__auto_distribution", "REPLICATED", false)
+	client.EXPECT().SetAutoDistribution(distributions.REPLICATED)
 
 	rst := RelayStateImpl{
 		msgBuf:          nil,
@@ -112,7 +123,7 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 		Cl:              client,
 		poolMgr:         cmngr,
 		execute:         nil,
-		executeMp:       map[string]func() error{},
+		executeMp:       map[string]func(uint32) error{},
 		saveBind:        pgproto3.Bind{},
 		saveBindNamed:   map[string]*pgproto3.Bind{},
 		savedPortalDesc: map[string]*PortalDesc{},
@@ -123,6 +134,10 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 		unnamedPortalExists: false,
 	}
 	ctx := context.Background()
-	err := rst.processSpqrHint(ctx, "__spqr__auto_distribution", "REPLICATED", false)
+	err := rst.processSpqrHint(ctx,
+		map[string]string{"__spqr__auto_distribution": distributions.REPLICATED},
+		false,
+		false)
+
 	is.NoError(err)
 }

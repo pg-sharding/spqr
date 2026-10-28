@@ -24,5 +24,7 @@ SELECT * FROM delivery JOIN orders ON delivery.order_id = orders.id;
 DROP TABLE orders CASCADE;
 DROP TABLE delivery;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

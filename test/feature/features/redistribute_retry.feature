@@ -4,6 +4,7 @@ Feature: Redistribution retries test
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
     COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
+    COORDINATOR_CONFIG_2=/spqr/test/feature/conf/coordinator2_no_recover.yaml
     """
     #
     # Make host "coordinator" take control
@@ -86,7 +87,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -101,7 +102,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -116,7 +117,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -202,7 +203,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -217,7 +218,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -232,7 +233,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -301,7 +302,7 @@ Feature: Redistribution retries test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    no key range found at /keyranges/kr_temp
+    failed to acquire key range operation lock for key range ..kr_temp..: key range does not exist
     """
 
     # move task can be finished manually
@@ -342,7 +343,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -357,7 +358,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -372,7 +373,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -466,7 +467,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -481,7 +482,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -496,7 +497,7 @@ Feature: Redistribution retries test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -510,3 +511,1336 @@ Feature: Redistribution retries test
     }]
     """
 
+  Scenario: redistribute is retryable after data copying fail
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT copy_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+  
+  Scenario: redistribute is retryable after fail to sync TaskSplit state to QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_copy_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+  
+  Scenario: redistribute is retryable after fail to delete data transfer transaction from QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_delete_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+  
+  Scenario: redistribute is not retryable after fail to update KeyRangeMove to MoveKeyRangeLocked in QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_lock_key_range_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range is locked
+    """
+
+Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKeyRangeLocked in QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_move_keys_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+
+  Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKeyRangeCoordMetaUpdated in QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_coordinator_update_key_range_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+
+  Scenario: redistribute is retryable after fail to update KeyRangeMove to MoveKeyRangeComplete in QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_router_update_key_range_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+  
+  Scenario: redistribute is retryable after fail to delete KeyRangeMove from QDB 
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_unlock_key_range_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+  
+  Scenario: redistribute is not retryable after fail to update MoveTask status to TaskSplit in QDB when transferring by a single move
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_rename_key_range_cp PANIC;
+    """`
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 10000 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    # TODO: fix
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' already exists
+    """
+  
+  Scenario: redistribute is retryable after fail to update MoveTask status to TaskSplit in QDB when transferring by multiple moves
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_split_key_range_cp PANIC;
+    """`
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+  
+  Scenario: redistribute is retryable after fail to update MoveTask status to TaskMoved in QDB
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_move_cp PANIC;
+    """`
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+
+  Scenario: redistribute is not retryable after fail do drop MoveTask from QDB
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr_to FROM 800 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_unite_key_range_cp PANIC;
+    """`
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+      "id":            "tg1",
+      "shard_to_id":   "sh2",
+      "kr_id_from":    "kr1",
+      "kr_id_to":      "kr_to",
+      "type":          1,
+      "limit":         -1,
+      "coeff":         1,
+      "bound_rel":     "xMove",
+      "total_keys":    500,
+      "batch_size":    200
+    }
+    """
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 799), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    INSERT INTO xMove (w_id, s) SELECT generate_series(800, 999), 'sample text value' /* __spqr__execute_on: sh2 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    # TODO: fix
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    failed to acquire key range operation lock for key range .*: key range does not exist \(SQLSTATE SPQRU\)
+    """
+
+  Scenario: REDISTRIBUTE KEY RANGE is retryable after fail to await pids within timeout
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    ATTACH CONTROL POINT await_pid_cp SLEEP 70 SECONDS;
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    failed to await virtual transactions to exit
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "key_range_id":"kr1",
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh1",
+        "locked":"false"
+      },
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"900",
+        "shard_id":"sh1",
+        "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "bound": "900",
+        "state": "SPLIT"
+      }
+    ]
+    """
+    And key range moves in qdb should match json
+    """
+    [
+      {
+        "shard_id": "sh2",
+        "status": "PLANNED"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DETACH CONTROL POINT await_pid_cp;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges ORDER BY lower_bound;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [
+      {
+        "distribution_id":"ds1",
+        "lower_bound":"0",
+        "shard_id":"sh2",
+        "locked":"false"
+      }
+    ]
+    """
+
+  Scenario: redistribute is retryable after data copying fail when transferring in one go
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT copy_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 5000 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+
+  Scenario: redistribute is retryable after fail to delete data transfer transaction from QDB when transferring key range in one go
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_delete_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 5000 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "0"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
+    }]
+    """
+
+  Scenario: redistribute checks that key range is locked before deleting keys from source shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT after_copy_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE ALL;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .* is not locked
+    """
+
+  Scenario: redistribute checks that key range is locked before inserting keys to destination shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ATTACH CONTROL POINT before_insert_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value' /* __spqr__execute_on: sh1 */; 
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And I wait for coordinator "regress_coordinator_2" to take control    
+    And I delete key "/task_group_locks/tg1" from etcd
+    And I delete keys with prefix "/key_range_op_lock" from etcd
+
+    When I run SQL on host "coordinator2"
+    """
+    UNLOCK KEY RANGE ALL;
+    RETRY TASK GROUP tg1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator2" should match regexp
+    """
+    key range .* is not locked
+    """

@@ -1,0 +1,12 @@
+
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+message ACL {
+  string AIGrantee = 1;
+  string AIGrantor = 2;
+  uint64 AIPrivs = 3;
+}

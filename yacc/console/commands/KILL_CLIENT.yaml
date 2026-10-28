@@ -1,0 +1,22 @@
+name: KILL CLIENT
+snippet: admin_commands
+order: 1
+description: |
+  Terminates a specific client connection by its numeric ID.
+
+  Use SHOW CLIENTS to find client IDs.
+
+syntax: |
+  KILL CLIENT <client_id>
+
+parameters:
+  - name: client_id
+    description: Numeric identifier of the client connection to terminate
+
+examples:
+  - description: Kill a client connection
+    code: KILL CLIENT 42;
+
+related_commands:
+  - KILL BACKEND
+  - SHOW

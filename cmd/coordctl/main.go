@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/randutil"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,7 +41,7 @@ var rootCmd = &cobra.Command{
 var addRouterCmd = &cobra.Command{
 	Use:   "AddRouter",
 	Short: "add routers in topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -54,7 +55,7 @@ var addRouterCmd = &cobra.Command{
 		}
 
 		if routerID == "" {
-			routerID, err = util.RandomHex(6)
+			routerID, err = randutil.RandomHex(6)
 
 			if err != nil {
 				return err
@@ -84,7 +85,7 @@ var addRouterCmd = &cobra.Command{
 var listRouterCmd = &cobra.Command{
 	Use:   "ListRouters",
 	Short: "list running routers in current topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -120,7 +121,7 @@ var listRouterCmd = &cobra.Command{
 var addShardCmd = &cobra.Command{
 	Use:   "AddShard",
 	Short: "list running routers in current topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -134,7 +135,7 @@ var addShardCmd = &cobra.Command{
 		}
 
 		if shardID == "" {
-			shardID, err = util.RandomHex(6)
+			shardID, err = randutil.RandomHex(6)
 
 			if err != nil {
 				return err
@@ -142,11 +143,15 @@ var addShardCmd = &cobra.Command{
 		}
 
 		rCl := protos.NewShardServiceClient(cc)
+		shard, err := topology.DataShardToProto(topology.DataShardFromConfig(shardID, &config.Shard{
+			Type:     config.DataShard,
+			RawHosts: shardHosts,
+		}), false)
+		if err != nil {
+			return err
+		}
 		if _, err := rCl.AddDataShard(context.Background(), &protos.AddShardRequest{
-			Shard: &protos.Shard{
-				Id:    shardID,
-				Hosts: shardHosts,
-			},
+			Shard: shard,
 		}); err == nil {
 			fmt.Printf("-------------------------------------\n")
 			fmt.Printf("create shard with id: %s and hosts: %+v\n", shardID, shardHosts)
@@ -163,7 +168,7 @@ var addShardCmd = &cobra.Command{
 var listShardCmd = &cobra.Command{
 	Use:   "ListShards",
 	Short: "list running routers in current topology",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
@@ -181,7 +186,11 @@ var listShardCmd = &cobra.Command{
 			fmt.Printf("%d shards found\n", len(resp.Shards))
 
 			for _, shard := range resp.Shards {
-				fmt.Printf("router %s serving on host group %+v\n", shard.Id, shard.Hosts)
+				ds, err := topology.DataShardFromProto(shard)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("router %s serving on host group %+v\n", shard.Id, ds.HostsAZ())
 			}
 
 			fmt.Printf("-------------------------------------\n")

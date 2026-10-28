@@ -4,8 +4,37 @@ import (
 	"math"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb"
 )
+
+func TestKeyRangeVirtualRelationScanExtendedAllowsReplicatedDistribution(t *testing.T) {
+	keyRanges := []*kr.KeyRange{
+		{
+			ID:           "kr1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   kr.KeyRangeBound{int64(0)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		},
+	}
+	dists := []*distributions.Distribution{
+		{
+			Id:       "ds1",
+			ColTypes: []string{qdb.ColumnTypeInteger},
+		},
+		{
+			Id:       distributions.REPLICATED,
+			ColTypes: nil,
+		},
+	}
+
+	_, err := KeyRangeVirtualRelationScanExtended(keyRanges, nil, dists)
+	if err != nil {
+		t.Fatalf("KeyRangeVirtualRelationScanExtended() returned an error for the replicated distribution: %v", err)
+	}
+}
 
 func TestCalculateCoverage(t *testing.T) {
 	tests := []struct {

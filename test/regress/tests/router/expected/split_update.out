@@ -44,7 +44,8 @@ COPY r (i, j, t) FROM STDIN DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__allow_split_update TO off;
 UPDATE r SET i = 110 WHERE i = 10;
-ERROR:  error processing query 'UPDATE r SET i = 110 WHERE i = 10;': updating distribution column is not yet supported
+ERROR:  updating distribution column is not yet supported
+QUERY:  UPDATE r SET i = 110 WHERE i = 10;
 UPDATE r SET i = 110 WHERE i = 100;
 NOTICE: send query to shard(s) : sh2
 SET __spqr__engine_v2 TO on;
@@ -83,6 +84,13 @@ NOTICE: send query to shard(s) : sh3
  201 | 101 | cccc
 (2 rows)
 
+-- some errors
+UPDATE r SET i = j WHERE i = 10;
+ERROR:  expression is not const
+QUERY:  UPDATE r SET i = j WHERE i = 10;
+UPDATE r SET i = i + 1 WHERE i = 10;
+ERROR:  expression is not const
+QUERY:  UPDATE r SET i = i + 1 WHERE i = 10;
 BEGIN;
 SELECT * FROM r /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
@@ -103,6 +111,11 @@ UPDATE r SET i = 401 WHERE i = 10;
 NOTICE: send query to shard(s) : sh1
 NOTICE: send query to shard(s) : sh4
 NOTICE: send query to shard(s) : sh4
+UPDATE r SET i = i WHERE i = 10;
+NOTICE: send query to shard(s) : sh1
+SET __spqr__allow_split_update TO off;
+UPDATE r SET i = i WHERE i = 10;
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM r /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j  |  t   
@@ -119,8 +132,22 @@ NOTICE: send query to shard(s) : sh4
 (2 rows)
 
 COMMIT;
+-- same with __spqr__allow_split_update = off
+UPDATE r SET i = j WHERE i = 10;
+ERROR:  expression is not const
+QUERY:  UPDATE r SET i = j WHERE i = 10;
+UPDATE r SET i = i + 1 WHERE i = 10;
+ERROR:  expression is not const
+QUERY:  UPDATE r SET i = i + 1 WHERE i = 10;
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

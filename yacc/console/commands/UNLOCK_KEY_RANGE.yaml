@@ -1,4 +1,5 @@
 name: UNLOCK KEY RANGE
+snippet: key_range_commands
 description: |
   Releases the lock on a key range that was previously locked with LOCK KEY RANGE.
   After unlocking, queries routed to this key range will resume normal processing.
@@ -12,7 +13,7 @@ parameters:
 
 tips:
   - Always unlock key ranges after completing maintenance operations
-  - Forgetting to unlock will block queries routed to the key range
+  - Forgetting to unlock will cause queries routed to the key range to fail with an error
 
 related_commands:
   - LOCK KEY RANGE

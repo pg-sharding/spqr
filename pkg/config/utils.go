@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v2"
@@ -17,6 +18,8 @@ var (
 		cfg    any
 		reload func() (any, error)
 	}{}
+
+	mu = sync.RWMutex{}
 )
 
 type Config interface {
@@ -51,11 +54,7 @@ func ParseCfg(cfgPath string, cfg any) error {
 		}
 	}(file)
 
-	if err := initConfig(file, cfgPath, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return initConfig(file, cfgPath, cfg)
 }
 
 func LoadConfig(path string, cfg Config) (string, error) {
@@ -67,11 +66,7 @@ func LoadConfig(path string, cfg Config) (string, error) {
 			return err
 		}
 
-		if err := cfg.PostProcess(); err != nil {
-			return err
-		}
-
-		return nil
+		return cfg.PostProcess()
 	}
 
 	err := load(cfg)
@@ -79,18 +74,24 @@ func LoadConfig(path string, cfg Config) (string, error) {
 		return "", err
 	}
 
-	configBytes, err := json.MarshalIndent(&cfg, "", "  ")
+	configBytes, err := MarshalRedactedJSONIndent(cfg, "", "  ")
 	if err != nil {
 		return "", err
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
 	loadedConfigs[fmt.Sprintf("%s%s", path, reflect.TypeOf(cfg).String())] = struct {
 		cfg    any
 		reload func() (any, error)
 	}{
 		cfg: cfg,
 		reload: func() (any, error) {
-			newCfg := reflect.New(reflect.TypeOf(cfg).Elem()).Interface().(Config)
+			newCfgInterface := reflect.New(reflect.TypeOf(cfg).Elem()).Interface()
+			newCfg, ok := newCfgInterface.(Config)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert config type: expected Config, got %T", newCfgInterface)
+			}
 			err := load(newCfg)
 			return newCfg, err
 		},
@@ -100,6 +101,8 @@ func LoadConfig(path string, cfg Config) (string, error) {
 }
 
 func ConfigChanges() ([]ConfigFieldState, error) {
+	mu.RLock()
+	defer mu.RUnlock()
 	changes := make([]ConfigFieldState, 0)
 
 	for _, d := range loadedConfigs {

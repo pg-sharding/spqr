@@ -1,0 +1,18 @@
+\c spqr-console
+
+-- check that numeric type works
+CREATE DISTRIBUTION ds1 (integer);
+CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+
+CREATE DISTRIBUTED RELATION xx_insert_rel (a) IN ds1;
+
+\c regress
+
+CREATE TABLE xx_insert_rel (a int);
+
+SELECT __spqr__remote_execute('host=regress_router port=6432 user=regress dbname=regress', 'INSERT INTO xx_insert_rel (a) VALUES (1)');
+
+SELECT * FROM xx_insert_rel;
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;

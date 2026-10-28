@@ -7,15 +7,26 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
+type BasePlan struct {
+	H planopts.PlanOpts
+}
+
+func (b *BasePlan) Opts() *planopts.PlanOpts {
+	return &b.H
+}
+
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
+
+	Opts() *planopts.PlanOpts
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
@@ -29,7 +40,8 @@ type Plan interface {
 }
 
 type ScatterPlan struct {
-	Plan
+	BasePlan
+
 	SubPlan Plan
 
 	/* explicitly set-up link to next slice */
@@ -70,38 +82,38 @@ func (sp *ScatterPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
-	if msg, ok := s.OverwriteQuery[sh.Name]; ok {
+func (sp *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
+	if msg, ok := sp.OverwriteQuery[sh.Name]; ok {
 		return msg
 	}
 	return ""
 }
 
-func (s *ScatterPlan) Subplan() Plan {
-	return s.SubSlice
+func (sp *ScatterPlan) Subplan() Plan {
+	return sp.SubSlice
 }
 
-func (s *ScatterPlan) PrepareRunSlice(serv server.Server) error {
-	if s.PrepareRunF != nil {
+func (sp *ScatterPlan) PrepareRunSlice(_ server.Server) error {
+	if sp.PrepareRunF != nil {
 		/* prepare our slice */
-		if err := s.PrepareRunF(); err != nil {
+		if err := sp.PrepareRunF(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *ScatterPlan) RunSlice(serv server.Server) error {
-	if s.RunF == nil {
+func (sp *ScatterPlan) RunSlice(serv server.Server) error {
+	if sp.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return s.RunF(serv)
+	return sp.RunF(serv)
 }
 
 var _ Plan = &ScatterPlan{}
 
 type ModifyTable struct {
-	Plan
+	BasePlan
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
 }
@@ -110,39 +122,41 @@ func (mt *ModifyTable) ExecutionTargets() []kr.ShardKey {
 	return mt.ExecTargets
 }
 
-func (sp *ModifyTable) Stmt() lyx.Node {
-	return sp.stmt
+func (mt *ModifyTable) Stmt() lyx.Node {
+	return mt.stmt
 }
 
-func (sp *ModifyTable) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (mt *ModifyTable) SetStmt(n lyx.Node) {
+	mt.stmt = n
 }
 
-func (s *ModifyTable) GetGangMemberMsg(kr.ShardKey) string {
+func (mt *ModifyTable) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *ModifyTable) Subplan() Plan {
+func (mt *ModifyTable) Subplan() Plan {
 	return nil
 }
 
-func (s *ModifyTable) RunSlice(server.Server) error {
+func (mt *ModifyTable) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *ModifyTable) PrepareRunSlice(server.Server) error {
+func (mt *ModifyTable) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
-	Plan
+	BasePlan
 
 	/* Subplan */
 
 	SP   Plan
-	runF func(server.Server) error
+	RunF func(server.Server) error
+
+	OverWriteQuery string
 
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
@@ -153,37 +167,37 @@ func (sms *ShardDispatchPlan) ExecutionTargets() []kr.ShardKey {
 	return []kr.ShardKey{sms.ExecTarget}
 }
 
-func (sp *ShardDispatchPlan) Stmt() lyx.Node {
-	return sp.PStmt
+func (sms *ShardDispatchPlan) Stmt() lyx.Node {
+	return sms.PStmt
 }
 
-func (sp *ShardDispatchPlan) SetStmt(n lyx.Node) {
-	sp.PStmt = n
+func (sms *ShardDispatchPlan) SetStmt(n lyx.Node) {
+	sms.PStmt = n
 }
 
-func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
-	return ""
+func (sms *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
+	return sms.OverWriteQuery
 }
 
-func (s *ShardDispatchPlan) Subplan() Plan {
-	return s.SP
+func (sms *ShardDispatchPlan) Subplan() Plan {
+	return sms.SP
 }
 
-func (s *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
+func (sms *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
 	return nil
 }
 
-func (s *ShardDispatchPlan) RunSlice(serv server.Server) error {
-	if s.runF == nil {
+func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
+	if sms.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return s.runF(serv)
+	return sms.RunF(serv)
 }
 
 var _ Plan = &ShardDispatchPlan{}
 
 type RandomDispatchPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -193,34 +207,34 @@ func (rdp *RandomDispatchPlan) ExecutionTargets() []kr.ShardKey {
 	return rdp.ExecTargets
 }
 
-func (sp *RandomDispatchPlan) Stmt() lyx.Node {
-	return sp.stmt
+func (rdp *RandomDispatchPlan) Stmt() lyx.Node {
+	return rdp.stmt
 }
 
-func (sp *RandomDispatchPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (rdp *RandomDispatchPlan) SetStmt(n lyx.Node) {
+	rdp.stmt = n
 }
 
-func (s *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (rdp *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *RandomDispatchPlan) Subplan() Plan {
+func (rdp *RandomDispatchPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *RandomDispatchPlan) RunSlice(server.Server) error {
+func (rdp *RandomDispatchPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
+func (rdp *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
 var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
-	Plan
+	BasePlan
 
 	stmt lyx.Node
 
@@ -236,27 +250,27 @@ func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {
 	return vp.SubPlan.ExecutionTargets()
 }
 
-func (sp *VirtualPlan) Stmt() lyx.Node {
-	return sp.stmt
+func (vp *VirtualPlan) Stmt() lyx.Node {
+	return vp.stmt
 }
 
-func (sp *VirtualPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (vp *VirtualPlan) SetStmt(n lyx.Node) {
+	vp.stmt = n
 }
 
-func (s *VirtualPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (vp *VirtualPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *VirtualPlan) Subplan() Plan {
-	return s.SubPlan
+func (vp *VirtualPlan) Subplan() Plan {
+	return vp.SubPlan
 }
 
-func (s *VirtualPlan) RunSlice(server.Server) error {
+func (vp *VirtualPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *VirtualPlan) PrepareRunSlice(server.Server) error {
+func (vp *VirtualPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -264,47 +278,22 @@ var _ Plan = &VirtualPlan{}
 
 type DataRowFilter struct {
 	Plan
-
 	stmt        lyx.Node
-	FilterIndex uint
-	SubPlan     Plan
+	FilterShard kr.ShardKey
 }
 
-func (rf *DataRowFilter) ExecutionTargets() []kr.ShardKey {
-	return rf.SubPlan.ExecutionTargets()
+func (rf *DataRowFilter) Stmt() lyx.Node {
+	return rf.stmt
 }
 
-func (sp *DataRowFilter) Stmt() lyx.Node {
-	return sp.stmt
-}
-
-func (sp *DataRowFilter) SetStmt(n lyx.Node) {
-	sp.stmt = n
-}
-
-func (s *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
-	if s.SubPlan == nil {
-		return ""
-	}
-	return s.SubPlan.GetGangMemberMsg(sh)
-}
-
-func (s *DataRowFilter) Subplan() Plan {
-	return s.SubPlan.Subplan()
-}
-
-func (s *DataRowFilter) RunSlice(serv server.Server) error {
-	return s.SubPlan.RunSlice(serv)
-}
-
-func (s *DataRowFilter) PrepareRunSlice(serv server.Server) error {
-	return s.SubPlan.PrepareRunSlice(serv)
+func (rf *DataRowFilter) SetStmt(n lyx.Node) {
+	rf.stmt = n
 }
 
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -314,27 +303,27 @@ func (cs *CopyPlan) ExecutionTargets() []kr.ShardKey {
 	return cs.ExecTargets
 }
 
-func (sp *CopyPlan) Stmt() lyx.Node {
-	return sp.stmt
+func (cs *CopyPlan) Stmt() lyx.Node {
+	return cs.stmt
 }
 
-func (sp *CopyPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+func (cs *CopyPlan) SetStmt(n lyx.Node) {
+	cs.stmt = n
 }
 
-func (s *CopyPlan) GetGangMemberMsg(kr.ShardKey) string {
+func (cs *CopyPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
-func (s *CopyPlan) Subplan() Plan {
+func (cs *CopyPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *CopyPlan) RunSlice(server.Server) error {
+func (cs *CopyPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
-func (s *CopyPlan) PrepareRunSlice(server.Server) error {
+func (cs *CopyPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -389,7 +378,8 @@ func Combine(p1, p2 Plan) Plan {
 	switch v := p1.(type) {
 	case *DataRowFilter:
 		return &DataRowFilter{
-			SubPlan: Combine(v.SubPlan, p2),
+			Plan:        Combine(v.Plan, p2),
+			FilterShard: v.FilterShard,
 		}
 	}
 
@@ -399,7 +389,8 @@ func Combine(p1, p2 Plan) Plan {
 		p1, p2 = p2, p1
 	case *DataRowFilter:
 		return &DataRowFilter{
-			SubPlan: Combine(p1, v.SubPlan),
+			Plan:        Combine(p1, v.Plan),
+			FilterShard: v.FilterShard,
 		}
 	}
 

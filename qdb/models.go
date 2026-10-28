@@ -2,6 +2,7 @@ package qdb
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"time"
 
@@ -40,13 +41,11 @@ type MoveKeyRangeStatus string
 
 const (
 	MoveKeyRangePlanned              = MoveKeyRangeStatus("PLANNED")
+	MoveKeyRangeAwaited              = MoveKeyRangeStatus("AWAITED")
 	MoveKeyRangeLocked               = MoveKeyRangeStatus("LOCKED")
 	MoveKeyRangeDataMoved            = MoveKeyRangeStatus("DATA_MOVED")
 	MoveKeyRangeDataCoordMetaUpdated = MoveKeyRangeStatus("COORD_META_UPDATED")
 	MoveKeyRangeComplete             = MoveKeyRangeStatus("COMPLETE")
-
-	// Deprecated: use MoveKeyRangeLocked
-	MoveKeyRangeStarted = MoveKeyRangeStatus("STARTED")
 )
 
 type MoveKeyRange struct {
@@ -86,15 +85,22 @@ func (r Router) Addr() string {
 	return r.Address
 }
 
-type Shard struct {
-	ID       string   `json:"id"`
-	RawHosts []string `json:"hosts"` // format host:port:availability_zone
+type GenericOption struct {
+	Name  string
+	Value string
 }
 
-func NewShard(ID string, hosts []string) *Shard {
+type Shard struct {
+	ID       string          `json:"id"`
+	RawHosts []string        `json:"hosts"` // format host:port:availability_zone
+	Options  []GenericOption `json:"options,omitempty"`
+}
+
+func NewShard(id string, hosts []string, options []GenericOption) *Shard {
 	return &Shard{
-		ID:       ID,
+		ID:       id,
 		RawHosts: hosts,
+		Options:  options,
 	}
 }
 
@@ -105,6 +111,7 @@ var (
 	ColumnTypeInteger           = "integer"
 	ColumnTypeUinteger          = "uinteger"
 	ColumnTypeUUID              = "uuid"
+	ColumnTypeUUIDHashed        = "uuid hashed"
 )
 
 type TypedColRef struct {
@@ -128,6 +135,9 @@ type DistributedRelation struct {
 	SchemaName         string                 `json:"schema_name,omitempty"`
 	DistributionKey    []DistributionKeyEntry `json:"column_names"`
 	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
+
+	Version uint64    `json:"version,omitempty"`
+	ACL     []ACLItem `json:"acl,omitempty"`
 }
 
 func (r *DistributedRelation) QualifiedName() *rfqn.RelationFQN {
@@ -140,6 +150,9 @@ type Distribution struct {
 	Relations     map[string]*DistributedRelation `json:"relations"`
 	FQNRelations  map[string]*DistributedRelation `json:"fqn_relations,omitempty"`
 	UniqueIndexes map[string]*UniqueIndex         `json:"unique_indexes"`
+
+	Version uint64    `json:"version,omitempty"`
+	ACL     []ACLItem `json:"acl,omitempty"`
 }
 
 type ReferenceRelation struct {
@@ -147,7 +160,10 @@ type ReferenceRelation struct {
 	SchemaName            string            `json:"schema_name"`
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
-	ShardIds              []string          `json:"shard_ids"`
+	ShardIDs              []string          `json:"shard_ids"`
+
+	Version uint64    `json:"version,omitempty"`
+	ACL     []ACLItem `json:"acl,omitempty"`
 }
 
 type UniqueIndex struct {
@@ -156,6 +172,9 @@ type UniqueIndex struct {
 	ColumnNames    []string          `json:"column"`
 	ColTypes       []string          `json:"column_type"`
 	DistributionId string            `json:"distribution_id"`
+
+	Version uint64    `json:"version,omitempty"`
+	ACL     []ACLItem `json:"acl,omitempty"`
 }
 
 func NewDistribution(id string, coltypes []string) *Distribution {
@@ -279,12 +298,19 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 
 type TwoPCInfo struct {
 	Gid       string   `json:"gid"`
-	SHardsIds []string `json:"shard_ids"`
+	ShardsIDs []string `json:"shard_ids"`
 
 	State TwoPhaseTxState `json:"state"`
 
 	/* ephemeral part of state */
-	Locked bool `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+	Locked    bool      `json:"-"`
+}
+
+type ACLItem struct {
+	AIGrantee string `json:"ai_grantee"` /* ID that this item grants privs to */
+	AIGrantor string `json:"ai_grantor"` /* grantor of privs */
+	AIPrivs   uint64 `json:"ai_privs"`   /* privilege bits */
 }
 
 func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation, bool) {
@@ -295,4 +321,33 @@ func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation,
 
 	r, ok = d.FQNRelations[fqn.String()]
 	return r, ok
+}
+
+func (d *Distribution) Copy() *Distribution {
+	retDs := &Distribution{
+		ID:            d.ID,
+		ColTypes:      d.ColTypes,
+		Relations:     map[string]*DistributedRelation{},
+		FQNRelations:  map[string]*DistributedRelation{},
+		UniqueIndexes: map[string]*UniqueIndex{},
+	}
+	maps.Copy(retDs.Relations, d.Relations)
+	maps.Copy(retDs.FQNRelations, d.FQNRelations)
+	maps.Copy(retDs.UniqueIndexes, d.UniqueIndexes)
+	return retDs
+}
+
+func TwoPhaseTXStateFromString(status string) (TwoPhaseTxState, error) {
+	switch status {
+	case pgStatePlanned:
+		return TwoPhaseInitState, nil
+	case pgStateCommitting:
+		return TwoPhaseP1, nil
+	case pgStateCommitted:
+		return TwoPhaseP2, nil
+	case pgStateRejected:
+		return TwoPhaseP2Rejected, nil
+	default:
+		return TwoPhaseInitState, fmt.Errorf("unknown tx state: %s", status)
+	}
 }

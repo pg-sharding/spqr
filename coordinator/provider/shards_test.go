@@ -15,34 +15,34 @@ import (
 )
 
 var someShards = []*topology.DataShard{
-	{
-		ID: "id-first",
-		Cfg: &config.Shard{
-			RawHosts: []string{
-				"aboba:1337:kapusta",
-				"eshkere:228",
-			},
+	topology.DataShardFromConfig("id-first", &config.Shard{
+		RawHosts: []string{
+			"aboba:1337:kapusta",
+			"eshkere:228",
 		},
-	},
-	{
-		ID: "id-second",
-		Cfg: &config.Shard{
-			RawHosts: []string{
-				"goooal:1488:laooog",
-			},
+	}),
+	topology.DataShardFromConfig("id-second", &config.Shard{
+		RawHosts: []string{
+			"goooal:1488:laooog",
 		},
-	},
+	}),
+}
+
+func dataShardToProtoMust(shard *topology.DataShard) *proto.Shard {
+	protoShard, err := topology.DataShardToProto(shard, false)
+	if err != nil {
+		panic(err)
+	}
+	return protoShard
 }
 
 var someProtoShards = []*proto.Shard{
-	{
-		Id:    "id-first",
-		Hosts: []string{"aboba:1337", "eshkere:228"},
-	},
-	{
-		Id:    "id-second",
-		Hosts: []string{"goooal:1488"},
-	},
+	dataShardToProtoMust(topology.DataShardFromConfig("id-first", &config.Shard{
+		RawHosts: []string{"aboba:1337", "eshkere:228"},
+	})),
+	dataShardToProtoMust(topology.DataShardFromConfig("id-second", &config.Shard{
+		RawHosts: []string{"goooal:1488"},
+	})),
 }
 
 func TestListShards(t *testing.T) {

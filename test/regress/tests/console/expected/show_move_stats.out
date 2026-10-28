@@ -3,3 +3,9 @@ SHOW move_stats;
 -----------+------
 (0 rows)
 
+SHOW mean_key_range_lock_time;
+ mean_key_range_lock_time 
+--------------------------
+ 0s
+(1 row)
+

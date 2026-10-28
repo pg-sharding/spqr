@@ -6,24 +6,25 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type SchemaCache struct {
 	tableColumnsCache sync.Map
-	shardMapping      map[string]*config.Shard
+	tmgr              topology.TopologyMgr
 	be                *config.BackendRule
 
 	pool *pool.MultiDBPool
 }
 
-func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRule) *SchemaCache {
+func NewSchemaCache(tmgr topology.TopologyMgr, be *config.BackendRule) *SchemaCache {
 	poolSize := config.ValueOrDefaultInt(config.RouterConfig().MultiDBPoolSize, 5)
-	p := pool.NewMultiDBPool(shardMapping, be, poolSize)
+	p := pool.NewMultiDBPool(tmgr, be, poolSize)
 
 	return &SchemaCache{
-		shardMapping:      shardMapping,
+		tmgr:              tmgr,
 		pool:              p,
 		be:                be,
 		tableColumnsCache: sync.Map{},
@@ -36,7 +37,11 @@ func (c *SchemaCache) GetColumns(db string, rel *rfqn.RelationFQN) ([]string, er
 	}
 
 	if v, ok := c.tableColumnsCache.Load(rel.String()); ok {
-		return v.([]string), nil
+		columns, ok := v.([]string)
+		if ok {
+			return columns, nil
+		}
+		// Cache miss - treat as if not found and proceed to fetch
 	}
 
 	conn, err := c.pool.Connection(db)

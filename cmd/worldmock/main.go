@@ -22,10 +22,10 @@ var loglevel string
 
 var runCmd = &cobra.Command{
 	Use: "run",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		w := NewWorldMock(addr, port)
 
-		spqrlog.ReloadLogger("", loglevel, false)
+		spqrlog.ReloadLogger("", loglevel, false, false)
 
 		return w.Run()
 	},

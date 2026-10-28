@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -20,24 +21,25 @@ import (
 )
 
 type Conn struct {
-	beRule             *config.BackendRule
-	cfg                *config.Shard
-	name               string
-	dedicated          conn.DBInstance
-	ps                 shard.ParameterSet
-	backend_key_pid    uint32
-	backend_key_secret []byte
+	beRule           *config.BackendRule
+	cfg              *topology.DataShard
+	name             string
+	dedicated        conn.DBInstance
+	ps               shard.ParameterSet
+	backendKeyPid    uint32
+	backendKeySecret []byte
 
-	sync_in  int64
-	sync_out int64
+	syncIn  int64
+	syncOut int64
 
 	stale atomic.Bool
 
 	allocTime time.Time
+	lifetime  time.Duration
 
 	dataPending bool
 
-	tx_served int64
+	txServed int64
 
 	id string
 
@@ -84,7 +86,22 @@ func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor
 // Returns:
 // - error: An error if the connection could not be closed.
 func (sh *Conn) Close() error {
-	return sh.dedicated.Close()
+	err := sh.dedicated.Close()
+	if err != nil {
+		spqrlog.Zero.Error().
+			Uint("id", sh.ID()).
+			Err(err).
+			Int64("tx served", sh.TxServed()).
+			Str("hostname", sh.Instance().Hostname()).
+			Msg("closing backend connection")
+	} else {
+		spqrlog.Zero.Info().
+			Uint("id", sh.ID()).
+			Int64("tx served", sh.TxServed()).
+			Str("hostname", sh.Instance().Hostname()).
+			Msg("closing backend connection")
+	}
+	return err
 }
 
 // Instance returns the dedicated database instance associated with the Conn struct.
@@ -107,7 +124,7 @@ func (sh *Conn) Instance() conn.DBInstance {
 // - int64: The difference between sync_out and sync_in.
 // All callers are just comparing this to zero, except for SHOW utilities
 func (sh *Conn) Sync() int64 {
-	return sh.sync_out - sh.sync_in
+	return sh.syncOut - sh.syncIn
 }
 
 func (sh *Conn) DataPending() bool {
@@ -122,7 +139,7 @@ func (sh *Conn) DataPending() bool {
 // Returns:
 // - int64: The number of transactions served.
 func (sh *Conn) TxServed() int64 {
-	return sh.tx_served
+	return sh.txServed
 }
 
 // TODO : unit tests
@@ -154,8 +171,8 @@ func (sh *Conn) Cancel() error {
 	}()
 
 	msg := &pgproto3.CancelRequest{
-		ProcessID: sh.backend_key_pid,
-		SecretKey: sh.backend_key_secret,
+		ProcessID: sh.backendKeyPid,
+		SecretKey: sh.backendKeySecret,
 	}
 
 	spqrlog.Zero.Debug().
@@ -169,8 +186,7 @@ func (sh *Conn) Cancel() error {
 // CancellableIDs returns a single-elements list containing
 // shard connection cancel ID.
 func (sh *Conn) CancellableIDs() []uint32 {
-
-	return []uint32{sh.backend_key_pid}
+	return []uint32{sh.backendKeyPid}
 }
 
 // TODO : unit tests
@@ -189,16 +205,16 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 
 	switch query.(type) {
 	case *pgproto3.Query:
-		sh.sync_in++
+		sh.syncIn++
 	case *pgproto3.Sync:
-		sh.sync_in++
+		sh.syncIn++
 	default:
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("shard", sh.ID()).
 		Interface("query", query).
-		Int64("sync-in", sh.sync_in).
+		Int64("sync-in", sh.syncIn).
 		Msg("shard connection send message")
 	return sh.dedicated.Send(query)
 }
@@ -221,17 +237,17 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	switch v := msg.(type) {
 	case *pgproto3.ReadyForQuery:
 		sh.dataPending = false
-		sh.sync_out++
+		sh.syncOut++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 		if sh.status == txstatus.TXIDLE {
-			sh.tx_served++
+			sh.txServed++
 		}
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("shard", sh.ID()).
 		Interface("msg", msg).
-		Int64("sync-out", sh.sync_out).
+		Int64("sync-out", sh.syncOut).
 		Msg("shard connection received message")
 	return msg, nil
 }
@@ -265,7 +281,7 @@ func (sh *Conn) Name() string {
 //
 // Returns:
 // - *config.Shard: The shard configuration.
-func (sh *Conn) Cfg() *config.Shard {
+func (sh *Conn) Cfg() *topology.DataShard {
 	return sh.cfg
 }
 
@@ -287,8 +303,12 @@ func (sh *Conn) CreatedAt() time.Time {
 	return sh.allocTime
 }
 
+func (sh *Conn) ServerLifetime() time.Duration {
+	return sh.lifetime
+}
+
 func (sh *Conn) Pid() uint32 {
-	return sh.backend_key_pid
+	return sh.backendKeyPid
 }
 
 // ShardKeyName returns the name of the shard key.
@@ -385,7 +405,7 @@ func (sh *Conn) Params() shard.ParameterSet {
 func NewShardHostInstance(
 	key kr.ShardKey,
 	pgi conn.DBInstance,
-	cfg *config.Shard,
+	cfg *topology.DataShard,
 	beRule *config.BackendRule,
 	sp *startup.StartupParams) (shard.ShardHostInstance, error) {
 
@@ -394,13 +414,14 @@ func NewShardHostInstance(
 		name:      key.Name,
 		beRule:    beRule,
 		ps:        shard.ParameterSet{},
-		sync_in:   1, /* +1 for startup message */
-		sync_out:  0,
+		syncIn:    1, /* +1 for startup message */
+		syncOut:   0,
 		stale:     atomic.Bool{},
 		stmtDef:   map[uint64]*prepstatement.PreparedStatementDefinition{},
 		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},
 		dedicated: pgi,
 		allocTime: time.Now(),
+		lifetime:  beRule.ServerLifetime,
 	}
 
 	if dtSh.dedicated.Status() == conn.NotInitialized {
@@ -413,15 +434,15 @@ func NewShardHostInstance(
 	return dtSh, nil
 }
 
+// TODO : unit tests
+
 // Auth handles the authentication process for a shard connection.
 //
 // Parameters:
-//   - sm (*pgproto3.StartupMessage): The startup message for the connection.
+//   - sp (*pgproto3.StartupParams): The startup params for the connection. Currently, only search_path is supported.
 //
 // Returns:
 //   - error: An error if authentication fails.
-
-// TODO : unit tests
 func (sh *Conn) Auth(sp *startup.StartupParams) error {
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
@@ -431,6 +452,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
 			"spqrguard.prevent_distributed_table_modify": "off",
+			"spqrguard.prevent_reference_table_modify":   "off",
 		},
 	}
 
@@ -479,8 +501,8 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 					Msg("parameter status")
 			}
 		case *pgproto3.BackendKeyData:
-			sh.backend_key_pid = v.ProcessID
-			sh.backend_key_secret = v.SecretKey
+			sh.backendKeyPid = v.ProcessID
+			sh.backendKeySecret = v.SecretKey
 			spqrlog.Zero.Debug().
 				Uint32("process-id", v.ProcessID).
 				Bytes("secret-key", v.SecretKey).
@@ -592,11 +614,11 @@ func (sh *Conn) TxStatus() txstatus.TXStatus {
 // Returns:
 // - bool: true if the prepared statement exists, false otherwise.
 // - *shard.PreparedStatementDescriptor: the prepared statement descriptor, or nil if it does not exist.
-func (srv *Conn) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
-	if shardId != srv.ID() {
+func (sh *Conn) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	if shardId != sh.ID() {
 		return false, nil
 	}
-	rd, ok := srv.stmtDesc[hash]
+	rd, ok := sh.stmtDesc[hash]
 	return ok, rd
 }
 
@@ -610,13 +632,13 @@ func (srv *Conn) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstat
 //
 // Returns:
 // - None.
-func (srv *Conn) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
-	id := srv.ID()
+func (sh *Conn) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	id := sh.ID()
 	if shardId != id {
 		return spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "Cannot store stmt for shard \"%d\" in shard \"%d\"", shardId, id)
 	}
-	srv.stmtDef[hash] = def
-	srv.stmtDesc[hash] = rd
+	sh.stmtDef[hash] = def
+	sh.stmtDesc[hash] = rd
 	return nil
 }
 

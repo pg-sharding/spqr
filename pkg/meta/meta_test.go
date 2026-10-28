@@ -3,18 +3,24 @@ package meta_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
+	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
@@ -71,7 +77,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
@@ -86,7 +92,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -104,6 +110,98 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	assert.Nil(t, errKr)
 	assert.Equal(t, actualKr, expectedKr)
 }
+
+func TestCreateShardValidatesReachableHosts(t *testing.T) {
+	ctx := context.Background()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:      "sh-new",
+		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
+		Force:   true,
+	}
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(t, err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.NoError(t, err)
+
+	_, err = memqdb.GetShard(ctx, "sh-new")
+	assert.NoError(t, err)
+}
+
+func TestCreateShardRejectsUnreachableHosts(t *testing.T) {
+	ctx := context.Background()
+	addr := func() string {
+		const maxAttempts = 10
+		for i := 0; i < maxAttempts; i++ {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			assert.NoError(t, err)
+			candidate := listener.Addr().String()
+			_ = listener.Close()
+
+			conn, dialErr := net.DialTimeout("tcp", candidate, 100*time.Millisecond)
+			if dialErr != nil {
+				return candidate
+			}
+			_ = conn.Close()
+		}
+		t.Fatalf("failed to get an unreachable tcp address")
+		return ""
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:      "sh-bad",
+		Options: []spqrparser.GenericOption{{Name: "host", Arg: addr}},
+	}
+
+	memqdb, err := prepareDB(ctx)
+	assert.NoError(t, err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.ErrorContains(t, err, "not reachable")
+
+	_, err = memqdb.GetShard(ctx, "sh-bad")
+	assert.Error(t, err)
+}
+
+func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
+	ctx := context.Background()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	statement := spqrparser.ShardDefinition{
+		Id:      "sh-new",
+		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
+
+		Force: true,
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mngr := mockmgr.NewMockEntityMgr(ctrl)
+	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
+	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
+		assert.Equal(t, "sh-new", shard.ID)
+		assert.Equal(t, []config.Host{config.Host{Address: listener.Addr().String()}}, shard.HostsAZ())
+		return nil
+	})
+
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.NoError(t, err)
+}
+
 func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	ctx := context.Background()
 	statement := spqrparser.DistributionDefinition{
@@ -113,7 +211,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
@@ -121,7 +219,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 
 }
 
-func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
+func TestMoveKeyRangeReplyDoesntIncludeHint(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -133,10 +231,11 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	cl.EXPECT().Rule().Return((*config.FrontendRule)(nil)).AnyTimes()
 
 	mmgr.EXPECT().
-		Move(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange) error {
-			assert.Equal(t, "krid3", move.Krid)
-			assert.Equal(t, "sh2", move.ShardId)
+		Move(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange, icpCH icp.ICPContextHolder) error {
+			assert.Equal(t, "krid3", move.KeyRangeID)
+			assert.Equal(t, "sh2", move.ShardID)
+			assert.Equal(t, nil, icpCH)
 			return nil
 		})
 
@@ -158,14 +257,13 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false, nil)
 	assert.NoError(t, err)
 
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	_ = cli.ReplyTTS(tts)
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
-	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
 }
 
 func TestCreateReferenceRelation(t *testing.T) {
@@ -174,7 +272,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
@@ -198,9 +296,10 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh1", "sh2"},
+			ShardIDs:              []string{"sh1", "sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
+			ACL:                   []acl.ACLItem{},
 		}
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)
@@ -210,13 +309,13 @@ func TestCreateReferenceRelation(t *testing.T) {
 		ctx := context.TODO()
 		memqdb, err := prepareDbTestValidate(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
 
 		createCmd := &spqrparser.ReferenceRelationDefinition{
 			TableName: &rfqn.RelationFQN{
 				RelationName: "xtab",
 			},
-			ShardIds: []string{"sh2"},
+			ShardIDs: []string{"sh2"},
 		}
 		tupleslotExpected := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
@@ -235,9 +334,10 @@ func TestCreateReferenceRelation(t *testing.T) {
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
-			ShardIds:              []string{"sh2"},
+			ShardIDs:              []string{"sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
+			ACL:                   []acl.ACLItem{},
 		}
 		is.NoError(err)
 		is.Equal(relExpected, *relActual)
@@ -269,7 +369,7 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 
 	mmgr.EXPECT().
 		AlterDistributedRelationDistributionKey(gomock.Any(), "ds1", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, id string, rel *rfqn.RelationFQN, newKey []distributions.DistributionKeyEntry) error {
+		DoAndReturn(func(_ context.Context, _ string, rel *rfqn.RelationFQN, newKey []distributions.DistributionKeyEntry) error {
 			assert.Equal(t, "t", rel.RelationName)
 			assert.Len(t, newKey, 1)
 			assert.Equal(t, "siteid", newKey[0].Column)
@@ -290,7 +390,7 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, tts)
 }
@@ -331,7 +431,7 @@ func TestRenameDistributionColumnNotFound(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
 }
@@ -366,7 +466,108 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
+}
+
+func TestApplyXRecords(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false).Times(1).Return(nil)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
+		assert.NoError(err)
+
+		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
+		referenceRelation := &rrelation.ReferenceRelation{
+			RelationName: &rfqn.RelationFQN{
+				RelationName: "relation",
+				SchemaName:   "schema",
+			},
+			ShardIDs: []string{"sh1"},
+		}
+		mmgr.EXPECT().CreateReferenceRelation(gomock.Any(), referenceRelation, nil).Times(1).Return(nil)
+		createReferenceRelationXRecord, err := meta.MakeXRecord("CreateReferenceRelation", referenceRelation, nil)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, createReferenceRelationXRecord)
+		assert.NoError(err)
+	})
+
+	t.Run("invalid xrecord - arguments count mismatch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 3")
+	})
+
+	t.Run("invalid xrecord - argument type mismatch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "failed to decode argument 1 of AddDataShard")
+	})
+
+	t.Run("invalid xrecord - invalid method name", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("InvalidMethod", datashard, -1)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "unknown EntityMgr method")
+	})
 }

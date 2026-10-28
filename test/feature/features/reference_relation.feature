@@ -222,30 +222,6 @@ Feature: Reference relation test
       }
     ]
     """
-
-    When I run SQL on host "router"
-    """
-    set __spqr__auto_distribution=REPLICATED1;
-    """
-    Then command return code should be "1"
-    And command output should match regexp
-    """
-    SPQR invalid distribution 'REPLICATED1' for hint __spqr__auto_distribution
-    """
-
-    When I run SQL on host "router"
-    """
-    SHOW __spqr__auto_distribution;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly 
-    """
-    [
-      {
-        "__spqr__auto_distribution": "REPLICATED"
-      }
-    ]
-    """
   
   Scenario: Ref relation sync works
     When I run SQL on host "coordinator"
@@ -337,7 +313,7 @@ Feature: Reference relation test
   
     When I run SQL on host "shard1"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -346,7 +322,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard1"
     """
-    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -355,7 +331,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 69
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -364,7 +340,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -391,7 +367,7 @@ Scenario: Ref relation sync fails when reference relations are locked in spqrgua
     INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
     INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
     INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
-    INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (69, true);
+    INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (70, true);
     """
     Then command return code should be "0"
     
@@ -473,3 +449,198 @@ Scenario: Dropping shard from reference relation metadata works
         }
     ]
     """
+
+    Scenario: Ref relations are locked on sync
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    ATTACH CONTROL POINT copy_reference_relation_data_cp PANIC;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int, name text[]);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY[]::text[]);
+    INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
+    INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
+    INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "1"
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "name": 70,
+        "enabled": true
+    }]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT (SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations) = 't'::regclass::oid as check;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "check": true
+    }]
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings WHERE name = 70
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT reloid FROM spqr_metadata.spqr_transferred_reference_relations
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "router"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY['should fail']);
+    """
+    Then command return code should be "1"
+    And SQL error on host "router" should match regexp
+    """
+    unable to modify SPQR reference relation within read-only transaction
+    """
+
+Scenario: Ref relation sync fails when table does not exist on destination shard
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "shard1"
+    """
+    CREATE TABLE t(id int, name text[]);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY[]::text[]);
+    INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
+    INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
+    INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    relation t does not exist on the destination shard
+    """
+
+Scenario: Ref relation sync fails when table has constraints on not-yet-synced table
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    CREATE REFERENCE TABLE t2 ON sh1;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int, data text);
+    CREATE TABLE t2(id int PRIMARY KEY, data text);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    ALTER TABLE t ADD CONSTRAINT asd FOREIGN KEY (id) REFERENCES t2 (id);
+    INSERT INTO t2 (id, data) VALUES(1, 'a');
+    INSERT INTO t2 (id, data) VALUES(2, 'a');
+    INSERT INTO t2 (id, data) VALUES(3, 'a');
+    INSERT INTO t (id, data) VALUES(1, 'a');
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    ALTER TABLE t ADD CONSTRAINT asd FOREIGN KEY (id) REFERENCES t2 (id);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    found non.deferrable constraint or constraint referencing replicated relation not on shard: ..asd..
+    """
+
+Scenario: Ref relation sync fails when table has constraints on not-yet-synced table
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    CREATE REFERENCE TABLE t2 ON sh1;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int, data text);
+    CREATE TABLE t2(id int PRIMARY KEY, data text);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    ALTER TABLE t ADD CONSTRAINT asd FOREIGN KEY (id) REFERENCES t2 (id);
+    INSERT INTO t2 (id, data) VALUES(1, 'a');
+    INSERT INTO t2 (id, data) VALUES(2, 'a');
+    INSERT INTO t2 (id, data) VALUES(3, 'a');
+    INSERT INTO t (id, data) VALUES(1, 'a');
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    ALTER TABLE t ADD CONSTRAINT asd FOREIGN KEY (id) REFERENCES t2 (id);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t2 ON sh2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "0"

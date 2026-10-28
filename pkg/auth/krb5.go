@@ -28,33 +28,46 @@ const (
 	servicePrincipalProperty = "serviceprincipal"
 )
 
-func NewKerberosModule(base BaseAuthModule) *Kerberos {
+func NewKerberosModule(base BaseAuthModule) (*Kerberos, error) {
 	k := &Kerberos{
 		BaseAuthModule: base,
 	}
 	var kt *keytab.Keytab
 	var err error
 	if ktFileProp, ok := k.properties[keyTabFileProperty]; ok {
-		ktFile, _ := ktFileProp.(string)
+		ktFile, ok := ktFileProp.(string)
+		if !ok {
+			return nil, fmt.Errorf("keytabfile property is not a string")
+		}
 		kt, err = keytab.Load(ktFile)
 		if err != nil {
-			panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
+			return nil, fmt.Errorf("failed to load keytab file: %w", err)
 		}
 	} else if ktDataProp, ok := k.properties[keyTabDataProperty]; ok {
-		ktData := ktDataProp.(string)
-		b, _ := hex.DecodeString(ktData)
+		ktData, ok := ktDataProp.(string)
+		if !ok {
+			return nil, fmt.Errorf("keytabdata property is not a string")
+		}
+		b, err := hex.DecodeString(ktData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode keytab data: %w", err)
+		}
 		kt = keytab.New()
 		err = kt.Unmarshal(b)
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("failed to unmarshal keytab: %w", err)
 		}
 	}
 	k.kt = kt
 	if spProp, ok := k.properties[servicePrincipalProperty]; ok {
-		k.servicePrincipal = spProp.(string)
+		servicePrincipal, ok := spProp.(string)
+		if !ok {
+			return nil, fmt.Errorf("serviceprincipal property is not a string")
+		}
+		k.servicePrincipal = servicePrincipal
 	}
 
-	return k
+	return k, nil
 }
 
 func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err error) {
@@ -101,7 +114,10 @@ func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err
 	}
 	if authed {
 		ctx := st.Context()
-		id := ctx.Value(CtxCredential).(*credentials.Credentials)
+		id, ok := ctx.Value(CtxCredential).(*credentials.Credentials)
+		if !ok {
+			return nil, fmt.Errorf("context credential is not of type *credentials.Credentials")
+		}
 		return id, nil
 	} else {
 		errText := "Kerberos authentication failed"

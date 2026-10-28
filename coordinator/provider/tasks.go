@@ -47,12 +47,16 @@ func (t *TasksServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelec
 }
 
 func (t *TasksServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropMoveTask(ctx, req.ID)
+	return nil, t.impl.DropMoveTask(ctx, req.ID, false)
+}
+
+func (t *TasksServer) DropMoveTaskV2(ctx context.Context, req *protos.MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, t.impl.DropMoveTask(ctx, req.ID, req.Cascade)
 }
 
 // Deprecated
 func (t *TasksServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropMoveTask(ctx, req.ID)
+	return nil, t.impl.DropMoveTask(ctx, req.ID, false)
 }
 
 func (t *TasksServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
@@ -93,15 +97,15 @@ func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTa
 }
 
 func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.RetryMoveTaskGroup(ctx, req.ID, false)
+	return nil, t.impl.RetryMoveTaskGroup(ctx, req.ID, false, nil)
 }
 
 func (t TasksServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, t.impl.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
+	return nil, t.impl.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait, nil)
 }
 
 func (t TasksServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.StopMoveTaskGroup(ctx, req.ID)
+	return nil, t.impl.StopMoveTaskGroup(ctx, req.ID, req.Immediate)
 }
 
 func (t TasksServer) GetMoveTaskGroupBoundsCache(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupBoundsCache, error) {

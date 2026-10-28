@@ -1,10 +1,13 @@
 package rulerouter
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -20,23 +23,24 @@ type RoutePool interface {
 		frRule *config.FrontendRule,
 	) (*route.Route, error)
 
-	Obsolete(key route.Key) *route.Route
+	Obsolete(key route.Key)
+	GracShutdown()
 	Shutdown() error
 	NotifyRoutes(func(route *route.Route) (bool, error)) error
 }
 
 type RoutePoolImpl struct {
 	/*  route.Key -> *route.Route */
-	pool         sync.Map
-	shardMapping map[string]*config.Shard
+	pool sync.Map
+	tmgr topology.TopologyMgr
 }
 
 var _ RoutePool = &RoutePoolImpl{}
 
-func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
+func NewRouterPoolImpl(tmgr topology.TopologyMgr) *RoutePoolImpl {
 	return &RoutePoolImpl{
-		shardMapping: shardMapping,
-		pool:         sync.Map{},
+		tmgr: tmgr,
+		pool: sync.Map{},
 	}
 }
 
@@ -51,8 +55,12 @@ func (r *RoutePoolImpl) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) error {
 	var err error
 
-	r.pool.Range(func(key, value any) bool {
-		rt := value.(*route.Route)
+	r.pool.Range(func(_, value any) bool {
+		rt, ok := value.(*route.Route)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected route pool value type")
+			return true
+		}
 
 		if cont, err := cb(rt); err != nil {
 			spqrlog.Zero.Info().
@@ -68,20 +76,35 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) 
 }
 
 // TODO : unit tests
-func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
+func (r *RoutePoolImpl) Obsolete(key route.Key) {
 	ret, ok := r.pool.LoadAndDelete(key)
 	if ok {
-		return ret.(*route.Route)
-	}
+		rt, ok := ret.(*route.Route)
+		if !ok {
+			return
+		}
 
-	return nil
+		/* Stop watchdogs, if any */
+		rt.MultiShardPool().StopCacheWatchdog()
+		/* XXX: do not .Close() or .Shutdown() client pool here, we
+		* do not want to reset still active client connections */
+		rt.ClientPool().GracShutdown()
+	}
+}
+
+func (r *RoutePoolImpl) GracShutdown() {
+	/* nop */
 }
 
 // TODO : unit tests
 func (r *RoutePoolImpl) Shutdown() error {
 
-	r.pool.Range(func(k, v any) bool {
-		rt := v.(*route.Route)
+	r.pool.Range(func(_, v any) bool {
+		rt, ok := v.(*route.Route)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected route pool value type")
+			return true
+		}
 		go func() {
 			_ = rt.NotifyClients(func(cl client.ClientInfo) error {
 				return cl.Shutdown()
@@ -99,11 +122,15 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	frRule *config.FrontendRule) (*route.Route, error) {
 
 	if nroute, ok := r.pool.Load(key); ok {
-		spqrlog.Zero.Info().
+		rt, ok := nroute.(*route.Route)
+		if !ok {
+			return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "internal: unexpected route type %T", nroute)
+		}
+		spqrlog.Zero.Debug().
 			Str("user", key.Usr()).
 			Str("db", key.DB()).
-			Msg("match route")
-		return nroute.(*route.Route), nil
+			Msg("match route OK")
+		return rt, nil
 	}
 
 	spqrlog.Zero.Debug().
@@ -114,24 +141,31 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	nroute := route.NewRoute(
 		beRule,
 		frRule,
-		r.shardMapping,
+		r.tmgr,
 		client.DefaultClientDeadCheckInterval)
 
 	act, loaded := r.pool.LoadOrStore(key, nroute)
 
-	if !loaded {
+	if loaded {
 		// conflict, release goroutines
-		nroute.MultiShardPool().StopCacheWatchdog()
-		_ = nroute.ClientPool().Shutdown()
+		_ = nroute.Close()
 	}
-	return act.(*route.Route), nil
+	rt, ok := act.(*route.Route)
+	if !ok {
+		return nil, fmt.Errorf("internal: unexpected route type %T", act)
+	}
+	return rt, nil
 }
 
 // TODO : unit tests
 func (r *RoutePoolImpl) ForEachPool(cb func(pool.Pool) error) error {
 
-	r.pool.Range(func(k, v any) bool {
-		route := v.(*route.Route)
+	r.pool.Range(func(_, v any) bool {
+		route, ok := v.(*route.Route)
+		if !ok {
+			spqrlog.Zero.Error().Msg("unexpected route pool value type")
+			return true
+		}
 		_ = route.ForEachPool(cb)
 		return true
 	})

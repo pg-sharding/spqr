@@ -88,7 +88,7 @@ func (c *DropCommand[T]) Undo() error {
 	return nil
 }
 
-func NewAppendCommand[T any](m []T, el T) *AppendCommand[T] {
+func NewAppendCommand[T any](m []T, _ T) *AppendCommand[T] {
 	return &AppendCommand[T]{m: m}
 }
 

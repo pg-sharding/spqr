@@ -3,45 +3,47 @@ package kr
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
 type SplitKeyRange struct {
-	Bound     [][]byte // KeyRangeBound raw
-	SourceID  string
-	Krid      string
-	SplitLeft bool
+	Bound      [][]byte // KeyRangeBound raw
+	SourceID   string
+	KeyRangeID string
+	SplitLeft  bool
 }
 
 type MoveKeyRange struct {
-	ShardId string
-	Krid    string
+	ShardID    string
+	KeyRangeID string
+	MetaOnly   bool
 }
 
 type UniteKeyRange struct {
-	BaseKeyRangeId      string
-	AppendageKeyRangeId string
+	BaseKeyRangeID      string
+	AppendageKeyRangeID string
 }
 
 type BatchMoveKeyRange struct {
-	TaskGroupId string // if empty, will be a random uuid. Otherwise user-input
-	KeyRangeId  string // KeyRangeId is the source key range id
-	ShardId     string // ShardId is the destination shard id
+	TaskGroupID string // if empty, will be a random uuid. Otherwise user-input
+	KeyRangeID  string // KeyRangeId is the source key range id
+	ShardID     string // ShardId is the destination shard id
 	Limit       int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
 	Can be either negative, in which case the whole key range will be moved,
 	or non-negative, where circa specified amount of keys will be moved. */
-	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.
-	DestKrId  string /* DestKrId is the destination key range id.
+	BatchSize      int    // BatchSize is the amount of keys to be transferred in every transaction.
+	DestKeyRangeID string /* DestKeyRangeID is the destination key range id.
 	If the whole key range is being moved, it's still renamed. */
 
 	Type tasks.SplitType // Type is the tasks.SplitType value specifying if leftmost or rightmost portion of the key range will be moved
 }
 
 type RedistributeKeyRange struct {
-	TaskGroupId string // optional id.
-	KrId        string // KrId is the source key range id
-	ShardId     string // ShardId is the destination shard id
+	TaskGroupID string // optional id.
+	KeyRangeID  string // KeyRangeID is the source key range id
+	ShardID     string // ShardId is the destination shard id
 	BatchSize   int    // BatchSize is the amount of keys to be transferred in every transaction.
 	Check       bool   // if Check is set, we perform a pre-run check for the ability to redistribute
 	Apply       bool   // if Apply is not set, command will be a dry-run
@@ -49,7 +51,7 @@ type RedistributeKeyRange struct {
 }
 
 type KeyRangeMgr interface {
-	GetKeyRange(ctx context.Context, krId string) (*KeyRange, error)
+	GetKeyRange(ctx context.Context, krid string) (*KeyRange, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	ListKeyRangeLocks(ctx context.Context) ([]string, error)
@@ -59,10 +61,10 @@ type KeyRangeMgr interface {
 	UnlockKeyRange(ctx context.Context, krid string) error
 	Split(ctx context.Context, split *SplitKeyRange) error
 	Unite(ctx context.Context, unite *UniteKeyRange) error
-	Move(ctx context.Context, move *MoveKeyRange) error
+	Move(ctx context.Context, move *MoveKeyRange, ch icp.ICPContextHolder) error
 	DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error)
 	DropKeyRangeAll(ctx context.Context) error
-	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error
-	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
-	RenameKeyRange(ctx context.Context, krId, krIdNew string) error
+	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error
+	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange, ch icp.ICPContextHolder) error
+	RenameKeyRange(ctx context.Context, krid, kridNew string) error
 }

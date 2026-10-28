@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
@@ -50,6 +51,7 @@ type ShardHostCtl interface {
 	InstanceHostname() string
 
 	CreatedAt() time.Time
+	ServerLifetime() time.Duration
 
 	Pid() uint32
 	Usr() string
@@ -94,7 +96,10 @@ type ShardHostIterator interface {
 }
 
 /* util function to deploy begin on shard. Used by executor and tx expand and 2pc commit. */
-func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx txstatus.TXStatus) (txstatus.TXStatus, error) {
+func DeployTxOnShard(sh ShardHostInstance,
+	qry pgproto3.FrontendMessage,
+	deployContext string,
+	expTx txstatus.TXStatus) (txstatus.TXStatus, error) {
 	if err := sh.Send(qry); err != nil {
 		return txstatus.TXERR, err
 	}
@@ -103,8 +108,15 @@ func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx t
 	if err != nil {
 		return txstatus.TXERR, err
 	}
-	if _, ok := msg.(*pgproto3.CommandComplete); !ok {
-		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+v", msg)
+
+	switch q := msg.(type) {
+	case *pgproto3.CommandComplete:
+		// ok
+		break
+	case *pgproto3.ErrorResponse:
+		return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "error while deploying shard: %s-%s", deployContext, q.Message).Detail(q.Detail).Context(q.Where)
+	default:
+		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+T", msg)
 	}
 
 	/* we expect command complete and rfq as begin response */
@@ -114,7 +126,7 @@ func DeployTxOnShard(sh ShardHostInstance, qry pgproto3.FrontendMessage, expTx t
 	}
 	q, ok := msg.(*pgproto3.ReadyForQuery)
 	if !ok || q.TxStatus != byte(expTx) {
-		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+v", msg)
+		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+T", msg)
 	}
 	return txstatus.TXStatus(q.TxStatus), nil
 }

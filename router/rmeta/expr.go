@@ -28,7 +28,10 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 		return nil, err
 	}
 
-	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	if err != nil {
+		return nil, err
+	}
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -36,7 +39,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	}
 
 	var rec func(lvl int) error
-	var p plan.Plan = nil
+	var p plan.Plan
 
 	compositeKey := make([]any, len(relation.DistributionKey))
 
@@ -149,35 +152,27 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, error) {
 	var p plan.Plan
 	/**/
-	for qualName := range rm.Rels {
-		// TODO: check by whole RFQN
-		ds, err := rm.GetRelationDistribution(ctx, &qualName)
-		if err != nil {
-			return nil, err
-		}
-
-		if ds.Id == distributions.REPLICATED {
-			var shs []kr.ShardKey
-			if IsRelationCatalog(&qualName) {
-				shs = nil
-			} else {
-				r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
-				if err != nil {
-					return nil, err
-				}
-				shs = r.ListStorageRoutes()
+	for qualName := range rm.RefRels {
+		var shs []kr.ShardKey
+		if IsRelationCatalog(&qualName) {
+			shs = nil
+		} else {
+			r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
+			if err != nil {
+				return nil, err
 			}
-
-			p = plan.Combine(p, &plan.RandomDispatchPlan{
-				ExecTargets: shs,
-			})
+			shs = r.ListStorageRoutes()
 		}
+
+		p = plan.Combine(p, &plan.RandomDispatchPlan{
+			ExecTargets: shs,
+		})
 	}
 
 	return p, nil
 }
 
-func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
+func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA, shs []kr.ShardKey) (plan.Plan, error) {
 	var queryPlan plan.Plan
 	/*
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
@@ -197,20 +192,24 @@ func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA
 		queryPlan = plan.Combine(queryPlan, tmp)
 	}
 
+	/* XXX: fix joins for distributed relations */
+	/* XXX: Exclude rw queries */
+	if queryPlan == nil && len(rs) != 0 && !rm.HasWriteTargets {
+		queryPlan = &plan.ScatterPlan{
+			ExecTargets: shs,
+		}
+	}
+
 	return queryPlan, nil
 }
 
 func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*distributions.DistributedRelation, error) {
 	var rs []*distributions.DistributedRelation
-	for qualName := range rm.Rels {
+	for qualName := range rm.RoutableRels {
 
-		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)
 		if err != nil {
 			return nil, err
-		}
-		if ds.Id == distributions.REPLICATED {
-			continue
 		}
 
 		relation, exists := ds.TryGetRelation(&qualName)
@@ -224,21 +223,29 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	return rs, nil
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(
+	resolvedRelation *rfqn.RelationFQN,
+	colname string,
+	expr lyx.Node) (bool, error) {
+
+	if rm.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return false, nil
+	}
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
+
 	if off == -1 {
 		// column not from distr key
-		return nil
+		return false, nil
 	}
 
-	for _, expr := range exprs {
-		/* simple key-value pair */
-		if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-			return err
-		}
+	if rm.MetaCache.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+		// reference relation, skip
+		return false, nil
 	}
 
-	return nil
+	/* simple key-value pair */
+	return true, rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr)
 }
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
@@ -253,15 +260,22 @@ func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 	}
 }
 
-func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
-	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
+func (rm *RoutingMetadataContext) ProcessConstExpr(
+	alias, colname string,
+	expr lyx.Node) (bool, error) {
+	var resolvedRelation *rfqn.RelationFQN
+	var err error
+
+	resolvedRelation, err = rm.ResolveRelationByAlias(alias, colname)
 
 	if err != nil {
 		// failed to resolve relation, skip column
-		return nil
+		return false, err
 	}
-
-	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr})
+	if resolvedRelation == nil {
+		return false, nil
+	}
+	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, expr)
 }
 
 func (rm *RoutingMetadataContext) ComputeRoutingExpr(

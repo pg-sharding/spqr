@@ -2,9 +2,16 @@ package meta
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -28,13 +35,18 @@ import (
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
+	"github.com/pg-sharding/spqr/pkg/router_util"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/virtual"
 
 	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -43,10 +55,12 @@ import (
 )
 
 const (
-	defaultBatchSize = 500
+	defaultBatchSize  = 500
+	pingRouterTimeout = 2 * time.Second
 )
 
 type EntityMgr interface {
+	qdb.MigrationJournal
 	kr.KeyRangeMgr
 	topology.RouterMgr
 	topology.ShardsMgr
@@ -64,15 +78,50 @@ type EntityMgr interface {
 	Cache() *cache.SchemaCache
 
 	StartupFinished() bool
+
+	TaskWorkersID() []string
+	TaskState(id string) (*transferworker.TaskGroupWorkerState, error)
 }
 
 // RouterConnector is an optional interface that EntityMgr can implement
 // to provide gRPC connections to routers for querying their status.
 type RouterConnector interface {
-	GetRouterConn(r *topology.Router) (*grpc.ClientConn, error)
+	GetRouterConn(r *topology.Router) (*grpc.ClientConn, func(), error)
 }
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
+
+func keyRangeExists(ctx context.Context, mngr EntityMgr, id string) (bool, error) {
+	_, err := mngr.GetKeyRange(ctx, id)
+	if err != nil {
+		if keyRangeDoesNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func objectDoesNotExist(err error) bool {
+	var spqrErr *spqrerror.SpqrError
+	return errors.As(err, &spqrErr) && spqrErr.ErrorCode == spqrerror.SPQR_OBJECT_NOT_EXIST
+}
+
+func keyRangeDoesNotExist(err error) bool {
+	if objectDoesNotExist(err) {
+		return true
+	}
+
+	// Key-range backends currently use the generic key-range error code for a
+	// missing object, so preserve their specific messages without hiding other
+	// storage errors reported under the same code.
+	var spqrErr *spqrerror.SpqrError
+	if !errors.As(err, &spqrErr) || spqrErr.ErrorCode != spqrerror.SPQR_KEYRANGE_ERROR {
+		return false
+	}
+	return strings.HasPrefix(err.Error(), "no key range found at ") ||
+		strings.HasPrefix(err.Error(), "there is no key range ")
+}
 
 // TODO : unit tests
 
@@ -80,16 +129,17 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - dstmt (spqrparser.Statement): The statement to be processed.
+// - dstmt (spqrparser.DropSelector): The statement to be processed.
 // - isCascade (bool): Indicates whether cascade is enabled.
+// - ifExists (bool): Indicates whether a missing object should be ignored.
 // - mngr (EntityMgr): The entity manager handling the drop operation.
 //
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
-	dstmt spqrparser.Statement,
-	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	dstmt spqrparser.DropSelector,
+	isCascade, ifExists bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -114,6 +164,19 @@ func processDrop(ctx context.Context,
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
+			if ifExists {
+				exists, err := keyRangeExists(ctx, mngr, stmt.KeyRangeID)
+				if err != nil {
+					return nil, err
+				}
+				if !exists {
+					return &tupleslot.TupleTableSlot{
+						Desc: engine.GetVPHeader("key_range_id"),
+						Raw:  [][][]byte{{[]byte(stmt.KeyRangeID)}},
+					}, nil
+				}
+			}
+
 			tranMngr := NewTranEntityManager(mngr)
 			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
 			if err != nil {
@@ -130,22 +193,37 @@ func processDrop(ctx context.Context,
 		}
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
-		relName := &rfqn.RelationFQN{
+		relationFQN := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
 
-		seqs, err := mngr.ListRelationSequences(ctx, relName)
-		if err != nil {
-			return nil, err
-		}
-		for _, seq := range seqs {
-			if err := mngr.DropSequence(ctx, seq, true); err != nil {
-				return nil, err
+		if ifExists {
+			if _, err := mngr.GetReferenceRelation(ctx, relationFQN); err != nil {
+				if !objectDoesNotExist(err) {
+					return nil, err
+				}
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("relation_name"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
 			}
 		}
 
-		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
+		seqs, err := mngr.ListRelationSequences(ctx, relationFQN)
+		if err != nil {
 			return nil, err
+		}
+
+		if err := mngr.DropReferenceRelation(ctx, relationFQN); err != nil {
+			if !ifExists || !objectDoesNotExist(err) {
+				return nil, err
+			}
+		} else {
+			for _, seq := range seqs {
+				if err := mngr.DropSequence(ctx, seq, true); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -159,7 +237,21 @@ func processDrop(ctx context.Context,
 		return tts, nil
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
+		var ds *distributions.Distribution
 		var err error
+
+		if stmt.ID != "*" {
+			ds, err = mngr.GetDistribution(ctx, stmt.ID)
+			if err != nil {
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("distribution_id"),
+					Raw:  [][][]byte{{[]byte(stmt.ID)}},
+				}, nil
+			}
+		}
 
 		if stmt.ID == "*" {
 
@@ -188,10 +280,6 @@ func processDrop(ctx context.Context,
 		}
 
 		if stmt.ID != "*" {
-			ds, err := mngr.GetDistribution(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
 			if len(ds.ListRelations()) != 0 && !isCascade {
 				return nil, spqrerror.Newf(
 					spqrerror.SPQR_INVALID_REQUEST,
@@ -214,7 +302,9 @@ func processDrop(ctx context.Context,
 			}
 
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
-				return nil, err
+				if !ifExists || !objectDoesNotExist(err) {
+					return nil, err
+				}
 			}
 
 			tts := &tupleslot.TupleTableSlot{
@@ -237,7 +327,10 @@ func processDrop(ctx context.Context,
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.ListRelations()) != 0 && !isCascade {
-					return nil, spqrerror.NewWithHint(spqrerror.SPQR_INVALID_REQUEST, fmt.Sprintf("cannot drop distribution %s because there are relations attached to it", ds.Id), "HINT: Use DROP ... CASCADE to detach relations automatically.")
+					return nil,
+						spqrerror.
+							Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it", ds.Id).
+							Hint("Use DROP ... CASCADE to detach relations automatically.")
 				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
@@ -360,12 +453,17 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("redistribute_task_id"),
 		}
 		for _, task := range tasks {
-			if task.ID == stmt.ID {
-				if err := mngr.DropRedistributeTask(ctx, stmt.ID, isCascade); err != nil {
+			if task.ID == stmt.ID || stmt.ID == "*" {
+				if err := mngr.DropRedistributeTask(ctx, task.ID, isCascade); err != nil {
+					if stmt.ID == "*" && errors.Is(err, spqrerror.RedistributeTaskDependentObjectError{}) {
+						continue
+					}
 					return nil, err
 				}
-				tts.WriteDataRow(stmt.ID)
-				break
+				tts.WriteDataRow(task.ID)
+				if stmt.ID != "*" {
+					break
+				}
 			}
 		}
 		return tts, nil
@@ -378,7 +476,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("move_task_id"),
 		}
 		if task != nil {
-			if err = mngr.DropMoveTask(ctx, task.ID); err != nil {
+			if err = mngr.DropMoveTask(ctx, task.ID, isCascade); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(task.ID)
@@ -479,20 +577,36 @@ func createNonReplicatedDistribution(ctx context.Context,
 
 // TODO : unit tests
 func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrparser.ReferenceRelationDefinition) (*tupleslot.TupleTableSlot, error) {
+	if stmt.IfNotExists {
+		relation, err := mngr.GetReferenceRelation(ctx, stmt.TableName)
+		if err == nil {
+			return &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("create reference table"),
+				Raw: [][][]byte{
+					{fmt.Appendf(nil, "table    -> %s", relation.QualifiedName())},
+					{fmt.Appendf(nil, "shard id -> %s", strings.Join(relation.ShardIDs, ","))},
+				},
+			}, nil
+		}
+		if !objectDoesNotExist(err) {
+			return nil, err
+		}
+	}
+
 	r := &rrelation.ReferenceRelation{
 		RelationName:  stmt.TableName,
 		SchemaVersion: 1,
-		ShardIds:      stmt.ShardIds,
+		ShardIDs:      stmt.ShardIDs,
 	}
 
-	if len(stmt.ShardIds) == 0 {
+	if len(stmt.ShardIDs) == 0 {
 		// default is all shards
 		shs, err := mngr.ListShards(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for _, sh := range shs {
-			r.ShardIds = append(r.ShardIds, sh.ID)
+			r.ShardIDs = append(r.ShardIDs, sh.ID)
 		}
 	}
 
@@ -508,7 +622,7 @@ func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrpars
 				fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
 			},
 			{
-				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
+				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIDs, ",")),
 			},
 		},
 	}
@@ -536,6 +650,18 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {
 			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
+		}
+		if stmt.IfNotExists {
+			if _, err := mngr.GetDistribution(ctx, stmt.ID); err == nil {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add distribution"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "distribution id -> %s", stmt.ID)},
+					},
+				}, nil
+			} else if !objectDoesNotExist(err) {
+				return nil, err
+			}
 		}
 		if stmt.Replicated {
 			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
@@ -571,8 +697,22 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 	case *spqrparser.KeyRangeDefinition:
+		if stmt.IfNotExists {
+			keyRange, err := mngr.GetKeyRange(ctx, stmt.KeyRangeID)
+			if err == nil {
+				return &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add key range"),
+					Raw: [][][]byte{
+						{fmt.Appendf(nil, "bound -> %s", keyRange.SendRaw()[0])},
+					},
+				}, nil
+			}
+			if !keyRangeDoesNotExist(err) {
+				return nil, err
+			}
+		}
 		tranMngr := NewTranEntityManager(mngr)
-		createdKr, err := createKeyRange(ctx, tranMngr, stmt)
+		createdKr, err := createKeyRange(ctx, tranMngr, stmt, true)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return nil, err
@@ -584,12 +724,46 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			},
 		}
 		return tts, nil
+	case *spqrparser.KeyRangesForDistributionDefinition:
+		tranMngr := NewTranEntityManager(mngr)
+		createdKrs, err := createKeyRangesForDistribution(ctx, tranMngr, stmt)
+		if err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("add key range"),
+		}
+
+		for _, createdKr := range createdKrs {
+			tts.WriteDataRow(
+				fmt.Sprintf("bound -> %s", createdKr.SendRaw()[0]),
+			)
+		}
+
+		return tts, nil
 	case *spqrparser.ShardDefinition:
-		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
-			RawHosts: stmt.Hosts,
-			Type:     config.DataShard,
-		})
-		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
+		_, err := mngr.GetShard(ctx, stmt.Id)
+		if err == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "shard with id %s already exists", stmt.Id)
+		}
+
+		err = spqrerror.CleanGrpcError(err)
+		var spErr *spqrerror.SpqrError
+		if !errors.As(err, &spErr) || spErr.ErrorCode != spqrerror.SPQR_NO_DATASHARD {
+			return nil, err
+		}
+
+		options, err := topology.OptionsFromSQL(stmt.Options)
+		if err != nil {
+			return nil, err
+		}
+		dataShard := topology.NewDataShard(stmt.Id, config.DataShard, options)
+		if err := topology.ValidateDataShardHosts(ctx, dataShard); err != nil {
+			return nil, err
+		}
+
+		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force); err != nil {
 			return nil, err
 		}
 
@@ -657,13 +831,33 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 // - error: An error if the operation fails, otherwise nil.
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
+	case *spqrparser.AlterSystemMigration:
+		var err error
+		if stmt.Reset {
+			err = mngr.ResetMigration(ctx, stmt.Name)
+		} else {
+			err = mngr.SetMigration(ctx, stmt.Name, stmt.Value)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("alter system migration")}, nil
 	case *spqrparser.System:
-		if stmt.Reload {
+		if stmt.SetGUC != "" {
+			return processAlterSystemSet(stmt.SetGUC, stmt.SetValue)
+		}
+		if stmt.RotateLog {
+			router_util.ReloadRotateLog()
+		} else if stmt.Reload {
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGHUP); err != nil {
 				return nil, err
 			}
 		} else if stmt.Restart {
 			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+				return nil, err
+			}
+		} else /* REBOOTSTRAP */ {
+			if err := rebootstrap.RebootstrapQDB(ctx, mngr.QDB(), mngr); err != nil {
 				return nil, err
 			}
 		}
@@ -678,9 +872,41 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
+	case *spqrparser.AlterShard:
+		if stmt.Shard == nil {
+			return nil, fmt.Errorf("failed to process 'ALTER SHARD' statement: shard ID is nil")
+		}
+		return processAlterShard(ctx, stmt.Element, mngr, stmt.Shard.ID)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
+}
+
+func processAlterSystemSet(name, val string) (*tupleslot.TupleTableSlot, error) {
+	path := config.RouterConfig().AutoConf
+	if path == "" {
+		/* XXX: maybe better to use default */
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "autoconf file is not configured")
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}(f)
+
+	if _, err := fmt.Fprintf(f, "%s = %s\n", name, val); err != nil {
+		return nil, err
+	}
+	if err := session.ApplyAutoConfGUC(name, val); err != nil {
+		spqrlog.Zero.Error().Err(err).Str("filename", path).Str("name", name).Str("value", val).Msg("autoconf apply failed")
+		return nil, err
+	}
+	return &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("alter system")}, nil
 }
 
 // processAlterDistribution processes the given alter distribution statement and performs the corresponding operation.
@@ -722,8 +948,32 @@ func processAlterDistribution(ctx context.Context,
 
 		selectedDistribId := dsId
 
-		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
-			return nil, err
+		relsToAttach := rels
+		for _, relation := range stmt.Relations {
+			if relation.IfNotExists {
+				distribution, err := mngr.GetDistribution(ctx, selectedDistribId)
+				if err != nil {
+					return nil, err
+				}
+
+				relsToAttach = make([]*distributions.DistributedRelation, 0, len(rels))
+				for i, candidate := range stmt.Relations {
+					if candidate.IfNotExists {
+						existing, ok := distribution.TryGetRelation(candidate.Relation)
+						if ok && existing != nil && existing.Relation.MetadataKey() == candidate.Relation.MetadataKey() {
+							continue
+						}
+					}
+					relsToAttach = append(relsToAttach, rels[i])
+				}
+				break
+			}
+		}
+
+		if len(relsToAttach) != 0 {
+			if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, relsToAttach); err != nil {
+				return nil, err
+			}
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -738,6 +988,22 @@ func processAlterDistribution(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.DetachRelation:
+		if stmt.IfExists {
+			distribution, err := mngr.GetDistribution(ctx, dsId)
+			if err != nil {
+				return nil, err
+			}
+
+			if distribution.GetRelation(stmt.RelationName) == nil {
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("detach relation"),
+				}
+				tts.WriteDataRow(fmt.Sprintf("relation name   -> %s", stmt.RelationName.String()))
+				tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", dsId))
+				return tts, nil
+			}
+		}
+
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return nil, err
 		}
@@ -823,19 +1089,19 @@ func processAlterDistribution(ctx context.Context,
 // - astmt (spqrparser.Statement): The alter relation statement to be processed.
 // - mngr (EntityMgr): The entity manager for performing the operation.
 // - dsId (string): ID of the distribution, to which the relation belongs.
-// - relName (string): the name of the relation to alter.
+// - relationFQN (string): the name of the relation to alter.
 //
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
-func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationName *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationFQN *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
-		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationName, stmt.SchemaName); err != nil {
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationFQN, stmt.SchemaName); err != nil {
 			return nil, err
 		}
 
-		nRelationName := relationName
+		nRelationName := relationFQN
 		nRelationName.SchemaName = stmt.SchemaName
 
 		tts := &tupleslot.TupleTableSlot{
@@ -857,7 +1123,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
 			return nil, err
 		}
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationFQN, newKey); err != nil {
 			return nil, err
 		}
 
@@ -869,7 +1135,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationFQN.String()),
 				},
 			},
 		}
@@ -880,10 +1146,10 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err != nil {
 			return nil, err
 		}
-		rel := ds.GetRelation(relationName)
+		rel := ds.GetRelation(relationFQN)
 		if rel == nil {
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
-				"relation \"%s\" is not attached to distribution \"%s\"", relationName.String(), dsId)
+				"relation \"%s\" is not attached to distribution \"%s\"", relationFQN.String(), dsId)
 		}
 		newKey, err := rel.RenameKeyColumn(stmt.OldName, stmt.NewName)
 		if err != nil {
@@ -892,7 +1158,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := distributions.CheckDuplicateKeyColumns(newKey); err != nil {
 			return nil, err
 		}
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, newKey); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationFQN, newKey); err != nil {
 			return nil, err
 		}
 
@@ -903,7 +1169,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 					fmt.Appendf(nil, "distribution id -> %s", dsId),
 				},
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationFQN.String()),
 				},
 				{
 					fmt.Appendf(nil, "renamed column  -> %s to %s", stmt.OldName, stmt.NewName),
@@ -936,7 +1202,7 @@ func ProcMetadataCommand(ctx context.Context,
 	tstmt spqrparser.Statement,
 	mgr EntityMgr,
 	ci connmgr.ConnectionMgr,
-	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool) (*tupleslot.TupleTableSlot, error) {
+	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 
 	/* TODO: do not accept nil as rc here */
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
@@ -1026,31 +1292,31 @@ func ProcMetadataCommand(ctx context.Context,
 			Desc: engine.GetVPHeader("stop trace messages"),
 			Raw: [][][]byte{
 				{
-					[]byte("STOP TRASCE MESSAGES"),
+					[]byte("STOP TRACE MESSAGES"),
 				},
 			},
 		}
 
 		return tts, nil
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, stmt.IfExists, mgr)
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
-			ShardId: stmt.DestShardID,
-			Krid:    stmt.KeyRangeID,
+			ShardID:    stmt.DestShardID,
+			KeyRangeID: stmt.KeyRangeID,
+			MetaOnly:   stmt.MetaOnly,
 		}
 
-		if err := mgr.Move(ctx, move); err != nil {
+		if err := mgr.Move(ctx, move, icpCH); err != nil {
 			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("move key range"),
 			Raw: [][][]byte{
-				{fmt.Appendf(nil, "move key range %v to shard %v", move.Krid, move.ShardId)},
-				{[]byte("HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")},
+				{fmt.Appendf(nil, "move key range %v to shard %v", move.KeyRangeID, move.ShardID)},
 			},
 		}
 
@@ -1100,23 +1366,59 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Unlock:
-		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
-			return nil, err
-		}
+		if stmt.KeyRangeID == "*" {
+			krs, err := mgr.ListAllKeyRanges(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("unlock key range"),
-			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
-		}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("unlock key range"),
+			}
 
-		return tts, nil
+			for _, kr := range krs {
+				if kr.IsLocked {
+					if err := mgr.UnlockKeyRange(ctx, kr.ID); err != nil {
+						return nil, err
+					}
+					/* XXX: FIX */
+					// tts.WriteDataRow(kr.ID)
+				}
+			}
+
+			return tts, nil
+		} else {
+			if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
+				return nil, err
+			}
+
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("unlock key range"),
+				Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
+			}
+
+			return tts, nil
+		}
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
+		sourceKr, err := mgr.GetKeyRange(ctx, stmt.KeyRangeFromID)
+		if err != nil {
+			return nil, err
+		}
+		ds, err := mgr.GetDistribution(ctx, sourceKr.Distribution)
+		if err != nil {
+			return nil, err
+		}
+
+		krTemp, err := kr.KeyRangeFromSQL(&spqrparser.KeyRangeDefinition{LowerBound: stmt.Border, Distribution: &spqrparser.DistributionSelector{}}, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
 		splitKeyRange := &kr.SplitKeyRange{
-			Bound:    stmt.Border.Pivots,
-			SourceID: stmt.KeyRangeFromID,
-			Krid:     stmt.KeyRangeID,
+			Bound:      krTemp.Raw(),
+			SourceID:   stmt.KeyRangeFromID,
+			KeyRangeID: stmt.KeyRangeID,
 		}
 		if err := mgr.Split(ctx, splitKeyRange); err != nil {
 			return nil, err
@@ -1125,14 +1427,14 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("split key range"),
 		}
-		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.Krid))
+		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.KeyRangeID))
 		tts.WriteDataRow(fmt.Sprintf("bound        -> %s", strings.ToLower(string(splitKeyRange.Bound[0]))))
 		return tts, nil
 
 	case *spqrparser.UniteKeyRange:
 		uniteKeyRange := &kr.UniteKeyRange{
-			BaseKeyRangeId:      stmt.KeyRangeIDL,
-			AppendageKeyRangeId: stmt.KeyRangeIDR,
+			BaseKeyRangeID:      stmt.KeyRangeIDL,
+			AppendageKeyRangeID: stmt.KeyRangeIDR,
 		}
 		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
 			return nil, err
@@ -1141,12 +1443,12 @@ func ProcMetadataCommand(ctx context.Context,
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("merge key ranges"),
 		}
-		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeId, uniteKeyRange.BaseKeyRangeId))
+		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeID, uniteKeyRange.BaseKeyRangeID))
 		return tts, nil
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr)
 	case *spqrparser.RedistributeKeyRange:
-		return processRedistribute(ctx, stmt, mgr)
+		return processRedistribute(ctx, stmt, mgr, icpCH)
 	case *spqrparser.Invalidate:
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1158,7 +1460,7 @@ func ProcMetadataCommand(ctx context.Context,
 			mgr.Cache().Reset()
 		case spqrparser.StaleClientsInvalidateTarget:
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+				if !netutil.TCPCheckAliveness(cl.Conn()) {
 					tts.WriteDataRow(fmt.Sprintf("signaled %d", cl.ID()))
 					return cl.Cancel()
 				}
@@ -1179,51 +1481,45 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 		return tts, nil
 	case *spqrparser.StopMoveTaskGroup:
-		var tgs map[string]*tasks.MoveTaskGroup
-		if stmt.ID == "*" {
-			var err error
-			tgs, err = mgr.ListMoveTaskGroups(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-		} else {
-			tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
-			if err != nil {
-				return nil, err
-			}
-			if tg != nil {
-				tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
-			}
-		}
-
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("Move task group ID"),
-		}
-
-		for id := range tgs {
-			if err := mgr.StopMoveTaskGroup(ctx, id); err != nil {
-				return nil, err
-			}
-			tts.WriteDataRow(id)
-		}
-
-		return tts, nil
-	case *spqrparser.RetryMoveTaskGroup:
-		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
+		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
 		if err != nil {
 			return nil, err
 		}
-		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID, stmt.NoWait); err != nil {
+
+		for id := range tgs {
+			if err := mgr.StopMoveTaskGroup(ctx, id, stmt.Immediate); err != nil {
+				return nil, err
+			}
+		}
+		cmdTag := "STOP TASK GROUP"
+		if stmt.ID == "*" {
+			cmdTag += " ALL"
+		}
+
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("task group"),
+			Raw: [][][]byte{{
+				[]byte(cmdTag),
+			}},
+		}, nil
+	case *spqrparser.RetryMoveTaskGroup:
+		tgs, err := listMoveTaskGroupsBySelector(ctx, mgr, stmt.ID)
+		if err != nil {
 			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"),
 		}
-		if taskGroup != nil {
-			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
+
+		for id, taskGroup := range tgs {
+			if err := mgr.RetryMoveTaskGroup(ctx, id, stmt.NoWait, icpCH); err != nil {
+				return nil, err
+			}
+
+			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToID, taskGroup.KridFrom, taskGroup.KridTo)
 		}
+
 		return tts, nil
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
@@ -1256,6 +1552,51 @@ func ProcMetadataCommand(ctx context.Context,
 			tts.WriteDataRow(stmt.RelationSelector.String(), sh)
 		}
 		return tts, nil
+	case *spqrparser.Rename:
+		return processRename(ctx, stmt, mgr)
+	case *spqrparser.Begin:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Commit:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Rollback:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
+	case *spqrparser.Call:
+		switch stmt.FuncName {
+		case virtual.VirtualCheckRouterMetaHash:
+			if len(stmt.Args) != 1 {
+				return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "function \"%s\" accepts 1 argument, got %d", stmt.FuncName, len(stmt.Args))
+			}
+			routerId := stmt.Args[0]
+			routers, err := mgr.ListRouters(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var router *topology.Router
+			for _, iRouter := range routers {
+				if iRouter.ID == routerId {
+					router = iRouter
+					break
+				}
+			}
+			if router == nil {
+				return nil, spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router \"%s\" not found", routerId)
+			}
+			routerHash, err := mgr.GetRouterMetadataHash(ctx, router)
+			if err != nil {
+				return nil, err
+			}
+			localHash, err := qdb.GetQDBStateHash(ctx, mgr.QDB())
+			if err != nil {
+				return nil, err
+			}
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("hash_equal"),
+			}
+			tts.WriteDataRow(strconv.FormatBool(routerHash == localHash))
+			return tts, nil
+		default:
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "incorrect function name \"%s\"", stmt.FuncName)
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1273,31 +1614,66 @@ func ProcMetadataCommand(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context,
+func ProcessKill(_ context.Context,
 	stmt *spqrparser.Kill,
-	mngr EntityMgr,
+	mgr EntityMgr,
 	ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := ci.Pop(stmt.Target)
+		trg := stmt.Target
+
+		if trg == 0 {
+			n, err := strconv.ParseUint(stmt.TargetID, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			trg = uint(n)
+		}
+
+		ok, err := ci.Pop(trg)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
-			return nil, fmt.Errorf("no such client %d", stmt.Target)
+			return nil, fmt.Errorf("no such client %d", trg)
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("kill client"),
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("client id -> %d", stmt.Target))
+		tts.WriteDataRow(fmt.Sprintf("client id -> %d", trg))
+
+		return tts, nil
+	case spqrparser.TaskStr:
+
+		ts, err := mgr.TaskState(stmt.TargetID)
+		if err != nil {
+			return nil, err
+		}
+
+		ts.Cancel()
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("kill task"),
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("task id -> %v", stmt.TargetID))
 
 		return tts, nil
 	case spqrparser.BackendStr:
 
 		ok := false
+
+		trg := stmt.Target
+		if trg == 0 {
+			n, err := strconv.ParseUint(stmt.TargetID, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			trg = uint(n)
+		}
 
 		var cancelErr error
 
@@ -1316,14 +1692,14 @@ func ProcessKill(ctx context.Context,
 		}
 
 		if !ok {
-			return nil, fmt.Errorf("no such backend %d", stmt.Target)
+			return nil, fmt.Errorf("no such backend %d", trg)
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("kill backend"),
 		}
 
-		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", stmt.Target))
+		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", trg))
 
 		return tts, cancelErr
 	default:
@@ -1337,7 +1713,7 @@ func ProcessShowExtended(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr,
-	ro bool) (*tupleslot.TupleTableSlot, error) {
+	_ bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process extended show statement")
 
 	var tts *tupleslot.TupleTableSlot
@@ -1360,24 +1736,49 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ShardsStr:
-		shards, err := mngr.ListShards(ctx)
-		if err != nil {
-			return nil, err
+		return ProcessShow(ctx, &spqrparser.Show{
+			Kind:    stmt.Kind,
+			Cmd:     spqrparser.ShardsExtendedStr,
+			Columns: []string{"shard"},
+			Where:   stmt.Where,
+			Order:   stmt.Order,
+			GroupBy: stmt.GroupBy,
+		}, mngr, ci, true)
+
+	case spqrparser.ShardsExtendedStr:
+
+		var shards []*topology.DataShard
+
+		if stmt.Kind == spqrparser.SHOW_KIND_LOCAL {
+			for _, k := range topology.TopMgr.Snap() {
+				shards = append(shards, k)
+			}
+		} else {
+			shards, err = mngr.ListShards(ctx)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		tts = &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("shard"),
+			Desc: engine.GetVPHeader("shard", "options"),
 		}
 
 		for _, shard := range shards {
-			tts.Raw = append(tts.Raw,
-				[][]byte{
-					[]byte(shard.ID),
-				},
-			)
+			tts.WriteDataRow(shard.ID, optionsToTuple(shard.Options()))
 		}
 
 	case spqrparser.HostsStr:
+		return ProcessShow(ctx, &spqrparser.Show{
+			Kind:    stmt.Kind,
+			Cmd:     spqrparser.HostsExtendedStr,
+			Columns: []string{"shard", "host", "alive", "rw", "time"},
+			Where:   stmt.Where,
+			Order:   stmt.Order,
+			GroupBy: stmt.GroupBy,
+		}, mngr, ci, true)
+
+	case spqrparser.HostsExtendedStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
 			return nil, err
@@ -1420,7 +1821,7 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 	case spqrparser.InstanceStr:
-		tts = engine.InstanceVirtualRelationScan(ctx, ci)
+		tts = engine.InstanceVirtualRelationScan(ci)
 
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
@@ -1428,7 +1829,7 @@ func ProcessShowExtended(ctx context.Context,
 			resp = append(resp, client)
 			/* XXX: should we do this un-conditionally  or under separate setting? */
 			/*  When this is executed by coordinator, c is (validly) nil*/
-			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+			if c := client.Conn(); c != nil && !netutil.TCPCheckAliveness(c) {
 				if err := client.Cancel(); err != nil {
 					return err
 				}
@@ -1453,18 +1854,40 @@ func ProcessShowExtended(ctx context.Context,
 		for k, v := range counters {
 			tts.WriteDataRow(k, fmt.Sprintf("%v", v))
 		}
+	case spqrparser.TwoPhaseTXExtStr:
+		d := mngr.DCStateKeeper()
+
+		if d == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "two state transactions status keeper not configured")
+		}
+
+		txs, err := d.TXInfos(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("gid", "status", "modified_at", "members"),
+		}
+
+		for _, tx := range txs {
+			tts.WriteDataRow(tx.Gid, string(tx.State), fmt.Sprintf("%+v", tx.UpdatedAt), fmt.Sprintf("%+v", tx.ShardsIDs))
+		}
+
 	case spqrparser.TwoPhaseTXStr:
 
 		d := mngr.DCStateKeeper()
 
 		if d == nil {
-			return nil, fmt.Errorf("two state transactions status keeper")
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "two state transactions status keeper not configured")
 		}
 
 		txs, err := d.ListTXNames(ctx)
 		if err != nil {
 			return nil, err
 		}
+
+		sort.Strings(txs)
 
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("gid", "status", "members"),
@@ -1598,13 +2021,13 @@ func ProcessShowExtended(ctx context.Context,
 			if !ok {
 				return nil, fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
 			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -1629,13 +2052,13 @@ func ProcessShowExtended(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KridFrom)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KridTo)
 					if err2 != nil {
-						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KridFrom, err, taskGroup.KridTo, err2)
 					}
 				}
 			}
@@ -1664,6 +2087,20 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 
+	case spqrparser.MigrationsStr:
+		migrations, err := mngr.ListMigrations(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = &tupleslot.TupleTableSlot{Desc: engine.GetVPHeader("name", "value")}
+		names := make([]string, 0, len(migrations))
+		for name := range migrations {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			tts.WriteDataRow(name, migrations[name])
+		}
 	case spqrparser.FileSettingsStr:
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader(
@@ -1685,6 +2122,18 @@ func ProcessShowExtended(ctx context.Context,
 				fmt.Sprintf("%v", setting.Applied),
 			)
 		}
+	case spqrparser.MeanKRLockTimeStr:
+		stats := statistics.LockStats
+		t := time.Duration(0)
+		if stats != nil {
+			t = stats.GetMeanLockTime()
+		}
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(
+				"mean_key_range_lock_time",
+			),
+		}
+		tts.WriteDataRow(t.String())
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1717,7 +2166,7 @@ func ProcessShowExtended(ctx context.Context,
 // RouterVersionInfo contains version information retrieved from a router.
 type RouterVersionInfo struct {
 	Version         string
-	MetadataVersion int64
+	MetadataVersion uint64
 	Error           error
 }
 
@@ -1730,9 +2179,10 @@ type RouterVersionInfo struct {
 //
 // Returns:
 // - map[string]RouterVersionInfo: A map of router addresses to version information.
-func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, error)) map[string]RouterVersionInfo {
+func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, func(), error)) map[string]RouterVersionInfo {
 	versions := make(map[string]RouterVersionInfo)
 
+	// TODO: make pooling routers parallel in goroutines with common deadline
 	for _, router := range routers {
 		versionInfo := RouterVersionInfo{
 			Version:         "N/A",
@@ -1740,13 +2190,16 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 		}
 
 		if getConnFunc != nil {
-			conn, err := getConnFunc(router)
+			conn, cf, err := getConnFunc(router)
+			defer cf()
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to get router connection")
 				versionInfo.Error = err
 			} else {
 				client := protos.NewTopologyServiceClient(conn)
-				resp, err := client.GetRouterStatus(ctx, &emptypb.Empty{})
+				pingRouterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(pingRouterTimeout))
+				defer cancel()
+				resp, err := client.GetRouterStatus(pingRouterCtx, &emptypb.Empty{})
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to query router status")
 					versionInfo.Error = err
@@ -1796,7 +2249,7 @@ func showRouters(ctx context.Context, mngr EntityMgr, ci connmgr.ConnectionMgr) 
 		status := string(msg.State)
 		// Get version from gRPC query, or fall back to static version
 		version := pkg.SpqrVersionRevision
-		metadataVersion := int64(0)
+		metadataVersion := uint64(0)
 		if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
 			version = vInfo.Version
 			metadataVersion = vInfo.MetadataVersion
@@ -1831,41 +2284,14 @@ func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
+	spqrlog.Zero.Trace().Str("cmd", stmt.Cmd).Msg("process virtual show statement")
 
 	tts, err := processShowInner(ctx, stmt, mngr, ci, ro)
 	if err != nil {
 		return nil, err
 	}
 
-	/* Do tuple projection */
-	if stmt.Columns != nil {
-		colMp := tts.Desc.GetColumnsMap()
-		offsets := []int{}
-
-		tuplesProjected := &tupleslot.TupleTableSlot{}
-
-		for _, c := range stmt.Columns {
-			off, ok := colMp[c]
-			if !ok {
-				return nil, fmt.Errorf("no such column %s", c)
-			}
-			offsets = append(offsets, off)
-			tuplesProjected.Desc = append(tuplesProjected.Desc, tts.Desc[off])
-		}
-
-		for _, r := range tts.Raw {
-			rowProjection := [][]byte{}
-			for _, off := range offsets {
-				rowProjection = append(rowProjection, r[off])
-			}
-			tuplesProjected.Raw = append(tuplesProjected.Raw, rowProjection)
-		}
-
-		return tuplesProjected, nil
-	} /* nil means all cols */
-
-	return tts, nil
+	return engine.Project(tts, stmt.Columns)
 }
 
 /* workhorse for ProcessShow. Retrieve tuples for virtual relation */
@@ -1873,7 +2299,6 @@ func processShowInner(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:
@@ -1890,7 +2315,10 @@ func processShowInner(ctx context.Context,
 				"pool_host",
 				"used_connections",
 				"idle_connections",
-				"queue_residual_size"),
+				"queue_residual_size",
+				"discard_count",
+				"acquire_count",
+				"reuse_count"),
 		}
 
 		if err := ci.ForEachPool(func(p pool.Pool) error {
@@ -1905,7 +2333,11 @@ func processShowInner(ctx context.Context,
 				statistics.Hostname,
 				fmt.Sprintf("%d", statistics.UsedConnections),
 				fmt.Sprintf("%d", statistics.IdleConnections),
-				fmt.Sprintf("%d", statistics.QueueResidualSize))
+				fmt.Sprintf("%d", statistics.QueueResidualSize),
+				fmt.Sprintf("%d", statistics.DiscardCount),
+				fmt.Sprintf("%d", statistics.AcquireCount),
+				fmt.Sprintf("%d", statistics.ReuseCount),
+			)
 			return nil
 		}); err != nil {
 			return nil, err
@@ -2019,6 +2451,13 @@ func processShowInner(ctx context.Context,
 		}
 
 		return tts, nil
+	case spqrparser.TransactionReadOnlyStr:
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("transaction_read_only"),
+		}
+		tts.WriteDataRow("off")
+
+		return tts, nil
 	case spqrparser.IsReadOnlyStr:
 
 		tts := &tupleslot.TupleTableSlot{
@@ -2063,7 +2502,7 @@ func processShowInner(ctx context.Context,
 				fmt.Sprintf("%d", berule.ConnectionRetries),
 				berule.ConnectionTimeout.String(),
 				berule.KeepAlive.String(),
-				berule.TcpUserTimeout.String(),
+				berule.TCPUserTimeout.String(),
 			)
 		}
 		return tts, nil
@@ -2083,6 +2522,24 @@ func processShowInner(ctx context.Context,
 				},
 			},
 			Raw: [][][]byte{{{byte(res)}}},
+		}
+		return tts, nil
+
+	case spqrparser.TaskGroupWorkersStr:
+		ids := mngr.TaskWorkersID()
+		tts := &tupleslot.TupleTableSlot{
+			Desc: tupleslot.TupleDesc{
+				pgproto3.FieldDescription{
+					Name:         []byte("worker_id"),
+					DataTypeOID:  catalog.TEXTOID,
+					TypeModifier: -1,
+					DataTypeSize: 1,
+				},
+			},
+		}
+
+		for _, id := range ids {
+			tts.WriteDataRow(id)
 		}
 		return tts, nil
 	default:
@@ -2108,7 +2565,7 @@ func processShowInner(ctx context.Context,
 // - error: An error if the operation encounters any issues.
 func processRedistribute(ctx context.Context,
 	stmt *spqrparser.RedistributeKeyRange,
-	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	mngr EntityMgr, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().
 		Str("key range id", stmt.KeyRangeID).
 		Str("destination shard id", stmt.DestShardID).
@@ -2123,14 +2580,14 @@ func processRedistribute(ctx context.Context,
 	}
 
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		TaskGroupId: stmt.Id,
-		KrId:        stmt.KeyRangeID,
-		ShardId:     stmt.DestShardID,
+		TaskGroupID: stmt.Id,
+		KeyRangeID:  stmt.KeyRangeID,
+		ShardID:     stmt.DestShardID,
 		BatchSize:   stmt.BatchSize,
 		Check:       stmt.Check,
 		Apply:       stmt.Apply,
 		NoWait:      stmt.NoWait,
-	}); err != nil {
+	}, icpCH); err != nil {
 		return nil, err
 	}
 
@@ -2150,7 +2607,7 @@ func processRedistribute(ctx context.Context,
 }
 
 // ProcessHelp processes HELP command and returns formatted help text
-func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
+func ProcessHelp(_ context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
 
 	// If no command specified, list all available commands
@@ -2176,4 +2633,157 @@ func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTa
 	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
+}
+
+func processAlterShard(ctx context.Context,
+	astmt spqrparser.Statement,
+	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterShardOptions:
+		optionsMap, err := topology.OptionsFromSQL(stmt.Options)
+		if err != nil {
+			return nil, err
+		}
+		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", shardId),
+				},
+
+				{
+					fmt.Appendf(nil, "options  -> %s", optionsToTuple(optionsMap)),
+				},
+			},
+		}
+
+		return tts, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+}
+
+func processRename(ctx context.Context, astmt *spqrparser.Rename, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.Element.(type) {
+	case *spqrparser.KeyRangeSelector:
+		if err := mngr.RenameKeyRange(ctx, stmt.KeyRangeID, astmt.NewID); err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("key_range_id", "new_id"),
+			Raw: [][][]byte{
+				{
+					[]byte(stmt.KeyRangeID),
+					[]byte(astmt.NewID),
+				},
+			},
+		}, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+}
+
+func optionsToTuple(opts []topology.GenericOption) string {
+	t := []string{}
+	sort.Slice(opts, func(i, j int) bool {
+		if opts[i].Name != opts[j].Name {
+			return opts[i].Name < opts[j].Name
+		}
+		return opts[i].Arg < opts[j].Arg
+	})
+	for _, v := range opts {
+		t = append(t, fmt.Sprintf("%s=%v", v.Name, v.Arg))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(t, ","))
+}
+
+func listMoveTaskGroupsBySelector(ctx context.Context, mgr EntityMgr, selector string) (map[string]*tasks.MoveTaskGroup, error) {
+	var tgs map[string]*tasks.MoveTaskGroup
+	if selector == "*" {
+		var err error
+		tgs, err = mgr.ListMoveTaskGroups(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tg, err := mgr.GetMoveTaskGroup(ctx, selector)
+		if err != nil {
+			return nil, err
+		}
+		if tg != nil {
+			tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
+		}
+	}
+
+	return tgs, nil
+}
+
+func ApplyXRecords(
+	ctx context.Context,
+	tx EntityMgr,
+	operation *mtran.XRecord,
+) error {
+	method := reflect.ValueOf(tx).MethodByName(operation.MethodName)
+	if !method.IsValid() {
+		return fmt.Errorf("unknown EntityMgr method %q", operation.MethodName)
+	}
+
+	methodType := method.Type()
+
+	if methodType.NumIn() != len(operation.Args)+1 {
+		return fmt.Errorf(
+			"invalid argument count for %s. Got %d, expected %d",
+			operation.MethodName,
+			len(operation.Args),
+			methodType.NumIn(),
+		)
+	}
+
+	args := make([]reflect.Value, 0, methodType.NumIn())
+	args = append(args, reflect.ValueOf(ctx))
+
+	for i, raw := range operation.Args {
+		argType := methodType.In(i + 1)
+
+		arg := reflect.New(argType)
+
+		if err := json.Unmarshal([]byte(raw), arg.Interface()); err != nil {
+			return fmt.Errorf(
+				"failed to decode argument %d of %s: %w",
+				i,
+				operation.MethodName,
+				err,
+			)
+		}
+
+		args = append(args, arg.Elem())
+	}
+
+	results := method.Call(args)
+
+	if len(results) == 1 && !results[0].IsNil() {
+		return results[0].Interface().(error)
+	}
+
+	return nil
+}
+
+func MakeXRecord(method string, args ...any) (*mtran.XRecord, error) {
+	jsonArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		raw, err := json.Marshal(arg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal args: %s", err)
+		}
+		jsonArgs = append(jsonArgs, string(raw))
+	}
+
+	return &mtran.XRecord{
+		MethodName: method,
+		Args:       jsonArgs,
+	}, nil
 }

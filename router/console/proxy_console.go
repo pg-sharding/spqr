@@ -27,14 +27,14 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, rv *
 	if err != nil {
 		return err
 	}
-	shardIds := []string{}
+	shardIDs := []string{}
 	for _, sh := range shs {
-		shardIds = append(shardIds, sh.ID)
+		shardIDs = append(shardIDs, sh.ID)
 	}
 	newReferenceRelation := &rrelation.ReferenceRelation{
 		RelationName:  rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName),
 		SchemaVersion: 1,
-		ShardIds:      shardIds,
+		ShardIDs:      shardIDs,
 	}
 
 	mgr, cf, err := coord.DistributedMgr(ctx, localMngr)

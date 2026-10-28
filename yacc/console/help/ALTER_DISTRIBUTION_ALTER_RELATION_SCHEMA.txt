@@ -1,0 +1,15 @@
+NAME
+    ALTER DISTRIBUTION ALTER RELATION SCHEMA - Changes schema metadata for an
+    attached relation.
+
+SYNTAX
+    ALTER DISTRIBUTION <distributionID> ALTER RELATION <relationName>
+      SCHEMA <schemaName>
+
+DESCRIPTION
+    Changes the schema associated with an attached relation in the distribution
+    metadata.
+
+EXAMPLES
+    Change relation schema:
+        ALTER DISTRIBUTION ds1 ALTER RELATION orders SCHEMA my_schema;

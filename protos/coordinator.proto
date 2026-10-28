@@ -4,6 +4,7 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
 import "protos/router.proto";
@@ -19,11 +20,11 @@ service TopologyService {
 message GetRouterStatusReply {
   RouterStatus status = 1;
   string version = 2;
-  int64 metadata_version = 3;
+  uint64 metadata_version = 3;
 }
 
 message UpdateCoordinatorRequest {
-  string address = 1;
+  string address = 1 [(buf.validate.field).required = true];
 }
 
 message GetCoordinatorResponse {

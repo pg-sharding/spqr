@@ -16,11 +16,15 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -107,6 +111,15 @@ func (l *LocalQrouterServer) ListReferenceRelations(ctx context.Context, _ *empt
 	}, nil
 }
 
+// GetReferenceRelation implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) GetReferenceRelation(ctx context.Context, relation *protos.QualifiedName) (*protos.ReferenceRelation, error) {
+	refRelation, err := l.mgr.GetReferenceRelation(ctx, rfqn.RelationFQNFromProto(relation))
+	if err != nil {
+		return nil, err
+	}
+	return rrelation.RefRelationToProto(refRelation), nil
+}
+
 // SyncReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) SyncReferenceRelations(context.Context, *protos.SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
 	return nil, fmt.Errorf("local query router in unable to sync reference relation")
@@ -117,29 +130,52 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 	if err != nil {
 		return nil, err
 	}
+
+	res := make([]*protos.Shard, len(shards))
+	for i, sh := range shards {
+		res[i], err = topology.DataShardToProto(sh, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &protos.ListShardsReply{
-		Shards: func() []*protos.Shard {
-			res := make([]*protos.Shard, len(shards))
-			for i, sh := range shards {
-				res[i] = topology.DataShardToProto(sh)
-			}
-			return res
-		}(),
+		Shards: res,
 	}, nil
 }
 
 func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
-	if err := l.mgr.AddDataShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
+	if request == nil || request.GetShard() == nil {
+		return nil, status.Error(codes.InvalidArgument, "shard field is required")
+	}
+
+	shard, err := topology.DataShardFromProto(request.GetShard())
+	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	if err := l.mgr.AddDataShard(ctx, shard, request.Force); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (l *LocalQrouterServer) AlterShard(ctx context.Context, request *protos.AlterShardRequest) (*emptypb.Empty, error) {
+	options, err := topology.GenericOptionsFromProto(request.GetOptions())
+	if err != nil {
+		return nil, err
+	}
+	if err := l.mgr.SetShardOptions(ctx, request.GetId(), options); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (l *LocalQrouterServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
 	return nil, l.mgr.DropShard(ctx, request.Id)
 }
 
-func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
+func (l *LocalQrouterServer) AddWorldShard(_ context.Context, _ *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("LocalQrouterServer.AddWorldShard not implemented")
 }
 
@@ -148,13 +184,14 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 	if err != nil {
 		return nil, err
 	}
+	protoShard, err := topology.DataShardToProto(sh, false)
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh),
-	}, nil
+		Shard: protoShard,
+	}, err
 }
 
 // CreateDistribution creates distribution in QDB
-func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+func (l *LocalQrouterServer) CreateDistribution(_ context.Context, _ *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateDistribution), remove after meta transaction implementation")
 }
 
@@ -209,8 +246,8 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
-	for _, relName := range request.GetRelNames() {
-		qualifiedName := &rfqn.RelationFQN{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
+	for _, relationFQN := range request.GetRelNames() {
+		qualifiedName := &rfqn.RelationFQN{RelationName: relationFQN.RelationName, SchemaName: relationFQN.SchemaName}
 		if err := l.mgr.AlterDistributionDetach(ctx, request.GetId(), qualifiedName); err != nil {
 			return nil, err
 		}
@@ -221,13 +258,13 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	rfqn := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
+	relationFQN := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
 
-	ds, err := l.mgr.GetRelationDistribution(ctx, rfqn)
+	ds, err := l.mgr.GetRelationDistribution(ctx, relationFQN)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.TryGetRelation(rfqn)
+	curRel, ok := ds.TryGetRelation(relationFQN)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
 	}
@@ -279,18 +316,44 @@ func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, reques
 	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, err
 }
 
-func (l *LocalQrouterServer) ListRouters(ctx context.Context, _ *emptypb.Empty) (*protos.ListRoutersReply, error) {
+func (l *LocalQrouterServer) ListRouters(_ context.Context, _ *emptypb.Empty) (*protos.ListRoutersReply, error) {
 	return nil, fmt.Errorf("not a coordinator")
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) OpenRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (l *LocalQrouterServer) OpenRouter(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	l.qr.Initialize()
 	return nil, nil
 }
 
+// GetMetadataHash implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Empty) (*protos.MetadataHashReply, error) {
+	hash, err := qdb.GetQDBStateHash(ctx, l.mgr.QDB())
+	return &protos.MetadataHashReply{Hash: hash}, err
+}
+
+// Rebootstrap implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, rebootstrap.RebootstrapQDB(ctx, l.mgr.QDB(), l.mgr)
+}
+
+// SyncMetadata implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) SyncMetadata(context.Context, *protos.SyncMetadataRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// AddRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) AddRouter(context.Context, *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// RemoveRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) RemoveRouter(context.Context, *protos.RemoveRouterRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
 // TODO : unit tests
-func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Empty) (*protos.GetRouterStatusReply, error) {
+func (l *LocalQrouterServer) GetRouterStatus(_ context.Context, _ *emptypb.Empty) (*protos.GetRouterStatusReply, error) {
 	if l.qr.Initialized() {
 		return &protos.GetRouterStatusReply{
 			Status:          protos.RouterStatus_OPENED,
@@ -306,13 +369,13 @@ func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Emp
 }
 
 // TODO : implement, unit tests
-func (l *LocalQrouterServer) CloseRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (l *LocalQrouterServer) CloseRouter(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	panic("LocalQrouterServer.CloseRouter not implemented")
 }
 
 // TODO : unit tests
 
-func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
+func (l *LocalQrouterServer) DropKeyRange(_ context.Context, _ *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (DropKeyRange), remove after meta transaction implementation")
 }
 
@@ -326,7 +389,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.Id, ShardId: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId, MetaOnly: request.MetaOnly}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +398,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
+func (l *LocalQrouterServer) CreateKeyRange(_ context.Context, _ *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
 	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange), remove after meta transaction implementation")
 }
 
@@ -412,10 +475,10 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
-		Krid:      request.NewId,
-		SourceID:  request.SourceId,
-		Bound:     [][]byte{request.Bound}, // TODO: fix
-		SplitLeft: request.SplitLeft,
+		KeyRangeID: request.NewId,
+		SourceID:   request.SourceId,
+		Bound:      [][]byte{request.Bound}, // TODO: fix
+		SplitLeft:  request.SplitLeft,
 	}); err != nil {
 		return nil, err
 	}
@@ -426,8 +489,8 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
-		BaseKeyRangeId:      request.GetBaseId(),
-		AppendageKeyRangeId: request.GetAppendageId(),
+		BaseKeyRangeID:      request.GetBaseId(),
+		AppendageKeyRangeID: request.GetAppendageId(),
 	}); err != nil {
 		return nil, err
 	}
@@ -489,7 +552,6 @@ func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 	return poolInfo
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
@@ -500,7 +562,6 @@ func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*prot
 	return reply, err
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Empty) (*protos.ListBackendConnectionsReply, error) {
 	reply := &protos.ListBackendConnectionsReply{}
 
@@ -511,7 +572,6 @@ func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Em
 	return reply, err
 }
 
-// TODO : unit tests
 func (l *LocalQrouterServer) ListPools(context.Context, *emptypb.Empty) (*protos.ListPoolsResponse, error) {
 	reply := &protos.ListPoolsResponse{}
 
@@ -555,12 +615,16 @@ func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTa
 }
 
 func (l *LocalQrouterServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
+}
+
+func (l *LocalQrouterServer) DropMoveTaskV2(ctx context.Context, req *protos.MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, req.Cascade)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {
@@ -630,17 +694,17 @@ func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *proto
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false, nil)
 }
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait, nil)
 }
 
 // TODO: unit tests
 func (l *LocalQrouterServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.StopMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.StopMoveTaskGroup(ctx, req.ID, req.Immediate)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupBoundsCache(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupBoundsCache, error) {

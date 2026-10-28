@@ -61,9 +61,9 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 	}
 	err = json.Unmarshal(data, qdb)
 
-	for kr, locked := range qdb.Freq {
+	for kr, locked := range qdb.State.Freq {
 		if locked {
-			qdb.Locks[kr].Lock()
+			qdb.State.Locks[kr].Lock()
 		}
 	}
 
@@ -79,8 +79,8 @@ func (q *MemPgQDB) AcquireTxOwnership(ctx context.Context, txid string) (bool, e
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
-func (q *MemPgQDB) ChangeTxStatus(ctx context.Context, txid string, state TwoPhaseTxState) error {
-	return q.stateKeeper.ChangeTxStatus(ctx, txid, state)
+func (q *MemPgQDB) ChangeTxStatus(ctx context.Context, txid string, state, curExpectedState TwoPhaseTxState) error {
+	return q.stateKeeper.ChangeTxStatus(ctx, txid, state, curExpectedState)
 }
 
 // RecordTwoPhaseMembers implements [DCStateKeeper].
@@ -107,10 +107,32 @@ func (q *MemPgQDB) ListTXNames(ctx context.Context) ([]string, error) {
 	return q.stateKeeper.ListTXNames(ctx)
 }
 
+func (q *MemPgQDB) GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error) {
+	return q.stateKeeper.GetTXs(ctx)
+}
+
+// TXInfo implements [DCStateKeeper].
+func (q *MemPgQDB) TXInfo(ctx context.Context, gid string) (TwoPCInfo, error) {
+	return q.stateKeeper.TXInfo(ctx, gid)
+}
+
+// TXInfos implements [DCStateKeeper].
+func (q *MemPgQDB) TXInfos(ctx context.Context) ([]TwoPCInfo, error) {
+	return q.stateKeeper.TXInfos(ctx)
+}
+
 func (q *MemPgQDB) SetTxMetaStorage(_ context.Context, storage []string) error {
 	return q.stateKeeper.SetTxMetaStorage(storage)
 }
 
 func (q *MemPgQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return q.stateKeeper.GetTxMetaStorage(), nil
+}
+
+func (q *MemPgQDB) RemoveTXData(ctx context.Context, txid string) error {
+	return q.stateKeeper.RemoveTXData(ctx, txid)
+}
+
+func (q *MemPgQDB) ClearTxStatuses(ctx context.Context) error {
+	return q.stateKeeper.ClearTxStatuses(ctx)
 }

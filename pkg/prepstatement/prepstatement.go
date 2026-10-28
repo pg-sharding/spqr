@@ -2,6 +2,7 @@ package prepstatement
 
 import (
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
@@ -13,7 +14,7 @@ type PreparedStatementDefinition struct {
 	// store here some state to make client see what it actually wants
 
 	// XXX: Currently always one last column
-	OverwriteRemoveParamIds map[int]struct{}
+	OverwriteRemoveParamIDs map[int]struct{}
 	SeqName                 string
 }
 
@@ -34,15 +35,21 @@ type PreparedStatementMapper interface {
 	PreparedStatementQueryHashByName(name string) uint64
 	StorePreparedStatement(d *PreparedStatementDefinition)
 	ClosePreparedStatement(name string)
+	ListPreparedStatements() []string
 }
 
-func GetParams(paramsFormatCodes []int16, bindParams [][]byte) []int16 {
+func GetParams(paramsFormatCodes []int16, bindParams [][]byte) ([]int16, error) {
 	var queryParamsFormatCodes []int16
 	paramsLen := len(bindParams)
 
 	/* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691 */ /* #no-spell-check-line */
 	if len(paramsFormatCodes) > 1 {
-		queryParamsFormatCodes = paramsFormatCodes
+		if len(paramsFormatCodes) != paramsLen {
+			return nil, spqrerror.Newf(spqrerror.PG_ERRCODE_PROTOCOL_VIOLATION,
+				"bind message has %d parameter format codes but %d parameters", len(paramsFormatCodes), paramsLen)
+		}
+		queryParamsFormatCodes = make([]int16, paramsLen)
+		copy(queryParamsFormatCodes, paramsFormatCodes)
 	} else if len(paramsFormatCodes) == 1 {
 
 		/* single format specified, use for all columns */
@@ -58,5 +65,5 @@ func GetParams(paramsFormatCodes []int16, bindParams [][]byte) []int16 {
 			queryParamsFormatCodes[i] = xproto.FormatCodeText
 		}
 	}
-	return queryParamsFormatCodes
+	return queryParamsFormatCodes, nil
 }

@@ -246,7 +246,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "router" should match regexp
     """
-    key range .* is locked
+    key range is locked
     """
 
     Given I run SQL on host "coordinator"
@@ -359,7 +359,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range krid1 is locked
+    failed to split key range in coordinator: failed to split key range: key range .*krid1.* is locked \(SQLSTATE SPQRU\)
     """
 
     When I run SQL on host "coordinator"
@@ -368,7 +368,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    context deadline exceeded
+    failed to unite key ranges: key range .*krid1.* is locked \(SQLSTATE SPQRU\)
     """
 
     When I run SQL on host "coordinator"
@@ -467,32 +467,35 @@ Feature: Coordinator test
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
-    CREATE SHARD sh3 WITH HOSTS "spqr_shard_3:6432";
+    CREATE SHARD sh3 OPTIONS (HOST "spqr_shard_3:6432") FORCE;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    SHOW shards;
+    SHOW shards_extended;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-        "shard":"sh1"
+        "shard":"sh1",
+        "options": "{db=regress,host=spqr_shard_1:6432,host=spqr_shard_1_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh2"
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh3"
+        "shard":"sh3",
+        "options": "{host=spqr_shard_3:6432}"
       }
     ]
     """
 
     When I run SQL on host "coordinator"
     """
-    CREATE SHARD sh3 WITH HOSTS "yandex:6432";
+    CREATE SHARD sh3 OPTIONS (HOST "yandex:6432") FORCE;
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -565,34 +568,38 @@ Feature: Coordinator test
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    SHOW shards;
+    SHOW shards_extended;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-        "shard":"sh2"
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh3"
+        "shard":"sh3",
+        "options": "{host=spqr_shard_3:6432}"
       }
     ]
     """
 
     When I run SQL on host "router-admin"
     """
-    SHOW shards;
+    SHOW shards_extended;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-        "shard":"sh2"
+        "shard":"sh2",
+        "options": "{db=regress,host=spqr_shard_2:6432,host=spqr_shard_2_replica:6432,password=12345678,user=regress}"
       },
       {
-        "shard":"sh3"
+        "shard":"sh3",
+        "options": "{host=spqr_shard_3:6432}"
       }
     ]
     """
@@ -742,7 +749,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -906,7 +913,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "coordinator"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -921,7 +928,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -936,7 +943,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "router2-admin"
     """
-    SHOW key_ranges;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -1036,7 +1043,7 @@ Feature: Coordinator test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    cannot drop redistribute task .*rt1.* because other objects depend on it
+    cannot drop redistribute task because other objects depend on it
     """
     When I run SQL on host "coordinator"
     """
@@ -1182,4 +1189,124 @@ Feature: Coordinator test
     [{
         "storage": "sh1"
     }]
+    """
+
+  Scenario: DROP REDISTRIBUTE TASK ALL works
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt1",
+      "KeyRangeId": "kr1",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt2",
+      "KeyRangeId": "kr2",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt3",
+      "KeyRangeId": "kr3",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+            "id":            "tgid1",
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "krid1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "task_group_id": "tgid1"
+            },
+            "issuer": {
+              "type": 1,
+              "id": "rt1"
+            }
+        }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id":"rt1",
+        "key_range_id":"kr1",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":"tgid1"
+      },
+      {
+        "redistribute_task_id":"rt2",
+        "key_range_id":"kr2",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":""
+      },
+      {
+        "redistribute_task_id":"rt3",
+        "key_range_id":"kr3",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":""
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP REDISTRIBUTE TASK ALL;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id": "rt2"
+      },
+      {
+        "redistribute_task_id": "rt3"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id":"rt1",
+        "key_range_id":"kr1",
+        "destination_shard_id":"sh2",
+        "batch_size":"0",
+        "task_group_id":"tgid1"
+      }
+    ]
     """

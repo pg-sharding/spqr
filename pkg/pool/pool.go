@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -14,7 +15,7 @@ const (
 	defaultInstanceConnectionRetries = 10
 	defaultInstanceConnectionTimeout = time.Second
 	defaultKeepAlive                 = time.Second
-	defaultTcpUserTimeout            = time.Millisecond * 9500
+	defaultTCPUserTimeout            = time.Millisecond * 9500
 )
 
 type ConnectionKeeper interface {
@@ -28,9 +29,12 @@ type Statistics struct {
 	Usr               string
 	Hostname          string
 	RouterName        string
-	UsedConnections   int
-	IdleConnections   int
-	QueueResidualSize int
+	UsedConnections   int64
+	IdleConnections   int64
+	QueueResidualSize int64
+	DiscardCount      int64
+	AcquireCount      int64
+	ReuseCount        int64
 }
 
 /* dedicated host connection pool */
@@ -54,13 +58,28 @@ type ShardHostsPool interface {
 	SetRule(rule *config.BackendRule)
 }
 
+// Per-client parameters required to allocate
+// a shard connection
+type ConnAllocParams struct {
+	Clid       uint
+	Tsa        tsa.TSA
+	HostFilter string
+}
+
+type ConnectionProvider interface {
+	ConnectionKeeper
+	ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error)
+}
+
 type MultiShardTSAPool interface {
 	ShardHostsPool
+	ConnectionProvider
 
-	ShardMapping() map[string]*config.Shard
-	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
+	ShardMapping() topology.TopologyMgr
+
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry
+	RunRecheckHosts() []HostRecheckResult
 
 	StopCacheWatchdog()
 }

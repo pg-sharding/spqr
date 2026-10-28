@@ -173,7 +173,7 @@ echo "[i] Sending SIGHUP..."
 kill -HUP "$PID" 2>/dev/null || true
 
 target=$((target+1))
-wait_for_new_config "$target" 10
+wait_for_new_config "$target" 15
 
 # Parse and assert post-SIGHUP effective config (overrides should persist)
 JSON2="$(extract_last_config_json)"

@@ -3,7 +3,6 @@ package datatransfers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/tracelog"
@@ -26,8 +25,7 @@ func GetConnStrings(s *config.ShardConnect, applicationName string) map[string]s
 	}
 	res := make(map[string]string)
 	for _, host := range s.Hosts {
-		address := strings.Split(host, ":")[0]
-		port := strings.Split(host, ":")[1]
+		address, port := config.SplitHostPort(host)
 		res[host] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, applicationName)
 	}
 	return res
@@ -81,11 +79,8 @@ func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) 
 			return "", err
 		}
 		if isMaster {
-			parts := strings.Split(host, ":")
-			if len(parts) == 0 {
-				return "", fmt.Errorf("malformed host address: missing port")
-			}
-			return parts[0], nil
+			host, _ := config.SplitHostPort(host)
+			return host, nil
 		}
 	}
 	return "", spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
@@ -105,5 +100,13 @@ func connectDsn(ctx context.Context, dsn string) (*pgx.Conn, error) {
 		LogLevel: level,
 	}
 	connConfig.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	connConfig.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
+	if config.CoordinatorConfig().DataMoveDisableLogs {
+		connConfig.RuntimeParams["log_statement"] = "none"
+		connConfig.RuntimeParams["log_min_messages"] = "panic"
+		connConfig.RuntimeParams["log_min_error_statement"] = "panic"
+		connConfig.RuntimeParams["log_min_duration_statement"] = "-1"
+	}
+	connConfig.RuntimeParams["idle_in_transaction_session_timeout"] = config.CoordinatorConfig().DataMoveIdleInTxTimeout
 	return pgx.ConnectConfig(ctx, connConfig)
 }

@@ -5,12 +5,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 )
 
-var s_operators = map[int]Operator{
+var sOperators = map[int]Operator{
 	catalog.TEXTOID: &TEXTOperator{},
 }
 
 func SearchSysCacheOperator(oid int) (Operator, error) {
-	if op, ok := s_operators[oid]; ok {
+	if op, ok := sOperators[oid]; ok {
 		return op, nil
 	}
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "operator not supported")

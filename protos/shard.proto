@@ -4,30 +4,35 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
-message TLSConfig {
-  string sslmode = 1;
-  string cert_file = 2;
-  string key_file = 3;
-  string root_cert_file = 4;
+message Shard {
+  string id = 1 [(buf.validate.field).required = true];
+  repeated GenericOption options = 3;
 }
 
-message Shard {
-  string id = 1;
-  repeated string hosts = 2;
-  TLSConfig tls = 3;
+message GenericOption {
+  enum Action {
+    ADD = 0;
+    SET = 1;
+    DROP = 2;
+  }
+
+  string name = 1;
+  string value = 2;
+  Action action = 3;
 }
 
 message ShardInfo {
   string id = 1;
-  repeated string hosts = 2;
+  repeated GenericOption options = 3;
 }
 
 service ShardService {
   rpc ListShards (google.protobuf.Empty) returns (ListShardsReply) {}
   rpc AddDataShard (AddShardRequest) returns (google.protobuf.Empty) {}
-  rpc UpdateShard (UpdateShardRequest) returns (google.protobuf.Empty) {}
+  rpc AlterShard (AlterShardRequest) returns (google.protobuf.Empty) {}
   rpc DropShard (DropShardRequest) returns (google.protobuf.Empty) {}
   rpc AddWorldShard (AddWorldShardRequest) returns (google.protobuf.Empty) {}
   rpc GetShard (ShardRequest) returns (ShardReply) {}
@@ -38,7 +43,7 @@ message ShardReply {
 }
 
 message ShardRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message ListShardsReply {
@@ -46,17 +51,19 @@ message ListShardsReply {
 }
 
 message AddShardRequest {
-  Shard shard = 1;
+  Shard shard = 1 [(buf.validate.field).required = true];
+  bool force = 2;
 }
 
-message UpdateShardRequest {
-  Shard shard = 1;
+message AlterShardRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  repeated GenericOption options = 3;
 }
 
 message AddWorldShardRequest {
-  Shard shard = 1;
+  Shard shard = 1 [(buf.validate.field).required = true];
 }
 
 message DropShardRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }

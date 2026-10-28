@@ -11,8 +11,11 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -25,7 +28,91 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
+	"golang.org/x/time/rate"
 )
+
+const (
+	defaultAcceptorMaxRetries = 10
+
+	defaultCancelRateLimit       = 100000 /* 100k per second is basically no limit */
+	defaultAcceptorRetrySleep    = 50 * time.Millisecond
+	defaultAcceptorRetrySleepMax = 1 * time.Second
+)
+
+var (
+	cancelRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().CancelRateLimit, defaultCancelRateLimit)), defaultCancelRateLimit)
+)
+
+// Accept connection and send it to channel.
+func acceptLoop(l net.Listener, cChan chan net.Conn,
+	kind string, /* To get different log messages for console/non-console clients */
+	maxRetries int, retrySleep, retrySleepMax time.Duration) {
+
+	/* XXX: move this logic somewhere */
+	if maxRetries <= 0 {
+		maxRetries = defaultAcceptorMaxRetries
+	}
+	if retrySleep <= 0 {
+		retrySleep = defaultAcceptorRetrySleep
+	}
+	if retrySleepMax <= 0 {
+		retrySleepMax = defaultAcceptorRetrySleepMax
+	}
+	if retrySleepMax < retrySleep {
+		retrySleepMax = retrySleep
+	}
+
+	errCount := 0
+	var backoff time.Duration
+	for {
+		c, err := l.Accept()
+
+		/* Most of net error are already filtered out by
+		* go runtime reties. However, not all of possible error codes are
+		* handled https://github.com/golang/go/blob/25de5ebd/src/internal/poll/fd_unix.go#L613-L628
+		* accept(2) doc explicitly tells to retry  ENETDOWN,
+		* EPROTO, ENOPROTOOPT, EHOSTDOWN, ENONET, EHOSTUNREACH, EOPNOTSUPP,
+		* and ENETUNREACH, so we will simply retry everything, but fail anyway in case of
+		* long enough series of errors. */
+		if err != nil {
+			errCount++
+
+			if backoff == 0 {
+				backoff = retrySleep
+			} else {
+				backoff *= 2
+			}
+			if backoff > retrySleepMax {
+				backoff = retrySleepMax
+			}
+
+			spqrlog.Zero.Error().
+				Err(err).
+				Int("attempt", errCount).
+				Int("max retries", maxRetries).
+				Dur("retry in", backoff).
+				Msgf("failed to accept a new connection")
+			if errCount >= maxRetries {
+				spqrlog.Zero.Error().
+					Str("kind", kind).
+					Msgf("acceptor reached max consecutive errors on listener, shutting down")
+				close(cChan)
+				return
+			}
+			time.Sleep(backoff)
+			continue
+		}
+		errCount = 0
+		backoff = 0
+		spqrlog.Zero.Info().
+			Str("kind", kind).
+			Str("remote addr", c.RemoteAddr().String()).
+			Msg("new network client connection")
+
+		/*  XXX: what if channel is closed? */
+		cChan <- c
+	}
+}
 
 type RouterInstance interface {
 	Addr() string
@@ -73,15 +160,17 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
+func NewRouter(_ context.Context, ns string, maxTxnBatchSize uint16, metricRegistry *metrics.RouterMetricRegistry) (*InstanceImpl, error) {
+	if err := grpccreds.ValidateClient(config.CoordinatorConfig().ClientTLS); err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC client TLS: %w", err)
+	}
+
 	db, err := qdb.GetStateKeeperQDB()
 	if err != nil {
 		return nil, err
 	}
 
-	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
-
-	lc := coord.NewLocalInstanceMetadataMgr(db, db, cache, config.RouterConfig().ShardMapping, config.RouterConfig().ManageShardsByCoordinator)
+	cache := cache.NewSchemaCache(topology.TopMgr, config.RouterConfig().SchemaCacheBackendRule)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -99,10 +188,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	spqrlog.Zero.Debug().
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
-
-	var seqMngr sequences.SequenceMgr = lc
-	idRangeSize := config.RouterConfig().IdentityRangeSize
-	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	// frontend
 	frTLS, err := config.RouterConfig().FrontendTLS.Init(config.RouterConfig().Host)
@@ -122,7 +207,20 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	rr := rulerouter.NewRouter(topology.TopMgr, frTLS, config.RouterConfig(), notifier)
+	lc := coord.NewLocalInstanceMetadataMgr(
+		db,
+		db,
+		cache,
+		topology.TopMgr,
+		config.RouterConfig().ManageShardsByCoordinator,
+		rr,
+		maxTxnBatchSize,
+	)
+
+	var seqMngr sequences.SequenceMgr = lc
+	idRangeSize := config.RouterConfig().IdentityRangeSize
+	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)
@@ -132,12 +230,13 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	}
 
 	qr, err := qrouter.NewQrouter(qtype,
-		config.RouterConfig().ShardMapping,
+		topology.TopMgr, /* TODO: fix */
 		lc,
 		rr,
 		&config.RouterConfig().Qr,
 		cache,
 		identityMgr,
+		metricRegistry,
 	)
 	if err != nil {
 		return nil, err
@@ -201,6 +300,10 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 			return routerClient.ID(), nil
 		}
 
+		if err := cancelRateLim.Wait(context.Background()); err != nil {
+			return 0, err
+		}
+
 		return routerClient.ID(), r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
 
@@ -208,7 +311,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		return routerClient.ID(), r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
-	spqrlog.Zero.Info().
+	spqrlog.Zero.Debug().
 		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 
@@ -235,21 +338,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	cChan := make(chan net.Conn, max(config.RouterConfig().AcceptorBufferSize, 1))
 
-	accept := func(l net.Listener, cChan chan net.Conn) {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				// handle error (and then for example indicate acceptor is down)
-				cChan <- nil
-				return
-			}
-			spqrlog.Zero.Info().Str("remote addr", c.RemoteAddr().String()).Msg("new network client connection")
-
-			cChan <- c
-		}
-	}
-
-	go accept(listener, cChan)
+	go acceptLoop(listener, cChan, "router",
+		config.RouterConfig().AcceptorMaxRetries,
+		config.RouterConfig().AcceptorRetrySleep,
+		config.RouterConfig().AcceptorRetrySleepMax)
 	go r.watchRouterReadiness(ctx)
 
 	if r.notifier != nil {
@@ -265,20 +357,44 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	for {
 		select {
-		case conn := <-cChan:
+		case conn, ok := <-cChan:
+			if !ok {
+				_ = r.RuleRouter.Shutdown()
+				_ = listener.Close()
+				return fmt.Errorf("acceptor is down, stopping router")
+			}
+
+			initTime := time.Now()
 			if !r.Initialized() {
 				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {
 				go func() {
+
 					if id, err := r.serv(conn, pt); err != nil {
+
+						n := time.Now()
 						if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-							spqrlog.Zero.Info().Uint("client id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("error serving client")
+							spqrlog.Zero.Info().
+								Uint("client id", id).
+								Int64("ms", n.UnixMilli()).
+								TimeDiff("client live time", n, initTime).
+								Err(err).Msg("error serving client")
 						} else {
-							spqrlog.Zero.Error().Uint("client id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("error serving client")
+							spqrlog.Zero.Error().
+								Uint("client id", id).
+								Int64("ms", n.UnixMilli()).
+								TimeDiff("client live time", n, initTime).
+								Err(err).Msg("error serving client")
 						}
 					} else {
-						spqrlog.Zero.Info().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Msg("client disconnected")
+						n := time.Now()
+						spqrlog.Zero.Info().
+							Uint("id", id).
+							Int64("ms", n.UnixMilli()).
+							TimeDiff("client live time", n, initTime).
+							Str("remote addr", conn.RemoteAddr().String()).
+							Msg("client disconnected")
 					}
 				}()
 			}
@@ -297,19 +413,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 	cChan := make(chan net.Conn)
 
-	accept := func(l net.Listener, cChan chan net.Conn) {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				// handle error (and then for example indicate acceptor is down)
-				cChan <- nil
-				return
-			}
-			cChan <- c
-		}
-	}
-
-	go accept(listener, cChan)
+	go acceptLoop(listener, cChan, "admin console",
+		config.RouterConfig().AcceptorMaxRetries,
+		config.RouterConfig().AcceptorRetrySleep,
+		config.RouterConfig().AcceptorRetrySleepMax)
 
 	for {
 		select {
@@ -317,7 +424,13 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			_ = listener.Close()
 			spqrlog.Zero.Info().Msg("admin server done")
 			return nil
-		case conn := <-cChan:
+		case conn, ok := <-cChan:
+			if !ok {
+				_ = r.RuleRouter.Shutdown()
+				_ = listener.Close()
+				return fmt.Errorf("acceptor is down, stopping router")
+			}
+
 			go func() {
 				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
 					spqrlog.Zero.Error().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("")

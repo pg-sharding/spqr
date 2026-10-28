@@ -36,8 +36,9 @@ data "yandex_compute_image" "container_optimized_image" {
 resource "yandex_compute_instance" "routers" {
   count = var.router_count
 
-  hostname = "spqr-benchmarks-router-${var.pr_number}-${count.index}"
-  name     = "spqr-benchmarks-router-${var.pr_number}-${count.index}"
+  hostname = "spqr-benchmarks-router-${substr(var.pr_number, 0, 16)}-${count.index}"
+  name     = "spqr-benchmarks-router-${substr(var.pr_number, 0, 16)}-${count.index}"
+  
   zone = "ru-central1-d"
   
   boot_disk {
@@ -52,8 +53,8 @@ resource "yandex_compute_instance" "routers" {
 
   platform_id = "standard-v3"
   resources {
-    cores = 32
-    memory = 32
+    cores = var.router_cpu
+    memory = var.router_mem
     core_fraction = 100
   }
 
@@ -71,13 +72,13 @@ resource "yandex_compute_instance" "routers" {
 }
 
 resource "yandex_compute_instance" "benchmark-loader" {
-  hostname = "spqr-benchmarks-loader-${var.pr_number}"
-  name     = "spqr-benchmarks-loader-${var.pr_number}"
+  hostname = substr("spqr-benchmarks-loader-${var.pr_number}", 0, 63)
+  name     = substr("spqr-benchmarks-loader-${var.pr_number}", 0, 63)
   zone = "ru-central1-d"
   
   boot_disk {
     initialize_params {
-      name       = "disk-loader-${var.pr_number}"
+      name       = substr("disk-loader-${var.pr_number}", 0, 63)
       type       = "network-ssd"
       size       = 20
       block_size = 4096
@@ -123,14 +124,14 @@ write_files:
       export AWS_DEFAULT_REGION="ru-central1"
       ENDPOINT="https://storage.yandexcloud.net"
       BUCKET="spqr-benchmark-reports"
-      PR_NUMBER="${var.pr_number}"
+      S3_RESULTS_PATH="${var.s3_results_path}"
       FOLDER="$1"
 
       for FILE in "$FOLDER"/*; do
         FILE_NAME=$(basename "$FILE")
         NAME=$${FILE_NAME#*.}
 
-        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $PR_NUMBER/$NAME --body $FILE
+        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $S3_RESULTS_PATH/$NAME --body $FILE
       done
 
   - path: /usr/local/run.sh
@@ -140,12 +141,15 @@ write_files:
       set -e
       set -x
 
+      export DEBIAN_FRONTEND=noninteractive
+      export UCF_FORCE_CONFFNEW=1
+
       BUCKET="spqr-benchmark-reports"
-      PR_NUMBER="${var.pr_number}"
+      S3_RESULTS_PATH="${var.s3_results_path}"
 
       change_status() {
         echo $1 > /tmp/status
-        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $PR_NUMBER/status --body /tmp/status
+        /root/yandex-cloud/bin/yc storage s3api put-object --bucket $BUCKET --key $S3_RESULTS_PATH/status --body /tmp/status
       }
 
       error_exit() {
@@ -162,7 +166,9 @@ write_files:
 
       echo "preparing, installing tools"
       git clone https://github.com/JoBeR007/benchbase-spqr.git
-      apt update && sudo apt upgrade -y
+      apt update && apt upgrade -y \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold"
       apt install default-jdk -y
       apt install openjdk-21-jdk -y
 

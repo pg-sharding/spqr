@@ -15,7 +15,7 @@ func NewLocalQlog() *LocalQlog {
 	return &LocalQlog{}
 }
 
-func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) error {
+func (dw *LocalQlog) DumpQuery(_ context.Context, fname string, q string) error {
 
 	// TODO: use
 	//ctxQLog, cf := context.WithTimeout(ctx, time.Second * 5)
@@ -39,8 +39,7 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	return nil
 }
 
-// TODO : unit tests
-func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
+func (dw *LocalQlog) Recover(_ context.Context, path string) ([]string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return []string{}, err
 	}
@@ -79,6 +78,10 @@ func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error)
 				qs = ""
 			}
 		}
+	}
+
+	if strings.TrimSpace(qs) != "" {
+		queries = append(queries, qs)
 	}
 
 	if err := scanner.Err(); err != nil {

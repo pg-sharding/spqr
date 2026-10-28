@@ -13,17 +13,17 @@ type DistributionMgr interface {
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 
-	GetRelationDistribution(ctx context.Context, relation_name *rfqn.RelationFQN) (*Distribution, error)
+	GetRelationDistribution(ctx context.Context, relationFQN *rfqn.RelationFQN) (*Distribution, error)
 
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
-	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
+	AlterDistributionDetach(ctx context.Context, id string, relationFQN *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
-	AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error
-	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error
+	AlterDistributedRelationSchema(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, schemaName string) error
+	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationFQN *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error
 
 	CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error
 	DropUniqueIndex(ctx context.Context, idxID string) error
 	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
 	ListDistributionIndexes(ctx context.Context, dsID string) (map[string]*UniqueIndex, error)
-	ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, error)
+	ListRelationIndexes(ctx context.Context, relationFQN *rfqn.RelationFQN) (map[string]*UniqueIndex, error)
 }

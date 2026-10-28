@@ -9,13 +9,15 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/router_util"
 	"github.com/pg-sharding/spqr/pkg/tsa"
-	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -54,7 +56,6 @@ type RuleRouterImpl struct {
 
 	tlsconfig *tls.Config
 
-	mu   sync.Mutex
 	rcfg *config.Router
 
 	clmp sync.Map
@@ -63,9 +64,24 @@ type RuleRouterImpl struct {
 
 	initSem semaphore.Weighted
 
-	tcpConnCount    atomic.Int64
-	activeTcpCount  atomic.Int64
-	cancelConnCount atomic.Int64
+	totalTCPCount       atomic.Int64
+	activeTCPCount      atomic.Int64
+	cancelConnCount     atomic.Int64
+	clientInitFailCount atomic.Int64
+	clientAuthFailCount atomic.Int64
+
+	InstanceStartTime time.Time
+	LastReload        time.Time
+}
+
+// LastReloadTime implements [RuleRouter].
+func (r *RuleRouterImpl) LastReloadTime() time.Time {
+	return r.LastReload
+}
+
+// StartTime implements [RuleRouter].
+func (r *RuleRouterImpl) StartTime() time.Time {
+	return r.InstanceStartTime
 }
 
 // ErrorCounts implements [RuleRouter].
@@ -84,7 +100,7 @@ func (r *RuleRouterImpl) ErrorCounts() map[string]uint64 {
 }
 
 // ReportError implements [RuleRouter].
-func (r *RuleRouterImpl) ReportError(errtype string) {
+func (r *RuleRouterImpl) ReportError(_ string) {
 	/* nothing */
 }
 
@@ -115,14 +131,24 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return rt
 }
 
-// ReleaseConnection implements RuleRouter.
-func (r *RuleRouterImpl) ReleaseConnection() {
-	r.activeTcpCount.Add(-1)
+// RunRecheckHosts implements ConnectionStatsMgr.
+func (r *RuleRouterImpl) RunRecheckHosts() []pool.HostRecheckResult {
+	var res []pool.HostRecheckResult
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		res = append(res, r.MultiShardPool().RunRecheckHosts()...)
+		return true, nil
+	})
+	return res
 }
 
-// ActiveTcpCount implements RuleRouter.
-func (r *RuleRouterImpl) ActiveTcpCount() int64 {
-	return r.activeTcpCount.Load()
+// ReleaseConnection implements RuleRouter.
+func (r *RuleRouterImpl) ReleaseConnection() {
+	r.activeTCPCount.Add(-1)
+}
+
+// ActiveTCPCount implements RuleRouter.
+func (r *RuleRouterImpl) ActiveTCPCount() int64 {
+	return r.activeTCPCount.Load()
 }
 
 // TotalCancelCount implements RuleRouter.
@@ -130,9 +156,19 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 	return r.cancelConnCount.Load()
 }
 
-// TotalTcpCount implements RuleRouter.
-func (r *RuleRouterImpl) TotalTcpCount() int64 {
-	return r.tcpConnCount.Load()
+// TotalTCPCount implements RuleRouter.
+func (r *RuleRouterImpl) TotalTCPCount() int64 {
+	return r.totalTCPCount.Load()
+}
+
+// FailedAuthCount implements RuleRouter.
+func (r *RuleRouterImpl) FailedAuthCount() int64 {
+	return r.clientAuthFailCount.Load()
+}
+
+// FailedInitCount implements RuleRouter.
+func (r *RuleRouterImpl) FailedInitCount() int64 {
+	return r.clientInitFailCount.Load()
 }
 
 // TODO : unit tests
@@ -156,11 +192,9 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		return err
 	}
 	rcfg := config.RouterConfig()
+	topology.InitShardMapping(topology.DataShardMapFromConfig(rcfg.ShardMapping))
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLogging)
+	router_util.ReloadRotateLog()
 
 	r.rmgr.Reload(rcfg.FrontendRules, rcfg.BackendRules)
 
@@ -181,29 +215,33 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		}
 	}
 
+	r.LastReload = time.Now()
+
 	return nil
 }
 
-func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
+func NewRouter(tmgr topology.TopologyMgr, tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	return &RuleRouterImpl{
-		RoutePool: NewRouterPoolImpl(rcfg.ShardMapping),
+		RoutePool: NewRouterPoolImpl(tmgr),
 		rcfg:      rcfg,
 		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,
 		clmp:      sync.Map{},
 		notifier:  notifier,
-		initSem:   *semaphore.NewWeighted(config.ValueOrDefaultInt64(rcfg.ClientInitMax, defaultInstanceClientInitMax)),
+
+		InstanceStartTime: time.Now(),
+		LastReload:        time.Now(),
+		initSem:           *semaphore.NewWeighted(config.ValueOrDefaultInt64(rcfg.ClientInitMax, defaultInstanceClientInitMax)),
 	}
 }
 
 // TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	r.tcpConnCount.Add(1)
-	r.activeTcpCount.Add(1)
+	r.totalTCPCount.Add(1)
+	r.activeTCPCount.Add(1)
 
 	cl := rclient.NewPsqlClient(conn,
 		pt,
-		string(config.RouterConfig().Qr.DefaultRouteBehaviour),
 		config.RouterConfig().ShowNoticeMessages,
 		config.RouterConfig().Qr.DefaultTSA)
 
@@ -216,6 +254,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	if err := cl.Init(tlsConfig); err != nil {
 		r.initSem.Release(1)
+		r.clientInitFailCount.Add(1)
 		return cl, err
 	}
 
@@ -235,11 +274,8 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			PoolMode: config.PoolModeVirtual,
 		}
 		if err := cl.AssignRule(rule); err != nil {
-			_ = cl.ReplyErrMsg(
-				"failed to assign rule",
-				spqrerror.SPQR_ROUTING_ERROR,
-				0,
-				txstatus.TXIDLE)
+			_ = cl.ReplyErr(
+				spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "failed to assign rule"))
 			return nil, err
 		}
 	}
@@ -288,13 +324,10 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if err := cl.Auth(rt); err != nil {
+		r.clientAuthFailCount.Add(1)
 		_ = cl.ReplyErr(err)
 		if !config.RouterConfig().DisableObsoleteClient {
-			route := r.Obsolete(key)
-			/* Stop watchdogs, if any */
-			if route != nil {
-				route.MultiShardPool().StopCacheWatchdog()
-			}
+			r.Obsolete(key)
 		}
 		return cl, err
 	}
@@ -328,11 +361,8 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
-		_ = cl.ReplyErrMsg(
-			"failed to assign rule",
-			spqrerror.SPQR_ROUTING_ERROR,
-			0,
-			txstatus.TXIDLE)
+		_ = cl.ReplyErr(
+			spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "failed to assign rule"))
 		return nil, err
 	}
 
@@ -357,7 +387,10 @@ func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 // TODO : unit tests
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	if v, ok := r.clmp.Load(csm.ProcessID); ok {
-		cl := v.(rclient.RouterClient)
+		cl, ok := v.(rclient.RouterClient)
+		if !ok {
+			return fmt.Errorf("internal: unexpected client type %T for pid %d", v, csm.ProcessID)
+		}
 
 		if !bytes.Equal(cl.GetCancelKey(), csm.SecretKey) {
 			return fmt.Errorf("cancel secret does not match")
@@ -370,16 +403,16 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
-	return rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+func (r *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+	return r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		return true, route.NotifyClients(cb)
 	})
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
+func (r *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
-	err := rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+	err := r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		ok, nestedErr := route.ReleaseClient(clientID)
 		popped = popped || ok
 		return !popped, nestedErr
@@ -388,7 +421,7 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	return popped, err
 }
 
-func (rr *RuleRouterImpl) Put(id client.Client) error {
+func (r *RuleRouterImpl) Put(_ client.Client) error {
 	return nil
 }
 

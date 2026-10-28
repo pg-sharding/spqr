@@ -19,7 +19,7 @@ func TestCheckRoOnlyQuery(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: `select pg_is_in_recovery() from tt /* __spqr__target_session_attrs: smart-read-write *`,
+			query: `select pg_is_in_recovery() from tt /* __spqr__target_session_attrs: smart-read-write */`,
 			exp:   true,
 		},
 		{

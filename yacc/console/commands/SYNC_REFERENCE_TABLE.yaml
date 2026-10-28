@@ -1,0 +1,32 @@
+name: SYNC REFERENCE TABLE
+snippet: reference_table_commands
+order: 5
+description: |
+  Synchronizes a reference table to a target shard by copying data from an
+  existing shard that already has the table.
+
+  This is useful when adding a new shard to the cluster that needs reference
+  table data, or recovering reference table data on a shard after a failure.
+
+warnings:
+  - This command is not available for installations without SPQR coordinator.
+
+syntax: |
+  SYNC REFERENCE TABLE <table_name> ON <shard_id>
+
+parameters:
+  - name: table_name
+    description: Name of the reference table to synchronize
+  - name: shard_id
+    description: Identifier of the destination shard where data will be copied
+
+examples:
+  - description: Sync a reference table to a new shard
+    code: SYNC REFERENCE TABLE tax_rates ON sh3;
+
+notes:
+  - The table structure must already exist on the destination shard before running this command.
+
+related_commands:
+  - CREATE REFERENCE TABLE
+  - ALTER REFERENCE TABLE STORAGE

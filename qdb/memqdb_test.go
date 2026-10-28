@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,20 @@ var mockDataTransferTransaction = &qdb.DataTransferTransaction{
 	ToShardId:   mockShard.ID,
 	FromShardId: mockShard.ID,
 	Status:      "fake_st",
+}
+
+func TestMemQDBGetShardReturnsShardNotFound(t *testing.T) {
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(t, err)
+
+	_, err = memqdb.GetShard(context.TODO(), "missing-shard")
+
+	var spErr *spqrerror.SpqrError
+	if assert.ErrorAs(t, err, &spErr) {
+		assert.Equal(t, spqrerror.SPQR_NO_DATASHARD, spErr.ErrorCode)
+		assert.Equal(t, "Shard \"missing-shard\" not found.", spErr.Error())
+		assert.Equal(t, "Run 'SHOW shards' to see all configured shards.", spErr.ErrHint)
+	}
 }
 
 // must run with -race
@@ -103,7 +118,7 @@ func TestMemqdbRacing(t *testing.T) {
 				panic("can't unmarshal distribution (exec no transaction test)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
@@ -117,7 +132,7 @@ func TestMemqdbRacing(t *testing.T) {
 				panic("can't unmarshal distribution case(1)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CmdPut, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			err = tran.Append(commands)
 			if err != nil {
@@ -129,6 +144,7 @@ func TestMemqdbRacing(t *testing.T) {
 			}
 			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
+		func() { _, _ = memqdb.CheckSequence(ctx, "testSeq") },
 	}
 	for range 1000 {
 		for _, m := range methods {
@@ -252,7 +268,7 @@ func TestDropReferenceRelation(t *testing.T) {
 		TableName:             "test2",
 		SchemaVersion:         1,
 		ColumnSequenceMapping: map[string]string{"id": "test2_id"},
-		ShardIds:              []string{"sh1", "sh2"},
+		ShardIDs:              []string{"sh1", "sh2"},
 	}
 	err = memqdb.CreateReferenceRelation(ctx, referenceRelation)
 	assert.NoError(err)
@@ -260,10 +276,10 @@ func TestDropReferenceRelation(t *testing.T) {
 	assert.NoError(err)
 	_, err = memqdb.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "test2"})
 	assert.Error(err)
-	assert.Equal(0, len(memqdb.Sequences))
-	assert.Equal(0, len(memqdb.ColumnSequence))
-	assert.Equal(0, len(memqdb.SequenceToValues))
-	assert.Equal(0, len(memqdb.ReferenceRelations))
+	assert.Equal(0, len(memqdb.State.Sequences))
+	assert.Equal(0, len(memqdb.State.ColumnSequence))
+	assert.Equal(0, len(memqdb.State.SequenceToValues))
+	assert.Equal(0, len(memqdb.State.ReferenceRelations))
 
 	statements, err := memqdb.DropKeyRange(ctx, "nonexistentKeyRange")
 	assert.NoError(err)
@@ -362,6 +378,28 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 	assert.NotNil(err)
 }
 
+func TestMemQDB_CreateSequence(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := qdb.NewMemQDB("")
+	assert.NoError(err)
+
+	seqExists, err := memqdb.CheckSequence(ctx, "seq")
+	assert.NoError(err)
+	assert.Equal(false, seqExists)
+	statements, err := memqdb.CreateSequence(ctx, "seq", 0)
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(context.TODO(), statements)
+	assert.NoError(err)
+	seqExists, err = memqdb.CheckSequence(ctx, "seq")
+	assert.NoError(err)
+	assert.Equal(true, seqExists)
+	actual, err := memqdb.ListSequences(ctx)
+	assert.NoError(err)
+	assert.Equal([]string{"seq"}, actual)
+}
+
 func TestMemQDB_NextVal(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
@@ -369,7 +407,9 @@ func TestMemQDB_NextVal(t *testing.T) {
 	memqdb, err := qdb.NewMemQDB("")
 	assert.NoError(err)
 
-	err = memqdb.CreateSequence(ctx, "seq", 0)
+	statements, err := memqdb.CreateSequence(ctx, "seq", 0)
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	err = memqdb.AlterSequenceAttach(ctx, "seq", &rfqn.RelationFQN{RelationName: "test"}, "id")
@@ -424,18 +464,18 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-	kr1, ok := memqdb.Krs["krid1"]
+	kr1, ok := memqdb.State.Krs["krid1"]
 	assert.True(ok)
 	assert.Equal("krid1", kr1.KeyRangeID)
-	_, ok = memqdb.Locks["krid1"]
+	_, ok = memqdb.State.Locks["krid1"]
 	assert.True(ok)
 
 	statements, err = memqdb.DropKeyRange(ctx, "krid1")
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
-	_, ok = memqdb.Krs["krid1"]
+	_, ok = memqdb.State.Krs["krid1"]
 	assert.False(ok)
-	_, ok = memqdb.Locks["krid1"]
+	_, ok = memqdb.State.Locks["krid1"]
 	assert.False(ok)
 
 	// Drop non-existent KR
@@ -456,15 +496,15 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-	delete(memqdb.Locks, "krid2")
+	delete(memqdb.State.Locks, "krid2")
 	_, err = memqdb.DropKeyRange(ctx, "krid2")
 	assert.Error(err)
 	assert.Contains(err.Error(), "no lock in MemQDB")
 
-	kr2, ok := memqdb.Krs["krid2"]
+	kr2, ok := memqdb.State.Krs["krid2"]
 	assert.True(ok)
 	assert.Equal("krid2", kr2.KeyRangeID)
-	_, ok = memqdb.Locks["krid2"]
+	_, ok = memqdb.State.Locks["krid2"]
 	assert.False(ok)
 
 	// KR locked
@@ -478,10 +518,10 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-	kr3, ok := memqdb.Krs["krid3"]
+	kr3, ok := memqdb.State.Krs["krid3"]
 	assert.True(ok)
 	assert.Equal("krid3", kr3.KeyRangeID)
-	lock3, ok := memqdb.Locks["krid3"]
+	lock3, ok := memqdb.State.Locks["krid3"]
 	assert.True(ok)
 
 	lock3.Lock()
@@ -490,7 +530,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "is locked")
 
-	_, ok = memqdb.Krs["krid3"]
+	_, ok = memqdb.State.Krs["krid3"]
 	assert.True(ok)
 }
 
@@ -517,33 +557,33 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-	_, ok := memqdb.Krs["krid1"]
+	_, ok := memqdb.State.Krs["krid1"]
 	assert.True(ok)
 
-	origLock := memqdb.Locks["krid1"]
+	origLock := memqdb.State.Locks["krid1"]
 
 	// Basic rename
 	assert.NoError(memqdb.RenameKeyRange(ctx, "krid1", "krid2"))
 
-	_, ok = memqdb.Krs["krid1"]
+	_, ok = memqdb.State.Krs["krid1"]
 	assert.False(ok)
-	krNew, ok := memqdb.Krs["krid2"]
+	krNew, ok := memqdb.State.Krs["krid2"]
 	assert.True(ok)
 	assert.Equal("krid2", krNew.KeyRangeID)
 	assert.Equal([][]byte{[]byte("1")}, krNew.LowerBound)
 	assert.Equal("sh1", krNew.ShardID)
 	assert.Equal("ds1", krNew.DistributionId)
 
-	_, ok = memqdb.Locks["krid1"]
+	_, ok = memqdb.State.Locks["krid1"]
 	assert.False(ok)
-	newLock, ok := memqdb.Locks["krid2"]
+	newLock, ok := memqdb.State.Locks["krid2"]
 	assert.True(ok)
 	assert.Equal(origLock, newLock)
 
 	// Rename non-existent KR
-	prev := maps.Clone(memqdb.Krs)
+	prev := maps.Clone(memqdb.State.Krs)
 	assert.Error(memqdb.RenameKeyRange(ctx, "krid1", "krid3"))
-	assert.Equal(prev, memqdb.Krs)
+	assert.Equal(prev, memqdb.State.Krs)
 
 	// Rename to existing KR
 	otherKeyRange := &qdb.KeyRange{
@@ -558,11 +598,11 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 
 	assert.Error(memqdb.RenameKeyRange(ctx, "krid2", "krid3"))
 
-	kr2, ok := memqdb.Krs["krid2"]
+	kr2, ok := memqdb.State.Krs["krid2"]
 	assert.True(ok)
 	assert.Equal("krid2", kr2.KeyRangeID)
 	assert.Equal([][]byte{[]byte("1")}, kr2.LowerBound)
-	kr3, ok := memqdb.Krs["krid3"]
+	kr3, ok := memqdb.State.Krs["krid3"]
 	assert.True(ok)
 	assert.Equal("krid3", kr3.KeyRangeID)
 }
@@ -615,7 +655,7 @@ func TestRestoreQDB_ValidJSON(t *testing.T) {
 	orig, err := qdb.NewMemQDB(path)
 	assert.NoError(err)
 
-	orig.Coordinator = "coord-1"
+	orig.State.Coordinator = "coord-1"
 
 	data, err := json.Marshal(orig)
 	assert.NoError(err)
@@ -627,7 +667,7 @@ func TestRestoreQDB_ValidJSON(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(q)
 
-	assert.Equal("coord-1", q.Coordinator)
+	assert.Equal("coord-1", q.State.Coordinator)
 }
 
 func TestDropDistribution_NonExistent(t *testing.T) {
@@ -867,12 +907,12 @@ func TestDropReferenceRelation_PrefixNameBug(t *testing.T) {
 	rrPrefixName := &qdb.ReferenceRelation{
 		TableName:     "zz",
 		SchemaVersion: 1,
-		ShardIds:      []string{},
+		ShardIDs:      []string{},
 	}
 	rrWithPrefixName := &qdb.ReferenceRelation{
 		TableName:     "zzx",
 		SchemaVersion: 1,
-		ShardIds:      []string{},
+		ShardIDs:      []string{},
 	}
 
 	assert.NoError(memqdb.CreateReferenceRelation(ctx, rrPrefixName))
@@ -908,7 +948,7 @@ func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
 
 		for _, name := range []string{"a", "ab", "abc"} {
 			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
-				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+				TableName: name, SchemaVersion: 1, ShardIDs: []string{},
 			}))
 		}
 
@@ -929,7 +969,7 @@ func TestDropReferenceRelation_PrefixNameBug_BothOrders(t *testing.T) {
 
 		for _, name := range []string{"a", "ab", "abc"} {
 			assert.NoError(memqdb.CreateReferenceRelation(ctx, &qdb.ReferenceRelation{
-				TableName: name, SchemaVersion: 1, ShardIds: []string{},
+				TableName: name, SchemaVersion: 1, ShardIDs: []string{},
 			}))
 		}
 
@@ -964,7 +1004,7 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 		is.NoError(err)
 		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-		lock, ok := memqdb.Locks["krid1"]
+		lock, ok := memqdb.State.Locks["krid1"]
 		is.True(ok)
 		is.True(lock.TryLock()) // no locked key range krid1
 	})
@@ -988,8 +1028,15 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 		is.NoError(err)
 		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-		lock, ok := memqdb.Locks["krid1"]
+		lock, ok := memqdb.State.Locks["krid1"]
 		is.True(ok)
 		is.False(lock.TryLock()) // locked key range krid1
 	})
+}
+
+func TestMemQDBKeyRangeVersions(t *testing.T) {
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(t, err)
+
+	qdb.RunTestKeyRangeChangeVersion(t, memqdb)
 }

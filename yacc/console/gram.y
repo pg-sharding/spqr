@@ -4,7 +4,6 @@ package spqrparser
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"crypto/rand"
@@ -27,10 +26,6 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-var validSslModes = map[string]bool{
-	"disable": true, "allow": true, "prefer": true,
-	"require": true, "verify-ca": true, "verify-full": true,
-}
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -48,11 +43,13 @@ var validSslModes = map[string]bool{
 
     set                    *Set
 	statement              Statement
+	statementList		   []Statement
 	show                   *Show
 	help                   *Help
 
 	drop                   *Drop
 	create                 *Create
+	rename                 *Rename
 
 	kill                   *Kill
 	lock                   *Lock
@@ -62,8 +59,11 @@ var validSslModes = map[string]bool{
 	krbound                *KeyRangeBound
 
 	qname		   		   *rfqn.RelationFQN
+	qnameList		   	 []*rfqn.RelationFQN
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
+	krForDistr 			   *KeyRangesForDistributionDefinition
+	customDistrRange 	   *CustomDistributionRange
 	shard                  *ShardDefinition
 
 	register_router        *RegisterRouter
@@ -96,6 +96,9 @@ var validSslModes = map[string]bool{
 	icp						*InstanceControlPoint
 	icpAction				*ICPointAction
 	duration				time.Duration
+
+	grant					*GrantStmt
+	privilege_target		*PrivTarget
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -126,6 +129,16 @@ var validSslModes = map[string]bool{
 
 	alter_relation          *AlterRelationV2
 	alter_shard             *AlterShard
+	option				   	GenericOption
+	options				   	[]GenericOption
+
+	begin 					*Begin
+	commit 					*Commit
+	rollback 				*Rollback
+
+	call                    *Call
+
+	drop_selector           DropSelector
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -183,19 +196,24 @@ var validSslModes = map[string]bool{
 %type<colref> ColRef
 %type<colreflist> ColRef_list
 
-%type<str> any_val any_id shard_id
+
+%type<integer> opt_show_kind
+
+%type<str> any_val any_id shard_id opt_any_id reserved_keyword
 
 %type<uinteger> any_uint
 // CMDS
 %type <statement> command
 
+%type <statementList> multiStmt
+
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME
-%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
-%token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
-%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME CALL
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
+%token <str> SHARDS SHARD COLUMNS HOSTS
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
 %token <str> CLIENT
 %token <str> BATCH SIZE NOWAIT
 %token <str> INVALIDATE CACHE
@@ -204,17 +222,27 @@ var validSslModes = map[string]bool{
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
 %token <str> STALE CLIENTS
-%token <str> SSLMODE CERT_FILE KEY_FILE ROOT_CERT_FILE
+%token <str> OPTIONS FORCE
+%token <str> META ONLY
+%token <str> BEGIN COMMIT ROLLBACK
+%token <str> MIGRATION RESET
+%token <str> SELECT
+
+%token <str> IF EXISTS
 
 %token <str> IDENTITY MURMUR CITY 
 
-%token<str> START STOP TRACE MESSAGES
+%token<str> START STOP TRACE MESSAGES IMMEDIATE
 
 %token<str> TASK GROUP
 
-%token<str> SYSTEM RELOAD RESTART
+%token<str> SYSTEM RELOAD RESTART REBOOTSTRAP ROTATE
 
 %token<str> SECONDS WAIT PANIC SLEEP
+
+%token<str> GRANT PRIVILEGES
+
+%token<str> LOCAL GLOBAL
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -222,12 +250,14 @@ var validSslModes = map[string]bool{
 /* ICP */
 %token<str> CONTROL POINT
 
-/* any operator */
+/* any operator multi-character, produced by the lexer */
 %token<str> OP
 
 
-%type<key_range_selector> key_range_stmt
+%type<key_range_selector> key_range_stmt key_range_select_stmt
 %type<distribution_selector> distribution_select_stmt
+%type<statement> create_target
+%type<drop_selector> drop_target
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -239,14 +269,21 @@ var validSslModes = map[string]bool{
 
 %type <drop> drop_stmt
 %type <create> add_stmt create_stmt
+%type <rename> rename_stmt
 
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
 
 %type<qname> qualified_name
+%type<qnameList> qualified_name_list
 %type <ds> distribution_define_stmt
 %type <kr> key_range_define_stmt
+%type <krForDistr> key_ranges_for_distribution_define_stmt
+%type <customDistrRange> opt_custom_distr_range
 %type <shard> shard_define_stmt
+
+%type<strlist> privileges grantee_list privilege_list
+%type<str> privilege grantee
 
 %type<dEntrieslist> distribution_key_argument_list
 %type<aiEntrieslist> opt_auto_increment
@@ -262,6 +299,7 @@ var validSslModes = map[string]bool{
 
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
+%type<alter_shard> shard_alter_stmt
 
 %type<icp> icp_stmt
 
@@ -278,13 +316,18 @@ var validSslModes = map[string]bool{
 
 %type<alter_relation> relation_alter_stmt_v2
 
+%type<begin> begin_stmt
+%type<commit> commit_stmt
+%type<rollback> rollback_stmt
+
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
 %type<bool> opt_cascade
 %type<str> opt_default_shard
-%type<shard> opt_shard_tls
-
-%type<alter_shard> alter_shard_options
+%type<options> options opt_options alter_generic_options generic_option_list alter_generic_option_list
+%type<option> generic_option_elem alter_generic_option_elem
+%type<bool> opt_force
+%type<bool> opt_if_not_exists opt_if_exists
 
 %type<statement> alter_sys_target
 
@@ -310,33 +353,49 @@ var validSslModes = map[string]bool{
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
-%type <bool> no_wait_opt
+%type <bool> opt_no_wait opt_immediate
+
+%type<grant> GrantStmt
+%type<privilege_target> privilege_target
 
 %type<icpAction> opt_icp_action 
 %type<duration> opt_duration
+
+%type<call> call_stmt
 
 %left		OR
 %left		AND
 %right		NOT
 %nonassoc	TLESS TGREATER TEQ
-%left		OP OPERATOR	/* multi-character ops and user-defined operators */
+%left		OP		/* multi-character operator */
 %left		TPLUS TMINUS
 %left		TMUL 
-%left		TSQOPENBR TSQCLOSEBR
+%left		TOPENSQBR TCLOSESQBR
 %left		TOPENBR TCLOSEBR
 
-
-%start any_command
+%start root
 
 %%
 
+root: multiStmt semicolon_opt {
+	setParseTree(yylex, $1)
+}
 
-any_command:
-    command semicolon_opt
+
+
+multiStmt: 
+			command {
+				$$ = []Statement{$1}
+			} | 
+			multiStmt TSEMICOLON command {
+				$$ = append($1, $3)
+			}
+	;
+
 
 semicolon_opt:
-/*empty*/ {}
-| TSEMICOLON {}
+	/*empty*/ {}
+	| TSEMICOLON {}
 
 
 command:
@@ -346,106 +405,124 @@ command:
 	|
 	add_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| create_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| trace_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| stoptrace_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| drop_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| lock_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unlock_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| show_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| help_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| kill_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| listen_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| shutdown_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| split_key_range_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| move_key_range_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| redistribute_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unite_key_range_stmt
 	{
-	   setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| register_router_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| unregister_router_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| alter_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| invalidate_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} 
 	| retry_move_task_group
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| stop_move_task_group
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| sync_reference_tables_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| alter_reference_table_storage_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	}
 	| create_distributed_relation_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
 	} | icp_stmt
 	{
-		setParseTree(yylex, $1)
+		$$ = $1
+	} | GrantStmt
+	{
+		$$ = $1
+	} | rename_stmt 
+	{
+		$$ = $1
+	} | begin_stmt
+	{
+		$$ = $1
+	} | commit_stmt
+	{
+		$$ = $1
+	} | rollback_stmt
+	{
+		$$ = $1
+	} | call_stmt
+	{
+		$$ = $1
 	}
 
 any_uint:
@@ -453,13 +530,9 @@ any_uint:
 		$$ = uint($1)
 	}
 
-any_val: SCONST
+any_val: any_id
 	{
-		$$ = string($1)
-	} | 
-	IDENT
-	{
-		$$ = string($1)
+		$$ = $1
 	} | ICONST {
 		if $1 > uint(math.MaxInt64) {
 			yylex.Error(SIGNED_INT_RANGE_ERROR)
@@ -486,7 +559,385 @@ any_id: IDENT
 	} | SCONST
 	{
 		$$ = string($1)
+	} | reserved_keyword
+	{
+		$$ = $1
 	}
+
+reserved_keyword:
+	SHOW
+	{
+		$$ = $1
+	} | KILL
+	{
+		$$ = $1
+	} | HELP
+	{
+		$$ = $1
+	} | WHERE
+	{
+		$$ = $1
+	} | OR
+	{
+		$$ = $1
+	} | AND
+	{
+		$$ = $1
+	} | NOT
+	{
+		$$ = $1
+	} | SHUTDOWN
+	{
+		$$ = $1
+	} | LISTEN
+	{
+		$$ = $1
+	} | REGISTER
+	{
+		$$ = $1
+	} | UNREGISTER
+	{
+		$$ = $1
+	} | ROUTER
+	{
+		$$ = $1
+	} | ROUTE
+	{
+		$$ = $1
+	} | CREATE
+	{
+		$$ = $1
+	} | ADD
+	{
+		$$ = $1
+	} | DROP
+	{
+		$$ = $1
+	} | LOCK
+	{
+		$$ = $1
+	} | UNLOCK
+	{
+		$$ = $1
+	} | SPLIT
+	{
+		$$ = $1
+	} | MOVE
+	{
+		$$ = $1
+	} | SET
+	{
+		$$ = $1
+	} | CASCADE
+	{
+		$$ = $1
+	} | ATTACH
+	{
+		$$ = $1
+	} | ALTER
+	{
+		$$ = $1
+	} | DETACH
+	{
+		$$ = $1
+	} | REDISTRIBUTE
+	{
+		$$ = $1
+	} | REFERENCE
+	{
+		$$ = $1
+	} | CHECK
+	{
+		$$ = $1
+	} | APPLY
+	{
+		$$ = $1
+	} | UNIQUE
+	{
+		$$ = $1
+	} | RENAME
+	{
+		$$ = $1
+	} | CALL
+	{
+		$$ = $1
+	} | COLUMN
+	{
+		$$ = $1
+	} | TABLE
+	{
+		$$ = $1
+	} | TABLES
+	{
+		$$ = $1
+	} | RELATIONS
+	{
+		$$ = $1
+	} | BACKENDS
+	{
+		$$ = $1
+	} | HASH
+	{
+		$$ = $1
+	} | FUNCTION
+	{
+		$$ = $1
+	} | KEY
+	{
+		$$ = $1
+	} | RANGE
+	{
+		$$ = $1
+	} | RANGES
+	{
+		$$ = $1
+	} | USING
+	{
+		$$ = $1
+	} | DISTRIBUTION
+	{
+		$$ = $1
+	} | RELATION
+	{
+		$$ = $1
+	} | REPLICATED
+	{
+		$$ = $1
+	} | AUTO
+	{
+		$$ = $1
+	} | INCREMENT
+	{
+		$$ = $1
+	} | SEQUENCE
+	{
+		$$ = $1
+	} | SCHEMA
+	{
+		$$ = $1
+	} | INDEX
+	{
+		$$ = $1
+	} | STORAGE
+	{
+		$$ = $1
+	} | SHARDS
+	{
+		$$ = $1
+	} | SHARD
+	{
+		$$ = $1
+	} | COLUMNS
+	{
+		$$ = $1
+	} | HOSTS
+	{
+		$$ = $1
+	} | BY
+	{
+		$$ = $1
+	} | FROM
+	{
+		$$ = $1
+	} | TO
+	{
+		$$ = $1
+	} | WITH
+	{
+		$$ = $1
+	} | UNITE
+	{
+		$$ = $1
+	} | ADDRESS
+	{
+		$$ = $1
+	} | FOR
+	{
+		$$ = $1
+	} | BETWEEN
+	{
+		$$ = $1
+	} | CLIENT
+	{
+		$$ = $1
+	} | BATCH
+	{
+		$$ = $1
+	} | SIZE
+	{
+		$$ = $1
+	} | NOWAIT
+	{
+		$$ = $1
+	} | INVALIDATE
+	{
+		$$ = $1
+	} | CACHE
+	{
+		$$ = $1
+	} | SYNC
+	{
+		$$ = $1
+	} | RETRY
+	{
+		$$ = $1
+	} | DISTRIBUTED
+	{
+		$$ = $1
+	} | IN
+	{
+		$$ = $1
+	} | ON
+	{
+		$$ = $1
+	} | DEFAULT
+	{
+		$$ = $1
+	} | STALE
+	{
+		$$ = $1
+	} | CLIENTS
+	{
+		$$ = $1
+	} | OPTIONS
+	{
+		$$ = $1
+	} | FORCE
+	{
+		$$ = $1
+	} | META
+	{
+		$$ = $1
+	} | ONLY
+	{
+		$$ = $1
+	} | BEGIN
+	{
+		$$ = $1
+	} | COMMIT
+	{
+		$$ = $1
+	} | ROLLBACK
+	{
+		$$ = $1
+	} | MIGRATION
+	{
+		$$ = $1
+	} | RESET
+	{
+		$$ = $1
+	} | IF
+	{
+		$$ = $1
+	} | EXISTS
+	{
+		$$ = $1
+	} | IDENTITY
+	{
+		$$ = $1
+	} | MURMUR
+	{
+		$$ = $1
+	} | CITY
+	{
+		$$ = $1
+	} | START
+	{
+		$$ = $1
+	} | STOP
+	{
+		$$ = $1
+	} | TRACE
+	{
+		$$ = $1
+	} | MESSAGES
+	{
+		$$ = $1
+	} | IMMEDIATE
+	{
+		$$ = $1
+	} | TASK
+	{
+		$$ = $1
+	} | GROUP
+	{
+		$$ = $1
+	} | SYSTEM
+	{
+		$$ = $1
+	} | RELOAD
+	{
+		$$ = $1
+	} | RESTART
+	{
+		$$ = $1
+	} | REBOOTSTRAP
+	{
+		$$ = $1
+	} | ROTATE
+	{
+		$$ = $1
+	} | SECONDS
+	{
+		$$ = $1
+	} | WAIT
+	{
+		$$ = $1
+	} | PANIC
+	{
+		$$ = $1
+	} | SLEEP
+	{
+		$$ = $1
+	} | GRANT
+	{
+		$$ = $1
+	} | LOCAL
+	{
+		$$ = $1
+	} | GLOBAL
+	{
+		$$ = $1
+	} | VARCHAR
+	{
+		$$ = $1
+	} | INTEGER
+	{
+		$$ = $1
+	} | INT
+	{
+		$$ = $1
+	} | TYPES
+	{
+		$$ = $1
+	} | UUID
+	{
+		$$ = $1
+	} | TYPE
+	{
+		$$ = $1
+	} | CONTROL
+	{
+		$$ = $1
+	} | POINT
+	{
+		$$ = $1
+	} | ASC
+	{
+		$$ = $1
+	} | DESC
+	{
+		$$ = $1
+	} | ORDER
+	{
+		$$ = $1
+	}
+
+opt_any_id:
+	any_id
+	{
+		$$ = $1
+	} | /* EMPTY */ { $$ = ""; }
 
 
 shard_id: IDENT
@@ -496,6 +947,18 @@ shard_id: IDENT
 	{
 		$$ = string($1)
 	}
+
+/*****************************************************************************
+ *
+ *	Names and constants
+ *
+ *****************************************************************************/
+
+qualified_name_list:
+			qualified_name							{ $$ = []*rfqn.RelationFQN{$1}; }
+			| qualified_name_list TCOMMA qualified_name { $$ = append($1, $3); }
+		;
+
 
 qualified_name:
 	IDENT
@@ -510,6 +973,8 @@ qualified_name:
 	{
 		$$ = &rfqn.RelationFQN{RelationName: $3, SchemaName: $1}
 	}
+
+
 
 ColRef:
     any_id {
@@ -539,8 +1004,11 @@ AexprConst:
 		}
 	} |
 	ICONST {
+		/*
+		 * Integer literals are intentionally represented as string constants.
+		 */
 		$$ = &lyx.AExprSConst{
-			Value: fmt.Sprintf("%+v", $1),
+			Value: fmt.Sprintf("%d", $1),
 		}
 	}
 
@@ -693,11 +1161,12 @@ show_statement_type:
 			DistributionsStr, CoordinatorAddrStr, VersionStr,
 			ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr,
 			PreparedStatementsStr, QuantilesStr, SequencesStr,
-			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
+			IsReadOnlyStr, TransactionReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
-			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXStorageStr,
-			FileSettingsStr:
+			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
+			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
+			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr, MigrationsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -716,6 +1185,10 @@ kill_statement_type:
 	CLIENT 
 	{
 		$$ = string($1)
+	} | TASK
+	{
+
+		$$ = string("task")
 	}
 	| IDENT
 	{
@@ -730,83 +1203,79 @@ kill_statement_type:
 opt_cascade:
 	CASCADE { $$ = true } | {$$ = false}
 
+opt_if_not_exists:
+	IF NOT EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
+
+opt_if_exists:
+	IF EXISTS { $$ = true } | /* EMPTY */ { $$ = false }
+
 drop_stmt:
-	DROP key_range_stmt
+	DROP drop_target opt_if_exists any_id opt_cascade
 	{
-		$$ = &Drop{Element: $2}
+		el := $2
+		el.SetID($4)
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
+	} |
+	DROP drop_target opt_if_exists ALL opt_cascade
+	{
+		el := $2
+		el.SetID("*")
+		$$ = &Drop{Element: el, IfExists: $3, CascadeDelete: $5}
 	}
-	| DROP KEY RANGE ALL
+
+drop_target:
+	KEY RANGE
+	{ $$ = &KeyRangeSelector{} }
+	| SHARD
+	{ $$ = &ShardSelector{} }
+	| TASK GROUP 
+	{ $$ = &TaskGroupSelector{} }
+	| SEQUENCE
+	{ $$ = &SequenceSelector{} }
+	| REFERENCE table_or_relation
+	{ $$ = &ReferenceRelationSelector{} }
+	| UNIQUE INDEX
+	{ $$ = &UniqueIndexSelector{} }
+	| MOVE TASK 
+	{ $$ = &MoveTaskSelector{} }
+	| DISTRIBUTION
+	{ $$ = &DistributionSelector{} }
+	| REDISTRIBUTE TASK
+	{ $$ = &RedistributeTaskSelector{} }
+
+
+/*
+ * General-use selectors (do not accept ALL)
+ */
+key_range_select_stmt:
+	KEY RANGE any_id
 	{
-		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
+		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
-	| DROP distribution_select_stmt opt_cascade
+	
+distribution_select_stmt:
+	DISTRIBUTION any_id
 	{
-		$$ = &Drop{Element: $2, CascadeDelete: $3}
-	}
-	| DROP DISTRIBUTION ALL opt_cascade
-	{
-		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
-	}
-	| DROP SHARD any_id opt_cascade
-	{
-		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
-	}
-	| DROP TASK GROUP any_id opt_cascade
-	{
-		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }, CascadeDelete: $5}
-	}
-	| DROP SEQUENCE any_id opt_cascade
-	{
-		$$ = &Drop{Element: &SequenceSelector{Name: $3}, CascadeDelete: $4}
-	}
-	| DROP REFERENCE table_or_relation any_id
-	{
-		$$ = &Drop{
-			Element: &ReferenceRelationSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP UNIQUE INDEX any_id 
-	{
-		$$ = &Drop{
-			Element: &UniqueIndexSelector{
-				ID: $4,
-			},
-		}
-	}
-	| DROP REDISTRIBUTE TASK any_id opt_cascade
-	{
-		$$ = &Drop{
-			Element: &RedistributeTaskSelector{
-				ID: $4,
-			},
-			CascadeDelete: $5,
-		}
-	}
-	| DROP MOVE TASK any_id
-	{
-		$$ = &Drop{
-			Element: &MoveTaskSelector{
-				ID: $4,
-			},
-		}
+		$$ = &DistributionSelector{ID: $2}
 	}
 
 add_stmt:
-	// TODO: drop
+	// Deprecated: ADD is no longer supported, use CREATE instead
 	ADD distribution_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD DISTRIBUTION is deprecated, use CREATE DISTRIBUTION instead")
+		return 1
 	}
 	|
 	ADD key_range_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD KEY RANGE is deprecated, use CREATE KEY RANGE instead")
+		return 1
 	} |
 	ADD shard_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD SHARD is deprecated, use CREATE SHARD instead")
+		return 1
 	}
 
 trace_stmt:
@@ -836,7 +1305,138 @@ alter_sys_target:
 		$$ = &System{
 			Restart: true,
 		}
-	} 
+	}  | SYSTEM REBOOTSTRAP {
+		$$ = &System{
+			Rebootstrap: true,
+		}
+	} | SYSTEM ROTATE {
+		$$ = &System{
+			RotateLog: true,
+		}
+	} | SYSTEM SET any_id TEQ any_val {
+		$$ = &System{
+			SetGUC: $3,
+			SetValue: $5,
+		}
+	} | SYSTEM SET any_id TO any_val {
+		$$ = &System{
+			SetGUC: $3,
+			SetValue: $5,
+		}
+	} | SYSTEM MIGRATION SET any_id TEQ any_id {
+		$$ = &AlterSystemMigration{Name: $4, Value: $6}
+	} | SYSTEM MIGRATION SET any_id TO any_id {
+		$$ = &AlterSystemMigration{Name: $4, Value: $6}
+	} | SYSTEM MIGRATION RESET any_id {
+		$$ = &AlterSystemMigration{Name: $4, Reset: true}
+	}
+
+/*****************************************************************************
+ *
+ * GRANT and REVOKE statements
+ *
+ *****************************************************************************/
+
+/* XXX: do we need opt_grant_grant_option or opt_granted_by?  */
+GrantStmt:	GRANT privileges ON privilege_target TO grantee_list
+			 
+				{
+					n := &GrantStmt{};
+
+					n.IsGrant = true;
+					n.Privileges = $2;
+					n.Objtype = ($4).Objtype;
+					n.Objects = ($4).Objs;
+					n.Grantees = $6;
+					// n->grant_option = $7;
+					// n->grantor = $8;
+					$$ = n;
+				}
+		;
+
+
+
+/* Don't bother trying to fold the first two rules into one using
+ * opt_table.  You're going to get conflicts.
+ */
+privilege_target:
+			TABLE qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "table";
+					n.Objs = $2;
+					$$ = n;
+				}
+			| RELATION qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "table";
+					n.Objs = $2;
+					$$ = n;
+				}
+			| SEQUENCE qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "sequence";
+					n.Objs = $2;
+					$$ = n;
+				}
+			| DISTRIBUTION qualified_name_list
+				{
+					n := &PrivTarget{};
+					n.Objtype = "distribution";
+					n.Objs = $2;
+					$$ = n;
+				}
+
+
+/*
+ * Privilege names are represented as strings; the validity of the privilege
+ * names gets checked at execution.  This is a bit annoying but we have little
+ * choice because of the syntactic conflict with lists of role names in
+ * GRANT/REVOKE.  What's more, we have to call out in the "privilege"
+ * production any reserved keywords that need to be usable as privilege names.
+ */
+
+/* either ALL [PRIVILEGES] or a list of individual privileges */
+privileges: privilege_list
+				{ $$ = $1; }
+			| ALL
+				{ $$ = nil; }
+			| ALL PRIVILEGES
+				{ $$ = nil; }
+
+		;
+
+privilege_list:	privilege							{ $$ = []string{$1}; }
+			| privilege_list TCOMMA privilege   	{ $$ = append($1, $3); }
+		;
+
+privilege:
+		CREATE
+		{
+			$$ = "create"
+		} | ALTER SYSTEM
+		{
+			$$ = "alter system";
+		}
+		| any_id
+		{
+			$$ = $1;
+		}
+		;
+
+
+grantee_list:
+			grantee									{ $$ = []string{$1}; }
+			| grantee_list TCOMMA grantee			{ $$ = append($1, $3); }
+		;
+
+grantee:
+			any_id								{ $$ = $1; }
+			// | GROUP_P RoleSpec						{ $$ = $2; }
+		;
+
 
 alter_stmt:
 	ALTER distribution_alter_stmt
@@ -848,74 +1448,80 @@ alter_stmt:
 		$$ = &Alter{Element: $2}
 	}
 	|
-	ALTER SHARD any_id alter_shard_options
+	ALTER shard_alter_stmt
 	{
-		$4.Id = $3
-		$$ = &Alter{Element: $4}
+		$$ = &Alter{Element: $2}
 	}
 
-alter_shard_options:
-	alter_shard_options SSLMODE any_val
+shard_alter_stmt:
+	SHARD any_id alter_generic_options
 	{
-		if !validSslModes[$3] {
-			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
-			return 1
+		$$ = &AlterShard{
+			Shard: &ShardSelector{ID: $2},
+			Element: &AlterShardOptions{
+				Options: $3,
+			},
 		}
-		$$ = $1
-		$$.SslMode = $3
 	}
-	|
-	alter_shard_options WITH HOSTS any_id_list
+
+options:
+	OPTIONS TOPENBR generic_option_list TCLOSEBR { $$ = $3; }
+
+opt_options:
+	options
 	{
 		$$ = $1
-		$$.Hosts = $4
 	}
-	|
-	alter_shard_options CERT_FILE any_val
-	{
-		$$ = $1
-		$$.CertFile = $3
-	}
-	|
-	alter_shard_options KEY_FILE any_val
-	{
-		$$ = $1
-		$$.KeyFile = $3
-	}
-	|
-	alter_shard_options ROOT_CERT_FILE any_val
-	{
-		$$ = $1
-		$$.RootCertFile = $3
-	}
-	|
-	SSLMODE any_val
-	{
-		if !validSslModes[$2] {
-			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $2))
-			return 1
+	| /* EMPTY */ { $$ = nil; }
+
+generic_option_list:
+	generic_option_elem
+		{
+			$$ = []GenericOption{$1};
 		}
-		$$ = &AlterShard{SslMode: $2}
-	}
-	|
-	WITH HOSTS any_id_list
+	| generic_option_list TCOMMA generic_option_elem
+		{
+			$$ = append($1, $3);
+		}
+
+generic_option_elem:
+	IDENT any_val
+		{
+			$$ = GenericOption{Name: strings.ToLower($1), Arg: string($2)};
+		}
+
+alter_generic_options:
+	OPTIONS	TOPENBR alter_generic_option_list TCLOSEBR		{ $$ = $3; }
+
+alter_generic_option_list:
+	alter_generic_option_elem
 	{
-		$$ = &AlterShard{Hosts: $3}
+		$$ = []GenericOption{$1};
 	}
-	|
-	CERT_FILE any_val
+	| alter_generic_option_list TCOMMA alter_generic_option_elem
 	{
-		$$ = &AlterShard{CertFile: $2}
+		$$ = append($1, $3);
 	}
-	|
-	KEY_FILE any_val
+
+alter_generic_option_elem:
+	generic_option_elem
 	{
-		$$ = &AlterShard{KeyFile: $2}
+		$$ = $1;
 	}
-	|
-	ROOT_CERT_FILE any_val
+	| SET generic_option_elem
 	{
-		$$ = &AlterShard{RootCertFile: $2}
+		$$ = $2;
+		$$.Action = OptionActionSet;
+	}
+	| ADD generic_option_elem
+	{
+		$$ = $2;
+		$$.Action = OptionActionAdd;
+	}
+	| DROP IDENT opt_any_id
+	{
+		$$ = GenericOption{Name: strings.ToLower($2), Arg: $3}
+		$$.Action = OptionActionDrop;
 	}
 
 distribution_alter_stmt:
@@ -928,12 +1534,13 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DETACH RELATION qualified_name
+	distribution_select_stmt DETACH table_or_relation opt_if_exists qualified_name
 	{
 		$$ = &AlterDistribution{
 			Distribution: $1,
 			Element: &DetachRelation{
-				RelationName: $4,
+				RelationName: $5,
+				IfExists: $4,
 			},
 		}
 	} |
@@ -1008,22 +1615,24 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	table_or_relation opt_if_not_exists qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
-			Relation:    	 $2,
+			Relation:    	 $3,
+			DistributionKey: $6,
+			AutoIncrementEntries: $7,
+			IfNotExists: $2,
+		}
+	}
+	| table_or_relation opt_if_not_exists qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
+	{
+		$$ = &DistributedRelation{
+			Relation:    	 $3,
 			DistributionKey: $5,
 			AutoIncrementEntries: $6,
+			IfNotExists: $2,
 		}
-	} 
-	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
-	{
-		$$ = &DistributedRelation{
-			Relation:    	 $2,
-			DistributionKey: $4,
-			AutoIncrementEntries: $5,
-		}
-	} 
+	}
 
 opt_auto_increment:
     AUTO INCREMENT auto_inc_argument_list {
@@ -1073,7 +1682,7 @@ relation_attach_stmt:
 	}
 
 relation_alter_stmt_v2:
-	ALTER RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list {
+	ALTER table_or_relation qualified_name DISTRIBUTION KEY distribution_key_argument_list {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &AlterRelationDistributionKey{
@@ -1081,7 +1690,7 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name SCHEMA any_id {
+	ALTER table_or_relation qualified_name SCHEMA any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &AlterRelationSchema {
@@ -1089,7 +1698,7 @@ relation_alter_stmt_v2:
 			},
 		}
 	} |
-	ALTER RELATION qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
+	ALTER table_or_relation qualified_name RENAME DISTRIBUTION COLUMN any_id TO any_id {
 		$$ = &AlterRelationV2{
 			RelationName: $3,
 			Element: &RenameDistributionColumn{
@@ -1114,40 +1723,35 @@ opt_on_shards:
 	ON SHARDS any_id_list { $$ = $3 } | /* nothing */ {}
 
 create_stmt:
-	CREATE distribution_define_stmt
+	CREATE create_target
 	{
 		$$ = &Create{Element: $2}
 	}
-	|
-	CREATE key_range_define_stmt
+
+create_target:
+	distribution_define_stmt
+	{ $$ = $1 }
+	| key_range_define_stmt
+	{ $$ = $1 }
+	| key_ranges_for_distribution_define_stmt
+	{ $$ = $1 }
+	| shard_define_stmt
+	{ $$ = $1 }
+	| REFERENCE table_or_relation opt_if_not_exists qualified_name opt_auto_increment opt_on_shards
 	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE shard_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE REFERENCE table_or_relation qualified_name opt_auto_increment opt_on_shards
-	{
-		$$ = &Create{
-			Element: &ReferenceRelationDefinition{
+		$$ = &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
-				ShardIds: $6,
-			},
-		}
+				ShardIDs: $6,
+				IfNotExists: $3,
+			}
 	}
-	|
-	CREATE UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
+	| UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
 	{
-		$$ = &Create{
-			Element: &UniqueIndexDefinition{
-				ID:        $4,
-				TableName: $6,
-				Columns:    $9,
-			},
+		$$ = &UniqueIndexDefinition{
+			ID:        $3,
+			TableName: $5,
+			Columns:   $8,
 		}
 	}
 
@@ -1184,7 +1788,7 @@ order_clause:
 	{
 		$$ = &lyx.SortBy{
 			Node: $3,
-			SortbyDir: $4,
+			SortbyDir: int64($4),
 		}
 	} 
 	| /* empty */    {$$ = nil}
@@ -1205,10 +1809,19 @@ opt_show_columns:
 	/* Empty */ { $$ = nil } | 
 	TOPENBR show_columns_list TCLOSEBR {$$ = $2}
 
+opt_show_kind:
+	/* Empty */ { $$ = SHOW_KIND_UNSPEC } | 
+	LOCAL { $$ = SHOW_KIND_LOCAL } | 
+	GLOBAL {$$ = SHOW_KIND_GLOBAL}
+
 show_stmt:
-	SHOW show_statement_type opt_show_columns where_clause group_clause order_clause
+	SHOW opt_show_kind show_statement_type opt_show_columns where_clause group_clause order_clause
 	{
-		$$ = &Show{Cmd: $2, Columns: $3, Where: $4, GroupBy: $5, Order: $6}
+		$$ = &Show{Kind: $2, Cmd: $3, Columns: $4, Where: $5, GroupBy: $6, Order: $7}
+	}
+	| SELECT TMUL FROM opt_show_kind show_statement_type opt_show_columns where_clause group_clause order_clause
+	{
+		$$ = &Show{Kind: $4, Cmd: $5, Columns: $6, Where: $7, GroupBy: $8, Order: $9}
 	}
 
 help_stmt:
@@ -1236,6 +1849,10 @@ help_command_name:
 // help_word matches keywords and identifiers that can appear in command names
 help_word:
 	IDENT { $$ = $1 }
+	| SYSTEM { $$ = "SYSTEM" }
+	| MIGRATION { $$ = "MIGRATION" }
+	| SET { $$ = "SET" }
+	| RESET { $$ = "RESET" }
 	| CREATE { $$ = "CREATE" }
 	| DROP { $$ = "DROP" }
 	| ALTER { $$ = "ALTER" }
@@ -1273,9 +1890,14 @@ help_word:
 	| UNIQUE { $$ = "UNIQUE" }
 	| DEFAULT { $$ = "DEFAULT" }
 	| ALL { $$ = "ALL" }
+	| KILL { $$ = "KILL" }
+	| STORAGE { $$ = "STORAGE" }
+	| STALE { $$ = "STALE" }
+	| BACKENDS { $$ = "BACKENDS" }
+	| SCHEMA { $$ = "SCHEMA" }
 
 lock_stmt:
-	LOCK key_range_stmt
+	LOCK key_range_select_stmt
 	{
 		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
 	}
@@ -1283,12 +1905,13 @@ lock_stmt:
 
 
 distribution_define_stmt:
-	DISTRIBUTION any_id opt_col_types opt_default_shard
+	DISTRIBUTION opt_if_not_exists any_id opt_col_types opt_default_shard
 	{
 		$$ = &DistributionDefinition{
-			ID: $2,
-			ColTypes: $3,
-			DefaultShard: $4,
+			ID: $3,
+			ColTypes: $4,
+			DefaultShard: $5,
+			IfNotExists: $2,
 		}
 	}
 
@@ -1327,6 +1950,8 @@ col_types_elem:
 		$$ = qdb.ColumnTypeUinteger
 	} | UUID {
 		$$ = qdb.ColumnTypeUUID
+	} | UUID HASH {
+		$$ = qdb.ColumnTypeUUIDHashed
 	}
 
 opt_default_shard:
@@ -1405,13 +2030,14 @@ key_range_bound:
 
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
+	KEY RANGE opt_if_not_exists any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
 	{
 		$$ = &KeyRangeDefinition{
-			KeyRangeID: $3,
-			LowerBound: $5,
-			ShardID: $8,
-			Distribution: $9,
+			KeyRangeID: $4,
+			LowerBound: $6,
+			ShardID: $9,
+			Distribution: $10,
+			IfNotExists: $3,
 		}
 	}
 	| KEY RANGE FROM key_range_bound ROUTE TO any_id opt_distribution_selector
@@ -1428,59 +2054,73 @@ key_range_define_stmt:
 		}
 	}
 
-shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list opt_shard_tls
+key_ranges_for_distribution_define_stmt:
+	KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range USING SHARDS any_id_list
 	{
-		sd := $6
-		sd.Id = $2
-		sd.Hosts = $5
-		$$ = sd
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: $9,
+			DataKeyRange: $6,
+		}
+	}
+	| KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range USING ALL SHARDS
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: []string{"*"},
+			DataKeyRange: $6,
+		}
+	}
+	| KEY RANGES FOR DISTRIBUTION any_id opt_custom_distr_range
+	{
+		$$ = &KeyRangesForDistributionDefinition{
+			Distribution: &DistributionSelector{
+				ID: $5,
+			},
+			Shards: []string{"*"},
+			DataKeyRange: $6,
+		}
+	}
+
+opt_custom_distr_range:
+	BETWEEN key_range_bound AND key_range_bound
+	{
+		$$ = &CustomDistributionRange{
+			LowerBound: $2,
+			UpperBound: $4,
+		}
+	}
+	| /* nothing */ { $$ = nil }
+
+shard_define_stmt:
+	SHARD any_id opt_options opt_force
+	{
+		$$ = &ShardDefinition{
+			Id: $2,
+			Options: $3,
+			Force: $4,
+		}
 	}
 	|
-	SHARD WITH HOSTS any_id_list opt_shard_tls
+	SHARD opt_options opt_force
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		sd := $5
-		sd.Id = "shard" + str
-		sd.Hosts = $4
-		$$ = sd
+		$$ = &ShardDefinition{
+			Id: "shard" + str,
+			Options: $2,
+			Force: $3,
+		}
 	}
 
-opt_shard_tls:
-	opt_shard_tls SSLMODE any_val
-	{
-		if !validSslModes[$3] {
-			yylex.Error(fmt.Sprintf("invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", $3))
-			return 1
-		}
-		$$ = $1
-		$$.SslMode = $3
-	}
-	|
-	opt_shard_tls CERT_FILE any_val
-	{
-		$$ = $1
-		$$.CertFile = $3
-	}
-	|
-	opt_shard_tls KEY_FILE any_val
-	{
-		$$ = $1
-		$$.KeyFile = $3
-	}
-	|
-	opt_shard_tls ROOT_CERT_FILE any_val
-	{
-		$$ = $1
-		$$.RootCertFile = $3
-	}
-	| /* empty */
-	{
-		$$ = &ShardDefinition{}
-	}
+opt_force:
+	FORCE { $$ = true } | {$$ = false}
 
 any_id_list:
 	any_val
@@ -1494,6 +2134,7 @@ any_id_list:
 	} 
 
 unlock_stmt:
+	/* We accept ALL here */
 	UNLOCK key_range_stmt
 	{
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
@@ -1504,15 +2145,13 @@ key_range_stmt:
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
-
-distribution_select_stmt:
-	DISTRIBUTION any_id
+	| KEY RANGE ALL
 	{
-		$$ = &DistributionSelector{ID: $2}
+		$$ = &KeyRangeSelector{KeyRangeID: `*`}
 	}
 
 split_key_range_stmt:
-	SPLIT key_range_stmt FROM any_id BY key_range_bound
+	SPLIT key_range_select_stmt FROM any_id BY key_range_bound
 	{
 		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: $6}
 	}
@@ -1523,17 +2162,20 @@ kill_stmt:
 		$$ = &Kill{Cmd: $2, Target: $3}
 	} |	KILL kill_statement_type IDENT
 	{
-		n, err := strconv.ParseUint($3, 10, 64)
-		if err == nil {
-			$$ = &Kill{Cmd: $2, Target: uint(n)}
-		}
+		$$ = &Kill{Cmd: $2, TargetID: $3}
+	} |	KILL kill_statement_type SCONST
+	{
+		$$ = &Kill{Cmd: $2, TargetID: $3}
 	}
 
 
 move_key_range_stmt:
-	MOVE key_range_stmt TO any_id
+	MOVE key_range_select_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
+	} | MOVE key_range_select_stmt TO any_id META ONLY
+	{
+		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, MetaOnly: true }
 	}
 
 opt_redistr_id:
@@ -1541,7 +2183,7 @@ opt_redistr_id:
 
 /* All of this is kinda uggly, refactor to make it more Postgresy */
 redistribute_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id
+	REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id
 	{
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
@@ -1551,7 +2193,7 @@ redistribute_stmt:
 			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
@@ -1559,22 +2201,22 @@ redistribute_stmt:
 			Id: $6,
 			Check: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
 			Id: $6,
-			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
+	} | REDISTRIBUTE key_range_select_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
 			Id: $6,
-			Check: true, /* or false, doesnt matter */
+			Check: false, /* or true, doesnt matter */
+			Apply: true,
 			NoWait: true,
 		}
 	}
@@ -1583,7 +2225,7 @@ opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }
 			| /*EMPTY*/						{ $$ = -1 }
 
 unite_key_range_stmt:
-	UNITE key_range_stmt WITH any_id
+	UNITE key_range_select_stmt WITH any_id
 	{
 		$$ = &UniteKeyRange{KeyRangeIDL: $2.KeyRangeID, KeyRangeIDR: $4}
 	}
@@ -1669,45 +2311,44 @@ unregister_router_stmt:
 // move tasks
 
 retry_move_task_group:
-	RETRY MOVE TASK GROUP any_id no_wait_opt
+	RETRY opt_move TASK GROUP any_id opt_no_wait
 	{
 		$$ = &RetryMoveTaskGroup{ ID: $5, NoWait: $6 }
 	}
 	|
-	RETRY TASK GROUP any_id no_wait_opt
+	RETRY opt_move TASK GROUP ALL opt_no_wait
 	{
-		$$ = &RetryMoveTaskGroup{ ID: $4, NoWait: $5 }
+		$$ = &RetryMoveTaskGroup{ ID: "*", NoWait: $6 }
 	}
 	
 
-no_wait_opt:
+opt_no_wait:
 	NOWAIT {
 		$$ = true
 	} | /* EMPTY */ {
 		$$ = false
 	}
 
+opt_immediate:
+	IMMEDIATE {
+		$$ = true
+	} | /* EMPTY */ {
+		$$ = false
+	}
 
 stop_move_task_group:
-	STOP MOVE TASK GROUP any_id
+	STOP opt_move TASK GROUP any_id opt_immediate
 	{
-		$$ = &StopMoveTaskGroup{ ID: $5 }
+		$$ = &StopMoveTaskGroup{ ID: $5, Immediate: $6 }
 	}
 	|
-	STOP TASK GROUP any_id
+	STOP opt_move TASK GROUP ALL opt_immediate
 	{
-		$$ = &StopMoveTaskGroup{ ID: $4 }
-	} 
-	|
-	STOP MOVE TASK GROUP ALL
-	{
-		$$ = &StopMoveTaskGroup{ ID: "*" }
+		$$ = &StopMoveTaskGroup{ ID: "*",  Immediate: $6 }
 	}
-	|
-	STOP TASK GROUP ALL
-	{
-		$$ = &StopMoveTaskGroup{ ID: "*" }
-	} 
+
+opt_move:
+	MOVE {} | /* nothing */ {}
 
 
 /* Control Points */
@@ -1754,5 +2395,45 @@ icp_stmt:
 		}
 	}
 
-%%
+rename_stmt:
+	RENAME key_range_select_stmt TO any_id 
+	{
+		$$ = &Rename {
+			Element: $2,
+			NewID: $4,
+		}
+	}
 
+begin_stmt:
+	BEGIN
+	{
+		$$ = &Begin{}
+	}
+
+commit_stmt:
+	COMMIT
+	{
+		$$ = &Commit{}
+	}
+
+rollback_stmt:
+	ROLLBACK
+	{
+		$$ = &Rollback{}
+	}
+
+call_stmt:
+	CALL any_id TOPENBR any_id_list TCLOSEBR
+	{
+		$$ = &Call{
+			FuncName: $2,
+			Args: $4,
+		}
+	} | CALL any_id TOPENBR TCLOSEBR {
+		$$ = &Call{
+			FuncName: $2,
+			Args: []string{},
+		}
+	}
+
+%%

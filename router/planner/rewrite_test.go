@@ -2,12 +2,17 @@ package planner
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdate2DeleteQuery(t *testing.T) {
@@ -702,6 +707,36 @@ RETURNING meta.campaigns.id, meta.campaigns.uuid, meta.campaigns.title, meta.cam
 	}
 }
 
+func parseValuesLocation(t testing.TB, query, cteName string) lyx.ParseLoc {
+	t.Helper()
+	stmts, _, err := lyx.Parse(query)
+	require.NoError(t, err)
+
+	var withClause []*lyx.CommonTableExpr
+	switch stmt := stmts[0].(type) {
+	case *lyx.Insert:
+		if cteName == "" {
+			values, ok := stmt.SubSelect.(*lyx.ValueClause)
+			require.True(t, ok)
+			return values.ValuesLoc
+		}
+		withClause = stmt.WithClause
+	case *lyx.Select:
+		withClause = stmt.WithClause
+	case *lyx.ValueClause:
+		return stmt.ValuesLoc
+	}
+	for _, cte := range withClause {
+		if cte.Name == cteName {
+			values, ok := cte.SubQuery.(*lyx.ValueClause)
+			require.True(t, ok)
+			return values.ValuesLoc
+		}
+	}
+	t.Fatalf("VALUES clause for CTE %q not found", cteName)
+	return lyx.ParseLocUnknown
+}
+
 func TestModifyDistributedInsertQuery(t *testing.T) {
 	assert := assert.New(t)
 
@@ -726,7 +761,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2);`,
 					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102);`,
@@ -755,7 +791,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table VALUES (1, 2);`,
 					"sh2": `INSERT INTO test_table VALUES (101, 102);`,
@@ -793,7 +830,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2), (200, 2), (330,3);`,
 					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102), (4404, 4);`,
@@ -825,7 +863,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2), (303, 202) RETURNING *;`,
 					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102) RETURNING *;`,
@@ -843,7 +882,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := RewriteDistributedRelBatchInsert(tt.query, tt.shs)
+			loc := parseValuesLocation(t, tt.query, "")
+			result, err := RewriteDistributedRelBatchInsert(tt.query, loc, tt.shs)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
@@ -866,7 +906,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		name     string
 		query    string
 		cteName  string
 		expected plan.Plan
@@ -876,7 +915,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			name:    "simple rewrite",
 			query:   `with vals (i) as (VALUES (1), (300)) INSERT INTO t select i from vals;`,
 			cteName: "vals",
 			shs: []kr.ShardKey{
@@ -906,7 +944,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		},
 
 		{
-			name:    "simple rewrite",
 			query:   `with vals as (VALUES (1), (300)) INSERT INTO t select * from vals;`,
 			cteName: "vals",
 			shs: []kr.ShardKey{
@@ -936,7 +973,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		},
 
 		{
-			name:    "simple rewrite",
 			query:   `with s as (select * from tt), vals (i) as (VALUES (1), (300)) INSERT INTO t select i from vals;`,
 			cteName: "vals",
 			shs: []kr.ShardKey{
@@ -964,23 +1000,132 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 			},
 			wantErr: false,
 		},
+
+		{
+			query:   `with vals (i) as (VALUES (1), (300)) select i from vals JOIN t ON t.i = vals.i;`,
+			cteName: "vals",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `with vals (i) as (VALUES (1)) select i from vals JOIN t ON t.i = vals.i;`,
+					"sh2": `with vals (i) as (VALUES (300)) select i from vals JOIN t ON t.i = vals.i;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
 	} {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := RewriteDistributedRelWithValues(tt.query, tt.cteName, tt.shs)
+		t.Run("rewrite", func(t *testing.T) {
+			loc := parseValuesLocation(t, tt.query, tt.cteName)
+			result, err := RewriteDistributedRelWithValues(tt.query, loc, tt.shs, false)
 
 			if tt.wantErr && err == nil {
-				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
+				t.Errorf("ModifyQuery expected error, got nil. Plan: %+v", result)
 				return
 			}
 
 			if err != nil {
 				if (err != nil) != tt.wantErr {
-					t.Errorf("ModifyQuery/%s error = %v", tt.name, err)
+					t.Errorf("ModifyQuery error = %v", err)
 				}
 				return
 			}
 
 			assert.Equal(tt.expected, result)
+		})
+	}
+}
+
+func TestCommonValuesRewriteLocations(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		query   string
+		cteName string
+		ro      bool
+		queries map[string]string
+	}{
+		{
+			name:  "keyword in comment and identifiers",
+			query: `/* VALUES (99) */ INSERT INTO "ı_values" ("values") VALUES (1), (2) RETURNING "values";`,
+			queries: map[string]string{
+				"sh1": `/* VALUES (99) */ INSERT INTO "ı_values" ("values") VALUES (1) RETURNING "values";`,
+				"sh2": `/* VALUES (99) */ INSERT INTO "ı_values" ("values") VALUES (2) RETURNING "values";`,
+			},
+		},
+		{
+			name:  "identifier containing keyword",
+			query: `INSERT INTO values_log VALUES (1), (2);`,
+			queries: map[string]string{
+				"sh1": `INSERT INTO values_log VALUES (1);`,
+				"sh2": `INSERT INTO values_log VALUES (2);`,
+			},
+		},
+		{
+			name:    "second VALUES CTE",
+			query:   `WITH other(i) AS (VALUES (99)), vals(i) AS (VALUES (1), (2)) INSERT INTO t SELECT i FROM vals;`,
+			cteName: "vals",
+			queries: map[string]string{
+				"sh1": `WITH other(i) AS (VALUES (99)), vals(i) AS (VALUES (1)) INSERT INTO t SELECT i FROM vals;`,
+				"sh2": `WITH other(i) AS (VALUES (99)), vals(i) AS (VALUES (2)) INSERT INTO t SELECT i FROM vals;`,
+			},
+		},
+		{
+			name:    "quoted CTE after string literal",
+			query:   `WITH other AS (SELECT 'VALUES (99)'), "Values CTE"(i) AS (values (1), (2)) SELECT * FROM "Values CTE";`,
+			cteName: "Values CTE",
+			ro:      true,
+			queries: map[string]string{
+				"sh1": `WITH other AS (SELECT 'VALUES (99)'), "Values CTE"(i) AS (values (1)) SELECT * FROM "Values CTE";`,
+				"sh2": `WITH other AS (SELECT 'VALUES (99)'), "Values CTE"(i) AS (values (2)) SELECT * FROM "Values CTE";`,
+			},
+		},
+		{
+			name:  "VALUES at offset zero",
+			query: `VALUES (1), (2);`,
+			ro:    true,
+			queries: map[string]string{
+				"sh1": `VALUES (1);`,
+				"sh2": `VALUES (2);`,
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			loc := parseValuesLocation(t, tt.query, tt.cteName)
+			p, err := CommonValuesRewrite(tt.query, loc, []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}}, tt.ro)
+			require.NoError(t, err)
+			assert.Equal(t, tt.queries, p.OverwriteQuery)
+			assert.Equal(t, []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}}, p.ExecTargets)
+			if tt.ro {
+				assert.Nil(t, p.SubPlan)
+			} else {
+				assert.IsType(t, &plan.ModifyTable{}, p.SubPlan)
+			}
+		})
+	}
+}
+
+func TestCommonValuesRewriteInvalidLocation(t *testing.T) {
+	query := "INSERT INTO t VALUES (1)"
+	for _, loc := range []lyx.ParseLoc{lyx.ParseLocUnknown, 0, len(query), len(query) + 1} {
+		t.Run(fmt.Sprint(loc), func(t *testing.T) {
+			p, err := CommonValuesRewrite(query, loc, []kr.ShardKey{{Name: "sh1"}}, false)
+			require.Error(t, err)
+			assert.Nil(t, p)
 		})
 	}
 }
@@ -993,6 +1138,188 @@ func BenchmarkModifyQuery(b *testing.B) {
 	for b.Loop() {
 		_, _ = RewriteReferenceRelationAutoIncInsert(query, colname, func() (string, error) {
 			return nextval, nil
+		})
+	}
+}
+
+func buildInsertNTuples(n int) (string, []kr.ShardKey) {
+	shards := []string{"sh1", "sh2", "sh3", "sh4"}
+	var b strings.Builder
+	b.WriteString("INSERT INTO t (id, val) VALUES ")
+	shs := make([]kr.ShardKey, n)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%d, 'v%d')", i, i)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	return b.String(), shs
+}
+
+func buildInsertLargeValues(tuples, strLen int) (string, []kr.ShardKey) {
+	shards := []string{"sh1", "sh2"}
+	val := "'" + strings.Repeat("x", strLen) + "'"
+	var b strings.Builder
+	b.Grow(tuples * (strLen + 16))
+	b.WriteString("INSERT INTO t (id, data) VALUES ")
+	shs := make([]kr.ShardKey, tuples)
+	for i := 0; i < tuples; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%d, %s)", i, val)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	return b.String(), shs
+}
+
+func buildInsertWithReturning(n int) (string, []kr.ShardKey) {
+	q, shs := buildInsertNTuples(n)
+	return q + " RETURNING id, val", shs
+}
+
+func BenchmarkCommonValuesRewrite(b *testing.B) {
+	for _, tt := range []struct {
+		name  string
+		build func() (string, []kr.ShardKey)
+	}{
+		{
+			name:  "10-tuples/returning",
+			build: func() (string, []kr.ShardKey) { return buildInsertWithReturning(10) },
+		},
+		{
+			name:  "large-values/512B/10-tuples",
+			build: func() (string, []kr.ShardKey) { return buildInsertLargeValues(10, 512) },
+		},
+		{
+			name:  "large-values/64KB/4-tuples",
+			build: func() (string, []kr.ShardKey) { return buildInsertLargeValues(4, 64*1024) },
+		},
+	} {
+		b.Run(tt.name, func(b *testing.B) {
+			query, shs := tt.build()
+			loc := parseValuesLocation(b, query, "")
+			b.SetBytes(int64(len(query)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				_, _ = CommonValuesRewrite(query, loc, shs, false)
+			}
+		})
+	}
+}
+
+func buildCTEInsertNTuples(n int) (string, []kr.ShardKey) {
+	var b strings.Builder
+	b.WriteString("with vals (i) as (VALUES ")
+	shs := make([]kr.ShardKey, n)
+	shards := []string{"sh1", "sh2", "sh3", "sh4"}
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%d)", i)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	b.WriteString(") INSERT INTO t SELECT i FROM vals")
+	return b.String(), shs
+}
+
+func buildCTEInsertLargeValues(tuples, strLen int) (string, []kr.ShardKey) {
+	val := "'" + strings.Repeat("x", strLen) + "'"
+	var b strings.Builder
+	b.Grow(tuples * (strLen + 32))
+	b.WriteString("with vals (i) as (VALUES ")
+	shs := make([]kr.ShardKey, tuples)
+	shards := []string{"sh1", "sh2"}
+	for i := 0; i < tuples; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "(%s)", val)
+		shs[i] = kr.ShardKey{Name: shards[i%len(shards)]}
+	}
+	b.WriteString(") INSERT INTO t SELECT i FROM vals")
+	return b.String(), shs
+}
+
+func BenchmarkRewriteDistributedRelWithValues(b *testing.B) {
+	for _, tt := range []struct {
+		name  string
+		build func() (string, []kr.ShardKey)
+	}{
+		{
+			name:  "10-tuples/4-shards",
+			build: func() (string, []kr.ShardKey) { return buildCTEInsertNTuples(10) },
+		},
+		{
+			name:  "large-values/512B/10-tuples",
+			build: func() (string, []kr.ShardKey) { return buildCTEInsertLargeValues(10, 512) },
+		},
+		{
+			name:  "large-values/64KB/4-tuples",
+			build: func() (string, []kr.ShardKey) { return buildCTEInsertLargeValues(4, 64*1024) },
+		},
+	} {
+		b.Run(tt.name, func(b *testing.B) {
+			query, shs := tt.build()
+			loc := parseValuesLocation(b, query, "vals")
+			b.SetBytes(int64(len(query)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				_, _ = RewriteDistributedRelWithValues(query, loc, shs, false)
+			}
+		})
+	}
+}
+
+const perfRuns = 5
+
+type rewritePerfCase struct {
+	name     string
+	tuples   int
+	strLen   int
+	deadline time.Duration
+}
+
+func runner(t *testing.T, tt rewritePerfCase) {
+	t.Helper()
+	query, shs := buildInsertLargeValues(tt.tuples, tt.strLen)
+	loc := parseValuesLocation(t, query, "")
+
+	// warm up
+	if _, err := CommonValuesRewrite(query, loc, shs, false); err != nil {
+		t.Fatalf("rewrite failed: %v", err)
+	}
+
+	var total time.Duration
+	for i := 0; i < perfRuns; i++ {
+		start := time.Now()
+		if _, err := CommonValuesRewrite(query, loc, shs, false); err != nil {
+			t.Fatalf("rewrite failed: %v", err)
+		}
+		total += time.Since(start)
+	}
+	avg := total / perfRuns
+
+	if avg >= tt.deadline {
+		t.Fatalf("rewriting %d tuples (strLen=%d): avg over %d runs = %s, want < %s",
+			tt.tuples, tt.strLen, perfRuns, avg, tt.deadline)
+	}
+	t.Logf("rewritten %d tuples (strLen=%d): avg %s over %d runs (limit %s)",
+		tt.tuples, tt.strLen, avg, perfRuns, tt.deadline)
+}
+
+func TestCommonValuesRewritePerf(t *testing.T) {
+	for _, tt := range []rewritePerfCase{
+		{name: "1k-str/1k-tuples", tuples: 1000, strLen: 1024, deadline: 50 * time.Millisecond},
+		{name: "64k-str/100-tuples", tuples: 100, strLen: 64 * 1024, deadline: 150 * time.Millisecond},
+		{name: "64k-str/2k-tuples", tuples: 2000, strLen: 64 * 1024, deadline: 1500 * time.Millisecond},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner(t, tt)
 		})
 	}
 }

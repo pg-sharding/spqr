@@ -28,15 +28,19 @@ type KeyRange struct {
 	ShardID      string
 	ID           string
 	Distribution string
-	IsLocked     *bool //if nil then is not checked lock state in qdb
+	IsLocked     bool
 	ColumnTypes  []string
 	Version      int
+}
+
+type CustomDataTypeRange struct {
+	LowerBound KeyRangeBound
+	UpperBound KeyRangeBound
 }
 
 /*
 * Old style key ranges comparison
  */
-// TODO : unit tests
 func CmpRangesLessStringsDeprecated(bound string, key string) bool {
 	if len(bound) == len(key) {
 		return bound < key
@@ -51,6 +55,8 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) error {
 		n, _ := binary.Varint(raw)
 		kr.LowerBound[attribInd] = n
 	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
 		n, _ := binary.Varint(raw)
@@ -76,6 +82,8 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 		kr.LowerBound[attribInd] = n
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		n, _ := binary.Uvarint(raw)
 		kr.LowerBound[attribInd] = uint64(n)
@@ -93,25 +101,32 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 	return nil
 }
 
-func (kr *KeyRange) OutFunc(attribInd int) []byte {
-	switch kr.ColumnTypes[attribInd] {
+// EncodeBoundValue converts a typed key range bound value into its wire
+// representation, according to the distribution column type.
+func EncodeBoundValue(colType string, val any) []byte {
+	switch colType {
 	case qdb.ColumnTypeInteger:
 		raw := make([]byte, binary.MaxVarintLen64)
-		_ = binary.PutVarint(raw, kr.LowerBound[attribInd].(int64))
+		_ = binary.PutVarint(raw, val.(int64))
 		return raw
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
-		raw := hashfunction.EncodeUInt64(kr.LowerBound[attribInd].(uint64))
-		return raw
+		return hashfunction.EncodeUInt64(val.(uint64))
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
 	case qdb.ColumnTypeVarchar:
 		fallthrough
 	case qdb.ColumnTypeUUID:
-		return []byte(kr.LowerBound[attribInd].(string))
+		return []byte(val.(string))
 	}
 	return nil
+}
+
+func (kr *KeyRange) OutFunc(attribInd int) []byte {
+	return EncodeBoundValue(kr.ColumnTypes[attribInd], kr.LowerBound[attribInd])
 }
 
 func (kr *KeyRange) SendFunc(attribInd int) string {
@@ -120,6 +135,8 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 		fallthrough
 	/* Is uint */
 	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
 		return fmt.Sprintf("%v", kr.LowerBound[attribInd])
@@ -138,6 +155,11 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 		fallthrough
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = val
+	case qdb.ColumnTypeUUIDHashed:
+		if err := uuid.Validate(strings.ToLower(val)); err != nil {
+			return err
+		}
+		kr.LowerBound[attribInd] = strings.ToLower(val)
 	case qdb.ColumnTypeUinteger:
 		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
 		if err != nil {
@@ -227,34 +249,26 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
+			fallthrough
 		case qdb.ColumnTypeUinteger:
 			i1 := bound[i].(uint64)
 			i2 := key[i].(uint64)
-			if i1 == i2 {
-				// continue
-			} else if i1 < i2 {
-				return true
-			} else {
-				return false
+			if i1 != i2 {
+				return i1 < i2
 			}
 		case qdb.ColumnTypeInteger:
 			i1 := bound[i].(int64)
 			i2 := key[i].(int64)
-			if i1 == i2 {
-				// continue
-			} else if i1 < i2 {
-				return true
-			} else {
-				return false
+			if i1 != i2 {
+				return i1 < i2
 			}
 		case qdb.ColumnTypeUUID:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
 			i1 := bound[i].(string)
 			i2 := key[i].(string)
-			if i1 == i2 {
-				// continue
-			} else {
+			if i1 != i2 {
 				return i1 < i2
 			}
 		case qdb.ColumnTypeVarcharDeprecated:
@@ -278,6 +292,8 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 	for i := range len(bound) {
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
 			fallthrough
 		case qdb.ColumnTypeUinteger:
 			i1 := bound[i].(uint64)
@@ -344,7 +360,7 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 		ID:           krdb.KeyRangeID,
 		Distribution: krdb.DistributionId,
 		ColumnTypes:  colTypes,
-		IsLocked:     &krdb.Locked,
+		IsLocked:     krdb.Locked,
 		Version:      krdb.Version,
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
@@ -460,16 +476,12 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) (*KeyRang
 //
 // TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
-	isLocked := false
-	if kr.IsLocked != nil {
-		isLocked = *kr.IsLocked
-	}
 	krDb := &qdb.KeyRange{
 		LowerBound:     make([][]byte, len(kr.ColumnTypes)),
 		ShardID:        kr.ShardID,
 		KeyRangeID:     kr.ID,
 		DistributionId: kr.Distribution,
-		Locked:         isLocked,
+		Locked:         kr.IsLocked,
 		Version:        kr.Version,
 	}
 	for i := range len(kr.ColumnTypes) {
@@ -573,4 +585,33 @@ func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, up
 		}
 	}
 	return strings.Join(buf, " AND "), nil
+}
+
+func CustomDataTypeRangeFromSQL(colTypes []string, customRange *spqrparser.CustomDistributionRange) (*CustomDataTypeRange, error) {
+	if customRange == nil {
+		return nil, nil
+	}
+
+	lowerBound := KeyRange{
+		ColumnTypes: colTypes,
+		LowerBound:  make(KeyRangeBound, len(colTypes)),
+	}
+	upperBound := KeyRange{
+		ColumnTypes: colTypes,
+		LowerBound:  make(KeyRangeBound, len(colTypes)),
+	}
+
+	for i := range colTypes {
+		if err := lowerBound.InFuncSQL(i, customRange.LowerBound.Pivots[i]); err != nil {
+			return nil, err
+		}
+		if err := upperBound.InFuncSQL(i, customRange.UpperBound.Pivots[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	return &CustomDataTypeRange{
+		LowerBound: lowerBound.LowerBound,
+		UpperBound: upperBound.LowerBound,
+	}, nil
 }

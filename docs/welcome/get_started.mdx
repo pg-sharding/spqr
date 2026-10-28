@@ -80,21 +80,11 @@ demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
 And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
 
 ```sql
-CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
-            add key range          
------------------------------------
- created key range with bound 1000
-(1 row)
-
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard1 FOR DISTRIBUTION ds1;
-         add key range          
---------------------------------
- created key range with bound 1
-(1 row)
+CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
 ```
-<Warning>
-Order is important. If you reverse the order, you will get an error "key range krid2 intersects with key range krid1 in QDB".
-</Warning>
+<Tip>
+`CREATE KEY RANGES FOR DISTRIBUTION` automatically handles the creation order. If you create key ranges manually with `CREATE KEY RANGE`, you must create them in descending order by lower bound (highest first).
+</Tip>
 
 Here we go! You can play with some SELECTs or INSERTs.
 
@@ -129,7 +119,7 @@ Then, populate it with an order:
 ```bash
 demo=> BEGIN;
 BEGIN
-demo=> INSERT INTO orders (id, customer_id, order_data) VALUES (777, 123456, '2024-01-08');
+demo=> INSERT INTO orders (id, customer_id, order_date) VALUES (777, 123456, '2024-01-08');
 NOTICE: send query to shard(s) : shard01
 INSERT 0 1
 demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
@@ -145,7 +135,7 @@ The order can be found on the first shard:
 ```bash
 demo=> SELECT * FROM orders WHERE id = 777;
 NOTICE: send query to shard(s) : shard01
-  id  | customer_id | order_data 
+  id  | customer_id | order_date 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
 (1 row)
@@ -156,7 +146,7 @@ SPQR can handle such queries as `SELECT * FROM table` but we don't recommend usi
 ```bash
 demo=> SELECT * FROM orders;
 NOTICE: send query to shard(s) : shard01,shard02
-  id  | customer_id | order_data 
+  id  | customer_id | order_date 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
 (1 row)

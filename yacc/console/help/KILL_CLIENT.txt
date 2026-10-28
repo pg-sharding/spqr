@@ -1,0 +1,21 @@
+NAME
+    KILL CLIENT - Terminates a specific client connection by its numeric ID.
+
+SYNTAX
+    KILL CLIENT <client_id>
+
+DESCRIPTION
+    Terminates a specific client connection by its numeric ID.
+
+    Use SHOW CLIENTS to find client IDs.
+
+PARAMETERS
+    <client_id> - Numeric identifier of the client connection to terminate
+
+EXAMPLES
+    Kill a client connection:
+        KILL CLIENT 42;
+
+RELATED COMMANDS
+    KILL BACKEND
+    SHOW

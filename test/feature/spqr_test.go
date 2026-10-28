@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,8 +26,8 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/cucumber/godog"
-	pgxv4 "github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -55,11 +56,9 @@ const (
 	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
 	qdbQueriesTimeout               = 30 * time.Second
-
-	spqrQdbHost             = "qdb01"
-	checkCoordinatorTimeout = 15 * time.Second
-
-	SERVICE_STATE_RUNNING = "running"
+	spqrQdbHost                     = "qdb01"
+	checkCoordinatorTimeout         = 15 * time.Second
+	serviceStateRunning             = "running"
 )
 
 type testContext struct {
@@ -76,12 +75,17 @@ type testContext struct {
 	t                 *testing.T
 	debug             bool
 	preparedQueries   map[string]map[string]*sql.Stmt
+	etcdBaselineKeys  map[string]any
 }
 
 func newTestContext(t *testing.T) (*testContext, error) {
 	var err error
 	tctx := new(testContext)
-	tctx.composer, err = testutil.NewDockerComposer("spqr", "docker-compose.yaml")
+	composeFile := os.Getenv("FEATURE_COMPOSE_FILE")
+	if composeFile == "" {
+		composeFile = "docker-compose.yaml"
+	}
+	tctx.composer, err = testutil.NewDockerComposer("spqr", composeFile)
 	tctx.t = t
 	if err != nil {
 		return nil, err
@@ -282,16 +286,13 @@ func (tctx *testContext) connectRouterConsoleWithCredentials(username string, pa
 
 func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sql.DB) bool) (*sql.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
-	connCfg, _ := pgxv4.ParseConfig(dsn)
-	connCfg.PreferSimpleProtocol = true
+	connCfg, _ := pgx.ParseConfig(dsn)
+	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connCfg.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
-	connStr := stdlib.RegisterConnConfig(connCfg)
-	db, err := sql.Open("pgx", connStr)
-	if err != nil {
-		return nil, err
-	}
+	connCfg.RuntimeParams["spqrguard.prevent_reference_table_modify"] = "off"
+	db := stdlib.OpenDB(*connCfg)
 	success := false
 	// sql is lazy in go, so we need ping db
 	testutil.Retry(func() bool {
@@ -507,6 +508,13 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 	if err != nil {
 		return nil, err
 	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
 	// sqlx is not used now. try remove split
 	queries := strings.Split(query, ";")
 	var result []map[string]any
@@ -517,7 +525,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 			continue
 		}
 		tctx.sqlQueryResult = nil
-		result, err = tctx.doPostgresqlQuery(db, q, timeout, args)
+		result, err = tctx.doPostgresqlQuery(conn, q, timeout, args)
 		tctx.commandRetcode = 0
 		tctx.sqlQueryResult = result
 		if err != nil {
@@ -537,6 +545,13 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		return err
 	}
 
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+
 	// sqlx is not used now. try remove split
 	queries := strings.SplitSeq(query, ";")
 
@@ -545,7 +560,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		if q == "" {
 			continue
 		}
-		_, err := db.Exec(q)
+		_, err := conn.ExecContext(ctx, q)
 		if err != nil {
 			return err
 		}
@@ -553,7 +568,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, body *godog.DocString) error {
+func (tctx *testContext) stepIExecuteSQLInParallel(host string, timeout int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
@@ -584,7 +599,9 @@ func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, bod
 	return execErr
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
+func (tctx *testContext) doPostgresqlQuery(db interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var rows *sql.Rows
@@ -734,7 +751,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		if state, err := tctx.composer.ContainerState(service); err != nil {
 			return false
 		} else {
-			return state != SERVICE_STATE_RUNNING
+			return state != serviceStateRunning
 		}
 	}
 	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
@@ -753,7 +770,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			if err != nil {
 				return err
 			}
-			if state == SERVICE_STATE_RUNNING {
+			if state == serviceStateRunning {
 				anyCoord = true
 				break
 			}
@@ -990,7 +1007,7 @@ func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog
 	if err != nil {
 		return nil
 	}
-	return fmt.Errorf("should not match")
+	return fmt.Errorf("result should not match, result: %s", string(res))
 }
 
 func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.DocString) error {
@@ -1005,7 +1022,7 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 	return m(string(res), strings.TrimSpace(body.Content))
 }
 
-func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
+func (tctx *testContext) stepIExecuteSQL(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
 	err := tctx.executePostgresql(host, query)
@@ -1182,6 +1199,22 @@ func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
 		log.Printf("txs '%#v'", v)
 	}
 	return fmt.Errorf("key range moves present")
+}
+
+func (tctx *testContext) stepKeyRangeMovesShouldMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	txs, err := tctx.qdb.ListKeyRangeMoves(context.TODO())
+	if err != nil {
+		return err
+	}
+	txsJson, err := json.Marshal(txs)
+	if err != nil {
+		return err
+	}
+	return m(string(txsJson), strings.TrimSpace(body.Content))
 }
 
 func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body *godog.DocString) error {
@@ -1386,7 +1419,32 @@ func (tctx *testContext) stepIKillHostAfterQuery(host string, delay int, body *g
 	return tctx.stepHostIsStopped(host)
 }
 
+func (tctx *testContext) newEtcdClient() (*clientv3.Client, error) {
+	addr, err := tctx.composer.GetAddr("qdb01", 2379)
+	if err != nil {
+		return nil, err
+	}
+	return clientv3.New(clientv3.Config{
+		Endpoints: []string{addr},
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		},
+	})
+}
+
 func (tctx *testContext) stepDeleteFromEtcd(key string) error {
+	cli, err := tctx.newEtcdClient()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = cli.Close() }()
+	ctx, cancel := context.WithTimeout(context.TODO(), postgresqlQueryTimeout)
+	defer cancel()
+	_, err = cli.Delete(ctx, key)
+	return err
+}
+
+func (tctx *testContext) stepDeletePrefixFromEtcd(prefix string) error {
 	addr, err := tctx.composer.GetAddr("qdb01", 2379)
 	if err != nil {
 		return err
@@ -1402,8 +1460,103 @@ func (tctx *testContext) stepDeleteFromEtcd(key string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.TODO(), postgresqlQueryTimeout)
 	defer cancel()
-	_, err = cli.Delete(ctx, key)
+	_, err = cli.Delete(ctx, prefix, clientv3.WithPrefix())
 	return err
+}
+
+func (tctx *testContext) listEtcdKeys() (map[string]any, error) {
+	cli, err := tctx.newEtcdClient()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = cli.Close() }()
+	ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
+	defer cancel()
+	// Read every key by requesting the whole keyspace ("" with FromKey).
+	resp, err := cli.Get(ctx, "", clientv3.WithFromKey(), clientv3.WithKeysOnly())
+	if err != nil {
+		return nil, err
+	}
+	keys := make(map[string]any, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		keys[string(kv.Key)] = kv.Value
+	}
+	return keys, nil
+}
+
+func (tctx *testContext) stepRememberEtcdState() error {
+	keys, err := tctx.listEtcdKeys()
+	if err != nil {
+		return err
+	}
+	tctx.etcdBaselineKeys = keys
+	return nil
+}
+
+func compareMaps(current, remembered map[string]any, excludePrefixes []string) (added, changed, deleted []string) {
+	isExcluded := func(key string) bool {
+		excluded := false
+		for _, p := range excludePrefixes {
+			if p != "" && strings.HasPrefix(key, p) {
+				excluded = true
+				break
+			}
+		}
+		return excluded
+	}
+
+	for key, currentValue := range current {
+		if isExcluded(key) {
+			continue
+		}
+
+		if v, ok := remembered[key]; ok {
+			if !reflect.DeepEqual(currentValue, v) {
+				changed = append(changed, key)
+			}
+
+			continue
+		}
+
+		added = append(added, key)
+	}
+	for key := range remembered {
+		if isExcluded(key) {
+			continue
+		}
+
+		if _, ok := current[key]; !ok {
+			deleted = append(deleted, key)
+		}
+	}
+	return
+}
+
+func (tctx *testContext) stepEtcdShouldEqualRememberedIgnoringPrefixes(body *godog.DocString) error {
+	excludePrefixes := make([]string, 0)
+	for _, line := range strings.Split(body.Content, "\n") {
+		if p := strings.TrimSpace(line); p != "" {
+			excludePrefixes = append(excludePrefixes, p)
+		}
+	}
+	currentEtcd, err := tctx.listEtcdKeys()
+	if err != nil {
+		return err
+	}
+	added, changed, deleted := compareMaps(currentEtcd, tctx.etcdBaselineKeys, excludePrefixes)
+	if len(added) > 0 {
+		return fmt.Errorf("etcd contains %d new key(s) after all drops:\n%s",
+			len(added), strings.Join(added, "\n"))
+	}
+	if len(changed) > 0 {
+		return fmt.Errorf("etcd contains %d key(s) with modified values after all drops:\n%s",
+			len(changed), strings.Join(changed, "\n"))
+	}
+	if len(deleted) > 0 {
+		return fmt.Errorf("etcd contains %d deleted key(s) after all drops:\n%s",
+			len(deleted), strings.Join(deleted, "\n"))
+	}
+	return nil
 }
 
 func (tctx *testContext) stepWaitForHostToFinishStartup(host string) error {
@@ -1442,14 +1595,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	}
 	tctx.debug = debug
 
-	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
-		//tctx.cleanup()
-		tctx.composerEnv = []string{
-			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
-			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-			"ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-			"ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-		}
+	s.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
 		tctx.variables = make(map[string]any)
 		return ctx, nil
 	})
@@ -1457,7 +1603,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		tctx.templateErr = tctx.templateStep(step)
 		return ctx, nil
 	})
-	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
+	s.StepContext().After(func(ctx context.Context, step *godog.Step, _ godog.StepResultStatus, err error) (context.Context, error) {
 		if err != nil {
 			if !debug {
 				return ctx, err
@@ -1509,7 +1655,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)
-	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
+	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSQL)
 	s.Step(`^I prepare SQL on host "([^"]*)"$`, tctx.stepIPrepareSQLOnHost)
 	s.Step(`^I run prepared SQL on host "([^"]*)"$`, tctx.stepIRunPreparedSQLOnHost)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
@@ -1519,7 +1665,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 		return nil
 	})
-	s.Step(`^I run SQL on host "([^"]*)" in parallel with timeout "(\d+)" seconds$`, tctx.stepIExecuteSqlInParallel)
+	s.Step(`^I run SQL on host "([^"]*)" in parallel with timeout "(\d+)" seconds$`, tctx.stepIExecuteSQLInParallel)
 
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
@@ -1531,6 +1677,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
+	s.Step(`^key range moves in qdb should match (\w+)$`, tctx.stepKeyRangeMovesShouldMatch)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
@@ -1540,6 +1687,9 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
 	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
+	s.Step(`^I delete keys with prefix "([^"]*)" from etcd$`, tctx.stepDeletePrefixFromEtcd)
+	s.Step(`^I remember current etcd state$`, tctx.stepRememberEtcdState)
+	s.Step(`^etcd should equal remembered state ignoring prefixes$`, tctx.stepEtcdShouldEqualRememberedIgnoringPrefixes)
 	s.Step(`^I wait for host "([^"]*)" to finish startup$`, tctx.stepWaitForHostToFinishStartup)
 
 	// variable manipulation
@@ -1572,17 +1722,36 @@ func TestSpqr(t *testing.T) {
 		debug = true
 	}
 
+	format := "pretty"
+	if junitReport, ok := os.LookupEnv("GODOG_JUNIT_REPORT"); ok && junitReport != "" {
+		if err := os.MkdirAll(filepath.Dir(junitReport), 0755); err != nil {
+			t.Fatalf("create godog junit report directory: %v", err)
+		}
+		format = fmt.Sprintf("%s,junit:%s", format, junitReport)
+	}
+
+	stopOnFailure := true
+	if v, ok := os.LookupEnv("GODOG_STOP_ON_FAILURE"); ok && strings.ToLower(v) == "false" {
+		stopOnFailure = false
+	}
+
+	tags := ""
+	if v, ok := os.LookupEnv("GODOG_TAGS"); ok {
+		tags = v
+	}
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
 			InitializeScenario(s, t, debug)
 		},
 		Options: &godog.Options{
-			Format:        "pretty",
+			Format:        format,
 			Paths:         paths,
 			Strict:        true,
 			NoColors:      false,
-			StopOnFailure: true,
+			StopOnFailure: stopOnFailure,
 			Concurrency:   1,
+			Tags:          tags,
 		},
 	}
 	if suite.Run() != 0 {

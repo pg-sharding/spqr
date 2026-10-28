@@ -13,6 +13,7 @@ do
 done
 
 psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGISTER ROUTER r1 ADDRESS "[regress_router]:7000"'
+psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000"'
 
 /postgres/src/test/isolation/pg_isolation_regress \
     --inputdir /regress \
@@ -25,6 +26,12 @@ psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGIST
     --use-existing \
     --debug \
     --schedule /regress/schedule
+
+./pg_regress_to_junit \
+    --suite "isolation-regress" \
+    --regression-out /regress/regression.out \
+    --diffs /regress/regression.diffs \
+    --output "${ISOLATION_REPORT:-/regress/test-reports/isolation/isolation-regress.xml}"
 
 if test -f /regress/regression.diffs;
 then

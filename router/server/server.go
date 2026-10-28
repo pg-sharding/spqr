@@ -4,9 +4,10 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/planopts"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
@@ -21,17 +22,19 @@ type Server interface {
 
 	/* XXX: remove two methods below and derive next message in executor */
 	/* message, gang source index, error */
-	Receive() (pgproto3.BackendMessage, uint, error)
+	Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error)
 	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
 
 	/* TODO: add and support gang id here. */
-	AllocateGangMember(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
-	ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error
+	AllocateGangMember(params pool.ConnAllocParams, shardKey kr.ShardKey) error
+	ExpandGang(params pool.ConnAllocParams, shkey kr.ShardKey, deployTX bool) error
 
 	ToMultishard() Server
 
-	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
+	UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error)
 	Datashards() []shard.ShardHostInstance
+	PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
+	PrefetchUntilCommandComplete(shkey kr.ShardKey) error
 
 	Cancel() error
 	CancellableIDs() []uint32
@@ -39,6 +42,7 @@ type Server interface {
 	Reset() error
 	Sync() int64
 
+	Cleanup(rule *config.FrontendRule) error
 	DataPending() bool
 }
 

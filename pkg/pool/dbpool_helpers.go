@@ -3,7 +3,7 @@ package pool
 import (
 	"time"
 
-	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/startup"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -13,10 +13,10 @@ import (
  */
 
 // TODO: add shuffle host support here
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp ShardHostsPool, tsaRecheckDuration time.Duration) *DBPool {
+func NewDBPoolFromMultiPool(tmgr topology.TopologyMgr, _ *startup.StartupParams, mp ShardHostsPool, tsaRecheckDuration time.Duration) *DBPool {
 	dbPool := &DBPool{
 		pool:              mp,
-		shardMapping:      mapping,
+		tmgr:              tmgr,
 		checker:           tsa.NewCachedTSACheckerWithDuration(tsaRecheckDuration),
 		deadCheckInterval: 0, // Disabled for testing
 		AcquireRetryCount: 1,
@@ -30,10 +30,10 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 }
 
 // TODO: add shuffle host support here
-func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
+func NewDBPoolWithAllocator(tmgr topology.TopologyMgr, _ *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
 	dbPool := &DBPool{
 		pool:              NewPool(allocator),
-		shardMapping:      mapping,
+		tmgr:              tmgr,
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: 0, // Disabled for testing
 		AcquireRetryCount: 1,

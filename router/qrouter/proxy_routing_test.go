@@ -12,17 +12,22 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rerrors"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stretchr/testify/assert"
 
@@ -30,6 +35,8 @@ import (
 )
 
 const MemQDBPath = "memqdb.json"
+
+var metricRegistry = metrics.NewRouterMetricRegistry(prometheus.NewRegistry())
 
 func getIdentityMngr(lc meta.EntityMgr) planner.IdentityRouterCache {
 	var seqMngr sequences.SequenceMgr = lc
@@ -46,7 +53,7 @@ func planHelper(ctx context.Context, qr *qrouter.ProxyQrouter, rm *rmeta.Routing
 		return nil, err
 	}
 
-	tmp, err := rm.RouteByTuples(ctx, sph.GetTsa())
+	tmp, err := rm.RouteByTuples(ctx, sph.GetTsa(), qr.DataShardsRoutes())
 	if err != nil {
 		return nil, err
 	}
@@ -91,13 +98,14 @@ func TestMultiShardRouting(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
+
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -163,14 +171,18 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "SELECT * FROM pg_catalog.pg_type",
-			exp:   &plan.RandomDispatchPlan{},
-			err:   nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 
 		{
 			query: "SELECT * FROM pg_class",
-			exp:   &plan.RandomDispatchPlan{},
-			err:   nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 		{
 			query: `SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'people' AND table_type = 'BASE TABLE'`,
@@ -181,12 +193,16 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
-		dh.SetPreferredEngine("", "")
+		peGuc, _ := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+		_ = peGuc.Set(dh, "", "")
+		dh.SetSeed(67)
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -226,13 +242,13 @@ func TestCreateTable(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -294,12 +310,16 @@ func TestCreateTable(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
-		dh.SetPreferredEngine("", "")
+		peGuc, _ := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+		_ = peGuc.Set(dh, "", "")
+		dh.SetSeed(67)
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -370,13 +390,13 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -418,7 +438,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: false */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: false */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: false */;`,
@@ -437,7 +458,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}'), (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}') /* __spqr__engine_v2: false */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
@@ -456,7 +478,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;`,
 					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: true */;`,
@@ -477,11 +500,13 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -573,13 +598,13 @@ func TestRoutingByExpression(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -648,11 +673,13 @@ func TestRoutingByExpression(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -693,25 +720,28 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
 
-	_ = db.CreateSequence(context.TODO(), "s1", 10)
+	chunk, err = db.CreateSequence(context.TODO(), "s1", 10)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
 		ColumnSequenceMapping: map[string]string{
 			"id1": "s1",
 		},
-		ShardIds: []string{
+		ShardIDs: []string{
 			"sh1", "sh2",
 		},
 	})
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -724,6 +754,11 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
 					"sh2": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
@@ -744,11 +779,13 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -792,16 +829,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
-		ShardIds:  []string{"sh1", "sh2"},
+		ShardIDs:  []string{"sh1", "sh2"},
 	})
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -809,7 +846,12 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
-				SubPlan: &plan.ScatterPlan{
+				Plan: &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: true,
+						},
+					},
 					OverwriteQuery: map[string]string{
 						"sh1": "INSERT INTO test_ref_rel VALUES(1) returning *;",
 						"sh2": "INSERT INTO test_ref_rel VALUES(1) returning *;",
@@ -823,11 +865,19 @@ func TestReferenceRelationRouting(t *testing.T) {
 						},
 					},
 				},
+				FilterShard: kr.ShardKey{
+					Name: "sh1",
+				},
 			},
 		},
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				OverwriteQuery: map[string]string{
 					"sh1": "INSERT INTO test_ref_rel VALUES(1) ;",
 					"sh2": "INSERT INTO test_ref_rel VALUES(1) ;",
@@ -847,6 +897,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ScatterPlan{
+					BasePlan: plan.BasePlan{
+						H: planopts.PlanOpts{
+							ResultRelationIsRef: true,
+						},
+					},
 					SubPlan: &plan.ModifyTable{
 						ExecTargets: []kr.ShardKey{
 							{
@@ -881,6 +936,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				SubPlan: &plan.ModifyTable{
 					ExecTargets: []kr.ShardKey{
 						{
@@ -904,6 +964,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{
+					H: planopts.PlanOpts{
+						ResultRelationIsRef: true,
+					},
+				},
 				SubPlan: &plan.ModifyTable{
 					ExecTargets: []kr.ShardKey{
 						{
@@ -929,11 +994,13 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0])
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, &config.FrontendRule{}, tt.query, parserRes[0], &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(err, tt.query)
 
@@ -1014,15 +1081,15 @@ func TestComment(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1042,12 +1109,14 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1132,16 +1201,16 @@ func TestCTE(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
-		"sh3": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
+		"sh3": {ID: "sh3"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1277,6 +1346,27 @@ func TestCTE(t *testing.T) {
 		},
 
 		{
+			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)) INSERT INTO t(i) SELECT x FROM vals;`,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)) INSERT INTO t(i) SELECT x FROM vals;`,
+					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)) INSERT INTO t(i) SELECT x FROM vals;`,
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh3"}},
+			},
+		},
+		{
+			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
+			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{
+					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
+					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh3"}},
+			},
+		},
+		{
 			query: `
 			WITH xxxx AS (
 				SELECT * from t where i = 1
@@ -1351,12 +1441,14 @@ func TestCTE(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1492,15 +1584,15 @@ func TestSingleShard(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -1721,12 +1813,14 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1809,19 +1903,31 @@ func TestInsertOffsets(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+		{
+			query: `/* VALUES (99) */ INSERT INTO xx(i) VALUES (1), (20);`,
+			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `/* VALUES (99) */ INSERT INTO xx(i) VALUES (1);`,
+					"sh2": `/* VALUES (99) */ INSERT INTO xx(i) VALUES (20);`,
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}},
+			},
+		},
 
 		{
 			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
@@ -1885,12 +1991,14 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -1971,13 +2079,13 @@ func TestJoins(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2005,33 +2113,22 @@ func TestJoins(t *testing.T) {
 		},
 
 		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
-			exp: &plan.ScatterPlan{
-				ExecTargets: []kr.ShardKey{
-					{
-						Name: "sh1",
-					},
-					{
-						Name: "sh2",
-					},
+			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where x.i = 15 ORDER BY id;",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh2",
 				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
 
-		// sharding columns, but unparsed
+		/* column reference ambiguity */
 		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp: &plan.ScatterPlan{ExecTargets: []kr.ShardKey{
-				{
-					Name: "sh1",
-				},
-				{
-					Name: "sh2",
-				},
-			},
-			},
-			err: nil,
+			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where i = 15 ORDER BY id;",
+			exp:   nil,
+
+			err: rerrors.ErrComplexQuery,
 		},
 
 		// non-sharding columns
@@ -2054,19 +2151,31 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
-
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
-		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		if tt.err != nil {
-			assert.Equal(tt.err, err, "query %s", tt.query)
+
+			if err := planner.AnalyzeQueryV1(context.TODO(), rm, stmt); err != nil {
+
+				assert.Equal(tt.err, err, "query %s", tt.query)
+			} else {
+				_, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+
+				assert.Equal(tt.err, err, "query %s", tt.query)
+			}
 		} else {
+
+			assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt), tt.query)
+
+			tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
+
 			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
@@ -2127,15 +2236,15 @@ func TestUnnest(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2167,12 +2276,14 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -2238,15 +2349,15 @@ func TestCopySingleShard(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2261,13 +2372,16 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
-		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
+		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
 
 		stmt := parserRes[0]
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -2333,15 +2447,15 @@ func TestCopyMultiShard(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2356,15 +2470,19 @@ func TestCopyMultiShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
-		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
-		dh.SetScatterQuery(false)
+		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
+		scatterGuc, _ := dh.FindBoolGUC(session.SPQR_SCATTER_QUERY)
+		scatterGuc.Set(dh, session.VirtualParamLevelStatement, false)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -2419,15 +2537,15 @@ func TestSetStmt(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2455,11 +2573,13 @@ func TestSetStmt(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
 
 		stmt := parserRes[0]
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
@@ -2540,15 +2660,15 @@ func TestRouteWithRules_Select(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(db.ExecNoTransaction(ctx, statements))
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2641,8 +2761,10 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT current_schema;",
@@ -2782,8 +2904,10 @@ SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.n
 LIMIT 1000
 `,
 			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{Name: "sh2"},
+			},
+			err: nil,
 		},
 
 		{
@@ -2802,12 +2926,15 @@ LIMIT 1000
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+		dh.SetSeed(67)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -2871,15 +2998,15 @@ func TestHashRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{
+	pr, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
-	}, nil, getIdentityMngr(lc))
+	}, nil, getIdentityMngr(lc), metricRegistry)
 
 	assert.NoError(err)
 
@@ -2900,12 +3027,14 @@ func TestHashRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
 
 		stmt := parserRes[0]
 
-		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, &config.FrontendRule{}, tt.query, stmt, pr.CSM(), pr.Mgr(), &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		})
 
 		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
 		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
@@ -2966,13 +3095,13 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		return nil, err
 	}
 
-	shardMapping := map[string]*config.Shard{
-		"sh1": {},
-		"sh2": {},
+	shardMapping := map[string]*topology.DataShard{
+		"sh1": {ID: "sh1"},
+		"sh2": {ID: "sh2"},
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, topology.TopMgrFromMap(shardMapping), false, nil, qdb.DefaultMaxTxnSize)
 
-	router, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	router, err := qrouter.NewProxyRouter(topology.TopMgrFromMap(shardMapping), lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc), metricRegistry)
 
 	return router, err
 }

@@ -2,8 +2,7 @@ package qrouter
 
 import (
 	"context"
-	"math/rand"
-	"sync"
+	"sort"
 
 	"sync/atomic"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -18,26 +18,26 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 type ProxyQrouter struct {
 	planner.QueryPlanner
 
-	mu sync.Mutex
-
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}
 
+	tmgr topology.TopologyMgr
+
 	// shards
-	DataShardCfgs  map[string]*config.Shard
-	WorldShardCfgs map[string]*config.Shard
 
 	cfg *config.QRouter
 
-	mgr          meta.EntityMgr
-	csm          connmgr.ConnectionMgr
-	schemaCache  *cache.SchemaCache
-	idRangeCache planner.IdentityRouterCache
+	mgr            meta.EntityMgr
+	csm            connmgr.ConnectionMgr
+	schemaCache    *cache.SchemaCache
+	idRangeCache   planner.IdentityRouterCache
+	metricRegistry *metrics.RouterMetricRegistry
 
 	initialized *atomic.Bool
 	ready       *atomic.Bool
@@ -46,7 +46,7 @@ type ProxyQrouter struct {
 // AnalyzeQuery implements QueryRouter.
 func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 	sph session.SessionParamsHolder,
-	rule *config.FrontendRule, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+	rule *config.FrontendRule, query string, stmt lyx.Node, mCache *rmeta.MetadataCache) (*rmeta.RoutingMetadataContext, error) {
 
 	ro := true
 
@@ -54,23 +54,45 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 		ro = planner.CheckRoOnlyQuery(stmt)
 	}
 
-	rm := rmeta.NewRoutingMetadataContext(sph, rule, query, stmt, qr.csm, qr.mgr)
+	rm := rmeta.NewRoutingMetadataContext(sph, rule, query, stmt, qr.csm, qr.mgr, mCache)
 
 	rm.SetRO(ro)
 
-	if sph.ExecuteOn() == "" && !sph.ScatterQuery() {
-		if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+	/* If we were not asked for actual query routing, exit */
+	if !config.RouterConfig().Qr.AlwaysCheckRules {
+		mp := qr.tmgr.Snap()
+		if len(mp) == 1 {
+			return rm, nil
+		}
+	}
 
-			/* XXX: below is very hacky */
-			/* Does DRH force any executions? */
+	guc, err := sph.FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return nil, err
+	}
+	scatterGuc, err := sph.FindBoolGUC(session.SPQR_SCATTER_QUERY)
+	if err != nil {
+		return nil, err
+	}
+	if guc.Get(sph) == "" && !scatterGuc.Get(sph) {
+		if planErr := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); planErr != nil {
+			spqrlog.Zero.Debug().Err(planErr).Err(planErr).Msg("failed to analyze query")
+
+			/* XXX: below is very hacky. We allow to set DRB to shard-name
+			* to force execution on specific shard. If so, skip analyze to allow
+			* query planner to pin-plan this query. */
+			guc, err := rm.SPH.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+			if err != nil {
+				return nil, err
+			}
+			drb := guc.Get(rm.SPH)
 			for _, sh := range qr.DataShardsRoutes() {
-				if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+				if sh.Name == drb {
 					return rm, nil
 				}
 			}
 
-			return nil, err
+			return nil, planErr
 		}
 	}
 	return rm, nil
@@ -113,87 +135,159 @@ func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
 
 // TODO : unit tests
 func (qr *ProxyQrouter) DataShardsRoutes() []kr.ShardKey {
-	rc, _ := qr.mgr.ListShards(context.TODO())
-	rv := make([]kr.ShardKey, 0, len(rc))
-	for _, el := range rc {
+
+	rv := make([]kr.ShardKey, 0)
+
+	for _, el := range qr.tmgr.Snap() {
 		rv = append(rv, kr.ShardKey{
 			Name: el.ID,
 		})
 	}
+
+	sort.Slice(rv, func(i, j int) bool {
+		return rv[i].Name < rv[j].Name
+	})
 	return rv
 }
 
-// TODO : unit tests
-func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	var ret []kr.ShardKey
-
-	for name := range qr.WorldShardCfgs {
-		ret = append(ret, kr.ShardKey{
-			Name: name,
-		})
-	}
-
-	// a sort of round robin
-
-	rand.Shuffle(len(ret), func(i, j int) {
-		ret[i], ret[j] = ret[j], ret[i]
-	})
-	return ret
+func (qr *ProxyQrouter) MetricRegistry() *metrics.RouterMetricRegistry {
+	return qr.metricRegistry
 }
 
 var _ planner.QueryPlanner = &ProxyQrouter{}
 
-func NewProxyRouter(shardMapping map[string]*config.Shard,
+func NewProxyRouter(tmgr topology.TopologyMgr,
 	mgr meta.EntityMgr,
 	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
+	metricRegistry *metrics.RouterMetricRegistry,
 ) (*ProxyQrouter, error) {
 
 	proxy := &ProxyQrouter{
-		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    &atomic.Bool{},
 		ready:          &atomic.Bool{},
 		cfg:            qcfg,
 		mgr:            mgr,
+		tmgr:           tmgr,
 		csm:            csm,
 		schemaCache:    cache,
 		idRangeCache:   idRangeCache,
+		metricRegistry: metricRegistry,
 	}
-
+	proxy.registerMetrics()
 	ctx := context.TODO()
-
 	/* XXX: since memqdb is persistent on disk, in some cases, we need to recreate the whole topology.
 	* TODO: get this information from the coordinator, not the config.
 	 */
-	sds, err := mgr.ListShards(ctx)
+
+	exists, err := mgr.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, ds := range sds {
-		err := mgr.DropShard(ctx, ds.ID)
-		if err != nil {
-			return nil, err
-		}
+	skipMp := map[string]struct{}{}
+	for _, k := range exists {
+		skipMp[k.ID] = struct{}{}
 	}
 
-	for name, shardCfg := range shardMapping {
-		switch shardCfg.Type {
-		case config.WorldShard:
-		case config.DataShard:
-			fallthrough // default is datashard
-		default:
-			if err := mgr.AddDataShard(ctx, &topology.DataShard{
-				ID:  name,
-				Cfg: shardCfg,
-			}); err != nil {
+	/* XXX: fix this */
+	for k, v := range tmgr.Snap() {
+		if _, ok := skipMp[k]; !ok {
+			if err := mgr.AddDataShard(ctx, v, true); err != nil {
 				return nil, err
 			}
 		}
 	}
+
 	return proxy, nil
+}
+
+func getTimeBuckets(statType statistics.StatisticsType) map[float64]float64 {
+	quantiles := statistics.GetQuantiles()
+	result := make(map[float64]float64, len(*quantiles))
+	for i := range *quantiles {
+		q := (*quantiles)[i]
+		result[q] = statistics.GetTotalTimeQuantile(statType, q)
+	}
+	return result
+}
+
+func (qr *ProxyQrouter) registerMetrics() {
+	totalConnectionsMetric := &metrics.DynamicCounter{
+		Name: metrics.ClientConnectionsTCPTotalName,
+		Help: "Current number of client tcp connections",
+		Getter: func() float64 {
+			return float64(qr.csm.TotalTCPCount())
+		},
+	}
+
+	activeConnectionsMetric := &metrics.DynamicGauge{
+		Name: metrics.ActiveTCPCountName,
+		Help: "Current number of active client tcp connections",
+		Getter: func() float64 {
+			return float64(qr.csm.ActiveTCPCount())
+		},
+	}
+
+	totalCancelCount := &metrics.DynamicCounter{
+		Name: metrics.CancelRequestCountName,
+		Help: "Number of requests canceled from client side",
+		Getter: func() float64 {
+			return float64(qr.csm.TotalCancelCount())
+		},
+	}
+	failedInitCount := &metrics.DynamicCounter{
+		Name: metrics.ClientInitFailCountName,
+		Help: "Failed client connection initialisation count",
+		Getter: func() float64 {
+			return float64(qr.csm.FailedInitCount())
+		},
+	}
+	failedAuthCount := &metrics.DynamicCounter{
+		Name: metrics.ClientAuthFailCountName,
+		Help: "Failed client connection authentication count",
+		Getter: func() float64 {
+			return float64(qr.csm.FailedAuthCount())
+		},
+	}
+
+	inboundQueriesTotalMetric := &metrics.DynamicCounter{
+		Name: metrics.InboundQueriesTotalName,
+		Help: "Number of incoming queries",
+		Getter: func() float64 {
+			return float64(statistics.GetTotalRequests())
+		},
+	}
+	routerTimeMetric := &metrics.DynamicSummary{
+		Name: metrics.RouterTimeSummaryName,
+		Help: "Routing latency time quantiles",
+		GetSum: func() float64 {
+			return statistics.GetRouterTimeTotalSum()
+		},
+		GetCount: func() uint64 {
+			return statistics.GetRouterTimeTotalCount()
+		},
+		GetQuantiles: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeRouter) },
+	}
+	shardTimeMetric := &metrics.DynamicSummary{
+		Name: metrics.ShardTimeSummaryName,
+		Help: "Shard latency time quantiles",
+		GetSum: func() float64 {
+			return statistics.GetShardTimeTotalSum()
+		},
+		GetCount: func() uint64 {
+			return statistics.GetShardTimeTotalCount()
+		},
+		GetQuantiles: func() map[float64]float64 { return getTimeBuckets(statistics.StatisticsTypeShard) },
+	}
+
+	qr.metricRegistry.RegisterDynamicCounter(totalConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicGauge(activeConnectionsMetric)
+	qr.metricRegistry.RegisterDynamicCounter(totalCancelCount)
+	qr.metricRegistry.RegisterDynamicCounter(failedInitCount)
+	qr.metricRegistry.RegisterDynamicCounter(failedAuthCount)
+	qr.metricRegistry.RegisterDynamicCounter(inboundQueriesTotalMetric)
+	qr.metricRegistry.RegisterDynamicSummary(routerTimeMetric)
+	qr.metricRegistry.RegisterDynamicSummary(shardTimeMetric)
 }
