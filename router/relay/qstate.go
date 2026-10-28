@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -94,7 +94,7 @@ l:
 		if i > 0 {
 
 			switch stmt.(type) {
-			case *lyx.VariableSetStmt, *lyx.VariableShowStmt:
+			case *lyx.VariableSetStmt, *lyx.VariableShowStmt, *lyx.TransactionStmt:
 				/* ok */
 			default:
 				continue l
@@ -145,15 +145,18 @@ l:
 			return nil, err
 		}
 	}
+
 	return pd, err
 }
 
-func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error {
-	mp, err := qparser.ParseComment(comment)
+func (rst *RelayStateImpl) queryProc(comments []string, binderQ func() error) error {
+	for _, comment := range comments {
+		mp, err := qparser.ParseComment(comment)
 
-	if err == nil {
-		if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
-			return err
+		if err == nil {
+			if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -172,11 +175,11 @@ var (
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, _ bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comments []string, binderQ func() error, _ bool) (*PortalDesc, error) {
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msg("process relay state advanced")
 
 	statistics.IncTotalRequest()
 
@@ -200,28 +203,38 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return noDataPd, nil
 			}
 
-			err := rst.QueryExecutor().ExecBegin(query, st)
+			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
-			if mp, err := qparser.ParseComment(comment); err == nil {
+			for _, comment := range comments {
+				if mp, err := qparser.ParseComment(comment); err == nil {
 
-				if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
-					switch val {
-					case twopc.CommitStrategy2pc:
-						fallthrough
-					case twopc.CommitStrategy1pc:
-						fallthrough
-					case twopc.CommitStrategyBestEffort:
-						rst.Client().SetCommitStrategy(val)
-					default:
-						/*should error-out*/
+					if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
+						switch val {
+						case twopc.CommitStrategy2pc:
+							fallthrough
+						case twopc.CommitStrategy1pc:
+							fallthrough
+						case twopc.CommitStrategyBestEffort:
+							rst.Client().SetCommitStrategy(val)
+						default:
+							/*should error-out*/
+						}
 					}
 				}
 			}
 
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				guc, err := rst.Client().FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+				if err != nil {
+					return nil, err
+				}
+
+				ok := guc.Get(rst.Client())
+				if !ok {
+					_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				}
 				rst.QueryExecutor().SetCommandCompleteTag("COMMIT")
 
 				return noDataPd, nil
@@ -230,7 +243,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 		case lyx.TRANS_STMT_ROLLBACK:
 			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				guc, err := rst.Client().FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+				if err != nil {
+					return nil, err
+				}
+
+				ok := guc.Get(rst.Client())
+				if !ok {
+					_ = rst.Client().ReplyWarningf(spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION, "there is no transaction in progress")
+				}
 				rst.QueryExecutor().SetCommandCompleteTag("ROLLBACK")
 				return noDataPd, nil
 			}
@@ -298,7 +319,12 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		if session.ParamIsBoolean(param) {
 
-			guc, err := session.BoolGUCByName(param)
+			guc, err := rst.Client().FindBoolGUC(param)
+			if err != nil {
+				return nil, err
+			}
+
+			val, err := guc.Show(rst.Client())
 			if err != nil {
 				return nil, err
 			}
@@ -314,11 +340,34 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				},
 			}
 
-			if guc.Get(rst.Client()) {
-				tts.WriteDataRow("true")
-			} else {
-				tts.WriteDataRow("false")
+			tts.WriteDataRow(val)
+
+			ReplyVirtualParamStateTTS(rst.Client(), &tts)
+
+		} else if session.ParamIsString(param) {
+
+			guc, err := rst.Client().FindStrGUC(param)
+			if err != nil {
+				return nil, err
 			}
+
+			val, err := guc.Show(rst.Client())
+			if err != nil {
+				return nil, err
+			}
+
+			tts := tupleslot.TupleTableSlot{
+				Desc: []pgproto3.FieldDescription{
+					{
+						Name:         []byte(guc.ShortName()),
+						DataTypeOID:  catalog.TEXTOID,
+						DataTypeSize: -1,
+						TypeModifier: -1,
+					},
+				},
+			}
+
+			tts.WriteDataRow(val)
 
 			ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
@@ -327,82 +376,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			case session.SPQR_DISTRIBUTION:
 				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 					session.SPQR_DISTRIBUTION)
-
-			case session.SPQR_DISTRIBUTED_RELATION:
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_DISTRIBUTED_RELATION)
-
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("default route behaviour"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(rst.Client().DefaultRouteBehaviour())
-
-				/* XXX: move this call out of this function */
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
-			case session.SPQR_SHARDING_KEY:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("sharding key"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(rst.Client().ShardingKey())
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-			case session.SPQR_SCATTER_QUERY:
-				return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
-					session.SPQR_SCATTER_QUERY)
-			case session.SPQR_EXECUTE_ON:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("execute on"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(rst.Client().ExecuteOn())
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
-			case session.SPQR_REPLY_NOTICE:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("show notice messages"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-
-				if rst.Client().ShowNoticeMsg() {
-					tts.WriteDataRow("true")
-				} else {
-					tts.WriteDataRow("false")
-				}
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
 
 			case session.SPQR_ENGINE_V2:
 
@@ -424,29 +397,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				}
 
 				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
-			case session.SPQR_TARGET_SESSION_ATTRS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-
-				tts := tupleslot.TupleTableSlot{
-					Desc: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("target session attrs"),
-							DataTypeOID:  catalog.TEXTOID,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				}
-				tts.WriteDataRow(string(rst.Client().GetTsa()))
-
-				ReplyVirtualParamStateTTS(rst.Client(), &tts)
-
-			case session.SPQR_PREFERRED_ENGINE:
-				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
 
 			case session.SPQR_COMMIT_STRATEGY:
 
@@ -470,7 +420,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				} else {
 					/* If router does dot have any info about param, fire query to random shard. */
 					if _, ok := rst.Client().Params()[param]; !ok {
-						err := rst.queryProc(comment, binderQ)
+						err := rst.queryProc(comments, binderQ)
 						return pd, err
 					}
 
@@ -536,7 +486,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				val = q.Value[0]
 			}
 
-			if strings.HasPrefix(name, "__spqr__") {
+			/* Direct comparison with def tx ro is dummy, but we dont expect other such cases
+			 */
+			if strings.HasPrefix(name, "__spqr__") || name == session.PG_DEFAULT_TRANSACTION_READ_ONLY {
 				ctx := context.TODO()
 				if err := rst.processSpqrHint(ctx, map[string]string{
 					name: val,
@@ -556,8 +508,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			// prepare *name* as *query*
-			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
+			// Extract the inner query using the token location recorded
+			// by the parser: PrepareStmt.QueryLoc points right at the
+			// first token of the query after the AS keyword.
+			ss := query[st.QueryLoc:]
 
 			if _, err := rst.relayParsePrepared(context.TODO(), st.Name, ss, nil); err != nil {
 				return nil, err
@@ -568,7 +522,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return nil, nil
 		} else {
 			// process like regular query
-			err := rst.queryProc(comment, binderQ)
+			err := rst.queryProc(comments, binderQ)
 			return nil, err
 		}
 	case *lyx.ExecuteStmt:
@@ -582,6 +536,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				switch q := p.(type) {
 				case *lyx.AExprSConst:
 					params = append(params, []byte(q.Value))
+				case *lyx.AExprIConst:
+					params = append(params, []byte(strconv.FormatInt(q.Value, 10)))
+				case *lyx.AExprBConst:
+					params = append(params, []byte(strconv.FormatBool(q.Value)))
+				case *lyx.AExprNConst:
+					/* NULL const */
+					params = append(params, nil)
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
@@ -603,24 +564,30 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				return nil, err
 			}
 
-			if err := rst.ExecutePortal( /* unnamed portal */ ""); err != nil {
+			if err := rst.ExecutePortal( /* unnamed portal */ "", 0); err != nil {
 				return nil, err
 			}
 
 			return nil, nil
 		} else {
 			// process like regular query
-			err := rst.queryProc(comment, binderQ)
+			err := rst.queryProc(comments, binderQ)
 			return nil, err
 		}
 	default:
-		err := rst.queryProc(comment, binderQ)
+		err := rst.queryProc(comments, binderQ)
 		return nil, err
 	}
 }
 
 func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	mp map[string]string, isLocal bool, isStmt bool) error {
+	for hintName := range mp {
+		name := virtualParamTransformName(hintName)
+		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
+			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+		}
+	}
 
 	lvl := session.VirtualParamLevelTxBlock
 
@@ -638,59 +605,39 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 		if session.ParamIsBoolean(name) {
 
-			var v bool
-
-			switch value {
-			case "true", "ok", "on":
-				v = true
-			case "false", "no", "off":
-				v = false
-			default:
-				return fmt.Errorf("malformed value for GUC: %v", value)
+			v, err := session.ParseBoolGUCValue(value)
+			if err != nil {
+				return err
 			}
-
-			guc, err := session.BoolGUCByName(name)
+			guc, err := rst.Client().FindBoolGUC(name)
 			if err != nil {
 				return err
 			}
 
 			guc.Set(rst.Client(), lvl, v)
+		} else if session.ParamIsString(name) {
+
+			guc, err := rst.Client().FindStrGUC(name)
+			if err != nil {
+				return err
+			}
+
+			if err := guc.Set(rst.Client(), lvl, hintVal); err != nil {
+				return err
+			}
 		} else {
 
 			switch name {
-			case session.SPQR_SCATTER_QUERY:
-				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
-				rst.Client().SetScatterQuery(hintVal != "")
-			case session.SPQR_EXECUTE_ON:
-				if _, err := topology.TopMgr.ShardById(hintVal); err != nil {
-					return errAbortedTx
-				}
-				rst.Client().SetExecuteOn(lvl, hintVal)
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(lvl, hintVal)
-			case session.SPQR_DISTRIBUTION_KEY:
-				rst.Client().SetDistributionKey(hintVal)
-			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.Client().SetDistributedRelation(lvl, hintVal)
-			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
-			case session.SPQR_SHARDING_KEY:
-				rst.Client().SetShardingKey(lvl, hintVal)
-			case session.SPQR_PREFERRED_ENGINE:
-				rst.Client().SetPreferredEngine(lvl, hintVal)
-
-			case session.SPQR_REPLY_NOTICE:
-				if value == "on" || value == "true" {
-					rst.Client().SetShowNoticeMsg(lvl, true)
-				} else {
-					rst.Client().SetShowNoticeMsg(lvl, false)
+			/* We also accept pg default tx ro GUC as alias  */
+			case session.PG_DEFAULT_TRANSACTION_READ_ONLY:
+				switch value {
+				case "true", "on", "ok":
+					rst.Client().SetTsa(lvl, config.TargetSessionAttrsPR)
+				case "false", "off", "no":
+					rst.Client().SetTsa(lvl, config.TargetSessionAttrsRW)
 				}
-			case session.SPQR_TARGET_SESSION_ATTRS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-				fallthrough
-			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				rst.Client().SetTsa(lvl, hintVal)
 			case session.SPQR_ENGINE_V2:
 				/* Ignore statement level here */
 				switch value {
@@ -716,7 +663,11 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 				_, ok := mp[session.SPQR_DISTRIBUTION_KEY]
 				if !ok {
-					if rst.Client().DistributionKey() == "" {
+					guc, err := rst.Client().FindStrGUC(session.SPQR_DISTRIBUTION_KEY)
+					if err != nil {
+						return err
+					}
+					if guc.Get(rst.Client()) == "" {
 						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
 					}
 				}

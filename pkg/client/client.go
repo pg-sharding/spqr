@@ -62,6 +62,8 @@ type Client interface {
 
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
+	/* Await and parse next message, but do not "Receive" it */
+	Peek() (pgproto3.FrontendMessage, error)
 
 	Flush() error
 

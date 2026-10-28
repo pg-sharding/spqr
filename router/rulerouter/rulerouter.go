@@ -9,12 +9,14 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/router_util"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"golang.org/x/sync/semaphore"
 
@@ -54,7 +56,6 @@ type RuleRouterImpl struct {
 
 	tlsconfig *tls.Config
 
-	mu   sync.Mutex
 	rcfg *config.Router
 
 	clmp sync.Map
@@ -63,9 +64,24 @@ type RuleRouterImpl struct {
 
 	initSem semaphore.Weighted
 
-	totalTCPCount   atomic.Int64
-	activeTCPCount  atomic.Int64
-	cancelConnCount atomic.Int64
+	totalTCPCount       atomic.Int64
+	activeTCPCount      atomic.Int64
+	cancelConnCount     atomic.Int64
+	clientInitFailCount atomic.Int64
+	clientAuthFailCount atomic.Int64
+
+	InstanceStartTime time.Time
+	LastReload        time.Time
+}
+
+// LastReloadTime implements [RuleRouter].
+func (r *RuleRouterImpl) LastReloadTime() time.Time {
+	return r.LastReload
+}
+
+// StartTime implements [RuleRouter].
+func (r *RuleRouterImpl) StartTime() time.Time {
+	return r.InstanceStartTime
 }
 
 // ErrorCounts implements [RuleRouter].
@@ -115,6 +131,16 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return rt
 }
 
+// RunRecheckHosts implements ConnectionStatsMgr.
+func (r *RuleRouterImpl) RunRecheckHosts() []pool.HostRecheckResult {
+	var res []pool.HostRecheckResult
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		res = append(res, r.MultiShardPool().RunRecheckHosts()...)
+		return true, nil
+	})
+	return res
+}
+
 // ReleaseConnection implements RuleRouter.
 func (r *RuleRouterImpl) ReleaseConnection() {
 	r.activeTCPCount.Add(-1)
@@ -133,6 +159,16 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 // TotalTCPCount implements RuleRouter.
 func (r *RuleRouterImpl) TotalTCPCount() int64 {
 	return r.totalTCPCount.Load()
+}
+
+// FailedAuthCount implements RuleRouter.
+func (r *RuleRouterImpl) FailedAuthCount() int64 {
+	return r.clientAuthFailCount.Load()
+}
+
+// FailedInitCount implements RuleRouter.
+func (r *RuleRouterImpl) FailedInitCount() int64 {
+	return r.clientInitFailCount.Load()
 }
 
 // TODO : unit tests
@@ -158,10 +194,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	rcfg := config.RouterConfig()
 	topology.InitShardMapping(topology.DataShardMapFromConfig(rcfg.ShardMapping))
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLogging)
+	router_util.ReloadRotateLog()
 
 	r.rmgr.Reload(rcfg.FrontendRules, rcfg.BackendRules)
 
@@ -182,6 +215,8 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		}
 	}
 
+	r.LastReload = time.Now()
+
 	return nil
 }
 
@@ -193,7 +228,10 @@ func NewRouter(tmgr topology.TopologyMgr, tlsconfig *tls.Config, rcfg *config.Ro
 		tlsconfig: tlsconfig,
 		clmp:      sync.Map{},
 		notifier:  notifier,
-		initSem:   *semaphore.NewWeighted(config.ValueOrDefaultInt64(rcfg.ClientInitMax, defaultInstanceClientInitMax)),
+
+		InstanceStartTime: time.Now(),
+		LastReload:        time.Now(),
+		initSem:           *semaphore.NewWeighted(config.ValueOrDefaultInt64(rcfg.ClientInitMax, defaultInstanceClientInitMax)),
 	}
 }
 
@@ -204,7 +242,6 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	cl := rclient.NewPsqlClient(conn,
 		pt,
-		string(config.RouterConfig().Qr.DefaultRouteBehaviour),
 		config.RouterConfig().ShowNoticeMessages,
 		config.RouterConfig().Qr.DefaultTSA)
 
@@ -217,6 +254,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	if err := cl.Init(tlsConfig); err != nil {
 		r.initSem.Release(1)
+		r.clientInitFailCount.Add(1)
 		return cl, err
 	}
 
@@ -286,13 +324,10 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if err := cl.Auth(rt); err != nil {
+		r.clientAuthFailCount.Add(1)
 		_ = cl.ReplyErr(err)
 		if !config.RouterConfig().DisableObsoleteClient {
-			route := r.Obsolete(key)
-			/* Stop watchdogs, if any */
-			if route != nil {
-				route.MultiShardPool().StopCacheWatchdog()
-			}
+			r.Obsolete(key)
 		}
 		return cl, err
 	}

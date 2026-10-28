@@ -9,7 +9,7 @@ import (
 )
 
 type TwoPhaseTxMetaServer struct {
-	proto.UnimplementedMetaTransactionServiceServer
+	proto.UnimplementedTwoPhaseTxMetaServiceServer
 
 	impl coordinator.Coordinator
 }
@@ -20,7 +20,7 @@ func NewTwoPhaseTxMetaServer(impl coordinator.Coordinator) *TwoPhaseTxMetaServer
 	}
 }
 
-var _ proto.MetaTransactionServiceServer = &TwoPhaseTxMetaServer{}
+var _ proto.TwoPhaseTxMetaServiceServer = &TwoPhaseTxMetaServer{}
 
 // GetTwoPhaseTxMetaStorage implements [proto.TwoPhaseTxMetaServiceServer].
 func (l *TwoPhaseTxMetaServer) GetTwoPhaseTxMetaStorage(ctx context.Context, _ *emptypb.Empty) (*proto.TwoPhaseTxMetaStorageReply, error) {

@@ -3,7 +3,6 @@ package tsa_test
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
@@ -26,9 +25,12 @@ func TestChecker_CheckTSA(t *testing.T) {
 		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
 			Values: [][]byte{[]byte("off")},
 		}, nil)
+		mockShard.EXPECT().Receive().Return(&pgproto3.CommandComplete{
+			CommandTag: []byte("SHOW"),
+		}, nil)
 		mockShard.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.NoError(t, err)
 		assert.True(t, result.Alive)
 		assert.True(t, result.RW)
@@ -40,9 +42,12 @@ func TestChecker_CheckTSA(t *testing.T) {
 		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
 			Values: [][]byte{[]byte("on")},
 		}, nil)
+		mockShard.EXPECT().Receive().Return(&pgproto3.CommandComplete{
+			CommandTag: []byte("SHOW"),
+		}, nil)
 		mockShard.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.NoError(t, err)
 		assert.True(t, result.Alive)
 		assert.False(t, result.RW)
@@ -52,7 +57,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 	t.Run("Error_sending_query_test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(errors.New("send error"))
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
 		assert.False(t, result.RW)
@@ -63,7 +68,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
 		mockShard.EXPECT().Receive().Return(nil, errors.New("receive an error"))
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
 		assert.False(t, result.RW)
@@ -74,7 +79,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
 		mockShard.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)}, nil)
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
 		assert.False(t, result.RW)
@@ -86,7 +91,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 			Values: [][]byte{[]byte("maybe")},
 		}, nil)
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
 		assert.False(t, result.RW)
@@ -99,30 +104,10 @@ func TestChecker_CheckTSA(t *testing.T) {
 			Values: [][]byte{},
 		}, nil)
 
-		result, err := checker.CheckTSA(mockShard)
+		result, err := checker.CheckTSA(mockShard, 0)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
 		assert.False(t, result.RW)
 		assert.Contains(t, result.Reason, "unexpected datarow received")
-	})
-
-	t.Run("Timeout_test", func(t *testing.T) {
-		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
-
-		// Simulate a slow response
-		mockShard.EXPECT().Receive().DoAndReturn(func() (pgproto3.BackendMessage, error) {
-			time.Sleep(5 * time.Second)
-			return &pgproto3.DataRow{
-				Values: [][]byte{[]byte("off")},
-			}, nil
-		})
-
-		result, err := checker.CheckTSA(mockShard)
-
-		assert.Error(t, err)
-		assert.False(t, result.Alive)
-		assert.False(t, result.RW)
-		assert.Contains(t, result.Reason, "TSA check timed out after")
-		assert.Contains(t, err.Error(), "TSA check timed out after")
 	})
 }

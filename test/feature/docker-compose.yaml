@@ -4,6 +4,7 @@ services:
     environment: &feature-env-common
       POSTGRES_USER: regress
       POSTGRES_DB: regress
+      PG_SYNC_REPLICA: true
     ports:
       - "5500:6432"
     hostname: spqr_shard_1
@@ -88,9 +89,9 @@ services:
       - "7012:7002"
       - "7013:7003"
     environment:
-      - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_CONFIG=${ROUTER_CONFIG:-/spqr/test/feature/conf/router.yaml}
       - ROUTER_LOG=/var/log/spqr-router.log
-      - COORDINATOR_CONFIG=${ROUTER_COORDINATOR_CONFIG}
+      - COORDINATOR_CONFIG=${ROUTER_COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
     hostname: regress_router
     container_name: regress_router
     depends_on:
@@ -105,12 +106,6 @@ services:
       shard3:
         condition: service_healthy
       shard3-replica:
-        condition: service_healthy
-      kdc:
-        condition: service_started
-      ldapserver:
-        condition: service_healthy
-      ldapserver2:
         condition: service_healthy
       coordinator:
         condition: service_started
@@ -134,9 +129,9 @@ services:
       - "7022:7002"
       - "7023:7003"
     environment:
-      - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_CONFIG=${ROUTER_CONFIG:-/spqr/test/feature/conf/router.yaml}
       - ROUTER_LOG=/var/log/spqr-router.log
-      - COORDINATOR_CONFIG=${ROUTER_2_COORDINATOR_CONFIG}
+      - COORDINATOR_CONFIG=${ROUTER_2_COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
     hostname: regress_router_2
     container_name: regress_router_2
     depends_on:
@@ -170,7 +165,7 @@ services:
       - "7002:7002"
       - "7003:7003"
     environment:
-      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG}
+      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG:-/spqr/test/feature/conf/coordinator.yaml}
     hostname: regress_coordinator
     container_name: regress_coordinator
     depends_on:
@@ -185,7 +180,7 @@ services:
       - "7032:7002"
       - "7033:7003"
     environment:
-      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator2.yaml
+      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG_2:-/spqr/test/feature/conf/coordinator2.yaml}
     hostname: regress_coordinator_2
     container_name: regress_coordinator_2
     depends_on:
@@ -208,6 +203,8 @@ services:
     entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
   ldapserver:
     image: "osixia/openldap:1.5.0"
+    profiles:
+      - auth
     privileged: true
     hostname: regress_ldap_server
     container_name: regress_ldap_server
@@ -232,6 +229,8 @@ services:
       - feature_test_network
   ldapserver2:
     image: "osixia/openldap:1.5.0"
+    profiles:
+      - auth
     privileged: true
     hostname: regress_ldap_server_2
     container_name: regress_ldap_server_2
@@ -245,6 +244,8 @@ services:
     networks:
       - feature_test_network
   kdc:
+    profiles:
+      - auth
     build:
       context: ./conf/kdc
     volumes:

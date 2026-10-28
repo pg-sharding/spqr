@@ -37,6 +37,8 @@ DROP TABLE test;
 DROP TABLE test2;
 DROP TABLE test3;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_reference_relations;
+
 \c spqr-console
 
 DROP REFERENCE RELATION test;

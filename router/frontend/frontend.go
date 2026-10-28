@@ -4,9 +4,12 @@ import (
 	"context"
 	"io"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -14,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
@@ -22,6 +26,11 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 	if err == nil {
 
 		if err := rst.CompleteRelay(); err != nil {
+			if err := rst.CompleteRelayClient(); err != nil {
+
+				/* XXXX: terminate? */
+				return err
+			}
 			return err
 		}
 
@@ -39,9 +48,35 @@ func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 		return err
 		// ok
 	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-			Msg("client iteration done with error")
+		if spqrErr, ok := err.(*spqrerror.SpqrError); ok {
+			ev := spqrlog.Zero.Error().Err(err).
+				Uint("client", rst.Client().ID()).
+				Str("tx-status", rst.QueryExecutor().TxStatus().String())
+
+			if spqrErr.InternalQuery != "" {
+				ev = ev.Str("QUERY", spqrErr.InternalQuery)
+			}
+			if spqrErr.ErrorCode != "" {
+				ev = ev.Str("SQLSTATE", spqrErr.ErrorCode)
+			}
+			if spqrErr.ErrContext != "" {
+				ev = ev.Str("CONTEXT", spqrErr.ErrContext)
+			}
+			if spqrErr.ErrDetail != "" {
+				ev = ev.Str("DETAIL", spqrErr.ErrDetail)
+			}
+			if spqrErr.ErrHint != "" {
+				ev = ev.Str("HINT", spqrErr.ErrHint)
+			}
+
+			ev.Msg("client iteration done with error")
+		} else {
+			spqrlog.Zero.Error().
+				Err(err).
+				Uint("client", rst.Client().ID()).
+				Str("tx-status", rst.QueryExecutor().TxStatus().String()).
+				Msg("client iteration done with error")
+		}
 
 		/* try to report error to user  */
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
@@ -70,9 +105,35 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 		return err
 		// ok
 	default:
-		spqrlog.Zero.Error().
-			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-			Msg("client iteration done with error")
+
+		if spqrErr, ok := err.(*spqrerror.SpqrError); ok {
+			ev := spqrlog.Zero.Error().Err(err).
+				Uint("client", rst.Client().ID()).
+				Str("tx-status", rst.QueryExecutor().TxStatus().String())
+
+			if spqrErr.InternalQuery != "" {
+				ev = ev.Str("QUERY", spqrErr.InternalQuery)
+			}
+			if spqrErr.ErrorCode != "" {
+				ev = ev.Str("SQLSTATE", spqrErr.ErrorCode)
+			}
+			if spqrErr.ErrContext != "" {
+				ev = ev.Str("CONTEXT", spqrErr.ErrContext)
+			}
+			if spqrErr.ErrDetail != "" {
+				ev = ev.Str("DETAIL", spqrErr.ErrDetail)
+			}
+			if spqrErr.ErrHint != "" {
+				ev = ev.Str("HINT", spqrErr.ErrHint)
+			}
+
+			ev.Msg("client iteration done with error")
+		} else {
+
+			spqrlog.Zero.Error().Err(err).
+				Uint("client", rst.Client().ID()).Str("tx-status", rst.QueryExecutor().TxStatus().String()).
+				Msg("client iteration done with error")
+		}
 
 		/* try to report error to user  */
 		if rerr := rst.Reset(); rerr != nil {
@@ -84,7 +145,7 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
@@ -114,9 +175,13 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
 
-		// copy interface
-		cpQ := *q
-		q = &cpQ
+		tm := time.Now()
+
+		if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+			/* XXX: support implicit tx semantics here */
+			statistics.RecordStartTime(statistics.StatisticsTypeRouter, tm, rst.Client())
+		}
+
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
 			return rst.ProcessSimpleQuery(q, true)
@@ -125,21 +190,35 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 		if err == nil {
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().DeriveCommandComplete()
+		} else {
+			if sErr, ok := err.(*spqrerror.SpqrError); ok {
+				/* For simple query, set explicit query string in error message */
+				err = sErr.Query(q.String)
+			}
 		}
 
 		rst.Client().ClosePreparedStatement("")
+
+		if config.RouterConfig().LogQuery {
+			spqrlog.Zero.Info().
+				Uint("client", rst.Client().ID()).Str("query", q.String).TimeDiff("time", time.Now(), tm).Msg("executed query")
+		} else {
+			spqrlog.Zero.Info().
+				Uint("client", rst.Client().ID()).TimeDiff("time", time.Now(), tm).Msg("executed query")
+		}
 
 		return teardownPipeline(rst, err)
 	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
+		cpQ.Query = strings.Clone(q.Query)
+		cpQ.ParameterOIDs = slices.Clone(q.ParameterOIDs)
+
 		q = &cpQ
-		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Describe:
-
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.FunctionCall:
 		// copy interface
@@ -149,9 +228,7 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Execute:
-
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
-
 	case *pgproto3.Bind:
 		// copy interface
 		cpQ := *q
@@ -170,9 +247,9 @@ func ProcessMessage(_ qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Info().
+		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("process frontend for route")
 
 	if config.RouterConfig().PgprotoDebug {
@@ -181,8 +258,9 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	defer func() {
+		spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("closing relay")
 		if err := rst.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close relay state")
+			spqrlog.Zero.Debug().Uint("client", cl.ID()).Err(err).Msg("failed to close relay state")
 		}
 	}()
 
@@ -214,7 +292,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			}
 		}
 
-		err := ProcessMessage(qr, rst, msg)
+		err := ProcessMessage(rst, msg)
 
 		switch err {
 		case io.ErrUnexpectedEOF:

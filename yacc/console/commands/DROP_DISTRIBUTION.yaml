@@ -5,9 +5,10 @@ description: |
   Removes a distribution from cluster metadata.
 
   Use CASCADE to remove dependent metadata objects (key ranges, attached relations) when required.
+  Use IF EXISTS to skip the command when the distribution does not exist.
 
 syntax: |
-  DROP DISTRIBUTION <distributionID> [CASCADE]
+  DROP DISTRIBUTION [IF EXISTS] <distributionID> [CASCADE]
 
 parameters:
   - name: distributionID
@@ -18,6 +19,8 @@ parameters:
 examples:
   - description: Drop one distribution
     code: DROP DISTRIBUTION ds1;
+  - description: Drop a distribution if it exists
+    code: DROP DISTRIBUTION IF EXISTS ds1;
   - description: Drop distribution with dependent metadata
     code: DROP DISTRIBUTION ds1 CASCADE;
 

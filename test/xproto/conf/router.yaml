@@ -8,10 +8,11 @@ time_quantiles:
   - 0.75
 world_shard_fallback: true
 show_notice_messages: false
-maintain_params: true
+maintain_params: false
 
 query_routing:
   forbid_direct_shard_queries: true
+  use_spqrguard: true
   default_target_session_attrs: read-write
 
 frontend_rules:
@@ -64,8 +65,6 @@ backend_rules:
   - db: regress
     usr: regress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: md5

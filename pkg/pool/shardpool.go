@@ -31,8 +31,13 @@ type shardHostPool struct {
 	host string
 	az   string
 
+	discardCount int64
+	acquireCount int64
+	reuseCount   int64
+
 	connectionLimit            int
 	connectionRetries          int
+	disableJitter              bool
 	connectionRetrySleepSlice  int
 	connectionRetryRandomSleep int
 }
@@ -65,6 +70,7 @@ func NewShardHostPool(allocFn ConnectionAllocFn, host config.Host, beRule *confi
 
 		connectionLimit:            connLimit,
 		connectionRetries:          connRetries,
+		disableJitter:              beRule.DisableJitter,
 		connectionRetrySleepSlice:  50,
 		connectionRetryRandomSleep: 10,
 	}
@@ -91,9 +97,12 @@ func (h *shardHostPool) View() Statistics {
 		Usr:               h.beRule.Usr,
 		Hostname:          h.host,
 		RouterName:        "unknown",
-		UsedConnections:   len(h.active),
-		IdleConnections:   len(h.pool),
-		QueueResidualSize: len(h.queue),
+		UsedConnections:   int64(len(h.active)),
+		IdleConnections:   int64(len(h.pool)),
+		QueueResidualSize: int64(len(h.queue)),
+		DiscardCount:      h.discardCount,
+		AcquireCount:      h.acquireCount,
+		ReuseCount:        h.reuseCount,
 	}
 }
 
@@ -121,16 +130,31 @@ var (
 // TODO : unit tests
 func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
 	if err := func() error {
-		// TODO refactor
+
+		/* If jitter-based wait is not configured, skip */
+		if h.disableJitter {
+			<-h.queue
+			return nil
+		}
+
+		// TODO: remove this wait under separate setting
 		for range h.connectionRetries {
-			select {
 			// TODO: configure waits using backend rule
-			case <-time.After(time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))):
+			jitter := time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))
+			timer := time.NewTimer(jitter)
+			select {
+			case <-timer.C:
 				spqrlog.Zero.Info().
 					Uint("client", clid).
 					Str("host", h.host).
 					Msg("still waiting for backend connection to host")
 			case <-h.queue:
+				// Normally you dont need to stop
+				// short-lived timer (which this timer is).
+				// But for sake of tidiness, we anyway will do it.
+				// Also prevents memory leakage for very badly
+				// misconfigured servers
+				timer.Stop()
 				return nil
 			}
 		}
@@ -162,6 +186,8 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 		}
 
 		h.active[sh.ID()] = sh
+		h.reuseCount++
+		h.acquireCount++
 		h.mu.Unlock()
 
 		spqrlog.Zero.Debug().
@@ -192,6 +218,7 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	h.acquireCount++
 	h.active[sh.ID()] = sh
 
 	return sh, nil
@@ -208,10 +235,15 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 //
 // TODO : unit tests
 func (h *shardHostPool) Discard(sh shard.ShardHostInstance) error {
-	spqrlog.Zero.Debug().Uint("pool", spqrlog.GetPointer(h)).
+	spqrlog.Zero.Error().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
+		Str("shard name", sh.Instance().ShardName()).
+		Str("tx status", sh.TxStatus().String()).
+		Int64("sync count", sh.Sync()).
 		Msg("discard connection to hostname from pool")
+
+	h.discardCount++
 
 	/* do not hold mutex while cleanup server connection */
 	err := sh.Close()
@@ -220,6 +252,7 @@ func (h *shardHostPool) Discard(sh shard.ShardHostInstance) error {
 	defer h.mu.Unlock()
 
 	if _, ok := h.active[sh.ID()]; !ok {
+		spqrlog.CloseLogger()
 		// double free
 		panic(fmt.Sprintf("data corruption: connection already discarded: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
 	}
@@ -258,6 +291,8 @@ func (h *shardHostPool) Put(sh shard.ShardHostInstance) error {
 	defer h.mu.Unlock()
 
 	if _, ok := h.active[sh.ID()]; !ok {
+		spqrlog.CloseLogger()
+		// most probably double-free like problems
 		panic(fmt.Sprintf("data corruption: connection already put: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
 	}
 

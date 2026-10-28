@@ -227,6 +227,20 @@ func TestCmpRangesLess_UInteger(t *testing.T) {
 			types:  []string{qdb.ColumnTypeUinteger},
 			expect: false,
 		},
+		{
+			name:   "uuid hashed: bound < key",
+			bound:  kr.KeyRangeBound{uint64(10)},
+			key:    kr.KeyRangeBound{uint64(20)},
+			types:  []string{qdb.ColumnTypeUUIDHashed},
+			expect: true,
+		},
+		{
+			name:   "uuid hashed: bound > key",
+			bound:  kr.KeyRangeBound{uint64(30)},
+			key:    kr.KeyRangeBound{uint64(20)},
+			types:  []string{qdb.ColumnTypeUUIDHashed},
+			expect: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -235,6 +249,28 @@ func TestCmpRangesLess_UInteger(t *testing.T) {
 			assert.Equal(t, tt.expect, result)
 		})
 	}
+}
+
+func TestCmpRangesEqual_UUIDHashed(t *testing.T) {
+	assert.True(t, kr.CmpRangesEqual(
+		kr.KeyRangeBound{uint64(20)},
+		kr.KeyRangeBound{uint64(20)},
+		[]string{qdb.ColumnTypeUUIDHashed},
+	))
+	assert.False(t, kr.CmpRangesEqual(
+		kr.KeyRangeBound{uint64(20)},
+		kr.KeyRangeBound{uint64(30)},
+		[]string{qdb.ColumnTypeUUIDHashed},
+	))
+}
+
+func TestKeyRangeBoundFromStrings_UUIDHashed(t *testing.T) {
+	bound, err := kr.KeyRangeBoundFromStrings(
+		[]string{qdb.ColumnTypeUUIDHashed},
+		[]string{"018F4B8E-37F0-7CC4-B5F2-0F62D09CA662"},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, []any{"018f4b8e-37f0-7cc4-b5f2-0f62d09ca662"}, bound)
 }
 
 func TestCmpRangesLess_Integer(t *testing.T) {
@@ -296,6 +332,53 @@ func TestCmpRangesLess_String(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+func TestCmpRangesLessStringsDeprecated(t *testing.T) {
+	tests := []struct {
+		name   string
+		bound  string
+		key    string
+		expect bool
+	}{
+		{
+			name:   "same length: lexicographically less",
+			bound:  "abc",
+			key:    "abd",
+			expect: true,
+		},
+		{
+			name:   "same length: lexicographically greater",
+			bound:  "abd",
+			key:    "abc",
+			expect: false,
+		},
+		{
+			name:   "same length: equal",
+			bound:  "abc",
+			key:    "abc",
+			expect: false,
+		},
+		{
+			name:   "shorter bound wins over lexicographic order",
+			bound:  "z",
+			key:    "aa",
+			expect: true,
+		},
+		{
+			name:   "longer bound loses over lexicographic order",
+			bound:  "aa",
+			key:    "z",
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := kr.CmpRangesLessStringsDeprecated(tt.bound, tt.key)
 			assert.Equal(t, tt.expect, result)
 		})
 	}

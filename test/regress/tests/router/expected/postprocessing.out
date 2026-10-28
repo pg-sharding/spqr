@@ -37,10 +37,17 @@ CREATE DISTRIBUTED RELATION r_pp (i HASH MURMUR) FOR DISTRIBUTION ds1;
 (2 rows)
 
 \c regress
+SET search_path TO 'public';
 CREATE TABLE r_pp(i TEXT, id INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 insert into r_pp(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__allow_postprocessing TO false;
 SELECT i FROM r_pp ORDER BY i;
@@ -104,8 +111,48 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  d |   
 (2 rows)
 
+SELECT count(1) FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ count 
+-------
+    13
+(1 row)
+
+SELECT count(*) FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ count 
+-------
+    13
+(1 row)
+
+SELECT count(i) FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ count 
+-------
+    13
+(1 row)
+
+SELECT count(i), count(1), count(*) FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ count | count | count 
+-------+-------+-------
+    13 |    13 |    13
+(1 row)
+
+-- should be rejected in router
+SELECT count(id), i FROM r_pp GROUP BY i;
+ERROR:  in-router postprocessing for GROUP BY aggregate is not yet supported
+HINT:  turn __spqr__allow_postprocessing to off to retrieve underlaying data rows
+QUERY:  SELECT count(id), i FROM r_pp GROUP BY i;
 DROP TABLE r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -105,14 +106,24 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 		return r.params, nil
 	}
 
+	shardSnap := r.mShardPool.ShardMapping().Snap()
+	if len(shardSnap) == 0 {
+		return shard.ParameterSet{}, spqrerror.New(spqrerror.SPQR_NO_DATASHARD,
+			"no shards configured in the cluster: cannot serve client requests").
+			Hint("Add at least one shard using 'ADD SHARD' or configure shards in the router config file. Run 'SHOW shards' to verify.")
+	}
+
 	var anyK kr.ShardKey
-	for k := range r.mShardPool.ShardMapping().Snap() {
+	for k := range shardSnap {
 		anyK.Name = k
 		break
 	}
 
 	// maxuint64
-	serv, err := r.mShardPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, tsa.TSA(config.TargetSessionAttrsAny))
+	serv, err := r.mShardPool.ConnectionWithTSA(pool.ConnAllocParams{
+		Clid: 0xFFFFFFFFFFFFFFFF,
+		Tsa:  tsa.TSA(config.TargetSessionAttrsAny),
+	}, anyK)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
@@ -162,4 +173,9 @@ func (r *Route) ReleaseClient(clientID uint) (bool, error) {
 
 func (r *Route) ForEachPool(cb func(pool.Pool) error) error {
 	return r.mShardPool.ForEachPool(cb)
+}
+
+func (r *Route) Close() error {
+	r.MultiShardPool().StopCacheWatchdog()
+	return r.ClientPool().Shutdown()
 }

@@ -18,6 +18,7 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	client "github.com/pg-sharding/spqr/pkg/client"
 	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
+	session "github.com/pg-sharding/spqr/pkg/session"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
@@ -269,34 +270,6 @@ func (mr *MockClientInfoMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockClientInfo)(nil).DefaultReply))
 }
 
-// DefaultRouteBehaviour mocks base method.
-func (m *MockClientInfo) DefaultRouteBehaviour() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DefaultRouteBehaviour")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DefaultRouteBehaviour indicates an expected call of DefaultRouteBehaviour.
-func (mr *MockClientInfoMockRecorder) DefaultRouteBehaviour() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultRouteBehaviour", reflect.TypeOf((*MockClientInfo)(nil).DefaultRouteBehaviour))
-}
-
-// DistributedRelation mocks base method.
-func (m *MockClientInfo) DistributedRelation() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistributedRelation")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DistributedRelation indicates an expected call of DistributedRelation.
-func (mr *MockClientInfoMockRecorder) DistributedRelation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributedRelation", reflect.TypeOf((*MockClientInfo)(nil).DistributedRelation))
-}
-
 // Distribution mocks base method.
 func (m *MockClientInfo) Distribution() string {
 	m.ctrl.T.Helper()
@@ -309,20 +282,6 @@ func (m *MockClientInfo) Distribution() string {
 func (mr *MockClientInfoMockRecorder) Distribution() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockClientInfo)(nil).Distribution))
-}
-
-// DistributionKey mocks base method.
-func (m *MockClientInfo) DistributionKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistributionKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// DistributionKey indicates an expected call of DistributionKey.
-func (mr *MockClientInfoMockRecorder) DistributionKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionKey", reflect.TypeOf((*MockClientInfo)(nil).DistributionKey))
 }
 
 // EnhancedMultiShardProcessing mocks base method.
@@ -339,18 +298,34 @@ func (mr *MockClientInfoMockRecorder) EnhancedMultiShardProcessing() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnhancedMultiShardProcessing", reflect.TypeOf((*MockClientInfo)(nil).EnhancedMultiShardProcessing))
 }
 
-// ExecuteOn mocks base method.
-func (m *MockClientInfo) ExecuteOn() string {
+// FindBoolGUC mocks base method.
+func (m *MockClientInfo) FindBoolGUC(arg0 string) (session.BoolGUC, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteOn")
-	ret0, _ := ret[0].(string)
-	return ret0
+	ret := m.ctrl.Call(m, "FindBoolGUC", arg0)
+	ret0, _ := ret[0].(session.BoolGUC)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// ExecuteOn indicates an expected call of ExecuteOn.
-func (mr *MockClientInfoMockRecorder) ExecuteOn() *gomock.Call {
+// FindBoolGUC indicates an expected call of FindBoolGUC.
+func (mr *MockClientInfoMockRecorder) FindBoolGUC(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).ExecuteOn))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindBoolGUC", reflect.TypeOf((*MockClientInfo)(nil).FindBoolGUC), arg0)
+}
+
+// FindStrGUC mocks base method.
+func (m *MockClientInfo) FindStrGUC(arg0 string) (session.StrGUC, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStrGUC", arg0)
+	ret0, _ := ret[0].(session.StrGUC)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStrGUC indicates an expected call of FindStrGUC.
+func (mr *MockClientInfoMockRecorder) FindStrGUC(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStrGUC", reflect.TypeOf((*MockClientInfo)(nil).FindStrGUC), arg0)
 }
 
 // Flush mocks base method.
@@ -365,6 +340,20 @@ func (m *MockClientInfo) Flush() error {
 func (mr *MockClientInfoMockRecorder) Flush() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Flush", reflect.TypeOf((*MockClientInfo)(nil).Flush))
+}
+
+// GetCatalogSeed mocks base method.
+func (m *MockClientInfo) GetCatalogSeed() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCatalogSeed")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetCatalogSeed indicates an expected call of GetCatalogSeed.
+func (mr *MockClientInfoMockRecorder) GetCatalogSeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCatalogSeed", reflect.TypeOf((*MockClientInfo)(nil).GetCatalogSeed))
 }
 
 // GetTimeData mocks base method.
@@ -437,6 +426,20 @@ func (mr *MockClientInfoMockRecorder) Init(cfg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockClientInfo)(nil).Init), cfg)
 }
 
+// NextGID mocks base method.
+func (m *MockClientInfo) NextGID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextGID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// NextGID indicates an expected call of NextGID.
+func (mr *MockClientInfoMockRecorder) NextGID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextGID", reflect.TypeOf((*MockClientInfo)(nil).NextGID))
+}
+
 // Params mocks base method.
 func (m *MockClientInfo) Params() map[string]string {
 	m.ctrl.T.Helper()
@@ -481,18 +484,19 @@ func (mr *MockClientInfoMockRecorder) PasswordMD5(salt any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PasswordMD5", reflect.TypeOf((*MockClientInfo)(nil).PasswordMD5), salt)
 }
 
-// PreferredEngine mocks base method.
-func (m *MockClientInfo) PreferredEngine() string {
+// Peek mocks base method.
+func (m *MockClientInfo) Peek() (pgproto3.FrontendMessage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreferredEngine")
-	ret0, _ := ret[0].(string)
-	return ret0
+	ret := m.ctrl.Call(m, "Peek")
+	ret0, _ := ret[0].(pgproto3.FrontendMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// PreferredEngine indicates an expected call of PreferredEngine.
-func (mr *MockClientInfoMockRecorder) PreferredEngine() *gomock.Call {
+// Peek indicates an expected call of Peek.
+func (mr *MockClientInfoMockRecorder) Peek() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreferredEngine", reflect.TypeOf((*MockClientInfo)(nil).PreferredEngine))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockClientInfo)(nil).Peek))
 }
 
 // RAddr mocks base method.
@@ -776,6 +780,20 @@ func (mr *MockClientInfoMockRecorder) ResolveVirtualBoolParam(name, defaultVal a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualBoolParam", reflect.TypeOf((*MockClientInfo)(nil).ResolveVirtualBoolParam), name, defaultVal)
 }
 
+// ResolveVirtualStringParam mocks base method.
+func (m *MockClientInfo) ResolveVirtualStringParam(name, defaultVal string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveVirtualStringParam", name, defaultVal)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ResolveVirtualStringParam indicates an expected call of ResolveVirtualStringParam.
+func (mr *MockClientInfoMockRecorder) ResolveVirtualStringParam(name, defaultVal any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveVirtualStringParam", reflect.TypeOf((*MockClientInfo)(nil).ResolveVirtualStringParam), name, defaultVal)
+}
+
 // Rollback mocks base method.
 func (m *MockClientInfo) Rollback() {
 	m.ctrl.T.Helper()
@@ -810,20 +828,6 @@ func (m *MockClientInfo) Savepoint(arg0 string) {
 func (mr *MockClientInfoMockRecorder) Savepoint(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Savepoint", reflect.TypeOf((*MockClientInfo)(nil).Savepoint), arg0)
-}
-
-// ScatterQuery mocks base method.
-func (m *MockClientInfo) ScatterQuery() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ScatterQuery")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ScatterQuery indicates an expected call of ScatterQuery.
-func (mr *MockClientInfoMockRecorder) ScatterQuery() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ScatterQuery", reflect.TypeOf((*MockClientInfo)(nil).ScatterQuery))
 }
 
 // Send mocks base method.
@@ -890,30 +894,6 @@ func (mr *MockClientInfoMockRecorder) SetCommitStrategy(value any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommitStrategy", reflect.TypeOf((*MockClientInfo)(nil).SetCommitStrategy), value)
 }
 
-// SetDefaultRouteBehaviour mocks base method.
-func (m *MockClientInfo) SetDefaultRouteBehaviour(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDefaultRouteBehaviour", level, val)
-}
-
-// SetDefaultRouteBehaviour indicates an expected call of SetDefaultRouteBehaviour.
-func (mr *MockClientInfoMockRecorder) SetDefaultRouteBehaviour(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockClientInfo)(nil).SetDefaultRouteBehaviour), level, val)
-}
-
-// SetDistributedRelation mocks base method.
-func (m *MockClientInfo) SetDistributedRelation(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributedRelation", level, val)
-}
-
-// SetDistributedRelation indicates an expected call of SetDistributedRelation.
-func (mr *MockClientInfoMockRecorder) SetDistributedRelation(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributedRelation", reflect.TypeOf((*MockClientInfo)(nil).SetDistributedRelation), level, val)
-}
-
 // SetDistribution mocks base method.
 func (m *MockClientInfo) SetDistribution(level, val string) {
 	m.ctrl.T.Helper()
@@ -924,18 +904,6 @@ func (m *MockClientInfo) SetDistribution(level, val string) {
 func (mr *MockClientInfoMockRecorder) SetDistribution(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockClientInfo)(nil).SetDistribution), level, val)
-}
-
-// SetDistributionKey mocks base method.
-func (m *MockClientInfo) SetDistributionKey(val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributionKey", val)
-}
-
-// SetDistributionKey indicates an expected call of SetDistributionKey.
-func (mr *MockClientInfoMockRecorder) SetDistributionKey(val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockClientInfo)(nil).SetDistributionKey), val)
 }
 
 // SetEnhancedMultiShardProcessing mocks base method.
@@ -962,16 +930,16 @@ func (mr *MockClientInfoMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockClientInfo)(nil).SetErrCounter), arg0)
 }
 
-// SetExecuteOn mocks base method.
-func (m *MockClientInfo) SetExecuteOn(level, val string) {
+// SetNextGID mocks base method.
+func (m *MockClientInfo) SetNextGID(arg0 string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetExecuteOn", level, val)
+	m.ctrl.Call(m, "SetNextGID", arg0)
 }
 
-// SetExecuteOn indicates an expected call of SetExecuteOn.
-func (mr *MockClientInfoMockRecorder) SetExecuteOn(level, val any) *gomock.Call {
+// SetNextGID indicates an expected call of SetNextGID.
+func (mr *MockClientInfoMockRecorder) SetNextGID(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockClientInfo)(nil).SetExecuteOn), level, val)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNextGID", reflect.TypeOf((*MockClientInfo)(nil).SetNextGID), arg0)
 }
 
 // SetParam mocks base method.
@@ -998,52 +966,16 @@ func (mr *MockClientInfoMockRecorder) SetParamFormatCodes(arg0 any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockClientInfo)(nil).SetParamFormatCodes), arg0)
 }
 
-// SetPreferredEngine mocks base method.
-func (m *MockClientInfo) SetPreferredEngine(level, val string) {
+// SetSeed mocks base method.
+func (m *MockClientInfo) SetSeed(arg0 int) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPreferredEngine", level, val)
+	m.ctrl.Call(m, "SetSeed", arg0)
 }
 
-// SetPreferredEngine indicates an expected call of SetPreferredEngine.
-func (mr *MockClientInfoMockRecorder) SetPreferredEngine(level, val any) *gomock.Call {
+// SetSeed indicates an expected call of SetSeed.
+func (mr *MockClientInfoMockRecorder) SetSeed(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPreferredEngine", reflect.TypeOf((*MockClientInfo)(nil).SetPreferredEngine), level, val)
-}
-
-// SetScatterQuery mocks base method.
-func (m *MockClientInfo) SetScatterQuery(val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetScatterQuery", val)
-}
-
-// SetScatterQuery indicates an expected call of SetScatterQuery.
-func (mr *MockClientInfoMockRecorder) SetScatterQuery(val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockClientInfo)(nil).SetScatterQuery), val)
-}
-
-// SetShardingKey mocks base method.
-func (m *MockClientInfo) SetShardingKey(level, val string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShardingKey", level, val)
-}
-
-// SetShardingKey indicates an expected call of SetShardingKey.
-func (mr *MockClientInfoMockRecorder) SetShardingKey(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockClientInfo)(nil).SetShardingKey), level, val)
-}
-
-// SetShowNoticeMsg mocks base method.
-func (m *MockClientInfo) SetShowNoticeMsg(level string, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShowNoticeMsg", level, val)
-}
-
-// SetShowNoticeMsg indicates an expected call of SetShowNoticeMsg.
-func (mr *MockClientInfoMockRecorder) SetShowNoticeMsg(level, val any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockClientInfo)(nil).SetShowNoticeMsg), level, val)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSeed", reflect.TypeOf((*MockClientInfo)(nil).SetSeed), arg0)
 }
 
 // SetStartupParams mocks base method.
@@ -1082,20 +1014,6 @@ func (mr *MockClientInfoMockRecorder) SetUsr(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUsr", reflect.TypeOf((*MockClientInfo)(nil).SetUsr), arg0)
 }
 
-// ShardingKey mocks base method.
-func (m *MockClientInfo) ShardingKey() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShardingKey")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ShardingKey indicates an expected call of ShardingKey.
-func (mr *MockClientInfoMockRecorder) ShardingKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardingKey", reflect.TypeOf((*MockClientInfo)(nil).ShardingKey))
-}
-
 // Shards mocks base method.
 func (m *MockClientInfo) Shards() []shard.ShardHostInstance {
 	m.ctrl.T.Helper()
@@ -1108,20 +1026,6 @@ func (m *MockClientInfo) Shards() []shard.ShardHostInstance {
 func (mr *MockClientInfoMockRecorder) Shards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shards", reflect.TypeOf((*MockClientInfo)(nil).Shards))
-}
-
-// ShowNoticeMsg mocks base method.
-func (m *MockClientInfo) ShowNoticeMsg() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShowNoticeMsg")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ShowNoticeMsg indicates an expected call of ShowNoticeMsg.
-func (mr *MockClientInfoMockRecorder) ShowNoticeMsg() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowNoticeMsg", reflect.TypeOf((*MockClientInfo)(nil).ShowNoticeMsg))
 }
 
 // Shutdown mocks base method.
@@ -1252,6 +1156,18 @@ func (m *MockPool) ErrorCounts() map[string]uint64 {
 func (mr *MockPoolMockRecorder) ErrorCounts() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ErrorCounts", reflect.TypeOf((*MockPool)(nil).ErrorCounts))
+}
+
+// GracShutdown mocks base method.
+func (m *MockPool) GracShutdown() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GracShutdown")
+}
+
+// GracShutdown indicates an expected call of GracShutdown.
+func (mr *MockPoolMockRecorder) GracShutdown() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GracShutdown", reflect.TypeOf((*MockPool)(nil).GracShutdown))
 }
 
 // Pop mocks base method.

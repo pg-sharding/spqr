@@ -18,7 +18,7 @@ In case you are using Docker or Docker Desktop, everything should work fine. But
 > Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
 
 ```bash
-export DOCKER_HOST=unix:///Users/denchick/.colima/default/docker.sock
+export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
 ```
 
 > Error response from daemon: client version 1.51 is too new. Maximum supported API version is 1.47, failed to setup compose cluster: Error response from daemon: client version 1.51 is too new. Maximum supported API version is 1.47

@@ -52,6 +52,7 @@ message ListShardsReply {
 
 message AddShardRequest {
   Shard shard = 1 [(buf.validate.field).required = true];
+  bool force = 2;
 }
 
 message AlterShardRequest {

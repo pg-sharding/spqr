@@ -41,13 +41,11 @@ type MoveKeyRangeStatus string
 
 const (
 	MoveKeyRangePlanned              = MoveKeyRangeStatus("PLANNED")
+	MoveKeyRangeAwaited              = MoveKeyRangeStatus("AWAITED")
 	MoveKeyRangeLocked               = MoveKeyRangeStatus("LOCKED")
 	MoveKeyRangeDataMoved            = MoveKeyRangeStatus("DATA_MOVED")
 	MoveKeyRangeDataCoordMetaUpdated = MoveKeyRangeStatus("COORD_META_UPDATED")
 	MoveKeyRangeComplete             = MoveKeyRangeStatus("COMPLETE")
-
-	// Deprecated: use MoveKeyRangeLocked
-	MoveKeyRangeStarted = MoveKeyRangeStatus("STARTED")
 )
 
 type MoveKeyRange struct {
@@ -113,6 +111,7 @@ var (
 	ColumnTypeInteger           = "integer"
 	ColumnTypeUinteger          = "uinteger"
 	ColumnTypeUUID              = "uuid"
+	ColumnTypeUUIDHashed        = "uuid hashed"
 )
 
 type TypedColRef struct {

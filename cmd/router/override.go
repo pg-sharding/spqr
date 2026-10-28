@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -19,6 +18,7 @@ type Overrides struct {
 	AdminPort                    *int
 	GrpcPort                     *int
 	DefaultRouteBehaviour        *string
+	PGAdvisoryLockBehaviour      *string
 	ShowNoticeMessages           *bool
 	PgprotoDebug                 *bool
 	PrettyLogging                *bool
@@ -51,6 +51,9 @@ func collectOverrides(cmd *cobra.Command) Overrides {
 	}
 	if cmd.Flags().Changed("default-route-behaviour") {
 		ov.DefaultRouteBehaviour = &defaultRouteBehaviour
+	}
+	if cmd.Flags().Changed("advisory-lock-behaviour") {
+		ov.PGAdvisoryLockBehaviour = &pgAdvisoryLockBehaviour
 	}
 	if cmd.Flags().Changed("show-notice-messages") {
 		ov.ShowNoticeMessages = &showNoticeMessages
@@ -131,6 +134,12 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 		}
 	}
 
+	if ov.PGAdvisoryLockBehaviour != nil && *ov.PGAdvisoryLockBehaviour != "" {
+		cfg.Qr.AdvisoryLockBehaviour = config.AdvisoryLockBehaviour(*ov.PGAdvisoryLockBehaviour)
+	} else {
+		cfg.Qr.AdvisoryLockBehaviour = config.AdvisoryLockBehaviour(config.AdvisoryLockBehaviourScatter)
+	}
+
 	if ov.EnhancedMultiShardProcessing != nil {
 		cfg.Qr.EnhancedMultiShardProcessing = *ov.EnhancedMultiShardProcessing
 	}
@@ -143,7 +152,7 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 }
 
 func logEffectiveConfig(cfg *config.Router) error {
-	configBytes, err := json.MarshalIndent(cfg, "", "  ")
+	configBytes, err := config.MarshalRedactedJSONIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}

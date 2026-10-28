@@ -35,6 +35,7 @@ type Conn struct {
 	stale atomic.Bool
 
 	allocTime time.Time
+	lifetime  time.Duration
 
 	dataPending bool
 
@@ -85,7 +86,22 @@ func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor
 // Returns:
 // - error: An error if the connection could not be closed.
 func (sh *Conn) Close() error {
-	return sh.dedicated.Close()
+	err := sh.dedicated.Close()
+	if err != nil {
+		spqrlog.Zero.Error().
+			Uint("id", sh.ID()).
+			Err(err).
+			Int64("tx served", sh.TxServed()).
+			Str("hostname", sh.Instance().Hostname()).
+			Msg("closing backend connection")
+	} else {
+		spqrlog.Zero.Info().
+			Uint("id", sh.ID()).
+			Int64("tx served", sh.TxServed()).
+			Str("hostname", sh.Instance().Hostname()).
+			Msg("closing backend connection")
+	}
+	return err
 }
 
 // Instance returns the dedicated database instance associated with the Conn struct.
@@ -170,7 +186,6 @@ func (sh *Conn) Cancel() error {
 // CancellableIDs returns a single-elements list containing
 // shard connection cancel ID.
 func (sh *Conn) CancellableIDs() []uint32 {
-
 	return []uint32{sh.backendKeyPid}
 }
 
@@ -196,7 +211,7 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	default:
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("shard", sh.ID()).
 		Interface("query", query).
 		Int64("sync-in", sh.syncIn).
@@ -229,7 +244,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 		}
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("shard", sh.ID()).
 		Interface("msg", msg).
 		Int64("sync-out", sh.syncOut).
@@ -286,6 +301,10 @@ func (sh *Conn) InstanceHostname() string {
 
 func (sh *Conn) CreatedAt() time.Time {
 	return sh.allocTime
+}
+
+func (sh *Conn) ServerLifetime() time.Duration {
+	return sh.lifetime
 }
 
 func (sh *Conn) Pid() uint32 {
@@ -402,6 +421,7 @@ func NewShardHostInstance(
 		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},
 		dedicated: pgi,
 		allocTime: time.Now(),
+		lifetime:  beRule.ServerLifetime,
 	}
 
 	if dtSh.dedicated.Status() == conn.NotInitialized {

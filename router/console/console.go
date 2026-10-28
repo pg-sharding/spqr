@@ -2,7 +2,6 @@ package console
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -10,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -80,7 +80,12 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	var cf func()
 	var err error
 
+	cli := clientinteractor.NewPSQLInteractor(rc)
 	switch tstmt := tstmt.(type) {
+	case nil:
+		/* ProcMetadataCommand can be called inside router's planned, so it
+		* will normally reject nil statement. Handle this ourselves */
+		return cli.ReplyEQR()
 	case *spqrparser.Show:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
@@ -89,7 +94,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		case spqrparser.SHOW_KIND_UNSPEC:
 			switch tstmt.Cmd {
 			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
-				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
+				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MigrationsStr,
 				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
 				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 				if err != nil {
@@ -108,7 +113,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		distr := true
 		switch el := tstmt.Element.(type) {
 		case *spqrparser.System:
-			if el.Rebootstrap {
+			if el.Rebootstrap || el.SetGUC != "" {
 				distr = false
 				break
 			}
@@ -137,9 +142,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		defer cf()
 	}
 
-	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	cli := clientinteractor.NewPSQLInteractor(rc)
-	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false)
+	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false, rc)
 	if err != nil {
 		return cli.ReportError(err)
 	}
@@ -151,15 +154,19 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
-		return fmt.Errorf("failed to parse query \"%s\": %w", q, err)
+		return err
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("query", q).
-		Type("type", tstmt).
-		Msg("processQueryInternal: parsed query with type")
+		Msg("processQueryInternal: parsed query")
 
-	return l.ExecuteMetadataQuery(ctx, tstmt, rc, gc)
+	for _, stmt := range tstmt {
+		if err := l.ExecuteMetadataQuery(ctx, stmt, rc, gc); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -179,6 +186,8 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
 		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.ParameterStatus{Name: "default_transaction_read_only", Value: "off"},
+		&pgproto3.ParameterStatus{Name: "in_hot_standby", Value: "off"},
 		&pgproto3.BackendKeyData{ProcessID: rc.GetCancelPid(), SecretKey: rc.GetCancelKey()},
 	}...)
 
@@ -202,7 +211,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		}
 	}
 
-	spqrlog.Zero.Info().Msg("console.ProcClient start")
+	spqrlog.Zero.Debug().Msg("console.ProcClient start")
 
 	for {
 		msg, err := rc.Receive()
@@ -220,9 +229,11 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 		case *pgproto3.Terminate:
 			return nil
 		default:
+			_ = rc.ReplyErr(spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unexpected postgresql proto message with type: %T", v))
+
 			spqrlog.Zero.Info().
 				Type("message type", v).
-				Msg("got unexpected postgresql proto message with type")
+				Msg("unexpected postgresql proto message with type")
 		}
 	}
 

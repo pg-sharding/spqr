@@ -28,10 +28,10 @@ func (qp *QParser) SetStmt(stmt lyx.Node) {
 }
 
 // TODO : unit tests
-func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
+func (qp *QParser) Parse(query string) ([]lyx.Node, []string, error) {
 	qp.query = query
 
-	comment := ""
+	comments := []string{}
 	for i := 0; i < len(query)-4; {
 
 		if query[i] != '/' || query[i+1] != '*' {
@@ -50,11 +50,7 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 			break
 		}
 
-		if len(comment) == 0 {
-			comment = query[i+2 : j]
-		} else {
-			comment = comment + "," + query[i+2:j]
-		}
+		comments = append(comments, query[i+2:j])
 		i = j + 3
 	}
 
@@ -62,7 +58,7 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 
 	routerStmts, pos, err := lyx.Parse(query)
 	if err != nil {
-		return nil, comment, &spqrerror.SpqrError{
+		return nil, comments, &spqrerror.SpqrError{
 			Err:       err,
 			Position:  int32(pos),
 			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
@@ -71,5 +67,5 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, string, error) {
 
 	qp.stmt = routerStmts[0]
 
-	return routerStmts, comment, nil
+	return routerStmts, comments, nil
 }

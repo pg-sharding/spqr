@@ -11,7 +11,7 @@ import (
 func TestNewZeroLogger_DefaultIsJSON(t *testing.T) {
 	var buf bytes.Buffer
 
-	logger := NewZeroLogger("", "info", false)
+	logger := NewZeroLogger("", "info", false, false)
 	l := logger.Output(&buf)
 	l.Info().Msg("test message")
 

@@ -5,8 +5,10 @@ description: |
   Removes a reference table from SPQR metadata. This does not drop the actual
   table from the shards.
 
+  Use IF EXISTS to skip the command when the reference table does not exist.
+
 syntax: |
-  DROP REFERENCE TABLE <table_name>
+  DROP REFERENCE TABLE [IF EXISTS] <table_name>
 
 parameters:
   - name: table_name
@@ -15,6 +17,8 @@ parameters:
 examples:
   - description: Drop a reference table
     code: DROP REFERENCE TABLE tax_rates;
+  - description: Drop a reference table if it exists
+    code: DROP REFERENCE TABLE IF EXISTS tax_rates;
 
 related_commands:
   - CREATE REFERENCE TABLE

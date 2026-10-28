@@ -41,7 +41,7 @@ type LDAPCfg struct {
 	Suffix string `json:"suffix" yaml:"suffix" toml:"suffix"`
 
 	BindDN          string `json:"bind_dn" yaml:"bind_dn" toml:"bind_dn"`
-	BindPassword    string `json:"bind_password" yaml:"bind_password" toml:"bind_password"`
+	BindPassword    string `json:"bind_password" yaml:"bind_password" toml:"bind_password" secret:"true"`
 	BaseDN          string `json:"base_dn" yaml:"base_dn" toml:"base_dn"`
 	SearchAttribute string `json:"search_attribute" yaml:"search_attribute" toml:"search_attribute"`
 	SearchFilter    string `json:"search_filter" yaml:"search_filter" toml:"search_filter"`

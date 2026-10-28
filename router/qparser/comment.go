@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode"
 
-	"golang.org/x/xerrors"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 )
 
 /*
@@ -29,13 +29,13 @@ func ParseComment(comm string) (map[string]string, error) {
 
 		// colon symbol not found
 		if j == len(comm) {
-			return nil, xerrors.New("invalid comment format")
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format")
 		}
 		optargLen := optargEnd - i + 1
 
 		if optargLen == 0 {
 			// empty opt name
-			return nil, xerrors.New("invalid comment format: empty option name")
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: empty option name")
 		}
 
 		// skip spaces after colon
@@ -43,7 +43,7 @@ func ParseComment(comm string) (map[string]string, error) {
 		}
 
 		if j == len(comm) || comm[j] != ':' {
-			return nil, xerrors.New("invalid comment format: expected colon after option name")
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: expected colon after option name")
 		}
 		// skip colon symbol
 		j++
@@ -54,7 +54,7 @@ func ParseComment(comm string) (map[string]string, error) {
 
 		if j == len(comm) {
 			// empty opt name
-			return nil, xerrors.New("invalid comment format: empty option values")
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: empty option values")
 		}
 
 		// now we are looking at first char of opt value
@@ -78,7 +78,7 @@ func ParseComment(comm string) (map[string]string, error) {
 		}
 		if j < len(comm) && comm[j] != ',' {
 			// empty opt name
-			return nil, xerrors.New("invalid comment format: expected comma after not-last key-value pair")
+			return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid comment format: expected comma after not-last key-value pair")
 		}
 		// skip comma
 		j++

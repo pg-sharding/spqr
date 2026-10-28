@@ -20,12 +20,16 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/metrics"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/router_util"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/router/instance"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
 )
@@ -34,13 +38,14 @@ var (
 	rcfgPath string
 	ccfgPath string
 
-	logLevel              string
-	memqdbBackupPath      string
-	routerPort            int
-	routerROPort          int
-	adminPort             int
-	grpcPort              int
-	defaultRouteBehaviour string
+	logLevel                string
+	memqdbBackupPath        string
+	routerPort              int
+	routerROPort            int
+	adminPort               int
+	grpcPort                int
+	defaultRouteBehaviour   string
+	pgAdvisoryLockBehaviour string
 
 	enhancedMultishardProcessing bool
 
@@ -69,8 +74,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  false,
-		SilenceErrors: false,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	startupOverrides Overrides
@@ -93,6 +98,25 @@ func getMaxTxnBatchSize(configRouter *config.Router, configCoord *config.Coordin
 	return maxTxnBatchSize
 }
 
+func setupMetrics() *metrics.RouterMetricRegistry {
+	promRegistry := prometheus.NewRegistry()
+	metricRegistry := metrics.NewRouterMetricRegistry(promRegistry)
+	if config.RouterConfig().UseMetrics {
+		metricPath := config.RouterConfig().MetricPath
+		metricPort := config.RouterConfig().MetricPort
+		if metricPath == "" {
+			metricPath = metrics.DefaultMetricPath
+		}
+
+		if err := metrics.Start(metricRegistry, metricPath, metricPort); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("metric server is not started")
+		} else {
+			spqrlog.Zero.Info().Str("path", metricPath).Str("port", metricPort).Msg("Metrics available")
+		}
+	}
+	return metricRegistry
+}
+
 func init() {
 	// Router and coordinator config paths
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
@@ -107,6 +131,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "overload for `admin_console_port` option in router config")
 	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "overload for `grpc_api_port` option in router config")
 	rootCmd.PersistentFlags().StringVarP(&defaultRouteBehaviour, "default-route-behaviour", "", "", "overload for `default_route_behaviour` option in router config")
+	rootCmd.PersistentFlags().StringVarP(&pgAdvisoryLockBehaviour, "advisory-lock-behaviour", "", "", "overload for `advisory_lock_behaviour` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&showNoticeMessages, "show-notice-messages", "", false, "overload for `show_notice_messages` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "pgproto-debug", "", false, "overload for `pgproto_debug` option in router config")
 
@@ -162,8 +187,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
-		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+		router_util.ReloadRotateLog()
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -177,7 +201,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("cannot store two-phase tx data in postgresql when running without coordinator config")
 		}
 
-		if config.RouterConfig().WithCoordinator || config.RouterConfig().UseCoordinatorInit || config.RouterConfig().StoreTxDataPostgresql {
+		if config.RouterConfig().WithCoordinatorConfig() {
 			var err error
 			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -201,7 +225,7 @@ var runCmd = &cobra.Command{
 
 			d, err := ctx.Reborn()
 			if err != nil {
-				log.Fatal("Unable to run: ", err)
+				spqrlog.Zero.Fatal().Err(err).Msg("unable to run")
 			}
 			if d != nil {
 				return nil
@@ -268,14 +292,17 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
+		metricRegistry := setupMetrics()
 		maxTxnBatchSize := getMaxTxnBatchSize(config.RouterConfig(), config.CoordinatorConfig())
-		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize)
+		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), maxTxnBatchSize, metricRegistry)
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
-
 		}
 
-		app := app.NewApp(router)
+		app, err := app.NewApp(router)
+		if err != nil {
+			return err
+		}
 
 		if !config.RouterConfig().WithCoordinator && rcfgPath != "" {
 			if err := datatransfers.LoadConfig(rcfgPath); err != nil {
@@ -300,7 +327,10 @@ var runCmd = &cobra.Command{
 						return err
 					}
 
-					app := coordApp.NewApp(coordinator)
+					app, err := coordApp.NewApp(coordinator)
+					if err != nil {
+						return err
+					}
 					return app.Run(false)
 				}(); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
@@ -315,8 +345,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
-					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+					router_util.ReloadRotateLog()
 				case syscall.SIGUSR2:
 					if cpuProfile {
 						// write profile
@@ -350,14 +379,20 @@ var runCmd = &cobra.Command{
 						spqrlog.Zero.Error().Err(err).Msg("failed to re-apply CLI overrides on SIGHUP")
 					}
 
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
-					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+					session.InitGUCs()
+
+					if err := instance.NewAutoConfBootstrapper(config.RouterConfig().AutoConf).InitializeMetadata(ctx, router); err != nil {
+						/*  Erroneous autoconf file, log and ignore. */
+
+						spqrlog.Zero.Error().Err(err).Msg("failed apply autoconf")
+					}
 
 					if err := logEffectiveConfig(config.RouterConfig()); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("failed to print running config")
 					}
 
 				case syscall.SIGINT, syscall.SIGTERM:
+
 					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
@@ -386,6 +421,9 @@ var runCmd = &cobra.Command{
 			}
 		}()
 
+		/* initialize GUC boot values from config */
+		session.InitGUCs()
+
 		/* initialize metadata */
 		if config.RouterConfig().UseInitSQL {
 			i := instance.NewInitSQLMetadataBootstrapper(config.RouterConfig().InitSQL, config.RouterConfig().ExitOnInitSQLError)
@@ -402,11 +440,21 @@ var runCmd = &cobra.Command{
 			router.Initialize()
 		}
 
+		if err := instance.NewAutoConfBootstrapper(config.RouterConfig().AutoConf).InitializeMetadata(ctx, router); err != nil {
+			/*  Erroneous autoconf file, do not operate. */
+			return err
+		}
+
 		errCh := make(chan error)
 
 		go func() {
 			for {
-				<-errCh
+				err := <-errCh
+
+				spqrlog.Zero.Error().Err(err).Msg("exiting")
+				spqrlog.CloseLogger()
+
+				/* XXXX: be slightly tidier here*/
 				os.Exit(1)
 			}
 		}()
@@ -471,7 +519,9 @@ var runCmd = &cobra.Command{
 
 		// run pprof without wait group
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
+			}
 		}()
 
 		wg.Wait()
@@ -498,6 +548,7 @@ var testCmd = &cobra.Command{
 }
 
 func main() {
+	defer spqrlog.CloseLogger()
 	if err := rootCmd.Execute(); err != nil {
 		spqrlog.Zero.Fatal().Err(err).Msg("")
 	}

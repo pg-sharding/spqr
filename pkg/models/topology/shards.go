@@ -3,16 +3,17 @@ package topology
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	hostspec "github.com/pg-sharding/spqr/yacc/hostspec"
 )
 
 type TopologyMgr interface {
@@ -68,7 +69,7 @@ func (t *TopologyMgrImpl) ShardById(id string) (*DataShard, error) {
 }
 
 func (t *TopologyMgrImpl) AddShard(sh *DataShard) {
-	sh.SetOptions(sh.options)
+	sh.SetOptions(sh.Options())
 	_, _ = t.shardMapping.LoadOrStore(sh.ID, sh)
 }
 
@@ -85,8 +86,11 @@ func (t *TopologyMgrImpl) SetOptions(id string, opt []GenericOption) {
 
 	sh := shRaw.(*DataShard)
 
-	shCopy := *sh
 	/* TODO: better copy */
+	shCopy := DataShard{
+		ID:   sh.ID,
+		Type: sh.Type,
+	}
 	shCopy.SetOptions(opt)
 
 	t.shardMapping.Store(id, &shCopy)
@@ -106,18 +110,22 @@ func InitShardMapping(shardMapping map[string]*DataShard) {
 	TopMgr = TopMgrFromMap(shardMapping)
 }
 
-type DataShard struct {
-	ID      string
-	Type    config.ShardType
-	options []GenericOption
+type HostsInfo struct {
+	Options []GenericOption
+	Hosts   []config.Host
+}
 
-	parsedHosts     []config.Host
-	parsedAddresses []string
-	tls             *config.TLSConfig
+type DataShard struct {
+	ID   string
+	Type config.ShardType
+
+	HostsInfo atomic.Pointer[HostsInfo]
+
+	tls atomic.Pointer[config.TLSConfig]
 }
 
 type ShardsMgr interface {
-	AddDataShard(ctx context.Context, shard *DataShard) error
+	AddDataShard(ctx context.Context, shard *DataShard, force bool) error
 	AddWorldShard(ctx context.Context, shard *DataShard) error
 	ListShards(ctx context.Context) ([]*DataShard, error)
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)
@@ -127,74 +135,82 @@ type ShardsMgr interface {
 }
 
 func (ds *DataShard) Options() []GenericOption {
-	return ds.options
+	hi := ds.HostsInfo.Load()
+	if hi == nil {
+		return nil
+	}
+	return hi.Options
 }
 
 func (ds *DataShard) SetOptions(options []GenericOption) {
-	ds.options = options
-	ds.parsedAddresses = nil
-	ds.parsedHosts = nil
-	ds.tls = nil
+	/* XXX: refactor */
+	info := HostsInfo{
+		Options: options,
+	}
+	ds.HostsInfo.Store(&info)
+	ds.tls.Store(nil)
 }
 
-// parseHosts parses the raw hosts into a slice of Hosts.
-// The format of the RawHost is host:port:availability_zone.
-// If the availability_zone is not provided, it is empty.
-// If the port is not provided, it does not matter
-func parseHosts(rawHosts []string) (parsedHosts []config.Host, parsedAddresses []string) {
-	for _, rawHost := range rawHosts {
-		host := config.Host{}
-		parts := strings.Split(rawHost, ":")
-		if len(parts) > 3 {
-			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
-			continue
-		} else if len(parts) == 3 {
-			host.AZ = parts[2]
-			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
-		} else {
-			host.Address = rawHost
+func ParseSingleHostSpec(rawHostSpec string) (config.Host, error) {
+	spec, err := hostspec.Parse(rawHostSpec)
+	if err != nil {
+		return config.Host{}, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", rawHostSpec)
+	}
+	return config.Host{Address: spec.Address, AZ: spec.AZ, Priority: spec.Priority}, nil
+}
+
+func (ds *DataShard) Infos() *HostsInfo {
+	hi := ds.HostsInfo.Load()
+	/* XXX: hi == nil shouldn't happen */
+	if hi == nil {
+		return nil
+	}
+	if hi.Hosts == nil {
+		/* There is a possibility of concurrent parsing, we don't care though */
+
+		/* XXX: we silently ignore errors here for backwards compatibility sake */
+		parsedHosts, _ := retrieveHostsFromOptions(hi.Options)
+
+		info := &HostsInfo{
+			Options: hi.Options,
+			Hosts:   parsedHosts,
 		}
 
-		parsedHosts = append(parsedHosts, host)
-		parsedAddresses = append(parsedAddresses, host.Address)
-	}
-	return
-}
+		ds.HostsInfo.CompareAndSwap(hi, info)
 
-func (ds *DataShard) Hosts() []string {
-	if ds.parsedAddresses == nil {
-		ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(ds.options)
+		/* XXX: note that we dont care of reading not-too-stale data */
+		return info
+	} else {
+		return hi
 	}
-	return ds.parsedAddresses
 }
 
 func (ds *DataShard) HostsAZ() []config.Host {
-	if ds.parsedHosts == nil {
-		ds.parsedHosts, ds.parsedAddresses = retrieveHostsFromOptions(ds.options)
-	}
-	return ds.parsedHosts
+	return ds.Infos().Hosts
 }
 
-func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, []string) {
-	hosts := retrieveRawHostsFromOptions(options)
-	return parseHosts(hosts)
-}
-
-func retrieveRawHostsFromOptions(options []GenericOption) []string {
-	hosts := make([]string, 0)
+func retrieveHostsFromOptions(options []GenericOption) ([]config.Host, error) {
+	var hosts []config.Host
 	for _, opt := range options {
 		if opt.Name == "host" {
-			hosts = append(hosts, opt.Arg)
+			host, err := ParseSingleHostSpec(opt.Arg)
+			if err != nil {
+				return nil, err
+			}
+			hosts = append(hosts, host)
 		}
 	}
-	return hosts
+	return hosts, nil
 }
 
 func (ds *DataShard) TLS() *config.TLSConfig {
-	if ds.tls == nil {
-		ds.tls = TLSConfigFromOptions(ds.options)
+	if t := ds.tls.Load(); t == nil {
+		tp := TLSConfigFromOptions(ds.Options())
+		ds.tls.CompareAndSwap(t, tp)
+		return tp
+	} else {
+		return t
 	}
-	return ds.tls
 }
 
 // NewDataShard creates a new DataShard instance with the given name and configuration.
@@ -222,37 +238,60 @@ func NewDataShard(name string, t config.ShardType, options []GenericOption) *Dat
 //
 // Returns:
 //   - *proto.Shard: The converted proto.Shard object.
-func DataShardToProto(shard *DataShard, hostsWithAZ bool) *proto.Shard {
+func DataShardToProto(shard *DataShard, hostsWithAZ bool) (*proto.Shard, error) {
+	options, err := GenericOptionsToProto(shard.Options(), hostsWithAZ)
+	if err != nil {
+		return nil, err
+	}
 	return &proto.Shard{
 		Id:      shard.ID,
-		Options: GenericOptionsToProto(shard.options, hostsWithAZ),
-	}
+		Options: options,
+	}, nil
 }
 
-func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) []*proto.GenericOption {
+func GenericOptionsToProto(options []GenericOption, hostsWithAZ bool) ([]*proto.GenericOption, error) {
 	protoOptions := make([]*proto.GenericOption, 0, len(options))
+
+	hostsByActions := make(map[GenericOptionAction][]GenericOption)
 	for _, opt := range options {
 		if !hostsWithAZ && opt.Name == "host" {
+			hostsByActions[opt.Action] = append(hostsByActions[opt.Action], opt)
 			continue
 		}
 
+		action, err := GenericOptionActionToProto(opt.Action)
+		if err != nil {
+			return nil, err
+		}
+
 		protoOptions = append(protoOptions, &proto.GenericOption{
-			Name:  opt.Name,
-			Value: opt.Arg,
+			Name:   opt.Name,
+			Value:  opt.Arg,
+			Action: action,
 		})
 	}
 
 	if !hostsWithAZ {
-		_, addresses := retrieveHostsFromOptions(options)
-		for _, addr := range addresses {
-			protoOptions = append(protoOptions, &proto.GenericOption{
-				Name:  "host",
-				Value: addr,
-			})
+		for action, options := range hostsByActions {
+			hosts, err := retrieveHostsFromOptions(options)
+			if err != nil {
+				return nil, err
+			}
+			protoAction, err := GenericOptionActionToProto(action)
+			if err != nil {
+				return nil, err
+			}
+			for _, host := range hosts {
+				protoOptions = append(protoOptions, &proto.GenericOption{
+					Name:   "host",
+					Value:  host.Address,
+					Action: protoAction,
+				})
+			}
 		}
 	}
 
-	return protoOptions
+	return protoOptions, nil
 }
 
 func GenericOptionsFromProto(protoOptions []*proto.GenericOption) ([]GenericOption, error) {
@@ -281,6 +320,21 @@ func GenericOptionActionFromProto(action proto.GenericOption_Action) (GenericOpt
 		return GenericOptionActionDrop, nil
 	default:
 		return -1, fmt.Errorf("unknown action %s", action.String())
+	}
+}
+
+func GenericOptionActionToProto(action GenericOptionAction) (proto.GenericOption_Action, error) {
+	switch action {
+	case GenericOptionActionUnspecified:
+		fallthrough
+	case GenericOptionActionAdd:
+		return proto.GenericOption_ADD, nil
+	case GenericOptionActionSet:
+		return proto.GenericOption_SET, nil
+	case GenericOptionActionDrop:
+		return proto.GenericOption_DROP, nil
+	default:
+		return -1, fmt.Errorf("unknown action %d", action)
 	}
 }
 
@@ -318,14 +372,14 @@ func DataShardFromDB(shard *qdb.Shard) *DataShard {
 			Arg:  opt.Value,
 		})
 	}
-	options = append(options, hostsToOptions(shard.RawHosts)...)
+	options = append(options, HostsToOptions(shard.RawHosts)...)
 	return NewDataShard(shard.ID, config.DataShard, options)
 }
 
 func DataShardToDB(shard *DataShard) *qdb.Shard {
 	return &qdb.Shard{
 		ID:      shard.ID,
-		Options: GenericOptionsToDB(shard.options),
+		Options: GenericOptionsToDB(shard.Options()),
 	}
 }
 
@@ -339,7 +393,7 @@ func DataShardMapFromConfig(shards map[string]*config.Shard) map[string]*DataSha
 
 func DataShardFromConfig(id string, cfg *config.Shard) *DataShard {
 	options := make([]GenericOption, 0)
-	options = append(options, hostsToOptions(cfg.RawHosts)...)
+	options = append(options, HostsToOptions(cfg.RawHosts)...)
 	options = append(options, TLSConfigToOptions(cfg.TLS)...)
 
 	return NewDataShard(
@@ -359,7 +413,7 @@ func DataShardMapFromShardConnectConfig(shards map[string]*config.ShardConnect) 
 
 func DataShardFromShardConnectConfig(id string, cfg *config.ShardConnect) *DataShard {
 	options := make([]GenericOption, 0)
-	options = append(options, hostsToOptions(cfg.Hosts)...)
+	options = append(options, HostsToOptions(cfg.Hosts)...)
 	options = append(options, TLSConfigToOptions(cfg.TLS)...)
 	options = append(options, []GenericOption{
 		{Name: "db", Arg: cfg.DB},
@@ -379,7 +433,7 @@ func ShardConfigEqual(a, b *DataShard) bool {
 	if a.ID != b.ID {
 		return false
 	}
-	return reflect.DeepEqual(a.options, b.options)
+	return reflect.DeepEqual(a.Options(), b.Options())
 }
 
 type GenericOptionAction int
@@ -480,7 +534,7 @@ func TLSConfigToOptions(tls *config.TLSConfig) []GenericOption {
 	return options
 }
 
-func hostsToOptions(hosts []string) []GenericOption {
+func HostsToOptions(hosts []string) []GenericOption {
 	options := make([]GenericOption, 0, len(hosts))
 	for _, host := range hosts {
 		options = append(options, GenericOption{

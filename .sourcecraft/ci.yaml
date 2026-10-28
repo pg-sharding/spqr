@@ -1,0 +1,158 @@
+on:
+  push:
+    - workflows: [test-and-build]
+      filter:
+        branches: [master]
+        paths: ["**"]
+    
+    - workflows: [auto-rebase]
+      filter:
+        branches: [master]
+        paths: ["**"]
+    
+    - workflows: [regress-tests]
+      filter:
+        branches: [master]
+        paths: ["**"]
+    
+    - workflows: [isolation-tests]
+      filter:
+        branches: [master]
+        paths: ["**"]
+  
+  pull_request:
+    - workflows: [test-and-build]
+      filter:
+        source_branches: ["**"]
+        target_branches: [master]
+        paths: ["**"]
+
+  schedule:
+    - workflows: [auto-rebase]
+      interval: 1h
+      description: Auto rebase sc dev branch on gh master
+
+workflows:
+  test-and-build:
+    tasks:
+      - name: setup-dependencies
+        cubes:
+          - name: setup
+            image: golang:1.26-alpine
+            script:
+              - apk add --no-cache git make gcc musl-dev
+              - go version
+              - cd $SOURCECRAFT_WORKSPACE
+              - go mod download
+              - go mod vendor
+      
+      - name: run-tests
+        needs: [setup-dependencies]
+        cubes:
+          - name: unit-tests
+            image: golang:1.26-alpine
+            script:
+              - apk add --no-cache git make gcc musl-dev
+              - cd $SOURCECRAFT_WORKSPACE
+              - go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
+              - go test -race -count 20 -timeout 30s ./qdb/...
+      
+      - name: run-linter
+        needs: [setup-dependencies]
+        cubes:
+          - name: golangci-lint
+            image: golangci/golangci-lint:v1.60
+            script:
+              - cd $SOURCECRAFT_WORKSPACE
+              - golangci-lint run --color=always --build-tags=all
+      
+      - name: build-binaries
+        needs: [setup-dependencies]
+        cubes:
+          - name: build
+            image: golang:1.26-alpine
+            script:
+              - apk add --no-cache git make gcc musl-dev
+              - cd $SOURCECRAFT_WORKSPACE
+              - make build
+              - ls -la spqr-* coorctl 2>/dev/null || echo "Binaries not found"
+
+  auto-rebase:
+    tasks:
+      - name: rebase-master-with-ci
+        cubes:
+          - name: rebase
+            image: alpine/git:latest
+            script:
+              - cd $SOURCECRAFT_WORKSPACE
+              - git config --global user.email "ci@sourcecraft.dev"
+              - git config --global user.name "SourceCraft CI"
+              - git fetch origin master_with_ci
+              - git fetch origin master
+              - git checkout master_with_ci
+              - git rebase origin/master
+              - git push origin master_with_ci
+
+  regress-tests:
+    tasks:
+      - name: setup-docker-environment
+        cubes:
+          - name: setup
+            image: docker:24.0-cli
+            script:
+              - apk add --no-cache git make bash docker-compose
+              - docker --version
+              - docker-compose --version
+              - cd $SOURCECRAFT_WORKSPACE
+      
+      - name: build-images
+        needs: [setup-docker-environment]
+        cubes:
+          - name: build
+            image: docker:24.0-cli
+            script:
+              - apk add --no-cache git make bash
+              - cd $SOURCECRAFT_WORKSPACE
+              - make build_images
+      
+      - name: run-regress-tests
+        needs: [build-images]
+        cubes:
+          - name: regress
+            image: docker:24.0-cli
+            script:
+              - apk add --no-cache git make bash postgresql-client
+              - cd $SOURCECRAFT_WORKSPACE
+              - make regress
+
+  isolation-tests:
+    tasks:
+      - name: setup-docker-environment
+        cubes:
+          - name: setup
+            image: docker:24.0-cli
+            script:
+              - apk add --no-cache git make bash docker-compose
+              - docker --version
+              - docker-compose --version
+              - cd $SOURCECRAFT_WORKSPACE
+      
+      - name: build-images
+        needs: [setup-docker-environment]
+        cubes:
+          - name: build
+            image: docker:24.0-cli
+            script:
+              - apk add --no-cache git make bash
+              - cd $SOURCECRAFT_WORKSPACE
+              - make build_images
+      
+      - name: run-isolation-tests
+        needs: [build-images]
+        cubes:
+          - name: isolation-regress
+            image: docker:24.0-cli
+            script:
+              - apk add --no-cache git make bash postgresql-client
+              - cd $SOURCECRAFT_WORKSPACE
+              - make isolation_regress

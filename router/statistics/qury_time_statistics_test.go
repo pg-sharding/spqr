@@ -75,6 +75,8 @@ func TestStatisticsForOneUser(t *testing.T) {
 	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), ca)
 
+	assert.Equal(17.0, statistics.GetRouterTimeTotalSum())
+	assert.Equal(13.0, statistics.GetShardTimeTotalSum())
 	assert.Equal(4.0, statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, ca))
 	assert.Equal(3.0, statistics.GetTimeQuantile(statistics.StatisticsTypeShard, 0.5, ca))
 

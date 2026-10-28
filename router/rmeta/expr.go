@@ -28,7 +28,10 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 		return nil, err
 	}
 
-	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	queryParamsFormatCodes, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+	if err != nil {
+		return nil, err
+	}
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -149,29 +152,21 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 func (rm *RoutingMetadataContext) GetPrePlan(ctx context.Context) (plan.Plan, error) {
 	var p plan.Plan
 	/**/
-	for qualName := range rm.Rels {
-		// TODO: check by whole RFQN
-		ds, err := rm.GetRelationDistribution(ctx, &qualName)
-		if err != nil {
-			return nil, err
-		}
-
-		if ds.Id == distributions.REPLICATED {
-			var shs []kr.ShardKey
-			if IsRelationCatalog(&qualName) {
-				shs = nil
-			} else {
-				r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
-				if err != nil {
-					return nil, err
-				}
-				shs = r.ListStorageRoutes()
+	for qualName := range rm.RefRels {
+		var shs []kr.ShardKey
+		if IsRelationCatalog(&qualName) {
+			shs = nil
+		} else {
+			r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
+			if err != nil {
+				return nil, err
 			}
-
-			p = plan.Combine(p, &plan.RandomDispatchPlan{
-				ExecTargets: shs,
-			})
+			shs = r.ListStorageRoutes()
 		}
+
+		p = plan.Combine(p, &plan.RandomDispatchPlan{
+			ExecTargets: shs,
+		})
 	}
 
 	return p, nil
@@ -212,13 +207,9 @@ func (rm *RoutingMetadataContext) ListParametrizedRels(ctx context.Context) ([]*
 	var rs []*distributions.DistributedRelation
 	for qualName := range rm.RoutableRels {
 
-		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, &qualName)
 		if err != nil {
 			return nil, err
-		}
-		if ds.Id == distributions.REPLICATED {
-			continue
 		}
 
 		relation, exists := ds.TryGetRelation(&qualName)
@@ -241,7 +232,6 @@ func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(
 		// CTE, skip
 		return false, nil
 	}
-
 	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
 
 	if off == -1 {
@@ -249,7 +239,7 @@ func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(
 		return false, nil
 	}
 
-	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+	if rm.MetaCache.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
 		// reference relation, skip
 		return false, nil
 	}

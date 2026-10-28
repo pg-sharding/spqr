@@ -129,7 +129,7 @@ Feature: Proxy console
 
         When I run SQL on host "router2-admin"
         """
-        SHOW key_ranges;
+        SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
         """
         Then SQL result should match json_exactly
         """
@@ -314,13 +314,13 @@ Feature: Proxy console
     Scenario: add and drop shard on router-admin
         When I run SQL on host "router-admin"
         """
-        CREATE SHARD sh5 OPTIONS (HOST 'spqr_shard_1:6432');
+        CREATE SHARD sh5 OPTIONS (HOST 'spqr_shard_1:6432:spqr') FORCE;
         """
         Then command return code should be "0"
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
@@ -336,20 +336,20 @@ Feature: Proxy console
             },
             {
                 "shard":"sh5",
-                "options": "{host=spqr_shard_1:6432}"
+                "options": "{host=spqr_shard_1:6432:spqr}"
             }
         ]
         """
 
         When I run SQL on host "router-admin"
         """
-        ALTER SHARD sh5 OPTIONS (ADD sslmode 'verify-full');
+        ALTER SHARD sh5 OPTIONS (ADD sslmode 'verify-full', drop host 'spqr_shard_1:6432:spqr', add host 'spqr_shard_2:6432:spqr');
         """
         Then command return code should be "0"
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
@@ -365,7 +365,7 @@ Feature: Proxy console
             },
             {
                 "shard":"sh5",
-                "options": "{host=spqr_shard_1:6432,sslmode=verify-full}"
+                "options": "{host=spqr_shard_2:6432:spqr,sslmode=verify-full}"
             }
         ]
         """
@@ -378,7 +378,7 @@ Feature: Proxy console
 
         When I run SQL on host "router-admin"
         """
-        SHOW shards;
+        SHOW shards_extended;
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
@@ -394,4 +394,3 @@ Feature: Proxy console
             }
         ]
         """
-    

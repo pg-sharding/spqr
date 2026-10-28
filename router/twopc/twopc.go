@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/icp"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -15,42 +16,61 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/session"
 )
 
 const (
-	CommitStrategyBestEffort = "best-effort"
-	CommitStrategy1pc        = "1pc"
-	CommitStrategy2pc        = "2pc"
+	CommitStrategyBestEffort = config.CommitStrategyBestEffort
+	CommitStrategy1pc        = config.CommitStrategy1pc
+	CommitStrategy2pc        = config.CommitStrategy2pc
 )
 
+/* This function accept nil as DCStateKeeper for some configurations */
 func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	cl client.Client,
 	s server.Server) (txstatus.TXStatus, error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	/*
 	* go along first phase
 	 */
-	uid7, err := uuid.NewV7()
+	guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
 	if err != nil {
 		return txstatus.TXERR, err
 	}
-	gid := uid7.String()
 
-	if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+	eagerCleanupGuc, err := cl.FindBoolGUC(session.SPQR_EAGER_CLEANUP_2PC)
+	if err != nil {
 		return txstatus.TXERR, err
-	} else if !ok {
-		return txstatus.TXERR, fmt.Errorf("failed to acquire ownership for tx \"%s\"", gid)
+	}
+
+	gid := cl.NextGID()
+	if gid == "" {
+		uid7, err := uuid.NewV7()
+		if err != nil {
+			return txstatus.TXERR, err
+		}
+		gid = uid7.String()
+	}
+
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
+	if q != nil {
+		if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+			return txstatus.TXERR, err
+		} else if !ok {
+			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
+		}
 	}
 
 	/* Store our intentions in state keeper */
-	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	shs := []string{}
 
 	for _, dsh := range s.Datashards() {
 		shs = append(shs, dsh.SHKey().Name)
 	}
 
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
 		if err := q.RecordTwoPhaseMembers(ctx, gid, shs); err != nil {
 			return txstatus.TXERR, err
@@ -71,31 +91,54 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	defer func() {
 		/* If any error, try to happy-path error recovery with simple undo */
 
+		anyErr := false
+
 		for _, dsh := range undoShards {
 			_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 				String: fmt.Sprintf(`ROLLBACK PREPARED '%s'`, gid),
-			}, txstatus.TXIDLE)
+			}, "rollback prepared", txstatus.TXIDLE)
 
+			if guc.Get(cl) {
+				_ = cl.ReplyNotice(
+					fmt.Sprintf("rollback prepared %s on %s",
+						gid, dsh.InstanceHostname()))
+			}
+
+			/* Try next shard */
 			if err != nil {
+				anyErr = true
 				spqrlog.Zero.Error().Err(err).Str("shard", dsh.InstanceHostname()).Msg("happy path error recovery failed on shard")
+			}
+		}
+
+		/* XXX: consider opt-in for doing this unconditionally */
+		if eagerCleanupGuc.Get(cl) {
+			/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
+			if !anyErr {
+				if err := q.RemoveTXData(ctx, gid); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
+				}
 			}
 		}
 	}()
 
 	for _, dsh := range s.Datashards() {
-		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
+		/* st is guaranteed TXIDLE when err == nil; DeployTxOnShard validates expTx */
+		_, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
-		}, txstatus.TXIDLE)
+		}, "prepare tx", txstatus.TXIDLE)
 
-		/* err may we a purely network error  */
+		/* err may be a purely network error  */
 		undoShards = append(undoShards, dsh)
 
 		if err != nil {
-			/* assert st == txtstatus.TXERR? */
+			/* TODO: assert st == txstatus.TXERR? */
 			return txstatus.TXERR, err
 		}
 
-		retST = st
+		if guc.Get(cl) {
+			_ = cl.ReplyNotice(fmt.Sprintf("prepare tx %s on %s", gid, dsh.InstanceHostname()))
+		}
 	}
 
 	if config.RouterConfig().EnableICP {
@@ -108,14 +151,14 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		}
 	}
 
-	/* past thos line, there is no way back. We actually can reset undoShards
+	/* past this line, there is no way back. We actually can reset undoShards
 	* after tx state in dcs, but this will require additional tx status re-check, so
 	* don't bother with that */
 	undoShards = nil
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP1); err != nil {
+		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP1, qdb.TwoPhaseInitState); err != nil {
 			return txstatus.TXERR, err
 		}
 	}
@@ -131,31 +174,42 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, gid),
-		}, txstatus.TXIDLE)
+		}, "commit prepared", txstatus.TXIDLE)
 
 		if err != nil {
-			/* assert st == txtstatus.TXERR? */
+			/* TODO: assert st == txstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
 			return txstatus.TXERR, err
 		}
 
-		if txstatus.TXStatus(st) != txstatus.TXIDLE {
+		if st != txstatus.TXIDLE {
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
-			return txstatus.TXERR, fmt.Errorf("unexpected 2pc member response")
+			return txstatus.TXERR, spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "unexpected 2pc member response")
 		}
 
-		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+		if guc.Get(cl) {
+			_ = cl.ReplyNotice(fmt.Sprintf("commit prepared tx %s on %s", gid, dsh.InstanceHostname()))
+		}
 
-		retST = txstatus.TXStatus(st)
+		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", st.String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+
+		retST = st
 	}
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2); err != nil {
+		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2, qdb.TwoPhaseP1); err != nil {
 			return txstatus.TXERR, err
+		}
+
+		/* XXX: consider opt-in for doing this unconditionally */
+		if eagerCleanupGuc.Get(cl) {
+			if err := q.RemoveTXData(ctx, gid); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
+			}
 		}
 	}
 

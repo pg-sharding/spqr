@@ -3,21 +3,21 @@ REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE 100;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 100;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;
 
 REDISTRIBUTE KEY RANGE krid1 TO sh2;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 RETRY MOVE TASK GROUP tgid;
 RETRY TASK GROUP tgid;

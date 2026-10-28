@@ -2,7 +2,6 @@ package shard
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -23,8 +22,8 @@ func ShardIDs(shards []ShardHostInstance) []uint {
 	return ret
 }
 
-func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string, extversion string) (bool, error) {
-	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s' and extversion = '%s'", extname, extversion))
+func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string, extversion ...string) (bool, error) {
+	res := conn.QueryRow(ctx, "SELECT count(*) FROM pg_extension WHERE extname = $1 and extversion = ANY($2)", extname, extversion)
 	count := 0
 	if err := res.Scan(&count); err != nil {
 		return false, err

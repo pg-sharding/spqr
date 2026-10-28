@@ -40,7 +40,7 @@ message KeyRangeInfo {
   string krid = 2;
   string shardId = 3;
   string distributionId = 4;
-  optional bool locked = 5;
+  bool locked = 5;
 }
 
 message ListKeyRangeRequest {
@@ -66,6 +66,7 @@ message MergeKeyRangeRequest {
 message MoveKeyRangeRequest {
   string id = 1 [(buf.validate.field).required = true];
   string toShardId = 2 [(buf.validate.field).required = true];
+  bool metaOnly = 3;
 }
 
 message DropKeyRangeRequest {

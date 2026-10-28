@@ -49,9 +49,21 @@ SELECT * FROM r WHERE i = 11;
 SELECT * FROM sh1.r WHERE i = 1;
 SELECT * FROM sh2.r WHERE i = 11;
 
-DROP SCHEMA sh1 CASCADE;
-DROP SCHEMA sh2 CASCADE;
+DROP TABLE sh1.r, sh2.r;
+
+DROP SCHEMA sh1;
+DROP SCHEMA sh2;
+
+SET __spqr__maintain_params TO false;
+SET search_path TO 'public';
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
+-- This test manually inject search path in backends. 
+-- We don't want to always keep this test sane or to actually 
+-- deal with badly configured backend connections, so force router
+-- to re-acquire every new connections after this regress test end.
+select __spqr__console_execute('INVALIDATE BACKENDS');
 
 \c spqr-console
-
 DROP DISTRIBUTION ALL CASCADE;

@@ -29,9 +29,12 @@ type Statistics struct {
 	Usr               string
 	Hostname          string
 	RouterName        string
-	UsedConnections   int
-	IdleConnections   int
-	QueueResidualSize int
+	UsedConnections   int64
+	IdleConnections   int64
+	QueueResidualSize int64
+	DiscardCount      int64
+	AcquireCount      int64
+	ReuseCount        int64
 }
 
 /* dedicated host connection pool */
@@ -55,14 +58,28 @@ type ShardHostsPool interface {
 	SetRule(rule *config.BackendRule)
 }
 
+// Per-client parameters required to allocate
+// a shard connection
+type ConnAllocParams struct {
+	Clid       uint
+	Tsa        tsa.TSA
+	HostFilter string
+}
+
+type ConnectionProvider interface {
+	ConnectionKeeper
+	ConnectionWithTSA(params ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error)
+}
+
 type MultiShardTSAPool interface {
 	ShardHostsPool
+	ConnectionProvider
 
 	ShardMapping() topology.TopologyMgr
 
-	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[TsaKey]CachedEntry
+	RunRecheckHosts() []HostRecheckResult
 
 	StopCacheWatchdog()
 }

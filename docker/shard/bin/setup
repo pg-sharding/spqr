@@ -23,6 +23,7 @@ listen_addresses = '*'
 port = 6432
 max_prepared_transactions = 5
 shared_preload_libraries = 'pg_stat_statements,pg_stat_kcache,pg_comment_stats,spqrguard,twopc_aux_tester'
+synchronous_commit = 'remote_apply'
 EOF
 
 sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/pg_ctl -D /var/lib/postgresql/$POSTGRES_VERSION/main/ start
@@ -46,7 +47,7 @@ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POST
 
 
 # Create extension
-for extension in postgres_fdw pg_stat_statements pg_stat_kcache pg_comment_stats spqrhash
+for extension in postgres_fdw pg_stat_statements pg_stat_kcache pg_comment_stats
 do
     sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS ${extension};" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
         echo "ERROR: extension creation failed, examine the log"
@@ -54,6 +55,12 @@ do
         exit 1
     }
 done
+
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS spqrhash VERSION '1.2';" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
+    echo "ERROR: extension creation failed, examine the log"
+    cat "$SETUP_LOG"
+    exit 1
+}
 
 sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS spqrguard VERSION '2.3';" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
     echo "ERROR: extension creation failed, examine the log"

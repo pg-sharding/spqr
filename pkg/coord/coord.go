@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -16,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/transferworker"
 	"github.com/pg-sharding/spqr/qdb"
@@ -84,6 +88,10 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 			destShards = append(rel.ShardIDs, destShard)
 		}
 
+		if err = datatransfers.SyncReferenceRelationCheck(ctx, fromShard, destShard, rel, lc); err != nil {
+			return err
+		}
+
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err
 		}
@@ -97,7 +105,21 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relationFQNs 
 }
 
 // AddDataShard implements meta.EntityMgr.
-func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+	for _, opt := range shard.Options() {
+		if opt.Name == "host" {
+			if _, err := topology.ParseSingleHostSpec(opt.Arg); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", opt.Arg)
+			}
+		}
+	}
+
+	if !force {
+		if err := lc.checkShardMigration(ctx, shard); err != nil {
+			return err
+		}
+	}
+
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
@@ -107,16 +129,46 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 		return err
 	}
 
-	newOptions := slices.Clone(shard.Options())
+	hi := shard.Infos()
+	updatedOpts := make([]topology.GenericOption, len(hi.Options))
+	copy(updatedOpts, hi.Options)
+
+	compareOpts := func(o1 topology.GenericOption, o2 topology.GenericOption) (bool, error) {
+		if o1.Name != o2.Name {
+			return false, nil
+		}
+
+		if o1.Name != "host" {
+
+			return o1.Arg == o2.Arg, nil
+
+		} else {
+			/* XXX: thats very bad to re-parse something twice, but
+			* refactoring of this piece is not worth it right now. */
+			parsed1, err := topology.ParseSingleHostSpec(o1.Arg)
+			if err != nil {
+				return false, err
+			}
+
+			parsed2, err := topology.ParseSingleHostSpec(o2.Arg)
+			if err != nil {
+				return false, err
+			}
+
+			return parsed1.Address == parsed2.Address, nil
+		}
+	}
 
 	for _, change := range changes {
 
 		optionNameCount := 0
 		optionValueCount := 0
-		for _, o := range newOptions {
+		for _, o := range updatedOpts {
 			if o.Name == change.Name {
 				optionNameCount++
-				if o.Arg == change.Arg {
+				if ok, err := compareOpts(o, change); err != nil {
+					return err
+				} else if ok {
 					optionValueCount++
 				}
 			}
@@ -129,17 +181,49 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 			if optionValueCount > 0 {
 				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" provided more than once", change.Name, change.Arg))
 			}
-			newOptions = append(newOptions, topology.GenericOption{Name: change.Name, Arg: change.Arg})
+			updatedOpts = append(updatedOpts, topology.GenericOption{Name: change.Name, Arg: change.Arg})
 		case topology.GenericOptionActionSet:
 			if optionNameCount == 0 {
 				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 			}
-			if optionNameCount > 1 {
-				return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" has multiple values provided", change.Name))
+
+			if change.Name != "host" {
+				if optionNameCount > 1 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" has multiple values provided", change.Name))
+				}
+				ind := slices.IndexFunc(updatedOpts, func(o topology.GenericOption) bool { return o.Name == change.Name })
+				updatedOpts[ind].Arg = change.Arg
+			} else {
+				// change topology
+				// parse host spec. Should be single host.
+				h, err := topology.ParseSingleHostSpec(change.Arg)
+				if err != nil {
+					return err
+				}
+
+				found := false
+				for _, oldH := range hi.Hosts {
+					if oldH.Address == h.Address {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed host specification").Detail(fmt.Sprintf("host %s not found", h.Address))
+				}
+
+				for i := range updatedOpts {
+					if updatedOpts[i].Name == "host" {
+						if ok, err := compareOpts(updatedOpts[i], change); err != nil {
+							return err
+						} else if ok {
+							updatedOpts[i].Arg = change.Arg
+						}
+					}
+				}
 			}
 
-			ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name })
-			newOptions[ind].Arg = change.Arg
 		case topology.GenericOptionActionDrop:
 			// Drop all
 			if change.Arg == "" {
@@ -147,9 +231,9 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" not found", change.Name))
 				}
 
-				for i := len(newOptions) - 1; i >= 0; i-- {
-					if change.Name == newOptions[i].Name {
-						newOptions = slices.Delete(newOptions, i, i+1)
+				for i, updatedOpt := range slices.Backward(updatedOpts) {
+					if change.Name == updatedOpt.Name {
+						updatedOpts = slices.Delete(updatedOpts, i, i+1)
 					}
 				}
 			} else { // Drop option with specific value
@@ -157,13 +241,23 @@ func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, ch
 					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
 				}
 
-				ind := slices.IndexFunc(newOptions, func(o topology.GenericOption) bool { return o.Name == change.Name && o.Arg == change.Arg })
-				newOptions = slices.Delete(newOptions, ind, ind+1)
+				ind := slices.IndexFunc(updatedOpts, func(o topology.GenericOption) bool {
+					ok, err := compareOpts(o, change)
+					if err != nil {
+						/* XXX: Should not happen */
+						return false
+					}
+					return ok
+				})
+				if ind == -1 {
+					return spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "malformed options array").Hint(fmt.Sprintf("option \"%s\" with value \"%s\" not found", change.Name, change.Arg))
+				}
+				updatedOpts = slices.Delete(updatedOpts, ind, ind+1)
 			}
 		}
 	}
 
-	shard.SetOptions(newOptions)
+	shard.SetOptions(updatedOpts)
 
 	return lc.qdb.AlterShard(ctx, topology.DataShardToDB(shard))
 }
@@ -221,7 +315,7 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
+func (lc *Coordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 
@@ -324,7 +418,26 @@ func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbSt
 
 // DropKeyRangeAll implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
-	return lc.qdb.DropKeyRangeAll(ctx)
+	krs, err := lc.qdb.ListAllKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+	if err := lc.qdb.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	krIDs := make([]string, len(krs))
+	for _, kr := range krs {
+		krIDs = append(krIDs, kr.KeyRangeID)
+	}
+
+	return UpdateKeyRangeMeta(ctx, []*proto.MetaTransactionGossipCommand{
+		{
+			DropKeyRange: &proto.DropKeyRangeGossip{
+				Id: krIDs,
+			},
+		},
+	})
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
@@ -437,9 +550,52 @@ func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, err
 	return retRouters, nil
 }
 
-// Move implements meta.EntityMgr.
-func (lc *Coordinator) Move(_ context.Context, _ *kr.MoveKeyRange) error {
-	panic("unimplemented")
+// AlterReferenceRelationStorageAdvanced implements meta.EntityMgr.
+func (lc *Coordinator) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, ErrNotCoordinator
+}
+
+// Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - req (*kr.MoveKeyRange): a pointer to a MoveKeyRange object containing the necessary information for the move operation.
+//
+// Returns:
+// - error: an error if the move operation encounters any issues.
+func (lc *Coordinator) Move(ctx context.Context, req *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
+	if !req.MetaOnly {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "cannot move the data in local coordinator").Hint("use MOVE KEY RANGE ... META ONLY to only update key range metadata")
+	}
+	var krmv *qdb.KeyRange
+	var err error
+	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
+		return err
+	}
+
+	ds, err := lc.qdb.GetDistribution(ctx, krmv.DistributionId)
+	if err != nil {
+		return err
+	}
+
+	reqKr, err := kr.KeyRangeFromDB(krmv, ds.ColTypes)
+	if err != nil {
+		return err
+	}
+	reqKr.ShardID = req.ShardID
+
+	// TODO: move check to meta layer
+	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
+		return err
+	}
+	tranMngr := meta.NewTranEntityManager(lc)
+	if err := tranMngr.UpdateKeyRange(ctx, reqKr, ds.ColTypes); err != nil {
+		return err
+	}
+	if err := tranMngr.ExecNoTran(ctx); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+	}
+	return nil
 }
 
 // NextVal implements meta.EntityMgr.
@@ -459,7 +615,7 @@ func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 
@@ -474,21 +630,36 @@ func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
 }
 
 // RenameKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew string) error {
-	if _, err := lc.GetKeyRange(ctx, krId); err != nil {
+func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew string) error {
+	if _, err := lc.GetKeyRange(ctx, krIDNew); err == nil {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
+	}
+	lockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := lc.LockKeyRangeOps(lockCtx, krID); err != nil {
 		return err
 	}
-	if _, err := meta.LockKeyRange(ctx, lc, krId); err != nil {
+	defer func() {
+		_ = lc.UnlockKeyRangeOps(ctx, krID)
+	}()
+	keyRange, err := meta.LockKeyRange(ctx, lc, krID)
+	if err != nil {
 		return err
 	}
-	if _, err := lc.GetKeyRange(ctx, krIdNew); err == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	if !config.CoordinatorConfig().UseSPQRGuard {
+		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
 	}
-	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
+	if err := updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.InsertKeyRangeMeta, krIDNew); err != nil {
+		return err
+	}
+	if err := lc.qdb.RenameKeyRange(ctx, krID, krIDNew); err != nil {
+		return err
+	}
+	return updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.DeleteKeyRangeMeta, krID)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) error {
+func (lc *Coordinator) RetryMoveTaskGroup(_ context.Context, _ string, _ bool, _ icp.ICPContextHolder) error {
 	panic("unimplemented")
 }
 
@@ -611,7 +782,7 @@ func (lc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 	return res, nil
 }
 
-func (lc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
+func (lc *Coordinator) DropMoveTask(ctx context.Context, id string, isCascade bool) error {
 	task, err := lc.GetMoveTask(ctx, id)
 	if err != nil {
 		return err
@@ -622,6 +793,20 @@ func (lc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
 	}
 	if status != nil && status.State != tasks.TaskGroupError {
 		return fmt.Errorf("cannot remove move task: it's forbidden to remove move tasks when its task group is being executed")
+	}
+	if isCascade {
+		krmoves, err := lc.qdb.ListKeyRangeMoves(ctx)
+		if err != nil {
+			return err
+		}
+		for _, move := range krmoves {
+			if move.KeyRangeID == task.KridTemp {
+				if err := lc.qdb.DeleteKeyRangeMove(ctx, move.MoveId, false); err != nil {
+					return err
+				}
+				break
+			}
+		}
 	}
 	return lc.qdb.DropMoveTask(ctx, id)
 }
@@ -804,7 +989,7 @@ func (lc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade
 		return err
 	}
 	if task != nil {
-		if err := lc.qdb.DropMoveTask(ctx, task.ID); err != nil {
+		if err := lc.DropMoveTask(ctx, task.ID, cascade); err != nil {
 			return err
 		}
 	}
@@ -884,7 +1069,7 @@ func (lc *Coordinator) DropRedistributeTask(ctx context.Context, id string, casc
 	if taskGroup, err := lc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
 		return err
 	} else if taskGroup != nil && !cascade {
-		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "%w", spqrerror.RedistributeTaskDependentObjectError{}).Detail(fmt.Sprintf("redistribute task id: \"%s\", move task group id: \"%s\"", id, taskGroupId)).Hint("Use DROP ... CASCADE to drop task group automatically")
 	}
 
 	// TODO use meta transactions
@@ -1024,7 +1209,7 @@ func (lc *Coordinator) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]q
 //
 // Parameters:
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - krid (string): the ID of the key range to lock.
+// - keyRangeID (string): the ID of the key range to lock.
 //
 // Returns:
 // - *kr.KeyRange: the locked KeyRange object.
@@ -1045,11 +1230,36 @@ func (lc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 
 // TODO : unit tests
 
+// LockKeyRangeOps acquires operation lock for key range identified by krid and returns the corresponding KeyRange object.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - keyRangeID (string): the ID of the key range to lock.
+//
+// Returns:
+// - *kr.KeyRange: the locked KeyRange object.
+// - error: an error if the lock operation encounters any issues.
+func (lc *Coordinator) LockKeyRangeOps(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
+	keyRangeDB, err := lc.qdb.LockKeyRangeOps(ctx, keyRangeID)
+	if err != nil {
+		return nil, err
+	}
+	ds, err := lc.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
+	if err != nil {
+		_ = lc.UnlockKeyRangeOps(ctx, keyRangeID)
+		return nil, err
+	}
+
+	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes)
+}
+
+// TODO : unit tests
+
 // UnlockKeyRange unlocks a key range identified by krid.
 //
 // Parameters:
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - krid (string): the ID of the key range to lock.
+// - keyRangeID (string): the ID of the key range to lock.
 //
 // Returns:
 // - error: an error if the unlock operation encounters any issues.
@@ -1057,6 +1267,23 @@ func (lc *Coordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) er
 	return retry.Do(ctx, retry.NewFibonacci(meta.LockRetryStep),
 		func(ctx context.Context) error {
 			return lc.qdb.UnlockKeyRange(ctx, keyRangeID)
+		})
+}
+
+// TODO : unit tests
+
+// UnlockKeyRangeOps releases the operation lock for key range identified by krid.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - keyRangeID (string): the ID of the key range to lock.
+//
+// Returns:
+// - error: an error if the unlock operation encounters any issues.
+func (lc *Coordinator) UnlockKeyRangeOps(ctx context.Context, keyRangeID string) error {
+	return retry.Do(ctx, retry.NewFibonacci(meta.LockRetryStep),
+		func(ctx context.Context) error {
+			return lc.qdb.UnlockKeyRangeOps(ctx, keyRangeID)
 		})
 }
 
@@ -1111,32 +1338,35 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeID).Str("appendage id", uniteKeyRange.AppendageKeyRangeID).Msg("unite key ranges")
-	krBase, err := meta.LockKeyRange(ctx, lc, uniteKeyRange.BaseKeyRangeID)
+	// TODO: wrap in retries and move to meta
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	krBase, err := lc.LockKeyRangeOps(opsLockCtx, uniteKeyRange.BaseKeyRangeID)
 	if err != nil {
 		return err
 	}
-
 	defer func() {
-		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
-		// We'll just check existing lock at the start.
-		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeID); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Unite")
-		}
+		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.BaseKeyRangeID)
 	}()
+	if krBase.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.BaseKeyRangeID)
+	}
 
 	ds, err := lc.qdb.GetDistribution(ctx, krBase.Distribution)
 	if err != nil {
 		return err
 	}
 
-	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeID)
+	krAppendage, err := lc.LockKeyRangeOps(opsLockCtx, uniteKeyRange.AppendageKeyRangeID)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = lc.UnlockKeyRangeOps(ctx, uniteKeyRange.AppendageKeyRangeID)
+	}()
 
-	krAppendage, err := kr.KeyRangeFromDB(krAppendageDb, ds.ColTypes)
-	if err != nil {
-		return err
+	if krAppendage.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to unite key ranges: key range \"%s\" is locked", uniteKeyRange.AppendageKeyRangeID)
 	}
 
 	if krBase.ShardID != krAppendage.ShardID {
@@ -1165,10 +1395,15 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 
 	statements, err := lc.qdb.DropKeyRange(ctx, krAppendage.ID)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err)
 	}
 	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err)
+	}
+
+	tranMngr := meta.NewTranEntityManager(lc)
+	if err := tranMngr.DropKeyRange(ctx, krAppendage.ID); err != nil {
+		return err
 	}
 
 	if krLeft.ID != krBase.ID {
@@ -1178,12 +1413,11 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if err := meta.ValidateKeyRangeForModify(ctx, lc, krBase); err != nil {
 		return err
 	}
-	tranMngr := meta.NewTranEntityManager(lc)
 	if err := tranMngr.UpdateKeyRange(ctx, krBase, ds.ColTypes); err != nil {
 		return err
 	}
 	if err := tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to exec transaction: %s", err)
 	}
 	return nil
 }
@@ -1238,16 +1472,21 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.KeyRangeID)
 	}
 
-	krOld, err := lc.LockKeyRange(ctx, req.SourceID)
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	krOld, err := lc.LockKeyRangeOps(opsLockCtx, req.SourceID)
 	if err != nil {
 		return err
 	}
-
 	defer func() {
-		if err := lc.UnlockKeyRange(ctx, req.SourceID); err != nil {
+		if err := lc.UnlockKeyRangeOps(ctx, req.SourceID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
 		}
 	}()
+
+	if krOld.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "failed to split key range: key range \"%s\" is locked", krOld.ID)
+	}
 
 	ds, err := lc.qdb.GetDistribution(ctx, krOld.Distribution)
 
@@ -1301,10 +1540,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if req.SplitLeft {
 		krTemp.ID = req.SourceID
 		krOld.ID = req.KeyRangeID
-		if krOld.IsLocked == nil {
-			return fmt.Errorf("unexpected nil isLocked value in Split")
-		}
-		*krOld.IsLocked = false
+		krOld.IsLocked = false
 		err = tranMngr.CreateKeyRange(ctx, krOld, ds.ColTypes)
 		if err != nil {
 			return fmt.Errorf("could not update source key range in left key range split: %s", err)
@@ -1321,7 +1557,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err)
 	}
 	return nil
 }
@@ -1347,7 +1583,11 @@ func (lc *Coordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransact
 	if err != nil {
 		return err
 	}
-	return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
+	if err := lc.qdb.ExecNoTransaction(ctx, qdbStatements); err != nil {
+		return err
+	}
+
+	return UpdateKeyRangeMeta(ctx, chunk.GossipRequests)
 }
 
 func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
@@ -1356,7 +1596,11 @@ func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTr
 		return err
 	}
 	qdbTran := qdb.NewTransactionWithCmd(transaction.TransactionId, qdbStatements)
-	return lc.qdb.CommitTransaction(ctx, qdbTran)
+	if err := lc.qdb.CommitTransaction(ctx, qdbTran); err != nil {
+		return err
+	}
+
+	return UpdateKeyRangeMeta(ctx, transaction.Operations.GossipRequests)
 }
 
 func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
@@ -1460,4 +1704,136 @@ func (lc *Coordinator) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []s
 
 func (lc *Coordinator) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error) {
 	return lc.qdb.GetTxMetaStorage(ctx)
+}
+
+func (lc *Coordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, lc, record); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (lc *Coordinator) checkShardMigration(ctx context.Context, shard *topology.DataShard) error {
+	user := ""
+	host := ""
+	port := ""
+	dbname := ""
+	password := ""
+
+	for _, opt := range shard.Options() {
+		if opt.Name == "user" {
+			user = opt.Arg
+		}
+		if opt.Name == "host" {
+			groups := strings.Split(opt.Arg, ":")
+			host = groups[0]
+			port = groups[1]
+		}
+		if opt.Name == "dbname" {
+			dbname = opt.Arg
+		}
+		if opt.Name == "password" {
+			password = opt.Arg
+		}
+	}
+
+	connConfig, err := pgx.ParseConfig(fmt.Sprintf(
+		"user=%s host=%s port=%s dbname=%s password=%s",
+		user, host, port, dbname, password),
+	)
+	if err != nil {
+		return err
+	}
+	connConfig.TLSConfig, err = shard.TLS().Init(host)
+	if err != nil {
+		return err
+	}
+	conn, err := pgx.ConnectConfig(ctx, connConfig)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close(ctx) }()
+
+	distributions, err := lc.ListDistributions(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check distributed relations exist on shard
+	for _, ds := range distributions {
+		relations := ds.ListRelations()
+		for _, rel := range relations {
+			shardColumns, err := listShardColumns(ctx, conn, rel.Relation)
+			if err != nil {
+				return err
+			}
+
+			if len(shardColumns) == 0 {
+				return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
+					"shard is not ready").
+					Hint(fmt.Sprintf("relation %s.%s does not exist on shard",
+						rel.Relation.GetSchema(), rel.Relation.RelationName,
+					))
+			}
+
+			key := rel.DistributionKey
+			for _, part := range key {
+				if _, ok := shardColumns[part.Column]; !ok {
+					return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
+						"shard is not ready").
+						Hint(fmt.Sprintf("column %s does not exist in relation %s.%s on shard",
+							part.Column, rel.Relation.GetSchema(), rel.Relation.RelationName,
+						))
+				}
+			}
+		}
+	}
+
+	refRelations, err := lc.ListReferenceRelations(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check reference relations exist on shard
+	for _, refRel := range refRelations {
+		shardColumns, err := listShardColumns(ctx, conn, refRel.RelationName)
+		if err != nil {
+			return err
+		}
+
+		if len(shardColumns) == 0 {
+			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST,
+				"shard is not ready").
+				Hint(fmt.Sprintf("relation %s.%s does not exist on shard",
+					refRel.RelationName.GetSchema(), refRel.RelationName.RelationName,
+				))
+		}
+	}
+
+	return nil
+}
+
+// Returns map [column_name] = data_type
+func listShardColumns(ctx context.Context, conn *pgx.Conn, relation *rfqn.RelationFQN) (map[string]string, error) {
+	query := `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2;`
+
+	rows, err := conn.Query(ctx, query, relation.GetSchema(), relation.RelationName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cols := make(map[string]string)
+	for rows.Next() {
+		colName := ""
+		dataType := ""
+		if err := rows.Scan(&colName, &dataType); err != nil {
+			return nil, err
+		}
+		cols[colName] = dataType
+	}
+
+	return cols, nil
 }

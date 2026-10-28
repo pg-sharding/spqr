@@ -74,7 +74,8 @@
                         "features/performance",
                         "features/authentication",
                         "features/config_reloading",
-                        "features/statistics"
+                        "features/statistics",
+                        "features/metrics"
                     ]
                 },
                 {
@@ -83,13 +84,15 @@
                         "deployment/overview",
                         "deployment/bare_router",
                         "deployment/router_coordinator",
-                        "deployment/spqrinfra"
+                        "deployment/spqrinfra",
+                        "deployment/spqrguard"
                     ]
                 },
                 {
                     "group": "Configuration Guide",
                     "pages": [
                         "configuration/router",
+                        "configuration/virtual_function",
                         "configuration/coordinator",
                         "configuration/balancer",
                         "configuration/auth",

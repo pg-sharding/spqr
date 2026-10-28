@@ -4,6 +4,10 @@ SHOW __spqr__distribution;
 SHOW __spqr__default_route_behaviour;
 SHOW __spqr__auto_distribution;
 SHOW __spqr__distribution_key;
+SET __spqr__distribution_key TO 'col1';
+SHOW __spqr__distribution_key;
+SET __spqr__distribution_key TO '';
+SHOW __spqr__distribution_key;
 SHOW __spqr__sharding_key;
 SHOW __spqr__scatter_query;
 SHOW __spqr__reply_notice;
@@ -12,8 +16,10 @@ SHOW __spqr__execute_on;
 SHOW __spqr__engine_v2;
 SHOW __spqr__commit_strategy;
 SHOW __spqr__target_session_attrs;
+SHOW __spqr__session_connections_pin;
+SHOW __spqr__flux_access;
+SHOW __spqr__notice_message_format;
 SHOW target_session_attrs;
-
 
 SET __spqr__engine_v2 TO false;
 SHOW __spqr__engine_v2;
@@ -41,3 +47,10 @@ SHOW __spqr__allow_postprocessing;
 
 SET __spqr__allow_split_update TO true;
 SHOW __spqr__allow_split_update;
+
+
+SHOW __spqr__preferred_engine;
+SET __spqr__preferred_engine TO v2;
+SHOW __spqr__preferred_engine;
+SET __spqr__preferred_engine TO '';
+SHOW __spqr__preferred_engine;

@@ -25,7 +25,7 @@ CREATE DISTRIBUTED RELATION r1 (id);
  distribution id -> ds1
 (2 rows)
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 1           | false
@@ -42,7 +42,7 @@ CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2;
 ERROR:  distributions count not equal one, use FOR DISTRIBUTION syntax
 CREATE DISTRIBUTED RELATION r1 (id);
 ERROR:  distributions count not equal one, use FOR DISTRIBUTION syntax
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 1           | false

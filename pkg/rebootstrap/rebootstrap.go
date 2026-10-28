@@ -4,9 +4,17 @@ import (
 	"context"
 	"sort"
 
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.EtcdQDB) error {
@@ -15,7 +23,7 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		return err
 	}
 
-	swapDb.State.Shards = memqdb.State.Shards
+	copyStateFields(swapDb.State, memqdb.State)
 
 	ds, err := etcdConn.ListDistributions(ctx)
 	if err != nil {
@@ -70,16 +78,188 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		}
 	}
 
-	// TODO: initialize two-phase meta storage
-	storage, err := etcdConn.GetTxMetaStorage(ctx)
-	spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
+	memqdb.SwapState(swapDb.State)
+	return nil
+}
+
+func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.ClientConn) error {
+	swapDb, err := qdb.NewMemQDB("")
 	if err != nil {
 		return err
 	}
-	if err := swapDb.SetTxMetaStorage(ctx, storage); err != nil {
+
+	copyStateFields(swapDb.State, memqdb.State)
+
+	dsCl := proto.NewDistributionServiceClient(cc)
+	krCl := proto.NewKeyRangeServiceClient(cc)
+	dsResp, err := dsCl.ListDistributions(ctx, nil)
+	if err != nil {
 		return err
+	}
+	for _, ds := range dsResp.Distributions {
+		d, err := distributions.DistributionFromProto(ds)
+		if err != nil {
+			return err
+		}
+		dStmts, err := swapDb.CreateDistribution(ctx, distributions.DistributionToDB(d))
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
+			return err
+		}
+
+		if err := swapDb.ExecNoTransaction(ctx, dStmts); err != nil {
+			return err
+		}
+
+		/* initialize key ranges within distribution */
+		krsResp, err := krCl.ListKeyRange(ctx, &proto.ListKeyRangeRequest{Distribution: d.Id})
+		if err != nil {
+			return err
+		}
+		krs := make([]*qdb.KeyRange, len(krsResp.KeyRangesInfo))
+		for i := range krsResp.KeyRangesInfo {
+			krInt, err := kr.KeyRangeFromProto(krsResp.KeyRangesInfo[i], ds.ColumnTypes)
+			if err != nil {
+				return err
+			}
+			krs[i] = krInt.ToDB()
+		}
+
+		sort.Slice(krs, func(i, j int) bool {
+			l, _ := kr.KeyRangeFromDB(krs[i], d.ColTypes)
+			r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
+			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
+		})
+
+		ops := make([]qdb.QdbStatement, 0)
+		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
+		for _, ckr := range krs {
+			krStmts, err := swapDb.CreateKeyRange(ctx, ckr)
+			if err != nil {
+				return err
+			}
+			ops = append(ops, krStmts...)
+		}
+		if err := swapDb.ExecNoTransaction(ctx, ops); err != nil {
+			return err
+		}
+	}
+
+	refRelCl := proto.NewReferenceRelationsServiceClient(cc)
+	refRelsResp, err := refRelCl.ListReferenceRelations(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	refRels := make([]*qdb.ReferenceRelation, len(refRelsResp.Relations))
+	for i := range refRelsResp.Relations {
+		refRels[i] = rrelation.RefRelationToDB(rrelation.RefRelationFromProto(refRelsResp.Relations[i]))
+	}
+
+	for _, rr := range refRels {
+		if err := swapDb.CreateReferenceRelation(ctx, rr); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+			return err
+		}
 	}
 
 	memqdb.SwapState(swapDb.State)
 	return nil
+}
+
+func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) error {
+	var memqdb *qdb.MemQDB
+	var memPgQDB *qdb.MemPgQDB
+	switch d := db.(type) {
+	case *qdb.MemQDB:
+		memqdb = d
+	case *qdb.MemPgQDB:
+		memqdb = d.MemQDB
+		memPgQDB = d
+	default:
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for MemQDB and MemPGQDB")
+	}
+	if config.RouterConfig().WithCoordinatorConfig() {
+		etcdConn, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, 0)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := etcdConn.Client().Close(); err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+			}
+		}()
+
+		if err := MemQDBReBootstrap(ctx, memqdb, etcdConn); err != nil {
+			return err
+		}
+		if memPgQDB != nil {
+			storage, err := etcdConn.GetTxMetaStorage(ctx)
+			spqrlog.Zero.Debug().Strs("storage", storage).Msg("got dcs storage from etcd")
+			if err != nil {
+				return err
+			}
+			curStorage, err := memPgQDB.GetTxMetaStorage(ctx)
+			if err != nil {
+				return err
+			}
+			if len(curStorage) == 0 {
+				if err := memPgQDB.SetTxMetaStorage(ctx, storage); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		coordAddr, err := mgr.GetCoordinator(ctx)
+		if err != nil {
+			return err
+		}
+		if coordAddr == "" {
+			return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for coordinator-managed routers")
+		}
+		cc, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+		if err := MemQDBReBootstrapGRPC(ctx, memqdb, cc); err != nil {
+			return err
+		}
+		if memPgQDB != nil {
+			twoPhaseTxMetaCl := proto.NewTwoPhaseTxMetaServiceClient(cc)
+			storageResp, err := twoPhaseTxMetaCl.GetTwoPhaseTxMetaStorage(ctx, nil)
+			if err != nil {
+				return err
+			}
+			spqrlog.Zero.Debug().Strs("storage", storageResp.Storage).Msg("got dcs storage from etcd")
+			curStorage, err := memPgQDB.GetTxMetaStorage(ctx)
+			if err != nil {
+				return err
+			}
+			if curStorage == nil {
+				if err := memPgQDB.SetTxMetaStorage(ctx, storageResp.Storage); err != nil {
+					return err
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+func copyStateFields(swapDb, db *qdb.MemQDBState) {
+	swapDb.Shards = db.Shards
+	swapDb.Transactions = db.Transactions
+	swapDb.Coordinator = db.Coordinator
+	swapDb.MoveTasks = db.MoveTasks
+	swapDb.BalancerTask = db.BalancerTask
+	swapDb.MoveTaskGroups = db.MoveTaskGroups
+	swapDb.TaskGroupIDToStatus = db.TaskGroupIDToStatus
+	swapDb.StopMoveTaskGroup = db.StopMoveTaskGroup
+	swapDb.TotalKeys = db.TotalKeys
+	swapDb.RedistributeTasks = db.RedistributeTasks
+	swapDb.RedistributeTaskTaskGroupId = db.RedistributeTaskTaskGroupId
+	swapDb.KeyRangeRedistributeTasks = db.KeyRangeRedistributeTasks
+	swapDb.TaskGroupMoveTaskID = db.TaskGroupMoveTaskID
+	swapDb.UniqueIndexes = db.UniqueIndexes
+	swapDb.UniqueIndexesByRel = db.UniqueIndexesByRel
 }

@@ -34,19 +34,21 @@ SET __spqr__reply_notice TO true;
 
 INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
 
-SELECT * from xxtest_sw WHERE id = 2 or id = 1;
+SELECT * from xxtest_sw WHERE id <= 2;
 
 SET search_path to 'error';
 
 -- should fail
-SELECT * from xxtest_sw WHERE id = 2 or id = 1;
+SELECT * from xxtest_sw WHERE id <= 2;
 
 SET search_path to 'public';
 
 -- should success
-SELECT * from xxtest_sw WHERE id = 2 or id = 1;
+SELECT * from xxtest_sw WHERE id <= 2;
 
 DROP TABLE xxtest_sw;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

@@ -43,6 +43,8 @@ type Pool interface {
 	Put(client Client) error
 	Pop(id uint) (bool, error)
 
+	/* Same as Shutdown(), but does not immediately kill user */
+	GracShutdown()
 	Shutdown() error
 }
 
@@ -125,6 +127,12 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 
 // TODO : unit tests
 
+func (c *PoolImpl) GracShutdown() {
+	if c.healthCheckCancel != nil {
+		c.healthCheckCancel()
+	}
+}
+
 // Shutdown shuts down the client pool by closing all clients and releasing associated resources.
 //
 // It iterates over all clients in the pool, closes each client, and then clears the pool.
@@ -135,6 +143,8 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 // Returns:
 //   - error: An error if any occurred during the shutdown process.
 func (c *PoolImpl) Shutdown() error {
+
+	c.GracShutdown()
 
 	c.pool.Range(func(_, value any) bool {
 		cl, ok := value.(Client)
@@ -150,8 +160,6 @@ func (c *PoolImpl) Shutdown() error {
 
 		return true
 	})
-
-	c.healthCheckCancel()
 
 	return nil
 }
@@ -219,9 +227,9 @@ func (c *PoolImpl) backgroundHealthCheckLoop() {
 
 				if !netutil.TCPCheckAliveness(cl.Conn()) {
 
-					spqrlog.Zero.Info().Uint("client-id", cl.ID()).Msg("Found un-alive client")
+					spqrlog.Zero.Info().Uint("client", cl.ID()).Msg("Found un-alive client")
 					if err := cl.Cancel(); err != nil {
-						spqrlog.Zero.Error().Uint("client-id", cl.ID()).Err(err).Msg("failed to send cancel request to client")
+						spqrlog.Zero.Error().Uint("client", cl.ID()).Err(err).Msg("failed to send cancel request to client")
 						/* Do not fail, continue with next client */
 					}
 				}
@@ -247,8 +255,7 @@ const (
 // - Pool: A pointer to the newly created PoolImpl instance.
 func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	pl := &PoolImpl{
-		pool: sync.Map{},
-
+		pool:              sync.Map{},
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, clientDeadCheckInterval),
 		counters:          map[string]*atomic.Uint64{},
 	}

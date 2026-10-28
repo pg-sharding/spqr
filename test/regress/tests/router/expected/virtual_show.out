@@ -1,5 +1,6 @@
 SHOW __spqr__distribution;
 ERROR:  parameter "__spqr__distribution" isn't user accessible
+QUERY:  SHOW __spqr__distribution;
 SHOW __spqr__default_route_behaviour;
  default route behaviour 
 -------------------------
@@ -13,8 +14,22 @@ SHOW __spqr__auto_distribution;
 (1 row)
 
 SHOW __spqr__distribution_key;
- __spqr__distribution_key 
---------------------------
+ distribution key 
+------------------
+ 
+(1 row)
+
+SET __spqr__distribution_key TO 'col1';
+SHOW __spqr__distribution_key;
+ distribution key 
+------------------
+ col1
+(1 row)
+
+SET __spqr__distribution_key TO '';
+SHOW __spqr__distribution_key;
+ distribution key 
+------------------
  
 (1 row)
 
@@ -26,6 +41,7 @@ SHOW __spqr__sharding_key;
 
 SHOW __spqr__scatter_query;
 ERROR:  parameter "__spqr__scatter_query" isn't user accessible
+QUERY:  SHOW __spqr__scatter_query;
 SHOW __spqr__reply_notice;
  show notice messages 
 ----------------------
@@ -33,8 +49,8 @@ SHOW __spqr__reply_notice;
 (1 row)
 
 SHOW __spqr__maintain_params;
- deploy GUC params on pool connection acquire 
-----------------------------------------------
+ maintain params 
+-----------------
  false
 (1 row)
 
@@ -60,6 +76,24 @@ SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
  smart-read-write
+(1 row)
+
+SHOW __spqr__session_connections_pin;
+ Session connections pinned 
+----------------------------
+ false
+(1 row)
+
+SHOW __spqr__flux_access;
+ flux data access 
+------------------
+ false
+(1 row)
+
+SHOW __spqr__notice_message_format;
+ notice message format 
+-----------------------
+ {shard}
 (1 row)
 
 SHOW target_session_attrs;
@@ -129,5 +163,25 @@ SHOW __spqr__allow_split_update;
  allow split update 
 --------------------
  true
+(1 row)
+
+SHOW __spqr__preferred_engine;
+ preferred engine 
+------------------
+ 
+(1 row)
+
+SET __spqr__preferred_engine TO v2;
+SHOW __spqr__preferred_engine;
+ preferred engine 
+------------------
+ v2
+(1 row)
+
+SET __spqr__preferred_engine TO '';
+SHOW __spqr__preferred_engine;
+ preferred engine 
+------------------
+ 
 (1 row)
 

@@ -3,6 +3,7 @@ package rmeta
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -18,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -25,6 +27,11 @@ import (
 type AuxValuesKey struct {
 	CTEName    string
 	ColRefName string
+}
+
+/* Detach trigger for shared invalidation? */
+type MetadataCache struct {
+	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 
 type RoutingMetadataContext struct {
@@ -39,8 +46,10 @@ type RoutingMetadataContext struct {
 	// can be routed with different rules
 	Rels         map[rfqn.RelationFQN]struct{}
 	RoutableRels map[rfqn.RelationFQN]struct{}
-	Exprs        map[rfqn.RelationFQN]map[string][]any
-	ParamRefs    map[rfqn.RelationFQN]map[string][]int
+	// RefRels tracks reference (replicated) relations of the query
+	RefRels   map[rfqn.RelationFQN]struct{}
+	Exprs     map[rfqn.RelationFQN]map[string][]any
+	ParamRefs map[rfqn.RelationFQN]map[string][]int
 
 	// cached CTE names
 	CteNames map[string]*lyx.CommonTableExpr
@@ -68,19 +77,36 @@ type RoutingMetadataContext struct {
 	/* Is query proven to be read-only? */
 	ro bool
 	/* NB: Not the same as !ro */
-	HasWriteTargets bool
+	HasWriteTargets       bool
+	HasReferenceRelUpdate bool
+	/* Should we auto-linearize? */
+	HasHazardUpsert bool
 
 	/* Is this split-update? */
 	IsSplitUpdate bool
 	IsSPQRCTID    bool
 
-	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+	LastResultFormatCodes []int16
+
+	MetaCache *MetadataCache
+
+	RecheckKeyRange []*kr.KeyRange
 
 	RelationsByDistributionCol map[string][]*rfqn.RelationFQN
 }
 
 func (rm *RoutingMetadataContext) SetRO(ro bool) {
 	rm.ro = ro
+}
+
+func (rm *RoutingMetadataContext) GetResultFormatCode(ind int) int16 {
+	if len(rm.LastResultFormatCodes) == 0 {
+		return xproto.FormatCodeText
+	}
+	if ind >= len(rm.LastResultFormatCodes) {
+		return rm.LastResultFormatCodes[0]
+	}
+	return rm.LastResultFormatCodes[ind]
 }
 
 func (rm *RoutingMetadataContext) IsRO() bool {
@@ -92,27 +118,30 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 	query string,
 	stmt lyx.Node,
 	csm connmgr.ConnectionMgr,
-	mgr meta.EntityMgr) *RoutingMetadataContext {
+	mgr meta.EntityMgr,
+	mCache *MetadataCache) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		Rels:                       map[rfqn.RelationFQN]struct{}{},
-		RoutableRels:               map[rfqn.RelationFQN]struct{}{},
-		CteNames:                   map[string]*lyx.CommonTableExpr{},
-		TableAliases:               map[string]rfqn.RelationFQN{},
-		CTEAliases:                 map[string]string{},
-		Exprs:                      map[rfqn.RelationFQN]map[string][]any{},
-		ParamRefs:                  map[rfqn.RelationFQN]map[string][]int{},
-		Distributions:              map[rfqn.RelationFQN]*distributions.Distribution{},
+		Rels:            map[rfqn.RelationFQN]struct{}{},
+		RoutableRels:    map[rfqn.RelationFQN]struct{}{},
+		RefRels:         map[rfqn.RelationFQN]struct{}{},
+		CteNames:        map[string]*lyx.CommonTableExpr{},
+		TableAliases:    map[string]rfqn.RelationFQN{},
+		CTEAliases:      map[string]string{},
+		Exprs:           map[rfqn.RelationFQN]map[string][]any{},
+		ParamRefs:       map[rfqn.RelationFQN]map[string][]int{},
+		MetaCache:       mCache,
+		AuxValues:       map[AuxValuesKey][]lyx.Node{},
+		AuxValuesParent: map[AuxValuesKey]AuxValuesKey{},
+		UsedAuxCTE:      map[AuxValuesKey][]*rfqn.RelationFQN{},
+		SPH:             sph,
+		CSM:             csm,
+		Mgr:             mgr,
+		Query:           query,
+		Stmt:            stmt,
+		ro:              false,
+		ClientRule:      clientRule,
+
 		RelationsByDistributionCol: map[string][]*rfqn.RelationFQN{},
-		AuxValues:                  map[AuxValuesKey][]lyx.Node{},
-		AuxValuesParent:            map[AuxValuesKey]AuxValuesKey{},
-		UsedAuxCTE:                 map[AuxValuesKey][]*rfqn.RelationFQN{},
-		SPH:                        sph,
-		CSM:                        csm,
-		Mgr:                        mgr,
-		Query:                      query,
-		Stmt:                       stmt,
-		ro:                         false,
-		ClientRule:                 clientRule,
 	}
 }
 
@@ -154,15 +183,16 @@ func (rm *RoutingMetadataContext) ResolveTypedParamRef(paramResCodes []int16, in
 	// TODO: switch column type here
 	// only works for one value
 
-	if len(paramResCodes) < ind {
+	if ind < 0 || ind >= len(paramResCodes) {
 		return nil, plan.ErrResolvingValue
 	}
-	if ind >= len(paramResCodes) {
+	bindParams := rm.SPH.BindParams()
+	if ind >= len(bindParams) {
 		return nil, plan.ErrResolvingValue
 	}
 	fc := paramResCodes[ind]
 
-	return plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
+	return plan.ParseResolveParamValue(fc, ind, tp, bindParams)
 }
 
 func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
@@ -184,11 +214,18 @@ func (rm *RoutingMetadataContext) ResolveValue(relationFQN *rfqn.RelationFQN, co
 		return nil, plan.ErrResolvingValue
 	}
 
-	ind := inds[0]
+	/* resolve all params referencing the distribution column
+	 * e.g. distribution_key IN ($1, $2) */
+	vals := make([]any, 0, len(inds))
+	for _, ind := range inds {
+		v, err := rm.ResolveTypedParamRef(paramResCodes, ind, tp)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
 
-	singleVal, err := rm.ResolveTypedParamRef(paramResCodes, ind, tp)
-
-	return []any{singleVal}, err
+	return vals, nil
 }
 
 func (rm *RoutingMetadataContext) SearchKeyByColRef(cf *lyx.ColumnRef) AuxValuesKey {
@@ -207,8 +244,21 @@ func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node 
 	return rm.AuxValues[rm.SearchKeyByColRef(cf)]
 }
 
+func (rm *RoutingMetadataContext) updateDistribColMapping(r *distributions.DistributedRelation, resolvedRelation *rfqn.RelationFQN) {
+	for _, e := range r.GetDistributionKeyColumnNames() {
+		if !slices.ContainsFunc(rm.RelationsByDistributionCol[e], func(e *rfqn.RelationFQN) bool {
+			return e.String() == resolvedRelation.String()
+		}) {
+			rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
+		}
+	}
+}
+
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
-	if res, ok := rm.Distributions[*resolvedRelation]; ok {
+	if res, ok := rm.MetaCache.Distributions[*resolvedRelation]; ok {
+		r := res.GetRelation(resolvedRelation)
+		rm.updateDistribColMapping(r, resolvedRelation)
+
 		return res, nil
 	}
 
@@ -222,18 +272,21 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 		return nil, err
 	}
 
-	rm.Distributions[*resolvedRelation] = ds
+	rm.MetaCache.Distributions[*resolvedRelation] = ds
 	r := ds.GetRelation(resolvedRelation)
 
-	for _, e := range r.GetDistributionKeyColumnNames() {
-		rm.RelationsByDistributionCol[e] = append(rm.RelationsByDistributionCol[e], resolvedRelation)
-	}
+	rm.updateDistribColMapping(r, resolvedRelation)
+
 	return ds, nil
 }
 
 func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) bool {
 	_, ok := rm.CteNames[resolvedRelation.RelationName]
 	return len(resolvedRelation.SchemaName) == 0 && ok
+}
+
+func (rm *RoutingMetadataContext) HasOnlyReferenceRels() bool {
+	return len(rm.Rels) != 0 && len(rm.Rels) == len(rm.RefRels)
 }
 
 // TODO : unit tests
@@ -300,20 +353,38 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	var matchedKrkey *kr.KeyRange
+	var matchedKeyRange *kr.KeyRange
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
-			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
-			matchedKrkey = krkey
+			(matchedKeyRange == nil || kr.CmpRangesLessEqual(matchedKeyRange.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
+			matchedKeyRange = krkey
 		}
 	}
 
-	if matchedKrkey != nil {
-		if err := rm.Mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
+	if matchedKeyRange != nil {
+
+		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_FLUX_ACCESS)
+		if err != nil {
 			return kr.ShardKey{}, err
 		}
-		return kr.ShardKey{Name: matchedKrkey.ShardID}, nil
+
+		if guc.Get(rm.SPH) {
+			/* XXX: recheck for races here */
+			if matchedKeyRange.IsLocked {
+				if !slices.ContainsFunc(rm.RecheckKeyRange, func(r *kr.KeyRange) bool {
+					return r.ID == matchedKeyRange.ID
+				}) {
+					rm.RecheckKeyRange = append(rm.RecheckKeyRange, matchedKeyRange)
+				}
+			}
+
+		} else {
+			if err := rm.Mgr.ShareKeyRange(matchedKeyRange.ID); err != nil {
+				return kr.ShardKey{}, err
+			}
+		}
+		return kr.ShardKey{Name: matchedKeyRange.ShardID}, nil
 	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
@@ -336,7 +407,11 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 		return kr.ShardKey{}, err
 	}
 
-	dRel := rm.SPH.DistributedRelation()
+	dRelGuc, err := rm.SPH.FindStrGUC(session.SPQR_DISTRIBUTED_RELATION)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+	dRel := dRelGuc.Get(rm.SPH)
 
 	hf := hashfunction.HashFunctionIdent
 
@@ -361,6 +436,7 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 			}
 			if first {
 				hf = hfLocal
+				first = false
 			} else {
 				if hf != hfLocal {
 					return kr.ShardKey{}, fmt.Errorf("failed to resolve hint hash function")
@@ -378,12 +454,20 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 }
 
 func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
-	if rm.SPH.ScatterQuery() {
+	guc, err := rm.SPH.FindBoolGUC(session.SPQR_SCATTER_QUERY)
+	if err != nil {
+		return nil, err
+	}
+	if guc.Get(rm.SPH) {
 		return &plan.ScatterPlan{
 			Forced: true,
 		}, nil
 	}
-	if val := rm.SPH.ShardingKey(); val != "" {
+	shardingGuc, err := rm.SPH.FindStrGUC(session.SPQR_SHARDING_KEY)
+	if err != nil {
+		return nil, err
+	}
+	if val := shardingGuc.Get(rm.SPH); val != "" {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
 		dsId := rm.SPH.Distribution()
@@ -451,6 +535,8 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 		switch tp {
 		case qdb.ColumnTypeUUID:
 			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
+			fallthrough
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
@@ -475,6 +561,8 @@ func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 	case *lyx.AExprIConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:
+			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
 			return nil, fmt.Errorf("uuid type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough

@@ -16,6 +16,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -23,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -51,12 +54,103 @@ type QueryStateExecutorImpl struct {
 
 	d qdb.DCStateKeeper
 
+	localConn map[string]shard.ShardHostInstance
+
 	es ExecutorState
+}
+
+// Close implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) Close() {
+	for _, sh := range s.localConn {
+		_ = s.Client().Route().MultiShardPool().Put(sh)
+	}
+}
+
+// Discard implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) Discard(sh shard.ShardHostInstance) error {
+	delete(s.localConn, sh.ShardKeyName())
+	return s.Client().Route().MultiShardPool().Discard(sh)
+}
+
+// Put implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) Put(v shard.ShardHostInstance) error {
+	return s.Client().Route().MultiShardPool().Put(v)
+}
+
+// View implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) View() pool.Statistics {
+	return s.Client().Route().MultiShardPool().View()
+}
+
+// ConnectionWithTSA implements [pool.ConnectionProvider].
+func (s *QueryStateExecutorImpl) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
+
+	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+	if err != nil {
+		return nil, err
+	}
+
+	/* Connection are pinned - try to lookup local cache */
+	if guc.Get(s.Client()) {
+		if c, ok := s.localConn[key.Name]; ok {
+			return c, nil
+		}
+	}
+
+	return s.Client().Route().MultiShardPool().ConnectionWithTSA(params, key)
+}
+
+// CleanupConnection implements [poolmgr.GangMgr].
+func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v shard.ShardHostInstance) error {
+	/* Standard connection cleanup util.
+	* TODO: extend with pseudo-cache */
+
+	if v == nil {
+		return nil
+	}
+
+	if config.RouterConfig().ForceConnectionCleanup {
+		return v.Close()
+	}
+
+	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
+	if err != nil {
+		if err := s.Client().Route().MultiShardPool().Discard(v); err != nil {
+			return err
+		}
+		if err := v.Close(); err != nil {
+			return err
+		}
+
+		return err
+	}
+
+	/* Connection are pinned - save to local cache */
+	if guc.Get(s.Client()) {
+		s.localConn[v.ShardKeyName()] = v
+
+		return nil
+	}
+
+	if v.Sync() != 0 {
+		/* will automatically discard connection,
+		but we will not perform cleanup, which may stuck forever */
+		return p.Put(v)
+	}
+
+	if err := v.Cleanup(s.Client().Rule()); err != nil {
+		return err
+	}
+	return p.Put(v)
 }
 
 // ActiveShards implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) ActiveShards() []kr.ShardKey {
 	return s.es.activeShards
+}
+
+func (s *QueryStateExecutorImpl) ImplicitTx() bool {
+	return s.es.implicitTx
 }
 
 // ActiveShardsReset implements [QueryStateExecutor].
@@ -101,7 +195,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	/* TODO: deploy tx status on each gang. */
 
 	for _, sh := range serv.Datashards() {
-		st, err := shard.DeployTxOnShard(sh, q, expTx)
+		st, err := shard.DeployTxOnShard(sh, q, "deploy tx internal", expTx)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
@@ -115,6 +209,47 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	return nil
 }
 
+func (s *QueryStateExecutorImpl) TryMatchExecTargets(p plan.Plan, ds []kr.ShardKey) (plan.Plan, error) {
+
+	/* Try to select route close to already acquired, in cases when plan
+	* does not dictate this strictly. */
+	switch v := p.(type) {
+	case *plan.RandomDispatchPlan:
+		if v.ExecTargets == nil {
+			if len(s.ActiveShards()) == 0 {
+				return planner.SelectRandomDispatchPlan(ds)
+
+			} else {
+				return planner.SelectRandomDispatchPlan(s.ActiveShards())
+			}
+		} else {
+
+			/* check if ref relation storage shards and out active shards
+			* have intersection */
+
+			intersection := make([]kr.ShardKey, 0)
+
+			for _, curr := range s.ActiveShards() {
+				if slices.ContainsFunc(v.ExecTargets, func(sh kr.ShardKey) bool {
+					return sh.Name == curr.Name
+				}) {
+					intersection = append(intersection, curr)
+				}
+			}
+
+			if len(intersection) > 0 {
+				return planner.SelectRandomDispatchPlan(intersection)
+
+			} else {
+				/* reference relation case */
+				return planner.SelectRandomDispatchPlan(v.ExecTargets)
+			}
+		}
+	default:
+		return p, nil
+	}
+}
+
 // InitPlan implements QueryStateExecutor.
 func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 
@@ -125,13 +260,15 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 		return ErrMatchShardError
 	}
 
+	statistics.IncTotalNonVirtualRequest()
+
 	if len(s.ActiveShards()) != 0 {
 		spqrlog.Zero.Debug().
 			Uint("relay state", spqrlog.GetPointer(s)).
 			Int("len", len(s.ActiveShards())).
 			Msg("unroute previous connections")
 
-		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(s, s.Client(), s.ActiveShards()); err != nil {
 			return err
 		}
 		s.es.activeShards = nil
@@ -148,16 +285,15 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 
 	var serv server.Server
 	var err error
-
 	/* Traverse and create gang for each slice. */
 
 	if len(s.ActiveShards()) > 1 || p.Subplan() != nil {
-		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
+		serv, err = server.NewMultiShardServer(s)
 		if err != nil {
 			return err
 		}
 	} else {
-		serv = server.NewShardServer(s.Client().Route().MultiShardPool())
+		serv = server.NewShardServer(s)
 	}
 
 	/* Assign top-level gang (output slice) to client */
@@ -176,18 +312,18 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			Str("client tsa", string(s.Client().GetTsa())).
 			Msg("adding shard with tsa")
 		if err := s.Client().Server().AllocateGangMember(
-			s.Client().ID(),
-			shkey, s.Client().GetTsa()); err != nil {
+			s.Client().AllocParams(), shkey); err != nil {
 			return err
 		}
 	}
 
-	guc, err := session.BoolGUCByName(session.SPQR_MAINTAIN_PARAMS)
+	guc, err := s.Client().FindBoolGUC(session.SPQR_MAINTAIN_PARAMS)
 	if err != nil {
 		return err
 	}
 
-	if guc.Get(s.cl) {
+	/* Do this in expand routes too. */
+	if guc.Get(s.Client()) {
 		query := s.Client().ConstructClientParams()
 		spqrlog.Zero.Debug().
 			Uint("client", s.Client().ID()).
@@ -248,18 +384,28 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
-func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt) error {
+func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error {
+
+	s.es.implicitTx = implicit
+
 	if s.poolMgr.ConnectionActive(s) {
 		return s.DeploySliceTransactionQuery(query)
 	}
-
-	s.SetTxStatus(txstatus.TXACT)
+	guc, err := s.cl.FindBoolGUC(session.SPQR_AUTONOMOUS_TX)
+	if err != nil {
+		return err
+	}
+	if guc.Get(s.cl) {
+		s.SetTxStatus(txstatus.TXIDLE)
+	} else {
+		s.SetTxStatus(txstatus.TXACT)
+	}
 	s.cl.StartTx()
 
 	// explicitly set silent query message, as it can differ from query begin in xproto
 	s.es.savedBegin = &pgproto3.Query{String: query}
 
-	spqrlog.Zero.Debug().Uint("client", s.Client().ID()).Msg("start new transaction")
+	spqrlog.Zero.Debug().Uint("client", s.Client().ID()).Bool("implicitTx", implicit).Msg("start new transaction")
 
 	for _, opt := range st.Options {
 		switch opt {
@@ -271,30 +417,37 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
-	s.SetCommandCompleteTag("BEGIN")
+	if !implicit {
+		s.SetCommandCompleteTag("BEGIN")
+	}
 	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
-	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
+	spqrlog.Zero.Debug().
+		Uint("client", s.cl.ID()).
+		Bool("allow 2pc", config.RouterConfig().AllowTwoPhaseCommit).
+		Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
 
 	serv := s.cl.Server()
 
 	/* XXX: warn user of misconfiguration */
-	if config.RouterConfig().AllowTwoPhaseCommit && s.cl.CommitStrategy() == twopc.CommitStrategy2pc && len(serv.Datashards()) > 1 {
-		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv); err != nil {
-			return err
-		} else {
-			s.SetTxStatus(st)
-		}
+	/* XXX: check if planner 'guarantees' read-only-ness */
+	if config.RouterConfig().AllowTwoPhaseCommit &&
+		s.cl.CommitStrategy() == twopc.CommitStrategy2pc &&
+		len(serv.Datashards()) > 1 {
+		st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl, serv)
 
-	} else {
-		if err := s.deployTxStatusInternal(serv,
-			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
+		if err != nil {
 			return err
 		}
+		s.SetTxStatus(st)
+		return nil
 	}
-	return nil
+
+	return s.deployTxStatusInternal(serv,
+		&pgproto3.Query{String: query}, txstatus.TXIDLE)
+
 }
 
 // query in commit query. maybe commit or commit `name`
@@ -302,7 +455,10 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.CommitActiveSet()
-		s.SetCommandCompleteTag("COMMIT")
+		if !s.es.implicitTx {
+			s.SetCommandCompleteTag("COMMIT")
+		}
+		s.es.implicitTx = false
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
@@ -312,7 +468,10 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	}
 
 	s.Client().CommitActiveSet()
-	s.SetCommandCompleteTag("COMMIT")
+	if !s.es.implicitTx {
+		s.SetCommandCompleteTag("COMMIT")
+	}
+	s.es.implicitTx = false
 	return nil
 }
 
@@ -328,6 +487,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 
 /* TODO: proper support for rollback to savepoint */
 func (s *QueryStateExecutorImpl) ExecRollback(_ string) error {
+	s.es.implicitTx = false
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
@@ -497,9 +657,11 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 	}
 
 	return &pgcopy.CopyState{
-		Delimiter:      delimiter,
-		Krs:            krs,
-		RM:             rmeta.NewRoutingMetadataContext(s.cl, s.cl.Rule(), "", nil /*XXX: fix this*/, nil, s.mgr),
+		Delimiter: delimiter,
+		Krs:       krs,
+		RM: rmeta.NewRoutingMetadataContext(s.cl, s.cl.Rule(), "", nil /*XXX: fix this*/, nil, s.mgr, &rmeta.MetadataCache{
+			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		}),
 		Ds:             ds,
 		Drel:           dRel,
 		HashFunc:       hashFunc,
@@ -718,6 +880,42 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
+func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool) error {
+
+	for _, sh := range serv.Datashards() {
+
+	l:
+		for {
+			cpMsg, err := serv.ReceiveShard(sh.ID())
+			if err != nil {
+				return err
+			}
+			switch newMsg := cpMsg.(type) {
+			case *pgproto3.CopyData:
+				if err := s.Client().Send(newMsg); err != nil {
+					return err
+				}
+			case *pgproto3.CopyDone:
+				break l
+			default:
+				/* panic? */
+			}
+		}
+	}
+
+	txt, err := s.ProcCopyComplete(&pgproto3.CopyDone{}, simple)
+	if err != nil {
+		return err
+	}
+
+	if txt != s.cl.Server().TxStatus() {
+		return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+	}
+	s.SetTxStatus(txt)
+
+	return nil
+}
+
 func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 
 	var leftoverMsgData []byte
@@ -764,7 +962,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 			}
 
 			if txt != s.cl.Server().TxStatus() {
-				return rerrors.ErrExecutorSyncLost
+				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 			}
 			s.SetTxStatus(txt)
 
@@ -778,11 +976,19 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan, _ bool) error {
 
+	sv := s.es.implicitTx
+
 	s.Reset()
+
+	s.es.implicitTx = sv
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
-	s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+	guc, err := s.cl.FindStrGUC(session.SPQR_EXECUTE_ON)
+	if err != nil {
+		return err
+	}
+	s.es.attachedCopy = guc.Get(s.cl) != "" || s.TxStatus() == txstatus.TXACT
 
 	/* Should be deploy plan (all slices) in implicit transaction block? */
 
@@ -844,7 +1050,8 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 
 	if sp := p.Subplan(); sp != nil {
 		/* XXX: Do all required job in sub-plan */
-		spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+		spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
+
 		if err := s.executeInnerSlice(serv, sp); err != nil {
 			return err
 		}
@@ -869,7 +1076,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		return err
 	}
 
-	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
 
 	/* Now dispatch this toplevel slice */
 	if err := DispatchSlice(qd, p, s.Client(), true); err != nil {
@@ -904,7 +1111,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	if topPlan != nil {
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
-			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+			spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
 			if err := s.executeInnerSlice(serv, sp); err != nil {
 				return err
 			}
@@ -946,9 +1153,6 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		}
 
 		return nil
-
-	case *plan.CopyPlan:
-		return rerrors.ErrExecutorSyncLost
 	case *plan.ScatterPlan:
 		if q.OverwriteCC != nil {
 			overwriteCC = q.OverwriteCC
@@ -966,17 +1170,30 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	}
 
 	for {
-		msg, recvIndex, err := serv.Receive()
+		var o *planopts.PlanOpts
+		if topPlan != nil {
+			o = topPlan.Opts()
+		}
+		msg, recvIndex, err := serv.Receive(o)
 		if err != nil {
 			return err
 		}
 
 		spqrlog.Zero.Debug().
 			Str("server", serv.Name()).
+			Uint("client", s.Client().ID()).
 			Type("msg-type", msg).
-			Msg("received message from server")
+			Msg("received message from server in execute")
 
 		switch v := msg.(type) {
+		case *pgproto3.CopyOutResponse:
+			// XXX: handle replyCl somehow
+			err = s.Client().Send(msg)
+			if err != nil {
+				return err
+			}
+
+			return s.copyToExecutor(serv, qd.simple)
 		case *pgproto3.CopyInResponse:
 			// handle replyCl somehow
 			err = s.Client().Send(msg)
@@ -985,11 +1202,59 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 
 			return s.copyFromExecutor(qd.simple)
+		case *pgproto3.PortalSuspended:
+			s.es.portalSuspended = true
+			/* Dummy stub implementation for now. This will work OK only in single-shard case... */
+			if err := s.Client().Send(v); err != nil {
+				return err
+			}
+		portalLoop:
+			for {
+				msg, err := s.Client().Peek()
+
+				spqrlog.Zero.Trace().
+					Str("server", serv.Name()).
+					Type("msg-type", msg).
+					Msg("peek in portalLoop")
+
+				if err != nil {
+					return err
+				}
+
+				switch msg.(type) {
+				case *pgproto3.Sync:
+
+					if err := serv.Send(pgsync); err != nil {
+						return err
+					}
+
+					break portalLoop
+				case *pgproto3.Flush:
+					/*  "Receive" it and recent as-is */
+					_, _ = s.Client().Receive()
+
+					if err := serv.Send(pgflush); err != nil {
+						return err
+					}
+
+					break portalLoop
+				case *pgproto3.Execute:
+					/*  "Receive" it and recent as-is */
+					_, _ = s.Client().Receive()
+					if err := serv.Send(msg); err != nil {
+						return err
+					}
+				case *pgproto3.Close, *pgproto3.Bind, *pgproto3.Describe, *pgproto3.Parse:
+					return nil
+				}
+
+			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
 				switch v := topPlan.(type) {
 				case *plan.DataRowFilter:
-					if v.FilterIndex == recvIndex {
+					if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
+						shs[recvIndex].SHKey().Name == v.FilterShard.Name {
 						err = s.Client().Send(msg)
 						if err != nil {
 							return err
@@ -1009,11 +1274,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			if replyCl {
 				s.es.eMsg = v
 			}
-		// never expect these msgs
+		// skip
 		case *pgproto3.BindComplete:
-			// skip
+		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost
+			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
@@ -1037,20 +1302,26 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return fmt.Errorf("unexpected row description in slice deploy")
+				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
-			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
+			return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
 		}
 	}
 }
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
+
+	/* First thing first, do sanity check */
+	switch topPlan.(type) {
+	case *plan.CopyPlan:
+		return rerrors.ErrExecutorSyncLost.Detail("copy plan is not convertable to dispatchable plan")
+	}
 
 	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {
 		return err
@@ -1110,7 +1381,7 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := s.Client().Server().ExpandGang(s.Client().ID(), shkey, s.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := s.Client().Server().ExpandGang(s.Client().AllocParams(), shkey, beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}
@@ -1128,6 +1399,11 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	* ErrorMessage and Command complete. If our output gang did not return either of them,
 	* we are in big trouble */
 	if s.es.cc == nil && s.es.eMsg == nil {
+		/* There is an exceptional case with unfinished portal. If query result not fetched
+		* fully, we should not respond with CC message. */
+		if s.es.portalSuspended {
+			return nil
+		}
 		return fmt.Errorf("failed to derive command complete for query")
 	}
 	if s.es.cc != nil {
@@ -1158,16 +1434,19 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.eMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
+	s.es.portalSuspended = false
+	s.es.implicitTx = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
 
 func NewQueryStateExecutor(d qdb.DCStateKeeper, mgr meta.EntityMgr, poolMgr poolmgr.PoolMgr, cl client.RouterClient) QueryStateExecutor {
 	return &QueryStateExecutorImpl{
-		cl:       cl,
-		d:        d,
-		poolMgr:  poolMgr,
-		mgr:      mgr,
-		txStatus: txstatus.TXIDLE,
+		cl:        cl,
+		d:         d,
+		localConn: map[string]shard.ShardHostInstance{},
+		poolMgr:   poolMgr,
+		mgr:       mgr,
+		txStatus:  txstatus.TXIDLE,
 	}
 }

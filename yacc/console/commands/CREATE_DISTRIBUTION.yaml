@@ -10,14 +10,16 @@ description: |
   For composite sharding keys (multiple columns), specify multiple types separated by commas.
   You can append "hash" after a column type to apply hash-based distribution to that column.
 
+  Use IF NOT EXISTS to skip creation when the distribution already exists.
+
 syntax: |
-  CREATE DISTRIBUTION <distributionID>
+  CREATE DISTRIBUTION [IF NOT EXISTS] <distributionID>
     [COLUMN TYPES <types> | (<types>)]
     [DEFAULT SHARD <shardID>]
 
   where types is a comma-separated list of column types for the
   distribution key, and each type is one of: INTEGER, INT,
-  VARCHAR, UUID (VARCHAR/INTEGER may be followed by HASH)
+  VARCHAR, UUID (VARCHAR/INTEGER/UUID may be followed by HASH)
 
   where <shardID> is a default shard identifier. The <shardID> must exist.
 
@@ -32,8 +34,12 @@ parameters:
 examples:
   - description: Single integer key distribution
     code: CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  - description: Create a distribution if it does not exist
+    code: CREATE DISTRIBUTION IF NOT EXISTS ds1 COLUMN TYPES integer;
   - description: Single varchar key distribution with hash
     code: CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
+  - description: Single uuid key distribution with hash
+    code: CREATE DISTRIBUTION ds_uuid COLUMN TYPES uuid hash;
   - description: Composite key distribution with two columns
     code: CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
   - description: Composite key with mixed types and hash on second column
@@ -43,7 +49,7 @@ examples:
 
 tips:
   - Keep column type order aligned with relation distribution keys
-  - Use hashed types for high-cardinality string/integer keys when needed
+  - Use hashed types for high-cardinality string/integer/uuid keys when needed
   - Configure DEFAULT SHARD only when fallback routing is explicitly required
 
 related_commands:

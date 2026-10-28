@@ -44,14 +44,30 @@ type Create struct {
 func (*Create) iStatement() {}
 
 type Drop struct {
-	Element       Statement
+	Element       DropSelector
 	CascadeDelete bool
+	IfExists      bool
 }
 
 func (*Drop) iStatement() {}
 
+type DropSelector interface {
+	SetID(string)
+}
+
 type CreateStmt interface {
 	iCreate()
+}
+
+type Rename struct {
+	Element RenameStmt
+	NewID   string
+}
+
+func (*Rename) iStatement() {}
+
+type RenameStmt interface {
+	iRename()
 }
 
 type TraceStmt struct {
@@ -70,18 +86,32 @@ type DropStmt interface {
 	iDrop()
 }
 
+type CallStmt interface {
+	iCall()
+}
+
+type Call struct {
+	FuncName string
+	Args     []string
+}
+
+func (*Call) iStatement() {}
+func (*Call) iCall()      {}
+
 type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string
 	Replicated           bool
 	AutoIncrementEntries []AutoIncrementEntry
 	DefaultShard         string
+	IfNotExists          bool
 }
 
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
 	ShardIDs             []string
+	IfNotExists          bool
 }
 
 type UniqueIndexDefinition struct {
@@ -104,11 +134,25 @@ type KeyRangeDefinition struct {
 	ShardID      string
 	KeyRangeID   string
 	Distribution *DistributionSelector
+	IfNotExists  bool
+}
+
+type KeyRangesForDistributionDefinition struct {
+	Distribution *DistributionSelector
+	Shards       []string
+	DataKeyRange *CustomDistributionRange
+}
+
+type CustomDistributionRange struct {
+	LowerBound *KeyRangeBound
+	UpperBound *KeyRangeBound
 }
 
 type ShardDefinition struct {
 	Id      string
 	Options []GenericOption
+
+	Force bool
 }
 
 type GenericOption struct {
@@ -137,11 +181,12 @@ type AlterShardOptions struct {
 
 func (*AlterShardOptions) iStatement() {}
 
-func (*KeyRangeDefinition) iCreate()          {}
-func (*ShardDefinition) iCreate()             {}
-func (*DistributionDefinition) iCreate()      {}
-func (*ReferenceRelationDefinition) iCreate() {}
-func (*UniqueIndexDefinition) iCreate()       {}
+func (*KeyRangeDefinition) iCreate()                 {}
+func (*KeyRangesForDistributionDefinition) iCreate() {}
+func (*ShardDefinition) iCreate()                    {}
+func (*DistributionDefinition) iCreate()             {}
+func (*ReferenceRelationDefinition) iCreate()        {}
+func (*UniqueIndexDefinition) iCreate()              {}
 
 type SplitKeyRange struct {
 	Border         *KeyRangeBound
@@ -157,6 +202,7 @@ type UniteKeyRange struct {
 type MoveKeyRange struct {
 	DestShardID string
 	KeyRangeID  string
+	MetaOnly    bool
 }
 
 type RedistributeKeyRange struct {
@@ -173,32 +219,64 @@ type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
+func (s *KeyRangeSelector) SetID(id string) {
+	s.KeyRangeID = id
+}
+
 type DistributionSelector struct {
 	ID string
+}
+
+func (s *DistributionSelector) SetID(id string) {
+	s.ID = id
 }
 
 type ReferenceRelationSelector struct {
 	ID string
 }
 
+func (s *ReferenceRelationSelector) SetID(id string) {
+	s.ID = id
+}
+
 type UniqueIndexSelector struct {
 	ID string
+}
+
+func (s *UniqueIndexSelector) SetID(id string) {
+	s.ID = id
 }
 
 type ShardSelector struct {
 	ID string
 }
 
+func (s *ShardSelector) SetID(id string) {
+	s.ID = id
+}
+
 type TaskGroupSelector struct {
 	ID string
+}
+
+func (s *TaskGroupSelector) SetID(id string) {
+	s.ID = id
 }
 
 type MoveTaskSelector struct {
 	ID string
 }
 
+func (s *MoveTaskSelector) SetID(id string) {
+	s.ID = id
+}
+
 type RedistributeTaskSelector struct {
 	ID string
+}
+
+func (s *RedistributeTaskSelector) SetID(id string) {
+	s.ID = id
 }
 
 func (*KeyRangeSelector) iDrop()          {}
@@ -209,6 +287,8 @@ func (*ShardSelector) iDrop()             {}
 func (*TaskGroupSelector) iDrop()         {}
 func (*MoveTaskSelector) iDrop()          {}
 func (*RedistributeTaskSelector) iDrop()  {}
+
+func (*KeyRangeSelector) iRename() {}
 
 type Lock struct {
 	KeyRangeID string
@@ -232,8 +312,19 @@ type Kill struct {
 type System struct {
 	Reload      bool
 	Restart     bool
+	RotateLog   bool
 	Rebootstrap bool
+	SetGUC      string
+	SetValue    string
 }
+
+type AlterSystemMigration struct {
+	Name  string
+	Value string
+	Reset bool
+}
+
+func (*AlterSystemMigration) iStatement() {}
 
 type GrantStmt struct {
 	IsGrant bool
@@ -317,6 +408,7 @@ type DistributedRelation struct {
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
 	AutoIncrementEntries []*AutoIncrementEntry
+	IfNotExists          bool
 }
 
 type AttachRelation struct {
@@ -370,6 +462,7 @@ func (*RenameDistributionColumn) iAlterRelation() {}
 
 type DetachRelation struct {
 	RelationName *rfqn.RelationFQN
+	IfExists     bool
 }
 
 func (*DetachRelation) iStatement()         {}
@@ -393,6 +486,9 @@ type SequenceSelector struct {
 }
 
 func (*SequenceSelector) iDrop() {}
+func (s *SequenceSelector) SetID(id string) {
+	s.Name = id
+}
 
 type RetryMoveTaskGroup struct {
 	ID     string
@@ -421,6 +517,10 @@ type InstanceControlPoint struct {
 
 func (*InstanceControlPoint) iStatement() {}
 
+type Begin struct{}
+type Commit struct{}
+type Rollback struct{}
+
 //revive:disable:var-naming
 const (
 	SHOW_KIND_UNSPEC = 0
@@ -432,45 +532,51 @@ const (
 
 // The following constants represent SHOW statements.
 const (
-	DatabasesStr          = "databases"
-	DistributionsStr      = "distributions"
-	CoordinatorAddrStr    = "coordinator_address"
-	RoutersStr            = "routers"
-	ShardsStr             = "shards"
-	HostsStr              = "hosts"
-	ShardingRules         = "sharding_rules"
-	KeyRangesStr          = "key_ranges"
-	KeyRangesExtendedStr  = "key_ranges_extended"
-	ClientsStr            = "clients"
-	PoolsStr              = "pools"
-	InstanceStr           = "instance"
-	BackendConnectionsStr = "backend_connections"
-	StatusStr             = "status"
-	VersionStr            = "version"
-	RelationsStr          = "relations"
-	TaskGroupStr          = "task_group"
-	TaskGroupsStr         = "task_groups"
-	PreparedStatementsStr = "prepared_statements"
-	ReferenceRelationsStr = "reference_relations"
-	UnsupportedStr        = "unsupported"
-	QuantilesStr          = "time_quantiles"
-	SequencesStr          = "sequences"
-	IsReadOnlyStr         = "is_read_only"
-	MoveStatsStr          = "move_stats"
-	TsaCacheStr           = "tsa_cache"
-	Users                 = "users"
-	MoveTaskStr           = "move_task"
-	MoveTasksStr          = "move_tasks"
-	UniqueIndexesStr      = "unique_indexes"
-	TaskGroupExtendedStr  = "task_group_ext"
-	TaskGroupsExtendedStr = "task_groups_ext"
-	RedistributeTasksStr  = "redistribute_tasks"
-	ErrorStr              = "errors"
-	StartupFinishedStr    = "startup_finished"
-	TwoPhaseTXStr         = "two_phase_tx"
-	TwoPhaseTXStorageStr  = "dcs_storage"
-	FileSettingsStr       = "file_settings"
-	TaskGroupWorkersStr   = "task_group_workers"
+	DatabasesStr           = "databases"
+	DistributionsStr       = "distributions"
+	CoordinatorAddrStr     = "coordinator_address"
+	RoutersStr             = "routers"
+	ShardsStr              = "shards"
+	HostsStr               = "hosts"
+	HostsExtendedStr       = "hosts_extended"
+	ShardingRules          = "sharding_rules"
+	KeyRangesStr           = "key_ranges"
+	KeyRangesExtendedStr   = "key_ranges_extended"
+	ClientsStr             = "clients"
+	PoolsStr               = "pools"
+	InstanceStr            = "instance"
+	BackendConnectionsStr  = "backend_connections"
+	StatusStr              = "status"
+	VersionStr             = "version"
+	RelationsStr           = "relations"
+	TaskGroupStr           = "task_group"
+	TaskGroupsStr          = "task_groups"
+	PreparedStatementsStr  = "prepared_statements"
+	ReferenceRelationsStr  = "reference_relations"
+	UnsupportedStr         = "unsupported"
+	QuantilesStr           = "time_quantiles"
+	SequencesStr           = "sequences"
+	IsReadOnlyStr          = "is_read_only"
+	TransactionReadOnlyStr = "transaction_read_only"
+	MoveStatsStr           = "move_stats"
+	TsaCacheStr            = "tsa_cache"
+	Users                  = "users"
+	MoveTaskStr            = "move_task"
+	MoveTasksStr           = "move_tasks"
+	UniqueIndexesStr       = "unique_indexes"
+	TaskGroupExtendedStr   = "task_group_ext"
+	TaskGroupsExtendedStr  = "task_groups_ext"
+	RedistributeTasksStr   = "redistribute_tasks"
+	ErrorStr               = "errors"
+	StartupFinishedStr     = "startup_finished"
+	TwoPhaseTXStr          = "two_phase_tx"
+	TwoPhaseTXExtStr       = "two_phase_tx_ext"
+	TwoPhaseTXStorageStr   = "dcs_storage"
+	FileSettingsStr        = "file_settings"
+	MigrationsStr          = "migrations"
+	TaskGroupWorkersStr    = "task_group_workers"
+	ShardsExtendedStr      = "shards_extended"
+	MeanKRLockTimeStr      = "mean_key_range_lock_time"
 )
 
 // not SHOW target
@@ -487,37 +593,41 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Alter) iStatement()                       {}
-func (*Show) iStatement()                        {}
-func (*Set) iStatement()                         {}
-func (*KeyRangeSelector) iStatement()            {}
-func (*DistributionSelector) iStatement()        {}
-func (*ReferenceRelationSelector) iStatement()   {}
-func (*UniqueIndexSelector) iStatement()         {}
-func (*ShardSelector) iStatement()               {}
-func (*TaskGroupSelector) iStatement()           {}
-func (*MoveTaskSelector) iStatement()            {}
-func (*RedistributeTaskSelector) iStatement()    {}
-func (*SequenceSelector) iStatement()            {}
-func (*Lock) iStatement()                        {}
-func (*Unlock) iStatement()                      {}
-func (*Shutdown) iStatement()                    {}
-func (*Listen) iStatement()                      {}
-func (*MoveKeyRange) iStatement()                {}
-func (*RedistributeKeyRange) iStatement()        {}
-func (*SplitKeyRange) iStatement()               {}
-func (*UniteKeyRange) iStatement()               {}
-func (*DistributionDefinition) iStatement()      {}
-func (*ReferenceRelationDefinition) iStatement() {}
-func (*UniqueIndexDefinition) iStatement()       {}
-func (*KeyRangeDefinition) iStatement()          {}
-func (*ShardDefinition) iStatement()             {}
-func (*AlterShard) iStatement()                  {}
-func (*Kill) iStatement()                        {}
-func (*System) iStatement()                      {}
-func (*Invalidate) iStatement()                  {}
-func (*SyncReferenceTables) iStatement()         {}
-func (*AlterReferenceTableStorage) iStatement()  {}
+func (*Alter) iStatement()                              {}
+func (*Show) iStatement()                               {}
+func (*Set) iStatement()                                {}
+func (*KeyRangeSelector) iStatement()                   {}
+func (*DistributionSelector) iStatement()               {}
+func (*ReferenceRelationSelector) iStatement()          {}
+func (*UniqueIndexSelector) iStatement()                {}
+func (*ShardSelector) iStatement()                      {}
+func (*TaskGroupSelector) iStatement()                  {}
+func (*MoveTaskSelector) iStatement()                   {}
+func (*RedistributeTaskSelector) iStatement()           {}
+func (*SequenceSelector) iStatement()                   {}
+func (*Lock) iStatement()                               {}
+func (*Unlock) iStatement()                             {}
+func (*Shutdown) iStatement()                           {}
+func (*Listen) iStatement()                             {}
+func (*MoveKeyRange) iStatement()                       {}
+func (*RedistributeKeyRange) iStatement()               {}
+func (*SplitKeyRange) iStatement()                      {}
+func (*UniteKeyRange) iStatement()                      {}
+func (*DistributionDefinition) iStatement()             {}
+func (*ReferenceRelationDefinition) iStatement()        {}
+func (*UniqueIndexDefinition) iStatement()              {}
+func (*KeyRangeDefinition) iStatement()                 {}
+func (*KeyRangesForDistributionDefinition) iStatement() {}
+func (*ShardDefinition) iStatement()                    {}
+func (*AlterShard) iStatement()                         {}
+func (*Kill) iStatement()                               {}
+func (*System) iStatement()                             {}
+func (*Invalidate) iStatement()                         {}
+func (*SyncReferenceTables) iStatement()                {}
+func (*AlterReferenceTableStorage) iStatement()         {}
+func (*Begin) iStatement()                              {}
+func (*Commit) iStatement()                             {}
+func (*Rollback) iStatement()                           {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

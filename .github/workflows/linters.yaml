@@ -17,10 +17,10 @@ jobs:
     name: go fmt check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.0'
           cache: true
@@ -31,14 +31,10 @@ jobs:
     name: check proto generated code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: true
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.26.0'
-          cache: true
       - name: check proto generated code
         run: make generate && git diff --exit-code
 
@@ -46,10 +42,10 @@ jobs:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.0'
           cache: true
@@ -64,7 +60,7 @@ jobs:
     name: goimports check
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - name: goimports check
@@ -77,10 +73,10 @@ jobs:
     name: go mod tidy check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -96,7 +92,7 @@ jobs:
     name: check for new panic() calls
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: check for new panic() calls
@@ -112,3 +108,14 @@ jobs:
             exit 1
           fi
           echo "✓ No new panic() calls"
+
+  docs-check:
+    name: check generated help
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: check proto generated code
+        run: make generate_help && git diff --exit-code

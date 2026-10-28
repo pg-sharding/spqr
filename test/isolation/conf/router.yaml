@@ -19,8 +19,10 @@ use_coordinator_init: true
 notice_message_format: "{shard}"
 query_routing:
     forbid_direct_shard_queries: true
+    use_spqrguard: true
     enhanced_multishard_processing: true
 store_tx_data_postgresql: True
+2pc_tx_advisory_lock: true
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt
@@ -74,8 +76,6 @@ backend_rules:
   - db: regress
     usr: regress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: md5
@@ -93,8 +93,6 @@ watchdog_backend_rule:
   db: regress
   usr: regress
   connection_limit: 50
-  pool_discard: true
-  pool_rollback: true
   auth_rules:
     sh1:
       auth_method: md5
@@ -111,5 +109,3 @@ watchdog_backend_rule:
 schema_cache_backend_rule:
   usr: regress
   db: regress
-  pool_discard: true
-  pool_rollback: true

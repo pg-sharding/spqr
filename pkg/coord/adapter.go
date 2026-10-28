@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -91,13 +93,13 @@ func (a *Adapter) ShareKeyRange(_ string) error {
 }
 
 // GetReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) GetReferenceRelation(_ context.Context, _ *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
-}
-
-// GetSequenceColumns implements meta.EntityMgr.
-func (a *Adapter) GetSequenceColumns(_ context.Context, _ string) ([]string, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
+func (a *Adapter) GetReferenceRelation(ctx context.Context, relationFQN *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	relation, err := c.GetReferenceRelation(ctx, rfqn.RelationFQNToProto(relationFQN))
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
+	return rrelation.RefRelationFromProto(relation), nil
 }
 
 // GetSequenceColumns implements meta.EntityMgr.
@@ -107,10 +109,7 @@ func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	result := make([]*rfqn.RelationFQN, 0, len(resp.GetRelNames()))
-	for _, relationFQN := range resp.GetRelNames() {
-		result = append(result, rfqn.RelationFQNFromProto(relationFQN))
-	}
+	result := models.ConvertMany(resp.GetRelNames(), rfqn.RelationFQNFromProto)
 	return result, nil
 }
 
@@ -131,7 +130,7 @@ func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, rel
 		Relation: rfqn.RelationFQNToProto(relationFQN),
 		ShardIds: shs,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
@@ -158,17 +157,13 @@ func (a *Adapter) DropReferenceRelation(ctx context.Context, relationFQN *rfqn.R
 
 // ListReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
-	var res []*rrelation.ReferenceRelation
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	ret, err := c.ListReferenceRelations(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
 
-	for _, r := range ret.Relations {
-		res = append(res, rrelation.RefRelationFromProto(r))
-	}
-
+	res := models.ConvertMany(ret.Relations, rrelation.RefRelationFromProto)
 	return res, nil
 }
 
@@ -234,15 +229,10 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 		return nil, spqrerror.CleanGrpcError(err)
 	}
 
-	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
-	for i, keyRange := range reply.KeyRangesInfo {
-		krs[i], err = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return krs, nil
+	krs, err := models.ConvertManyWithError(reply.KeyRangesInfo, func(krinfo *proto.KeyRangeInfo) (*kr.KeyRange, error) {
+		return kr.KeyRangeFromProto(krinfo, ds.Distribution.ColumnTypes)
+	})
+	return krs, err
 }
 
 // ListKeyRangeLocks lists the locked key ranges idents .
@@ -282,12 +272,19 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 	dc := proto.NewDistributionServiceClient(a.conn)
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
+	dsIdColTypes := make(map[string][]string, len(reply.KeyRangesInfo))
 	for i, keyRange := range reply.KeyRangesInfo {
-		ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
-		if err != nil {
-			return nil, spqrerror.CleanGrpcError(err)
+		colTypes, ok := dsIdColTypes[keyRange.DistributionId]
+		if !ok {
+			getDistrReply, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
+			if err != nil {
+				return nil, spqrerror.CleanGrpcError(err)
+			}
+			colTypes = getDistrReply.Distribution.ColumnTypes
+			dsIdColTypes[keyRange.DistributionId] = colTypes
 		}
-		krs[i], err = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
+
+		krs[i], err = kr.KeyRangeFromProto(keyRange, colTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -322,22 +319,7 @@ func (a *Adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 	_, err := c.LockKeyRange(ctx, &proto.LockKeyRangeRequest{
 		Id: []string{krid},
 	})
-	if err != nil {
-		return nil, spqrerror.CleanGrpcError(err)
-	}
-
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, kr := range krs {
-		if kr.ID == krid {
-			return kr, nil
-		}
-	}
-
-	return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", krid)
+	return nil, spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -355,11 +337,7 @@ func (a *Adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 	_, err := c.UnlockKeyRange(ctx, &proto.UnlockKeyRangeRequest{
 		Id: []string{krid},
 	})
-	if err != nil {
-		return spqrerror.CleanGrpcError(err)
-	}
-
-	return nil
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -373,29 +351,15 @@ func (a *Adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 // Returns:
 // - error: An error if splitting the key range was unsuccessful.
 func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return err
-	}
+	c := proto.NewKeyRangeServiceClient(a.conn)
 
-	for _, keyRange := range krs {
-		if keyRange.ID == split.SourceID {
-			c := proto.NewKeyRangeServiceClient(a.conn)
-
-			nkr := keyRange.ToProto()
-			nkr.Krid = split.KeyRangeID
-
-			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
-				Bound:     split.Bound[0], // fix multidim case
-				SourceId:  split.SourceID,
-				NewId:     split.KeyRangeID,
-				SplitLeft: split.SplitLeft,
-			})
-			return spqrerror.CleanGrpcError(err)
-		}
-	}
-
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.KeyRangeID)
+	_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
+		Bound:     split.Bound[0], // fix multidim case
+		SourceId:  split.SourceID,
+		NewId:     split.KeyRangeID,
+		SplitLeft: split.SplitLeft,
+	})
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -409,43 +373,8 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 // Returns:
 // - error: An error if merging the key ranges was unsuccessful.
 func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return err
-	}
-
-	var left *kr.KeyRange
-	var right *kr.KeyRange
-
-	// Check for in-between key ranges
-	for _, kr := range krs {
-		if kr.ID == unite.BaseKeyRangeID {
-			left = kr
-		}
-		if kr.ID == unite.AppendageKeyRangeID {
-			right = kr
-		}
-	}
-
-	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		left, right = right, left
-	}
-
-	for _, krCurr := range krs {
-		if krCurr.ID == unite.BaseKeyRangeID || krCurr.ID == unite.AppendageKeyRangeID {
-			continue
-		}
-		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
-		}
-	}
-
-	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
-	}
-
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
+	_, err := c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
 		BaseId:      unite.BaseKeyRangeID,
 		AppendageId: unite.AppendageKeyRangeID,
 	})
@@ -462,24 +391,14 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 //
 // Returns:
 // - error: An error if moving the key range was unsuccessful.
-func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
-	krs, err := a.ListAllKeyRanges(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, keyRange := range krs {
-		if keyRange.ID == move.KeyRangeID {
-			c := proto.NewKeyRangeServiceClient(a.conn)
-			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
-				Id:        keyRange.ID,
-				ToShardId: move.ShardID,
-			})
-			return spqrerror.CleanGrpcError(err)
-		}
-	}
-
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.KeyRangeID)
+func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange, _ icp.ICPContextHolder) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
+		Id:        move.KeyRangeID,
+		ToShardId: move.ShardID,
+		MetaOnly:  move.MetaOnly,
+	})
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -492,7 +411,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 //
 // Returns:
 // - error: An error if moving the data was unsuccessful.
-func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
 	limit := int64(0)
@@ -534,7 +453,7 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 //
 // Returns:
 // - error: An error if moving the key range was unsuccessful.
-func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, _ icp.ICPContextHolder) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
 		TaskGroupId: req.TaskGroupID,
@@ -622,10 +541,7 @@ func (a *Adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	routers := []*topology.Router{}
-	for _, r := range resp.Routers {
-		routers = append(routers, topology.RouterFromProto(r))
-	}
+	routers := models.ConvertMany(resp.Routers, topology.RouterFromProto)
 	return routers, nil
 }
 
@@ -644,7 +560,7 @@ func (a *Adapter) UnregisterRouter(ctx context.Context, id string) error {
 	_, err := c.RemoveRouter(ctx, &proto.RemoveRouterRequest{
 		Id: id,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -682,6 +598,10 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 	return spqrerror.CleanGrpcError(err)
 }
 
+func (a *Adapter) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, fmt.Errorf("not implemented")
+}
+
 // AddDataShard adds a data shard to the system.
 //
 // Parameters:
@@ -690,27 +610,35 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 //
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
-func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
 	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard, false)})
-	return spqrerror.CleanGrpcError(err)
-}
-
-// TODO : unit tests
-// TODO : implement
-func (a *Adapter) AlterShardOptions(ctx context.Context, shardID string, optionChanges []topology.GenericOption) error {
-	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.AlterShard(ctx, &proto.AlterShardRequest{
-		Id:      shardID,
-		Options: topology.GenericOptionsToProto(optionChanges, true),
+	protoShard, err := topology.DataShardToProto(shard, true)
+	if err != nil {
+		return err
+	}
+	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{
+		Shard: protoShard,
+		Force: force,
 	})
 	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
-// TODO : implement
+func (a *Adapter) AlterShardOptions(ctx context.Context, shardID string, optionChanges []topology.GenericOption) error {
+	client := proto.NewShardServiceClient(a.conn)
+	protoOptions, err := topology.GenericOptionsToProto(optionChanges, true)
+	if err != nil {
+		return err
+	}
+	_, err = client.AlterShard(ctx, &proto.AlterShardRequest{
+		Id:      shardID,
+		Options: protoOptions,
+	})
+	return spqrerror.CleanGrpcError(err)
+}
+
 func (a *Adapter) SetShardOptions(_ context.Context, _ string, _ []topology.GenericOption) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "setShardOptions not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "SetShardOptions should not be used in proxy adapter")
 }
 
 // DropShard drops a data shard from the system.
@@ -758,15 +686,7 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error)
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	var ds []*topology.DataShard
-	for _, shard := range resp.Shards {
-		grpcShard, err := topology.DataShardFromProto(shard)
-		if err != nil {
-			return nil, err
-		}
-		ds = append(ds, grpcShard)
-	}
-	return ds, err
+	return models.ConvertManyWithError(resp.Shards, topology.DataShardFromProto)
 }
 
 // TODO : unit tests
@@ -807,15 +727,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 		return nil, spqrerror.CleanGrpcError(err)
 	}
 
-	dss := make([]*distributions.Distribution, len(resp.Distributions))
-	for i, ds := range resp.Distributions {
-		dss[i], err = distributions.DistributionFromProto(ds)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return dss, nil
+	return models.ConvertManyWithError(resp.Distributions, distributions.DistributionFromProto)
 }
 
 // DEPRECATED
@@ -857,11 +769,7 @@ func (a *Adapter) DropDistribution(ctx context.Context, id string) error {
 func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	dRels := []*proto.DistributedRelation{}
-	for _, r := range rels {
-		dRels = append(dRels, distributions.DistributedRelationToProto(r))
-	}
-
+	dRels := models.ConvertMany(rels, distributions.DistributedRelationToProto)
 	_, err := c.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
 		Id:        id,
 		Relations: dRels,
@@ -1043,9 +951,9 @@ func (a *Adapter) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, 
 //
 // Returns:
 // - error: An error if the retrieval of tasks fails, otherwise nil.
-func (a *Adapter) DropMoveTask(ctx context.Context, id string) error {
+func (a *Adapter) DropMoveTask(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.DropMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
+	_, err := tasksService.DropMoveTaskV2(ctx, &proto.MoveTaskRequest{ID: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 
@@ -1128,7 +1036,7 @@ func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, _ icp.ICPContextHolder) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.RetryMoveTaskGroupV2(ctx, &proto.RetryMoveTaskGroupRequest{
 		Selector: &proto.RedistributeTaskSelector{Id: id},
@@ -1220,10 +1128,7 @@ func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redistrib
 	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
 	}
-	res := make([]*tasks.RedistributeTask, len(ret.Tasks))
-	for i, task := range ret.Tasks {
-		res[i] = tasks.RedistributeTaskFromProto(task)
-	}
+	res := models.ConvertMany(ret.Tasks, tasks.RedistributeTaskFromProto)
 	return res, nil
 }
 
@@ -1306,7 +1211,10 @@ func (a *Adapter) UpdateCoordinator(ctx context.Context, address string) error {
 func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	c := proto.NewTopologyServiceClient(a.conn)
 	resp, err := c.GetCoordinator(ctx, nil)
-	return resp.Address, spqrerror.CleanGrpcError(err)
+	if err != nil {
+		return "", spqrerror.CleanGrpcError(err)
+	}
+	return resp.Address, nil
 }
 
 func (a *Adapter) ListSequences(ctx context.Context) ([]string, error) {
@@ -1409,6 +1317,10 @@ func (a *Adapter) GetTxnBatchSize() uint16 {
 	return a.maxTxnBatch
 }
 
+func (a *Adapter) ApplyXRecords(_ context.Context, _ []*mtran.XRecord) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Adapter ApplyXRecords not implemented")
+}
+
 // CreateUniqueIndex implements meta.EntityMgr.
 func (a *Adapter) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
 	c := proto.NewDistributionServiceClient(a.conn)
@@ -1477,7 +1389,7 @@ func (a *Adapter) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error
 	c := proto.NewTwoPhaseTxMetaServiceClient(a.conn)
 	resp, err := c.GetTwoPhaseTxMetaStorage(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return resp.Storage, nil
 }
@@ -1486,5 +1398,5 @@ func (a *Adapter) GetTwoPhaseTxMetaStorage(ctx context.Context) ([]string, error
 func (a *Adapter) SetTwoPhaseTxMetaStorage(ctx context.Context, storage []string) error {
 	c := proto.NewTwoPhaseTxMetaServiceClient(a.conn)
 	_, err := c.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }

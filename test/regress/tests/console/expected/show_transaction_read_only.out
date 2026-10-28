@@ -1,0 +1,12 @@
+SHOW transaction_read_only;
+ transaction_read_only 
+-----------------------
+ off
+(1 row)
+
+show TRANSACTION_READ_ONLY;
+ transaction_read_only 
+-----------------------
+ off
+(1 row)
+

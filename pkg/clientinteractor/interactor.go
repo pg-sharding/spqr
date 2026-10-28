@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -159,6 +160,21 @@ func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 	return pi.CompleteMsg(len(tts.Raw))
 }
 
+func (pi *PSQLInteractor) ReplyEQR() error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.EmptyQueryResponse{},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(txstatus.TXIDLE),
+		},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	return nil
+}
+
 // MoveTaskGroup sends the list of move tasks to the client.
 //
 // Parameters:
@@ -237,7 +253,8 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if err := pi.cl.ReplyErrMsgPure(err); err != nil {
+
+	if err := pi.cl.ReplyErrMsgPure(spqrerror.CleanGrpcError(err)); err != nil {
 		return err
 	}
 	for _, msg := range []pgproto3.BackendMessage{

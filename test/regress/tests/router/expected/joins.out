@@ -98,12 +98,16 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xjoin2 (id) values(25);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO rf (rid) values(1);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO rf (rid) values(10);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO rf (rid) values(15);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO rf (rid) values(25);
+NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1
@@ -237,6 +241,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 
 with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
 ERROR:  multiple JOIN rules on AUX CTE
+HINT:  create issue on github for support
 QUERY:  with v (j, i) as (values(1, 10), (1, 20), (1, 25)) select * from v join xjoin t on v.i = t.id WHERE v.j <= t.id;
 with v (i) as (values(10), (20), (25)) select * from v LEFT join xjoin t on t.id = v.i;
 NOTICE: query used select adjust for JOIN semantics
@@ -343,15 +348,26 @@ NOTICE: send query to shard(s) : sh2,sh3
 
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xjoin2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE zjoin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE rf;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 RESET __spqr__engine_v2;
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+NOTICE: send query to shard(s) : sh1
+ reloid 
+--------
+(0 rows)
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 

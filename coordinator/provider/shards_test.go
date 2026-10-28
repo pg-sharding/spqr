@@ -28,13 +28,21 @@ var someShards = []*topology.DataShard{
 	}),
 }
 
+func dataShardToProtoMust(shard *topology.DataShard) *proto.Shard {
+	protoShard, err := topology.DataShardToProto(shard, false)
+	if err != nil {
+		panic(err)
+	}
+	return protoShard
+}
+
 var someProtoShards = []*proto.Shard{
-	topology.DataShardToProto(topology.DataShardFromConfig("id-first", &config.Shard{
+	dataShardToProtoMust(topology.DataShardFromConfig("id-first", &config.Shard{
 		RawHosts: []string{"aboba:1337", "eshkere:228"},
-	}), false),
-	topology.DataShardToProto(topology.DataShardFromConfig("id-second", &config.Shard{
+	})),
+	dataShardToProtoMust(topology.DataShardFromConfig("id-second", &config.Shard{
 		RawHosts: []string{"goooal:1488"},
-	}), false),
+	})),
 }
 
 func TestListShards(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -58,6 +60,10 @@ type RouterClient interface {
 
 	ResetTsa()
 
+	/* Client state relation to connection allocation logic, e.g.
+	* requested target-session-attrs and such */
+	AllocParams() pool.ConnAllocParams
+
 	ReplyParseComplete() error
 	ReplyBindComplete() error
 	ReplyCloseComplete() error
@@ -70,6 +76,8 @@ type PsqlClient struct {
 	session.SessionParamsHolder
 	/* cancel */
 	csm *pgproto3.CancelRequest
+
+	peekMsg pgproto3.FrontendMessage
 
 	cancelPid uint32
 	cancelKey []byte
@@ -184,7 +192,7 @@ func (cl *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
 	var targetSessionAttrs string
 	if instanceDefaultTsa != "" {
 		targetSessionAttrs = instanceDefaultTsa
@@ -197,7 +205,12 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		targetSessionAttrs = config.TargetSessionAttrsPS
 	}
 
-	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, twopc.CommitStrategy1pc, defaultRouteBehaviour)
+	defaultCommitStrategy := config.RouterConfig().DefaultCommitStrategy
+	if defaultCommitStrategy == "" {
+		defaultCommitStrategy = twopc.CommitStrategyBestEffort
+	}
+
+	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, defaultCommitStrategy)
 
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,
@@ -211,8 +224,6 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 
 		serverP: atomic.Pointer[server.Server]{},
 	}
-
-	cl.SetCommitStrategy(twopc.CommitStrategyBestEffort)
 
 	cl.id = spqrlog.GetPointer(cl)
 
@@ -266,7 +277,18 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 }
 
 func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementDefinition) {
-	hash := murmur3.Sum64([]byte(d.Query))
+
+	hData := make([]byte, len(d.Query)+4*len(d.ParameterOIDs))
+
+	copy(hData, d.Query)
+
+	off := len(d.Query)
+	for _, n := range d.ParameterOIDs {
+		binary.BigEndian.PutUint32(hData[off:off+4], n)
+		off += 4
+	}
+
+	hash := murmur3.Sum64(hData)
 	cl.prepStmts[d.Name] = d
 	cl.prepStmtsHash[d.Name] = hash
 }
@@ -407,6 +429,23 @@ func (cl *PsqlClient) ID() uint {
 	return cl.id
 }
 
+// AllocParams implements [RouterClient].
+func (cl *PsqlClient) AllocParams() pool.ConnAllocParams {
+	params := pool.ConnAllocParams{
+		Clid: cl.ID(),
+		Tsa:  cl.GetTsa(),
+	}
+
+	if guc, err := cl.FindStrGUC(session.SPQR_EXECUTE_ON); err == nil &&
+		guc.Get(cl) != "" {
+		if hfGuc, err := cl.FindStrGUC(session.SPQR_EXECUTE_HOST_FILTER); err == nil {
+			params.HostFilter = hfGuc.Get(cl)
+		}
+	}
+
+	return params
+}
+
 func (cl *PsqlClient) Shards() []shard.ShardHostInstance {
 
 	serv := cl.serverP.Load()
@@ -496,9 +535,14 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			return err
 		}
 
-		msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
-		msg := make([]byte, msgSize)
+		msgSize := int(binary.BigEndian.Uint32(headerRaw))
 
+		if msgSize < 8 {
+			return fmt.Errorf("message has unexpected size %d", msgSize)
+		}
+		msgSize -= 4
+
+		msg := make([]byte, msgSize)
 		_, err = cl.conn.Read(msg)
 		if err != nil {
 			return err
@@ -506,7 +550,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		protoVer := binary.BigEndian.Uint32(msg)
 
-		spqrlog.Zero.Info().
+		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
 			Uint32("proto-version", protoVer).
 			Int64("ms", time.Now().UnixMilli()).
@@ -514,7 +558,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		switch protoVer {
 		case conn.GSSREQ:
-			spqrlog.Zero.Debug().Msg("negotiate gss enc request")
+			spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("negotiate gss enc request")
 			_, err := cl.conn.Write([]byte{'N'})
 			if err != nil {
 				return err
@@ -546,7 +590,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return fmt.Errorf("failed to receive continuation startup message: %w", err)
 			}
 
-			spqrlog.Zero.Info().
+			spqrlog.Zero.Debug().
 				Uint("client", cl.ID()).
 				Uint32("proto-version", protoVer).
 				Msg("completed TLS setup")
@@ -558,15 +602,6 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
 
-		case pgproto3.ProtocolVersionNumber:
-			// reuse
-			sm = &pgproto3.StartupMessage{}
-			err = sm.Decode(msg)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
-			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
 		case conn.CANCELREQ:
 			cl.csm = &pgproto3.CancelRequest{}
 			if err = cl.csm.Decode(msg); err != nil {
@@ -575,7 +610,56 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 			return nil
 		default:
-			return fmt.Errorf("protocol number %d not supported", protoVer)
+			if protoVer>>16 == 3 {
+
+				// reuse
+				sm = &pgproto3.StartupMessage{}
+				binary.BigEndian.PutUint32(msg, pgproto3.ProtocolVersion30)
+				err = sm.Decode(msg)
+
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error while decoding startup message")
+
+					errM := &pgproto3.ErrorResponse{
+						Severity: "FATAL",
+						Message:  err.Error(),
+					}
+
+					errB, errEnc := errM.Encode(nil)
+					if errEnc != nil {
+						/* Shouldnt happen anyway */
+						return err
+					}
+
+					_, _ = cl.conn.Write(errB)
+					return err
+				}
+				backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
+
+				if protoVer&0xFFFF != 0 {
+
+					m := pgproto3.NegotiateProtocolVersion{
+						NewestMinorProtocol: pgproto3.ProtocolVersionNumber,
+					}
+
+					for opname := range sm.Parameters {
+						if strings.HasPrefix(opname, "_pq_.") {
+							m.UnrecognizedOptions = append(m.UnrecognizedOptions, opname)
+						}
+					}
+
+					buf, err := m.Encode(nil)
+					if err != nil {
+						return err
+					}
+					_, err = cl.conn.Write(buf)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				return fmt.Errorf("protocol number %d not supported", protoVer)
+			}
 		}
 
 		/* setup client params */
@@ -621,6 +705,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
 	spqrlog.Zero.Info().
+		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Msg("processing frontend auth")
@@ -749,11 +834,36 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
 }
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
+	if cl.peekMsg != nil {
+		msg := cl.peekMsg
+		cl.peekMsg = nil
+		return msg, nil
+	}
+	msg, err := cl.be.Receive()
+	spqrlog.Zero.Trace().
+		Uint("client", cl.ID()).
+		Interface("message", msg).
+		Msg("received message from client")
+	return msg, err
+}
+
+func (cl *PsqlClient) Peek() (pgproto3.FrontendMessage, error) {
+	if cl.peekMsg != nil {
+		spqrlog.Zero.Debug().
+			Uint("client", cl.ID()).
+			Interface("message", cl.peekMsg).
+			Msg("peek message from client")
+		return cl.peekMsg, nil
+	}
 	msg, err := cl.be.Receive()
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Interface("message", msg).
-		Msg("received message from client")
+		Err(err).
+		Msg("peek message from client")
+	if err == nil {
+		cl.peekMsg = msg
+	}
 	return msg, err
 }
 
@@ -762,7 +872,7 @@ func (cl *PsqlClient) Flush() error {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("sending msg to client")
@@ -829,7 +939,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
-	spqrlog.Zero.Debug().Uint("client-id", cl.ID()).Msg("closing client")
+	spqrlog.Zero.Debug().Uint("client", cl.ID()).Msg("closing client")
 	return cl.conn.Close()
 }
 
@@ -971,11 +1081,27 @@ func (f FakeClient) ID() uint {
 	return spqrlog.GetPointer(f)
 }
 
+// AllocParams implements [RouterClient].
+func (f FakeClient) AllocParams() pool.ConnAllocParams {
+	return pool.ConnAllocParams{
+		Clid: f.ID(),
+	}
+}
+
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
+func (f FakeClient) Peek() (pgproto3.FrontendMessage, error) {
+	return &pgproto3.Query{}, nil
+}
+
 func (f FakeClient) Send(_ pgproto3.BackendMessage) error {
+	return nil
+}
+
+func (f FakeClient) ReplyErrMsgPure(e error) error {
+	spqrlog.Zero.Error().Err(e).Msg("sql init error")
 	return nil
 }
 

@@ -12,7 +12,25 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
+
+func formatBool(v bool, format int16) []byte {
+	switch format {
+	case xproto.FormatCodeBinary:
+		if v {
+			return []byte{1}
+		} else {
+			return []byte{0}
+		}
+	default:
+		if v {
+			return []byte{'t'}
+		} else {
+			return []byte{'f'}
+		}
+	}
+}
 
 func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr QueryPlanner, stmt *lyx.Select) (plan.Plan, error) {
 	virtualRowCols := []pgproto3.FieldDescription{}
@@ -20,7 +38,7 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 
 	var p plan.Plan
 
-	for _, expr := range stmt.TargetList {
+	for ind, expr := range stmt.TargetList {
 		actualExpr := expr
 		colname := "?column?"
 		if rt, ok := expr.(*lyx.ResTarget); ok {
@@ -62,11 +80,8 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 						})
 
 					/* notice this sign */
-					if rm.SPH.GetTsa() != config.TargetSessionAttrsRW {
-						virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-					} else {
-						virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-					}
+					virtualRowVals = append(virtualRowVals, formatBool(rm.SPH.GetTsa() == config.TargetSessionAttrsRW, rm.GetResultFormatCode(ind)))
+
 					continue
 				}
 			}
@@ -87,11 +102,8 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 						Format:               0,
 					})
 
-				if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
-					virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-				} else {
-					virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-				}
+				virtualRowVals = append(virtualRowVals, formatBool(rm.SPH.GetTsa() != config.TargetSessionAttrsRW, rm.GetResultFormatCode(ind)))
+
 				continue
 			} else if e.Name == virtual.VirtualFuncIsReady {
 				p = plan.Combine(p, &plan.VirtualPlan{})
@@ -169,11 +181,8 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 							Format:               0,
 						})
 
-					if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
-						virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-					} else {
-						virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-					}
+					virtualRowVals = append(virtualRowVals, formatBool(rm.SPH.GetTsa() != config.TargetSessionAttrsRW, rm.GetResultFormatCode(ind)))
+
 					continue
 				}
 			}

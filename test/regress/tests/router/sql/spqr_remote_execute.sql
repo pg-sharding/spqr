@@ -8,5 +8,11 @@ CREATE DISTRIBUTED RELATION xx_insert_rel (a) IN ds1;
 
 \c regress
 
-__spqr__remote_execute('host=regress_router port=6432 user=regress', 'INSERT INTO xx_insert_rel (a) VALUES (1)');
+CREATE TABLE xx_insert_rel (a int);
 
+SELECT __spqr__remote_execute('host=regress_router port=6432 user=regress dbname=regress', 'INSERT INTO xx_insert_rel (a) VALUES (1)');
+
+SELECT * FROM xx_insert_rel;
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;

@@ -34,6 +34,6 @@ func (s *StmtLogger) shouldLogStatement(t time.Duration) bool {
 
 func (s *StmtLogger) ReportStatement(typ StmtType, stmt string, t time.Duration) {
 	if s.shouldLogStatement(t) {
-		Zero.Info().Str("stmt", stmt).Str("stmt_type", string(typ)).Dur("duration", t).Msg("log statement")
+		Zero.Log().Str("stmt", stmt).Str("stmt_type", string(typ)).Dur("duration", t).Msg("log statement")
 	}
 }

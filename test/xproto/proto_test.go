@@ -3,8 +3,10 @@
 package prep_stmt_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -224,12 +226,20 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 
+				&pgproto3.Query{
+					String: "UPDATE xproto_ref SET a = -a",
+				},
+
 				&pgproto3.Parse{
 					Query: "TRUNCATE xproto_ref",
 				},
 				&pgproto3.Bind{},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "UPDATE xproto_ref SET a = -a",
+				},
 
 				&pgproto3.Query{
 					String: "ROLLBACK",
@@ -264,12 +274,28 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.BindComplete{},
 
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("TRUNCATE TABLE"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 0"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -381,7 +407,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	for _, msgroup := range []MessageGroup{
+	for testInd, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -647,6 +673,332 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Parse{
+					Name:  "autoinc_p_1",
+					Query: "INSERT INTO xproto_ref_autoinc (a) VALUES($1)",
+				},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "autoinc_p_1",
+					Parameters:        [][]byte{fmt.Appendf(nil, "%d", 112)},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "autoinc_p_1",
+					Parameters:        [][]byte{fmt.Appendf(nil, "%d", 113)},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "TABLE xproto_ref_autoinc",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("a"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 1,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("b"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 2,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 3,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x32},
+						nil,
+						{0x37},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x33},
+						nil,
+						{0x39},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Parse{
+					Name:  "autoinc_p_1",
+					Query: "INSERT INTO xproto_ref_autoinc (a) VALUES($1)",
+				},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement:    "autoinc_p_1",
+					ParameterFormatCodes: []int16{1},
+					Parameters: [][]byte{
+						func() []byte {
+							b := make([]byte, 4)
+							binary.BigEndian.PutUint32(b, 112)
+							return b
+						}(),
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement:    "autoinc_p_1",
+					ParameterFormatCodes: []int16{1},
+					Parameters: [][]byte{
+						func() []byte {
+							b := make([]byte, 4)
+							binary.BigEndian.PutUint32(b, 113)
+							return b
+						}(),
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "TABLE xproto_ref_autoinc",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("a"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 1,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("b"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 2,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 3,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x32},
+						nil,
+						{0x31, 0x31},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x33},
+						nil,
+						{0x31, 0x33},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
@@ -676,7 +1028,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				break
 			}
 
-			assert.Equal(t, msg, retMsg, "iter %d", i)
+			assert.Equal(t, msg, retMsg, "test: %d, iter %d", testInd, i)
 		}
 	}
 }
@@ -1517,4 +1869,243 @@ func TestVirtualParams(t *testing.T) {
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter msg %d", gr, ind))
 		}
 	}
+}
+
+func TestSimpleQueryWithSemicolon(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;COMMIT;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestDoubleBegin(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "COMMIT",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.NoticeResponse{
+					Severity: "WARNING",
+					Message:  "there is already a transaction in progress",
+					Code:     spqrerror.PG_ACTIVE_SQL_TRANSACTION,
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
+}
+
+func TestMultiShardUpdateCC(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			SkipCheckCommandTag: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1'), (12, 12, 'test12')",
+				},
+				&pgproto3.Query{
+					String: "UPDATE test_3col_table SET ff = 't1' WHERE j = 1",
+				},
+				&pgproto3.Query{
+					String: "UPDATE test_3col_table SET ff = 't1' WHERE j = 12",
+				},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO true",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1')",
+				},
+
+				&pgproto3.Query{
+					String: "SELECT FROM test_3col_table;",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO test_3col_table(i, j, ff) VALUES (1, 1, 'test1')",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{},
+
+				&pgproto3.DataRow{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	protoTestRunner(t, frontend, tt)
 }

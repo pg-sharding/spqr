@@ -305,6 +305,7 @@ func (dc *DockerComposer) runCommand(service string, cmd []string, timeout time.
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmd,
+		Privileged:   true,
 	}
 	execResp, err := dc.api.ContainerExecCreate(ctx, cont.ID, execCfg)
 	if err != nil {
@@ -345,8 +346,7 @@ func (dc *DockerComposer) RunAsyncCommand(service string, cmd string) error {
 		return fmt.Errorf("no such service: %s", service)
 	}
 	execCfg := container.ExecOptions{
-		Detach: true,
-		Cmd:    []string{shell, "-c", cmd},
+		Cmd: []string{shell, "-c", cmd},
 	}
 	execResp, err := dc.api.ContainerExecCreate(context.Background(), cont.ID, execCfg)
 	if err != nil {

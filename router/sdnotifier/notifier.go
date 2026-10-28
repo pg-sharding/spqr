@@ -51,7 +51,7 @@ func (n *Notifier) Notify() error {
 }
 
 func (n *Notifier) send(msg []byte) error {
-	spqrlog.Zero.Debug().Msg(fmt.Sprintf("sending systemd notification: %s", msg))
+	spqrlog.Zero.Trace().Msg(fmt.Sprintf("sending systemd notification: %s", msg))
 
 	if n.sock == nil {
 		return nil

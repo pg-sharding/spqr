@@ -16,7 +16,9 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rebootstrap"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -109,6 +111,15 @@ func (l *LocalQrouterServer) ListReferenceRelations(ctx context.Context, _ *empt
 	}, nil
 }
 
+// GetReferenceRelation implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) GetReferenceRelation(ctx context.Context, relation *protos.QualifiedName) (*protos.ReferenceRelation, error) {
+	refRelation, err := l.mgr.GetReferenceRelation(ctx, rfqn.RelationFQNFromProto(relation))
+	if err != nil {
+		return nil, err
+	}
+	return rrelation.RefRelationToProto(refRelation), nil
+}
+
 // SyncReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) SyncReferenceRelations(context.Context, *protos.SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
 	return nil, fmt.Errorf("local query router in unable to sync reference relation")
@@ -119,14 +130,17 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 	if err != nil {
 		return nil, err
 	}
+
+	res := make([]*protos.Shard, len(shards))
+	for i, sh := range shards {
+		res[i], err = topology.DataShardToProto(sh, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &protos.ListShardsReply{
-		Shards: func() []*protos.Shard {
-			res := make([]*protos.Shard, len(shards))
-			for i, sh := range shards {
-				res[i] = topology.DataShardToProto(sh, false)
-			}
-			return res
-		}(),
+		Shards: res,
 	}, nil
 }
 
@@ -139,7 +153,7 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	if err != nil {
 		return nil, err
 	}
-	if err := l.mgr.AddDataShard(ctx, shard); err != nil {
+	if err := l.mgr.AddDataShard(ctx, shard, request.Force); err != nil {
 		return nil, err
 	}
 
@@ -170,9 +184,10 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 	if err != nil {
 		return nil, err
 	}
+	protoShard, err := topology.DataShardToProto(sh, false)
 	return &protos.ShardReply{
-		Shard: topology.DataShardToProto(sh, false),
-	}, nil
+		Shard: protoShard,
+	}, err
 }
 
 // CreateDistribution creates distribution in QDB
@@ -311,6 +326,32 @@ func (l *LocalQrouterServer) OpenRouter(_ context.Context, _ *emptypb.Empty) (*e
 	return nil, nil
 }
 
+// GetMetadataHash implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) GetMetadataHash(ctx context.Context, _ *emptypb.Empty) (*protos.MetadataHashReply, error) {
+	hash, err := qdb.GetQDBStateHash(ctx, l.mgr.QDB())
+	return &protos.MetadataHashReply{Hash: hash}, err
+}
+
+// Rebootstrap implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) Rebootstrap(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, rebootstrap.RebootstrapQDB(ctx, l.mgr.QDB(), l.mgr)
+}
+
+// SyncMetadata implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) SyncMetadata(context.Context, *protos.SyncMetadataRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// AddRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) AddRouter(context.Context, *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
+// RemoveRouter implements [proto.RouterServiceServer].
+func (l *LocalQrouterServer) RemoveRouter(context.Context, *protos.RemoveRouterRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
 // TODO : unit tests
 func (l *LocalQrouterServer) GetRouterStatus(_ context.Context, _ *emptypb.Empty) (*protos.GetRouterStatusReply, error) {
 	if l.qr.Initialized() {
@@ -348,7 +389,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId, MetaOnly: request.MetaOnly}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -574,12 +615,16 @@ func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTa
 }
 
 func (l *LocalQrouterServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
+}
+
+func (l *LocalQrouterServer) DropMoveTaskV2(ctx context.Context, req *protos.MoveTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, req.Cascade)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID, false)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {
@@ -649,12 +694,12 @@ func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *proto
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID, false, nil)
 }
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RetryMoveTaskGroupV2(ctx context.Context, req *protos.RetryMoveTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait)
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.Selector.Id, req.NoWait, nil)
 }
 
 // TODO: unit tests

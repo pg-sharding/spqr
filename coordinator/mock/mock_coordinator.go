@@ -14,6 +14,7 @@ import (
 	net "net"
 	reflect "reflect"
 
+	icp "github.com/pg-sharding/spqr/pkg/icp"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -53,17 +54,17 @@ func (m *MockCoordinator) EXPECT() *MockCoordinatorMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (m *MockCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard)
+	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddDataShard indicates an expected call of AddDataShard.
-func (mr *MockCoordinatorMockRecorder) AddDataShard(ctx, shard any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AddDataShard(ctx, shard, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockCoordinator)(nil).AddDataShard), ctx, shard)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockCoordinator)(nil).AddDataShard), ctx, shard, force)
 }
 
 // AddWorldShard mocks base method.
@@ -206,18 +207,32 @@ func (mr *MockCoordinatorMockRecorder) AlterShardOptions(ctx, shardID, options a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockCoordinator)(nil).AlterShardOptions), ctx, shardID, options)
 }
 
-// BatchMoveKeyRange mocks base method.
-func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+// ApplyXRecords mocks base method.
+func (m *MockCoordinator) ApplyXRecords(ctx context.Context, records []*transaction.XRecord) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer)
+	ret := m.ctrl.Call(m, "ApplyXRecords", ctx, records)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplyXRecords indicates an expected call of ApplyXRecords.
+func (mr *MockCoordinatorMockRecorder) ApplyXRecords(ctx, records any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyXRecords", reflect.TypeOf((*MockCoordinator)(nil).ApplyXRecords), ctx, records)
+}
+
+// BatchMoveKeyRange mocks base method.
+func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, ch icp.ICPContextHolder) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchMoveKeyRange indicates an expected call of BatchMoveKeyRange.
-func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer, ch)
 }
 
 // BeginTran mocks base method.
@@ -408,17 +423,17 @@ func (mr *MockCoordinatorMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 }
 
 // DropMoveTask mocks base method.
-func (m *MockCoordinator) DropMoveTask(ctx context.Context, id string) error {
+func (m *MockCoordinator) DropMoveTask(ctx context.Context, id string, isCascade bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropMoveTask", ctx, id)
+	ret := m.ctrl.Call(m, "DropMoveTask", ctx, id, isCascade)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropMoveTask indicates an expected call of DropMoveTask.
-func (mr *MockCoordinatorMockRecorder) DropMoveTask(ctx, id any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) DropMoveTask(ctx, id, isCascade any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTask", reflect.TypeOf((*MockCoordinator)(nil).DropMoveTask), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTask", reflect.TypeOf((*MockCoordinator)(nil).DropMoveTask), ctx, id, isCascade)
 }
 
 // DropMoveTaskGroup mocks base method.
@@ -670,6 +685,21 @@ func (mr *MockCoordinatorMockRecorder) GetRelationDistribution(ctx, relationFQN 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockCoordinator)(nil).GetRelationDistribution), ctx, relationFQN)
 }
 
+// GetRouterMetadataHash mocks base method.
+func (m *MockCoordinator) GetRouterMetadataHash(ctx context.Context, r *topology.Router) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRouterMetadataHash", ctx, r)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRouterMetadataHash indicates an expected call of GetRouterMetadataHash.
+func (mr *MockCoordinatorMockRecorder) GetRouterMetadataHash(ctx, r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouterMetadataHash", reflect.TypeOf((*MockCoordinator)(nil).GetRouterMetadataHash), ctx, r)
+}
+
 // GetSequenceRelations mocks base method.
 func (m *MockCoordinator) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	m.ctrl.T.Helper()
@@ -831,6 +861,21 @@ func (m *MockCoordinator) ListKeyRanges(ctx context.Context, distribution string
 func (mr *MockCoordinatorMockRecorder) ListKeyRanges(ctx, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockCoordinator)(nil).ListKeyRanges), ctx, distribution)
+}
+
+// ListMigrations mocks base method.
+func (m *MockCoordinator) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockCoordinatorMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockCoordinator)(nil).ListMigrations), ctx)
 }
 
 // ListMoveTaskGroups mocks base method.
@@ -999,17 +1044,17 @@ func (mr *MockCoordinatorMockRecorder) LockKeyRange(ctx, krid any) *gomock.Call 
 }
 
 // Move mocks base method.
-func (m *MockCoordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (m *MockCoordinator) Move(ctx context.Context, move *kr.MoveKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Move", ctx, move)
+	ret := m.ctrl.Call(m, "Move", ctx, move, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Move indicates an expected call of Move.
-func (mr *MockCoordinatorMockRecorder) Move(ctx, move any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) Move(ctx, move, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move, ch)
 }
 
 // NextRange mocks base method.
@@ -1056,17 +1101,17 @@ func (mr *MockCoordinatorMockRecorder) QDB() *gomock.Call {
 }
 
 // RedistributeKeyRange mocks base method.
-func (m *MockCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (m *MockCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RedistributeKeyRange", ctx, req)
+	ret := m.ctrl.Call(m, "RedistributeKeyRange", ctx, req, ch)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RedistributeKeyRange indicates an expected call of RedistributeKeyRange.
-func (mr *MockCoordinatorMockRecorder) RedistributeKeyRange(ctx, req any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RedistributeKeyRange(ctx, req, ch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RedistributeKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RedistributeKeyRange), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RedistributeKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RedistributeKeyRange), ctx, req, ch)
 }
 
 // RegisterRouter mocks base method.
@@ -1097,18 +1142,32 @@ func (mr *MockCoordinatorMockRecorder) RenameKeyRange(ctx, krid, kridNew any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RenameKeyRange), ctx, krid, kridNew)
 }
 
-// RetryMoveTaskGroup mocks base method.
-func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+// ResetMigration mocks base method.
+func (m *MockCoordinator) ResetMigration(ctx context.Context, name string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait)
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockCoordinatorMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockCoordinator)(nil).ResetMigration), ctx, name)
+}
+
+// RetryMoveTaskGroup mocks base method.
+func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, icpCH icp.ICPContextHolder) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id, nowait, icpCH)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
-func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
 }
 
 // RunCoordinator mocks base method.
@@ -1121,6 +1180,20 @@ func (m *MockCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 func (mr *MockCoordinatorMockRecorder) RunCoordinator(ctx, initialRouter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunCoordinator", reflect.TypeOf((*MockCoordinator)(nil).RunCoordinator), ctx, initialRouter)
+}
+
+// SetMigration mocks base method.
+func (m *MockCoordinator) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockCoordinatorMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockCoordinator)(nil).SetMigration), ctx, name, value)
 }
 
 // SetShardOptions mocks base method.

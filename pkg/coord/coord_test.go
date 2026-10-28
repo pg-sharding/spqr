@@ -15,8 +15,6 @@ import (
 
 const MemQDBPath = ""
 
-var boolFalse = false
-
 var mockShard1 = &qdb.Shard{
 	ID:       "sh1",
 	RawHosts: []string{"host1", "host2"},
@@ -69,7 +67,7 @@ func TestSplitKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(1)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolFalse,
+			IsLocked:     false,
 		}
 		err = tranMngr.CreateKeyRange(ctx, kr1, ds1.ColTypes)
 		is.NoError(err)
@@ -88,7 +86,7 @@ func TestSplitKeyRange(t *testing.T) {
 		}
 
 		err = mngr.Split(ctx, splitData)
-		is.EqualError(err, "key range is locked")
+		is.EqualError(err, "failed to split key range: key range \"kr1\" is locked")
 	})
 	t.Run("split happy path", func(t *testing.T) {
 		is := assert.New(t)
@@ -110,7 +108,7 @@ func TestSplitKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(1)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolFalse,
+			IsLocked:     false,
 			Version:      1,
 		}
 		err = tranMngr.CreateKeyRange(ctx, kr1, []string{qdb.ColumnTypeInteger})
@@ -139,14 +137,13 @@ func TestSplitKeyRange(t *testing.T) {
 				Distribution: "ds1",
 				LowerBound:   []any{int64(5)},
 				ColumnTypes:  []string{qdb.ColumnTypeInteger},
-				IsLocked:     &boolFalse,
+				IsLocked:     false,
 				Version:      1,
 			},
 		}
-		// IsLocked is not values of bool :(
-		is.Equal([]bool{false, false}, []bool{*actual[0].IsLocked, *actual[0].IsLocked})
-		actual[0].IsLocked = &boolFalse
-		actual[1].IsLocked = &boolFalse
+		is.Equal([]bool{false, false}, []bool{actual[0].IsLocked, actual[0].IsLocked})
+		actual[0].IsLocked = false
+		actual[1].IsLocked = false
 		is.Equal(expected, []kr.KeyRange{*actual[0], *actual[1]})
 	})
 }

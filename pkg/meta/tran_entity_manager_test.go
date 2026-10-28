@@ -151,7 +151,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(0)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolTrue,
+			IsLocked:     true,
 		}
 		statements, err := mngr.CreateKeyRange(ctx, kr1)
 		is.NoError(err)
@@ -166,7 +166,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(10)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolTrue,
+			IsLocked:     true,
 		}
 
 		var kr2Ds2 = &kr.KeyRange{
@@ -175,7 +175,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			Distribution: "ds2",
 			LowerBound:   []any{int64(10)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolTrue,
+			IsLocked:     true,
 		}
 		var kr2Double = &kr.KeyRange{
 			ID:           "kr2",
@@ -183,7 +183,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			Distribution: "ds2",
 			LowerBound:   []any{int64(10)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolFalse,
+			IsLocked:     false,
 		}
 
 		kr1.Version = 1
@@ -233,7 +233,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(0)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolTrue,
+			IsLocked:     true,
 		}
 		statements, err := mngr.CreateKeyRange(ctx, kr1)
 		is.NoError(err)
@@ -248,7 +248,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			Distribution: "ds1",
 			LowerBound:   []any{int64(10)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
-			IsLocked:     &boolTrue,
+			IsLocked:     true,
 		}
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
 		is.NoError(err)

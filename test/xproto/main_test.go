@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
 )
@@ -48,6 +48,12 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 				retMsg, err := frontend.Receive()
 				assert.NoError(t, err)
 				switch retMsgType := retMsg.(type) {
+				case *pgproto3.NoticeResponse:
+					retMsgType.SeverityUnlocalized = ""
+					retMsgType.Line = 0
+					retMsgType.File = ""
+					retMsgType.Routine = ""
+					retMsgType.Detail = ""
 				case *pgproto3.ErrorResponse:
 					/* do not compare this fields */
 					retMsgType.Line = 0
@@ -207,6 +213,16 @@ func SetupSharding() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t_types(id) IN ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
+	_, err = conn.Exec(context.Background(), "CREATE RELATION test_3col_table(i) IN ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -279,7 +295,17 @@ func CreateTables() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
 
+	_, err = conn.Exec(context.Background(), "CREATE TABLE t_types (id smallint, val int, value bigint)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE TABLE text_table (id text)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+
+	_, err = conn.Exec(context.Background(), "CREATE TABLE test_3col_table (i INT, j INT, ff TEXT)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}

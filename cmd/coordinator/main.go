@@ -43,15 +43,15 @@ func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "spqr-coordinator run --config `path-to-config`",
+	Use:   "spqr-coordinator --config `path-to-config`",
 	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  false,
-	SilenceErrors: false,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
 		if err != nil {
@@ -77,7 +77,7 @@ var rootCmd = &cobra.Command{
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
 
-		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -114,17 +114,22 @@ var rootCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
 				default:
 					return
 				}
 			}
 		}()
 
-		app := app.NewApp(coordinator)
+		app, err := app.NewApp(coordinator)
+		if err != nil {
+			return err
+		}
 		// run pprof without wait group
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("pprof server failed")
+			}
 		}()
 		return app.Run(true)
 	},

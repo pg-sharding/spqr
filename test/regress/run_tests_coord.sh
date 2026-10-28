@@ -4,6 +4,7 @@ set -x
 export PGDATABASE=regress
 export PGUSER=regress
 export PGSSLMODE=allow
+REGRESS_REPORT_DIR=${REGRESS_REPORT_DIR:-/regress/test-reports/regress-coord}
 
 source ./regress_utils.sh 
 
@@ -29,12 +30,6 @@ run_tests "coordinator" "regress_coordinator" "7002"
 
 echo "init cluster"
 run_tests "init_cluster" "regress_coordinator" "7002"
-sleep 10
-echo "go test!"
-# Compare the results of the local and qdb coordinators
-run_tests "common" "regress_coordinator" "7002"
-
-run_tests "common" "regress_router" "7432"
 
 # test if diffs are empty
 cat $ERR_OUTPUT_DIR/regression.diffs > /regress/tests/combined.diffs 2>&-

@@ -7,15 +7,26 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
+type BasePlan struct {
+	H planopts.PlanOpts
+}
+
+func (b *BasePlan) Opts() *planopts.PlanOpts {
+	return &b.H
+}
+
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
+
+	Opts() *planopts.PlanOpts
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
@@ -29,7 +40,8 @@ type Plan interface {
 }
 
 type ScatterPlan struct {
-	Plan
+	BasePlan
+
 	SubPlan Plan
 
 	/* explicitly set-up link to next slice */
@@ -101,7 +113,7 @@ func (sp *ScatterPlan) RunSlice(serv server.Server) error {
 var _ Plan = &ScatterPlan{}
 
 type ModifyTable struct {
-	Plan
+	BasePlan
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
 }
@@ -137,12 +149,14 @@ func (mt *ModifyTable) PrepareRunSlice(server.Server) error {
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
-	Plan
+	BasePlan
 
 	/* Subplan */
 
 	SP   Plan
-	runF func(server.Server) error
+	RunF func(server.Server) error
+
+	OverWriteQuery string
 
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
@@ -162,7 +176,7 @@ func (sms *ShardDispatchPlan) SetStmt(n lyx.Node) {
 }
 
 func (sms *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
-	return ""
+	return sms.OverWriteQuery
 }
 
 func (sms *ShardDispatchPlan) Subplan() Plan {
@@ -174,16 +188,16 @@ func (sms *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
 }
 
 func (sms *ShardDispatchPlan) RunSlice(serv server.Server) error {
-	if sms.runF == nil {
+	if sms.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return sms.runF(serv)
+	return sms.RunF(serv)
 }
 
 var _ Plan = &ShardDispatchPlan{}
 
 type RandomDispatchPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -220,7 +234,7 @@ func (rdp *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
 var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
-	Plan
+	BasePlan
 
 	stmt lyx.Node
 
@@ -264,14 +278,8 @@ var _ Plan = &VirtualPlan{}
 
 type DataRowFilter struct {
 	Plan
-
 	stmt        lyx.Node
-	FilterIndex uint
-	SubPlan     Plan
-}
-
-func (rf *DataRowFilter) ExecutionTargets() []kr.ShardKey {
-	return rf.SubPlan.ExecutionTargets()
+	FilterShard kr.ShardKey
 }
 
 func (rf *DataRowFilter) Stmt() lyx.Node {
@@ -282,29 +290,10 @@ func (rf *DataRowFilter) SetStmt(n lyx.Node) {
 	rf.stmt = n
 }
 
-func (rf *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
-	if rf.SubPlan == nil {
-		return ""
-	}
-	return rf.SubPlan.GetGangMemberMsg(sh)
-}
-
-func (rf *DataRowFilter) Subplan() Plan {
-	return rf.SubPlan.Subplan()
-}
-
-func (rf *DataRowFilter) RunSlice(serv server.Server) error {
-	return rf.SubPlan.RunSlice(serv)
-}
-
-func (rf *DataRowFilter) PrepareRunSlice(serv server.Server) error {
-	return rf.SubPlan.PrepareRunSlice(serv)
-}
-
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
-	Plan
+	BasePlan
 
 	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
@@ -389,7 +378,8 @@ func Combine(p1, p2 Plan) Plan {
 	switch v := p1.(type) {
 	case *DataRowFilter:
 		return &DataRowFilter{
-			SubPlan: Combine(v.SubPlan, p2),
+			Plan:        Combine(v.Plan, p2),
+			FilterShard: v.FilterShard,
 		}
 	}
 
@@ -399,7 +389,8 @@ func Combine(p1, p2 Plan) Plan {
 		p1, p2 = p2, p1
 	case *DataRowFilter:
 		return &DataRowFilter{
-			SubPlan: Combine(p1, v.SubPlan),
+			Plan:        Combine(p1, v.Plan),
+			FilterShard: v.FilterShard,
 		}
 	}
 

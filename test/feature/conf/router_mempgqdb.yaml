@@ -10,7 +10,9 @@ world_shard_fallback: true
 show_notice_messages: true
 query_routing:
   forbid_direct_shard_queries: true
+  use_spqrguard: true
 store_tx_data_postgresql: true
+2pc_tx_advisory_lock: true
 tx_data_ttl: 60m
 use_coordinator_init: true
 enable_icp: true
@@ -19,8 +21,6 @@ watchdog_backend_rule:
   db: regress
   usr: regress
   connection_limit: 50
-  pool_discard: true
-  pool_rollback: true
   auth_rules:
     sh1:
       auth_method: md5
@@ -57,8 +57,6 @@ backend_rules:
   - db: regress
     usr: regress
     connection_limit: 50
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: md5

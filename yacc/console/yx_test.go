@@ -1,6 +1,7 @@
 package spqrparser_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 	"time"
@@ -8,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -76,6 +79,28 @@ func TestSimple(t *testing.T) {
 		},
 
 		{
+			query: "SHOW hosts (alive, rw, time)",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.HostsStr,
+				Columns: []string{"alive", "rw", "time"},
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "SHOW hosts_extended",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.HostsExtendedStr,
+				Columns: nil,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
 			query: "\nSHOW \n relations \n\n;",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,
@@ -84,12 +109,112 @@ func TestSimple(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "BEGIN;",
+			exp:   &spqrparser.Begin{},
+			err:   nil,
+		},
+		{
+			query: "COMMIT;",
+			exp:   &spqrparser.Commit{},
+			err:   nil,
+		},
+		{
+			query: "ROLLBACK;",
+			exp:   &spqrparser.Rollback{},
+			err:   nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+	}
+}
+
+// TestSyntaxErrorPosition verifies that parse errors carry 1-based
+// position of the offending token (or end of input), so psql can
+// draw the error cursor.
+func TestSyntaxErrorPosition(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, tt := range []struct {
+		query string
+		pos   int32
+	}{
+		{query: "SELECT 1", pos: 8},
+		{query: "SHOWW clients", pos: 1},
+		{query: "SHOW clients extra", pos: 14},
+		{query: "  SHOW clients extra;", pos: 16},
+		{query: "SHOW ;", pos: 6},
+		{query: "SHOW cl@ents", pos: 8},
+		{query: "CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra", pos: 46},
+		{query: "REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;", pos: 48},
+		/* unexpected end of input points right past the last character */
+		{query: "SHOW", pos: 5},
+		{query: "CREATE DISTRIBUTION", pos: 20},
+	} {
+		_, err := spqrparser.Parse(tt.query)
+
+		var spErr *spqrerror.SpqrError
+		if !assert.ErrorAs(err, &spErr, "query %q", tt.query) {
+			continue
+		}
+		assert.Equal(spqrerror.PG_SYNTAX_ERROR, spErr.ErrorCode, "query %q", tt.query)
+		assert.Equal(tt.pos, spErr.Position, "query %q", tt.query)
+		assert.ErrorContains(err, "syntax error", "query %q", tt.query)
+	}
+}
+
+// TestEmptyQuery verifies empty-query (nil statement) semantics.
+//
+// Each semicolon terminates a statement; the segment before a semicolon is an
+// empty query (nil) when it contains no command. A trailing semicolon does not
+// produce a spurious empty query, but an intermediate/leading semicolon does.
+func TestEmptyQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	// showClients and showPools are the exact statements produced for the
+	// corresponding queries (see TestSimpleShow).
+	showClients := func() *spqrparser.Show {
+		return &spqrparser.Show{
+			Cmd:     spqrparser.ClientsStr,
+			Where:   &lyx.AExprEmpty{},
+			GroupBy: spqrparser.GroupByClauseEmpty{},
+		}
+	}
+	showPools := func() *spqrparser.Show {
+		return &spqrparser.Show{
+			Cmd:     spqrparser.PoolsStr,
+			Where:   &lyx.AExprEmpty{},
+			GroupBy: spqrparser.GroupByClauseEmpty{},
+		}
+	}
+
+	type tcase struct {
+		query string
+		exp   []spqrparser.Statement
+	}
+
+	for _, tt := range []tcase{
+		{query: "", exp: []spqrparser.Statement{nil}},
+		{query: ";", exp: []spqrparser.Statement{nil}},
+		{query: ";;", exp: []spqrparser.Statement{nil, nil}},
+		{query: ";;;", exp: []spqrparser.Statement{nil, nil, nil}},
+		{query: "   ", exp: []spqrparser.Statement{nil}},
+		{query: " ; ", exp: []spqrparser.Statement{nil}},
+		{query: "SHOW clients", exp: []spqrparser.Statement{showClients()}},
+		{query: "SHOW clients;", exp: []spqrparser.Statement{showClients()}},
+		{query: "SHOW clients;;", exp: []spqrparser.Statement{showClients(), nil}},
+		{query: "; SHOW clients", exp: []spqrparser.Statement{nil, showClients()}},
+		{query: "SHOW clients; SHOW pools", exp: []spqrparser.Statement{showClients(), showPools()}},
+		{query: "SHOW clients;; SHOW pools", exp: []spqrparser.Statement{showClients(), nil, showPools()}},
+		{query: "SELECT * FROM clients", exp: []spqrparser.Statement{showClients()}},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+		assert.NoError(err, "query %q", tt.query)
+		assert.Equal(tt.exp, tmp, "query %q", tt.query)
 	}
 }
 
@@ -130,7 +255,7 @@ func TestSimpleTrace(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -248,7 +373,7 @@ func TestSimpleShow(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -303,7 +428,7 @@ func TestSimpleWhere(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -354,7 +479,7 @@ func TestNestedWhere(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -403,7 +528,7 @@ func TestGroupBy(t *testing.T) {
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 
-			assert.Equal(tt.exp, tmp, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
 	}
 }
@@ -439,7 +564,7 @@ func TestOrderBy(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -539,17 +664,66 @@ func TestRedistribute(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "REDISTRIBUTE KEY RANGE ALL TO sh2",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
 		if err != nil {
-			assert.EqualError(err, tt.err.Error())
+			assert.ErrorContains(err, tt.err.Error())
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
+	}
+}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+func TestMoveKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "MOVE KEY RANGE kr1 TO sh2",
+			exp: &spqrparser.MoveKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+			},
+			err: nil,
+		},
+		{
+			query: "MOVE KEY RANGE ALL TO sh2",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "MOVE KEY RANGE kr1 TO sh2 META ONLY",
+			exp: &spqrparser.MoveKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				MetaOnly:    true,
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.ErrorContains(err, tt.err.Error())
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
 	}
 }
 
@@ -696,6 +870,89 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING SHARDS shard1, shard2, shard3;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"shard1", "shard2", "shard3"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING SHARDS shard1, shard2, shard3;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"shard1", "shard2", "shard3"},
+					DataKeyRange: &spqrparser.CustomDistributionRange{
+						LowerBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+						UpperBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0xD0, 0x0F, 0, 0, 0, 0, 0, 0, 0, 0}}},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 USING ALL SHARDS;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 1000 USING ALL SHARDS;
+			`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangesForDistributionDefinition{
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
+					Shards: []string{"*"},
+					DataKeyRange: &spqrparser.CustomDistributionRange{
+						LowerBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+						UpperBound: &spqrparser.KeyRangeBound{Pivots: [][]byte{{0xD0, 0x0F, 0, 0, 0, 0, 0, 0, 0, 0}}},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
 			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),
@@ -706,11 +963,10 @@ func TestKeyRange(t *testing.T) {
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -755,7 +1011,7 @@ func TestRegisterRouter(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 
 }
@@ -817,7 +1073,7 @@ func TestKeyRangeBordersSuccess(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -857,11 +1113,10 @@ func TestKeyRangeBordersFail(t *testing.T) {
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -889,13 +1144,61 @@ func TestSplitKeyRange(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "SPLIT KEY RANGE ALL FROM krid1 BY 5;",
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.ErrorContains(err, tt.err.Error())
+		} else {
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
+	}
+}
+
+func TestUniteKeyRange(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "UNITE KEY RANGE k1 WITH k2;",
+			exp: &spqrparser.UniteKeyRange{
+				KeyRangeIDL: "k1",
+				KeyRangeIDR: "k2",
+			},
+			err: nil,
+		},
+		{
+			query: "UNITE KEY RANGE ALL WITH k2;",
+
+			err: fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.ErrorContains(err, tt.err.Error())
+		} else {
+
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
 	}
 }
 
@@ -905,7 +1208,8 @@ func TestAttachTable(t *testing.T) {
 
 	tmp, err := spqrparser.Parse("ATTACH TABLE t TO DISTRIBUTION ds1;")
 	assert.Error(err)
-	assert.Equal(nil, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
+	var exp []spqrparser.Statement
+	assert.Equal(exp, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
 }
 
 func TestAlter(t *testing.T) {
@@ -929,6 +1233,15 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "ALTER SYSTEM ROTATE ",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					RotateLog: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "ALTER SYSTEM REBOOTSTRAP",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.System{
@@ -936,6 +1249,72 @@ func TestAlter(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+
+		{
+			query: "ALTER SYSTEM RELOAD",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					Reload: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET kek = 'on'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "kek",
+					SetValue: "on",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params = 'true'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "true",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params TO 'true'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "true",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM SET __spqr__maintain_params TO 'on'",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.System{
+					SetGUC:   "__spqr__maintain_params",
+					SetValue: "on",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION SET init = abc123;",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "init", Value: "abc123"}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION SET 'MixedCase' TO 'sha256:abc';",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "MixedCase", Value: "sha256:abc"}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION RESET init;",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "init", Reset: true}},
+		},
+		{
+			query: "ALTER SYSTEM MIGRATION RESET 'MixedCase'",
+			exp:   &spqrparser.Alter{Element: &spqrparser.AlterSystemMigration{Name: "MixedCase", Reset: true}},
 		},
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
@@ -1458,7 +1837,7 @@ func TestAlter(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1505,7 +1884,19 @@ func TestDistribution(t *testing.T) {
 				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
 					ColTypes: []string{
-						"varchar hashed",
+						qdb.ColumnTypeVarcharHashed,
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES uuid hash;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						qdb.ColumnTypeUUIDHashed,
 					},
 				},
 			},
@@ -1530,7 +1921,7 @@ func TestDistribution(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1693,7 +2084,7 @@ func TestReferenceRelation(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1729,6 +2120,20 @@ func TestShard(t *testing.T) {
 						{Name: "host", Arg: "localhost:6432"},
 						{Name: "host", Arg: "other_hosts:6432"},
 					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: `CREATE SHARD sh1 OPTIONS (HOST 'localhost:6432', HOST 'other_hosts:6432') FORCE;`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id: "sh1",
+					Options: []spqrparser.GenericOption{
+						{Name: "host", Arg: "localhost:6432"},
+						{Name: "host", Arg: "other_hosts:6432"},
+					},
+					Force: true,
 				},
 			},
 			err: nil,
@@ -1783,7 +2188,7 @@ func TestShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1831,7 +2236,7 @@ func TestRefresh(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1866,7 +2271,7 @@ func TestSyncReferenceTable(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -1927,9 +2332,8 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
@@ -1968,6 +2372,11 @@ func TestStopMoveTaskGroup(t *testing.T) {
 			exp:   &spqrparser.StopMoveTaskGroup{ID: "tg_id"},
 			err:   nil,
 		},
+		{
+			query: "STOP TASK GROUP ALL",
+			exp:   &spqrparser.StopMoveTaskGroup{ID: `*`},
+			err:   nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -1975,9 +2384,84 @@ func TestStopMoveTaskGroup(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		} else {
 			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 		}
+	}
+}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+func TestDropTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "DROP MOVE TASK GROUP",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `group`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
+		},
+		{
+			query: "DROP MOVE TASK mt_id",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `mt_id`,
+				},
+				CascadeDelete: false,
+			},
+			err: nil,
+		},
+		{
+			query: "DROP MOVE TASK mt_id CASCADE",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.MoveTaskSelector{
+					ID: `mt_id`,
+				},
+				CascadeDelete: true,
+			},
+			err: nil,
+		},
+		{
+			query: "DROP TASK GROUP",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "DROP TASK GROUP tg_id",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.TaskGroupSelector{
+					ID: `tg_id`,
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "DROP TASK GROUP tg_id CASCADE",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.TaskGroupSelector{
+					ID: `tg_id`,
+				},
+				CascadeDelete: true,
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err != nil {
+			assert.Error(err, "query %s", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		}
 	}
 }
 
@@ -2043,7 +2527,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2090,7 +2574,7 @@ func TestRelationQualifiedName(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2161,7 +2645,7 @@ func TestKill(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2251,7 +2735,7 @@ func TestICP(t *testing.T) {
 			assert.Error(err, "query %s", tt.query)
 		}
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2306,7 +2790,7 @@ func TestUniqueIndex(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2329,13 +2813,22 @@ func TestRedistributeTasks(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "DROP REDISTRIBUTE TASK ALL",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.RedistributeTaskSelector{
+					ID: "*",
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }
 
@@ -2390,6 +2883,317 @@ func TestGrant(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+	}
+}
+
+func TestTableKeywordForRelation(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		relationQuery string
+		tableQuery    string
+	}
+
+	for _, tt := range []tcase{
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 ATTACH TABLE t DISTRIBUTION KEY id;",
+		},
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 DETACH RELATION t;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 DETACH TABLE t;",
+		},
+		{
+			relationQuery: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id;",
+			tableQuery:    "ALTER DISTRIBUTION ds1 ALTER TABLE t DISTRIBUTION KEY id;",
+		},
+		{
+			relationQuery: "CREATE RELATION t (id) IN ds1;",
+			tableQuery:    "CREATE TABLE t (id) IN ds1;",
+		},
+	} {
+
+		relationStmt, err := spqrparser.Parse(tt.relationQuery)
+
+		assert.NoError(err, "query %s", tt.relationQuery)
+
+		tableStmt, err := spqrparser.Parse(tt.tableQuery)
+
+		assert.NoError(err, "query %s", tt.tableQuery)
+
+		assert.Equal(relationStmt, tableStmt, "table query %s should parse like relation query %s", tt.tableQuery, tt.relationQuery)
+	}
+}
+
+func TestADDDeprecation(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query      string
+		shouldFail bool
+		errMsg     string
+	}
+
+	for _, tt := range []tcase{
+		{
+			query:      "ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			shouldFail: true,
+			errMsg:     "ADD KEY RANGE is deprecated, use CREATE KEY RANGE instead",
+		},
+		{
+			query:      "ADD SHARD sh1 OPTIONS (HOST 'localhost:5432');",
+			shouldFail: true,
+			errMsg:     "ADD SHARD is deprecated, use CREATE SHARD instead",
+		},
+		{
+			query:      "ADD DISTRIBUTION ds1 COLUMN TYPES integer;",
+			shouldFail: true,
+			errMsg:     "ADD DISTRIBUTION is deprecated, use CREATE DISTRIBUTION instead",
+		},
+		{
+			query:      "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "CREATE SHARD sh1 OPTIONS (HOST 'localhost:5432');",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "CREATE DISTRIBUTION ds1 COLUMN TYPES integer;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.shouldFail {
+			assert.Error(err, "query %s should fail", tt.query)
+			assert.ErrorContains(err, tt.errMsg, "query %s", tt.query)
+			assert.Nil(tmp, "query %s should return nil", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.NotNil(tmp, "query %s should return result", tt.query)
+		}
+	}
+}
+
+func TestRename(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "RENAME KEY RANGE kr1 TO kr_new",
+
+			exp: &spqrparser.Rename{
+				Element: &spqrparser.KeyRangeSelector{
+					KeyRangeID: "kr1",
+				},
+				NewID: "kr_new",
+			},
+			err: nil,
+		},
+		{
+			query: "RENAME KEY RANGE ALL TO kr_new",
+			err:   fmt.Errorf("syntax error"),
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+	}
+}
+
+func TestCall(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	val1 := make([]byte, 10)
+	binary.PutVarint(val1, 1)
+
+	for _, tt := range []tcase{
+		{
+			query: "CALL f(1, asd)",
+
+			exp: &spqrparser.Call{
+				FuncName: "f",
+				Args: []string{
+					string(val1),
+					"asd",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CALL no_args()",
+
+			exp: &spqrparser.Call{
+				FuncName: "no_args",
+				Args:     []string{},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+	}
+}
+
+// TestIdempotentDDLFlags checks that the optional IF [NOT] EXISTS flags are
+// parsed into the AST for every command that supports them, and that omitting
+// the flag preserves the previous (flag-less) behaviour.
+func TestIdempotentDDLFlags(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE DISTRIBUTION IF NOT EXISTS ds COLUMN TYPES varchar",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:          "ds",
+					ColTypes:    []string{"varchar"},
+					IfNotExists: true,
+				},
+			},
+		},
+		{
+			query: "CREATE DISTRIBUTION ds COLUMN TYPES varchar",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:       "ds",
+					ColTypes: []string{"varchar"},
+				},
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION IF EXISTS ds",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.DistributionSelector{ID: "ds"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION IF EXISTS ds CASCADE",
+			exp: &spqrparser.Drop{
+				Element:       &spqrparser.DistributionSelector{ID: "ds"},
+				CascadeDelete: true,
+				IfExists:      true,
+			},
+		},
+		{
+			query: "DROP DISTRIBUTION ds",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.DistributionSelector{ID: "ds"},
+			},
+		},
+		{
+			query: "CREATE KEY RANGE IF NOT EXISTS kr1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					KeyRangeID: "kr1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{{2, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+					},
+					ShardID:      "sh1",
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					IfNotExists:  true,
+				},
+			},
+		},
+		{
+			query: "DROP KEY RANGE IF EXISTS kr1",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.KeyRangeSelector{KeyRangeID: "kr1"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "CREATE REFERENCE TABLE IF NOT EXISTS rr",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName:   &rfqn.RelationFQN{RelationName: "rr"},
+					IfNotExists: true,
+				},
+			},
+		},
+		{
+			query: "DROP REFERENCE TABLE IF EXISTS rr",
+			exp: &spqrparser.Drop{
+				Element:  &spqrparser.ReferenceRelationSelector{ID: "rr"},
+				IfExists: true,
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds ATTACH RELATION IF NOT EXISTS t DISTRIBUTION KEY id",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Relation:        &rfqn.RelationFQN{RelationName: "t"},
+								DistributionKey: []spqrparser.DistributionKeyEntry{{Column: "id"}},
+								IfNotExists:     true,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds DETACH RELATION IF EXISTS t",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds"},
+					Element: &spqrparser.DetachRelation{
+						RelationName: &rfqn.RelationFQN{RelationName: "t"},
+						IfExists:     true,
+					},
+				},
+			},
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+		assert.NoError(err, "query %s", tt.query)
+		assert.Equal(tt.exp, tmp[0], "query %s", tt.query)
 	}
 }

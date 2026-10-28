@@ -1,6 +1,7 @@
 package spqrparser
 
 var reservedWords = map[string]int{
+	"select":       SELECT,
 	"show":         SHOW,
 	"kill":         KILL,
 	"column":       COLUMN,
@@ -102,6 +103,8 @@ var reservedWords = map[string]int{
 	"sleep":        SLEEP,
 	"rename":       RENAME,
 	"system":       SYSTEM,
+	"migration":    MIGRATION,
+	"reset":        RESET,
 	"reload":       RELOAD,
 	"restart":      RESTART,
 	"options":      OPTIONS,
@@ -110,4 +113,17 @@ var reservedWords = map[string]int{
 	"local":        LOCAL,
 	"global":       GLOBAL,
 	"immediate":    IMMEDIATE,
+	"rotate":       ROTATE,
+	"force":        FORCE,
+	"ranges":       RANGES,
+	"using":        USING,
+	"between":      BETWEEN,
+	"meta":         META,
+	"only":         ONLY,
+	"begin":        BEGIN,
+	"commit":       COMMIT,
+	"rollback":     ROLLBACK,
+	"call":         CALL,
+	"if":           IF,
+	"exists":       EXISTS,
 }

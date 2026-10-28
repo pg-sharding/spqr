@@ -30,7 +30,7 @@ generate_help:
 ####################### BUILD #######################
 
 codename ?= jammy
-POSTGRES_VERSION ?= 15
+POSTGRES_VERSION ?= 17
 PROTO_TEST_TAG ?= all
 
 build_balancer:
@@ -57,7 +57,13 @@ build_workloadreplay:
 build_spqrdump:
 	go build -pgo=auto -o spqr-dump ./cmd/spqrdump
 
-build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump
+build_monitor:
+	go build -pgo=auto -o spqr-monitor ./cmd/monitor
+
+build_redistributor:
+	go build -pgo=auto -o spqr-redistributor ./cmd/redistributor
+
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump build_monitor build_redistributor
 
 build_images:
 	docker compose build spqr-base-image
@@ -108,9 +114,16 @@ test-cli-overrides: build_router
 	@echo ">> Running CLI override e2e test via test/cli/override.sh"
 	@CFG="test/cli/router.yaml" test/cli/override.sh ./spqr-router
 
-unittest:
-	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
+unittest-race:
 	go test -race -count 20 -timeout 30s ./qdb/...
+	go test -v -race -count 20 -timeout 120s -run "TestDbPoolRaces|TestShardPoolConnectionAcquireLimit"  ./pkg/pool/
+
+unittest:
+	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console... ./yacc/hostspec/...
+	$(MAKE) unittest-race
+
+bench:
+	go test -run '^$$' -bench . -benchmem ./router/planner/... ./router/qparser/...
 
 etcdqdb_test:
 	go test -timeout 120s ./test/etcdqdb_integration/... 
@@ -124,17 +137,24 @@ regress_local_4sh: proxy_4sh_run
 regress_pooler_local: pooler_d_run
 	./script/regress_pooler_local.sh
 
-regress_pooler: build_images
+regress_pooler: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
 mdb-branch ?= MDB_${POSTGRES_VERSION}
 shard-image ?= spqr-shard-image
 
-regress: build_images
+build_pg_regress_junit_tool:
+	go build -o test/regress/pg_regress_to_junit ./test/tools/pg_regress_to_junit
+	go build -o test/isolation/pg_regress_to_junit ./test/tools/pg_regress_to_junit
+
+regress: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
 
-regress_coord: build_images
+regress_coord: build_images build_pg_regress_junit_tool
 	docker compose -f test/regress/docker-compose-coord.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-coord.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-coord.yaml run --remove-orphans regress
+
+regress_5node: build_images build_pg_regress_junit_tool
+	docker compose -f test/regress/docker-compose-5node.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose-5node.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose-5node.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
@@ -149,7 +169,7 @@ xproto_regress: build_images
 	docker compose -f test/xproto/docker-compose.yaml down && \
 	docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build -e TEST_TAG=$(PROTO_TEST_TAG) regress
 
-isolation_regress: build_images
+isolation_regress: build_images build_pg_regress_junit_tool
 	docker compose -f test/isolation/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/isolation/docker-compose.yaml build && docker compose -f test/isolation/docker-compose.yaml run --remove-orphans regress
 
 stress: build_images
@@ -165,6 +185,8 @@ split_feature_test:
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
+FEATURE_TEST_ENV = GODOG_FEATURE_DIR=$${GODOG_FEATURE_DIR:-generatedFeatures} GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature/feature.xml}
+
 feature_test_ci:
 	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
 		echo "Rebuild";\
@@ -175,14 +197,24 @@ feature_test_ci:
 	docker compose build spqr-base-image
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
-	(cd test/feature; go test -timeout 150m)
+	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
 
 feature_test: clean_feature_test build_images
 	make split_feature_test
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
-	(cd test/feature; GODOG_FEATURE_DIR=generatedFeatures go test -timeout 150m)
+	(cd test/feature; $(FEATURE_TEST_ENV) go test -timeout 150m)
+
+# Feature suite against the odyssey pooler topology. See test/feature/odyssey-task.md.
+FEATURE_ODYSSEY_TEST_ENV = FEATURE_COMPOSE_FILE=docker-compose-odyssey.yaml GODOG_STOP_ON_FAILURE=false GODOG_FEATURE_DIR=$${GODOG_FEATURE_DIR:-generatedFeatures} GODOG_JUNIT_REPORT=$${GODOG_JUNIT_REPORT:-../../test-reports/feature-odyssey/feature.xml} GODOG_TAGS="~@pure_pg"
+
+feature_test_odyssey: clean_feature_test build_images
+	make split_feature_test
+	go build ./test/feature/...
+	rm -rf ./test/feature/logs
+	mkdir ./test/feature/logs
+	(cd test/feature; $(FEATURE_ODYSSEY_TEST_ENV) go test -timeout 150m)
 
 ####################### LINTERS #######################
 
@@ -223,14 +255,16 @@ mockgen:
 
 yaccgen:
 	make -C ./yacc/console gen
+	make -C ./yacc/hostspec gen
 
 gen: gogen yaccgen mockgen
 
-generate: build_images
+generate:
 	docker build -f docker/generator/Dockerfile -t spqr-generator .
 	docker run --name spqr-generator-1 spqr-generator
 	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos
 	docker cp spqr-generator-1:/spqr/yacc/console/. yacc/console
+	docker cp spqr-generator-1:/spqr/yacc/hostspec/. yacc/hostspec
 	docker cp spqr-generator-1:/spqr/pkg/mock/. pkg/mock
 	docker cp spqr-generator-1:/spqr/router/mock/. router/mock
 	docker cp spqr-generator-1:/spqr/coordinator/mock/. coordinator/mock

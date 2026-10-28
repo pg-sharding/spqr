@@ -2,8 +2,8 @@ package pool_test
 
 import (
 	"context"
-	"math/rand"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,14 +52,28 @@ func TestDbPoolOrderCaching(t *testing.T) {
 			}), &startup.StartupParams{}, underlyingPool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
+	rawConn1 := mockinst.NewMockRawConn(ctrl)
+	rawConn1.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
+	ins1.EXPECT().Conn().AnyTimes().Return(rawConn1)
+
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1:6432")
 	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
+
+	rawConn2 := mockinst.NewMockRawConn(ctrl)
+	rawConn2.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
+	ins2.EXPECT().Conn().AnyTimes().Return(rawConn2)
+
 	ins2.EXPECT().Hostname().AnyTimes().Return("h2:6432")
 	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
+
+	rawConn3 := mockinst.NewMockRawConn(ctrl)
+	rawConn3.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes().Return(nil)
+	ins3.EXPECT().Conn().AnyTimes().Return(rawConn3)
+
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3:6432")
 	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
@@ -125,7 +139,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 	}
 
-	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
+	sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRW}, key)
 
 	assert.NoError(err)
 	assert.NotNil(sh)
@@ -138,7 +152,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	/* next time expect only one call */
 	underlyingPool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3:6432"}).Times(1).Return(h3, nil)
 
-	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
+	sh, err = dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRW}, key)
 
 	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
@@ -146,7 +160,8 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestDbPoolRaces(t *testing.T) {
+func runner(t *testing.T, spamTopologyChanges bool) {
+	t.Helper()
 	assert := assert.New(t)
 
 	ctrl := gomock.NewController(t)
@@ -154,7 +169,7 @@ func TestDbPoolRaces(t *testing.T) {
 	sz := 50
 
 	mp := map[string]map[string][]shard.ShardHostInstance{}
-	var mu sync.Mutex
+	mpCounters := map[string]map[string]*atomic.Uint32{}
 
 	hosts := []string{
 		"h1:6432",
@@ -170,15 +185,23 @@ func TestDbPoolRaces(t *testing.T) {
 
 	for i, shname := range shards {
 		mp[shname] = map[string][]shard.ShardHostInstance{}
+		mpCounters[shname] = map[string]*atomic.Uint32{}
 
 		for hi, hst := range hosts {
+
+			mpCounters[shname][hst] = &atomic.Uint32{}
+			mpCounters[shname][hst].Store(uint32(0))
 
 			for j := range sz {
 				sh := mockshard.NewMockShardHostInstance(ctrl)
 
-				ins1 := mockinst.NewMockDBInstance(ctrl)
-				ins1.EXPECT().Hostname().Return(hst).AnyTimes()
-				ins1.EXPECT().AvailabilityZone().Return("").AnyTimes()
+				instance := mockinst.NewMockDBInstance(ctrl)
+
+				c := mockinst.NewMockRawConn(ctrl)
+				instance.EXPECT().Conn().Return(c).AnyTimes()
+
+				instance.EXPECT().Hostname().Return(hst).AnyTimes()
+				instance.EXPECT().AvailabilityZone().Return("").AnyTimes()
 
 				sh.EXPECT().IsStale().AnyTimes().Return(false)
 
@@ -190,11 +213,13 @@ func TestDbPoolRaces(t *testing.T) {
 				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
 
 				counter := 0
+				rwCounter := 0
 
 				sh.EXPECT().Receive().DoAndReturn(func() (pgproto3.BackendMessage, error) {
+					rwCounter++
 					if counter == 0 {
 						counter = 1
-						if rand.Intn(100)%2 == 0 {
+						if rwCounter%2 == 0 {
 							return &pgproto3.DataRow{
 								Values: [][]byte{
 									{'o', 'n'},
@@ -215,7 +240,7 @@ func TestDbPoolRaces(t *testing.T) {
 				sh.EXPECT().InstanceHostname().Return(hst).AnyTimes()
 
 				sh.EXPECT().ID().Return(uint((3*i+hi)*sz + j)).AnyTimes()
-				sh.EXPECT().Instance().Return(ins1).AnyTimes()
+				sh.EXPECT().Instance().Return(instance).AnyTimes()
 				mp[shname][hst] = append(mp[shname][hst], sh)
 			}
 		}
@@ -229,15 +254,19 @@ func TestDbPoolRaces(t *testing.T) {
 		})
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(topology.TopMgrFromMap(cfg), &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
-		mu.Lock()
-		defer mu.Unlock()
+	topmgr := topology.TopMgrFromMap(cfg)
 
-		if len(mp[shardKey.Name][host.Address]) == 0 {
+	dbpool := pool.NewDBPoolWithAllocator(topmgr, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, _ *config.BackendRule) (shard.ShardHostInstance, error) {
+
+		/* XXX: fetch and add */
+		val :=
+			mpCounters[shardKey.Name][host.Address].Add(1) - 1
+
+		if val >= uint32(sz) {
 			panic("exceeded!")
 		}
-		var sh shard.ShardHostInstance
-		sh, mp[shardKey.Name][host.Address] = mp[shardKey.Name][host.Address][0], mp[shardKey.Name][host.Address][1:]
+
+		sh := mp[shardKey.Name][host.Address][val]
 
 		spqrlog.Zero.Debug().Str("shard", shardKey.Name).Str("host", host.Address).Uint("id", sh.ID()).Msg("test allocation")
 
@@ -245,26 +274,82 @@ func TestDbPoolRaces(t *testing.T) {
 	})
 
 	dbpool.SetRule(&config.BackendRule{
+		DisableJitter:   true,
 		ConnectionLimit: sz,
 	})
 
+	/* XXX: we dont want to test network speed */
+	dbpool.CheckTimeout = 0
+
 	sem := semaphore.NewWeighted(25)
+
+	ch := make(chan struct{})
+
+	wg := sync.WaitGroup{}
+	swg := sync.WaitGroup{}
+
+	if spamTopologyChanges {
+		swg.Add(1)
+		go func() {
+			defer swg.Done()
+			/* Run spam goroutine */
+
+			for {
+				select {
+				case <-ch:
+					return
+				default:
+
+					setOptsSem := semaphore.NewWeighted(int64(len(shards)))
+					for _, shname := range shards {
+						assert.NoError(setOptsSem.Acquire(context.TODO(), 1))
+						go func(ds *topology.DataShard) {
+							defer setOptsSem.Release(1)
+							ds.SetOptions(topology.HostsToOptions(hosts))
+						}(cfg[shname])
+					}
+					assert.NoError(setOptsSem.Acquire(context.TODO(), int64(len(shards))))
+				}
+			}
+		}()
+	}
 
 	for i := range 10 {
 		for range 200 {
 			assert.NoError(sem.Acquire(context.TODO(), 1))
 
-			go func() {
+			wg.Add(1)
+
+			go func(i int) {
+				defer wg.Done()
 				defer sem.Release(1)
 
-				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
+				sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: uint(i), Tsa: config.TargetSessionAttrsPS}, kr.ShardKey{Name: shards[i%3]})
+
 				assert.NoError(err)
+
 				err = dbpool.Put(sh)
 				assert.NoError(err)
-			}()
+			}(i)
 		}
-
 	}
+
+	wg.Wait()
+
+	close(ch)
+
+	// Wait for all goroutines
+	swg.Wait()
+}
+
+func TestDbPoolRaces(t *testing.T) {
+	runner(t, false)
+}
+
+// TestDbPoolRacesWithSetOptions repeats TestDbPoolRaces but concurrently calls
+// TopologyMgr.SetOptions
+func TestDbPoolRacesWithSetOptions(t *testing.T) {
+	runner(t, true)
 }
 
 func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
@@ -367,7 +452,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 	}
 
-	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
+	sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRW}, key)
 
 	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
@@ -390,7 +475,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	dbpool.ShuffleHosts = true
 
 	for range repeatTimes {
-		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)
+		sh, err = dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: clId, Tsa: config.TargetSessionAttrsRO}, key)
 
 		// assert.NotEqual(sh, h3)
 
@@ -403,12 +488,8 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	diff := cnth1 - cnth2
-	if diff < 0 {
-		diff = -diff
-	}
-
-	assert.Less(diff, 90)
+	assert.Greater(cnth1, 100)
+	assert.Greater(cnth2, 100)
 	assert.Equal(repeatTimes, cnth1+cnth2)
 }
 

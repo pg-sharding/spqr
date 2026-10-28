@@ -9,8 +9,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
@@ -30,10 +32,11 @@ const (
 )
 
 type MemQDBState struct {
-	Locks                       map[string]*sync.RWMutex            `json:"locks"`
-	Freq                        map[string]bool                     `json:"freq"`
-	Krs                         map[string]*internalKeyRange        `json:"krs"`
-	KrVersions                  map[string]int                      `json:"kr_versions"`
+	Locks                       map[string]*sync.RWMutex     `json:"locks"`
+	Freq                        map[string]bool              `json:"freq"`
+	Krs                         map[string]*internalKeyRange `json:"krs"`
+	KrVersions                  map[string]int               `json:"kr_versions"`
+	krOpLocks                   map[string]*sync.Mutex
 	Shards                      map[string]*Shard                   `json:"shards"`
 	Distributions               map[string]*Distribution            `json:"distributions"`
 	RelationDistribution        map[string]string                   `json:"relation_distribution"`
@@ -56,6 +59,7 @@ type MemQDBState struct {
 	TaskGroupMoveTaskID         map[string]string                   `json:"task_group_move_task"`
 	UniqueIndexes               map[string]*UniqueIndex             `json:"unique_indexes"`
 	UniqueIndexesByRel          map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
+	Migrations                  map[string]string                   `json:"migrations"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 }
@@ -82,6 +86,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 			Krs:                         map[string]*internalKeyRange{},
 			KrVersions:                  map[string]int{},
 			Locks:                       map[string]*sync.RWMutex{},
+			krOpLocks:                   map[string]*sync.Mutex{},
 			Shards:                      map[string]*Shard{},
 			Distributions:               map[string]*Distribution{},
 			RelationDistribution:        map[string]string{},
@@ -101,10 +106,15 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 			TwoPhaseTx:                  map[string]*TwoPCInfo{},
 			UniqueIndexes:               map[string]*UniqueIndex{},
 			UniqueIndexesByRel:          map[string]map[string]*UniqueIndex{},
+			Migrations:                  map[string]string{},
 		},
 
 		backupPath: backupPath,
 	}, nil
+}
+
+type memQDBStateTxDataOnly struct {
+	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 }
 
 func RestoreQDB(backupPath string) (*MemQDB, error) {
@@ -133,7 +143,17 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(data, qdb)
+	if !config.RouterConfig().BackupTxDataOnly {
+		if err = json.Unmarshal(data, qdb); err != nil {
+			return nil, err
+		}
+	} else {
+		tmp := &memQDBStateTxDataOnly{}
+		if err := json.Unmarshal(data, &tmp); err != nil {
+			return nil, err
+		}
+		qdb.State.TwoPhaseTx = tmp.TwoPhaseTx
+	}
 
 	for kr, locked := range qdb.State.Freq {
 		if locked {
@@ -141,9 +161,6 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 		}
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	return qdb, nil
 }
 
@@ -165,7 +182,12 @@ func (q *MemQDB) DumpState() error {
 		}
 	}(f)
 
-	state, err := json.MarshalIndent(q, "", "	")
+	var state []byte
+	if config.RouterConfig().BackupTxDataOnly {
+		state, err = json.MarshalIndent(&memQDBStateTxDataOnly{TwoPhaseTx: q.State.TwoPhaseTx}, "", "	")
+	} else {
+		state, err = json.MarshalIndent(q, "", "	")
+	}
 
 	if err != nil {
 		return err
@@ -238,7 +260,7 @@ func (q *MemQDB) UpdateKeyRangeMoveStatus(_ context.Context, _ string, _ MoveKey
 	return nil
 }
 
-func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string) error {
+func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string, _ bool) error {
 	// TODO implement
 	return nil
 }
@@ -523,6 +545,40 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
+
+func (q *MemQDB) LockKeyRangeOps(_ context.Context, id string) (*KeyRange, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: acquire key range operation lock")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	keyRange, err := q.getKeyrangeInternal(id)
+	if err != nil {
+		return nil, err
+	}
+
+	lock, ok := q.State.krOpLocks[id]
+	if !ok {
+		lock = &sync.Mutex{}
+		q.State.krOpLocks[id] = lock
+	}
+	lock.Lock()
+	return keyRange, nil
+}
+
+func (q *MemQDB) UnlockKeyRangeOps(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("key range id", id).Msg("memqdb: release key range operation lock")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	lock, ok := q.State.krOpLocks[id]
+	if ok {
+		lock.Unlock()
+	}
+	return nil
+}
+
 func (q *MemQDB) ListLockedKeyRanges(_ context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
@@ -783,7 +839,7 @@ func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 		return shard, nil
 	}
 
-	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
+	return nil, spqrerror.ShardNotFound(id)
 }
 
 func (q *MemQDB) AlterShard(_ context.Context, newShard *Shard) error {
@@ -960,7 +1016,7 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 		ds.Version++
 
 		for _, r := range rels {
-			/* Do not use public iface function, because we already got lock. */
+			/* Do not use public iface function, because we already acquired lock. */
 			if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
 				/* Well, okay. We already have distribution for relation with
 				* this exact relname. What about schema?
@@ -1963,20 +2019,24 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 }
 
 // ChangeTxStatus implements DCStateKeeper.
-func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state TwoPhaseTxState) error {
+func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state, _ TwoPhaseTxState) error {
 	spqrlog.Zero.Debug().Msg("memqdb: ChangeTxStatus")
+	n := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	/* XXX: validate state outer layers? */
 
 	info := q.State.TwoPhaseTx[id]
+	info.UpdatedAt = n
 	info.State = state
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TwoPhaseTx, id, info))
 }
 
 func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) {
+	n := time.Now()
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -1991,6 +2051,7 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 		Gid:       id,
 		ShardsIDs: nil,
 		State:     TwoPhaseInitState,
+		UpdatedAt: n,
 		Locked:    true,
 	}
 
@@ -2000,11 +2061,13 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 
 func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
 	spqrlog.Zero.Debug().Str("gid", gid).Msg("memqdb: ReleaseTxOwnership")
+	n := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	if info, ok := q.State.TwoPhaseTx[gid]; ok {
 		info.Locked = false
+		info.UpdatedAt = n
 	}
 	return nil
 }
@@ -2013,6 +2076,7 @@ func (q *MemQDB) ReleaseTxOwnership(_ context.Context, gid string) error {
 // XXX: check that all members are valid spqr shards
 func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []string) error {
 	spqrlog.Zero.Debug().Msg("memqdb: RecordTwoPhaseMembers")
+	n := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -2021,6 +2085,7 @@ func (q *MemQDB) RecordTwoPhaseMembers(_ context.Context, id string, shards []st
 		ShardsIDs: shards,
 		State:     TwoPhaseInitState,
 		Locked:    true,
+		UpdatedAt: n,
 	}
 
 	q.State.TwoPhaseTx[id] = info
@@ -2066,6 +2131,30 @@ func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
 	defer q.mu.RUnlock()
 
 	return q.State.TwoPhaseTx, nil
+}
+
+// TXInfo implements [DCStateKeeper].
+func (q *MemQDB) TXInfo(_ context.Context, gid string) (TwoPCInfo, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if tx, ok := q.State.TwoPhaseTx[gid]; !ok {
+		return TwoPCInfo{}, fmt.Errorf("could not get two-phase tx info: tx \"%s\" not found", gid)
+	} else {
+		return *tx, nil
+	}
+}
+
+// TXInfos implements [DCStateKeeper].
+func (q *MemQDB) TXInfos(_ context.Context) ([]TwoPCInfo, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	rt := make([]TwoPCInfo, 0, len(q.State.TwoPhaseTx))
+	for _, tx := range q.State.TwoPhaseTx {
+		rt = append(rt, *tx)
+	}
+	return rt, nil
 }
 
 func (q *MemQDB) SetTxMetaStorage(context.Context, []string) error {

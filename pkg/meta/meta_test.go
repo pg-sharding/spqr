@@ -12,12 +12,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	"github.com/pg-sharding/spqr/pkg/models/acl"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
@@ -120,6 +122,7 @@ func TestCreateShardValidatesReachableHosts(t *testing.T) {
 	statement := spqrparser.ShardDefinition{
 		Id:      "sh-new",
 		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
+		Force:   true,
 	}
 
 	memqdb, err := prepareDB(ctx)
@@ -180,16 +183,18 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 	statement := spqrparser.ShardDefinition{
 		Id:      "sh-new",
 		Options: []spqrparser.GenericOption{{Name: "host", Arg: listener.Addr().String()}},
+
+		Force: true,
 	}
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mngr := mockmgr.NewMockEntityMgr(ctrl)
-	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, fmt.Errorf("rpc error: code = Unknown desc = unknown shard sh-new"))
-	mngr.EXPECT().AddDataShard(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, shard *topology.DataShard) error {
+	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
+	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
 		assert.Equal(t, "sh-new", shard.ID)
-		assert.Equal(t, []string{listener.Addr().String()}, shard.Hosts())
+		assert.Equal(t, []config.Host{config.Host{Address: listener.Addr().String()}}, shard.HostsAZ())
 		return nil
 	})
 
@@ -214,7 +219,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 
 }
 
-func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
+func TestMoveKeyRangeReplyDoesntIncludeHint(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -226,10 +231,11 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	cl.EXPECT().Rule().Return((*config.FrontendRule)(nil)).AnyTimes()
 
 	mmgr.EXPECT().
-		Move(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange) error {
+		Move(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, move *kr.MoveKeyRange, icpCH icp.ICPContextHolder) error {
 			assert.Equal(t, "krid3", move.KeyRangeID)
 			assert.Equal(t, "sh2", move.ShardID)
+			assert.Equal(t, nil, icpCH)
 			return nil
 		})
 
@@ -251,14 +257,13 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false, nil)
 	assert.NoError(t, err)
 
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	_ = cli.ReplyTTS(tts)
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
-	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
 }
 
 func TestCreateReferenceRelation(t *testing.T) {
@@ -385,7 +390,7 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, tts)
 }
@@ -426,7 +431,7 @@ func TestRenameDistributionColumnNotFound(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
 }
@@ -461,7 +466,108 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
+}
+
+func TestApplyXRecords(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false).Times(1).Return(nil)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
+		assert.NoError(err)
+
+		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
+		referenceRelation := &rrelation.ReferenceRelation{
+			RelationName: &rfqn.RelationFQN{
+				RelationName: "relation",
+				SchemaName:   "schema",
+			},
+			ShardIDs: []string{"sh1"},
+		}
+		mmgr.EXPECT().CreateReferenceRelation(gomock.Any(), referenceRelation, nil).Times(1).Return(nil)
+		createReferenceRelationXRecord, err := meta.MakeXRecord("CreateReferenceRelation", referenceRelation, nil)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, createReferenceRelationXRecord)
+		assert.NoError(err)
+	})
+
+	t.Run("invalid xrecord - arguments count mismatch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 3")
+	})
+
+	t.Run("invalid xrecord - argument type mismatch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "failed to decode argument 1 of AddDataShard")
+	})
+
+	t.Run("invalid xrecord - invalid method name", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
+		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+		datashard := &topology.DataShard{
+			ID: "sh1",
+		}
+		addDataShardXRecord, err := meta.MakeXRecord("InvalidMethod", datashard, -1)
+		assert.NoError(err)
+
+		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
+		assert.Error(err)
+		assert.Contains(err.Error(), "unknown EntityMgr method")
+	})
 }

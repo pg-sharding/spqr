@@ -43,17 +43,17 @@ func (m *MockShardingSchemaKeeper) EXPECT() *MockShardingSchemaKeeperMockRecorde
 }
 
 // DeleteKeyRangeMove mocks base method.
-func (m *MockShardingSchemaKeeper) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (m *MockShardingSchemaKeeper) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId)
+	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteKeyRangeMove indicates an expected call of DeleteKeyRangeMove.
-func (mr *MockShardingSchemaKeeperMockRecorder) DeleteKeyRangeMove(ctx, moveId any) *gomock.Call {
+func (mr *MockShardingSchemaKeeperMockRecorder) DeleteKeyRangeMove(ctx, moveId, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockShardingSchemaKeeper)(nil).DeleteKeyRangeMove), ctx, moveId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockShardingSchemaKeeper)(nil).DeleteKeyRangeMove), ctx, moveId, force)
 }
 
 // ListKeyRangeMoves mocks base method.
@@ -506,6 +506,73 @@ func (m *MockTaskStateKeeper) TryTaskGroupLock(ctx context.Context, tgId, holder
 func (mr *MockTaskStateKeeperMockRecorder) TryTaskGroupLock(ctx, tgId, holder any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockTaskStateKeeper)(nil).TryTaskGroupLock), ctx, tgId, holder)
+}
+
+// MockMigrationJournal is a mock of MigrationJournal interface.
+type MockMigrationJournal struct {
+	ctrl     *gomock.Controller
+	recorder *MockMigrationJournalMockRecorder
+	isgomock struct{}
+}
+
+// MockMigrationJournalMockRecorder is the mock recorder for MockMigrationJournal.
+type MockMigrationJournalMockRecorder struct {
+	mock *MockMigrationJournal
+}
+
+// NewMockMigrationJournal creates a new mock instance.
+func NewMockMigrationJournal(ctrl *gomock.Controller) *MockMigrationJournal {
+	mock := &MockMigrationJournal{ctrl: ctrl}
+	mock.recorder = &MockMigrationJournalMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMigrationJournal) EXPECT() *MockMigrationJournalMockRecorder {
+	return m.recorder
+}
+
+// ListMigrations mocks base method.
+func (m *MockMigrationJournal) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockMigrationJournalMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockMigrationJournal)(nil).ListMigrations), ctx)
+}
+
+// ResetMigration mocks base method.
+func (m *MockMigrationJournal) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockMigrationJournalMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockMigrationJournal)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockMigrationJournal) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockMigrationJournalMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockMigrationJournal)(nil).SetMigration), ctx, name, value)
 }
 
 // MockQDB is a mock of QDB interface.
@@ -1291,6 +1358,21 @@ func (mr *MockQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMigrations mocks base method.
+func (m *MockQDB) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockQDBMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockQDB)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTasks mocks base method.
 func (m *MockQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -1426,6 +1508,21 @@ func (mr *MockQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// LockKeyRangeOps mocks base method.
+func (m *MockQDB) LockKeyRangeOps(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockKeyRangeOps indicates an expected call of LockKeyRangeOps.
+func (mr *MockQDBMockRecorder) LockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRangeOps", reflect.TypeOf((*MockQDB)(nil).LockKeyRangeOps), ctx, id)
+}
+
 // NextRange mocks base method.
 func (m *MockQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	m.ctrl.T.Helper()
@@ -1455,6 +1552,34 @@ func (mr *MockQDBMockRecorder) RenameKeyRange(ctx, krId, ktIdNew any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockQDB)(nil).RenameKeyRange), ctx, krId, ktIdNew)
 }
 
+// ResetMigration mocks base method.
+func (m *MockQDB) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockQDBMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockQDB)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockQDB) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockQDBMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockQDB)(nil).SetMigration), ctx, name, value)
+}
+
 // ShareKeyRange mocks base method.
 func (m *MockQDB) ShareKeyRange(id string) error {
 	m.ctrl.T.Helper()
@@ -1481,6 +1606,20 @@ func (m *MockQDB) UnlockKeyRange(ctx context.Context, id string) error {
 func (mr *MockQDBMockRecorder) UnlockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRange", reflect.TypeOf((*MockQDB)(nil).UnlockKeyRange), ctx, id)
+}
+
+// UnlockKeyRangeOps mocks base method.
+func (m *MockQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlockKeyRangeOps indicates an expected call of UnlockKeyRangeOps.
+func (mr *MockQDBMockRecorder) UnlockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRangeOps", reflect.TypeOf((*MockQDB)(nil).UnlockKeyRangeOps), ctx, id)
 }
 
 // UpdateCoordinator mocks base method.
@@ -1703,17 +1842,17 @@ func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid any) *gomoc
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state, curExpectedState qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state, curExpectedState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpectedState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state, curExpectedState)
 }
 
 // ClearTxStatuses mocks base method.
@@ -1817,6 +1956,36 @@ func (mr *MockDCStateKeeperMockRecorder) TXCohortShards(ctx, gid any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockDCStateKeeper)(nil).TXCohortShards), ctx, gid)
 }
 
+// TXInfo mocks base method.
+func (m *MockDCStateKeeper) TXInfo(ctx context.Context, gid string) (qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfo", ctx, gid)
+	ret0, _ := ret[0].(qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfo indicates an expected call of TXInfo.
+func (mr *MockDCStateKeeperMockRecorder) TXInfo(ctx, gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfo", reflect.TypeOf((*MockDCStateKeeper)(nil).TXInfo), ctx, gid)
+}
+
+// TXInfos mocks base method.
+func (m *MockDCStateKeeper) TXInfos(ctx context.Context) ([]qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfos", ctx)
+	ret0, _ := ret[0].([]qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfos indicates an expected call of TXInfos.
+func (mr *MockDCStateKeeperMockRecorder) TXInfos(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfos", reflect.TypeOf((*MockDCStateKeeper)(nil).TXInfos), ctx)
+}
+
 // TXStatus mocks base method.
 func (m *MockDCStateKeeper) TXStatus(ctx context.Context, gid string) (qdb.TwoPhaseTxState, error) {
 	m.ctrl.T.Helper()
@@ -1914,17 +2083,17 @@ func (mr *MockXDCStateKeeperMockRecorder) AlterShard(ctx, newShard any) *gomock.
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockXDCStateKeeper) ChangeTxStatus(ctx context.Context, gid string, state, curExpectedState qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state, curExpectedState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpectedState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockXDCStateKeeper)(nil).ChangeTxStatus), ctx, gid, state, curExpectedState)
 }
 
 // ClearTxStatuses mocks base method.
@@ -2170,6 +2339,36 @@ func (m *MockXDCStateKeeper) TXCohortShards(ctx context.Context, gid string) ([]
 func (mr *MockXDCStateKeeperMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXCohortShards), ctx, gid)
+}
+
+// TXInfo mocks base method.
+func (m *MockXDCStateKeeper) TXInfo(ctx context.Context, gid string) (qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfo", ctx, gid)
+	ret0, _ := ret[0].(qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfo indicates an expected call of TXInfo.
+func (mr *MockXDCStateKeeperMockRecorder) TXInfo(ctx, gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfo", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXInfo), ctx, gid)
+}
+
+// TXInfos mocks base method.
+func (m *MockXDCStateKeeper) TXInfos(ctx context.Context) ([]qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfos", ctx)
+	ret0, _ := ret[0].([]qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfos indicates an expected call of TXInfos.
+func (mr *MockXDCStateKeeperMockRecorder) TXInfos(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfos", reflect.TypeOf((*MockXDCStateKeeper)(nil).TXInfos), ctx)
 }
 
 // TXStatus mocks base method.
@@ -2614,17 +2813,17 @@ func (mr *MockXQDBMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
 }
 
 // DeleteKeyRangeMove mocks base method.
-func (m *MockXQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (m *MockXQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId)
+	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteKeyRangeMove indicates an expected call of DeleteKeyRangeMove.
-func (mr *MockXQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockXQDB)(nil).DeleteKeyRangeMove), ctx, moveId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockXQDB)(nil).DeleteKeyRangeMove), ctx, moveId, force)
 }
 
 // DeleteRouter mocks base method.
@@ -3227,6 +3426,21 @@ func (mr *MockXQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMigrations mocks base method.
+func (m *MockXQDB) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockXQDBMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockXQDB)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTasks mocks base method.
 func (m *MockXQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -3377,6 +3591,21 @@ func (mr *MockXQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockXQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// LockKeyRangeOps mocks base method.
+func (m *MockXQDB) LockKeyRangeOps(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockKeyRangeOps indicates an expected call of LockKeyRangeOps.
+func (mr *MockXQDBMockRecorder) LockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRangeOps", reflect.TypeOf((*MockXQDB)(nil).LockKeyRangeOps), ctx, id)
+}
+
 // LockRedistributeTask mocks base method.
 func (m *MockXQDB) LockRedistributeTask(ctx context.Context, id, holder string) error {
 	m.ctrl.T.Helper()
@@ -3476,6 +3705,34 @@ func (mr *MockXQDBMockRecorder) RenameKeyRange(ctx, krId, ktIdNew any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockXQDB)(nil).RenameKeyRange), ctx, krId, ktIdNew)
 }
 
+// ResetMigration mocks base method.
+func (m *MockXQDB) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockXQDBMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockXQDB)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockXQDB) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockXQDBMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockXQDB)(nil).SetMigration), ctx, name, value)
+}
+
 // SetTxMetaStorage mocks base method.
 func (m *MockXQDB) SetTxMetaStorage(arg0 context.Context, arg1 []string) error {
 	m.ctrl.T.Helper()
@@ -3544,6 +3801,20 @@ func (m *MockXQDB) UnlockKeyRange(ctx context.Context, id string) error {
 func (mr *MockXQDBMockRecorder) UnlockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRange", reflect.TypeOf((*MockXQDB)(nil).UnlockKeyRange), ctx, id)
+}
+
+// UnlockKeyRangeOps mocks base method.
+func (m *MockXQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlockKeyRangeOps indicates an expected call of UnlockKeyRangeOps.
+func (mr *MockXQDBMockRecorder) UnlockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRangeOps", reflect.TypeOf((*MockXQDB)(nil).UnlockKeyRangeOps), ctx, id)
 }
 
 // UpdateCoordinator mocks base method.
@@ -3923,17 +4194,17 @@ func (mr *MockStateKeeperQDBMockRecorder) BeginTransaction(ctx, transaction any)
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockStateKeeperQDB) ChangeTxStatus(ctx context.Context, gid string, state qdb.TwoPhaseTxState) error {
+func (m *MockStateKeeperQDB) ChangeTxStatus(ctx context.Context, gid string, state, curExpectedState qdb.TwoPhaseTxState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", ctx, gid, state, curExpectedState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockStateKeeperQDBMockRecorder) ChangeTxStatus(ctx, gid, state any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ChangeTxStatus(ctx, gid, state, curExpectedState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).ChangeTxStatus), ctx, gid, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockStateKeeperQDB)(nil).ChangeTxStatus), ctx, gid, state, curExpectedState)
 }
 
 // CheckDistribution mocks base method.
@@ -4157,17 +4428,17 @@ func (mr *MockStateKeeperQDBMockRecorder) CurrVal(ctx, seqName any) *gomock.Call
 }
 
 // DeleteKeyRangeMove mocks base method.
-func (m *MockStateKeeperQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+func (m *MockStateKeeperQDB) DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId)
+	ret := m.ctrl.Call(m, "DeleteKeyRangeMove", ctx, moveId, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteKeyRangeMove indicates an expected call of DeleteKeyRangeMove.
-func (mr *MockStateKeeperQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) DeleteKeyRangeMove(ctx, moveId, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockStateKeeperQDB)(nil).DeleteKeyRangeMove), ctx, moveId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKeyRangeMove", reflect.TypeOf((*MockStateKeeperQDB)(nil).DeleteKeyRangeMove), ctx, moveId, force)
 }
 
 // DeleteRouter mocks base method.
@@ -4785,6 +5056,21 @@ func (mr *MockStateKeeperQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockStateKeeperQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMigrations mocks base method.
+func (m *MockStateKeeperQDB) ListMigrations(ctx context.Context) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMigrations", ctx)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMigrations indicates an expected call of ListMigrations.
+func (mr *MockStateKeeperQDBMockRecorder) ListMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMigrations", reflect.TypeOf((*MockStateKeeperQDB)(nil).ListMigrations), ctx)
+}
+
 // ListMoveTasks mocks base method.
 func (m *MockStateKeeperQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -4950,6 +5236,21 @@ func (mr *MockStateKeeperQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// LockKeyRangeOps mocks base method.
+func (m *MockStateKeeperQDB) LockKeyRangeOps(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockKeyRangeOps indicates an expected call of LockKeyRangeOps.
+func (mr *MockStateKeeperQDBMockRecorder) LockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRangeOps", reflect.TypeOf((*MockStateKeeperQDB)(nil).LockKeyRangeOps), ctx, id)
+}
+
 // LockRedistributeTask mocks base method.
 func (m *MockStateKeeperQDB) LockRedistributeTask(ctx context.Context, id, holder string) error {
 	m.ctrl.T.Helper()
@@ -5091,6 +5392,34 @@ func (mr *MockStateKeeperQDBMockRecorder) RenameKeyRange(ctx, krId, ktIdNew any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).RenameKeyRange), ctx, krId, ktIdNew)
 }
 
+// ResetMigration mocks base method.
+func (m *MockStateKeeperQDB) ResetMigration(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetMigration", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetMigration indicates an expected call of ResetMigration.
+func (mr *MockStateKeeperQDBMockRecorder) ResetMigration(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetMigration", reflect.TypeOf((*MockStateKeeperQDB)(nil).ResetMigration), ctx, name)
+}
+
+// SetMigration mocks base method.
+func (m *MockStateKeeperQDB) SetMigration(ctx context.Context, name, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMigration", ctx, name, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMigration indicates an expected call of SetMigration.
+func (mr *MockStateKeeperQDBMockRecorder) SetMigration(ctx, name, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMigration", reflect.TypeOf((*MockStateKeeperQDB)(nil).SetMigration), ctx, name, value)
+}
+
 // SetTxMetaStorage mocks base method.
 func (m *MockStateKeeperQDB) SetTxMetaStorage(arg0 context.Context, arg1 []string) error {
 	m.ctrl.T.Helper()
@@ -5132,6 +5461,36 @@ func (m *MockStateKeeperQDB) TXCohortShards(ctx context.Context, gid string) ([]
 func (mr *MockStateKeeperQDBMockRecorder) TXCohortShards(ctx, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXCohortShards), ctx, gid)
+}
+
+// TXInfo mocks base method.
+func (m *MockStateKeeperQDB) TXInfo(ctx context.Context, gid string) (qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfo", ctx, gid)
+	ret0, _ := ret[0].(qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfo indicates an expected call of TXInfo.
+func (mr *MockStateKeeperQDBMockRecorder) TXInfo(ctx, gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfo", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXInfo), ctx, gid)
+}
+
+// TXInfos mocks base method.
+func (m *MockStateKeeperQDB) TXInfos(ctx context.Context) ([]qdb.TwoPCInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXInfos", ctx)
+	ret0, _ := ret[0].([]qdb.TwoPCInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TXInfos indicates an expected call of TXInfos.
+func (mr *MockStateKeeperQDBMockRecorder) TXInfos(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXInfos", reflect.TypeOf((*MockStateKeeperQDB)(nil).TXInfos), ctx)
 }
 
 // TXStatus mocks base method.
@@ -5189,6 +5548,20 @@ func (m *MockStateKeeperQDB) UnlockKeyRange(ctx context.Context, id string) erro
 func (mr *MockStateKeeperQDBMockRecorder) UnlockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).UnlockKeyRange), ctx, id)
+}
+
+// UnlockKeyRangeOps mocks base method.
+func (m *MockStateKeeperQDB) UnlockKeyRangeOps(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlockKeyRangeOps", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlockKeyRangeOps indicates an expected call of UnlockKeyRangeOps.
+func (mr *MockStateKeeperQDBMockRecorder) UnlockKeyRangeOps(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockKeyRangeOps", reflect.TypeOf((*MockStateKeeperQDB)(nil).UnlockKeyRangeOps), ctx, id)
 }
 
 // UpdateCoordinator mocks base method.

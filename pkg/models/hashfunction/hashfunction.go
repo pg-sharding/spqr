@@ -87,6 +87,12 @@ func ApplyMurmurHashFunction(input any, ctype string) (uint32, error) {
 		default:
 			return 0, errUnknownValueType(input, HashFunctionMurmur)
 		}
+	case qdb.ColumnTypeUUIDHashed:
+		v, err := canonicalUUIDBytes(input, HashFunctionMurmur)
+		if err != nil {
+			return 0, err
+		}
+		return murmur3.Sum32(v), nil
 	default:
 		return 0, errUnknownColumnType(ctype, HashFunctionMurmur)
 	}
@@ -123,9 +129,33 @@ func ApplyCityHashFunction(input any, ctype string) (uint32, error) {
 		default:
 			return 0, errUnknownValueType(input, HashFunctionCity)
 		}
+	case qdb.ColumnTypeUUIDHashed:
+		v, err := canonicalUUIDBytes(input, HashFunctionCity)
+		if err != nil {
+			return 0, err
+		}
+		return city.Hash32(v), nil
 	default:
 		return 0, errUnknownColumnType(ctype, HashFunctionCity)
 	}
+}
+
+func canonicalUUIDBytes(input any, hf HashFunctionType) ([]byte, error) {
+	var raw string
+	switch v := input.(type) {
+	case []byte:
+		raw = string(v)
+	case string:
+		raw = v
+	default:
+		return nil, errUnknownValueType(input, hf)
+	}
+
+	u, err := uuid.Parse(strings.ToLower(raw))
+	if err != nil {
+		return nil, err
+	}
+	return []byte(u.String()), nil
 }
 
 func ApplyNonIdentHashFunction(input any, ctype string, hf HashFunctionType) (uint32, error) {
@@ -145,7 +175,7 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 
 	switch hf {
 	case HashFunctionIdent:
-		if ctype == qdb.ColumnTypeUUID {
+		if ctype == qdb.ColumnTypeUUID || ctype == qdb.ColumnTypeUUIDHashed {
 			if err := uuid.Validate(strings.ToLower(input.(string))); err != nil {
 				return nil, err
 			}
@@ -185,6 +215,8 @@ func ParseBytesFromStringRepr(input []byte, ctype string) (any, error) {
 		parsedInput = n
 
 	case qdb.ColumnTypeUUID:
+		fallthrough
+	case qdb.ColumnTypeUUIDHashed:
 		parsedInput = string(input)
 	case qdb.ColumnTypeVarchar:
 		fallthrough

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -18,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type LocalInstanceMetadataMgr struct {
@@ -160,56 +161,13 @@ func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 	return nil
 }
 
-// Caller should lock key range
-// TODO : unit tests
-
-// Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - req (*kr.MoveKeyRange): a pointer to a MoveKeyRange object containing the necessary information for the move operation.
-//
-// Returns:
-// - error: an error if the move operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange) error {
-	var krmv *qdb.KeyRange
-	var err error
-	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.KeyRangeID); err != nil {
-		return err
-	}
-
-	ds, err := lc.qdb.GetDistribution(ctx, krmv.DistributionId)
-	if err != nil {
-		return err
-	}
-
-	reqKr, err := kr.KeyRangeFromDB(krmv, ds.ColTypes)
-	if err != nil {
-		return err
-	}
-	reqKr.ShardID = req.ShardID
-
-	// TODO: move check to meta layer
-	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
-		return err
-	}
-	tranMngr := meta.NewTranEntityManager(lc)
-	if err := tranMngr.UpdateKeyRange(ctx, reqKr, ds.ColTypes); err != nil {
-		return err
-	}
-	if err := tranMngr.ExecNoTran(ctx); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
-	}
-	return nil
-}
-
 // BatchMoveKeyRange is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
+func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator
 }
 
 // RedistributeKeyRange is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator
 }
 
@@ -223,7 +181,7 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 //
 // Returns:
 // - error: an error if the operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
+func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard, force bool) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
 		Bool("updateTopology", lc.updateTopology).
@@ -232,7 +190,7 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 	if lc.updateTopology {
 		lc.tmgr.AddShard(ds)
 	}
-	return lc.Coordinator.AddDataShard(ctx, ds)
+	return lc.Coordinator.AddDataShard(ctx, ds, force)
 }
 
 func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
@@ -373,6 +331,14 @@ func (lc *LocalInstanceMetadataMgr) ListRouters(_ context.Context) ([]*topology.
 	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 
+// GetRouterMetadataHash is disabled in LocalCoordinator
+//
+// Returns:
+// - error: SPQR_INVALID_REQUEST error
+func (lc *LocalInstanceMetadataMgr) GetRouterMetadataHash(context.Context, *topology.Router) (uint64, error) {
+	return 0, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "MoveKeyRange is not available in local coordinator")
+}
+
 // MoveKeyRange is disabled in LocalCoordinator
 //
 // Returns:
@@ -464,7 +430,11 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+	}
+	conn, err := grpc.NewClient(coordAddr, dialOption)
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +455,11 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().CurrVal(ctx, seqName)
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return -1, fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+	}
+	conn, err := grpc.NewClient(coordAddr, dialOption)
 	if err != nil {
 		return -1, err
 	}
@@ -499,7 +473,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ string, _ bool) error {
+func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ string, _ bool, _ icp.ICPContextHolder) error {
 	return ErrNotCoordinator
 }
 

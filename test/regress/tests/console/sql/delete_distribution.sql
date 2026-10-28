@@ -26,5 +26,5 @@ SHOW distributions;
 DROP DISTRIBUTION ALL CASCADE;
 
 SHOW distributions;
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 SHOW relations;

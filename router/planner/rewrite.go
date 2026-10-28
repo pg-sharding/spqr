@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -54,27 +55,39 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 	return query, nil
 }
 
-func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
+// CommonValuesRewrite splits the VALUES clause at the location recorded by lyx.
+func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
+	const valuesKeyword = "VALUES"
+	if valuesLoc < 0 || valuesLoc > len(query)-len(valuesKeyword) ||
+		!strings.EqualFold(query[valuesLoc:valuesLoc+len(valuesKeyword)], valuesKeyword) {
+		return nil, fmt.Errorf("invalid query: invalid VALUES location %d", valuesLoc)
+	}
 
-	p := &plan.ScatterPlan{}
+	p := &plan.ScatterPlan{
+		BasePlan: plan.BasePlan{
+			H: planopts.PlanOpts{
+				ResultRelationIsRef: false,
+			},
+		},
+	}
 	if !ro {
 		p.SubPlan = &plan.ModifyTable{}
 	}
 
-	// Find the VALUES keyword
-	valuesKeywordStart := strings.Index(strings.ToUpper(query), "VALUES")
-	if valuesKeywordStart == -1 {
-		return nil, fmt.Errorf("invalid query: missing VALUES clause")
-	}
-
 	// Find and process each VALUES clause
-	pos := valuesKeywordStart + 6
+	pos := valuesLoc + len(valuesKeyword)
 
-	mp := map[string]string{}
-	frst := map[string]bool{}
+	prefix := query[:pos] + " " /* add one space to make query pretty */
+	mp := make(map[string]*strings.Builder, len(shs))
+	frst := make(map[string]bool, len(shs))
 	for _, sh := range shs {
-		frst[sh.Name] = true
-		mp[sh.Name] = query[:pos] + " " /* add one space to make query pretty */
+		if _, ok := mp[sh.Name]; !ok {
+			b := &strings.Builder{}
+			b.Grow(len(prefix) + len(query)/len(shs))
+			b.WriteString(prefix)
+			mp[sh.Name] = b
+			frst[sh.Name] = true
+		}
 	}
 
 	valIndx := 0
@@ -106,11 +119,12 @@ func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan
 		}
 
 		// Format the VALUES clause content
-		if !frst[shs[valIndx].Name] {
-			mp[shs[valIndx].Name] += ", "
+		shName := shs[valIndx].Name
+		b := mp[shName]
+		if !frst[shName] {
+			b.WriteString(", ")
 		}
-
-		mp[shs[valIndx].Name] += query[valuesOpenInd : valuesCloseInd+1]
+		b.WriteString(query[valuesOpenInd : valuesCloseInd+1])
 
 		// Move past this VALUES clause
 		pos = valuesCloseInd + 1
@@ -124,8 +138,9 @@ func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan
 		if pos >= len(query) || query[pos] != ',' {
 			// No more VALUES clauses, preserve the whitespace and add remaining query
 			if whitespaceStart < len(query) {
-				for sh := range mp {
-					mp[sh] += query[whitespaceStart:]
+				suffix := query[whitespaceStart:]
+				for _, b := range mp {
+					b.WriteString(suffix)
 				}
 			}
 			break
@@ -134,8 +149,13 @@ func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan
 		// Skip the comma
 		pos++
 
-		frst[shs[valIndx].Name] = false
+		frst[shName] = false
 		valIndx++
+	}
+
+	result := make(map[string]string, len(mp))
+	for sh, b := range mp {
+		result[sh] = b.String()
 	}
 
 	for sh := range frst {
@@ -148,59 +168,22 @@ func CommonValuesRewrite(query string, _ int, shs []kr.ShardKey, ro bool) (*plan
 		return p.ExecTargets[i].Name < p.ExecTargets[j].Name
 	})
 
-	p.OverwriteQuery = mp
+	p.OverwriteQuery = result
 
 	return p, nil
 }
 
-func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	return CommonValuesRewrite(query, 0, shs, false)
+func RewriteDistributedRelBatchInsert(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+	p, err := CommonValuesRewrite(query, valuesLoc, shs, false)
+	if err != nil {
+		return nil, err
+	}
+	p.Opts().AutoLinearize = true
+	return p, nil
 }
 
-/* We assume that all sanity check about query CTE collocation are already done. */
-func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
-	// Find the VALUES keyword
-	targetWithClause := strings.Index(strings.ToUpper(query), "WITH")
-	if targetWithClause == -1 {
-		return nil, fmt.Errorf("invalid query: missing WITH clause")
-	}
-
-	offsetStart := targetWithClause + 4 /* WITH */
-	// Skip whitespace
-	for offsetStart < len(query) && unicode.IsSpace(rune(query[offsetStart])) {
-		offsetStart++
-	}
-
-	if offsetStart >= len(query) {
-		return nil, fmt.Errorf("malformed query for rewrite")
-	}
-
-	offsetStart = strings.Index(strings.ToUpper(query[offsetStart:]), strings.ToUpper(auxCTE))
-	if offsetStart == -1 {
-		return nil, fmt.Errorf("invalid query: missing WITH name clause")
-	}
-
-	offsetStart = targetWithClause + len(auxCTE) /* WITH %name */
-	// Skip whitespace
-	for offsetStart < len(query) && unicode.IsSpace(rune(query[offsetStart])) {
-		offsetStart++
-	}
-
-	if offsetStart >= len(query) {
-		return nil, fmt.Errorf("malformed query for rewrite")
-	}
-
-	if query[offsetStart] == '(' {
-		/* WITH vals (a, b, c) case*/
-		offsetStart = findMatchingClosingParenthesis(query, offsetStart)
-	}
-
-	offsetStart = strings.Index(strings.ToUpper(query[offsetStart:]), "AS")
-	if offsetStart == -1 {
-		return nil, fmt.Errorf("invalid query: missing AS %s clause", auxCTE)
-	}
-
-	return CommonValuesRewrite(query, offsetStart+2 /* + AS */, shs, ro)
+func RewriteDistributedRelWithValues(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
+	return CommonValuesRewrite(query, valuesLoc, shs, ro)
 }
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
@@ -220,7 +203,8 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 	originalContent := query[colsOpenInd+1 : colsCloseInd]
 	newColumnList := formatInsertValue(colname, originalContent)
 	var newQuery strings.Builder
-	newQuery.WriteString(query[:colsOpenInd+1] + newColumnList)
+	newQuery.WriteString(query[:colsOpenInd+1])
+	newQuery.WriteString(newColumnList)
 
 	// Find the VALUES keyword
 	valuesKeywordStart := strings.Index(strings.ToUpper(query[colsCloseInd:]), "VALUES")
@@ -276,10 +260,15 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		if first {
 			// First VALUES clause - preserve original spacing after VALUES keyword
 			spaceBetween := query[valuesKeywordStart+6 : valuesOpenInd]
-			newQuery.WriteString(spaceBetween + "(" + newValuesContent + ")")
+			newQuery.WriteString(spaceBetween)
+			newQuery.WriteString("(")
+			newQuery.WriteString(newValuesContent)
+			newQuery.WriteString(")")
 			first = false
 		} else {
-			newQuery.WriteString(", (" + newValuesContent + ")")
+			newQuery.WriteString(", (")
+			newQuery.WriteString(newValuesContent)
+			newQuery.WriteString(")")
 		}
 
 		// Move past this VALUES clause

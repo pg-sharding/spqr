@@ -43,7 +43,7 @@ func Up() error {
 }
 
 func setupTestSet(t *testing.T) error {
-	err := os.Setenv("DOCKER_API_VERSION", "1.48")
+	err := os.Setenv("DOCKER_API_VERSION", "1.47")
 	if err != nil {
 		return err
 	}
@@ -397,4 +397,21 @@ func TestCreateSequence(t *testing.T) {
 
 	})
 
+}
+
+func TestKeyRangeVersion(t *testing.T) {
+	is := assert.New(t)
+	err := setupTestSet(t)
+	is.NoError(err)
+	defer func() {
+		_ = Down()
+	}()
+	is.NoError(err)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+	defer cancel()
+	db, err := setupSubTest(ctx)
+	is.NoError(err)
+
+	qdb.RunTestKeyRangeChangeVersion(t, db)
 }

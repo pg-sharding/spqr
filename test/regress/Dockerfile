@@ -17,12 +17,12 @@ RUN install -d /usr/share/postgresql-common/pgdg && \
     echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo postgresql-${POSTGRES_VERSION}
+    sudo postgresql-${POSTGRES_VERSION} iptables
 
 ENV PATH=$PATH:"/usr/lib/postgresql/${POSTGRES_VERSION}/lib/pgxs/src/test/regress:/home/build-user/pgbin/lib/postgresql/pgxs/src/test/regress"
 
 COPY ./ /regress
-RUN chmod a+x /regress/run_tests.sh
+RUN chmod a+x /regress/run_tests.sh /regress/pg_regress_to_junit
 WORKDIR "/regress"
 
 ENTRYPOINT "./run_tests.sh"

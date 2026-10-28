@@ -1,68 +1,59 @@
 package session
 
-import "github.com/pg-sharding/spqr/pkg/tsa"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/tsa"
+)
 
 type BoolGUC interface {
 	ShortName() string
 	Get(sph SessionParamsHolder) bool
+	Show(sph SessionParamsHolder) (string, error)
 	Set(sph SessionParamsHolder, level string, val bool)
+	Reset()
+}
+
+type StrGUC interface {
+	ShortName() string
+	Get(sph SessionParamsHolder) string
+	Show(sph SessionParamsHolder) (string, error)
+	Set(sph SessionParamsHolder, level string, val string) error
 	Reset()
 }
 
 type SessionParamsHolder interface {
 	ResolveVirtualBoolParam(name string, defaultVal bool) bool
+	ResolveVirtualStringParam(name string, defaultVal string) string
+
 	RecordVirtualParam(level string, name string, val string)
+
+	GetCatalogSeed() int
+	SetSeed(int)
 
 	GetTsa() tsa.TSA
 	SetTsa(level string, value string)
 	ResetTsa()
 
+	FindBoolGUC(string) (BoolGUC, error)
+	FindStrGUC(string) (StrGUC, error)
+
 	Usr() string
 	SetUsr(string)
 
-	// Get current session DRB
-	DefaultRouteBehaviour() string
-	SetDefaultRouteBehaviour(level string, val string)
+	// Get current session distribution
 
-	/* Only statement-level */
 	SetAutoDistribution(val string)
 	AutoDistribution() string
 
 	/* Only statement-level */
-	SetDistributionKey(val string)
-	DistributionKey() string
-
-	// Get current session distribution
-
 	SetDistribution(level string, val string)
 	Distribution() string
-
-	/*  Only statement level */
-	SetDistributedRelation(level string, val string)
-	DistributedRelation() string
-
-	SetShardingKey(level string, val string)
-	ShardingKey() string
-
-	SetExecuteOn(level string, val string)
-	ExecuteOn() string
-
-	SetShowNoticeMsg(level string, val bool)
-	ShowNoticeMsg() bool
-
-	/* Query routing logic */
-
-	/* route hint always statement-level  */
-	SetScatterQuery(val bool)
-	ScatterQuery() bool
 
 	/* Check if we apply engine v2 routing for query */
 	SetEnhancedMultiShardProcessing(level string, val bool)
 	EnhancedMultiShardProcessing() bool
-
-	/*  XXX: developer option */
-	SetPreferredEngine(level string, val string)
-	PreferredEngine() string
 
 	/* Distributed transactions */
 
@@ -77,6 +68,10 @@ type SessionParamsHolder interface {
 
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
+
+	/* These are non-guc */
+	SetNextGID(string)
+	NextGID() string
 
 	Params() map[string]string
 	SetParam(name, value string, isLocal bool)
@@ -110,6 +105,7 @@ const (
 	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
 	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
+	SPQR_EXECUTE_HOST_FILTER     = "__spqr__execute_host_filter"
 
 	/* backward compatibility */
 	SPQR_TARGET_SESSION_ATTRS_ALIAS   = "target_session_attrs"
@@ -120,21 +116,114 @@ const (
 	SPQR_REPLY_NOTICE    = "__spqr__reply_notice"
 	SPQR_MAINTAIN_PARAMS = "__spqr__maintain_params"
 	SPQR_ENGINE_V2       = "__spqr__engine_v2"
+	SPQR_AUTONOMOUS_TX   = "__spqr__autonomous_tx"
+
 	/* XXX: should we ever disallow? */
 	SPQR_ALLOW_SPLIT_UPDATE   = "__spqr__allow_split_update"
 	SPQR_ALLOW_POSTPROCESSING = "__spqr__allow_postprocessing"
 
-	SPQR_LINEARIZE_DISPATCH = "__spqr__linearize_dispatch"
+	SPQR_LINEARIZE_DISPATCH      = "__spqr__linearize_dispatch"
+	SPQR_ALLOW_AUTOPROTECT_2PC   = "__spqr__allow_autoprotect_2pc"
+	SPQR_ALLOW_FLUX_ACCESS       = "__spqr__flux_access"
+	SPQR_SESSION_CONNECTIONS_PIN = "__spqr__session_connections_pin"
+	SPQR_EAGER_CLEANUP_2PC       = "__spqr__eager_cleanup_2pc"
+
+	SPQR_ADVISORY_LOCK_BEHAVIOUR = "__spqr__advisory_lock_behaviour"
+
+	SPQR_NOTICE_MESSAGE_FORMAT = "__spqr__notice_message_format"
+
+	/* Special case for default_transaction_read_only */
+
+	PG_DEFAULT_TRANSACTION_READ_ONLY = "default_transaction_read_only"
 )
 
 //revive:enable:var-naming
 
+// HintType indicates whether a hint accepts a boolean or string value.
+type HintType int
+
+const (
+	HintTypeBoolean HintType = iota
+	HintTypeString
+)
+
+// hintRegistry lists supported SPQR hints and their value types.
+var hintRegistry = map[string]HintType{
+	SPQR_ALLOW_SPLIT_UPDATE:           HintTypeBoolean,
+	SPQR_ALLOW_POSTPROCESSING:         HintTypeBoolean,
+	SPQR_LINEARIZE_DISPATCH:           HintTypeBoolean,
+	SPQR_ALLOW_AUTOPROTECT_2PC:        HintTypeBoolean,
+	SPQR_ALLOW_FLUX_ACCESS:            HintTypeBoolean,
+	SPQR_SESSION_CONNECTIONS_PIN:      HintTypeBoolean,
+	SPQR_REPLY_NOTICE:                 HintTypeBoolean,
+	SPQR_MAINTAIN_PARAMS:              HintTypeBoolean,
+	SPQR_EAGER_CLEANUP_2PC:            HintTypeBoolean,
+	SPQR_SCATTER_QUERY:                HintTypeBoolean,
+	SPQR_AUTONOMOUS_TX:                HintTypeBoolean,
+	SPQR_ENGINE_V2:                    HintTypeBoolean,
+	SPQR_DISTRIBUTION:                 HintTypeString,
+	SPQR_DISTRIBUTED_RELATION:         HintTypeString,
+	SPQR_DEFAULT_ROUTE_BEHAVIOUR:      HintTypeString,
+	SPQR_AUTO_DISTRIBUTION:            HintTypeString,
+	SPQR_DISTRIBUTION_KEY:             HintTypeString,
+	SPQR_SHARDING_KEY:                 HintTypeString,
+	SPQR_PREFERRED_ENGINE:             HintTypeString,
+	SPQR_COMMIT_STRATEGY:              HintTypeString,
+	SPQR_TARGET_SESSION_ATTRS:         HintTypeString,
+	SPQR_EXECUTE_ON:                   HintTypeString,
+	SPQR_EXECUTE_HOST_FILTER:          HintTypeString,
+	SPQR_TARGET_SESSION_ATTRS_ALIAS:   HintTypeString,
+	SPQR_TARGET_SESSION_ATTRS_ALIAS_2: HintTypeString,
+	SPQR_ADVISORY_LOCK_BEHAVIOUR:      HintTypeString,
+	SPQR_NOTICE_MESSAGE_FORMAT:        HintTypeString,
+}
+
+// IsKnownSPQRHint reports whether the hint is registered.
+func IsKnownSPQRHint(name string) bool {
+	_, ok := hintRegistry[name]
+	return ok
+}
+
+func ApplyAutoConfGUC(name, val string) error {
+	if ParamIsBoolean(name) {
+		if guc, err := FindBoolGUC(name); err == nil {
+
+			v, err := ParseBoolGUCValue(val)
+
+			if err != nil {
+				return err
+			}
+			guc.SetBoolBootValue(v)
+		}
+	} else if ParamIsString(name) {
+		guc, err := FindStrGUC(name)
+		if err != nil {
+			return err
+		}
+
+		guc.SetStrBootValue(val)
+	}
+	return nil
+}
+
 func ParamIsBoolean(n string) bool {
-	switch n {
-	/* SPQR_REPLY_NOTICE SPQR_SCATTER_QUERY & SPQR_ENGINE_V2 are intentionally missed */
-	case SPQR_MAINTAIN_PARAMS, SPQR_ALLOW_SPLIT_UPDATE, SPQR_ALLOW_POSTPROCESSING, SPQR_LINEARIZE_DISPATCH:
-		return true
+	paramType, ok := hintRegistry[n]
+	return ok && paramType == HintTypeBoolean && n != SPQR_ENGINE_V2
+}
+
+func ParamIsString(n string) bool {
+	paramType, ok := hintRegistry[n]
+	return ok && paramType == HintTypeString &&
+		n != SPQR_DISTRIBUTION && n != SPQR_AUTO_DISTRIBUTION && n != SPQR_COMMIT_STRATEGY
+}
+
+func ParseBoolGUCValue(val string) (bool, error) {
+	switch strings.ToLower(val) {
+	case "true", "ok", "on":
+		return true, nil
+	case "false", "no", "off":
+		return false, nil
 	default:
-		return false
+		return false, fmt.Errorf("malformed value for GUC: %v", val)
 	}
 }

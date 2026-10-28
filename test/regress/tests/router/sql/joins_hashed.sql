@@ -83,5 +83,7 @@ DROP TABLE zjoin;
 
 RESET __spqr__engine_v2;
 
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

@@ -740,6 +740,8 @@ func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 		switch colType {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
+		case qdb.ColumnTypeUUIDHashed:
+			fallthrough
 		case qdb.ColumnTypeUinteger:
 			if len(rel.DistributionKey[i].HashFunction) < 1 {
 				return fmt.Errorf(

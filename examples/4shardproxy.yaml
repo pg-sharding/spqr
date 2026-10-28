@@ -6,8 +6,13 @@ router_ro_port: '6433'
 admin_console_port: '7432'
 grpc_api_port: '7010'
 
+
+autoconf: spqr.autoconf
+
 show_notice_messages: false
 
+forbid_direct_shard_queries: true
+use_spqrguard: true
 
 # Sic! This is intended to be debug-only option
 enable_icp: true
@@ -26,6 +31,7 @@ use_init_sql: true
 memqdb_backup_path: "memqdb.json"
 
 query_routing:
+    use_spqrguard: true
     enhanced_multishard_processing: true
     strict_operators: true
     allow_postprocessing: true
@@ -55,13 +61,10 @@ frontend_rules:
 backend_rules:
   - usr: user1
     db: db1
+    server_lifetime: 10s
     connection_limit: 100
-    pool_discard: false
-    pool_rollback: true
   - pool_default: true
     connection_limit: 50
-    pool_discard: false
-    pool_rollback: true
 
 shards:
   sh1:
@@ -104,15 +107,11 @@ shards:
 watchdog_backend_rule:
   usr: user1
   db: db1
-  pool_discard: true
-  pool_rollback: true
 
 enable_2pc_watchdog: false
 
 schema_cache_backend_rule:
   usr: regress
   db: regress
-  pool_discard: true
-  pool_rollback: true
 
 

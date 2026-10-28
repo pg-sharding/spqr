@@ -16,7 +16,7 @@ type ShardingSchemaKeeper interface {
 	// UpdateKeyRangeMoveStatus marks the key range move as complete
 	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error
 	// DeleteKeyRangeMove removes information about key range moves
-	DeleteKeyRangeMove(ctx context.Context, moveId string) error
+	DeleteKeyRangeMove(ctx context.Context, moveId string, force bool) error
 }
 
 type TopologyKeeper interface {
@@ -68,10 +68,22 @@ const (
 	StopTaskGroupImmediate = "cancel immediate"
 )
 
+// MigrationJournal stores migration names and their caller-supplied values.
+type MigrationJournal interface {
+	SetMigration(ctx context.Context, name, value string) error
+	ResetMigration(ctx context.Context, name string) error
+	ListMigrations(ctx context.Context) (map[string]string, error)
+}
+
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
 type QDB interface {
+	// Migration journal
+	SetMigration(ctx context.Context, name, value string) error
+	ResetMigration(ctx context.Context, name string) error
+	ListMigrations(ctx context.Context) (map[string]string, error)
+
 	// Key ranges
 	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
@@ -81,6 +93,8 @@ type QDB interface {
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
+	LockKeyRangeOps(ctx context.Context, id string) (*KeyRange, error)
+	UnlockKeyRangeOps(ctx context.Context, id string) error
 	UnlockKeyRange(ctx context.Context, id string) error
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ListLockedKeyRanges(ctx context.Context) ([]string, error)
@@ -190,10 +204,13 @@ type TwoPhaseTxMetaKeeper interface {
 // Could be ether local storage or ETCD
 type DCStateKeeper interface {
 	RecordTwoPhaseMembers(ctx context.Context, gid string, shards []string) error
-	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState) error
+	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState, curExpectedState TwoPhaseTxState) error
 
 	ListTXNames(ctx context.Context) ([]string, error)
 	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
+
+	TXInfo(ctx context.Context, gid string) (TwoPCInfo, error)
+	TXInfos(ctx context.Context) ([]TwoPCInfo, error)
 
 	AcquireTxOwnership(ctx context.Context, gid string) (bool, error)
 	ReleaseTxOwnership(ctx context.Context, gid string) error
@@ -261,9 +278,10 @@ func NewDataPlaneTwoPhaseStateKeeper(qdbType string) (XDCStateKeeper, error) {
 type TxStatus string
 
 const (
-	Planned    = TxStatus("planned")
-	Locked     = TxStatus("locked")
-	DataCopied = TxStatus("data_copied")
+	Planned     = TxStatus("planned")
+	Locked      = TxStatus("locked")
+	AwaitedPIDs = TxStatus("awaited_pids")
+	DataCopied  = TxStatus("data_copied")
 )
 
 // DataTransferTransaction contains information about data transfer

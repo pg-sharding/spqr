@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -55,14 +56,24 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type grpcConnMgr struct {
+	InstanceStartTime time.Time
 	*ClusteredCoordinator
+}
+
+// LastReloadTime implements [connmgr.ConnectionMgr].
+func (ci grpcConnMgr) LastReloadTime() time.Time {
+	return time.Now()
+}
+
+// StartTime implements [connmgr.ConnectionMgr].
+func (ci grpcConnMgr) StartTime() time.Time {
+	return ci.InstanceStartTime
 }
 
 // InstanceHealthChecks implements connmgr.ConnectionStatsMgr.
@@ -73,6 +84,11 @@ func (ci grpcConnMgr) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 // TsaCacheEntries implements connmgr.ConnectionStatsMgr.
 func (ci grpcConnMgr) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	return map[pool.TsaKey]pool.CachedEntry{}
+}
+
+// RunRecheckHosts implements connmgr.ConnectionStatsMgr.
+func (ci grpcConnMgr) RunRecheckHosts() []pool.HostRecheckResult {
+	return nil
 }
 
 // TODO implement it
@@ -90,6 +106,16 @@ func (ci grpcConnMgr) TotalCancelCount() int64 {
 // TODO implement it
 // ActiveTCPCount implements connmgr.ConnectionStatMgr
 func (ci grpcConnMgr) TotalTCPCount() int64 {
+	return 0
+}
+
+// FailedAuthCount implements RuleRouter.
+func (ci grpcConnMgr) FailedAuthCount() int64 {
+	return 0
+}
+
+// FailedInitCount implements RuleRouter.
+func (ci grpcConnMgr) FailedInitCount() int64 {
 	return 0
 }
 
@@ -224,6 +250,12 @@ func (ci grpcConnMgr) Shutdown() error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
 }
 
+// TODO : implement
+// TODO : unit tests
+func (ci grpcConnMgr) GracShutdown() {
+
+}
+
 // TODO : unit tests
 func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
@@ -273,7 +305,7 @@ func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
 var _ connmgr.ConnectionMgr = &grpcConnMgr{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("router-id", r.ID).
 		Msg("dialing router")
 
@@ -289,8 +321,13 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		PermitWithoutStream: true,             // Allow pings even when no active RPCs
 	}
 
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init router gRPC TLS for %q: %w", r.Address, err)
+	}
+
 	return grpc.NewClient(r.Address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		dialOption,
 		grpc.WithKeepaliveParams(keepaliveParams),
 		grpc.WithDefaultServiceConfig(getRouterConnRetryPolicy()),
 	)
@@ -426,6 +463,13 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			currentRouterIDs[r.ID] = true
 		}
 
+		coordHash, err := qdb.GetQDBStateHash(ctx, qc.db)
+		checkRouterHashes := true
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to get etcd QDB hash")
+			checkRouterHashes = false
+		}
+
 		for _, r := range routers {
 			if err := func() error {
 				// Create bounded context for this router's operations
@@ -455,7 +499,6 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 				switch resp.Status {
 				case proto.RouterStatus_CLOSED:
-					spqrlog.Zero.Debug().Msg("router is closed")
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
@@ -467,11 +510,22 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					}
 
 				case proto.RouterStatus_OPENED:
-					spqrlog.Zero.Debug().Msg("router is opened")
-
-					/* TODO: check router metadata consistency */
 					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
+					}
+
+					if config.CoordinatorConfig().AutoRebootstrap && checkRouterHashes {
+						routerClient := proto.NewRouterServiceClient(cc)
+						routerHash, err := qc.getRouterMetaHashInternal(ctx, routerClient)
+						if err != nil {
+							return err
+						}
+						if routerHash != coordHash {
+							spqrlog.Zero.Debug().Str("router id", r.ID).Msg("re-bootstrapping router")
+							if _, err := routerClient.Rebootstrap(ctx, nil); err != nil {
+								return fmt.Errorf("failed to re-bootstrap router: %w", err)
+							}
+						}
 					}
 
 					/* Mark router as opened in qdb */
@@ -512,6 +566,10 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
+	if err := grpccreds.ValidateClient(config.CoordinatorConfig().ClientTLS); err != nil {
+		return nil, fmt.Errorf("init router gRPC client TLS: %w", err)
+	}
+
 	return &ClusteredCoordinator{
 		Coordinator:         coord.NewCoordinator(db, nil, maxTxnBatch),
 		db:                  db,
@@ -604,7 +662,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		if err == nil {
 			break
 		}
-		spqrlog.Zero.Log().Err(err).Msg("error getting qdb lock, retrying")
+		spqrlog.Zero.Warn().Err(err).Msg("error getting qdb lock, retrying")
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
 	}
@@ -627,7 +685,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.AddDataShard(context.TODO(), shard); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard, true); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -653,51 +711,56 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 	}
 
-	go qc.watchTaskGroups(context.TODO())
-
-	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
-	if err != nil {
-		spqrlog.Zero.Error().
-			Err(err).
-			Msg("failed to list key ranges")
+	if config.CoordinatorConfig().WatchTaskGroups {
+		go qc.watchTaskGroups(context.Background())
 	}
 
-	wg := sync.WaitGroup{}
-	// Finish any key range move or data transfer transaction in progress
-	for _, r := range ranges {
-		move, err := qc.GetKeyRangeMove(context.TODO(), r.KeyRangeID)
+	if config.CoordinatorConfig().RecoverKeyRangeMoves {
+		ranges, err := qc.db.ListAllKeyRanges(context.TODO())
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error getting key range move from qdb")
+			spqrlog.Zero.Error().
+				Err(err).
+				Msg("failed to list key ranges")
 		}
 
-		tx, err := qc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error getting data transfer transaction from qdb")
-		}
-
-		var krm *kr.MoveKeyRange
-		if move != nil {
-			krm = &kr.MoveKeyRange{
-				KeyRangeID: move.KeyRangeID,
-				ShardID:    move.ShardId,
+		wg := sync.WaitGroup{}
+		// Finish any key range move or data transfer transaction in progress
+		for _, r := range ranges {
+			move, err := qc.GetKeyRangeMove(context.TODO(), r.KeyRangeID)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error getting key range move from qdb")
 			}
-		} else if tx != nil {
-			krm = &kr.MoveKeyRange{
-				KeyRangeID: r.KeyRangeID,
-				ShardID:    tx.ToShardId,
-			}
-		}
 
-		if krm != nil {
-			wg.Go(func() {
-				spqrlog.Zero.Error().Str("key range id", krm.KeyRangeID).Str("shard id", krm.ShardID).Msg("finish key range move in progress")
-				if qc.Move(context.TODO(), krm) != nil {
-					spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+			tx, err := qc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error getting data transfer transaction from qdb")
+			}
+
+			var krm *kr.MoveKeyRange
+			if move != nil {
+				krm = &kr.MoveKeyRange{
+					KeyRangeID: move.KeyRangeID,
+					ShardID:    move.ShardId,
 				}
-			})
+			} else if tx != nil {
+				krm = &kr.MoveKeyRange{
+					KeyRangeID: r.KeyRangeID,
+					ShardID:    tx.ToShardId,
+				}
+			}
+
+			if krm != nil {
+				krm := krm
+				wg.Go(func() {
+					spqrlog.Zero.Error().Str("key range id", krm.KeyRangeID).Str("shard id", krm.ShardID).Msg("finish key range move in progress")
+					if err := qc.Move(context.TODO(), krm, nil); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+					}
+				})
+			}
 		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	qc.startupFinished = true
 
@@ -877,18 +940,18 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all key ranges")
 
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	if err := qc.Coordinator.DropKeyRangeAll(ctx); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.DropAllKeyRanges(ctx, nil)
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("drop key range response")
 		return err
-	}); err != nil {
-		return err
-	}
-
-	return qc.Coordinator.DropKeyRangeAll(ctx)
+	})
 }
 
 // TODO : unit tests
@@ -965,7 +1028,7 @@ func (qc *ClusteredCoordinator) GetKeyRangeMove(ctx context.Context, krID string
 // This function re-shards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
 // TODO : unit tests
-func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, icpCH icp.ICPContextHolder) error {
 	// First, we create a record in the qdb to track the data movement.
 	// If the coordinator crashes during the process, we need to rerun this function.
 
@@ -973,6 +1036,43 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 		Str("key-range", req.KeyRangeID).
 		Str("shard-id", req.ShardID).
 		Msg("qdb coordinator move key range")
+
+	// TODO: lock key range for ops for the duration of the move
+	opsLockCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := qc.LockKeyRangeOps(opsLockCtx, req.KeyRangeID); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to acquire key range operation lock: %w", err)
+	}
+	defer func() {
+		_ = qc.UnlockKeyRangeOps(ctx, req.KeyRangeID)
+	}()
+
+	if req.MetaOnly {
+		if err := qc.Coordinator.Move(ctx, req, icpCH); err != nil {
+			return err
+		}
+		if config.CoordinatorConfig().UseSPQRGuard {
+			if err := coord.UpdateKeyRangeMeta(ctx,
+				[]*proto.MetaTransactionGossipCommand{
+					{DropKeyRange: &proto.DropKeyRangeGossip{Id: []string{req.KeyRangeID}}},
+					{CreateKeyRange: &proto.CreateKeyRangeGossip{KeyRangeInfo: &proto.KeyRangeInfo{Krid: req.KeyRangeID, ShardId: req.ShardID}}},
+				}); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR, "failed to update key range metadata on shard: %s", err)
+			}
+		}
+		return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			cl := proto.NewKeyRangeServiceClient(cc)
+			moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
+				Id:        req.KeyRangeID,
+				ToShardId: req.ShardID,
+				MetaOnly:  req.MetaOnly,
+			})
+			spqrlog.Zero.Debug().Err(err).
+				Interface("response", moveResp).
+				Msg("move key range response")
+			return err
+		})
+	}
 
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
 	if err != nil {
@@ -1002,9 +1102,25 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 		}
 	}
 
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
+
 	for move != nil {
+
+		spqrlog.Zero.Debug().Time("time", time.Now()).Str("key range id", req.KeyRangeID).Str("tx status", string(move.Status)).Msg("Move iteration")
+
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
+			if config.CoordinatorConfig().DataMoveOptimisticPIDAwait {
+				if err := datatransfers.AwaitPIDs(ctx, keyRange.ShardID, "key_range_move_"+move.MoveId); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to await virtual transactions before move")
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to await virtual transactions to exit before move: %s", err)
+				}
+			}
+			move.Status = qdb.MoveKeyRangeAwaited
+		case qdb.MoveKeyRangeAwaited:
 			// lock the key range
 			_, err = qc.LockKeyRange(ctx, req.KeyRangeID)
 			if err != nil {
@@ -1020,66 +1136,37 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 			move.Status = qdb.MoveKeyRangeLocked
 
-		case qdb.MoveKeyRangeStarted: // nolint: staticcheck
-			// move the data
-			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-			if err != nil {
-				return err
-			}
-
-			if keyRange.ShardID != req.ShardID {
-				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
-				if err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
-					return err
-				}
-				keyRange.ShardID = req.ShardID
-				// TODO: move check to meta layer
-				if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
-					return err
-				}
-				tranMngr := meta.NewTranEntityManager(qc)
-				if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
-					return err
-				}
-				if err := tranMngr.ExecNoTran(ctx); err != nil {
-					return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
-				}
-			}
-			// Notify all routers about scheme changes.
-			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-				cl := proto.NewKeyRangeServiceClient(cc)
-				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
-					Id:        keyRange.ID,
-					ToShardId: keyRange.ShardID,
-				})
-				spqrlog.Zero.Debug().Err(err).
-					Interface("response", moveResp).
-					Msg("move key range response")
-				return err
-			}); err != nil {
-				return err
-			}
-
-			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to update key range move status")
-			}
-			move.Status = qdb.MoveKeyRangeComplete
-
 		case qdb.MoveKeyRangeLocked:
-			// move the data
-			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-			if err != nil {
-				return err
-			}
+			// Physically move the data
 
-			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
+			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardID, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId, icpCH)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
+				spqrlog.Zero.Error().Str("move id", move.MoveId).Str("key range", keyRange.ID).Err(err).Msg("failed to move rows")
+				if spqrErr, ok := err.(*spqrerror.SpqrError); ok && spqrErr.ErrorCode == spqrerror.SPQR_RECOVERABLE_TRANSFER_ERROR {
+					spqrlog.Zero.Info().Err(spqrErr).
+						Str("move id", move.MoveId).Str("key range", keyRange.ID).
+						Msg("move task failed with recoverable error, unlocking key range")
+
+					if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangePlanned); err != nil {
+						/* Things bad un-sync, unrecoverable */
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to update move task status after await PID timeout: %s", err)
+					}
+
+					move.Status = qdb.MoveKeyRangePlanned
+					if err = qc.UnlockKeyRange(ctx, keyRange.ID); err != nil {
+						/* Things bad un-sync, unrecoverable */
+						return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
+							"failed to unlock key range after recoverable error: %s", err)
+					}
+
+					/* Return original error, note that we deliberately keep SPQR_RECOVERABLE_TRANSFER_ERROR
+					* error code */
+					return spqrErr
+				}
 				return err
 			}
 			if config.CoordinatorConfig().EnableICP {
-				if err := icp.CheckControlPoint(nil, icp.AfterMoveKeysCP); err != nil {
+				if err := icp.CheckControlPoint(icpCH, icp.AfterMoveKeysCP); err != nil {
 					spqrlog.Zero.Info().Str("cp", icp.AfterMoveKeysCP).Err(err).Msg("error while checking control point")
 				}
 			}
@@ -1089,14 +1176,18 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			move.Status = qdb.MoveKeyRangeDataMoved
 		case qdb.MoveKeyRangeDataMoved:
 			keyRange.ShardID = req.ShardID
-			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-			if err != nil {
-				return err
-			}
+
 			// TODO: move check to meta layer
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
+
+			if config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterMoveKeysCP2); err != nil {
+					spqrlog.Zero.Info().Str("cp", icp.AfterMoveKeysCP2).Err(err).Msg("error while checking control point")
+				}
+			}
+
 			tranMngr := meta.NewTranEntityManager(qc)
 			if err := tranMngr.UpdateKeyRange(ctx, keyRange, ds.ColTypes); err != nil {
 				return err
@@ -1104,11 +1195,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := tranMngr.ExecNoTran(ctx); err != nil {
 				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
+
 			if config.CoordinatorConfig().EnableICP {
 				if err := icp.CheckControlPoint(nil, icp.AfterCoordUpdateKeyRangeCP); err != nil {
 					spqrlog.Zero.Info().Str("cp", icp.AfterCoordUpdateKeyRangeCP).Err(err).Msg("error while checking control point")
 				}
 			}
+
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err
 			}
@@ -1120,6 +1213,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 					Id:        keyRange.ID,
 					ToShardId: keyRange.ShardID,
+					MetaOnly:  true,
 				})
 				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).
@@ -1148,12 +1242,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 					spqrlog.Zero.Info().Str("cp", icp.AfterUnlockKeyRangeCP).Err(err).Msg("error while checking control point")
 				}
 			}
-			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
+			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId, false); err != nil {
 				return err
 			}
 			move = nil
 		default:
-			return fmt.Errorf("unknown key range move status: \"%s\"", move.Status)
+			return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "unknown key range move status: \"%s\"", move.Status)
 		}
 	}
 	return nil
@@ -1254,13 +1348,13 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 
 	exists, err := qc.QDB().CheckDistribution(ctx, distributions.REPLICATED)
 	if err != nil {
-		return fmt.Errorf("error checking for replicated distribution: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for replicated distribution: %s", err)
 	}
 	replRels := []string{}
 	if exists {
 		replDs, err := qc.GetDistribution(ctx, distributions.REPLICATED)
 		if err != nil {
-			return fmt.Errorf(
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 				"error getting replicated distribution: %s", err)
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
@@ -1269,17 +1363,17 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 
 			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation)
 			if err != nil {
-				return fmt.Errorf(
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 					"failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
 			}
 			if relExists {
 				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation)
 				if err != nil {
-					return fmt.Errorf(
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 						"failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
 				}
 				if !destRelExists {
-					return fmt.Errorf(
+					return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR,
 						"replicated relation \"%s\" exists on source shard, but not on destination shard", r.QualifiedName())
 				}
 				replRels = append(replRels, r.QualifiedName().String())
@@ -1303,25 +1397,34 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
-	hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.1")
-	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
-	}
-	if !hasSpqrHash {
-		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
+	anyHashedCol := false
+	for _, t := range ds.ColTypes {
+		if t == qdb.ColumnTypeUUIDHashed || t == qdb.ColumnTypeVarcharHashed {
+			anyHashedCol = true
+		}
 	}
 
-	hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.1")
-	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
-	}
-	if !hasSpqrHash {
-		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
+	if anyHashedCol {
+		hasSpqrHash, err := shard.CheckExtension(ctx, sourceConn, "spqrhash", "1.1", "1.2")
+		if err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
+		}
+		if !hasSpqrHash {
+			return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
+		}
+
+		hasSpqrHash, err = shard.CheckExtension(ctx, destConn, "spqrhash", "1.1", "1.2")
+		if err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
+		}
+		if !hasSpqrHash {
+			return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
+		}
 	}
 
 	if err := datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardID, schemas); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
-		return err
+		spqrlog.Zero.Error().Str("shard-id", req.ShardID).Err(err).Msg("failed to setup move data FDW")
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to setup move data FDW: %v", err).Detail("setup failed on destination shard")
 	}
 	return nil
 }
@@ -1350,6 +1453,19 @@ func (qc *ClusteredCoordinator) TaskState(id string) (*transferworker.TaskGroupW
 	return nil, fmt.Errorf("no such task \"%v\"", id)
 }
 
+func (qc *ClusteredCoordinator) awaitMoveTaskGroupResult(ctx context.Context, taskGroupID string, resultCh <-chan error) error {
+	select {
+	case <-ctx.Done():
+		return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+	case err := <-resultCh:
+		if err != nil {
+			_ = qc.db.DropTaskGroupLock(ctx, taskGroupID)
+			_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroupID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+		}
+		return err
+	}
+}
+
 /*
 * Workhorse for all move data operations
  */
@@ -1358,6 +1474,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	taskGroup *tasks.MoveTaskGroup,
 	nowait bool,
 	invalidateTG bool,
+	icpCH icp.ICPContextHolder,
 ) error {
 
 	/* TODO: do not lose move data goroutine here,
@@ -1367,9 +1484,14 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 		qc.invalidateTaskGroupCache(taskGroup.ID)
 	}
 
-	execCtx, cancel := context.WithCancel(ctx)
+	taskCtx := ctx
+	if nowait {
+		// Keep the task alive after the request returns; it remains cancelable through TaskState.
+		taskCtx = context.WithoutCancel(ctx)
+	}
+	execCtx, cancel := context.WithCancel(taskCtx)
 
-	ch := make(chan error)
+	ch := make(chan error, 1)
 	qc.dataTransferWorkers.Store(taskGroup.ID, &transferworker.TaskGroupWorkerState{
 		Cancel: cancel,
 	})
@@ -1377,26 +1499,22 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 	qc.moveTaskWatcherInit.Do(qc.bootstrapWatcher(context.TODO()))
 
 	go func() {
-		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
-		qc.dataTransferWorkers.Delete(taskGroup.ID)
+		defer cancel()
+		defer qc.dataTransferWorkers.Delete(taskGroup.ID)
+		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup, icpCH)
 	}()
 
-	if !nowait {
-		defer cancel()
-		for {
-			select {
-			case <-ctx.Done():
-				return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
-			case err := <-ch:
-				if err != nil {
-					_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
-					_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
-				}
-				return err
+	if nowait {
+		go func() {
+			if err := qc.awaitMoveTaskGroupResult(taskCtx, taskGroup.ID, ch); err != nil {
+				spqrlog.Zero.Error().Err(err).Str("task-group", taskGroup.ID).Msg("background move task group failed")
 			}
-		}
+		}()
+		return nil
 	}
-	return nil
+
+	defer cancel()
+	return qc.awaitMoveTaskGroupResult(taskCtx, taskGroup.ID, ch)
 }
 
 func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
@@ -1457,7 +1575,7 @@ func (qc *ClusteredCoordinator) bootstrapWatcher(ctx context.Context) func() {
 //
 // Returns:
 //   - error: Any error occurred during transfer.
-func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
+func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer, icpCH icp.ICPContextHolder) error {
 	if err := statistics.RecordMoveStart(time.Now()); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to record key range move start in statistics")
 	}
@@ -1544,7 +1662,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Issuer: issuer,
 		}
 	}
-	spqrlog.Zero.Debug().Str("taskGroup", fmt.Sprintf("%#v", taskGroup)).Msg("got task group")
+	spqrlog.Zero.Trace().Str("taskGroup", taskGroup.ID).Interface("key range", taskGroup.CurrentTask).Msg("batch move key range from task group")
 
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
@@ -1553,7 +1671,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 	}
 
-	return qc.executeMoveInternal(ctx, taskGroup, false /*actually, does not matter here*/, false /* `nowait`, no we want to wait*/)
+	return qc.executeMoveInternal(ctx, taskGroup, false /*actually, does not matter here*/, false /* `nowait`, no we want to wait*/, icpCH)
 }
 
 // TODO : unit tests
@@ -1772,6 +1890,8 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 				bound[i] = []byte(values[i])
 			case qdb.ColumnTypeVarcharHashed:
 				fallthrough
+			case qdb.ColumnTypeUUIDHashed:
+				fallthrough
 			case qdb.ColumnTypeUinteger:
 				number, err := strconv.ParseUint(values[i], 10, 64)
 				if err != nil {
@@ -1878,7 +1998,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
-	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KridTemp: coord.GetNewKeyRangeId(ctx, qc.QDB()), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
 		task.KridTemp = taskGroup.KridTo
 	}
@@ -1926,13 +2046,20 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 //
 // Returns:
 //   - error: An error if any occurred.
-func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup, ch icp.ICPContextHolder) error {
 	if taskGroup == nil {
 		return nil
 	}
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KridFrom)
 	if err != nil {
-		return err
+		if taskGroup.CurrentTask != nil {
+			keyRange, err = qc.GetKeyRange(ctx, taskGroup.CurrentTask.KridTemp)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	// Get connection to source shard's master
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
@@ -2058,7 +2185,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				return err
 			}
 		case tasks.TaskSplit:
-			if err := qc.Move(ctx, &kr.MoveKeyRange{KeyRangeID: task.KridTemp, ShardID: taskGroup.ShardToID}); err != nil {
+			if err := qc.Move(ctx, &kr.MoveKeyRange{KeyRangeID: task.KridTemp, ShardID: taskGroup.ShardToID}, ch); err != nil {
 				return err
 			}
 			if config.CoordinatorConfig().EnableICP {
@@ -2107,13 +2234,13 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool) error {
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string, nowait bool, icpCH icp.ICPContextHolder) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
 
-	return qc.executeMoveInternal(ctx, taskGroup, nowait, true)
+	return qc.executeMoveInternal(ctx, taskGroup, nowait, true, icpCH)
 }
 
 // StopMoveTaskGroup gracefully stops the execution of current move task group.
@@ -2154,7 +2281,7 @@ func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, i
 //
 // Returns:
 //   - error: An error if any occurred during transfer.
-func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, icpCH icp.ICPContextHolder) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeID)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KeyRangeID)
@@ -2180,7 +2307,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		if err != nil {
 			return err
 		}
-		return qc.internalExecRedistributeTaskWrapper(ctx, req, tasks.RedistributeTaskFromDB(task, taskGroup), true)
+		return qc.internalExecRedistributeTaskWrapper(ctx, req, tasks.RedistributeTaskFromDB(task, taskGroup), true, icpCH)
 	}
 
 	spqrlog.Zero.Debug().Msg("process redistribute in clustered coordinator")
@@ -2214,7 +2341,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 			ShardID:        req.ShardID,
 			BatchSize:      req.BatchSize,
 			Limit:          -1,
-			DestKeyRangeID: uuid.NewString(),
+			DestKeyRangeID: coord.GetNewKeyRangeId(ctx, qc.QDB()),
 			Type:           tasks.SplitRight,
 		}); err != nil {
 			return err
@@ -2227,13 +2354,14 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		KeyRangeID:  req.KeyRangeID,
 		ShardID:     req.ShardID,
 		BatchSize:   req.BatchSize,
-		TempKrID:    uuid.NewString(),
+		TempKrID:    coord.GetNewKeyRangeId(ctx, qc.QDB()),
 		State:       tasks.RedistributeTaskPlanned,
-	}, false)
+	}, false, icpCH)
 }
 
-func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
+func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool, icpCH icp.ICPContextHolder) error {
 	if !req.Apply {
+		spqrlog.Zero.Debug().Str("key range id", task.KeyRangeID).Msg("apply not set for redistribute request, exiting")
 		return nil
 	}
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
@@ -2259,7 +2387,7 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 	if req.NoWait {
 		go func() {
 			defer cancel()
-			err := qc.executeRedistributeTask(execCtx, task)
+			err := qc.executeRedistributeTask(execCtx, task, icpCH)
 			/* We have no way to report error, but at least, log it */
 			if err != nil {
 				if err2 := qc.db.DropRedistributeTaskLock(ctx, task.ID); err2 != nil {
@@ -2274,9 +2402,9 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 
 	defer cancel()
 
-	ch := make(chan error)
+	ch := make(chan error, 1)
 	go func() {
-		ch <- qc.executeRedistributeTask(execCtx, task)
+		ch <- qc.executeRedistributeTask(execCtx, task, icpCH)
 	}()
 
 	for {
@@ -2303,12 +2431,12 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 //
 // Returns:
 //   - error: An error if any occurred.
-func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
+func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask, ch icp.ICPContextHolder) error {
 	for {
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
 			if task.TaskGroup != nil {
-				if err := qc.executeMoveTaskGroup(ctx, task.TaskGroup); err != nil {
+				if err := qc.executeMoveTaskGroup(ctx, task.TaskGroup, ch); err != nil {
 					return err
 				}
 				task.State = tasks.RedistributeTaskMoved
@@ -2325,7 +2453,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				Limit:          -1,
 				DestKeyRangeID: task.TempKrID,
 				Type:           tasks.SplitRight,
-			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, ID: task.ID}); err != nil {
+			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, ID: task.ID}, ch); err != nil {
 				return err
 			}
 			task.State = tasks.RedistributeTaskMoved
@@ -2367,10 +2495,61 @@ func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNe
 }
 
 // TODO : unit tests
+// TODO: make router do a rebootstrap instead
 func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync router metadata")
+
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+		defer cf()
+
+		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+		if err != nil {
+			return err
+		}
+		rCl := proto.NewTopologyServiceClient(cc)
+		if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
+			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort),
+		}); err != nil {
+			if st, ok := status.FromError(err); ok {
+				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+					return retry.RetryableError(err)
+				}
+			}
+			return err
+		}
+		return nil
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error in sync coordinator")
+		return err
+	}
+
+	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
+		if err != nil {
+			return err
+		}
+		defer cf()
+
+		rCl := proto.NewRouterServiceClient(cc)
+		if _, err := rCl.Rebootstrap(ctx, nil); err != nil {
+			if st, ok := status.FromError(err); ok {
+				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
+					return retry.RetryableError(err)
+				}
+			}
+			return err
+		}
+		return nil
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error in sync coordinator")
+		return err
+	}
 
 	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
 		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
@@ -2412,7 +2591,14 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		var shardErrs []error
 
 		for _, sh := range needToAdd {
-			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh, false)})
+			protoShard, err := topology.DataShardToProto(sh, true)
+			if err != nil {
+				return err
+			}
+			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{
+				Shard: protoShard,
+				Force: true,
+			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2427,9 +2613,13 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 
 		for _, sh := range needToUpdate {
+			protoOptions, err := topology.GenericOptionsToProto(sh.Options(), true)
+			if err != nil {
+				return err
+			}
 			_, err = shCl.AlterShard(ctx, &proto.AlterShardRequest{
 				Id:      sh.ID,
-				Options: topology.GenericOptionsToProto(sh.Options(), false),
+				Options: protoOptions,
 			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
@@ -2480,156 +2670,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 		defer cf()
 
-		// Configure distributions
-		dsCl := proto.NewDistributionServiceClient(cc)
-		spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
-		dss, err := qc.ListDistributions(ctx)
-		if err != nil {
-			return err
-		}
-		resp, err := dsCl.ListDistributions(ctx, nil)
-		if err != nil {
-			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-					return retry.RetryableError(err)
-				}
-			}
-			return err
-		}
-		if _, err = dsCl.DropDistribution(ctx, &proto.DropDistributionRequest{
-			Ids: func() []string {
-				res := make([]string, len(resp.Distributions))
-				for i, ds := range resp.Distributions {
-					res[i] = ds.Id
-				}
-				return res
-			}(),
-		}); err != nil {
-			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-					return retry.RetryableError(err)
-				}
-			}
-			return err
-		}
-		spqrlog.Zero.Debug().Msg("clustered coordinator: distributions dropped successfully")
-		gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
-		if len(dss) > 0 {
-			distribsToCreate := make([]*proto.Distribution, len(dss))
-			for i, ds := range dss {
-				distribsToCreate[i] = distributions.DistributionToProto(ds)
-			}
-			commands := []*proto.MetaTransactionGossipCommand{{
-				CreateDistribution: &proto.CreateDistributionGossip{
-					Distributions: distribsToCreate,
-				},
-			}}
-			if _, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands}); err != nil {
-				if st, ok := status.FromError(err); ok {
-					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return retry.RetryableError(err)
-					}
-				}
-				return err
-			}
-			spqrlog.Zero.Debug().Msg("qdb coordinator: distributions created")
-		}
-
-		// Configure key ranges.
-		krClient := proto.NewKeyRangeServiceClient(cc)
-		spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
-		if _, err = krClient.DropAllKeyRanges(ctx, nil); err != nil {
-			return err
-		}
-
-		for _, ds := range dss {
-			krs, err := qc.db.ListKeyRanges(ctx, ds.Id)
-			if err != nil {
-				return err
-			}
-			krsInt := make([]*kr.KeyRange, len(krs))
-			for i, kRange := range krs {
-				krsInt[i], err = kr.KeyRangeFromDB(kRange, ds.ColTypes)
-				if err != nil {
-					return err
-				}
-			}
-			sort.Slice(krsInt, func(i, j int) bool {
-				return !kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
-			})
-			// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
-			for _, kRange := range krsInt {
-				commands := []*proto.MetaTransactionGossipCommand{
-					{CreateKeyRange: &proto.CreateKeyRangeGossip{
-						KeyRangeInfo: kRange.ToProto(),
-						ColumnTypes:  ds.ColTypes,
-					}},
-				}
-				resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})
-				if err != nil {
-					if st, ok := status.FromError(err); ok {
-						if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-							return retry.RetryableError(err)
-						}
-					}
-					return err
-				}
-				spqrlog.Zero.Debug().
-					Interface("response", resp).
-					Msg("got response while adding key range")
-			}
-		}
-
-		spqrlog.Zero.Debug().Msg("successfully add all key ranges")
-		return nil
-	}); err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("error in distribution & key range")
-		return err
-	}
-
-	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewConstant(time.Second)), func(ctx context.Context) error {
-		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
-		if err != nil {
-			return err
-		}
-
-		defer cf()
-
-		storage, err := qc.db.GetTxMetaStorage(ctx)
-		if err != nil {
-			return err
-		}
-
-		s := proto.NewTwoPhaseTxMetaServiceClient(cc)
-		// Ignore the error
-		_, _ = s.SetTwoPhaseTxMetaStorage(ctx, &proto.SetTwoPhaseTxMetaStorageRequest{Storage: storage})
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
-		cc, cf, err := qc.getOrCreateRouterConn(qRouter)
-		if err != nil {
-			return err
-		}
-		defer cf()
-
-		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
-		if err != nil {
-			return err
-		}
 		rCl := proto.NewTopologyServiceClient(cc)
-		if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
-			Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcAPIPort),
-		}); err != nil {
-			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-					return retry.RetryableError(err)
-				}
-			}
-			return err
-		}
 
 		if resp, err := rCl.OpenRouter(ctx, nil); err != nil {
 			if st, ok := status.FromError(err); ok {
@@ -2639,7 +2680,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			}
 			return err
 		} else {
-			spqrlog.Zero.Debug().
+			spqrlog.Zero.Trace().
 				Interface("response", resp).
 				Msg("open router response")
 		}
@@ -2654,7 +2695,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRouter *topology.Router) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Trace().
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
 
@@ -2692,7 +2733,7 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 			}
 			return err
 		} else {
-			spqrlog.Zero.Debug().
+			spqrlog.Zero.Trace().
 				Interface("response", resp).
 				Msg("open router response")
 		}
@@ -2730,7 +2771,7 @@ func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(nconn, pt, "", false, "")
+	cl := rclient.NewPsqlClient(nconn, pt, false, "")
 
 	tlsconfig := qc.tlsconfig
 	if pt == port.UnixSocketPortType {
@@ -2808,7 +2849,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		return nil
 	}
 
-	ci := grpcConnMgr{ClusteredCoordinator: qc}
+	ci := grpcConnMgr{ClusteredCoordinator: qc, InstanceStartTime: time.Now()}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
 		// TODO: check leader status
@@ -2829,25 +2870,30 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				_ = cli.ReportError(fmt.Errorf("failed to parse query \"%s\": %w", v.String, err))
+				_ = cli.ReportError(err)
 				continue
 			}
 
-			spqrlog.Zero.Info().
-				Str("query", v.String).
-				Type("type", tstmt).
-				Msg("parsed statement is")
-
-			tts, err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly())
-			if err != nil {
-				if err := cli.ReportError(err); err != nil {
-					return err
+			for _, stmt := range tstmt {
+				/* ProcMetadataCommand can be called inside router's planned, so it
+				* will normally reject nil statement. Handle this ourselves */
+				if stmt == nil {
+					if err := cli.ReplyEQR(); err != nil {
+						return err
+					}
+					continue
 				}
-			} else {
-				if err := cli.ReplyTTS(tts); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("processing error")
+				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
+				if err != nil {
+					if err := cli.ReportError(err); err != nil {
+						return err
+					}
 				} else {
-					spqrlog.Zero.Debug().Msg("processed OK")
+					if err := cli.ReplyTTS(tts); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("processing error")
+					} else {
+						spqrlog.Zero.Trace().Msg("processed OK")
+					}
 				}
 			}
 		default:
@@ -2856,15 +2902,20 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 	}
 }
 
-func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.db.AddShard(ctx, topology.DataShardToDB(shard)); err != nil {
+func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+	if err := qc.Coordinator.AddDataShard(ctx, shard, force); err != nil {
 		return err
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
-		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
-			Shard: topology.DataShardToProto(shard, false),
+		protoShard, err := topology.DataShardToProto(shard, true)
+		if err != nil {
+			return err
+		}
+		_, err = c.AddDataShard(ctx, &proto.AddShardRequest{
+			Shard: protoShard,
+			Force: true,
 		})
 		return err
 	}); err != nil {
@@ -2899,9 +2950,13 @@ func (qc *ClusteredCoordinator) AlterShardOptions(ctx context.Context, shardID s
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
-		_, err := c.AlterShard(ctx, &proto.AlterShardRequest{
+		protoOptions, err := topology.GenericOptionsToProto(shard.Options(), true)
+		if err != nil {
+			return err
+		}
+		_, err = c.AlterShard(ctx, &proto.AlterShardRequest{
 			Id:      shardID,
-			Options: topology.GenericOptionsToProto(shard.Options(), false),
+			Options: protoOptions,
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
@@ -3312,12 +3367,16 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 		}
 	}
 	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
-		return err
-	} else {
-		return qc.traverseRouters(ctx,
-			gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
-		)
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to execute chunk in QDB: %w", err)
 	}
+
+	if err := coord.UpdateKeyRangeMeta(ctx, chunk.GossipRequests); err != nil {
+		return spqrerror.Wrap(err, spqrerror.SPQR_KEYRANGE_ERROR, "failed to update key range metadata: %w", err)
+	}
+
+	return qc.traverseRouters(ctx,
+		gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
+	)
 }
 
 func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
@@ -3328,6 +3387,10 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 	}
 
 	if err := qc.Coordinator.CommitTran(ctx, transaction); err != nil {
+		return err
+	}
+
+	if err := coord.UpdateKeyRangeMeta(ctx, transaction.Operations.GossipRequests); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx,
@@ -3388,6 +3451,24 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxID strin
 			Msg("drop unique index response")
 		return nil
 	})
+}
+
+func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *topology.Router) (uint64, error) {
+	cc, cf, err := qc.getOrCreateRouterConn(r)
+	if err != nil {
+		return 0, err
+	}
+	defer cf()
+	rCl := proto.NewRouterServiceClient(cc)
+	return qc.getRouterMetaHashInternal(ctx, rCl)
+}
+
+func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {
+	resp, err := rCl.GetMetadataHash(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	return resp.Hash, nil
 }
 
 func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, updated []*topology.DataShard) {

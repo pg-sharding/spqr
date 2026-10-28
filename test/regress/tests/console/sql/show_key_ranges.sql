@@ -2,13 +2,13 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 CREATE KEY RANGE krid2 FROM 40 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid1 FROM 30 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
 CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds2;
 CREATE KEY RANGE krid21 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;
 
-SHOW key_ranges;
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 CREATE KEY RANGE krid4 FROM 20 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid3 FROM 10 ROUTE TO sh4 FOR DISTRIBUTION ds1;

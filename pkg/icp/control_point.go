@@ -2,6 +2,7 @@ package icp
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -17,10 +18,15 @@ const (
 	AfterRenameKeyRangeCP       = "after_rename_key_range_cp"
 	AfterSplitKeyRangeCP        = "after_split_key_range_cp"
 	AfterLockKeyRangeCP         = "after_lock_key_range_cp"
+	AwaitPidCP                  = "await_pid_cp"
 	CopyDataCP                  = "copy_data_cp"
+	BeforeInsertCP              = "before_insert_cp"
+	AfterInsertCP               = "after_insert_cp"
 	AfterCopyDataCP             = "after_copy_data_cp"
+	AfterDeleteQueryCP          = "after_delete_query_cp"
 	AfterDeleteCP               = "after_delete_cp"
 	AfterMoveKeysCP             = "after_move_keys_cp"
+	AfterMoveKeysCP2            = "after_move_keys_before_update_kr_cp"
 	AfterCoordUpdateKeyRangeCP  = "after_coordinator_update_key_range_cp"
 	AfterRouterUpdateKeyRangeCP = "after_router_update_key_range_cp"
 	AfterUnlockKeyRangeCP       = "after_unlock_key_range_cp"
@@ -49,7 +55,7 @@ var (
 
 var (
 	defaultPanicAction = func(ICPContextHolder) {
-		panic("reached control point")
+		log.Fatal("reached control point")
 	}
 
 	defaultSleepAction = func(ICPContextHolder) {
@@ -70,9 +76,11 @@ func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) 
 		}
 	case "wait":
 		return func(c ICPContextHolder) {
+			log.Printf("reached control point '%s'\n", name)
 			cpsContextMp[name] = c
 			// nil is ok.
 			if c != nil {
+				log.Println("waiting...")
 				BlockedPIDs[c.CancelPID()] = struct{}{}
 				c.Wait()
 			}
@@ -109,7 +117,9 @@ func DefineICP(name string, a *spqrparser.ICPointAction) error {
 		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
 		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
-		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP:
+		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
+		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
+		AwaitPidCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -127,12 +137,16 @@ func ResetICP(name string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
+	log.Printf("reset icp '%s'\n", name)
+
 	switch name {
 	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP,
 		CopyReferenceRelationDataCP, AfterCopyDataCP, AfterDeleteCP,
 		AfterLockKeyRangeCP, AfterMoveKeysCP, AfterCoordUpdateKeyRangeCP,
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
-		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP:
+		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
+		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
+		AwaitPidCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]
@@ -141,6 +155,7 @@ func ResetICP(name string) error {
 			return fmt.Errorf("control point not attached: %s", name)
 		}
 
+		log.Printf("finish resetting icp '%s'\n", name)
 		// nil is ok
 		c := cpsContextMp[name]
 		f(c)

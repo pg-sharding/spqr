@@ -40,7 +40,7 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 			lowerBound[i] = ""
 		case qdb.ColumnTypeInteger:
 			lowerBound[i] = int64(math.MinInt64)
-		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed, qdb.ColumnTypeUUIDHashed:
 			lowerBound[i] = uint64(0)
 		case qdb.ColumnTypeUUID:
 			lowerBound[i] = "00000000-0000-0000-0000-000000000000"

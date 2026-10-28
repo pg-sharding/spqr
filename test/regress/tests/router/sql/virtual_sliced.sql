@@ -38,5 +38,7 @@ SELECT  __spqr__ctid('r'), now();
 
 DROP TABLE r;
 
+
+/* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

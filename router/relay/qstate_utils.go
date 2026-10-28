@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -8,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/rerrors"
 )
 
 func virtualParamTransformName(name string) string {
@@ -40,6 +42,18 @@ func DispatchSlice(qd *QueryDesc,
 		}
 	}
 
+	forceLinearize := false
+	if p != nil {
+		forceLinearize = p.Opts().AutoLinearize
+	}
+
+	guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+	if err != nil {
+		return err
+	}
+
+	forceLinearize = forceLinearize || guc.Get(cl)
+
 	for _, targ := range et {
 
 		if qd.simple {
@@ -70,17 +84,19 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			}
 
-			guc, err := session.BoolGUCByName(session.SPQR_LINEARIZE_DISPATCH)
-			if err != nil {
-				return err
-			}
+			if forceLinearize {
+				guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+				if err != nil {
+					return err
+				}
+				if guc.Get(cl) {
+					_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+				}
 
-			if guc.Get(cl) {
 				if err := serv.PrefetchResult(targ, 1); err != nil {
 					return err
 				}
 			}
-
 		} else {
 			/* this message is actually bind */
 			if err := serv.SendShard(qd.Msg, targ); err != nil {
@@ -91,13 +107,79 @@ func DispatchSlice(qd *QueryDesc,
 				return err
 			}
 
-			if err := serv.SendShard(pgsync, targ); err != nil {
-				return err
+			if qd.exec.MaxRows == 0 {
+				if err := serv.SendShard(pgsync, targ); err != nil {
+					return err
+				}
+
+				if forceLinearize {
+					guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+					if err != nil {
+						return err
+					}
+					if guc.Get(cl) {
+						_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+					}
+
+					if err := serv.PrefetchResult(targ, 1); err != nil {
+						return err
+					}
+				}
+
+			} else {
+				msg, err := cl.Peek()
+				if err != nil {
+					return err
+				}
+				switch msg.(type) {
+				case *pgproto3.Sync:
+
+					if err := serv.SendShard(pgsync, targ); err != nil {
+						return err
+					}
+
+					if forceLinearize {
+						guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+						if err != nil {
+							return err
+						}
+						if guc.Get(cl) {
+							_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+						}
+
+						if err := serv.PrefetchResult(targ, 1); err != nil {
+							return err
+						}
+					}
+
+				case *pgproto3.Flush:
+					/* empty buffer */
+					_, _ = cl.Receive()
+					/* XXX: this is ugly & insane... anyway, work for simple cases... */
+					if err := serv.SendShard(pgflush, targ); err != nil {
+						return err
+					}
+				case *pgproto3.Close, *pgproto3.Parse, *pgproto3.Bind, *pgproto3.Describe:
+					/* Thats ok, ignore */
+					if err := serv.SendShard(pgflush, targ); err != nil {
+						return err
+					}
+
+					if err := serv.PrefetchUntilCommandComplete(targ); err != nil {
+						return err
+					}
+				default:
+					return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("non sync of flush query for dispatch: %T", msg))
+				}
 			}
 		}
 	}
 
-	if cl.ShowNoticeMsg() && replyCl {
+	rGuc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	if err != nil {
+		return err
+	}
+	if rGuc.Get(cl) && replyCl {
 		_ = replyShardMatchesWithHosts(cl, serv, et)
 	}
 	return nil
