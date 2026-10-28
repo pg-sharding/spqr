@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -760,7 +761,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2);`,
 					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102);`,
@@ -789,7 +791,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table VALUES (1, 2);`,
 					"sh2": `INSERT INTO test_table VALUES (101, 102);`,
@@ -827,7 +830,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2), (200, 2), (330,3);`,
 					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102), (4404, 4);`,
@@ -859,7 +863,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2), (303, 202) RETURNING *;`,
 					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102) RETURNING *;`,

@@ -128,6 +128,48 @@ func benchmarkDistributedUpsert(b *testing.B, control *pgx.Conn, table string, l
 	}
 }
 
+func BenchmarkDistributedBatchInsert(b *testing.B) {
+	if isPurePGTesting() {
+		b.Skip("requires the xproto sharding environment")
+	}
+	b.StopTimer()
+	admin := upsertBenchConnect(b, true)
+	control := upsertBenchConnect(b, false)
+	table := fmt.Sprintf("xproto_batch_%x", time.Now().UnixNano())
+	upsertBenchExec(b, admin, "CREATE RELATION "+table+" (shard_key) IN ds1")
+	upsertBenchExec(b, control, "CREATE TABLE "+table+" (shard_key integer, id integer, PRIMARY KEY (shard_key, id))")
+	b.Cleanup(func() {
+		upsertBenchExec(b, control, "DROP TABLE "+table)
+		upsertBenchExec(b, admin, "ALTER DISTRIBUTION ds1 DETACH RELATION "+table)
+	})
+
+	clients := make([]*pgx.Conn, min(8, b.N))
+	for i := range clients {
+		clients[i] = upsertBenchConnect(b, false)
+	}
+	ctx := context.Background()
+	var workers sync.WaitGroup
+	b.ResetTimer()
+	b.StartTimer()
+	for worker, conn := range clients {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for iteration := worker; iteration < b.N; iteration += len(clients) {
+				// Clients contend on the same fresh key on both shards.
+				key := iteration / len(clients)
+				query := fmt.Sprintf("INSERT INTO %s (shard_key, id) VALUES (1, %d), (12, %d) ON CONFLICT DO NOTHING /* client %d */", table, key, key, worker)
+				if _, err := conn.Exec(ctx, query); err != nil {
+					b.Errorf("client %d, operation %d: %v", worker, iteration, err)
+					return
+				}
+			}
+		}()
+	}
+	workers.Wait()
+	b.StopTimer()
+}
+
 func upsertBenchConnect(b *testing.B, admin bool) *pgx.Conn {
 	b.Helper()
 	host, port := os.Getenv("POSTGRES_HOST"), os.Getenv("POSTGRES_PORT")

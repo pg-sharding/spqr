@@ -87,10 +87,16 @@ INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: tru
 NOTICE: send query to shard(s) : sh1
 -- This insert should fail even with engine V2
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE distrr_mm_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
