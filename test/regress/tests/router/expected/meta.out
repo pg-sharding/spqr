@@ -28,11 +28,18 @@ CREATE RELATION r(i);
 SET __spqr__reply_notice TO false;
 CREATE TABLE r(i int, j int, c int);
 \d+ r
+                                     Table "public.r"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ i      | integer |           |          |         | plain   |              | 
+ j      | integer |           |          |         | plain   |              | 
+ c      | integer |           |          |         | plain   |              | 
+
 \dt+ r
-                                  List of relations
- Schema | Name | Type  | Owner  | Persistence | Access method |  Size   | Description 
---------+------+-------+--------+-------------+---------------+---------+-------------
- public | r    | table | reshke | permanent   | heap          | 0 bytes | 
+                           List of relations
+ Schema | Name | Type  |  Owner  | Persistence |  Size   | Description 
+--------+------+-------+---------+-------------+---------+-------------
+ public | r    | table | regress | permanent   | 0 bytes | 
 (1 row)
 
 \dp+ r
@@ -44,11 +51,20 @@ CREATE TABLE r(i int, j int, c int);
 
 CREATE INDEX ON r USING btree(i);
 \d+ r
+                                     Table "public.r"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ i      | integer |           |          |         | plain   |              | 
+ j      | integer |           |          |         | plain   |              | 
+ c      | integer |           |          |         | plain   |              | 
+Indexes:
+    "r_i_idx" btree (i)
+
 \dt+ r
-                                  List of relations
- Schema | Name | Type  | Owner  | Persistence | Access method |  Size   | Description 
---------+------+-------+--------+-------------+---------------+---------+-------------
- public | r    | table | reshke | permanent   | heap          | 0 bytes | 
+                           List of relations
+ Schema | Name | Type  |  Owner  | Persistence |  Size   | Description 
+--------+------+-------+---------+-------------+---------+-------------
+ public | r    | table | regress | permanent   | 0 bytes | 
 (1 row)
 
 \dp+ r
