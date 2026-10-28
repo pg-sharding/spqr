@@ -45,6 +45,15 @@ Feature: There are no leftovers in ETCD after all DROPs
         """
 
     Scenario: DROP REFERENCE RELATION
+        When I run SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        """
+        Then command return code should be "0"
+
+        Given I remember current etcd state
+        When I run SQL on host "coordinator"
+        """
         CREATE REFERENCE RELATION r1;
         """
         Then command return code should be "0"
