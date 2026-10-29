@@ -453,6 +453,33 @@ func (rm *RoutingMetadataContext) ResolveKeyShard(
 	return rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 }
 
+func (rm *RoutingMetadataContext) resolveHintDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+	if id != distributions.DEFAULT {
+		return rm.Mgr.GetDistribution(ctx, id)
+	}
+
+	/* XXX: Listing all distributions may not be too efficient, but KISS until someone complains (we do not expect anyone to create too many distributions). */
+	list, err := rm.Mgr.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var selected *distributions.Distribution
+	for _, candidate := range list {
+		if candidate.Id == distributions.REPLICATED {
+			continue
+		}
+		if selected != nil {
+			return nil, spqrerror.New(spqrerror.SPQR_ROUTING_ERROR, "multiple distributions found for sharding key hint").
+				Hint("Specify __spqr__distribution in the query hint or set it for the session.")
+		}
+		selected = candidate
+	}
+	if selected == nil {
+		return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no distribution found for sharding key hint")
+	}
+	return selected, nil
+}
+
 func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
 	guc, err := rm.SPH.FindBoolGUC(session.SPQR_SCATTER_QUERY)
 	if err != nil {
@@ -475,7 +502,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "sharding key in comment without distribution")
 		}
 
-		distrib, err := rm.Mgr.GetDistribution(ctx, dsId)
+		distrib, err := rm.resolveHintDistribution(ctx, dsId)
 		if err != nil {
 			return nil, err
 		}

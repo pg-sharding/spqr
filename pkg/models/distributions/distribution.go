@@ -117,6 +117,7 @@ func CheckDuplicateKeyColumns(key []DistributionKeyEntry) error {
 }
 
 const (
+	DEFAULT    = "default"
 	REPLICATED = "REPLICATED"
 )
 
