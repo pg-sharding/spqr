@@ -101,6 +101,11 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		return p, nil
 	}
 
+	// Reference writes must reach every storage shard, regardless of CTE join keys.
+	if rm.HasReferenceRelUpdate {
+		return p, nil
+	}
+
 	if sc.SubSlice == nil && len(rm.UsedAuxCTE) >= 1 {
 		var firstKey rmeta.AuxValuesKey
 		var ds *distributions.Distribution

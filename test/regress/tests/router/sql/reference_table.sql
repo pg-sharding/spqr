@@ -155,6 +155,18 @@ SET __spqr__preferred_engine TO '';
 SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
 SELECT table_name, schema_name FROM __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
 
+-- A CTE join must not restrict reference writes to the distributed relation's shards.
+BEGIN;
+WITH v(id) AS (VALUES (100), (200)),
+seen AS (SELECT d.id FROM test_distr_ref_rel d JOIN v ON d.id = v.id)
+UPDATE test_ref_rel SET j = j + 1 WHERE i = 1;
+SET LOCAL __spqr__preferred_engine TO 'v2';
+WITH v(id) AS (VALUES (100), (200)),
+seen AS (SELECT d.id FROM test_distr_ref_rel d JOIN v ON d.id = v.id)
+UPDATE test_ref_rel SET j = j + 1 WHERE i = 1;
+SELECT __spqr__ctid('test_ref_rel');
+ROLLBACK;
+
 DROP TABLE test_ref_rel;
 DROP TABLE sh1.test_ref_rel_rel;
 DROP SCHEMA sh1;
