@@ -60,6 +60,11 @@ INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c =
 
 SELECT __spqr__ctid('rf_al');
 
+-- CTE/JOIN rewriting must preserve auto-linearize for ON CONFLICT DO UPDATE.
+WITH v(id) AS (VALUES (2222), (3333))
+INSERT INTO rel_al SELECT r.id, r.c FROM rel_al r JOIN v ON r.id = v.id
+ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
+
 DROP TABLE rel_al;
 DROP TABLE rf_al;
 
