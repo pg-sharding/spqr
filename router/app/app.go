@@ -124,7 +124,7 @@ func (app *App) ServeGrpcAPI(ctx context.Context) error {
 }
 
 func (app *App) ServiceUnixSocket(ctx context.Context) error {
-	directory := config.RouterConfig().UnixSocketDirectory
+	directory := config.RouterConfig().UnixSocketDir
 	if directory == "" {
 		directory = config.UnixSocketDirectory
 	}
