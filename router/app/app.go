@@ -132,12 +132,11 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 		return err
 	}
 	socketPath := path.Join(directory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
-	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
+	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
+	listener, err := net.ListenUnix("unix", lAddr)
 	if err != nil {
 		return err
 	}
-	// Do not remove the socket path automatically, even on graceful shutdown.
-	listener.SetUnlinkOnClose(false)
 	defer func(listener net.Listener) {
 		_ = listener.Close()
 	}(listener)

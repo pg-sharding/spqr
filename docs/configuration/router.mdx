@@ -30,19 +30,16 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 
 ## Network Settings
 
-| Setting              | Description                                       | Possible Values       | Default |
-|----------------------|---------------------------------------------------|-----------------------|---------|
-| `host`               | The host address the router listens on.           | Any valid hostname    | (none) |
-| `unix_socket_directory` | Directory for the router Unix socket. Relative paths use the startup directory. | Any writable directory | `/var/run/postgresql` |
-| `router_port`        | The port number for the router.                   | Any valid port number | (none) |
-| `router_ro_port`     | The port number for the read-only queries router. | Any valid port number | (none) |
-| `admin_console_port` | The port number for the admin console.            | Any valid port number | (none) |
-| `grpc_api_port`      | The port number for the gRPC API.                 | Any valid port number | (none) |
-| `metric_path`        | The path for prometheus metric exporter           | Any valid HTTP path   | `/metric` |
-| `metric_port`        | The port for prometheus metric exporter           | Any valid port number | (none) |
-
-The router does not remove its Unix socket file automatically, including on shutdown. If the socket path already exists, startup fails; check that no process is using it before removing the stale socket file manually.
-
+| Setting                 | Description                                       | Possible Values       | Default |
+|-------------------------|---------------------------------------------------|-----------------------|---------|
+| `host`                  | The host address the router listens on.           | Any valid hostname    | (none) |
+| `unix_socket_directory` | Directory for the router Unix socket.      | Any writable directory | `/var/run/postgresql` |
+| `router_port`           | The port number for the router.                   | Any valid port number | (none) |
+| `router_ro_port`        | The port number for the read-only queries router. | Any valid port number | (none) |
+| `admin_console_port`    | The port number for the admin console.            | Any valid port number | (none) |
+| `grpc_api_port`         | The port number for the gRPC API.                 | Any valid port number | (none) |
+| `metric_path`           | The path for prometheus metric exporter           | Any valid HTTP path   | `/metric` |
+| `metric_port`           | The port for prometheus metric exporter           | Any valid port number | (none) |
 
 ## Availability Zone Settings
 
