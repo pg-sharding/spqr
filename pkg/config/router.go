@@ -65,6 +65,7 @@ type Router struct {
 	EnableRoleSystem bool   `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile        string `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
+	UnixSocketDir    string `json:"unix_socket_dir" toml:"unix_socket_dir" yaml:"unix_socket_dir"`
 	Host             string `json:"host" toml:"host" yaml:"host"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
