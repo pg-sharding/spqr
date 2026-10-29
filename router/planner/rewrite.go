@@ -174,16 +174,16 @@ func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey
 }
 
 func RewriteDistributedRelBatchInsert(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	p, err := CommonValuesRewrite(query, valuesLoc, shs, false)
-	if err != nil {
-		return nil, err
-	}
-	p.Opts().AutoLinearize = true
-	return p, nil
+	return RewriteDistributedRelWithValues(query, valuesLoc, shs, false)
 }
 
 func RewriteDistributedRelWithValues(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
-	return CommonValuesRewrite(query, valuesLoc, shs, ro)
+	p, err := CommonValuesRewrite(query, valuesLoc, shs, ro)
+	if err != nil {
+		return nil, err
+	}
+	p.Opts().AutoLinearize = !ro
+	return p, nil
 }
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {

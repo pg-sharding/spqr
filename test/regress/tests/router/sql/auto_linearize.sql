@@ -29,6 +29,9 @@ SELECT __spqr__ctid('rel_al');
 WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
 
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1))
+INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT DO NOTHING;
+
 
 WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
