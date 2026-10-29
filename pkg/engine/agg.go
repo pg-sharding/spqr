@@ -37,6 +37,9 @@ func (c *CountAggregate) Aggregate(v []byte) {
 	case catalog.INT8OID:
 		n, _ := strconv.ParseInt(string(v), 10, 64)
 		c.v += n
+	default:
+		n, _ := strconv.ParseInt(string(v), 10, 64)
+		c.v += n
 	}
 }
 

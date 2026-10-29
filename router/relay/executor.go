@@ -1042,7 +1042,7 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, p plan.Plan,
 
 }
 
-func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Plan) error {
+func (s *QueryStateExecutorImpl) executeInnerSlice(qd *QueryDesc, serv server.Server, p plan.Plan) error {
 
 	/* The main difference between top-level and inner slices are that
 	* inner slice results are not transferred to client.
@@ -1051,8 +1051,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 	if sp := p.Subplan(); sp != nil {
 		/* XXX: Do all required job in sub-plan */
 		spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
-
-		if err := s.executeInnerSlice(serv, sp); err != nil {
+		if err := s.executeInnerSlice(qd, serv, sp); err != nil {
 			return err
 		}
 	}
@@ -1062,10 +1061,8 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		return errUnAttached
 	}
 
-	/*  Inner slice should always contain per-shard overwrite message. */
-	qd := &QueryDesc{
-		simple: true,
-	}
+	/*  Inner slice should always contain per-shard overwrite message.
+	* For multi-slice queries, slices are either all-simple or all-extended */
 
 	if err := p.PrepareRunSlice(serv); err != nil {
 		return err
@@ -1112,7 +1109,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
 			spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
-			if err := s.executeInnerSlice(serv, sp); err != nil {
+			if err := s.executeInnerSlice(qd, serv, sp); err != nil {
 				return err
 			}
 		}
@@ -1278,7 +1275,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.BindComplete:
 		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
+			// return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
