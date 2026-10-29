@@ -994,10 +994,7 @@ func (rst *RelayStateImpl) BindPrepared(
 		}
 
 		f := func(maxrows uint32) error {
-			p := rst.bindQueryPlan
-			if destinationPortal != "" {
-				p = rst.bindQueryPlanMP[destinationPortal]
-			}
+			p := queryPlan
 			forceSimple := false
 
 			switch q := p.(type) {

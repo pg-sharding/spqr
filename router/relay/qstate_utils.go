@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/client"
@@ -26,26 +25,14 @@ func DispatchSlice(qd *QueryDesc,
 
 	serv := cl.Server()
 
-	var et []kr.ShardKey
-
-	if p == nil {
+	et := p.ExecutionTargets()
+	if len(et) == 0 {
 		for _, ds := range serv.Datashards() {
 			et = append(et, ds.SHKey())
 		}
-	} else {
-		et = p.ExecutionTargets()
-
-		if len(et) == 0 {
-			for _, ds := range serv.Datashards() {
-				et = append(et, ds.SHKey())
-			}
-		}
 	}
 
-	forceLinearize := false
-	if p != nil {
-		forceLinearize = p.Opts().AutoLinearize
-	}
+	forceLinearize := p.Opts().AutoLinearize
 
 	guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
 	if err != nil {
@@ -61,21 +48,13 @@ func DispatchSlice(qd *QueryDesc,
 			/*
 			* This is only execution path for non-top level slice
 			 */
-			if p != nil {
-				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
-					/* Uh, oh, this is very ugly hack */
+			if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
+				/* Uh, oh, this is very ugly hack */
 
-					if err := serv.SendShard(&pgproto3.Query{
-						String: ovMsg,
-					}, targ); err != nil {
-						return err
-					}
-
-				} else {
-					/* Assert for IsQuery here? */
-					if err := serv.SendShard(qd.Msg, targ); err != nil {
-						return err
-					}
+				if err := serv.SendShard(&pgproto3.Query{
+					String: ovMsg,
+				}, targ); err != nil {
+					return err
 				}
 			} else {
 				/* Assert for IsQuery here? */
