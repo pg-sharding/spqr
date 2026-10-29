@@ -908,6 +908,7 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 	type tcase struct {
 		query    string
 		cteName  string
+		ro       bool
 		expected plan.Plan
 		shs      []kr.ShardKey
 		wantErr  bool
@@ -926,7 +927,8 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `with vals (i) as (VALUES (1)) INSERT INTO t select i from vals;`,
 					"sh2": `with vals (i) as (VALUES (300)) INSERT INTO t select i from vals;`,
@@ -955,7 +957,8 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `with vals as (VALUES (1)) INSERT INTO t select * from vals;`,
 					"sh2": `with vals as (VALUES (300)) INSERT INTO t select * from vals;`,
@@ -984,7 +987,8 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `with s as (select * from tt), vals (i) as (VALUES (1)) INSERT INTO t select i from vals;`,
 					"sh2": `with s as (select * from tt), vals (i) as (VALUES (300)) INSERT INTO t select i from vals;`,
@@ -1004,6 +1008,7 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		{
 			query:   `with vals (i) as (VALUES (1), (300)) select i from vals JOIN t ON t.i = vals.i;`,
 			cteName: "vals",
+			ro:      true,
 			shs: []kr.ShardKey{
 				{
 					Name: "sh1",
@@ -1013,7 +1018,6 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 				},
 			},
 			expected: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `with vals (i) as (VALUES (1)) select i from vals JOIN t ON t.i = vals.i;`,
 					"sh2": `with vals (i) as (VALUES (300)) select i from vals JOIN t ON t.i = vals.i;`,
@@ -1032,7 +1036,7 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 	} {
 		t.Run("rewrite", func(t *testing.T) {
 			loc := parseValuesLocation(t, tt.query, tt.cteName)
-			result, err := RewriteDistributedRelWithValues(tt.query, loc, tt.shs, false)
+			result, err := RewriteDistributedRelWithValues(tt.query, loc, tt.shs, tt.ro)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery expected error, got nil. Plan: %+v", result)

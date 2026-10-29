@@ -270,7 +270,10 @@ NOTICE: send query to shard(s) : sh1
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
 NOTICE: send query to shard(s) : sh1,sh2
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -296,7 +299,10 @@ NOTICE: send query to shard(s) : sh3
 with vals (i) as (values (101), (288)),
 	z as (insert into table2 (a)
 		select i from vals returning *) table z;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
 NOTICE: send query to shard(s) : sh2,sh3
   a  | b | c 
 -----+---+---
@@ -332,7 +338,10 @@ with vals (i) as (values (101), (288)),
 	z as (insert into table2 (a) select i from vals returning *),
 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
 			table z union all table zz;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
 NOTICE: send query to shard(s) : sh2,sh3
   a  | b | c  
 -----+---+----
@@ -376,7 +385,11 @@ NOTICE: send query to shard(s) : sh3
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
 NOTICE: send query to shard(s) : sh1,sh2,sh3
   a  | b | c 
 -----+---+---

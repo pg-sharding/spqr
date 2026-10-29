@@ -234,7 +234,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 with vals (z) as (values (1), (44), (55), (88)) insert into table2 (a) select z from vals;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -253,7 +257,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (z) as (values (1), (2), (288), (388), (188)) insert into table2 (a) select z from vals;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -272,7 +280,10 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (i) as (values (101), (288)),
 	z as (insert into table2 (a)
 		select i from vals returning *) table z;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
 NOTICE: send query to shard(s) : sh1,sh2
   a  | b | c 
 -----+---+---
@@ -295,7 +306,10 @@ with vals (i) as (values (101), (288)),
 	z as (insert into table2 (a) select i from vals returning *),
 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
 			table z union all table zz;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
 NOTICE: send query to shard(s) : sh1,sh2
   a  | b | c 
 -----+---+---
@@ -319,7 +333,11 @@ with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_re
 NOTICE: send query to shard(s) : sh4
 -- 3 out of 4 shards.
 with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -339,7 +357,12 @@ TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- all shards.
 with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -363,7 +386,10 @@ NOTICE: send query to shard(s) : sh2
 (1 row)
 
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh2,sh4
   a  | b | c 
 -----+---+---
@@ -391,7 +417,11 @@ with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_re
 NOTICE: send query to shard(s) : sh4
 -- 3 out of 4 shards.
 with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -409,7 +439,12 @@ TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- all shards.
 with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -433,7 +468,10 @@ NOTICE: send query to shard(s) : sh2
 (1 row)
 
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh2,sh4
   a  | b | c 
 -----+---+---
