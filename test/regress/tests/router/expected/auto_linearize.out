@@ -224,7 +224,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  shard sh4    | 1222 |   2
 (16 rows)
 
--- CTE/JOIN rewriting must preserve auto-linearize for upserts.
+-- CTE/JOIN rewriting must preserve auto-linearize for ON CONFLICT DO UPDATE.
 WITH v(id) AS (VALUES (2222), (3333))
 INSERT INTO rel_al SELECT r.id, r.c FROM rel_al r JOIN v ON r.id = v.id
 ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
