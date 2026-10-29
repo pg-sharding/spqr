@@ -199,6 +199,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		if err != nil {
 			return nil, err
 		}
+		p.Opts().AutoLinearize = sc.Opts().AutoLinearize
 	}
 	return p, nil
 }
