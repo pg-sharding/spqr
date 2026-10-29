@@ -224,6 +224,31 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  shard sh4    | 1222 |   2
 (16 rows)
 
+-- Combining plans must preserve auto-linearize and the result relation.
+WITH seen AS (SELECT id FROM rel_al WHERE id = 1111)
+INSERT INTO rel_al VALUES (1111, 0), (2222, 0) ON CONFLICT DO NOTHING;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: send query to shard(s) : sh2,sh3
+\set QUIET 0
+WITH seen AS (SELECT id FROM rel_al WHERE id = 1111)
+UPDATE rf_al SET c = c WHERE id = 1111;
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+UPDATE 1
+WITH changed AS (UPDATE rf_al SET c = c WHERE id = 1111 RETURNING id)
+UPDATE rel_al SET c = c WHERE id IN (1111, 2222);
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+UPDATE 2
+WITH seen AS (SELECT id FROM rel_al WHERE id = 1111)
+DELETE FROM rf_al WHERE id = 1111;
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DELETE 1
+\set QUIET 1
 DROP TABLE rel_al;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

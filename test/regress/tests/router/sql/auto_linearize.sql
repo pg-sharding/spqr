@@ -60,6 +60,19 @@ INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c =
 
 SELECT __spqr__ctid('rf_al');
 
+-- Combining plans must preserve auto-linearize and the result relation.
+WITH seen AS (SELECT id FROM rel_al WHERE id = 1111)
+INSERT INTO rel_al VALUES (1111, 0), (2222, 0) ON CONFLICT DO NOTHING;
+
+\set QUIET 0
+WITH seen AS (SELECT id FROM rel_al WHERE id = 1111)
+UPDATE rf_al SET c = c WHERE id = 1111;
+WITH changed AS (UPDATE rf_al SET c = c WHERE id = 1111 RETURNING id)
+UPDATE rel_al SET c = c WHERE id IN (1111, 2222);
+WITH seen AS (SELECT id FROM rel_al WHERE id = 1111)
+DELETE FROM rf_al WHERE id = 1111;
+\set QUIET 1
+
 DROP TABLE rel_al;
 DROP TABLE rf_al;
 

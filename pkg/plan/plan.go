@@ -360,6 +360,16 @@ func mergeExecTargets(l, r []kr.ShardKey) []kr.ShardKey {
 
 // TODO : unit tests
 func Combine(p1, p2 Plan) Plan {
+	p := combine(p1, p2)
+	if p != nil {
+		if p1 != nil && p1.Opts().AutoLinearize || p2 != nil && p2.Opts().AutoLinearize {
+			p.Opts().AutoLinearize = true
+		}
+	}
+	return p
+}
+
+func combine(p1, p2 Plan) Plan {
 	if p1 == nil && p2 == nil {
 		return nil
 	}

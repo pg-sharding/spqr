@@ -1110,6 +1110,21 @@ func (qr *ProxyQrouter) plannerV1(
 		}
 	}
 
+	// The command tag describes the top-level target, not writes inside a CTE.
+	var target lyx.FromClauseNode
+	switch stmt := rm.Stmt.(type) {
+	case *lyx.Update:
+		target = stmt.TableRef
+	case *lyx.Delete:
+		target = stmt.TableRef
+	}
+	if rv, ok := target.(*lyx.RangeVar); ok {
+		p.Opts().ResultRelationIsRef, err = rm.IsReferenceRelation(ctx, rfqn.RelationFQNFromRangeRangeVar(rv))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return p, nil
 }
 
