@@ -152,6 +152,7 @@ var addShardCmd = &cobra.Command{
 		}
 		if _, err := rCl.AddDataShard(context.Background(), &protos.AddShardRequest{
 			Shard: shard,
+			Apply: true,
 		}); err == nil {
 			fmt.Printf("-------------------------------------\n")
 			fmt.Printf("create shard with id: %s and hosts: %+v\n", shardID, shardHosts)

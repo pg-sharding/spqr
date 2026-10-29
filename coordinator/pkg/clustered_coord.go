@@ -2598,6 +2598,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{
 				Shard: protoShard,
 				Force: true,
+				Apply: true,
 			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
@@ -2916,6 +2917,7 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 		_, err = c.AddDataShard(ctx, &proto.AddShardRequest{
 			Shard: protoShard,
 			Force: true,
+			Apply: true,
 		})
 		return err
 	}); err != nil {
