@@ -187,7 +187,7 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Bool("updateTopology", lc.updateTopology).
 		Msg("adding datashard node in local coordinator")
 
-	if lc.updateTopology {
+	if apply && lc.updateTopology {
 		lc.tmgr.AddShard(ds)
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds, force, apply)

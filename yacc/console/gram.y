@@ -2116,7 +2116,7 @@ shard_define_stmt:
 			Force: false,
 			Apply: false,
 		}
-	}	
+	}
 
 opt_force:
 	FORCE { $$ = true } | {$$ = false}

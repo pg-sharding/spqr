@@ -2908,6 +2908,10 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 		return err
 	}
 
+	if !apply {
+		return nil
+	}
+
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewShardServiceClient(cc)
 		protoShard, err := topology.DataShardToProto(shard, true)
