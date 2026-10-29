@@ -124,15 +124,20 @@ func (app *App) ServeGrpcAPI(ctx context.Context) error {
 }
 
 func (app *App) ServiceUnixSocket(ctx context.Context) error {
-	if err := os.MkdirAll(config.UnixSocketDirectory, 0777); err != nil {
+	directory := config.RouterConfig().UnixSocketDirectory
+	if directory == "" {
+		directory = config.UnixSocketDirectory
+	}
+	if err := os.MkdirAll(directory, 0777); err != nil {
 		return err
 	}
-	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
-	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
-	listener, err := net.ListenUnix("unix", lAddr)
+	socketPath := path.Join(directory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
 	if err != nil {
 		return err
 	}
+	// Do not remove the socket path automatically, even on graceful shutdown.
+	listener.SetUnlinkOnClose(false)
 	defer func(listener net.Listener) {
 		_ = listener.Close()
 	}(listener)
