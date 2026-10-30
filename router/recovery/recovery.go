@@ -89,9 +89,13 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 					return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc recovery: %v", sh.ID, err)
 				}
 
+				put := true
+
 				defer func() {
-					if err := d.p.Put(serv); err != nil {
-						spqrlog.Zero.Debug().Msg("failed to release connection")
+					if put {
+						if err := d.p.Put(serv); err != nil {
+							spqrlog.Zero.Debug().Msg("failed to release connection")
+						}
 					}
 				}()
 
@@ -102,6 +106,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 				}); err != nil {
 					/* Be tidy, return acquired connection. */
 					_ = d.p.Discard(serv)
+					put = false
 					return err
 				}
 
@@ -139,6 +144,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 				}(); err != nil {
 					/* Be tidy, return acquired connection. */
 					_ = d.p.Discard(serv)
+					put = false
 					return err
 				}
 				return nil
