@@ -7468,36 +7468,87 @@ func TestXProtoNamedBindPreservesUnnamedPortal(t *testing.T) {
 func TestXProtoClosedPortalCanBeRebound(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Parse{Query: "SELECT $1::int /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Bind{DestinationPortal: "p", Parameters: [][]byte{[]byte("1")}},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Close{ObjectType: 'P', Name: "p"},
-			&pgproto3.Bind{DestinationPortal: "p", Parameters: [][]byte{[]byte("2")}},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT $1::int /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "p",
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Close{
+					ObjectType: 'P',
+					Name:       "p",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "p",
+					Parameters: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CloseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("2")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 }
