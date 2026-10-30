@@ -3,7 +3,16 @@
 package prep_stmt_test
 
 import (
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"math/rand"
+	"net"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -7602,4 +7611,333 @@ func TestXProtoEmptyQueryPreservesUnnamedPortal(t *testing.T) {
 			&pgproto3.ReadyForQuery{TxStatus: 'I'},
 		},
 	}})
+}
+
+type compatCase struct {
+	ID       int
+	Family   string
+	Requests []pgproto3.FrontendMessage
+}
+
+type compatResult struct {
+	Messages []string
+	Errors   []string
+	Failure  string
+}
+
+func runCompatCase(host, password string, c compatCase) compatResult {
+	var result compatResult
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, "6432"), 3*time.Second)
+	if err != nil {
+		result.Failure = err.Error()
+		return result
+	}
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	fr := pgproto3.NewFrontend(conn, conn)
+	params := map[string]string{"user": "regress", "database": "regress"}
+	if password != "" {
+		params["password"] = password
+	}
+	fr.Send(&pgproto3.StartupMessage{ProtocolVersion: 196608, Parameters: params})
+	if err := fr.Flush(); err != nil {
+		result.Failure = err.Error()
+		return result
+	}
+	for {
+		m, err := fr.Receive()
+		if err != nil {
+			result.Failure = "startup: " + err.Error()
+			return result
+		}
+		if e, ok := m.(*pgproto3.ErrorResponse); ok {
+			result.Failure = "startup: " + e.Message
+			return result
+		}
+		if _, ok := m.(*pgproto3.ReadyForQuery); ok {
+			break
+		}
+	}
+	ready := 0
+	for _, m := range c.Requests {
+		fr.Send(m)
+		switch m.(type) {
+		case *pgproto3.Query, *pgproto3.Sync:
+			ready++
+		}
+	}
+	if err := fr.Flush(); err != nil {
+		result.Failure = err.Error()
+		return result
+	}
+	for n := 0; ready > 0 && n < 256; n++ {
+		m, err := fr.Receive()
+		if err != nil {
+			result.Failure = err.Error()
+			return result
+		}
+		var value string
+		switch v := m.(type) {
+		case *pgproto3.ReadyForQuery:
+			ready--
+			value = fmt.Sprintf("ReadyForQuery %c", v.TxStatus)
+		case *pgproto3.ErrorResponse:
+			value = v.Code + " " + v.Message
+			result.Errors = append(result.Errors, value)
+			value = "Error " + value
+		case *pgproto3.CommandComplete:
+			value = "CommandComplete " + string(v.CommandTag)
+		case *pgproto3.DataRow:
+			b, _ := json.Marshal(v.Values)
+			value = "DataRow " + string(b)
+		case *pgproto3.RowDescription:
+			value = "RowDescription"
+			for _, f := range v.Fields {
+				value += fmt.Sprintf(" %s/%d/%d", f.Name, f.DataTypeOID, f.Format)
+			}
+		case *pgproto3.ParameterDescription:
+			value = fmt.Sprintf("ParameterDescription %v", v.ParameterOIDs)
+		case *pgproto3.NoticeResponse, *pgproto3.ParameterStatus:
+			continue
+		default:
+			value = fmt.Sprintf("%T", m)
+		}
+		result.Messages = append(result.Messages, value)
+	}
+	if ready != 0 {
+		result.Failure = "response limit reached"
+	}
+	return result
+}
+
+func makeCompatCase(id int, rng *rand.Rand) compatCase {
+	const hint = " /* __spqr__execute_on: sh1 */"
+	c := compatCase{ID: id, Requests: []pgproto3.FrontendMessage{&pgproto3.Query{String: "BEGIN"}}}
+	add := func(m ...pgproto3.FrontendMessage) { c.Requests = append(c.Requests, m...) }
+	sync := func() { add(&pgproto3.Sync{}) }
+	statement, portal := "s", "p"
+	if rng.Intn(2) == 0 {
+		statement = ""
+	}
+	if rng.Intn(2) == 0 {
+		portal = ""
+	}
+	format := int16(rng.Intn(2))
+	value := rng.Intn(100) + 1
+	parse := func(name string) { add(&pgproto3.Parse{Name: name, Query: "SELECT $1::int + 10 AS value" + hint}) }
+	bind := func(name, destination string, val int, resultFormat int16) {
+		param := []byte(fmt.Sprint(val))
+		if format == 1 {
+			param = binary.BigEndian.AppendUint32(nil, uint32(val))
+		}
+		add(&pgproto3.Bind{PreparedStatement: name, DestinationPortal: destination,
+			Parameters: [][]byte{param}, ParameterFormatCodes: []int16{format}, ResultFormatCodes: []int16{resultFormat}})
+	}
+	execute := func(destination string) { add(&pgproto3.Execute{Portal: destination}) }
+	describe := func(destination string) { add(&pgproto3.Describe{ObjectType: 'P', Name: destination}) }
+	resultFormat := int16(rng.Intn(2))
+	switch id % 15 {
+	case 0:
+		c.Family = "bind_sync_execute"
+		parse(statement)
+		bind(statement, portal, value, resultFormat)
+		sync()
+		execute(portal)
+		sync()
+	case 1:
+		c.Family = "describe_then_execute"
+		parse(statement)
+		bind(statement, portal, value, resultFormat)
+		describe(portal)
+		if rng.Intn(2) == 0 {
+			sync()
+		}
+		execute(portal)
+		sync()
+	case 2:
+		c.Family = "close_rebind"
+		parse(statement)
+		bind(statement, "p", value, resultFormat)
+		execute("p")
+		sync()
+		add(&pgproto3.Close{ObjectType: 'P', Name: "p"})
+		if rng.Intn(2) == 0 {
+			sync()
+		}
+		bind(statement, "p", value+1, resultFormat)
+		execute("p")
+		sync()
+	case 3:
+		c.Family = "two_named_portals"
+		parse(statement)
+		bind(statement, "p", value, resultFormat)
+		bind(statement, "q", value+1, resultFormat)
+		if rng.Intn(2) == 0 {
+			sync()
+		}
+		execute("p")
+		execute("q")
+		sync()
+	case 4:
+		c.Family = "named_bind_preserves_unnamed"
+		parse(statement)
+		bind(statement, "", value, resultFormat)
+		bind(statement, "p", value+1, resultFormat)
+		execute("")
+		execute("p")
+		sync()
+	case 5:
+		c.Family = "close_statement_reprepare"
+		parse("s")
+		bind("s", "p", value, resultFormat)
+		execute("p")
+		sync()
+		add(&pgproto3.Close{ObjectType: 'S', Name: "s"})
+		parse("s")
+		bind("s", "q", value+1, resultFormat)
+		execute("q")
+		sync()
+	case 6:
+		c.Family = "named_bind_survives_simple_query"
+		parse("s")
+		bind("s", "p", value, resultFormat)
+		add(&pgproto3.Query{String: "SELECT 42" + hint})
+		execute("p")
+		sync()
+	case 7:
+		c.Family = "describe_two_formats"
+		parse(statement)
+		bind(statement, "p", value, 0)
+		bind(statement, "q", value+1, 1)
+		describe("p")
+		describe("q")
+		execute("p")
+		execute("q")
+		sync()
+	case 8:
+		c.Family = "parse_describe_sync_bind"
+		parse(statement)
+		add(&pgproto3.Describe{ObjectType: 'S', Name: statement})
+		sync()
+		bind(statement, portal, value, resultFormat)
+		execute(portal)
+		sync()
+	case 9:
+		c.Family = "suspended_named_portal"
+		add(&pgproto3.Parse{Name: "s", Query: "SELECT generate_series(1, 3)" + hint})
+		add(&pgproto3.Bind{PreparedStatement: "s", DestinationPortal: "p"})
+		add(&pgproto3.Execute{Portal: "p", MaxRows: 1})
+		sync()
+		execute("p")
+		sync()
+	case 10:
+		c.Family = "replace_unnamed_bind"
+		parse(statement)
+		bind(statement, "", value, resultFormat)
+		bind(statement, "", value+1, resultFormat)
+		execute("")
+		sync()
+	case 11:
+		c.Family = "describe_rebound_unnamed"
+		parse(statement)
+		bind(statement, "", value, 0)
+		describe("")
+		bind(statement, "", value+1, 1)
+		describe("")
+		execute("")
+		sync()
+	case 12:
+		c.Family = "repeated_describe_named"
+		parse(statement)
+		bind(statement, "p", value, resultFormat)
+		describe("p")
+		describe("p")
+		execute("p")
+		sync()
+	case 13:
+		c.Family = "close_unexecuted_rebind"
+		parse(statement)
+		bind(statement, "p", value, resultFormat)
+		add(&pgproto3.Close{ObjectType: 'P', Name: "p"})
+		bind(statement, "p", value+1, resultFormat)
+		execute("p")
+		sync()
+	case 14:
+		c.Family = "describe_completed_named"
+		parse(statement)
+		bind(statement, "p", value, resultFormat)
+		execute("p")
+		sync()
+		describe("p")
+		sync()
+	}
+	add(&pgproto3.Query{String: "ROLLBACK"})
+	return c
+}
+
+func TestXProtoCompatibilitySweep(t *testing.T) {
+	reference := os.Getenv("SPQR_XPROTO_REFERENCE_HOST")
+	if reference == "" {
+		t.Skip("requires a PostgreSQL reference server")
+	}
+	dir := os.Getenv("SPQR_XPROTO_ARTIFACTS")
+	if dir == "" {
+		dir = t.TempDir()
+	}
+	seed := int64(20261030)
+	if value := os.Getenv("SPQR_XPROTO_SEED"); value != "" {
+		var err error
+		seed, err = strconv.ParseInt(value, 10, 64)
+		require.NoError(t, err)
+	}
+	cases := 200
+	if value := os.Getenv("SPQR_XPROTO_CASES"); value != "" {
+		var err error
+		cases, err = strconv.Atoi(value)
+		require.NoError(t, err)
+		require.Positive(t, cases)
+	}
+	rng := rand.New(rand.NewSource(seed))
+	counts := map[string]int{}
+	seen := map[string]bool{}
+	bad, invalid := 0, 0
+	for i := 0; i < cases; i++ {
+		c := makeCompatCase(i, rng)
+		pg := runCompatCase(reference, "", c)
+		if pg.Failure != "" || len(pg.Errors) > 0 {
+			invalid++
+			t.Logf("reference rejected case %d (%s): %+v", i, c.Family, pg)
+			continue
+		}
+		spqr := runCompatCase(os.Getenv("POSTGRES_HOST"), os.Getenv("POSTGRES_PASSWORD"), c)
+		if reflect.DeepEqual(pg.Messages, spqr.Messages) && spqr.Failure == "" {
+			continue
+		}
+		bad++
+		counts[c.Family]++
+		kind := "reply_difference"
+		if len(spqr.Errors) > 0 {
+			kind = strings.Join(spqr.Errors, "; ")
+		}
+		if spqr.Failure != "" {
+			kind = "transport: " + spqr.Failure
+		}
+		key := c.Family + ": " + kind
+		if !seen[key] {
+			seen[key] = true
+			b, _ := json.MarshalIndent(struct {
+				Case             compatCase
+				PostgreSQL, SPQR compatResult
+			}{c, pg, spqr}, "", "  ")
+			path := filepath.Join(dir, fmt.Sprintf("case-%03d.json", i))
+			if err := os.WriteFile(path, b, 0644); err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("case %d %s: %s (%s)", i, c.Family, kind, path)
+		}
+		if spqr.Failure != "" {
+			t.Fatalf("stopping after transport failure: %s", spqr.Failure)
+		}
+	}
+	t.Logf("seed=%d cases=%d reference_rejected=%d mismatches=%d by_family=%v", seed, cases, invalid, bad, counts)
 }

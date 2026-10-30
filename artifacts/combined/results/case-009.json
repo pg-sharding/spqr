@@ -1,0 +1,84 @@
+{
+  "Case": {
+    "ID": 9,
+    "Family": "suspended_named_portal",
+    "Requests": [
+      {
+        "Type": "Query",
+        "String": "BEGIN"
+      },
+      {
+        "Type": "Parse",
+        "Name": "s",
+        "Query": "SELECT generate_series(1, 3) /* __spqr__execute_on: sh1 */",
+        "ParameterOIDs": null
+      },
+      {
+        "Type": "Bind",
+        "DestinationPortal": "p",
+        "PreparedStatement": "s",
+        "ParameterFormatCodes": null,
+        "Parameters": [],
+        "ResultFormatCodes": null
+      },
+      {
+        "Type": "Execute",
+        "Portal": "p",
+        "MaxRows": 1
+      },
+      {
+        "Type": "Sync"
+      },
+      {
+        "Type": "Execute",
+        "Portal": "p",
+        "MaxRows": 0
+      },
+      {
+        "Type": "Sync"
+      },
+      {
+        "Type": "Query",
+        "String": "ROLLBACK"
+      }
+    ]
+  },
+  "PostgreSQL": {
+    "Messages": [
+      "CommandComplete BEGIN",
+      "ReadyForQuery T",
+      "*pgproto3.ParseComplete",
+      "*pgproto3.BindComplete",
+      "DataRow [\"MQ==\"]",
+      "*pgproto3.PortalSuspended",
+      "ReadyForQuery T",
+      "DataRow [\"Mg==\"]",
+      "DataRow [\"Mw==\"]",
+      "CommandComplete SELECT 2",
+      "ReadyForQuery T",
+      "CommandComplete ROLLBACK",
+      "ReadyForQuery I"
+    ],
+    "Errors": null,
+    "Failure": ""
+  },
+  "SPQR": {
+    "Messages": [
+      "CommandComplete BEGIN",
+      "ReadyForQuery T",
+      "*pgproto3.ParseComplete",
+      "*pgproto3.BindComplete",
+      "DataRow [\"MQ==\"]",
+      "*pgproto3.PortalSuspended",
+      "ReadyForQuery T",
+      "Error SPQRU cannot dispatch query slice without a plan",
+      "ReadyForQuery I",
+      "CommandComplete ROLLBACK",
+      "ReadyForQuery I"
+    ],
+    "Errors": [
+      "SPQRU cannot dispatch query slice without a plan"
+    ],
+    "Failure": ""
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "Case": {
+    "ID": 0,
+    "Family": "bind_sync_execute",
+    "Requests": [
+      {
+        "Type": "Query",
+        "String": "BEGIN"
+      },
+      {
+        "Type": "Parse",
+        "Name": "",
+        "Query": "SELECT $1::int + 10 AS value /* __spqr__execute_on: sh1 */",
+        "ParameterOIDs": null
+      },
+      {
+        "Type": "Bind",
+        "DestinationPortal": "",
+        "PreparedStatement": "",
+        "ParameterFormatCodes": [
+          1
+        ],
+        "Parameters": [
+          {
+            "binary": "00000063"
+          }
+        ],
+        "ResultFormatCodes": [
+          1
+        ]
+      },
+      {
+        "Type": "Sync"
+      },
+      {
+        "Type": "Execute",
+        "Portal": "",
+        "MaxRows": 0
+      },
+      {
+        "Type": "Sync"
+      },
+      {
+        "Type": "Query",
+        "String": "ROLLBACK"
+      }
+    ]
+  },
+  "PostgreSQL": {
+    "Messages": [
+      "CommandComplete BEGIN",
+      "ReadyForQuery T",
+      "*pgproto3.ParseComplete",
+      "*pgproto3.BindComplete",
+      "ReadyForQuery T",
+      "DataRow [\"AAAAbQ==\"]",
+      "CommandComplete SELECT 1",
+      "ReadyForQuery T",
+      "CommandComplete ROLLBACK",
+      "ReadyForQuery I"
+    ],
+    "Errors": null,
+    "Failure": ""
+  },
+  "SPQR": {
+    "Messages": [
+      "CommandComplete BEGIN",
+      "ReadyForQuery T",
+      "*pgproto3.ParseComplete",
+      "*pgproto3.BindComplete",
+      "ReadyForQuery T",
+      "Error 34000 portal \"\" does not exist",
+      "ReadyForQuery I",
+      "CommandComplete ROLLBACK",
+      "ReadyForQuery I"
+    ],
+    "Errors": [
+      "34000 portal \"\" does not exist"
+    ],
+    "Failure": ""
+  }
+}

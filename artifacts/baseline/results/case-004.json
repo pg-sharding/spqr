@@ -1,0 +1,102 @@
+{
+  "Case": {
+    "ID": 4,
+    "Family": "named_bind_preserves_unnamed",
+    "Requests": [
+      {
+        "Type": "Query",
+        "String": "BEGIN"
+      },
+      {
+        "Type": "Parse",
+        "Name": "s",
+        "Query": "SELECT $1::int + 10 AS value /* __spqr__execute_on: sh1 */",
+        "ParameterOIDs": null
+      },
+      {
+        "Type": "Bind",
+        "DestinationPortal": "",
+        "PreparedStatement": "s",
+        "ParameterFormatCodes": [
+          1
+        ],
+        "Parameters": [
+          {
+            "binary": "00000009"
+          }
+        ],
+        "ResultFormatCodes": [
+          1
+        ]
+      },
+      {
+        "Type": "Bind",
+        "DestinationPortal": "p",
+        "PreparedStatement": "s",
+        "ParameterFormatCodes": [
+          1
+        ],
+        "Parameters": [
+          {
+            "binary": "0000000a"
+          }
+        ],
+        "ResultFormatCodes": [
+          1
+        ]
+      },
+      {
+        "Type": "Execute",
+        "Portal": "",
+        "MaxRows": 0
+      },
+      {
+        "Type": "Execute",
+        "Portal": "p",
+        "MaxRows": 0
+      },
+      {
+        "Type": "Sync"
+      },
+      {
+        "Type": "Query",
+        "String": "ROLLBACK"
+      }
+    ]
+  },
+  "PostgreSQL": {
+    "Messages": [
+      "CommandComplete BEGIN",
+      "ReadyForQuery T",
+      "*pgproto3.ParseComplete",
+      "*pgproto3.BindComplete",
+      "*pgproto3.BindComplete",
+      "DataRow [\"AAAAEw==\"]",
+      "CommandComplete SELECT 1",
+      "DataRow [\"AAAAFA==\"]",
+      "CommandComplete SELECT 1",
+      "ReadyForQuery T",
+      "CommandComplete ROLLBACK",
+      "ReadyForQuery I"
+    ],
+    "Errors": null,
+    "Failure": ""
+  },
+  "SPQR": {
+    "Messages": [
+      "CommandComplete BEGIN",
+      "ReadyForQuery T",
+      "*pgproto3.ParseComplete",
+      "*pgproto3.BindComplete",
+      "*pgproto3.BindComplete",
+      "Error 34000 portal \"\" does not exist",
+      "ReadyForQuery I",
+      "CommandComplete ROLLBACK",
+      "ReadyForQuery I"
+    ],
+    "Errors": [
+      "34000 portal \"\" does not exist"
+    ],
+    "Failure": ""
+  }
+}
