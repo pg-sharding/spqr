@@ -335,7 +335,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			simple: true,
 		}
 
-		if err := s.ExecuteSlice(qd, nil, false); err != nil {
+		if err := s.ExecuteSlice(qd, &plan.ScatterPlan{}, false); err != nil {
 			return err
 		}
 	}

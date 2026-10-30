@@ -5,13 +5,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto3.Bind, portal string, savedParamOids []uint32, maxrows uint32) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, p plan.Plan, forceSimple bool, bind *pgproto3.Bind, portal string, savedParamOids []uint32, maxrows uint32) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
@@ -38,7 +39,7 @@ func BindAndReadSliceResult(rst *RelayStateImpl, forceSimple bool, bind *pgproto
 		}
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(qd, rst.bindQueryPlan /*  ugh... fix this someday */, true)
+	return rst.QueryExecutor().ExecuteSlice(qd, p, true)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {

@@ -1945,7 +1945,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return fmt.Errorf("unique index \"%s\" not found", id)
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "unique index %q not found", id)
 	}
 
 	var idx *UniqueIndex

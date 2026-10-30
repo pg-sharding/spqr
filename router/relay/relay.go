@@ -1032,7 +1032,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				}
 			}
 
-			return BindAndReadSliceResult(rst, forceSimple, bnd, destinationPortal, savedParamOids, maxrows)
+			return BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, savedParamOids, maxrows)
 		}
 
 		/* only populate map for non-empty portal */

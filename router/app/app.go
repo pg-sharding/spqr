@@ -124,10 +124,14 @@ func (app *App) ServeGrpcAPI(ctx context.Context) error {
 }
 
 func (app *App) ServiceUnixSocket(ctx context.Context) error {
-	if err := os.MkdirAll(config.UnixSocketDirectory, 0777); err != nil {
+	directory := config.RouterConfig().UnixSocketDir
+	if directory == "" {
+		directory = config.UnixSocketDirectory
+	}
+	if err := os.MkdirAll(directory, 0777); err != nil {
 		return err
 	}
-	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
+	socketPath := path.Join(directory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
 	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
 	listener, err := net.ListenUnix("unix", lAddr)
 	if err != nil {

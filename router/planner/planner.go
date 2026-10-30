@@ -1086,7 +1086,7 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 					Detail("engine V2 is OFF").
 					Hint("try to turn engine V2 to ON")
 			}
-			return &plan.ScatterPlan{}, nil
+			return &plan.ScatterPlan{BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}}}, nil
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		}

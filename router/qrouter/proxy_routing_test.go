@@ -1348,7 +1348,8 @@ func TestCTE(t *testing.T) {
 		{
 			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)) INSERT INTO t(i) SELECT x FROM vals;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+				SubPlan:  &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
 					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)) INSERT INTO t(i) SELECT x FROM vals;`,
 					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)) INSERT INTO t(i) SELECT x FROM vals;`,

@@ -1,0 +1,56 @@
+\c spqr-console
+CREATE DISTRIBUTION test_hint_distribution (integer);
+             add distribution              
+-------------------------------------------
+ distribution id -> test_hint_distribution
+(1 row)
+
+CREATE KEY RANGE item_range FROM 0 ROUTE TO sh1 FOR DISTRIBUTION test_hint_distribution;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE RELATION item (id) FOR DISTRIBUTION test_hint_distribution;
+               attach table                
+-------------------------------------------
+ relation name   -> item
+ distribution id -> test_hint_distribution
+(2 rows)
+
+\c regress
+CREATE TABLE item(id bigint);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO item VALUES (2972989404);
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM item /* __spqr__sharding_key: 2972989404 */;
+NOTICE: send query to shard(s) : sh1
+     id     
+------------
+ 2972989404
+(1 row)
+
+\c spqr-console
+CREATE DISTRIBUTION dummy (integer);
+     add distribution     
+--------------------------
+ distribution id -> dummy
+(1 row)
+
+\c regress
+SELECT * FROM item /* __spqr__sharding_key: 2972989404 */;
+ERROR:  multiple distributions found for sharding key hint
+HINT:  Specify __spqr__distribution in the query hint or set it for the session.
+QUERY:  SELECT * FROM item /* __spqr__sharding_key: 2972989404 */;
+DROP TABLE item;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+    distribution_id     
+------------------------
+ dummy
+ test_hint_distribution
+(2 rows)
+

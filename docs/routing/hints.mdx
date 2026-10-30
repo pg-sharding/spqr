@@ -232,7 +232,9 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 
 ### __spqr__distribution
 
-The `__spqr__distribution` explicitly specify which distribution the SPQR router should use for query routing.
+The `__spqr__distribution` hint specifies which distribution the SPQR router should use for query routing.
+When routing with `__spqr__sharding_key`, the default value `default` selects the only non-reference distribution.
+If there are several distributions, specify the distribution name explicitly.
 
 <Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
