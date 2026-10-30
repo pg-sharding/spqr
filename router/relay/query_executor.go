@@ -16,9 +16,10 @@ import (
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
 
-	simple    bool
-	ParamsNum int
-	exec      *pgproto3.Execute
+	simple      bool
+	ParamsNum   int
+	exec        *pgproto3.Execute
+	executeOnly bool
 }
 
 type ExecutorState struct {
