@@ -1177,6 +1177,8 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			/* Portal */
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
+			} else {
+				rst.CloseUnnamedPortal()
 			}
 			if err := rst.Client().ReplyCloseComplete(); err != nil {
 				return err
