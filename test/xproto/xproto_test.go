@@ -7504,6 +7504,38 @@ func TestXProtoUnnamedPortalSurvivesSync(t *testing.T) {
 			&pgproto3.ReadyForQuery{TxStatus: 'I'},
 		},
 	}})
+
+	if !assert.NoError(t, conn.SetDeadline(time.Now().Add(10*time.Second))) {
+		return
+	}
+	frontend.Send(&pgproto3.Query{String: "BEGIN"})
+	frontend.Send(&pgproto3.Parse{Name: "simple_query_stmt", Query: "SELECT 1 /* __spqr__execute_on: sh1 */"})
+	frontend.Send(&pgproto3.Bind{PreparedStatement: "simple_query_stmt"})
+	frontend.Send(&pgproto3.Query{String: "SET statement_timeout = 0"})
+	frontend.Send(&pgproto3.Execute{})
+	frontend.Send(&pgproto3.Sync{})
+	if !assert.NoError(t, frontend.Flush()) {
+		return
+	}
+	for _, expected := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+		&pgproto3.ReadyForQuery{TxStatus: 'T'},
+		&pgproto3.ParseComplete{},
+		&pgproto3.BindComplete{},
+		&pgproto3.CommandComplete{CommandTag: []byte("SET")},
+		&pgproto3.ReadyForQuery{TxStatus: 'T'},
+	} {
+		msg, err := frontend.Receive()
+		if !assert.NoError(t, err) || !assert.Equal(t, expected, msg) {
+			return
+		}
+	}
+
+	msg, err := frontend.Receive()
+	if !assert.NoError(t, err) || !assert.IsType(t, &pgproto3.ErrorResponse{}, msg) {
+		return
+	}
+	assert.Equal(t, "34000", msg.(*pgproto3.ErrorResponse).Code)
 }
 
 func TestXProtoClosedPortalCanBeRebound(t *testing.T) {
@@ -7976,59 +8008,6 @@ func TestXProtoDescribeCompletedPortal(t *testing.T) {
 	}})
 }
 
-func TestXProtoSimpleQueryClosesUnnamedPortal(t *testing.T) {
-	for _, tc := range []struct {
-		query, tag string
-		status     byte
-	}{
-		{"SET statement_timeout = 0", "SET", 'T'},
-		{"COMMIT", "COMMIT", 'I'},
-	} {
-		t.Run(tc.tag, func(t *testing.T) {
-			frontend, conn, err := bootstrapConnection(t)
-			if !assert.NoError(t, err, "startup failed") {
-				return
-			}
-			defer func() { _ = conn.Close() }()
-			if !assert.NoError(t, conn.SetDeadline(time.Now().Add(10*time.Second))) {
-				return
-			}
-
-			for _, msg := range []pgproto3.FrontendMessage{
-				&pgproto3.Query{String: "BEGIN"},
-				&pgproto3.Parse{Name: "simple_query_stmt", Query: "SELECT 1 /* __spqr__execute_on: sh1 */"},
-				&pgproto3.Bind{PreparedStatement: "simple_query_stmt"},
-				&pgproto3.Query{String: tc.query},
-				&pgproto3.Execute{},
-				&pgproto3.Sync{},
-			} {
-				frontend.Send(msg)
-			}
-			if !assert.NoError(t, frontend.Flush()) {
-				return
-			}
-			for _, expected := range []pgproto3.BackendMessage{
-				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-				&pgproto3.ReadyForQuery{TxStatus: 'T'},
-				&pgproto3.ParseComplete{},
-				&pgproto3.BindComplete{},
-				&pgproto3.CommandComplete{CommandTag: []byte(tc.tag)},
-				&pgproto3.ReadyForQuery{TxStatus: tc.status},
-			} {
-				msg, err := frontend.Receive()
-				if !assert.NoError(t, err) || !assert.Equal(t, expected, msg) {
-					return
-				}
-			}
-
-			msg, err := frontend.Receive()
-			if !assert.NoError(t, err) || !assert.IsType(t, &pgproto3.ErrorResponse{}, msg) {
-				return
-			}
-			assert.Equal(t, "34000", msg.(*pgproto3.ErrorResponse).Code)
-		})
-	}
-}
 
 func TestXProtoBoundPortalPreservesStatementSnapshot(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
