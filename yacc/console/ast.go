@@ -152,7 +152,8 @@ type ShardDefinition struct {
 	Id      string
 	Options []GenericOption
 
-	Force bool
+	Force  bool
+	DryRun bool
 }
 
 type GenericOption struct {
