@@ -7533,3 +7533,38 @@ func TestXProtoClosedPortalCanBeRebound(t *testing.T) {
 		},
 	}})
 }
+
+func TestXProtoDescribeUsesPortalResultFormat(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	protoTestRunner(t, frontend, []MessageGroup{{
+		Request: []pgproto3.FrontendMessage{
+			&pgproto3.Query{String: "BEGIN"},
+			&pgproto3.Parse{Query: "SELECT 1 AS value /* __spqr__execute_on: sh1 */"},
+			&pgproto3.Bind{DestinationPortal: "p"},
+			&pgproto3.Bind{DestinationPortal: "q", ResultFormatCodes: []int16{1}},
+			&pgproto3.Describe{ObjectType: 'P', Name: "p"},
+			&pgproto3.Describe{ObjectType: 'P', Name: "q"},
+			&pgproto3.Sync{},
+			&pgproto3.Query{String: "ROLLBACK"},
+		},
+		Response: []pgproto3.BackendMessage{
+			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+			&pgproto3.ReadyForQuery{TxStatus: 'T'},
+			&pgproto3.ParseComplete{},
+			&pgproto3.BindComplete{},
+			&pgproto3.BindComplete{},
+			&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{{
+				Name: []byte("value"), DataTypeOID: 23, DataTypeSize: 4, TypeModifier: -1,
+			}}},
+			&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{{
+				Name: []byte("value"), DataTypeOID: 23, DataTypeSize: 4, TypeModifier: -1, Format: 1,
+			}}},
+			&pgproto3.ReadyForQuery{TxStatus: 'T'},
+			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
+			&pgproto3.ReadyForQuery{TxStatus: 'I'},
+		},
+	}})
+}
