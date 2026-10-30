@@ -229,6 +229,42 @@ jobs:
       - name: Extended proto
         run: PROTO_TEST_TAG=xproto make xproto_regress
 
+  proto-regress-xproto-postgres:
+    name: proto-extended-postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: regress
+          POSTGRES_DB: regress
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U regress -d regress"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: regress
+      POSTGRES_DB: regress
+      POSTGRES_PASSWORD: ""
+      SPQR_XPROTO_TEST_PURE_PG_ONLY: "1"
+      GOFLAGS: -mod=mod
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Extended proto against PostgreSQL
+        run: go test -tags=xproto -v -count=1 -timeout=5m ./test/xproto/...
+
   proto-regress-xproto-portal-suspect:
     name: proto-extended-portal-suspend
     runs-on: ubuntu-latest
