@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sort"
 	"strings"
@@ -747,7 +748,8 @@ func bindDescriptionCacheKey(bnd *pgproto3.Bind) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(encoded), nil
+	digest := sha256.Sum256(encoded)
+	return string(digest[:]), nil
 }
 
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
