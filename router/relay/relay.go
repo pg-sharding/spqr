@@ -74,12 +74,17 @@ type RelayStateMgr interface {
 
 	PipelineCleanup()
 
-	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
+	ProcQueryAdvancedTx(query string, binderQ func() error, extended bool) (*PortalDesc, error)
 }
 
 type PortalDesc struct {
 	rd     *pgproto3.RowDescription
 	nodata *pgproto3.NoData
+}
+
+type portalStatement struct {
+	definition *prepstatement.PreparedStatementDefinition
+	hash       uint64
 }
 
 type ParseCacheEntry struct {
@@ -115,7 +120,8 @@ type RelayStateImpl struct {
 	saveBindNamed map[string]*pgproto3.Bind
 
 	// Keyed by portal name because Bind specifies each portal's result formats.
-	savedPortalDesc map[string]*PortalDesc
+	savedPortalDesc  map[string]*PortalDesc
+	portalStatements map[string]portalStatement
 
 	WaitSync bool
 
@@ -161,6 +167,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		bindQueryPlan:       nil,
 		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
+		portalStatements:    map[string]portalStatement{},
 		parseCache:          map[string]ParseCacheEntry{},
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
@@ -480,6 +487,7 @@ func (rst *RelayStateImpl) CloseUnnamedPortal() {
 	rst.unnamedPortalExists = false
 	rst.execute = nil
 	rst.bindQueryPlan = nil
+	delete(rst.portalStatements, "")
 }
 
 func (rst *RelayStateImpl) CompleteRelay() error {
@@ -521,6 +529,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		rst.CloseUnnamedPortal()
 		clear(rst.savedPortalDesc)
+		clear(rst.portalStatements)
 	}
 
 	rst.QueryExecutor().Reset()
@@ -713,18 +722,23 @@ func (rst *RelayStateImpl) describeDeployablePlan(
 	}
 
 	var bnd *pgproto3.Bind
-	var bindName string
 	if name == "" {
 		bnd = &rst.saveBind
-		bindName = rst.lastBindName
 	} else {
 		bnd = rst.saveBindNamed[name]
-		bindName = rst.lastBindNameMP[name]
 	}
 
 	rst.routingDecisionPlan = p
 
-	if _, _, err := rst.gangDeployPrepStmtByName(bindName); err != nil {
+	bound, ok := rst.portalStatements[name]
+	if !ok {
+		return nil, spqrerror.Newf(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal %q does not exist", name)
+	}
+	if _, _, err := rst.gangDeployPrepStmt(bound.hash, &prepstatement.PreparedStatementDefinition{
+		Name:          bnd.PreparedStatement,
+		Query:         bound.definition.Query,
+		ParameterOIDs: bound.definition.ParameterOIDs,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -944,6 +958,11 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	delete(rst.savedPortalDesc, destinationPortal)
+	// A portal keeps its statement even when the client's statement is closed.
+	rst.portalStatements[destinationPortal] = portalStatement{
+		definition: def,
+		hash:       rst.Client().PreparedStatementQueryHashByName(preparedStatement),
+	}
 
 	if destinationPortal != "" {
 		rst.lastBindNameMP[destinationPortal] = preparedStatement
@@ -1025,8 +1044,6 @@ func (rst *RelayStateImpl) BindPrepared(
 					return err
 				}
 
-				def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
-				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 				name := fmt.Sprintf("%d", hash)
 
 				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
@@ -1054,7 +1071,7 @@ func (rst *RelayStateImpl) BindPrepared(
 
 		return nil
 
-	}, true /* cache parsing for prep statement */)
+	}, true /* extended protocol */)
 
 	if err != nil {
 		return err
@@ -1180,6 +1197,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 				return err
 			}
 			delete(rst.savedPortalDesc, currentMsg.Name)
+			delete(rst.portalStatements, currentMsg.Name)
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
 				delete(rst.bindQueryPlanMP, currentMsg.Name)
