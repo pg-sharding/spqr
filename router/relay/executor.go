@@ -1108,7 +1108,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return err
 	}
 
-	if topPlan != nil {
+	if topPlan != nil && !qd.executeOnly {
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
 			spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Msg("executing sub plan")
@@ -1224,8 +1224,10 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				switch msg.(type) {
 				case *pgproto3.Sync:
 
-					if err := serv.Send(pgsync); err != nil {
-						return err
+					if serv.Sync() == 0 {
+						if err := serv.Send(pgsync); err != nil {
+							return err
+						}
 					}
 
 					break portalLoop
