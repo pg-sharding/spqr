@@ -1030,6 +1030,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				p = rst.bindQueryPlanMP[destinationPortal]
 			}
 			forceSimple := false
+			var portalDesc *PortalDesc
 
 			switch q := p.(type) {
 			case *plan.ScatterPlan:
@@ -1046,7 +1047,7 @@ func (rst *RelayStateImpl) BindPrepared(
 
 				name := fmt.Sprintf("%d", hash)
 
-				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+				desc, reply, err := rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
 					Name:          name,
 					Query:         def.Query,
 					ParameterOIDs: def.ParameterOIDs,
@@ -1055,9 +1056,19 @@ func (rst *RelayStateImpl) BindPrepared(
 				if err != nil {
 					return err
 				}
+				if _, failed := reply.(*pgproto3.ErrorResponse); !failed {
+					portalDesc = boundPortalDescription(desc, bnd.ResultFormatCodes)
+				}
 			}
 
-			return BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows)
+			if err := BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows); err != nil {
+				return err
+			}
+			if portalDesc != nil && rst.QueryExecutor().TxStatus() == txstatus.TXACT {
+				// Describe after Execute must not bind the existing backend portal again.
+				rst.savedPortalDesc[destinationPortal] = portalDesc
+			}
+			return nil
 		}
 
 		/* only populate map for non-empty portal */
