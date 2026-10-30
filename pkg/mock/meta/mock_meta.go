@@ -53,17 +53,17 @@ func (m *MockEntityMgr) EXPECT() *MockEntityMgrMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockEntityMgr) AddDataShard(ctx context.Context, shard *topology.DataShard, force, apply bool) error {
+func (m *MockEntityMgr) AddDataShard(ctx context.Context, shard *topology.DataShard, force, dryRun bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, force, apply)
+	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, force, dryRun)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddDataShard indicates an expected call of AddDataShard.
-func (mr *MockEntityMgrMockRecorder) AddDataShard(ctx, shard, force, apply any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) AddDataShard(ctx, shard, force, dryRun any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockEntityMgr)(nil).AddDataShard), ctx, shard, force, apply)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockEntityMgr)(nil).AddDataShard), ctx, shard, force, dryRun)
 }
 
 // AddWorldShard mocks base method.

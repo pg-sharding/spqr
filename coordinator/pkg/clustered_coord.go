@@ -685,7 +685,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.AddDataShard(context.TODO(), shard, true, true); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard, true, false); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -2598,7 +2598,6 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{
 				Shard: protoShard,
 				Force: true,
-				Apply: true,
 			})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
@@ -2903,12 +2902,12 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 	}
 }
 
-func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool, apply bool) error {
-	if err := qc.Coordinator.AddDataShard(ctx, shard, force, apply); err != nil {
+func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool, dryRun bool) error {
+	if err := qc.Coordinator.AddDataShard(ctx, shard, force, dryRun); err != nil {
 		return err
 	}
 
-	if !apply {
+	if dryRun {
 		return nil
 	}
 
@@ -2921,7 +2920,6 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 		_, err = c.AddDataShard(ctx, &proto.AddShardRequest{
 			Shard: protoShard,
 			Force: true,
-			Apply: true,
 		})
 		return err
 	}); err != nil {

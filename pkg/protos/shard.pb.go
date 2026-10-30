@@ -372,7 +372,7 @@ type AddShardRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Shard         *Shard                 `protobuf:"bytes,1,opt,name=shard,proto3" json:"shard,omitempty"`
 	Force         bool                   `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
-	Apply         bool                   `protobuf:"varint,3,opt,name=apply,proto3" json:"apply,omitempty"`
+	DryRun        bool                   `protobuf:"varint,3,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -421,9 +421,9 @@ func (x *AddShardRequest) GetForce() bool {
 	return false
 }
 
-func (x *AddShardRequest) GetApply() bool {
+func (x *AddShardRequest) GetDryRun() bool {
 	if x != nil {
-		return x.Apply
+		return x.DryRun
 	}
 	return false
 }
@@ -593,11 +593,11 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\fShardRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"6\n" +
 	"\x0fListShardsReply\x12#\n" +
-	"\x06shards\x18\x01 \x03(\v2\v.spqr.ShardR\x06shards\"h\n" +
+	"\x06shards\x18\x01 \x03(\v2\v.spqr.ShardR\x06shards\"j\n" +
 	"\x0fAddShardRequest\x12)\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardB\x06\xbaH\x03\xc8\x01\x01R\x05shard\x12\x14\n" +
-	"\x05force\x18\x02 \x01(\bR\x05force\x12\x14\n" +
-	"\x05apply\x18\x03 \x01(\bR\x05apply\"Z\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\x12\x16\n" +
+	"\x06dryRun\x18\x03 \x01(\bR\x06dryRun\"Z\n" +
 	"\x11AlterShardRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12-\n" +
 	"\aoptions\x18\x03 \x03(\v2\x13.spqr.GenericOptionR\aoptions\"A\n" +

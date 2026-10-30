@@ -2104,7 +2104,6 @@ shard_define_stmt:
 			Id: $2,
 			Options: $3,
 			Force: $4,
-			Apply: true,
 		}
 	}
 	|
@@ -2114,7 +2113,7 @@ shard_define_stmt:
 			Id: $2,
 			Options: $3,
 			Force: false,
-			Apply: false,
+			DryRun: true,
 		}
 	}
 
@@ -2122,7 +2121,8 @@ opt_force:
 	FORCE { $$ = true } | {$$ = false}
 
 opt_shard_name:
-	any_id { $$ = $1 }
+	IDENT { $$ = string($1) }
+	| SCONST { $$ = string($1) }
 	|
 	{
 		str, err := randomHex(6)

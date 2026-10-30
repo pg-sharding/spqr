@@ -181,16 +181,16 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 //
 // Returns:
 // - error: an error if the operation encounters any issues.
-func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard, force bool, apply bool) error {
+func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard, force bool, dryRun bool) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
 		Bool("updateTopology", lc.updateTopology).
 		Msg("adding datashard node in local coordinator")
 
-	if apply && lc.updateTopology {
+	if !dryRun && lc.updateTopology {
 		lc.tmgr.AddShard(ds)
 	}
-	return lc.Coordinator.AddDataShard(ctx, ds, force, apply)
+	return lc.Coordinator.AddDataShard(ctx, ds, force, dryRun)
 }
 
 func (lc *LocalInstanceMetadataMgr) SetShardOptions(ctx context.Context, shardID string, options []topology.GenericOption) error {
