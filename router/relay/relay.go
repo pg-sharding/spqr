@@ -116,10 +116,8 @@ type RelayStateImpl struct {
 	execute   func(maxrows uint32) error
 	executeMp map[string]func(maxrows uint32) error
 
-	saveBind      pgproto3.Bind
-	saveBindNamed map[string]*pgproto3.Bind
-
-	// Keyed by the encoded Bind with its destination portal name omitted.
+	saveBind        pgproto3.Bind
+	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
 	WaitSync bool
@@ -538,7 +536,6 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	// Sync preserves the unnamed portal while its transaction is active.
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		rst.CloseUnnamedPortal()
-		clear(rst.savedPortalDesc)
 	}
 
 	rst.QueryExecutor().Reset()
@@ -619,6 +616,9 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	if err != nil {
 		return nil, err
 	}
+
+	/* From now, our cached portal description is stale */
+	delete(rst.savedPortalDesc, name)
 
 	rst.savedRM[name] = rm
 
@@ -755,7 +755,17 @@ func (rst *RelayStateImpl) describeDeployablePlan(
 		}
 	}
 
-	return sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
+	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheKey, err := bindDescriptionCacheKey(bnd)
+	if err != nil {
+		return nil, err
+	}
+	rst.savedPortalDesc[cacheKey] = cachedPd
+	return cachedPd, nil
 }
 
 func bindDescriptionCacheKey(bnd *pgproto3.Bind) (string, error) {
@@ -832,14 +842,12 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 					if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 						return err
 					}
-					rst.savedPortalDesc[cacheKey] = portDesc
 				}
 
 			default:
 				if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 					return err
 				}
-				rst.savedPortalDesc[cacheKey] = portDesc
 			}
 		}
 
@@ -1145,6 +1153,9 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 		rst.bindQueryPlanMP[portal] = nil
 	}
 
+	if rst.lastBindName == "" {
+		delete(rst.savedPortalDesc, rst.lastBindName)
+	}
 	rst.lastBindName = ""
 	if err != nil {
 		return err
