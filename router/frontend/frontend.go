@@ -174,6 +174,8 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
+		// A simple Query closes the unnamed portal even inside a transaction.
+		rst.CloseUnnamedPortal()
 
 		tm := time.Now()
 
