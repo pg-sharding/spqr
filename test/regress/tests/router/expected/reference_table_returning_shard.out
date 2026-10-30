@@ -23,6 +23,8 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 INSERT INTO t (id, name) VALUES (1, 'test1') RETURNING id, name;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
 NOTICE: send query to shard(s) : sh1
  id | name  
 ----+-------

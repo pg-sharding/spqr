@@ -92,7 +92,12 @@ NOTICE: send query to shard(s) : sh1
 ERROR:  division by zero
 COMMIT;
 INSERT INTO ref_err_rel(i) VALUES(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  column "i" of relation "ref_err_rel" does not exist
 LINE 1: INSERT INTO ref_err_rel(i) VALUES(12);
@@ -100,6 +105,11 @@ LINE 1: INSERT INTO ref_err_rel(i) VALUES(12);
 BEGIN;
 \set VERBOSITY SQLSTATE
 INSERT INTO ref_err_rel(i) VALUES(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  42703
 COMMIT;

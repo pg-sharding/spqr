@@ -1606,7 +1606,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 
 	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
-	if err := planner.AdjustPlanStateForUpsert(rm, p); err != nil {
+	if err := planner.AdjustPlanStateForAutoLinearize(rm, p); err != nil {
 		return nil, err
 	}
 
