@@ -133,6 +133,9 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		defer cf()
 
 	case *spqrparser.Begin:
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+			return err
+		}
 		mgr = l.entityMgr
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
