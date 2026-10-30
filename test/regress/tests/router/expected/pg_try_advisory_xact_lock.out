@@ -33,6 +33,11 @@ QUERY:  SELECT pg_try_advisory_xact_lock(11);
 SET __spqr__advisory_lock_behaviour TO SCATTER;
 BEGIN;
 SELECT pg_try_advisory_xact_lock(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  pg_try_advisory_xact_lock 
 ---------------------------
