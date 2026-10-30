@@ -72,10 +72,13 @@ func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) 
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
 
-func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, extended bool) (*PortalDesc, error) {
 
-	stmts, comment, err := rst.Parse(query, doCaching)
+	stmts, comment, err := rst.Parse(query, extended)
 	if err != nil {
+		if !extended {
+			rst.CloseUnnamedPortal()
+		}
 		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
 			/* this way we format next msg correctly */
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
@@ -90,6 +93,10 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 l:
 	for i, stmt := range stmts {
+		// An empty simple Query does not replace the unnamed portal.
+		if !extended && stmt != nil {
+			rst.CloseUnnamedPortal()
+		}
 
 		if i > 0 {
 
@@ -132,7 +139,7 @@ l:
 
 		startTime := time.Now()
 
-		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
+		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, extended)
 
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 

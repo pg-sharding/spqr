@@ -473,8 +473,13 @@ func (rst *RelayStateImpl) CompleteRelayClient() error {
 	return rst.Client().Send(rst.QueryExecutor().RFQ())
 }
 
-func (rst *RelayStateImpl) CompleteRelay() error {
+func (rst *RelayStateImpl) CloseUnnamedPortal() {
 	rst.unnamedPortalExists = false
+	rst.execute = nil
+	rst.bindQueryPlan = nil
+}
+
+func (rst *RelayStateImpl) CompleteRelay() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -508,6 +513,11 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 			return err
 		}
 		return err
+	}
+
+	// Sync and empty simple queries preserve a portal in an active transaction.
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		rst.CloseUnnamedPortal()
 	}
 
 	rst.QueryExecutor().Reset()
@@ -1011,8 +1021,6 @@ func (rst *RelayStateImpl) BindPrepared(
 					return err
 				}
 
-				def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
-				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 				name := fmt.Sprintf("%d", hash)
 
 				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
@@ -1107,8 +1115,6 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 }
 
 func (rst *RelayStateImpl) PipelineCleanup() {
-	rst.bindQueryPlan = nil
-
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		/* XXX: normally these two map should be either both empty
 		* either both not */
@@ -1169,6 +1175,8 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			/* Portal */
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
+			} else {
+				rst.CloseUnnamedPortal()
 			}
 			if err := rst.Client().ReplyCloseComplete(); err != nil {
 				return err
