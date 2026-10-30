@@ -107,11 +107,20 @@ Feature: spqr-dump test
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
+    """
+    And command output should match regexp
+    """
     CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds2 ATTACH RELATION test2 DISTRIBUTION KEY id2;
+    """
+    And command output should match regexp
+    """
     CREATE KEY RANGE kr3 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 50 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    And command output should match regexp
+    """
     CREATE KEY RANGE kr6 FROM 150 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     CREATE KEY RANGE kr5 FROM 75 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     CREATE KEY RANGE kr4 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds2;
