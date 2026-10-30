@@ -1175,8 +1175,18 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		switch currentMsg.ObjectType {
 		case 'P':
 			/* Portal */
+			if err := sliceClosePortal(rst.Client().Server(), currentMsg); err != nil {
+				return err
+			}
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
+				delete(rst.bindQueryPlanMP, currentMsg.Name)
+				delete(rst.saveBindNamed, currentMsg.Name)
+				delete(rst.lastBindNameMP, currentMsg.Name)
+			} else {
+				rst.unnamedPortalExists = false
+				rst.execute = nil
+				rst.bindQueryPlan = nil
 			}
 			if err := rst.Client().ReplyCloseComplete(); err != nil {
 				return err
