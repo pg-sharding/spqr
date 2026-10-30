@@ -105,6 +105,18 @@ Feature: spqr-dump test
     Then command return code should be "0"
     And command output should match regexp
     """
+    CREATE DISTRIBUTION .* COLUMN TYPES integer;
+    ALTER DISTRIBUTION .* ATTACH RELATION .* DISTRIBUTION KEY .*;
+    CREATE DISTRIBUTION .* COLUMN TYPES integer;
+    ALTER DISTRIBUTION .* ATTACH RELATION .* DISTRIBUTION KEY .*;
+    CREATE KEY RANGE .* FROM .* ROUTE TO .* FOR DISTRIBUTION .*;
+    CREATE KEY RANGE .* FROM .* ROUTE TO .* FOR DISTRIBUTION .*;
+    CREATE KEY RANGE .* FROM .* ROUTE TO .* FOR DISTRIBUTION .*;
+    CREATE KEY RANGE .* FROM .* ROUTE TO .* FOR DISTRIBUTION .*;
+    CREATE KEY RANGE .* FROM .* ROUTE TO .* FOR DISTRIBUTION .*;
+    """
+    And command output should match regexp
+    """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
     """
