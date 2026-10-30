@@ -937,8 +937,6 @@ func (rst *RelayStateImpl) BindPrepared(
 		rst.lastBindName = preparedStatement
 	}
 
-	rst.unnamedPortalExists = false
-
 	/* only populate map for non-empty portal */
 	if destinationPortal == "" {
 		rst.unnamedPortalExists = true
