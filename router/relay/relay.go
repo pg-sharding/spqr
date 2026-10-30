@@ -119,6 +119,8 @@ type RelayStateImpl struct {
 	saveBind        pgproto3.Bind
 	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
+	// Descriptions retained for live named portals after execution.
+	completedPortalDesc map[string]*PortalDesc
 
 	WaitSync bool
 
@@ -164,6 +166,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		bindQueryPlan:           nil,
 		bindQueryPlanMP:         map[string]plan.Plan{},
 		savedPortalDesc:         map[string]*PortalDesc{},
+		completedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:              map[string]ParseCacheEntry{},
 		savedRM:                 map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists:     false,
@@ -249,6 +252,7 @@ func (rst *RelayStateImpl) Close() error {
 }
 
 func (rst *RelayStateImpl) Cleanup() error {
+	clear(rst.completedPortalDesc)
 	err := poolmgr.UnrouteCommon(rst.QueryExecutor(), rst.Client(), rst.QueryExecutor().ActiveShards())
 
 	if err != nil {
@@ -536,6 +540,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	// Sync preserves the unnamed portal while its transaction is active.
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		rst.CloseUnnamedPortal()
+		clear(rst.completedPortalDesc)
 	}
 
 	rst.QueryExecutor().Reset()
@@ -789,7 +794,10 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			Str("name", name).
 			Msg("Describe portal")
 
-		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
+		portDesc, ok := rst.completedPortalDesc[name]
+		if !ok {
+			portDesc, ok = rst.savedPortalDesc[rst.lastBindName]
+		}
 
 		if !ok {
 
@@ -963,6 +971,7 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	if destinationPortal != "" {
+		delete(rst.completedPortalDesc, destinationPortal)
 		rst.lastBindNameMP[destinationPortal] = preparedStatement
 	} else {
 		rst.lastBindName = preparedStatement
@@ -1028,6 +1037,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				p = rst.bindQueryPlanMP[destinationPortal]
 			}
 			forceSimple := false
+			var portalDesc *PortalDesc
 
 			switch q := p.(type) {
 			case *plan.ScatterPlan:
@@ -1046,7 +1056,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 				name := fmt.Sprintf("%d", hash)
 
-				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+				desc, reply, err := rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
 					Name:          name,
 					Query:         def.Query,
 					ParameterOIDs: def.ParameterOIDs,
@@ -1055,9 +1065,19 @@ func (rst *RelayStateImpl) BindPrepared(
 				if err != nil {
 					return err
 				}
+				if _, failed := reply.(*pgproto3.ErrorResponse); !failed && destinationPortal != "" {
+					portalDesc = boundPortalDescription(desc, bnd.ResultFormatCodes)
+				}
 			}
 
-			return BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows)
+			if err := BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows); err != nil {
+				return err
+			}
+			if portalDesc != nil && rst.QueryExecutor().TxStatus() == txstatus.TXACT {
+				// Describe must not bind a named portal that still exists on the backend.
+				rst.completedPortalDesc[destinationPortal] = portalDesc
+			}
+			return nil
 		}
 
 		/* only populate map for non-empty portal */
@@ -1198,6 +1218,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			/* Portal */
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
+				delete(rst.completedPortalDesc, currentMsg.Name)
 			} else {
 				rst.CloseUnnamedPortal()
 			}
