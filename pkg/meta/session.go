@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 func NewConsoleSession(mgr EntityMgr) *ConsoleSession {
@@ -57,8 +55,6 @@ func (s *ConsoleSession) Begin(ctx context.Context) error {
 }
 
 func (s *ConsoleSession) Commit(ctx context.Context) error {
-	spqrlog.Zero.Debug().Type("mgr", s.mgr).Msg("here2222")
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.inTx {
