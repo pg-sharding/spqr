@@ -767,13 +767,6 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 					fmt.Sprintf("portal \"%s\" does not exist", name))
 			}
 		}
-		if name != "" {
-			if _, ok := rst.executeMp[name]; !ok {
-				return spqrerror.New(
-					spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
-					fmt.Sprintf("portal \"%s\" does not exist", name))
-			}
-		}
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
