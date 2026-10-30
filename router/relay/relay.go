@@ -113,7 +113,7 @@ type RelayStateImpl struct {
 	saveBind      pgproto3.Bind
 	saveBindNamed map[string]*pgproto3.Bind
 
-	// Keyed by portal name because Bind specifies each portal's result formats.
+	// Keyed by the encoded Bind with its destination portal name omitted.
 	savedPortalDesc map[string]*PortalDesc
 
 	WaitSync bool
@@ -730,17 +730,20 @@ func (rst *RelayStateImpl) describeDeployablePlan(
 		}
 	}
 
-	cachedPd, err := sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
-	if err != nil {
-		return nil, err
-	}
+	return sliceDescribePortal(rst.Client().Server(), dMsg, bnd)
+}
 
-	rst.savedPortalDesc[name] = cachedPd
-	return cachedPd, nil
+func bindDescriptionCacheKey(bnd *pgproto3.Bind) (string, error) {
+	keyBind := *bnd
+	keyBind.DestinationPortal = ""
+	encoded, err := keyBind.Encode(nil)
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
 }
 
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
-	var err error
 	// save txstatus because it may be overwritten if we have no backend connection
 	saveTxStat := rst.qse.TxStatus()
 
@@ -771,7 +774,15 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			Str("name", name).
 			Msg("Describe portal")
 
-		portDesc, ok := rst.savedPortalDesc[name]
+		bnd := &rst.saveBind
+		if name != "" {
+			bnd = rst.saveBindNamed[name]
+		}
+		cacheKey, err := bindDescriptionCacheKey(bnd)
+		if err != nil {
+			return err
+		}
+		portDesc, ok := rst.savedPortalDesc[cacheKey]
 
 		if !ok {
 
@@ -796,12 +807,14 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 					if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 						return err
 					}
+					rst.savedPortalDesc[cacheKey] = portDesc
 				}
 
 			default:
 				if portDesc, err = rst.describeDeployablePlan(objType, name, dMsg, p); err != nil {
 					return err
 				}
+				rst.savedPortalDesc[cacheKey] = portDesc
 			}
 		}
 
@@ -944,8 +957,6 @@ func (rst *RelayStateImpl) BindPrepared(
 		return err
 	}
 
-	delete(rst.savedPortalDesc, destinationPortal)
-
 	if destinationPortal != "" {
 		rst.lastBindNameMP[destinationPortal] = preparedStatement
 	} else {
@@ -960,30 +971,26 @@ func (rst *RelayStateImpl) BindPrepared(
 		rst.executeMp[destinationPortal] = emptyExecFunc
 	}
 
+	var bnd *pgproto3.Bind
+	if destinationPortal == "" {
+		bnd = &rst.saveBind
+	} else {
+		rst.saveBindNamed[destinationPortal] = &pgproto3.Bind{}
+		bnd = rst.saveBindNamed[destinationPortal]
+	}
+	bnd.DestinationPortal = destinationPortal
+	bnd.PreparedStatement = fmt.Sprintf("%d", rst.Client().PreparedStatementQueryHashByName(preparedStatement))
+	bnd.ParameterFormatCodes = parameterFormatCodes
+	bnd.ResultFormatCodes = resultFormatCodes
+	bnd.Parameters = parameters
+
 	pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
-		var bnd *pgproto3.Bind
-
-		if destinationPortal == "" {
-			bnd = &rst.saveBind
-		} else {
-			rst.saveBindNamed[destinationPortal] = &pgproto3.Bind{}
-			bnd = rst.saveBindNamed[destinationPortal]
-		}
-
-		bnd.DestinationPortal = destinationPortal
-
 		rm := rst.savedRM[preparedStatement]
 
 		rm.LastResultFormatCodes = resultFormatCodes
 
-		hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
-
-		bnd.PreparedStatement = fmt.Sprintf("%d", hash)
-		bnd.ParameterFormatCodes = parameterFormatCodes
 		rst.Client().SetBindParams(parameters)
 		rst.Client().SetParamFormatCodes(parameterFormatCodes)
-		bnd.ResultFormatCodes = resultFormatCodes
-		bnd.Parameters = parameters
 
 		ctx := context.TODO()
 
@@ -1062,7 +1069,11 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	if pd != nil {
-		rst.savedPortalDesc[destinationPortal] = pd
+		cacheKey, err := bindDescriptionCacheKey(bnd)
+		if err != nil {
+			return err
+		}
+		rst.savedPortalDesc[cacheKey] = pd
 	}
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 	return nil
@@ -1179,7 +1190,6 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		switch currentMsg.ObjectType {
 		case 'P':
 			/* Portal */
-			delete(rst.savedPortalDesc, currentMsg.Name)
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
 			}
