@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/xproto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrepStmtSimple(t *testing.T) {
@@ -7489,6 +7490,138 @@ func TestXProtoNamedBindPreservesUnnamedPortal(t *testing.T) {
 					Values: [][]byte{
 						[]byte("2"),
 					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoBoundPortalPreservesStatementSnapshot(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	// Prepare on sh2, then bind on sh1 so the portal must deploy its saved statement.
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "snapshot_stmt",
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SELECT 0 AS pin /* __spqr__execute_on: sh2 */",
+				},
+				&pgproto3.Parse{
+					Name:  "snapshot_stmt",
+					Query: "SELECT 101 AS snapshot_value /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "COMMIT",
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "snapshot_stmt",
+					DestinationPortal: "p",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "snapshot_stmt",
+				},
+				&pgproto3.Parse{
+					Name:  "snapshot_stmt",
+					Query: "SELECT 202 AS replacement_value /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "p",
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pin"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("0")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("snapshot_value"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("101")},
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
