@@ -111,8 +111,10 @@ type RelayStateImpl struct {
 	execute   func(maxrows uint32) error
 	executeMp map[string]func(maxrows uint32) error
 
-	saveBind        pgproto3.Bind
-	saveBindNamed   map[string]*pgproto3.Bind
+	saveBind      pgproto3.Bind
+	saveBindNamed map[string]*pgproto3.Bind
+
+	// Keyed by portal name because Bind specifies each portal's result formats.
 	savedPortalDesc map[string]*PortalDesc
 
 	WaitSync bool
@@ -518,6 +520,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 	// Sync preserves the unnamed portal while its transaction is active.
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		rst.CloseUnnamedPortal()
+		clear(rst.savedPortalDesc)
 	}
 
 	rst.QueryExecutor().Reset()
@@ -598,9 +601,6 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	if err != nil {
 		return nil, err
 	}
-
-	/* From now, our cached portal description is stale */
-	delete(rst.savedPortalDesc, name)
 
 	rst.savedRM[name] = rm
 
@@ -742,7 +742,7 @@ func (rst *RelayStateImpl) describeDeployablePlan(
 		return nil, err
 	}
 
-	rst.savedPortalDesc[bindName] = cachedPd
+	rst.savedPortalDesc[name] = cachedPd
 	return cachedPd, nil
 }
 
@@ -756,6 +756,13 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 		if !rst.unnamedPortalExists && name == "" {
 			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
 		}
+		if name != "" {
+			if _, ok := rst.executeMp[name]; !ok {
+				return spqrerror.New(
+					spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
+					fmt.Sprintf("portal \"%s\" does not exist", name))
+			}
+		}
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
@@ -763,17 +770,12 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			Str("name", name).
 			Msg("Describe portal")
 
-		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
+		portDesc, ok := rst.savedPortalDesc[name]
 
 		if !ok {
 
 			p := rst.bindQueryPlan
 			if name != "" {
-				if _, ok := rst.executeMp[name]; !ok {
-					return spqrerror.New(
-						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
-						fmt.Sprintf("portal \"%s\" does not exist", name))
-				}
 				p = rst.bindQueryPlanMP[name]
 			}
 
@@ -941,6 +943,8 @@ func (rst *RelayStateImpl) BindPrepared(
 		return err
 	}
 
+	delete(rst.savedPortalDesc, destinationPortal)
+
 	if destinationPortal != "" {
 		rst.lastBindNameMP[destinationPortal] = preparedStatement
 	} else {
@@ -1057,7 +1061,7 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	if pd != nil {
-		rst.savedPortalDesc[preparedStatement] = pd
+		rst.savedPortalDesc[destinationPortal] = pd
 	}
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 	return nil
@@ -1104,9 +1108,6 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 		rst.bindQueryPlanMP[portal] = nil
 	}
 
-	if rst.lastBindName == "" {
-		delete(rst.savedPortalDesc, rst.lastBindName)
-	}
 	rst.lastBindName = ""
 	if err != nil {
 		return err
@@ -1178,6 +1179,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			if err := sliceClosePortal(rst.Client().Server(), currentMsg); err != nil {
 				return err
 			}
+			delete(rst.savedPortalDesc, currentMsg.Name)
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
 				delete(rst.bindQueryPlanMP, currentMsg.Name)
