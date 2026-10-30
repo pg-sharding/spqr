@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sort"
 	"strings"
@@ -732,12 +733,26 @@ func (rst *RelayStateImpl) describeDeployablePlan(
 		return nil, err
 	}
 
-	rst.savedPortalDesc[bindName] = cachedPd
+	cacheKey, err := bindDescriptionCacheKey(bnd)
+	if err != nil {
+		return nil, err
+	}
+	rst.savedPortalDesc[cacheKey] = cachedPd
 	return cachedPd, nil
 }
 
+func bindDescriptionCacheKey(bnd *pgproto3.Bind) (string, error) {
+	keyBind := *bnd
+	keyBind.DestinationPortal = ""
+	encoded, err := keyBind.Encode(nil)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return string(digest[:]), nil
+}
+
 func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgproto3.Describe) error {
-	var err error
 	// save txstatus because it may be overwritten if we have no backend connection
 	saveTxStat := rst.qse.TxStatus()
 
@@ -761,7 +776,15 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 			Str("name", name).
 			Msg("Describe portal")
 
-		portDesc, ok := rst.savedPortalDesc[rst.lastBindName]
+		bnd := &rst.saveBind
+		if name != "" {
+			bnd = rst.saveBindNamed[name]
+		}
+		cacheKey, err := bindDescriptionCacheKey(bnd)
+		if err != nil {
+			return err
+		}
+		portDesc, ok := rst.savedPortalDesc[cacheKey]
 
 		if !ok {
 
@@ -948,30 +971,29 @@ func (rst *RelayStateImpl) BindPrepared(
 		rst.executeMp[destinationPortal] = emptyExecFunc
 	}
 
+	var bnd *pgproto3.Bind
+	if destinationPortal == "" {
+		bnd = &rst.saveBind
+	} else {
+		rst.saveBindNamed[destinationPortal] = &pgproto3.Bind{}
+		bnd = rst.saveBindNamed[destinationPortal]
+	}
+	bnd.DestinationPortal = destinationPortal
+
+	hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
+
+	bnd.PreparedStatement = fmt.Sprintf("%d", hash)
+	bnd.ParameterFormatCodes = parameterFormatCodes
+	bnd.ResultFormatCodes = resultFormatCodes
+	bnd.Parameters = parameters
+
 	pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
-		var bnd *pgproto3.Bind
-
-		if destinationPortal == "" {
-			bnd = &rst.saveBind
-		} else {
-			rst.saveBindNamed[destinationPortal] = &pgproto3.Bind{}
-			bnd = rst.saveBindNamed[destinationPortal]
-		}
-
-		bnd.DestinationPortal = destinationPortal
-
 		rm := rst.savedRM[preparedStatement]
 
 		rm.LastResultFormatCodes = resultFormatCodes
 
-		hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
-
-		bnd.PreparedStatement = fmt.Sprintf("%d", hash)
-		bnd.ParameterFormatCodes = parameterFormatCodes
 		rst.Client().SetBindParams(parameters)
 		rst.Client().SetParamFormatCodes(parameterFormatCodes)
-		bnd.ResultFormatCodes = resultFormatCodes
-		bnd.Parameters = parameters
 
 		ctx := context.TODO()
 
@@ -1050,7 +1072,11 @@ func (rst *RelayStateImpl) BindPrepared(
 	}
 
 	if pd != nil {
-		rst.savedPortalDesc[preparedStatement] = pd
+		cacheKey, err := bindDescriptionCacheKey(bnd)
+		if err != nil {
+			return err
+		}
+		rst.savedPortalDesc[cacheKey] = pd
 	}
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 	return nil
