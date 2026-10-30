@@ -4,7 +4,7 @@ Active branch: [fuzz-xproto-compatibility](https://github.com/pg-sharding/spqr/t
 
 ## Environment
 
-- Baseline: SPQR master `d3f66eb27ab410aa5493d46f9363a0c029553c91`.
+- Original baseline: SPQR master `d3f66eb27ab410aa5493d46f9363a0c029553c91`. The current branch is rebased onto master `1b6680773d922492821759c7062d71b38d729c19`.
 - Reference: PostgreSQL 17.11, direct connection to shard 1.
 - Builds and tests: VM `158.160.212.50`, Go 1.27.2 with `-mod=mod`.
 - Each run uses an isolated Docker project with four primary shards and replicas; the runner removes its containers and volumes afterwards.
@@ -83,11 +83,15 @@ At integrated commit `4a817184`, the full xproto suite and relay/frontend unit t
 
 ## Bind description cache and PostgreSQL CI
 
-PR #3148 is updated by `7cd756d6` on `test-xproto-portal-result-format`. Its cache now uses the encoded Bind with only `DestinationPortal` cleared: statement identity, parameter formats and values, and result formats all participate. NULL and empty parameters remain distinct. Identical Bind messages reuse the ready descriptor across portal names, and transaction completion clears the cache. This supersedes the original portal-name key in `1be9c1ce`.
+The `7cd756d6` revision of PR #3148 introduced the encoded Bind cache key with only `DestinationPortal` cleared: statement identity, parameter formats and values, and result formats all participate. NULL and empty parameters remain distinct. Identical Bind messages reuse the ready descriptor across portal names. This supersedes the original portal-name key in `1be9c1ce`.
+
+At the user's request, PR #3148 is narrowed to the test, `bindDescriptionCacheKey`, and the changes required to use that key. It does not include additional portal/cache lifecycle changes. The combined research branch retains its transaction-end cleanup alongside the other lifecycle fixes. The original statement-name invalidation does not remove full-Bind cache keys; revising that policy remains separate from the narrowed PR.
 
 The regression test is formatted like its neighbors and checks text/binary/text descriptions plus a different statement's column name. The full SPQR suite, PostgreSQL regression checks, 24 additional Bind controls on both servers, relay unit tests, cache-key/reuse controls, and lint all pass. Evidence: `/tmp/spqr-xproto-bind-desc-cache/` (`xproto-v4o9a65f`, `xproto-awm10103`, `xproto-trshh7u8`, and the unit/lint logs).
 
 The shared Bind cache is also integrated with the statement snapshot and completed-portal Describe fixes on the fuzz branch. The final combined full xproto suite, relay/frontend unit tests, and lint pass. Repeating seed `20261101` with 900 cases still reports only the 60 known suspended-portal mismatches, with zero rejected reference cases and no new mismatch families. Evidence: `/tmp/spqr-xproto-fuzz-v2/xproto-ywiyfhl2/`.
+
+All newly added regression messages and the compatibility harness now use multiline formatting matching PR #3148. A temporary Go parser check compared the complete ASTs, including comments and excluding source positions, before and after formatting: unchanged. After rebasing the combined branch onto `1b668077`, relay/frontend unit tests and the full xproto suite pass again; the repeated 900-case run has the same 60 known suspended-portal mismatches. Evidence: `/tmp/spqr-xproto-fuzz-v2/xproto-p7yjs5m3/`. The named-Bind test and fix are already in this master, so their duplicate commits were dropped during rebase.
 
 The separate branch [ci-xproto-postgres](https://github.com/pg-sharding/spqr/tree/ci-xproto-postgres), commit `2fb40dcf`, adds a PostgreSQL 17 CI service and runs `go test -tags=xproto` with `SPQR_XPROTO_TEST_PURE_PG_ONLY=1`. The existing `thisIsSPQRSpecificTest` helper supplies all skips; no tests or skip lists were changed. Its intended test command passed remotely: 47 passed, 7 skipped, zero failures. Evidence: `/tmp/spqr-ci-xproto-postgres/pg-yplk0idx/run.log`. The hosted Actions job will run when the branch has a pull request.
 
