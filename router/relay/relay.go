@@ -984,7 +984,10 @@ func (rst *RelayStateImpl) BindPrepared(
 		bnd = rst.saveBindNamed[destinationPortal]
 	}
 	bnd.DestinationPortal = destinationPortal
-	bnd.PreparedStatement = fmt.Sprintf("%d", rst.Client().PreparedStatementQueryHashByName(preparedStatement))
+
+	hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
+
+	bnd.PreparedStatement = fmt.Sprintf("%d", hash)
 	bnd.ParameterFormatCodes = parameterFormatCodes
 	bnd.ResultFormatCodes = resultFormatCodes
 	bnd.Parameters = parameters
