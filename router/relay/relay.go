@@ -991,10 +991,20 @@ func (rst *RelayStateImpl) BindPrepared(
 			return fmt.Errorf("extended xproto state out of sync")
 		}
 
+		backendBound := false
 		f := func(maxrows uint32) error {
 			p := rst.bindQueryPlan
 			if destinationPortal != "" {
 				p = rst.bindQueryPlanMP[destinationPortal]
+			}
+			if backendBound {
+				return rst.QueryExecutor().ExecuteSlice(&QueryDesc{
+					executeOnly: true,
+					exec: &pgproto3.Execute{
+						Portal:  destinationPortal,
+						MaxRows: maxrows,
+					},
+				}, queryPlan, true)
 			}
 			forceSimple := false
 
@@ -1026,7 +1036,15 @@ func (rst *RelayStateImpl) BindPrepared(
 				}
 			}
 
-			return BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows)
+			if err := BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows); err != nil {
+				return err
+			}
+			switch p.(type) {
+			case *plan.VirtualPlan:
+			default:
+				backendBound = destinationPortal != "" && !forceSimple
+			}
+			return nil
 		}
 
 		/* only populate map for non-empty portal */
