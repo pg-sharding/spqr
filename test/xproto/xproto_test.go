@@ -7444,34 +7444,77 @@ func TestXProtoNamedBindPreservesUnnamedPortal(t *testing.T) {
 	if !assert.NoError(t, err, "startup failed") {
 		return
 	}
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Parse{Query: "SELECT $1::int /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Bind{Parameters: [][]byte{[]byte("1")}},
-			&pgproto3.Bind{DestinationPortal: "p", Parameters: [][]byte{[]byte("2")}},
-			&pgproto3.Execute{},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT $1::int /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "p",
+					Parameters: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("2")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 }
 
 func TestXProtoUnnamedPortalSurvivesSync(t *testing.T) {
@@ -7479,51 +7522,96 @@ func TestXProtoUnnamedPortalSurvivesSync(t *testing.T) {
 	if !assert.NoError(t, err, "startup failed") {
 		return
 	}
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Parse{Query: "SELECT 1 /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Bind{},
-			&pgproto3.Sync{},
-			&pgproto3.Execute{},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 1 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Sync{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 
 	if !assert.NoError(t, conn.SetDeadline(time.Now().Add(10*time.Second))) {
 		return
 	}
-	frontend.Send(&pgproto3.Query{String: "BEGIN"})
-	frontend.Send(&pgproto3.Parse{Name: "simple_query_stmt", Query: "SELECT 1 /* __spqr__execute_on: sh1 */"})
-	frontend.Send(&pgproto3.Bind{PreparedStatement: "simple_query_stmt"})
-	frontend.Send(&pgproto3.Query{String: "SET statement_timeout = 0"})
+	frontend.Send(&pgproto3.Query{
+		String: "BEGIN",
+	})
+	frontend.Send(&pgproto3.Parse{
+		Name:  "simple_query_stmt",
+		Query: "SELECT 1 /* __spqr__execute_on: sh1 */",
+	})
+	frontend.Send(&pgproto3.Bind{
+		PreparedStatement: "simple_query_stmt",
+	})
+	frontend.Send(&pgproto3.Query{
+		String: "SET statement_timeout = 0",
+	})
 	frontend.Send(&pgproto3.Execute{})
 	frontend.Send(&pgproto3.Sync{})
 	if !assert.NoError(t, frontend.Flush()) {
 		return
 	}
 	for _, expected := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-		&pgproto3.ReadyForQuery{TxStatus: 'T'},
+		&pgproto3.CommandComplete{
+			CommandTag: []byte("BEGIN"),
+		},
+		&pgproto3.ReadyForQuery{
+			TxStatus: 'T',
+		},
 		&pgproto3.ParseComplete{},
 		&pgproto3.BindComplete{},
-		&pgproto3.CommandComplete{CommandTag: []byte("SET")},
-		&pgproto3.ReadyForQuery{TxStatus: 'T'},
+		&pgproto3.CommandComplete{
+			CommandTag: []byte("SET"),
+		},
+		&pgproto3.ReadyForQuery{
+			TxStatus: 'T',
+		},
 	} {
 		msg, err := frontend.Receive()
 		if !assert.NoError(t, err) || !assert.Equal(t, expected, msg) {
@@ -7541,38 +7629,89 @@ func TestXProtoUnnamedPortalSurvivesSync(t *testing.T) {
 func TestXProtoClosedPortalCanBeRebound(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Parse{Query: "SELECT $1::int /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Bind{DestinationPortal: "p", Parameters: [][]byte{[]byte("1")}},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Close{ObjectType: 'P', Name: "p"},
-			&pgproto3.Bind{DestinationPortal: "p", Parameters: [][]byte{[]byte("2")}},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT $1::int /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "p",
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Close{
+					ObjectType: 'P',
+					Name:       "p",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "p",
+					Parameters: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("2"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CloseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("2")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 }
 
 func TestXProtoDescribeUsesPortalResultFormat(t *testing.T) {
@@ -7714,34 +7853,66 @@ func TestXProtoEmptyQueryPreservesUnnamedPortal(t *testing.T) {
 	if !assert.NoError(t, err, "startup failed") {
 		return
 	}
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Parse{Name: "empty_query_stmt", Query: "SELECT 1 /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Bind{PreparedStatement: "empty_query_stmt"},
-			&pgproto3.Query{},
-			&pgproto3.Execute{},
-			&pgproto3.Close{ObjectType: 'S', Name: "empty_query_stmt"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Name:  "empty_query_stmt",
+					Query: "SELECT 1 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "empty_query_stmt",
+				},
+				&pgproto3.Query{},
+				&pgproto3.Execute{},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "empty_query_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.EmptyQueryResponse{},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.CloseComplete{},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 }
 
 type compatCase struct {
@@ -7763,14 +7934,19 @@ func runCompatCase(host, password string, c compatCase) compatResult {
 		result.Failure = err.Error()
 		return result
 	}
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 	fr := pgproto3.NewFrontend(conn, conn)
 	params := map[string]string{"user": "regress", "database": "regress"}
 	if password != "" {
 		params["password"] = password
 	}
-	fr.Send(&pgproto3.StartupMessage{ProtocolVersion: 196608, Parameters: params})
+	fr.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      params,
+	})
 	if err := fr.Flush(); err != nil {
 		result.Failure = err.Error()
 		return result
@@ -7843,9 +8019,20 @@ func runCompatCase(host, password string, c compatCase) compatResult {
 
 func makeCompatCase(id int, rng *rand.Rand) compatCase {
 	const hint = " /* __spqr__execute_on: sh1 */"
-	c := compatCase{ID: id, Requests: []pgproto3.FrontendMessage{&pgproto3.Query{String: "BEGIN"}}}
-	add := func(m ...pgproto3.FrontendMessage) { c.Requests = append(c.Requests, m...) }
-	sync := func() { add(&pgproto3.Sync{}) }
+	c := compatCase{
+		ID: id,
+		Requests: []pgproto3.FrontendMessage{
+			&pgproto3.Query{
+				String: "BEGIN",
+			},
+		},
+	}
+	add := func(m ...pgproto3.FrontendMessage) {
+		c.Requests = append(c.Requests, m...)
+	}
+	sync := func() {
+		add(&pgproto3.Sync{})
+	}
 	statement, portal := "s", "p"
 	if rng.Intn(2) == 0 {
 		statement = ""
@@ -7855,17 +8042,36 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 	}
 	format := int16(rng.Intn(2))
 	value := rng.Intn(100) + 1
-	parse := func(name string) { add(&pgproto3.Parse{Name: name, Query: "SELECT $1::int + 10 AS value" + hint}) }
+	parse := func(name string) {
+		add(&pgproto3.Parse{
+			Name:  name,
+			Query: "SELECT $1::int + 10 AS value" + hint,
+		})
+	}
 	bind := func(name, destination string, val int, resultFormat int16) {
 		param := []byte(fmt.Sprint(val))
 		if format == 1 {
 			param = binary.BigEndian.AppendUint32(nil, uint32(val))
 		}
-		add(&pgproto3.Bind{PreparedStatement: name, DestinationPortal: destination,
-			Parameters: [][]byte{param}, ParameterFormatCodes: []int16{format}, ResultFormatCodes: []int16{resultFormat}})
+		add(&pgproto3.Bind{
+			PreparedStatement:    name,
+			DestinationPortal:    destination,
+			Parameters:           [][]byte{param},
+			ParameterFormatCodes: []int16{format},
+			ResultFormatCodes:    []int16{resultFormat},
+		})
 	}
-	execute := func(destination string) { add(&pgproto3.Execute{Portal: destination}) }
-	describe := func(destination string) { add(&pgproto3.Describe{ObjectType: 'P', Name: destination}) }
+	execute := func(destination string) {
+		add(&pgproto3.Execute{
+			Portal: destination,
+		})
+	}
+	describe := func(destination string) {
+		add(&pgproto3.Describe{
+			ObjectType: 'P',
+			Name:       destination,
+		})
+	}
 	resultFormat := int16(rng.Intn(2))
 	switch id % 15 {
 	case 0:
@@ -7891,7 +8097,10 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 		bind(statement, "p", value, resultFormat)
 		execute("p")
 		sync()
-		add(&pgproto3.Close{ObjectType: 'P', Name: "p"})
+		add(&pgproto3.Close{
+			ObjectType: 'P',
+			Name:       "p",
+		})
 		if rng.Intn(2) == 0 {
 			sync()
 		}
@@ -7923,7 +8132,10 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 		bind("s", "p", value, resultFormat)
 		execute("p")
 		sync()
-		add(&pgproto3.Close{ObjectType: 'S', Name: "s"})
+		add(&pgproto3.Close{
+			ObjectType: 'S',
+			Name:       "s",
+		})
 		parse("s")
 		bind("s", "q", value+1, resultFormat)
 		execute("q")
@@ -7932,7 +8144,9 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 		c.Family = "named_bind_survives_simple_query"
 		parse("s")
 		bind("s", "p", value, resultFormat)
-		add(&pgproto3.Query{String: "SELECT 42" + hint})
+		add(&pgproto3.Query{
+			String: "SELECT 42" + hint,
+		})
 		execute("p")
 		sync()
 	case 7:
@@ -7948,16 +8162,28 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 	case 8:
 		c.Family = "parse_describe_sync_bind"
 		parse(statement)
-		add(&pgproto3.Describe{ObjectType: 'S', Name: statement})
+		add(&pgproto3.Describe{
+			ObjectType: 'S',
+			Name:       statement,
+		})
 		sync()
 		bind(statement, portal, value, resultFormat)
 		execute(portal)
 		sync()
 	case 9:
 		c.Family = "suspended_named_portal"
-		add(&pgproto3.Parse{Name: "s", Query: "SELECT generate_series(1, 3)" + hint})
-		add(&pgproto3.Bind{PreparedStatement: "s", DestinationPortal: "p"})
-		add(&pgproto3.Execute{Portal: "p", MaxRows: 1})
+		add(&pgproto3.Parse{
+			Name:  "s",
+			Query: "SELECT generate_series(1, 3)" + hint,
+		})
+		add(&pgproto3.Bind{
+			PreparedStatement: "s",
+			DestinationPortal: "p",
+		})
+		add(&pgproto3.Execute{
+			Portal:  "p",
+			MaxRows: 1,
+		})
 		sync()
 		execute("p")
 		sync()
@@ -7989,7 +8215,10 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 		c.Family = "close_unexecuted_rebind"
 		parse(statement)
 		bind(statement, "p", value, resultFormat)
-		add(&pgproto3.Close{ObjectType: 'P', Name: "p"})
+		add(&pgproto3.Close{
+			ObjectType: 'P',
+			Name:       "p",
+		})
 		bind(statement, "p", value+1, resultFormat)
 		execute("p")
 		sync()
@@ -8002,7 +8231,9 @@ func makeCompatCase(id int, rng *rand.Rand) compatCase {
 		describe("p")
 		sync()
 	}
-	add(&pgproto3.Query{String: "ROLLBACK"})
+	add(&pgproto3.Query{
+		String: "ROLLBACK",
+	})
 	return c
 }
 
@@ -8076,87 +8307,205 @@ func TestXProtoCompatibilitySweep(t *testing.T) {
 func TestXProtoDescribeCompletedPortal(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Parse{Query: "SELECT 1 AS value /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Bind{DestinationPortal: "p"},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Describe{ObjectType: 'P', Name: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 1 AS value /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					DestinationPortal: "p",
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("value"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.BindComplete{},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{{
-				Name: []byte("value"), DataTypeOID: 23, DataTypeSize: 4, TypeModifier: -1,
-			}}},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 }
 
 func TestXProtoBoundPortalPreservesStatementSnapshot(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	// Prepare on sh2, then bind on sh1 so the portal must deploy its saved statement.
-	protoTestRunner(t, frontend, []MessageGroup{{
-		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Close{ObjectType: 'S', Name: "snapshot_stmt"},
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Query{String: "SELECT 0 AS pin /* __spqr__execute_on: sh2 */"},
-			&pgproto3.Parse{Name: "snapshot_stmt", Query: "SELECT 101 AS snapshot_value /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "COMMIT"},
-			&pgproto3.Query{String: "BEGIN"},
-			&pgproto3.Bind{PreparedStatement: "snapshot_stmt", DestinationPortal: "p"},
-			&pgproto3.Close{ObjectType: 'S', Name: "snapshot_stmt"},
-			&pgproto3.Parse{Name: "snapshot_stmt", Query: "SELECT 202 AS replacement_value /* __spqr__execute_on: sh1 */"},
-			&pgproto3.Describe{ObjectType: 'P', Name: "p"},
-			&pgproto3.Execute{Portal: "p"},
-			&pgproto3.Sync{},
-			&pgproto3.Query{String: "ROLLBACK"},
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "snapshot_stmt",
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SELECT 0 AS pin /* __spqr__execute_on: sh2 */",
+				},
+				&pgproto3.Parse{
+					Name:  "snapshot_stmt",
+					Query: "SELECT 101 AS snapshot_value /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "COMMIT",
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "snapshot_stmt",
+					DestinationPortal: "p",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "snapshot_stmt",
+				},
+				&pgproto3.Parse{
+					Name:  "snapshot_stmt",
+					Query: "SELECT 202 AS replacement_value /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "p",
+				},
+				&pgproto3.Execute{
+					Portal: "p",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pin"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("0")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("snapshot_value"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("101")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
 		},
-		Response: []pgproto3.BackendMessage{
-			&pgproto3.CloseComplete{},
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{{
-				Name: []byte("pin"), DataTypeOID: 23, DataTypeSize: 4, TypeModifier: -1,
-			}}},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("0")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.ParseComplete{},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("COMMIT")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.BindComplete{},
-			&pgproto3.CloseComplete{},
-			&pgproto3.ParseComplete{},
-			&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{{
-				Name: []byte("snapshot_value"), DataTypeOID: 23, DataTypeSize: 4, TypeModifier: -1,
-			}}},
-			&pgproto3.DataRow{Values: [][]byte{[]byte("101")}},
-			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			&pgproto3.ReadyForQuery{TxStatus: 'T'},
-			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
-			&pgproto3.ReadyForQuery{TxStatus: 'I'},
-		},
-	}})
+	})
 }
