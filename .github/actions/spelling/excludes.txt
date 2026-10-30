@@ -3,6 +3,7 @@
 ^.github/actions/benchmarks/
 ^.github/actions/spelling/
 ^.sourcecraft/ci.yaml
+^.github/workflows/tests.yaml
 ^\Q.github/actions/spelling/
 ^\Q.github/actions/spelling/expect.txt\E$
 ^\Q.github/actions/workflows/spelling.yaml\E?$
