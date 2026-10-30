@@ -7938,6 +7938,12 @@ func TestXProtoEmptyQueryPreservesUnnamedPortal(t *testing.T) {
 					PreparedStatement: "empty_query_stmt",
 				},
 				&pgproto3.Query{},
+				&pgproto3.Query{
+					String: " \t\n",
+				},
+				&pgproto3.Query{
+					String: "-- empty\n /* empty */",
+				},
 				&pgproto3.Execute{},
 				&pgproto3.Close{
 					ObjectType: 'S',
@@ -7957,6 +7963,14 @@ func TestXProtoEmptyQueryPreservesUnnamedPortal(t *testing.T) {
 				},
 				&pgproto3.ParseComplete{},
 				&pgproto3.BindComplete{},
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
 				&pgproto3.EmptyQueryResponse{},
 				&pgproto3.ReadyForQuery{
 					TxStatus: 'T',
