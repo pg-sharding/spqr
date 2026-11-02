@@ -11,6 +11,7 @@ Every line of a PR is read by a human maintainer. Small, focused PRs get reviewe
 - Unit tests only for pure logic that is hard to reach from SQL. Never duplicate with unit tests what the regress test already covers.
 - Do not touch tests, golden files or expected outputs unrelated to the change.
 - No `Co-Authored-By` trailers in commits.
+- Branch name: `<category>/<kebab-case-description>`, category is `fix`, `feature`, `test`, `docs`, `refactor` or `ci`. Exception for reshke: see `spqr-pr`.
 - PR description: 1–3 sentences plus `Closes #N`. No "Testing", "Summary", "Changes" or "What" sections, no file-by-file walkthrough, no list of commands you ran.
 
 ## Skills

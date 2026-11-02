@@ -48,11 +48,24 @@ Never add:
 
 If a reviewer must know a non-obvious decision (compatibility, migration), add one sentence for it.
 
-## 4. Commit
+## 4. Branch
+
+`<category>/<kebab-case-description>`, where category is one of `fix`, `feature`, `test`, `docs`, `refactor`, `ci`:
+
+- `feature/key-range-timestamps`
+- `fix/copy-routing-null-key`
+
+Exception: if the commit author is reshke (`git config user.name` or `git config user.email` contains `reshke`, case-insensitive), the branch name is 5–9 random lowercase letters with no category, e.g. `jifdjew`, `ijojooji`, `ojiswjiow`. Generate a new one each time:
+
+```bash
+LC_ALL=C tr -dc 'a-z' </dev/urandom | head -c $((RANDOM % 5 + 5)); echo
+```
+
+## 5. Commit
 
 One commit per PR unless the maintainer asks otherwise. Subject = PR title. Body optional, at most 2–3 lines, only for the *why*. No `Co-Authored-By` trailers.
 
-## 5. Review feedback
+## 6. Review feedback
 
 - Fix the code; push. Reply only when you disagree or need a decision, in one or two sentences.
 - Bot reviews (CodeRabbit etc.): apply what is correct, ignore nitpicks that grow the diff.
