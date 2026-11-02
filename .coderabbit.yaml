@@ -1,15 +1,42 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-
-inheritance: true
-
+language: en-US
 tone_instructions: >-
-  Be concise and actionable. Focus on correctness, reliability, security,
-  concurrency, and meaningful test gaps. Avoid style nitpicks and praise.
+  Concise senior reviewer. Plain, neutral, factual. No praise, filler, jokes or emojis
+  except the verdict marker. Lead with impact, then the fix. Short sentences.
 
 reviews:
   profile: chill
-  high_level_summary: false
-  high_level_summary_in_walkthrough: false
+  request_changes_workflow: false
+
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  collapse_walkthrough: false
+  high_level_summary_instructions: |
+    Write the summary in exactly this structure and nothing else.
+
+    ### <verdict>
+    Use exactly one of: "🟢 Looks good", "🟡 Changes recommended", "🔴 Changes required".
+    Then ONE sentence (max 40 words) stating the most important concrete consequence
+    of the open problems (what breaks, for whom, when), or why it is safe to merge.
+
+    **<N> open issues**
+    - <High|Medium|Low> · <imperative title, max 8 words, identical to the inline comment title>
+    If there are no problems, write "No open issues" instead of the list.
+
+    **What changed in this PR**
+    One sentence on the purpose of the PR. If the PR references an issue, mention it
+    (for example "advancing #1032").
+
+    **Changes:**
+    - 2 to 4 bullets, one line each, describing behaviour, not files.
+
+    | File | Description |
+    |---|---|
+    | `path/to/file` | One line, max 15 words. |
+
+    Rules: no other headings or sections, no diagrams, no emojis except the verdict marker,
+    no speculation, no line-by-line restatement of the diff.
+
   changed_files_summary: false
   sequence_diagrams: false
   estimate_code_review_effort: false
@@ -18,38 +45,21 @@ reviews:
   related_prs: false
   suggested_labels: false
   suggested_reviewers: false
-  review_status: false
-  review_info: false
-  review_details: false
-  collapse_walkthrough: true
-  in_progress_fortune: false
   poem: false
+  in_progress_fortune: false
+  review_details: false
   enable_prompt_for_ai_agents: false
-  auto_review:
-    enabled: true
-  pre_merge_checks:
-    docstrings:
-      mode: "off"
-    title:
-      mode: "off"
-    description:
-      mode: "off"
-    issue_assessment:
-      mode: "off"
-  finishing_touches:
-    docstrings:
-      enabled: false
-    unit_tests:
-      enabled: false
-    simplify:
-      enabled: false
-    autofix:
-      enabled: false
-    fix_ci:
-      enabled: false
-    resolve_merge_conflict:
-      enabled: false
+
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Format every review comment as:
+        **<Imperative title, max 8 words>**
+        1 to 3 sentences: what breaks, under which concrete input or state, and why.
+        No hedging, no generic best-practice advice.
+        Add a minimal suggestion block when the fix is obvious.
+        Comment only on real defects: correctness, security, data loss, concurrency,
+        broken documented usage. Skip style nits and anything linters already report.
 
 chat:
   art: false
-  auto_reply: false
