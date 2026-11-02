@@ -3792,6 +3792,7 @@ func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 			},
 		},
 
+		/* TODO: deal with this */
 		// {
 		// 	CheckCodeOnly: true,
 		// 	Request: []pgproto3.FrontendMessage{
