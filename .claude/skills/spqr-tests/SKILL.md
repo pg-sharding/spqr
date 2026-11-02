@@ -1,11 +1,11 @@
 ---
 name: spqr-tests
-description: Use when adding or changing tests in pg-sharding/spqr, or when a change adds a feature or fixes a bug and needs test coverage. Decides between regress and unit tests and shows how to write a regress test.
+description: Use when adding or changing tests in pg-sharding/spqr, or when a change adds a feature or fixes a bug and needs test coverage. Picks the test type (regress, feature, isolation, xproto, driver, unit) and shows how to write each.
 ---
 
 # Tests in SPQR
 
-Tests are maintained by people. Every test line is a cost. Write the shortest test that proves the behavior.
+Tests are maintained by people. Every test line is a cost. Write the shortest test that proves the behavior, of exactly one type: the cheapest one that can reproduce it.
 
 ## Which test
 
@@ -15,9 +15,15 @@ Tests are maintained by people. Every test line is a cost. Write the shortest te
 | Query routing, transactions, COPY, multi-shard behavior | regress, `test/regress/tests/router` |
 | Coordinator-only behavior | regress, `test/regress/tests/coordinator` |
 | Pooler behavior | regress, `test/regress/tests/pooler` |
-| Bug fix | regress test that fails without the fix |
+| Needs several hosts or lifecycle events: coordinator + routers, restarts, failover, etcd, move/redistribute, auth (scram, ldap, krb), config reload, spqrdump | feature, `test/feature/features/*.feature` |
+| Concurrency: two sessions interleaving, locks, 2PC, move under load | isolation, `test/isolation/specs` |
+| Wire-protocol messages and their exact order (Parse/Bind/Execute, COPY sub-protocol, malformed packets) | xproto, `test/xproto` |
+| Bug seen only with a specific driver (JDBC, GORM, Hibernate) | driver test, `test/drivers/<driver>-regress` |
+| Bug fix | test of the type above that fails without the fix |
 | Pure function hard to reach from SQL (parser corner case, hashing, bound comparison, config parsing) | unit test, table-driven, in the existing `_test.go` next to the code |
 | Refactoring with no behavior change | no new tests |
+
+Go up the table only when the cheaper type cannot reproduce the behavior. A feature test costs minutes of CI and a cluster restart; do not write one for something a regress test can show. Never add stress tests or benchmarks in a contributor PR.
 
 Do not write unit tests for:
 
@@ -87,3 +93,58 @@ make regress
 ```
 
 pg_regress writes actual output to `test/regress/tests/<suite>/results/<name>.out` inside the container and prints the diff. Check the output is correct, then save it as `expected/<name>.out`. If you cannot run Docker, write `expected/<name>.out` by copying the exact psql formatting of neighbouring `.out` files and let CI confirm it; do not mention this in the PR description.
+
+## Writing a feature test
+
+BDD scenarios on godog, in `test/feature/features/`. Each scenario brings up a docker compose cluster, so they are slow.
+
+- Add a `Scenario` to the existing `.feature` file for the area (`coordinator.feature`, `move.feature`, `reload.feature`, ...). A new file only for a new area.
+- Use only existing steps from `test/feature/spqr_test.go`. Do not add Go step definitions unless no combination of existing ones can express the check.
+- One scenario checks one behavior. No copy-paste of a neighbouring scenario with a single changed line: extend that scenario instead.
+- Compare results with `json_exactly`, after `ORDER BY`. Hide unstable fields with `hide "<field>" field`.
+- Reuse configs from `test/feature/conf/`. A new config only if no existing one fits.
+
+```gherkin
+  Scenario: SHOW sequences lists sequence created through coordinator
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    """
+    Given cluster is up and running
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    CREATE REFERENCE TABLE t AUTO INCREMENT id;
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{"name": "t_id", "value": "0"}]
+    """
+```
+
+Run one file:
+
+```bash
+GODOG_FEATURE_DIR=generatedFeatures GODOG_FEATURE="sequence.feature" make feature_test
+```
+
+## Writing an isolation test
+
+`isolationtester` specs: `test/isolation/specs/<name>.spec`, expected output `test/isolation/expected/<name>.out`, and `test: <name>` in `test/isolation/schedule`.
+
+- Two sessions, a few steps each, as few permutations as prove the race. Every extra permutation multiplies the expected output.
+- Name steps `<session>_<action>`, one statement per step.
+- Generate expected output with `make isolation_regress`, do not write it by hand.
+
+## Writing an xproto test
+
+Go tests in `test/xproto` that send raw `pgproto3` messages and compare the exact backend messages. Use only when the order or content of protocol messages is the point; anything visible from psql belongs in regress.
+
+- Add a case to the existing table in `proto_test.go` (or `copy_proto_test.go` for COPY) instead of a new test function.
+- Run with `make xproto_regress`.
+
+## Driver tests
+
+`test/drivers/{jdbc,gorm,hibernate}-regress`, run with `make jdbc_regress`, `make gorm_regress`, `make hibernate_regress`. Add a case only for a bug that reproduces with that driver and not with psql or xproto.

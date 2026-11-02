@@ -77,9 +77,9 @@ if [ -n "$comments" ]; then
   echo "$comments"
 fi
 
-regress_changed=$(git diff --name-only "$base" HEAD -- 'test/regress/tests' 'test/regress/schedule' | wc -l | tr -d ' ')
+regress_changed=$(git diff --name-only "$base" HEAD -- test/regress test/feature/features test/isolation test/xproto test/drivers | wc -l | tr -d ' ')
 if [ "$prod_added" -gt 0 ] && [ "$regress_changed" -eq 0 ]; then
-  warn "Go code changed but no regress test; features and bug fixes need one"
+  warn "Go code changed but no regress, feature, isolation, xproto or driver test; features and bug fixes need one"
 fi
 
 while IFS= read -r sql; do
