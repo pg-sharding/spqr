@@ -2164,6 +2164,23 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: `CREATE SHARD sh1 OPTIONS (HOST "host1:6432", SSLMODE 'verify-full', CERT_FILE '/cert.pem', KEY_FILE '/key.pem', ROOT_CERT_FILE '/ca.pem') CHECK;`,
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id: "sh1",
+					Options: []spqrparser.GenericOption{
+						{Name: "host", Arg: "host1:6432"},
+						{Name: "sslmode", Arg: "verify-full"},
+						{Name: "cert_file", Arg: "/cert.pem"},
+						{Name: "key_file", Arg: "/key.pem"},
+						{Name: "root_cert_file", Arg: "/ca.pem"},
+					},
+					DryRun: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "ALTER SHARD sh2 OPTIONS (ADD HOST 'host:6432', DROP HOST 'localhost:6432', ADD SSLMODE 'verify-full', SET KEY_FILE '/key.pem', DROP ROOT_CERT_FILE, CERT_FILE '/cert.pem');",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterShard{
