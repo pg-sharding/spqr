@@ -3791,6 +3791,68 @@ func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 				},
 			},
 		},
+
+		// {
+		// 	CheckCodeOnly: true,
+		// 	Request: []pgproto3.FrontendMessage{
+		// 		&pgproto3.Query{
+		// 			String: "BEGIN",
+		// 		},
+		// 		&pgproto3.Query{
+		// 			String: "SELECT 1/0",
+		// 		},
+		// 		&pgproto3.Sync{},
+		// 		&pgproto3.Query{
+		// 			String: "SELECT 1",
+		// 		},
+		// 		&pgproto3.Sync{},
+		// 		&pgproto3.Query{
+		// 			String: "ROLLBACK",
+		// 		},
+		// 	},
+		// 	Response: []pgproto3.BackendMessage{
+		// 		&pgproto3.CommandComplete{
+		// 			CommandTag: []byte("BEGIN"),
+		// 		},
+		// 		&pgproto3.ReadyForQuery{
+		// 			TxStatus: byte(txstatus.TXACT),
+		// 		},
+		// 		&pgproto3.ErrorResponse{
+		// 			Severity: "ERROR",
+		// 			Code:     spqrerror.PG_ERRCODE_DIVISION_BY_ZERO,
+		// 		},
+		// 		&pgproto3.ReadyForQuery{
+		// 			TxStatus: byte(txstatus.TXERR),
+		// 		},
+
+		// 		/* SYNC */
+		// 		&pgproto3.ReadyForQuery{
+		// 			TxStatus: byte(txstatus.TXERR),
+		// 		},
+
+		// 		/* QUERY */
+		// 		&pgproto3.ErrorResponse{
+		// 			Severity: "ERROR",
+		// 			Code:     spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION,
+		// 		},
+
+		// 		&pgproto3.ReadyForQuery{
+		// 			TxStatus: byte(txstatus.TXERR),
+		// 		},
+
+		// 		/* SYNC */
+		// 		&pgproto3.ReadyForQuery{
+		// 			TxStatus: byte(txstatus.TXERR),
+		// 		},
+
+		// 		&pgproto3.CommandComplete{
+		// 			CommandTag: []byte("ROLLBACK"),
+		// 		},
+		// 		&pgproto3.ReadyForQuery{
+		// 			TxStatus: byte(txstatus.TXIDLE),
+		// 		},
+		// 	},
+		// },
 	}
 	protoTestRunner(t, frontend, tt)
 }
@@ -4055,6 +4117,7 @@ func TestParseErrorThenReuseName(t *testing.T) {
 				retMsgType.Routine = ""
 				retMsgType.Detail = ""
 				retMsgType.Message = ""
+				retMsgType.InternalQuery = ""
 				retMsgType.Position = 0
 
 				switch me := msg.(type) {

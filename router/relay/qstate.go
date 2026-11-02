@@ -70,7 +70,7 @@ func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) 
 	}
 }
 
-var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
+var errAbortedTx = spqrerror.Newf(spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION, "current transaction is aborted, commands ignored until end of transaction block")
 
 func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
