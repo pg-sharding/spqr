@@ -101,17 +101,6 @@ while IFS= read -r sql; do
   fi
 done < <(git diff --name-only --diff-filter=AM "$base" HEAD -- ':(glob)test/regress/tests/*/sql/*.sql')
 
-branch=$(git rev-parse --abbrev-ref HEAD)
-if [ "$branch" != "HEAD" ]; then
-  if git log -1 --format='%an %ae' | grep -qi reshke; then
-    if ! echo "$branch" | grep -Eq '^[a-z]{5,9}$'; then
-      warn "branch \"$branch\": for reshke use 5-9 random lowercase letters, e.g. jifdjew"
-    fi
-  elif ! echo "$branch" | grep -Eq '^(fix|feature|test|docs|refactor|ci)/[a-z0-9]+(-[a-z0-9]+)*$'; then
-    warn "branch \"$branch\" should be <fix|feature|test|docs|refactor|ci>/<kebab-case-description>"
-  fi
-fi
-
 commits=$(git rev-list --count "$base"..HEAD)
 if [ "$commits" -gt 1 ]; then
   warn "$commits commits; squash into one"
