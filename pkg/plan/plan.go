@@ -281,7 +281,7 @@ type DataRowCustomProcess struct {
 	stmt lyx.Node
 
 	OpaqueInfo any `json:"-"`
-	/* XXX: this is fragile API, which in vulnarable to underlying gang runtime change.
+	/* XXX: this is fragile API, which in vulnerable to underlying gang runtime change.
 	* We need better finalize step here. */
 	// Returning nil suppresses a row.
 	CustomRowProcess func(*pgproto3.DataRow, kr.ShardKey, any) *pgproto3.DataRow `json:"-"`
