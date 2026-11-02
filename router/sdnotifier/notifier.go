@@ -6,18 +6,8 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"golang.org/x/sys/unix"
 )
-
-/*
-#include <time.h>
-static unsigned long long get_nsecs(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (unsigned long long)ts.tv_sec * 1000000000UL + ts.tv_nsec;
-}
-*/
-import "C"
 
 const Timeout = 4 * time.Second
 
@@ -38,8 +28,14 @@ func NewNotifier(ns string, debug bool) (*Notifier, error) {
 	return &Notifier{sock: sock, debug: debug}, nil
 }
 
+func monotonicNsec() uint64 {
+	var ts unix.Timespec
+	_ = unix.ClockGettime(unix.CLOCK_MONOTONIC, &ts)
+	return uint64(ts.Sec)*1_000_000_000 + uint64(ts.Nsec)
+}
+
 func (n *Notifier) Reloading() error {
-	return n.send([]byte(fmt.Sprintf("RELOADING=1\nMONOTONIC_USEC=%d\n", uint64(C.get_nsecs()))))
+	return n.send([]byte(fmt.Sprintf("RELOADING=1\nMONOTONIC_USEC=%d\n", monotonicNsec())))
 }
 
 func (n *Notifier) Ready() error {
