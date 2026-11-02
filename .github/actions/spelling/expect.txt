@@ -72,7 +72,6 @@ connmgr
 connstring
 coorctl
 coordctl
-coreutils
 cptr
 Cta
 CTEs
@@ -173,7 +172,7 @@ ftts
 gcflags
 genproto
 getconn
-gettime
+Gettime
 gitmodules
 godog
 gofmt
@@ -351,7 +350,6 @@ NOSHARD
 Noticef
 notok
 nroute
-nsecs
 nselect
 nspname
 NTuples
@@ -416,7 +414,6 @@ pppp
 prepstatement
 privs
 prj
-procps
 promhttp
 protobuf
 protoc
