@@ -22,11 +22,20 @@ func (b *BasePlan) Opts() *planopts.PlanOpts {
 	return &b.H
 }
 
+func (b *BasePlan) CustomRowProcess(server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow {
+	return func(row *pgproto3.DataRow, _ uint) *pgproto3.DataRow {
+		return row
+	}
+}
+
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
 
 	Opts() *planopts.PlanOpts
+
+	// CustomRowProcess creates a processor for this execution; returning nil suppresses a row.
+	CustomRowProcess(server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
@@ -288,6 +297,16 @@ func (rf *DataRowFilter) Stmt() lyx.Node {
 
 func (rf *DataRowFilter) SetStmt(n lyx.Node) {
 	rf.stmt = n
+}
+
+func (rf *DataRowFilter) CustomRowProcess(serv server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow {
+	return func(row *pgproto3.DataRow, recvIndex uint) *pgproto3.DataRow {
+		if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
+			shs[recvIndex].SHKey().Name == rf.FilterShard.Name {
+			return row
+		}
+		return nil
+	}
 }
 
 var _ Plan = &DataRowFilter{}
