@@ -1008,8 +1008,10 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 		/* XXX: Can we do better? */
 
 		return &plan.DataRowCustomProcess{
-			Plan:             sp,
-			CustomRowProcess: v.CustomRowProcess,
+			Plan:                    sp,
+			OpaqueInfo:              v.OpaqueInfo,
+			CustomRowProcess:        v.CustomRowProcess,
+			PrepareCustomRowProcess: v.PrepareCustomRowProcess,
 		}, err
 	case *plan.ShardDispatchPlan:
 		return v, nil
