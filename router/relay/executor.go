@@ -1166,6 +1166,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return err
 	}
 
+	var processRow func(*pgproto3.DataRow, kr.ShardKey) *pgproto3.DataRow
+	if p, ok := topPlan.(*plan.DataRowCustomProcess); ok {
+		processRow = p.CustomRowProcess
+	}
+
 	for {
 		var o *planopts.PlanOpts
 		if topPlan != nil {
@@ -1248,18 +1253,15 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
-				switch v := topPlan.(type) {
-				case *plan.DataRowFilter:
-					if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
-						shs[recvIndex].SHKey().Name == v.FilterShard.Name {
-						err = s.Client().Send(msg)
-						if err != nil {
-							return err
-						}
+				if processRow != nil {
+					shs := serv.Datashards()
+					if recvIndex >= uint(len(shs)) {
+						continue
 					}
-				default:
-					err = s.Client().Send(msg)
-					if err != nil {
+					v = processRow(v, shs[recvIndex].SHKey())
+				}
+				if v != nil {
+					if err := s.Client().Send(v); err != nil {
 						return err
 					}
 				}

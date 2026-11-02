@@ -60,6 +60,7 @@ cmngr
 cmpopts
 cnth
 codeql
+coderabbit
 colname
 colocation
 colref
@@ -398,7 +399,6 @@ pgx
 pgxconn
 pgxpool
 PGXS
-pgxv
 PIDs
 pids
 pitr
