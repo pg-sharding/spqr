@@ -1017,8 +1017,8 @@ func TestReferenceRelationRouting(t *testing.T) {
 			if custom, ok := tmp.(*plan.DataRowCustomProcess); ok {
 				if assert.NotNil(custom.CustomRowProcess) {
 					row := &pgproto3.DataRow{Values: [][]byte{[]byte("1")}}
-					assert.Same(row, custom.CustomRowProcess(row, kr.ShardKey{Name: "sh1"}))
-					assert.Nil(custom.CustomRowProcess(row, kr.ShardKey{Name: "sh2"}))
+					assert.Same(row, custom.CustomRowProcess(row, kr.ShardKey{Name: "sh1"}, custom.OpaqueInfo))
+					assert.Nil(custom.CustomRowProcess(row, kr.ShardKey{Name: "sh2"}, custom.OpaqueInfo))
 				}
 				// Functions cannot be compared with assert.Equal.
 				custom.CustomRowProcess = nil
