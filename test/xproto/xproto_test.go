@@ -3737,6 +3737,60 @@ func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 				},
 			},
 		},
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "SELECT 1",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "25P02",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	}
 	protoTestRunner(t, frontend, tt)
 }
