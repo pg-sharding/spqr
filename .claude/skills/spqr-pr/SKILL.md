@@ -50,7 +50,7 @@ If a reviewer must know a non-obvious decision (compatibility, migration), add o
 
 ## 4. Commit
 
-One commit per PR unless the maintainer asks otherwise. Subject = PR title. Body optional, at most 2–3 lines, only for the *why*.
+One commit per PR unless the maintainer asks otherwise. Subject = PR title. Body optional, at most 2–3 lines, only for the *why*. No `Co-Authored-By` trailers.
 
 ## 5. Review feedback
 

@@ -117,6 +117,10 @@ if [ "$body_lines" -gt 4 ]; then
   warn "commit body has $body_lines lines; keep only the why, 2-3 lines"
 fi
 
+if git log --format=%B "$base"..HEAD | grep -qi '^co-authored-by:'; then
+  err "commit message has a Co-Authored-By trailer; remove it"
+fi
+
 if [ -n "${PR_BODY_FILE:-}" ]; then
   if [ ! -f "$PR_BODY_FILE" ]; then
     err "PR_BODY_FILE $PR_BODY_FILE not found"
