@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: en-US
 tone_instructions: >-
-  Concise senior reviewer. Plain, neutral, factual. No praise, filler, jokes or emojis
+  Concise senior reviewer. Plain, neutral, factual. No praise, filler or jokes
   except the verdict marker. Lead with impact, then the fix. Short sentences.
 
 reviews:
@@ -34,7 +34,7 @@ reviews:
     |---|---|
     | `path/to/file` | One line, max 15 words. |
 
-    Rules: no other headings or sections, no diagrams, no emojis except the verdict marker,
+    Rules: no other headings or sections, no diagrams except the verdict marker,
     no speculation, no line-by-line restatement of the diff.
 
   changed_files_summary: false
