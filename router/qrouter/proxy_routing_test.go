@@ -845,7 +845,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
-			exp: &plan.DataRowFilter{
+			exp: &plan.DataRowCustomProcess{
 				Plan: &plan.ScatterPlan{
 					BasePlan: plan.BasePlan{
 						H: planopts.PlanOpts{

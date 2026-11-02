@@ -1315,7 +1315,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 				if err != nil {
 					return nil, err
 				}
-				return &plan.DataRowFilter{
+				return &plan.DataRowCustomProcess{
 					Plan:        p,
 					FilterShard: filterShard,
 				}, nil
@@ -1356,7 +1356,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 				if err != nil {
 					return nil, err
 				}
-				return &plan.DataRowFilter{
+				return &plan.DataRowCustomProcess{
 					Plan:        p,
 					FilterShard: filterShard,
 				}, nil

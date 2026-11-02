@@ -22,20 +22,11 @@ func (b *BasePlan) Opts() *planopts.PlanOpts {
 	return &b.H
 }
 
-func (b *BasePlan) CustomRowProcess(server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow {
-	return func(row *pgproto3.DataRow, _ uint) *pgproto3.DataRow {
-		return row
-	}
-}
-
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
 
 	Opts() *planopts.PlanOpts
-
-	// CustomRowProcess creates a processor for this execution; returning nil suppresses a row.
-	CustomRowProcess(server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow
 
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
@@ -285,21 +276,22 @@ func (vp *VirtualPlan) PrepareRunSlice(server.Server) error {
 
 var _ Plan = &VirtualPlan{}
 
-type DataRowFilter struct {
+type DataRowCustomProcess struct {
 	Plan
 	stmt        lyx.Node
 	FilterShard kr.ShardKey
 }
 
-func (rf *DataRowFilter) Stmt() lyx.Node {
+func (rf *DataRowCustomProcess) Stmt() lyx.Node {
 	return rf.stmt
 }
 
-func (rf *DataRowFilter) SetStmt(n lyx.Node) {
+func (rf *DataRowCustomProcess) SetStmt(n lyx.Node) {
 	rf.stmt = n
 }
 
-func (rf *DataRowFilter) CustomRowProcess(serv server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow {
+// CustomRowProcess creates a processor for this execution; returning nil suppresses a row.
+func (rf *DataRowCustomProcess) CustomRowProcess(serv server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow {
 	return func(row *pgproto3.DataRow, recvIndex uint) *pgproto3.DataRow {
 		if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
 			shs[recvIndex].SHKey().Name == rf.FilterShard.Name {
@@ -309,7 +301,7 @@ func (rf *DataRowFilter) CustomRowProcess(serv server.Server) func(*pgproto3.Dat
 	}
 }
 
-var _ Plan = &DataRowFilter{}
+var _ Plan = &DataRowCustomProcess{}
 
 type CopyPlan struct {
 	BasePlan
@@ -395,8 +387,8 @@ func Combine(p1, p2 Plan) Plan {
 		Msg("combine two plans")
 
 	switch v := p1.(type) {
-	case *DataRowFilter:
-		return &DataRowFilter{
+	case *DataRowCustomProcess:
+		return &DataRowCustomProcess{
 			Plan:        Combine(v.Plan, p2),
 			FilterShard: v.FilterShard,
 		}
@@ -406,8 +398,8 @@ func Combine(p1, p2 Plan) Plan {
 	// let p2 be always non-virtual, except for p1 & p2 both virtual
 	case *VirtualPlan:
 		p1, p2 = p2, p1
-	case *DataRowFilter:
-		return &DataRowFilter{
+	case *DataRowCustomProcess:
+		return &DataRowCustomProcess{
 			Plan:        Combine(p1, v.Plan),
 			FilterShard: v.FilterShard,
 		}

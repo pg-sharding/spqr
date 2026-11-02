@@ -1169,7 +1169,10 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return err
 	}
 
-	processRow := topPlan.CustomRowProcess(serv)
+	var processRow func(*pgproto3.DataRow, uint) *pgproto3.DataRow
+	if p, ok := topPlan.(*plan.DataRowCustomProcess); ok {
+		processRow = p.CustomRowProcess(serv)
+	}
 
 	for {
 		var o *planopts.PlanOpts
@@ -1253,8 +1256,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
-				if row := processRow(v, recvIndex); row != nil {
-					if err := s.Client().Send(row); err != nil {
+				if processRow != nil {
+					v = processRow(v, recvIndex)
+				}
+				if v != nil {
+					if err := s.Client().Send(v); err != nil {
 						return err
 					}
 				}
