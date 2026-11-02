@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -342,6 +344,68 @@ func TestKeyRanges(t *testing.T) {
 	statements, err = memqdb.DropKeyRange(ctx, "nonexistentKeyRange")
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
+}
+
+// Key ranges must carry creation/update timestamps through the qdb round trip:
+// both set on create, CreatedAt preserved and UpdatedAt refreshed on update,
+// CreatedAt preserved across a rename, and NULL-able for records that predate
+// the fields (#3134).
+func TestKeyRangeTimestamps(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+
+	statements, err := memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
+		LowerBound:     [][]byte{[]byte("1111")},
+		ShardID:        "sh1",
+		KeyRangeID:     "krts1",
+		DistributionId: "ds1",
+	})
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
+
+	kr, err := memqdb.GetKeyRange(ctx, "krts1")
+	assert.NoError(err)
+	assert.NotNil(kr.CreatedAt, "created_at must be set on create")
+	assert.NotNil(kr.UpdatedAt, "updated_at must be set on create")
+	createdAt := *kr.CreatedAt
+
+	// A rename re-creates the record and must keep the original creation time.
+	assert.NoError(memqdb.RenameKeyRange(ctx, "krts1", "krts1-renamed"))
+
+	kr, err = memqdb.GetKeyRange(ctx, "krts1-renamed")
+	assert.NoError(err)
+	assert.NotNil(kr.CreatedAt)
+	assert.True(createdAt.Equal(*kr.CreatedAt), "rename must preserve created_at")
+
+	// An update refreshes updated_at and keeps created_at.
+	kr.ShardID = "sh2"
+	statements, err = memqdb.UpdateKeyRange(ctx, kr)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
+
+	kr, err = memqdb.GetKeyRange(ctx, "krts1-renamed")
+	assert.NoError(err)
+	assert.NotNil(kr.CreatedAt)
+	assert.True(createdAt.Equal(*kr.CreatedAt), "update must preserve created_at")
+	assert.NotNil(kr.UpdatedAt)
+	assert.False(kr.UpdatedAt.Before(createdAt), "updated_at must not go backwards")
+}
+
+// FormatKeyRangeTimestamp renders nil as SQL NULL so extended SHOW output can
+// represent "unknown" without inventing a time.
+func TestFormatKeyRangeTimestamp(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal("NULL", engine.FormatKeyRangeTimestamp(nil))
+	ts := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	assert.Equal("2026-11-03T12:00:00Z", engine.FormatKeyRangeTimestamp(&ts))
 }
 
 func Test_MemQDB_GetKeyRange(t *testing.T) {

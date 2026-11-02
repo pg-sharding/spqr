@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -185,6 +186,29 @@ func TestMemQdbTransactions(t *testing.T) {
 	})
 }
 
+// keyRangeStatementValueEqual compares the JSON payload of a Krs statement
+// while ignoring created_at/updated_at, which the create/update statement
+// builders stamp with the wall clock.
+func keyRangeStatementValueEqual(t *testing.T, expected, actual string) bool {
+	t.Helper()
+	var expMap, actMap map[string]any
+	if err := json.Unmarshal([]byte(expected), &expMap); err != nil {
+		t.Fatalf("expected payload is not JSON: %v", err)
+	}
+	if err := json.Unmarshal([]byte(actual), &actMap); err != nil {
+		t.Fatalf("actual payload is not JSON: %v", err)
+	}
+	delete(actMap, "created_at")
+	delete(actMap, "updated_at")
+	for k, v := range expMap {
+		if !reflect.DeepEqual(actMap[k], v) {
+			return false
+		}
+		delete(actMap, k)
+	}
+	return len(actMap) == 0
+}
+
 func TestCreateKeyRangeQdbStatements(t *testing.T) {
 	t.Run("no locked key range", func(t *testing.T) {
 		is := assert.New(t)
@@ -226,7 +250,13 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 				Extension: MapKrVersions,
 			},
 		}
-		is.Equal(expected, actual)
+		for idx, exp := range expected {
+			if exp.Extension == "Krs" {
+				is.True(keyRangeStatementValueEqual(t, fmt.Sprintf("%v", exp.Value), fmt.Sprintf("%v", actual[idx].Value)), "Krs payload mismatch: %s vs %s", exp.Value, actual[idx].Value)
+			} else {
+				is.Equal(exp, actual[idx])
+			}
+		}
 	})
 	t.Run("key range, no defined lock", func(t *testing.T) {
 		is := assert.New(t)
@@ -267,7 +297,13 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 				Extension: MapKrVersions,
 			},
 		}
-		is.Equal(expected, actual)
+		for idx, exp := range expected {
+			if exp.Extension == "Krs" {
+				is.True(keyRangeStatementValueEqual(t, fmt.Sprintf("%v", exp.Value), fmt.Sprintf("%v", actual[idx].Value)), "Krs payload mismatch: %s vs %s", exp.Value, actual[idx].Value)
+			} else {
+				is.Equal(exp, actual[idx])
+			}
+		}
 	})
 	t.Run("locked key range", func(t *testing.T) {
 		is := assert.New(t)
@@ -309,7 +345,13 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 				Extension: MapKrVersions,
 			},
 		}
-		is.Equal(expected, actual)
+		for idx, exp := range expected {
+			if exp.Extension == "Krs" {
+				is.True(keyRangeStatementValueEqual(t, fmt.Sprintf("%v", exp.Value), fmt.Sprintf("%v", actual[idx].Value)), "Krs payload mismatch: %s vs %s", exp.Value, actual[idx].Value)
+			} else {
+				is.Equal(exp, actual[idx])
+			}
+		}
 	})
 }
 

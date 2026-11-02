@@ -108,6 +108,9 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	actualKr, errKr := memqdb.GetKeyRange(ctx, "dbTestDefault.DEFAULT")
 	assert.Nil(t, errKr)
+	// The qdb layer stamps created_at/updated_at with the wall clock; mirror
+	// them so this comparison stays about the key range itself.
+	expectedKr.CreatedAt, expectedKr.UpdatedAt = actualKr.CreatedAt, actualKr.UpdatedAt
 	assert.Equal(t, actualKr, expectedKr)
 }
 
