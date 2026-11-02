@@ -296,7 +296,7 @@ func (qr *ProxyQrouter) planInsertV1(
 						if len(routes) > 0 {
 							filterShard = routes[0]
 						}
-						return &plan.DataRowFilter{
+						return &plan.DataRowCustomProcess{
 							Plan: &plan.ScatterPlan{
 								BasePlan: plan.BasePlan{
 									H: planopts.PlanOpts{
@@ -305,7 +305,7 @@ func (qr *ProxyQrouter) planInsertV1(
 								},
 								ExecTargets: rel.ListStorageRoutes(),
 							},
-							FilterShard: filterShard,
+							CustomRowProcess: plan.RowFilter(filterShard),
 						}, nil
 					}
 					return &plan.ScatterPlan{
@@ -369,9 +369,9 @@ func (qr *ProxyQrouter) planInsertV1(
 				if routes := rel.ListStorageRoutes(); len(routes) > 0 {
 					filterShard = routes[0]
 				}
-				return &plan.DataRowFilter{
-					Plan:        p,
-					FilterShard: filterShard,
+				return &plan.DataRowCustomProcess{
+					Plan:             p,
+					CustomRowProcess: plan.RowFilter(filterShard),
 				}, nil
 			}
 			return p, nil
@@ -999,7 +999,7 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 	p plan.Plan) (plan.Plan, error) {
 
 	switch v := p.(type) {
-	case *plan.DataRowFilter:
+	case *plan.DataRowCustomProcess:
 		sp, err := qr.PostProcessPlan(ctx, rm, v.Plan)
 		if err != nil {
 			return nil, err
@@ -1007,9 +1007,9 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 
 		/* XXX: Can we do better? */
 
-		return &plan.DataRowFilter{
-			Plan:        sp,
-			FilterShard: v.FilterShard,
+		return &plan.DataRowCustomProcess{
+			Plan:             sp,
+			CustomRowProcess: v.CustomRowProcess,
 		}, err
 	case *plan.ShardDispatchPlan:
 		return v, nil

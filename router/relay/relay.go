@@ -393,7 +393,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	}
 
 	switch v := queryPlan.(type) {
-	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowFilter:
+	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowCustomProcess:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
