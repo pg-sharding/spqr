@@ -865,9 +865,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 						},
 					},
 				},
-				FilterShard: kr.ShardKey{
+				CustomRowProcess: plan.RowFilter(kr.ShardKey{
 					Name: "sh1",
-				},
+				}),
 			},
 		},
 		{
@@ -1014,6 +1014,16 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 			assert.NoError(err, "query %s", tt.query)
 
+			if custom, ok := tmp.(*plan.DataRowCustomProcess); ok {
+				if assert.NotNil(custom.CustomRowProcess) {
+					row := &pgproto3.DataRow{Values: [][]byte{[]byte("1")}}
+					assert.Same(row, custom.CustomRowProcess(row, kr.ShardKey{Name: "sh1"}))
+					assert.Nil(custom.CustomRowProcess(row, kr.ShardKey{Name: "sh2"}))
+				}
+				// Functions cannot be compared with assert.Equal.
+				custom.CustomRowProcess = nil
+				tt.exp.(*plan.DataRowCustomProcess).CustomRowProcess = nil
+			}
 			assert.Equal(tt.exp, tmp, tt.query)
 		}
 	}

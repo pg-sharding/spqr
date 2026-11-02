@@ -278,8 +278,10 @@ var _ Plan = &VirtualPlan{}
 
 type DataRowCustomProcess struct {
 	Plan
-	stmt        lyx.Node
-	FilterShard kr.ShardKey
+	stmt lyx.Node
+
+	// Returning nil suppresses a row.
+	CustomRowProcess func(*pgproto3.DataRow, kr.ShardKey) *pgproto3.DataRow `json:"-"`
 }
 
 func (rf *DataRowCustomProcess) Stmt() lyx.Node {
@@ -290,11 +292,9 @@ func (rf *DataRowCustomProcess) SetStmt(n lyx.Node) {
 	rf.stmt = n
 }
 
-// CustomRowProcess creates a processor for this execution; returning nil suppresses a row.
-func (rf *DataRowCustomProcess) CustomRowProcess(serv server.Server) func(*pgproto3.DataRow, uint) *pgproto3.DataRow {
-	return func(row *pgproto3.DataRow, recvIndex uint) *pgproto3.DataRow {
-		if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
-			shs[recvIndex].SHKey().Name == rf.FilterShard.Name {
+func RowFilter(filterShard kr.ShardKey) func(*pgproto3.DataRow, kr.ShardKey) *pgproto3.DataRow {
+	return func(row *pgproto3.DataRow, shard kr.ShardKey) *pgproto3.DataRow {
+		if shard.Name == filterShard.Name {
 			return row
 		}
 		return nil
@@ -389,8 +389,8 @@ func Combine(p1, p2 Plan) Plan {
 	switch v := p1.(type) {
 	case *DataRowCustomProcess:
 		return &DataRowCustomProcess{
-			Plan:        Combine(v.Plan, p2),
-			FilterShard: v.FilterShard,
+			Plan:             Combine(v.Plan, p2),
+			CustomRowProcess: v.CustomRowProcess,
 		}
 	}
 
@@ -400,8 +400,8 @@ func Combine(p1, p2 Plan) Plan {
 		p1, p2 = p2, p1
 	case *DataRowCustomProcess:
 		return &DataRowCustomProcess{
-			Plan:        Combine(p1, v.Plan),
-			FilterShard: v.FilterShard,
+			Plan:             Combine(p1, v.Plan),
+			CustomRowProcess: v.CustomRowProcess,
 		}
 	}
 
