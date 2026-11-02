@@ -142,11 +142,12 @@ type Router struct {
 
 	LogMinDurationStatement time.Duration `json:"log_min_duration_statement" toml:"log_min_duration_statement" yaml:"log_min_duration_statement"`
 
-	EnableICP        bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
-	EnableTwoPhaseWD bool `json:"enable_2pc_watchdog" toml:"enable_2pc_watchdog" yaml:"enable_2pc_watchdog"`
+	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 
+	EnableTwoPhaseWD      bool          `json:"enable_2pc_watchdog" toml:"enable_2pc_watchdog" yaml:"enable_2pc_watchdog"`
 	WatchdogBackendRule   *BackendRule  `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
+	WatchdogLogFile       string        `json:"watchdog_log_file" toml:"watchdog_log_file" yaml:"watchdog_log_file"`
 
 	StoreTxDataPostgresql    bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
 	AdvisoryLockTwoPhaseTx   bool          `json:"2pc_tx_advisory_lock" yaml:"2pc_tx_advisory_lock" toml:"2pc_tx_advisory_lock"`
