@@ -11,8 +11,6 @@ CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6
 \c regress
 CREATE TABLE ref_table(ref_id int) /* __spqr__execute_on: sh2 */;
 \c spqr-console
-CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress") CHECK;
-SHOW SHARDS;
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 
 \c regress
@@ -24,6 +22,8 @@ DROP TABLE test_table /* __spqr__execute_on: sh2 */;
 
 CREATE TABLE test_table(id int, name text) /* __spqr__execute_on: sh2 */;
 \c spqr-console
+CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress") CHECK;
+SHOW SHARDS;
 CREATE SHARD sh2 OPTIONS (HOST "spqr_shard_2:6432", HOST "spqr_shard_2_replica:6432", USER "regress", DBNAME "regress");
 
 DROP SHARD sh2;
