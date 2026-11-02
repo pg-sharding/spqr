@@ -2,6 +2,7 @@ package engine
 
 // BoolAnd returns the logical AND of two PostgreSQL boolean datums.
 // Values use text t/f or binary 1/0; nil represents NULL.
+/* XXX: ideally, should be an operator on abstract bool type */
 func BoolAnd(left, right []byte) []byte {
 	switch {
 	case len(left) == 1 && (left[0] == 'f' || left[0] == 0):

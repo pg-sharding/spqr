@@ -1089,25 +1089,23 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			}
 			switch fname {
 			case virtual.PGTryAdvisoryXactLock:
-				type boolAndState struct {
+				type xactLockState struct {
 					pending map[string]struct{}
 					result  []byte
 					seen    bool
 				}
 				return &plan.DataRowCustomProcess{
-					Plan: &plan.ScatterPlan{BasePlan: plan.BasePlan{H: planopts.PlanOpts{
-						// Keep SELECT 1 for the single aggregate result.
-						ResultRelationIsRef: true,
-					}}},
+					Plan: &plan.ScatterPlan{},
 					PrepareCustomRowProcess: func(targets []kr.ShardKey) any {
-						state := &boolAndState{pending: make(map[string]struct{}, len(targets))}
+						state := &xactLockState{pending: make(map[string]struct{}, len(targets))}
 						for _, target := range targets {
+							/* XXX: Which shards we expect ? */
 							state.pending[target.Name] = struct{}{}
 						}
 						return state
 					},
 					CustomRowProcess: func(row *pgproto3.DataRow, shard kr.ShardKey, opaque any) *pgproto3.DataRow {
-						state := opaque.(*boolAndState)
+						state := opaque.(*xactLockState)
 						if _, ok := state.pending[shard.Name]; !ok {
 							return nil
 						}
