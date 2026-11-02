@@ -3,8 +3,8 @@
 #
 # Usage:
 #   curl -fsSL https://pg-sharding.com/install.sh | sh
-#   VERSION=3.2.0 curl -fsSL https://pg-sharding.com/install.sh | sh
-#   INSTALL_DIR=./mydir curl -fsSL https://pg-sharding.com/install.sh | sh
+#   curl -fsSL https://pg-sharding.com/install.sh | VERSION=3.2.0 sh
+#   curl -fsSL https://pg-sharding.com/install.sh | INSTALL_DIR=./mydir sh
 set -eu
 
 GITHUB_REPO="pg-sharding/spqr"
@@ -47,7 +47,7 @@ detect_version() {
         return
     fi
 
-    log "detecting latest version..."
+    log "detecting latest version..." >&2
     LATEST=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" \
         | grep '"tag_name"' \
         | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
