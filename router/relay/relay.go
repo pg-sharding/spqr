@@ -58,6 +58,9 @@ type RelayStateMgr interface {
 	Close() error
 	Client() client.RouterClient
 
+	StartBlock()
+	FinishBlock()
+
 	PrepareExecutionSlice(
 		ctx context.Context,
 		rm *rmeta.RoutingMetadataContext,
@@ -107,6 +110,8 @@ type RelayStateImpl struct {
 	lastBindNameMP      map[string]string
 	unnamedPortalExists bool
 
+	startedClientImplicitTx bool
+
 	execute   func(maxrows uint32) error
 	executeMp map[string]func(maxrows uint32) error
 
@@ -145,23 +150,24 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 	}
 
 	return &RelayStateImpl{
-		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(d, qr.Mgr(), manager, client),
-		Qr:                  qr,
-		Cl:                  client,
-		poolMgr:             manager,
-		execute:             nil,
-		executeMp:           map[string]func(uint32) error{},
-		saveBind:            pgproto3.Bind{},
-		saveBindNamed:       map[string]*pgproto3.Bind{},
-		lastBindNameMP:      map[string]string{},
-		bindQueryPlan:       nil,
-		bindQueryPlanMP:     map[string]plan.Plan{},
-		savedPortalDesc:     map[string]*PortalDesc{},
-		parseCache:          map[string]ParseCacheEntry{},
-		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
-		unnamedPortalExists: false,
-		WaitSync:            false,
+		msgBuf:                  nil,
+		qse:                     NewQueryStateExecutor(d, qr.Mgr(), manager, client),
+		Qr:                      qr,
+		Cl:                      client,
+		poolMgr:                 manager,
+		execute:                 nil,
+		executeMp:               map[string]func(uint32) error{},
+		saveBind:                pgproto3.Bind{},
+		saveBindNamed:           map[string]*pgproto3.Bind{},
+		lastBindNameMP:          map[string]string{},
+		bindQueryPlan:           nil,
+		bindQueryPlanMP:         map[string]plan.Plan{},
+		savedPortalDesc:         map[string]*PortalDesc{},
+		parseCache:              map[string]ParseCacheEntry{},
+		savedRM:                 map[string]*rmeta.RoutingMetadataContext{},
+		unnamedPortalExists:     false,
+		startedClientImplicitTx: false,
+		WaitSync:                false,
 		mCache: &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
 		},
@@ -256,12 +262,24 @@ func (rst *RelayStateImpl) Cleanup() error {
 	return rst.Client().Unroute()
 }
 
+func (rst *RelayStateImpl) StartBlock() {
+	if rst.QueryExecutor().TxStatus() == txstatus.TXIDLE {
+		rst.startedClientImplicitTx = true
+	}
+}
+
+func (rst *RelayStateImpl) FinishBlock() {
+	rst.startedClientImplicitTx = false
+}
+
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 	err := rst.Cleanup()
 
-	/* See flush vs sync */
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
+	if rst.startedClientImplicitTx {
+		/* See flush vs sync */
+		rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
+	}
 
 	return err
 }
@@ -478,7 +496,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Str("txstatus", rst.qse.TxStatus().String()).
+		Str("txstatus", rst.QueryExecutor().TxStatus().String()).
 		Bool("implicitTx", rst.QueryExecutor().ImplicitTx()).
 		Msg("complete relay iter")
 
@@ -1204,6 +1222,7 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 	}
 
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.SetTxStatus(txstatus.TXERR)
 		rst.WaitSync = true
 		return err
 	}
