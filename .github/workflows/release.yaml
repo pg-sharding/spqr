@@ -74,7 +74,7 @@ jobs:
             examples/init.sql
           echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spqr-router-${{ matrix.goos }}-${{ matrix.goarch }}
           path: ${{ steps.package.outputs.archive_name }}
