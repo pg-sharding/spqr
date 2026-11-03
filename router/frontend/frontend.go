@@ -23,6 +23,8 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
+	defer rst.QueryExecutor().FinishBlock()
+
 	if err == nil {
 
 		if err := rst.CompleteRelay(); err != nil {
@@ -147,6 +149,8 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 
+	rst.QueryExecutor().StartBlock()
+
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil
@@ -167,6 +171,7 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
+			Str("txstatus", rst.QueryExecutor().TxStatus().String()).
 			Msg("client connection synced")
 
 		return teardownPipeline(rst, nil)
@@ -174,6 +179,8 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 
 		return ReplyErrUtil(rst, rst.ProcessOneMsgCarefully(context.Background(), q))
 	case *pgproto3.Query:
+		// A simple Query closes the unnamed portal even inside a transaction.
+		rst.CloseUnnamedPortal()
 
 		tm := time.Now()
 

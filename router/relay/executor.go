@@ -43,6 +43,8 @@ type QueryStateExecutorImpl struct {
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
 
+	startedClientImplicitTx bool
+
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
 
@@ -384,7 +386,37 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
+func (s *QueryStateExecutorImpl) StartBlock() {
+	if s.TxStatus() == txstatus.TXIDLE {
+		s.startedClientImplicitTx = true
+	}
+}
+
+func (s *QueryStateExecutorImpl) FinishBlock() {
+	s.startedClientImplicitTx = false
+}
+
+func (s *QueryStateExecutorImpl) ResetBlock() {
+	if s.startedClientImplicitTx {
+		/* See flush vs sync */
+		s.SetTxStatus(txstatus.TXIDLE)
+	}
+}
+
 func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error {
+
+	if !implicit {
+		s.startedClientImplicitTx = false
+
+		/* XXX: unwind implicit tx here */
+
+		if s.TxStatus() != txstatus.TXIDLE {
+			// ignore this
+			_ = s.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
+			s.SetCommandCompleteTag("BEGIN")
+			return nil
+		}
+	}
 
 	s.es.implicitTx = implicit
 
@@ -1169,6 +1201,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return err
 	}
 
+	customPlan, _ := topPlan.(*plan.DataRowCustomProcess)
+	if customPlan != nil && customPlan.PrepareCustomRowProcess != nil {
+		customPlan.OpaqueInfo = customPlan.PrepareCustomRowProcess(customPlan.ExecutionTargets())
+	}
+
 	for {
 		var o *planopts.PlanOpts
 		if topPlan != nil {
@@ -1251,18 +1288,15 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
-				switch v := topPlan.(type) {
-				case *plan.DataRowFilter:
-					if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
-						shs[recvIndex].SHKey().Name == v.FilterShard.Name {
-						err = s.Client().Send(msg)
-						if err != nil {
-							return err
-						}
+				if customPlan != nil && customPlan.CustomRowProcess != nil {
+					shs := serv.Datashards()
+					if recvIndex >= uint(len(shs)) {
+						continue
 					}
-				default:
-					err = s.Client().Send(msg)
-					if err != nil {
+					v = customPlan.CustomRowProcess(v, shs[recvIndex].SHKey(), customPlan.OpaqueInfo)
+				}
+				if v != nil {
+					if err := s.Client().Send(v); err != nil {
 						return err
 					}
 				}

@@ -13,6 +13,11 @@ SET __spqr__commit_strategy TO 2pc;
 SELECT __spqr__set_next_2pc_gid('zzz1');
 BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
 NOTICE: prepare tx zzz1 on spqr_shard_1:6432
@@ -33,6 +38,11 @@ SELECT __spqr__set_next_2pc_gid('zzz2');
 -- no need 2pc for rollback;
 BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ROLLBACK;
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');

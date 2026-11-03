@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -1086,7 +1087,45 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 					Detail("engine V2 is OFF").
 					Hint("try to turn engine V2 to ON")
 			}
-			return &plan.ScatterPlan{BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}}}, nil
+			switch fname {
+			case virtual.PGTryAdvisoryXactLock:
+				type xactLockState struct {
+					pending map[string]struct{}
+					result  []byte
+					seen    bool
+				}
+				return &plan.DataRowCustomProcess{
+					Plan: &plan.ScatterPlan{},
+					PrepareCustomRowProcess: func(targets []kr.ShardKey) any {
+						state := &xactLockState{pending: make(map[string]struct{}, len(targets))}
+						for _, target := range targets {
+							/* XXX: Which shards we expect ? */
+							state.pending[target.Name] = struct{}{}
+						}
+						return state
+					},
+					CustomRowProcess: func(row *pgproto3.DataRow, shard kr.ShardKey, opaque any) *pgproto3.DataRow {
+						state := opaque.(*xactLockState)
+						if _, ok := state.pending[shard.Name]; !ok {
+							return nil
+						}
+						delete(state.pending, shard.Name)
+						value := row.Values[0]
+						if state.seen {
+							value = engine.BoolAnd(state.result, value)
+						}
+						state.result = bytes.Clone(value)
+						state.seen = true
+						if len(state.pending) != 0 {
+							return nil
+						}
+						row.Values[0] = state.result
+						return row
+					},
+				}, nil
+			default:
+				return &plan.ScatterPlan{BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}}}, nil
+			}
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		}
@@ -1315,9 +1354,9 @@ func (p *PlannerV2) PlanDistributedQuery(
 				if err != nil {
 					return nil, err
 				}
-				return &plan.DataRowFilter{
-					Plan:        p,
-					FilterShard: filterShard,
+				return &plan.DataRowCustomProcess{
+					Plan:             p,
+					CustomRowProcess: plan.RowFilter(filterShard),
 				}, nil
 			}
 			return p, err
@@ -1356,9 +1395,9 @@ func (p *PlannerV2) PlanDistributedQuery(
 				if err != nil {
 					return nil, err
 				}
-				return &plan.DataRowFilter{
-					Plan:        p,
-					FilterShard: filterShard,
+				return &plan.DataRowCustomProcess{
+					Plan:             p,
+					CustomRowProcess: plan.RowFilter(filterShard),
 				}, nil
 			}
 			return p, err

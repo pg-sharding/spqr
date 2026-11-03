@@ -70,7 +70,7 @@ func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) 
 	}
 }
 
-var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
+var errAbortedTx = spqrerror.Newf(spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION, "current transaction is aborted, commands ignored until end of transaction block")
 
 func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
@@ -193,16 +193,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		switch st.Kind {
 		case lyx.TRANS_STMT_BEGIN:
-
-			/* XXX: unwind implicit tx here */
-
-			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
-				// ignore this
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
-				rst.QueryExecutor().SetCommandCompleteTag("BEGIN")
-				return noDataPd, nil
-			}
-
 			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 

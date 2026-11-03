@@ -55,6 +55,7 @@ type RelayStateMgr interface {
 
 	CompleteRelay() error
 	CompleteRelayClient() error
+	CloseUnnamedPortal()
 	Close() error
 	Client() client.RouterClient
 
@@ -259,9 +260,7 @@ func (rst *RelayStateImpl) Cleanup() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 	err := rst.Cleanup()
-
-	/* See flush vs sync */
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
+	rst.QueryExecutor().ResetBlock()
 
 	return err
 }
@@ -393,7 +392,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 	}
 
 	switch v := queryPlan.(type) {
-	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowFilter:
+	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.RandomDispatchPlan, *plan.DataRowCustomProcess:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -473,12 +472,16 @@ func (rst *RelayStateImpl) CompleteRelayClient() error {
 	return rst.Client().Send(rst.QueryExecutor().RFQ())
 }
 
-func (rst *RelayStateImpl) CompleteRelay() error {
+func (rst *RelayStateImpl) CloseUnnamedPortal() {
 	rst.unnamedPortalExists = false
+	rst.execute = nil
+	rst.bindQueryPlan = nil
+}
 
+func (rst *RelayStateImpl) CompleteRelay() error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Str("txstatus", rst.qse.TxStatus().String()).
+		Str("txstatus", rst.QueryExecutor().TxStatus().String()).
 		Bool("implicitTx", rst.QueryExecutor().ImplicitTx()).
 		Msg("complete relay iter")
 
@@ -508,6 +511,11 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 			return err
 		}
 		return err
+	}
+
+	// Sync preserves the unnamed portal while its transaction is active.
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		rst.CloseUnnamedPortal()
 	}
 
 	rst.QueryExecutor().Reset()
@@ -743,8 +751,16 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 
 	if objType == xproto.ObjectTypePortal {
 
-		if !rst.unnamedPortalExists && name == "" {
-			return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
+		if name == "" {
+			if !rst.unnamedPortalExists {
+				return spqrerror.New(spqrerror.PG_PORTAL_DOES_NOT_EXISTS, "portal \"\" does not exist")
+			}
+		} else {
+			if _, ok := rst.executeMp[name]; !ok {
+				return spqrerror.New(
+					spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
+					fmt.Sprintf("portal \"%s\" does not exist", name))
+			}
 		}
 
 		spqrlog.Zero.Debug().
@@ -759,11 +775,6 @@ func (rst *RelayStateImpl) DescribePrepared(objType byte, name string, dMsg *pgp
 
 			p := rst.bindQueryPlan
 			if name != "" {
-				if _, ok := rst.executeMp[name]; !ok {
-					return spqrerror.New(
-						spqrerror.PG_PORTAL_DOES_NOT_EXISTS,
-						fmt.Sprintf("portal \"%s\" does not exist", name))
-				}
 				p = rst.bindQueryPlanMP[name]
 			}
 
@@ -1107,8 +1118,6 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 }
 
 func (rst *RelayStateImpl) PipelineCleanup() {
-	rst.bindQueryPlan = nil
-
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		/* XXX: normally these two map should be either both empty
 		* either both not */
@@ -1169,6 +1178,8 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			/* Portal */
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
+			} else {
+				rst.CloseUnnamedPortal()
 			}
 			if err := rst.Client().ReplyCloseComplete(); err != nil {
 				return err
@@ -1201,6 +1212,7 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 	}
 
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.SetTxStatus(txstatus.TXERR)
 		rst.WaitSync = true
 		return err
 	}
