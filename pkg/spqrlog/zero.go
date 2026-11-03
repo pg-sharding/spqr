@@ -2,6 +2,7 @@ package spqrlog
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"time"
@@ -15,6 +16,8 @@ import (
 var Zero = NewZeroLogger("", "info", false, false)
 
 var lastDiode *diode.Writer
+
+var lastWriter io.Writer
 
 func CloseLogger() {
 	if lastDiode != nil {
@@ -56,6 +59,7 @@ func NewZeroLogger(filepath string, logLevel string, async bool, prettyLogging b
 		lastDiode = nil
 	}
 
+	lastWriter = writer
 	logger := zerolog.New(writer).With().Timestamp().Logger().Level(level)
 	return &logger
 }
