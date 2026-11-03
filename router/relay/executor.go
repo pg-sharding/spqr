@@ -139,6 +139,7 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	}
 
 	if err := v.Cleanup(s.Client().Rule()); err != nil {
+		_ = p.Discard(v)
 		return err
 	}
 	return p.Put(v)
