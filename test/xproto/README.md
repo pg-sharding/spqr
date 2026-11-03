@@ -1,4 +1,17 @@
-# Distributed upsert stress benchmark
+# Extended protocol tests
+
+The `proto-extended-postgres` CI job runs the PostgreSQL-compatible xproto tests
+against PostgreSQL 17. `proto-extended-odyssey-master` runs the same tests through
+Odyssey, built from `yandex/odyssey` master, with PostgreSQL 17 as its backend.
+The Odyssey configuration in `conf/odyssey.conf` enables transaction pooling and
+`pool_reserve_prepared_statement yes` to exercise prepared statement handling
+across backend attachments. Both jobs use `SPQR_XPROTO_TEST_PURE_PG_ONLY=1` to
+skip SPQR-specific routing tests.
+
+The Odyssey job saves the tested Odyssey commit, pooler and PostgreSQL logs,
+and the test output in the `xproto-odyssey-logs` artifact, including on failure.
+
+## Distributed upsert stress benchmark
 
 CI runs both benchmark cases after the tests in the `proto-extended` job.
 
