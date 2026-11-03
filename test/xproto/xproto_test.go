@@ -3913,6 +3913,61 @@ func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
+func TestExtendedErrorRollbackAfterSync(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
 func TestExtendedErrorWithFlush(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
