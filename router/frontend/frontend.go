@@ -23,7 +23,7 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
-	rst.FinishBlock()
+	defer rst.FinishBlock()
 
 	if err == nil {
 

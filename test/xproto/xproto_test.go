@@ -3694,6 +3694,61 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 	}
 }
 
+func TestSimpleQueryErrorClearsStatementHint(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "SELECT * FROM hint_error_missing /* __spqr__sharding_key: 1 */",
+				},
+				&pgproto3.Query{
+					String: "SHOW __spqr__sharding_key",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.SPQR_OBJECT_NOT_EXIST,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("sharding key"),
+							DataTypeOID:  catalog.TEXTOID,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SHOW"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	protoTestRunner(t, frontend, tt)
+}
+
 func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
