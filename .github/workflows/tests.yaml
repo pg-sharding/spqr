@@ -229,10 +229,18 @@ jobs:
       - name: Extended proto
         run: PROTO_TEST_TAG=xproto make xproto_regress
 
-  proto-regress-xproto-postgres:
-    name: proto-extended-postgres
+  proto-regress-xproto-compatibility:
+    name: proto-extended-${{ matrix.backend }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: postgres
+            port: "5432"
+          - backend: odyssey-master
+            port: "6432"
     services:
       postgres:
         image: postgres:17
@@ -243,13 +251,13 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U regress -d regress"
+          --health-cmd "pg_isready -h 127.0.0.1 -U regress -d regress"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
     env:
       POSTGRES_HOST: 127.0.0.1
-      POSTGRES_PORT: "5432"
+      POSTGRES_PORT: ${{ matrix.port }}
       POSTGRES_USER: regress
       POSTGRES_DB: regress
       POSTGRES_PASSWORD: ""
@@ -263,7 +271,49 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Extended proto against PostgreSQL
+        if: matrix.backend == 'postgres'
         run: go test -tags=xproto -v -count=1 -timeout=5m ./test/xproto/...
+      - name: Check out Odyssey master
+        if: matrix.backend == 'odyssey-master'
+        uses: actions/checkout@v7
+        with:
+          repository: yandex/odyssey
+          ref: master
+          path: .odyssey
+          persist-credentials: false
+      - name: Install Odyssey build dependencies
+        if: matrix.backend == 'odyssey-master'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake bison flex libssl-dev postgresql-client
+      - name: Build Odyssey
+        if: matrix.backend == 'odyssey-master'
+        run: |
+          mkdir -p test-reports/xproto-odyssey
+          git -C .odyssey rev-parse HEAD | tee test-reports/xproto-odyssey/odyssey-commit.txt
+          cmake -S .odyssey -B .odyssey/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build .odyssey/build --target odyssey --parallel 2
+      - name: Extended proto against Odyssey with prepared statements
+        if: matrix.backend == 'odyssey-master'
+        shell: bash
+        run: |
+          set -euo pipefail
+          .odyssey/build/sources/odyssey --console test/xproto/conf/odyssey.conf >test-reports/xproto-odyssey/odyssey.log 2>&1 &
+          odyssey_pid=$!
+          trap 'kill "$odyssey_pid" 2>/dev/null || true; wait "$odyssey_pid" || true' EXIT
+          timeout 30s bash -c 'until pg_isready -h 127.0.0.1 -p 6432 -U regress -d regress; do sleep 0.1; done'
+          go test -tags=xproto -v -count=1 -timeout=5m ./test/xproto/... 2>&1 | tee test-reports/xproto-odyssey/xproto.log
+      - name: Collect PostgreSQL logs
+        if: always() && matrix.backend == 'odyssey-master'
+        run: |
+          mkdir -p test-reports/xproto-odyssey
+          docker logs ${{ job.services.postgres.id }} >test-reports/xproto-odyssey/postgres.log 2>&1
+      - name: Upload Odyssey xproto logs
+        if: always() && matrix.backend == 'odyssey-master'
+        uses: actions/upload-artifact@v7
+        with:
+          name: xproto-odyssey-logs
+          path: test-reports/xproto-odyssey/
 
   proto-regress-xproto-portal-suspect:
     name: proto-extended-portal-suspend
