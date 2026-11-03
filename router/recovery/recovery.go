@@ -49,7 +49,7 @@ func NewTwoPCWatchDog(be []*config.BackendRule, tmgr topology.TopologyMgr) (*Two
 * On any failure, first encountered error is returned.
  */
 func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]struct{}, error) {
-	spqrlog.Zero.Info().Msg("enter RecoverDistributedTx")
+	spqrlog.WdLog.Info().Msg("enter RecoverDistributedTx")
 	shs, err := d.d.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 
 			if err := func() error {
 
-				spqrlog.Zero.Info().Str("shard", sh.ID).Str("user", beRule.Usr).Str("db", beRule.DB).Msg("fetching stale two phase commit data")
+				spqrlog.WdLog.Info().Str("shard", sh.ID).Str("user", beRule.Usr).Str("db", beRule.DB).Msg("fetching stale two phase commit data")
 
 				serv, err := d.p.ConnectionWithTSA(pool.ConnAllocParams{
 					Clid: 0xFFFFFFFFFFFFFFFF,
@@ -94,7 +94,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 				defer func() {
 					if put {
 						if err := d.p.Put(serv); err != nil {
-							spqrlog.Zero.Debug().Msg("failed to release connection")
+							spqrlog.WdLog.Debug().Msg("failed to release connection")
 						}
 					}
 				}()
@@ -127,7 +127,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 							/* process */
 							gid := string(v.Values[0])
 
-							spqrlog.Zero.Debug().Str("shard", sh.ID).Str("gid", gid).Msg("found unfinished tx on shard")
+							spqrlog.WdLog.Debug().Str("shard", sh.ID).Str("gid", gid).Msg("found unfinished tx on shard")
 
 							/* XXX: Recheck gid status ? */
 
@@ -149,7 +149,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 				}
 				return nil
 			}(); err != nil {
-				spqrlog.Zero.Error().Str("db", beRule.DB).Str("shard", sh.ID).Err(err).Msg("failed to list prepared TX for 2pc recovery")
+				spqrlog.WdLog.Error().Str("db", beRule.DB).Str("shard", sh.ID).Err(err).Msg("failed to list prepared TX for 2pc recovery")
 			}
 
 			coveredShardDbs[key] = true
@@ -178,7 +178,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 		* 3) another recovery routine raced with us and won the race.
 		*/
 		if err := d.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
-			spqrlog.Zero.Error().Str("gid", gid).Err(err).Msg("failed to recover unfinished distributed tx")
+			spqrlog.WdLog.Error().Str("gid", gid).Err(err).Msg("failed to recover unfinished distributed tx")
 			if recoverErr == nil {
 				recoverErr = err
 			}
@@ -245,13 +245,13 @@ func (d *TwoPCWatchDog) FinalizeTxStatus(sh string, gid string, q string) error 
 				Name: sh,
 			})
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Str("shard", sh).Str("gid", gid).Msg("failed to acquire connection for 2pc finalize")
+				spqrlog.WdLog.Error().Err(err).Str("shard", sh).Str("gid", gid).Msg("failed to acquire connection for 2pc finalize")
 				return false, spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to acquire connection to shard %q for 2pc finalize of gid %q: %v", sh, gid, err)
 			}
 
 			defer func() {
 				if err := d.p.Put(serv); err != nil {
-					spqrlog.Zero.Error().Str("gid", gid).Err(err).Msg("failed to release cleanup connection")
+					spqrlog.WdLog.Error().Str("gid", gid).Err(err).Msg("failed to release cleanup connection")
 				}
 			}()
 
@@ -259,13 +259,13 @@ func (d *TwoPCWatchDog) FinalizeTxStatus(sh string, gid string, q string) error 
 				return false, err
 			} else if !res {
 				/* tx already finalized */
-				spqrlog.Zero.Debug().Str("gid", gid).Msg("tx already committed/rejected")
+				spqrlog.WdLog.Debug().Str("gid", gid).Msg("tx already committed/rejected")
 				return true, nil
 			}
 
 			/* ROLLBACK/COMMIT */
 			if err := d.DeployQueryOnShard(serv, q); err != nil {
-				spqrlog.Zero.Debug().Str("gid", gid).Str("user", beRule.Usr).Err(err).Msg("failed to roll back transaction")
+				spqrlog.WdLog.Debug().Str("gid", gid).Str("user", beRule.Usr).Err(err).Msg("failed to roll back transaction")
 				accErr = append(accErr, err.Error())
 				return false, nil
 			} else {

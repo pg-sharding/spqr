@@ -33,11 +33,7 @@ func CloseWdLogger() {
 // - *zerolog.Logger: Pointer to the logger instance.
 func NewWdLogger(filepath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
 	level := parseLevel(logLevel)
-	if filepath == "" {
-		// Share writer with Zero
-		logger := zerolog.New(lastWriter).With().Timestamp().Logger().Level(level)
-		return &logger
-	}
+
 	_, writer, err := newWriter(filepath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
@@ -70,6 +66,10 @@ func NewWdLogger(filepath string, logLevel string, async bool, prettyLogging boo
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
 func ReloadWdLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
+	if logFileName == "" {
+		WdLog = Zero
+		return
+	}
 	sv := lastDiode
 	WdLog = NewWdLogger(logFileName, logLevel, asyncLog, prettyLogging)
 	if sv != nil {
