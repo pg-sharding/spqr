@@ -40,6 +40,12 @@ const (
 	CommitStrategy2pc        = "2pc"
 )
 
+const (
+	DefaultRouterPort        = "6432"
+	DefaultAdminConsolePort  = "7432"
+	DefaultRouterGrpcAPIPort = "7000"
+)
+
 var cfgRouter Router
 
 type Router struct {
@@ -161,6 +167,9 @@ type Router struct {
 var _ Config = &Router{}
 
 func (r *Router) ApplyDefaults() {
+	r.RouterPort = DefaultRouterPort
+	r.AdminConsolePort = DefaultAdminConsolePort
+	r.GrpcAPIPort = DefaultRouterGrpcAPIPort
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
 }
