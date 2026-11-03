@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -429,7 +428,7 @@ func SelectRandomDispatchPlan(routes []kr.ShardKey) (plan.Plan, error) {
 		return nil, fmt.Errorf("no routes configured")
 	}
 
-	r := routes[rand.Int()%len(routes)]
+	r := routes[0]
 	return &plan.ShardDispatchPlan{
 		ExecTarget: r,
 	}, nil
