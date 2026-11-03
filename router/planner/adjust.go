@@ -81,14 +81,14 @@ func AdjustPlanStateForFluxAccess(rm *rmeta.RoutingMetadataContext, p plan.Plan)
 	return nil
 }
 
-func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
+func AdjustPlanStateForAutoLinearize(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
 	_, ok := p.(*plan.ShardDispatchPlan)
 	if ok {
-		/* single shard dispatch is safe from hazard upsert */
+		/* Single-shard dispatch cannot cause distributed deadlocks. */
 		return nil
 	}
 
-	if rm.HasHazardUpsert {
+	if rm.HasHazardUpsert || rm.HasReferenceRelUpdate {
 		p.Opts().AutoLinearize = true
 	}
 
