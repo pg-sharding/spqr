@@ -6,26 +6,33 @@ import (
 	"github.com/pg-sharding/spqr/router/relay"
 )
 
-type teardownBenchRelay struct {
-	relay.RelayStateMgr
+type teardownBenchExecutor struct {
+	relay.QueryStateExecutor
 	started bool
 }
 
-func (s *teardownBenchRelay) FinishBlock()               { s.started = false }
-func (s *teardownBenchRelay) CompleteRelay() error       { return nil }
-func (s *teardownBenchRelay) CompleteRelayClient() error { return nil }
+func (s *teardownBenchExecutor) FinishBlock() { s.started = false }
+
+type teardownBenchRelay struct {
+	relay.RelayStateMgr
+	executor teardownBenchExecutor
+}
+
+func (s *teardownBenchRelay) QueryExecutor() relay.QueryStateExecutor { return &s.executor }
+func (s *teardownBenchRelay) CompleteRelay() error                    { return nil }
+func (s *teardownBenchRelay) CompleteRelayClient() error              { return nil }
 
 func BenchmarkTeardownFinishBlock(b *testing.B) {
 	s := &teardownBenchRelay{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.started = true
+		s.executor.started = true
 		if err := teardownPipeline(s, nil); err != nil {
 			b.Fatal(err)
 		}
 	}
-	if s.started {
+	if s.executor.started {
 		b.Fatal("block not finished")
 	}
 }
