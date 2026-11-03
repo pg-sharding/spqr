@@ -41,6 +41,35 @@ func BindAndReadSliceResult(rst *RelayStateImpl, p plan.Plan, forceSimple bool, 
 	return rst.QueryExecutor().ExecuteSlice(qd, p, true)
 }
 
+func boundPortalDescription(desc *prepstatement.PreparedStatementDescriptor, formats []int16) *PortalDesc {
+	if desc == nil {
+		return nil
+	}
+	if desc.NoData {
+		return noDataPd
+	}
+	if desc.RowDesc == nil {
+		return nil
+	}
+	if len(formats) > 1 && len(formats) != len(desc.RowDesc.Fields) {
+		// The backend will reject this Bind; do not retain a description for it.
+		return nil
+	}
+
+	fields := xproto.CopyFieldDescriptions(desc.RowDesc.Fields)
+	for i := range fields {
+		switch len(formats) {
+		case 0:
+			fields[i].Format = xproto.FormatCodeText
+		case 1:
+			fields[i].Format = formats[0]
+		default:
+			fields[i].Format = formats[i]
+		}
+	}
+	return &PortalDesc{rd: &pgproto3.RowDescription{Fields: fields}}
+}
+
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 
 	shardId := shard.ID()
