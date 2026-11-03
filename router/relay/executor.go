@@ -43,6 +43,8 @@ type QueryStateExecutorImpl struct {
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
 
+	startedClientImplicitTx bool
+
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
 
@@ -384,7 +386,37 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
+func (s *QueryStateExecutorImpl) StartBlock() {
+	if s.TxStatus() == txstatus.TXIDLE {
+		s.startedClientImplicitTx = true
+	}
+}
+
+func (s *QueryStateExecutorImpl) FinishBlock() {
+	s.startedClientImplicitTx = false
+}
+
+func (s *QueryStateExecutorImpl) ResetBlock() {
+	if s.startedClientImplicitTx {
+		/* See flush vs sync */
+		s.SetTxStatus(txstatus.TXIDLE)
+	}
+}
+
 func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error {
+
+	if !implicit {
+		s.startedClientImplicitTx = false
+
+		/* XXX: unwind implicit tx here */
+
+		if s.TxStatus() != txstatus.TXIDLE {
+			// ignore this
+			_ = s.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
+			s.SetCommandCompleteTag("BEGIN")
+			return nil
+		}
+	}
 
 	s.es.implicitTx = implicit
 

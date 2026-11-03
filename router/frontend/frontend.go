@@ -23,7 +23,7 @@ import (
 
 func teardownPipeline(rst relay.RelayStateMgr, err error) error {
 
-	defer rst.FinishBlock()
+	defer rst.QueryExecutor().FinishBlock()
 
 	if err == nil {
 
@@ -149,7 +149,7 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 
-	rst.StartBlock()
+	rst.QueryExecutor().StartBlock()
 
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:

@@ -193,16 +193,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		switch st.Kind {
 		case lyx.TRANS_STMT_BEGIN:
-
-			/* XXX: unwind implicit tx here */
-
-			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
-				// ignore this
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
-				rst.QueryExecutor().SetCommandCompleteTag("BEGIN")
-				return noDataPd, nil
-			}
-
 			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
