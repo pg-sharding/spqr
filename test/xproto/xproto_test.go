@@ -4202,6 +4202,147 @@ func TestParseErrorThenReuseName(t *testing.T) {
 	}
 }
 
+func TestPreparedStatementReparseError(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	const table = "xproto_reparse"
+	// A missing relation must remain a SQL error when a pooler redeploys Parse.
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "CREATE TABLE " + table + " (id int)",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "reparse_error",
+				},
+				&pgproto3.Parse{
+					Name:  "reparse_error",
+					Query: "SELECT id FROM " + table + " /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "DROP TABLE " + table,
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("CREATE TABLE"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("DROP TABLE"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+
+	// Hold the released backend so Bind has to redeploy on another one.
+	blocker, blockerConn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "blocker startup failed") {
+		return
+	}
+	defer func() {
+		_ = blockerConn.Close()
+	}()
+	assert.NoError(t, blockerConn.SetDeadline(time.Now().Add(30*time.Second)))
+	blocker.Send(&pgproto3.Query{
+		String: "BEGIN",
+	})
+	blocker.Send(&pgproto3.Query{
+		String: "SELECT 1 WHERE pg_backend_pid() > 0 /* __spqr__execute_on: sh1 */",
+	})
+	if !assert.NoError(t, blocker.Flush()) {
+		return
+	}
+	for ready := 0; ready < 2; {
+		msg, err := blocker.Receive()
+		if !assert.NoError(t, err) {
+			return
+		}
+		switch msg := msg.(type) {
+		case *pgproto3.ErrorResponse:
+			t.Fatalf("blocker failed: %s", msg.Message)
+		case *pgproto3.ReadyForQuery:
+			if !assert.Equal(t, byte('T'), msg.TxStatus) {
+				return
+			}
+			ready++
+		}
+	}
+
+	tt := []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Bind{
+					PreparedStatement: "reparse_error",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Query: "SELECT 1",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_ERRCODE_UNDEFINED_TABLE,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	}
+	// SPQR binds locally and reports the reparse error on Execute.
+	if !isPurePGTesting() {
+		tt[0].Response = append([]pgproto3.BackendMessage{
+			&pgproto3.BindComplete{},
+		}, tt[0].Response...)
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
 func TestUsePstmtAfterSimpleQuery(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
