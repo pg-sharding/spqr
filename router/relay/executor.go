@@ -408,6 +408,8 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt
 	if !implicit {
 		s.startedClientImplicitTx = false
 
+		/* XXX: unwind implicit tx here */
+
 		if s.TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = s.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
