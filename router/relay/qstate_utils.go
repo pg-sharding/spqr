@@ -2,6 +2,7 @@ package relay
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -45,6 +46,12 @@ func DispatchSlice(qd *QueryDesc,
 	}
 
 	forceLinearize = forceLinearize || guc.Get(cl)
+
+	if forceLinearize {
+		sort.Slice(et, func(i, j int) bool {
+			return et[i].Name < et[j].Name
+		})
+	}
 
 	for _, targ := range et {
 
