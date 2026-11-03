@@ -3749,6 +3749,68 @@ func TestSimpleQueryErrorClearsStatementHint(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
+func TestExtendedBeginBindErrorBeforeSync(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "BEGIN",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				// Fail before the first Sync after the extended-protocol BEGIN.
+				&pgproto3.Bind{
+					PreparedStatement: "err_test_nonexistent",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "SELECT 1",
+				},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+
+	protoTestRunner(t, frontend, tt)
+}
+
 func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
