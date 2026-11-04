@@ -43,6 +43,7 @@ const (
 const (
 	DefaultRouterPort        = "6432"
 	DefaultAdminConsolePort  = "7432"
+	DefaultRouterGrpcAPIHost = "127.0.0.1"
 	DefaultRouterGrpcAPIPort = "7000"
 )
 
@@ -76,6 +77,7 @@ type Router struct {
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
+	GrpcAPIHost      string `json:"grpc_api_host" toml:"grpc_api_host" yaml:"grpc_api_host"`
 	GrpcAPIPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	MetricPath       string `json:"metric_path" toml:"metric_path" yaml:"metric_path"`
 	MetricPort       string `json:"metric_port" toml:"metric_port" yaml:"metric_port"`
@@ -172,6 +174,19 @@ func (r *Router) ApplyDefaults() {
 	r.GrpcAPIPort = DefaultRouterGrpcAPIPort
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
+}
+
+// GrpcListenHost returns the address the admin gRPC API should bind to.
+// Explicit grpc_api_host wins; otherwise host is reused; if both are empty,
+// loopback is used so the unauthenticated API is not exposed on all interfaces.
+func (r *Router) GrpcListenHost() string {
+	if r.GrpcAPIHost != "" {
+		return r.GrpcAPIHost
+	}
+	if r.Host != "" {
+		return r.Host
+	}
+	return DefaultRouterGrpcAPIHost
 }
 
 func (r *Router) PostProcess() error {

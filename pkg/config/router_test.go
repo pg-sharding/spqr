@@ -50,3 +50,31 @@ func TestRouterPortDefaultsOverriddenByConfig(t *testing.T) {
 	assert.Equal(t, "17432", r.AdminConsolePort)
 	assert.Equal(t, "17000", r.GrpcAPIPort)
 }
+
+func TestRouterGrpcListenHost(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, DefaultRouterGrpcAPIHost, (&Router{}).GrpcListenHost())
+	assert.Equal(t, "10.0.0.5", (&Router{Host: "10.0.0.5"}).GrpcListenHost())
+	assert.Equal(t, "0.0.0.0", (&Router{GrpcAPIHost: "0.0.0.0"}).GrpcListenHost())
+	assert.Equal(t, "0.0.0.0", (&Router{Host: "10.0.0.5", GrpcAPIHost: "0.0.0.0"}).GrpcListenHost())
+}
+
+func TestRouterGrpcListenHostDefaultWhenHostEmpty(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "router.yaml")
+
+	err := os.WriteFile(path, []byte("log_level: info\nhost: \"\"\n"), 0o600)
+	require.NoError(t, err)
+
+	r := &Router{}
+	_, err = LoadConfig(path, r)
+	require.NoError(t, err)
+
+	assert.Empty(t, r.Host)
+	assert.Equal(t, DefaultRouterPort, r.RouterPort)
+	assert.Equal(t, DefaultRouterGrpcAPIPort, r.GrpcAPIPort)
+	assert.Equal(t, DefaultRouterGrpcAPIHost, r.GrpcListenHost())
+}
