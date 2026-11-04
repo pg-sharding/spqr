@@ -243,6 +243,8 @@ type XQDB interface {
 	TwoPhaseTxMetaKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
+
+	Snapshot() XQDB
 }
 
 type StateKeeperQDB interface {
