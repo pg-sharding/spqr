@@ -82,9 +82,45 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			}
 		} else {
+
 			/* this message is actually bind */
-			if err := serv.SendShard(qd.Msg, targ); err != nil {
-				return err
+
+			bnd, ok := qd.Msg.(*pgproto3.Bind)
+			if !ok {
+				return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "dispatch slice sync lost")
+			}
+
+			if p != nil {
+				if p.Opts().AutoLinearize {
+					// return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "auto-linearize for extended protocol is not yet supported")
+				}
+				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
+					/* Uh, oh, this is very ugly hack */
+					/* Parse in unnamed */
+					if err := serv.SendShard(&pgproto3.Parse{
+						Query:         ovMsg,
+						ParameterOIDs: qd.savedParamOids,
+					}, targ); err != nil {
+						return err
+					}
+
+					if err := serv.SendShard(&pgproto3.Bind{
+						ParameterFormatCodes: bnd.ParameterFormatCodes,
+						Parameters:           bnd.Parameters,
+						ResultFormatCodes:    bnd.ResultFormatCodes,
+					}, targ); err != nil {
+						return err
+					}
+
+				} else {
+					if err := serv.SendShard(bnd, targ); err != nil {
+						return err
+					}
+				}
+			} else {
+				if err := serv.SendShard(bnd, targ); err != nil {
+					return err
+				}
 			}
 
 			if err := serv.SendShard(qd.exec, targ); err != nil {

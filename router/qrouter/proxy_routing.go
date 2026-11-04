@@ -1597,6 +1597,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 
 	/* Should we use 2pc? */
 	if rm.HasReferenceRelUpdate {
+		p.Opts().AutoLinearize = true
 		guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_AUTOPROTECT_2PC)
 		if err != nil {
 			return nil, err
