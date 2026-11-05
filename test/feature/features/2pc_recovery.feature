@@ -245,6 +245,19 @@ Feature: MemQDB with PG dc state keeper test
       "status": "rejected"
     }]
     """
+    When I run command on host "router"
+    """
+    cat /var/log/spqr_2pc_wd.log
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    .*enter RecoverDistributedTx.*
+    .*sh1.*fetching stale two phase commit data.*
+    .*sh1.*found unfinished tx on shard.*
+    .*sh2.*fetching stale two phase commit data.*
+    .*sh2.*found unfinished tx on shard.*
+    """
 
   Scenario: committing transaction is committed
     Given cluster environment is
@@ -397,6 +410,19 @@ Feature: MemQDB with PG dc state keeper test
             "id": 1
         }
     ]
+    """
+    When I run command on host "router"
+    """
+    cat /var/log/spqr_2pc_wd.log
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    .*enter RecoverDistributedTx.*
+    .*sh1.*fetching stale two phase commit data.*
+    .*sh1.*found unfinished tx on shard.*
+    .*sh2.*fetching stale two phase commit data.*
+    .*sh2.*found unfinished tx on shard.*
     """
 
   Scenario: planned transaction is rejected with watchdog
@@ -921,4 +947,17 @@ Feature: MemQDB with PG dc state keeper test
             "id": 1
         }
     ]
+    """
+    When I run command on host "router"
+    """
+    cat /var/log/spqr_2pc_wd.log
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    .*enter RecoverDistributedTx.*
+    .*sh1.*fetching stale two phase commit data.*
+    .*sh1.*found unfinished tx on shard.*
+    .*sh2.*fetching stale two phase commit data.*
+    .*sh2.*found unfinished tx on shard.*
     """

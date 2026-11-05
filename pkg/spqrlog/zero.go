@@ -2,6 +2,7 @@ package spqrlog
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"time"
@@ -28,16 +29,20 @@ func CloseLogger() {
 //
 // Parameters:
 // - filepath: Log file path.
+// - async: Log asynchronously.
 // - prettyLogging: Enable pretty logging.
 //
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
-func NewZeroLogger(filepath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
-	_, writer, err := newWriter(filepath)
+func NewZeroLogger(filePath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
+	_, writer, err := newWriter(filePath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
 	}
+	return newZeroLoggerInternal(writer, logLevel, async, prettyLogging)
+}
 
+func newZeroLoggerInternal(writer io.Writer, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
 	level := parseLevel(logLevel)
 
 	if prettyLogging {
@@ -72,6 +77,35 @@ func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogg
 	if sv != nil {
 		_ = sv.Close()
 	}
+}
+
+// ReloadLogger reloads the logger with a new log file or stdout if filepath is empty.
+//
+// Parameters:
+//   - filepath: The log file path.
+//   - logLevel: the log level
+//   - prettyLogging: Enable pretty logging.
+func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
+	if logFileName == wdLogFileName || wdLogFileName == "" {
+		sv := lastDiode
+		wdSv := wdLastDiode
+		_, writer, err := newWriter(logFileName)
+		if err != nil {
+			log.Printf("failed to initialize logger: %v", err)
+		}
+		Zero = newZeroLoggerInternal(writer, logLevel, asyncLog, prettyLogging)
+		WdLog = Zero
+		if sv != nil {
+			_ = sv.Close()
+		}
+		if wdSv != nil {
+			_ = wdSv.Close()
+		}
+		wdLastDiode = nil
+		return
+	}
+	ReloadLogger(logFileName, logLevel, asyncLog, prettyLogging)
+	ReloadWdLogger(wdLogFileName, logLevel, asyncLog, prettyLogging)
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.

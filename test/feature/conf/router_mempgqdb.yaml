@@ -17,6 +17,7 @@ tx_data_ttl: 60m
 use_coordinator_init: true
 enable_icp: true
 allow_two_phase_commit: true
+watchdog_log_file: /var/log/spqr_2pc_wd.log
 watchdog_backend_rule:
   db: regress
   usr: regress
