@@ -749,7 +749,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		// we do not currently support SELECT rewrite
 		{
 			query: `INSERT INTO test_ref_rel SELECT 1;`,
-			err:   rerrors.ErrComplexQuery,
+			err:   rerrors.NewComplexQueryError(),
 		},
 		{
 			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
@@ -2180,7 +2180,7 @@ func TestJoins(t *testing.T) {
 			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where i = 15 ORDER BY id;",
 			exp:   nil,
 
-			err: rerrors.ErrComplexQuery,
+			err: rerrors.NewComplexQueryError().Hint("relation reference ambiguity by alias/colref: /i"),
 		},
 
 		// non-sharding columns

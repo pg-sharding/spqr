@@ -941,7 +941,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 	}
 
 	if txt != s.cl.Server().TxStatus() {
-		return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+		return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 	}
 	s.SetTxStatus(txt)
 
@@ -994,7 +994,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 			}
 
 			if txt != s.cl.Server().TxStatus() {
-				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+				return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 			}
 			s.SetTxStatus(txt)
 
@@ -1312,7 +1312,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.BindComplete:
 		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
+			return rerrors.NewExecutorSyncLostError().Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
@@ -1336,14 +1336,14 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
+				return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
-			return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
+			return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
 		}
 	}
 }
@@ -1354,7 +1354,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 	/* First thing first, do sanity check */
 	switch topPlan.(type) {
 	case *plan.CopyPlan:
-		return rerrors.ErrExecutorSyncLost.Detail("copy plan is not convertable to dispatchable plan")
+		return rerrors.NewExecutorSyncLostError().Detail("copy plan is not convertable to dispatchable plan")
 	}
 
 	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {

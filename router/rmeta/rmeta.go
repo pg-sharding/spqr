@@ -332,7 +332,7 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) 
 			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
 				if len(l) > 1 {
 					// ambiguity in column aliasing
-					return nil, rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
+					return nil, rerrors.NewComplexQueryError().Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
 				}
 				return l[0], nil
 			} else {

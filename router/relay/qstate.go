@@ -70,7 +70,9 @@ func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) 
 	}
 }
 
-var errAbortedTx = spqrerror.Newf(spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION, "current transaction is aborted, commands ignored until end of transaction block")
+func newAbortedTxError() *spqrerror.SpqrError {
+	return spqrerror.Newf(spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION, "current transaction is aborted, commands ignored until end of transaction block")
+}
 
 func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
@@ -116,7 +118,7 @@ l:
 			* and end tx block. */
 			st, ok := stmt.(*lyx.TransactionStmt)
 			if !ok {
-				return nil, errAbortedTx
+				return nil, newAbortedTxError()
 			}
 			/* It is necessary here to change state to trigger correct
 			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
@@ -126,7 +128,7 @@ l:
 				/* We will actually send COMMIT as use command to shards, do not
 				* override `query` */
 			} else if st.Kind != lyx.TRANS_STMT_ROLLBACK {
-				return nil, errAbortedTx
+				return nil, newAbortedTxError()
 			}
 		}
 
@@ -286,7 +288,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		q, ok := stmt.(*lyx.VariableShowStmt)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		param := virtualParamTransformName(q.Name)
@@ -426,7 +428,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		q, ok := stmt.(*lyx.VariableSetStmt)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		switch q.Kind {
 		case lyx.VarTypeResetAll:
@@ -534,7 +536,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					/* NULL const */
 					params = append(params, nil)
 				default:
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 				parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
 				resultFormatCodes = append(resultFormatCodes, xproto.FormatCodeText)

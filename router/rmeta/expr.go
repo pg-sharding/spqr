@@ -256,7 +256,7 @@ func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 	case *lyx.ColumnRef:
 		return q.TableAlias, q.ColName, nil
 	default:
-		return "", "", rerrors.ErrComplexQuery
+		return "", "", rerrors.NewComplexQueryError()
 	}
 }
 

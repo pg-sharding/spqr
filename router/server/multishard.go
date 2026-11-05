@@ -339,7 +339,9 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 	return nil
 }
 
-var ErrMultiShardSyncBroken = spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
+func NewMultiShardSyncBrokenError() *spqrerror.SpqrError {
+	return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
+}
 
 func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 
@@ -400,7 +402,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 					saveBC = retMsg
 				case *pgproto3.CopyInResponse:
 					if m.multistate != InitialState && m.multistate != CopyInState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, NewMultiShardSyncBrokenError()
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyInState
@@ -408,7 +410,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 
 				case *pgproto3.CopyOutResponse:
 					if m.multistate != InitialState && m.multistate != CopyOutState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, NewMultiShardSyncBrokenError()
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyOutState
@@ -443,7 +445,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 					saveRd = retMsg // all should be same
 				case *pgproto3.ReadyForQuery:
 					if m.multistate != InitialState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, NewMultiShardSyncBrokenError()
 					}
 					m.states[i] = ShardRFQState
 					saveRFQ = retMsg
@@ -459,7 +461,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 				case *pgproto3.ErrorResponse:
 
 					if m.multistate != InitialState {
-						return nil, 0, ErrMultiShardSyncBroken.
+						return nil, 0, NewMultiShardSyncBrokenError().
 							Detail(retMsg.Detail).
 							Code(retMsg.Code).
 							Context(retMsg.Where).
@@ -473,7 +475,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
 					// sync is broken
-					return nil, 0, ErrMultiShardSyncBroken
+					return nil, 0, NewMultiShardSyncBrokenError()
 				}
 				break
 			}
@@ -518,7 +520,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 	case CopyInState:
 		fallthrough
 	case CopyOutState:
-		return nil, 0, ErrMultiShardSyncBroken
+		return nil, 0, NewMultiShardSyncBrokenError()
 	case RunningState:
 		anyCCTag := []byte{}
 		ccRewrite := false
@@ -589,7 +591,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 				m.states[i] = ErrorState
 				m.multistate = ServerErrorState
 				// sync is broken
-				return nil, 0, ErrMultiShardSyncBroken
+				return nil, 0, NewMultiShardSyncBrokenError()
 			default:
 				return msg, uint(i), nil
 			}
@@ -622,7 +624,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 			cntUnSync++
 
 			if m.states[i] != ShardCCState {
-				return nil, 0, ErrMultiShardSyncBroken
+				return nil, 0, NewMultiShardSyncBrokenError()
 			}
 
 			if err := func() error {
@@ -641,7 +643,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 						return nil
 					default:
 						// sync is broken
-						return ErrMultiShardSyncBroken
+						return NewMultiShardSyncBrokenError()
 					}
 				}
 			}(); err != nil {
