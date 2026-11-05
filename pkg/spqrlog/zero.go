@@ -94,13 +94,14 @@ func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel stri
 			log.Printf("failed to initialize logger: %v", err)
 		}
 		Zero = newZeroLoggerInternal(writer, logLevel, asyncLog, prettyLogging)
-		WdLog = newWdLoggerInternal(writer, logLevel, asyncLog, prettyLogging)
+		WdLog = Zero
 		if sv != nil {
 			_ = sv.Close()
 		}
 		if wdSv != nil {
 			_ = wdSv.Close()
 		}
+		wdLastDiode = nil
 		return
 	}
 	ReloadLogger(logFileName, logLevel, asyncLog, prettyLogging)
