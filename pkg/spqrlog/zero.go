@@ -13,7 +13,7 @@ import (
 
 // Zero is a singleton object of zerolog.Logger.
 // Initialized with structured JSON logging by default (prettyLogging = false)
-var Zero = NewZeroLogger("", "info", false, false)
+var Zero = NewZeroLogger("", "info", false, false, 1000, 0)
 
 var lastDiode *diode.Writer
 
@@ -34,15 +34,15 @@ func CloseLogger() {
 //
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
-func NewZeroLogger(filePath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
+func NewZeroLogger(filePath string, logLevel string, async bool, prettyLogging bool, diodeSize int, pollInterval time.Duration) *zerolog.Logger {
 	_, writer, err := newWriter(filePath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
 	}
-	return newZeroLoggerInternal(writer, logLevel, async, prettyLogging)
+	return newZeroLoggerInternal(writer, logLevel, async, prettyLogging, diodeSize, pollInterval)
 }
 
-func newZeroLoggerInternal(writer io.Writer, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
+func newZeroLoggerInternal(writer io.Writer, logLevel string, async bool, prettyLogging bool, diodeSize int, pollInterval time.Duration) *zerolog.Logger {
 	level := parseLevel(logLevel)
 
 	if prettyLogging {
@@ -51,8 +51,8 @@ func newZeroLoggerInternal(writer io.Writer, logLevel string, async bool, pretty
 
 	if async {
 		/* TODO: configure this using "common" router/coordinator config */
-		d := diode.NewWriter(writer, 1000, 10*time.Millisecond, func(missed int) {
-			fmt.Printf("Logger Dropped %d messages", missed)
+		d := diode.NewWriter(writer, diodeSize, pollInterval, func(missed int) {
+			fmt.Printf("Logger dropped %d messages", missed)
 		})
 
 		lastDiode = &d
@@ -71,9 +71,9 @@ func newZeroLoggerInternal(writer io.Writer, logLevel string, async bool, pretty
 //   - filepath: The log file path.
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
-func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
+func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool, diodeSize int, pollInterval time.Duration) {
 	sv := lastDiode
-	Zero = NewZeroLogger(logFileName, logLevel, asyncLog, prettyLogging)
+	Zero = NewZeroLogger(logFileName, logLevel, asyncLog, prettyLogging, diodeSize, pollInterval)
 	if sv != nil {
 		_ = sv.Close()
 	}
@@ -85,7 +85,7 @@ func ReloadLogger(logFileName string, logLevel string, asyncLog bool, prettyLogg
 //   - filepath: The log file path.
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
-func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
+func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel string, asyncLog bool, prettyLogging bool, diodeSize int, pollInterval time.Duration) {
 	if logFileName == wdLogFileName || wdLogFileName == "" {
 		sv := lastDiode
 		wdSv := wdLastDiode
@@ -93,7 +93,7 @@ func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel stri
 		if err != nil {
 			log.Printf("failed to initialize logger: %v", err)
 		}
-		Zero = newZeroLoggerInternal(writer, logLevel, asyncLog, prettyLogging)
+		Zero = newZeroLoggerInternal(writer, logLevel, asyncLog, prettyLogging, diodeSize, pollInterval)
 		WdLog = Zero
 		if sv != nil {
 			_ = sv.Close()
@@ -104,8 +104,8 @@ func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel stri
 		wdLastDiode = nil
 		return
 	}
-	ReloadLogger(logFileName, logLevel, asyncLog, prettyLogging)
-	ReloadWdLogger(wdLogFileName, logLevel, asyncLog, prettyLogging)
+	ReloadLogger(logFileName, logLevel, asyncLog, prettyLogging, diodeSize, pollInterval)
+	ReloadWdLogger(wdLogFileName, logLevel, asyncLog, prettyLogging, diodeSize, pollInterval)
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.

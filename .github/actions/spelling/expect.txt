@@ -278,6 +278,7 @@ ktadd
 KVs
 laooog
 larg
+lcfg
 LDAPS
 ldapserver
 LDAPTLS
