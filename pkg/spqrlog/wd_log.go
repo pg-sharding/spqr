@@ -72,7 +72,7 @@ func newWdLoggerInternal(writer io.Writer, logLevel string, async bool, prettyLo
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
 func ReloadWdLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
-	sv := lastDiode
+	sv := wdLastDiode
 	WdLog = NewWdLogger(logFileName, logLevel, asyncLog, prettyLogging)
 	if sv != nil {
 		_ = sv.Close()
