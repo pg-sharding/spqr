@@ -25,6 +25,7 @@ import (
 
 var (
 	cfgPath       string
+	lcfgPath      string
 	qdbImpl       string
 	gomaxprocs    int
 	prettyLogging bool
@@ -76,6 +77,12 @@ var rootCmd = &cobra.Command{
 		if cmd.Flags().Changed("pretty-log") {
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
+
+		lcfgStr, err := config.LoadLoggerCfg(cfgPath)
+		if err != nil {
+			return err
+		}
+		log.Println("Running logger config:", lcfgStr)
 
 		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
 

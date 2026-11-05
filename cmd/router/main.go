@@ -37,6 +37,7 @@ import (
 var (
 	rcfgPath string
 	ccfgPath string
+	lcfgPath string
 
 	logLevel                string
 	memqdbBackupPath        string
@@ -121,6 +122,7 @@ func init() {
 	// Router and coordinator config paths
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
+	rootCmd.PersistentFlags().StringVarP(&lcfgPath, "logger-config", "", "", "path to logger config file")
 	rootCmd.PersistentFlags().BoolVarP(&withCoord, "with-coordinator", "", false, "start spqr coordinator in separate goroutine")
 
 	// Overload for values from the config file
@@ -186,6 +188,12 @@ var runCmd = &cobra.Command{
 		if err := ApplyOverrides(config.RouterConfig(), startupOverrides, qdbImpl); err != nil {
 			return err
 		}
+
+		lcfgStr, err := config.LoadLoggerCfg(lcfgPath)
+		if err != nil {
+			return err
+		}
+		log.Println("Running logger config:", lcfgStr)
 
 		router_util.ReloadRotateLog()
 

@@ -33,6 +33,10 @@ var rootCmd = &cobra.Command{
 		}
 		log.Println("Running config:", cfgStr)
 
+		_, err = config.LoadLoggerCfg("")
+		if err != nil {
+			return err
+		}
 		// TODO add config.BalancerConfig().LogFileName
 		spqrlog.ReloadLogger("", config.BalancerConfig().LogLevel, false, false)
 

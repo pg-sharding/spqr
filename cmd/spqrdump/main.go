@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -303,6 +304,10 @@ var dump = &cobra.Command{
 	Use:   "dump",
 	Short: "dump current sharding configuration",
 	RunE: func(_ *cobra.Command, _ []string) error {
+		_, err := config.LoadLoggerCfg("")
+		if err != nil {
+			return err
+		}
 		spqrlog.ReloadLogger("", logLevel, false, false)
 
 		spqrlog.Zero.Debug().
