@@ -24,7 +24,7 @@ func (c *Logger) ApplyDefaults() {
 
 func (c *Logger) PostProcess() error {
 	if c.DiodeSize <= 0 {
-		return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "diode size must be posistive")
+		return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "diode size must be positive")
 	}
 	return nil
 }
