@@ -39,9 +39,20 @@ func (c *Logger) PostProcess() error {
 //   - error: An error if any occurred during the loading process.
 func LoadLoggerCfg(cfgPath string) (string, error) {
 	c := &Logger{}
-	configStr, err := LoadConfig(cfgPath, c)
-	if err != nil {
-		return "", err
+	configStr := ""
+	if cfgPath == "" {
+		c.ApplyDefaults()
+		configBytes, err := MarshalRedactedJSONIndent(c, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		configStr = string(configBytes)
+	} else {
+		var err error
+		configStr, err = LoadConfig(cfgPath, c)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	loggerCfgMu.Lock()
