@@ -6,10 +6,12 @@ import (
 )
 
 func ReloadRotateLog() {
-	spqrlog.ReloadLogger(config.RouterConfig().LogFileName,
+	spqrlog.ReloadRouterLoggers(
+		config.RouterConfig().LogFileName,
+		config.RouterConfig().WatchdogLogFile,
 		config.RouterConfig().LogLevel,
 		true, /* XXX: Never sync log in router */
-		config.RouterConfig().PrettyLogging)
+		config.RouterConfig().PrettyLogging,
+	)
 	spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
-	spqrlog.ReloadWdLogger(config.RouterConfig().WatchdogLogFile, config.RouterConfig().LogLevel, true, config.RouterConfig().PrettyLogging)
 }

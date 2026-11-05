@@ -2,7 +2,9 @@ package spqrlog
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -21,23 +23,30 @@ func CloseWdLogger() {
 	}
 }
 
-// NewZeroLogger initializes a zerolog.Logger.
+// NewWdLogger initializes a zerolog.Logger.
 // If prettyLogging is true, it outputs in a human-readable format.
 // Prints an error message if writer initialization fails.
 //
 // Parameters:
 // - filepath: Log file path.
+// - async: Log asynchronously.
 // - prettyLogging: Enable pretty logging.
 //
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
 func NewWdLogger(filepath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
-	level := parseLevel(logLevel)
-
-	_, writer, err := newWriter(filepath)
+	f, _, err := newWriter(filepath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
 	}
+
+	return newWdLoggerInternal(f, logLevel, async, prettyLogging)
+}
+
+func newWdLoggerInternal(file *os.File, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
+	level := parseLevel(logLevel)
+
+	var writer io.Writer = file
 
 	if prettyLogging {
 		writer = zerolog.ConsoleWriter{Out: writer}
@@ -66,10 +75,6 @@ func NewWdLogger(filepath string, logLevel string, async bool, prettyLogging boo
 //   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
 func ReloadWdLogger(logFileName string, logLevel string, asyncLog bool, prettyLogging bool) {
-	if logFileName == "" {
-		WdLog = Zero
-		return
-	}
 	sv := lastDiode
 	WdLog = NewWdLogger(logFileName, logLevel, asyncLog, prettyLogging)
 	if sv != nil {
