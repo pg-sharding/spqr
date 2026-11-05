@@ -84,7 +84,7 @@ var rootCmd = &cobra.Command{
 		}
 		log.Println("Running logger config:", lcfgStr)
 
-		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
+		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -121,7 +121,7 @@ var rootCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
+					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
 				default:
 					return
 				}

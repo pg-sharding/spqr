@@ -30,7 +30,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		spqrlog.ReloadLogger("", loglevel, false, false)
+		spqrlog.ReloadLogger("", loglevel, false, false, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
 
 		return w.Run()
 	},

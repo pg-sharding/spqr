@@ -308,7 +308,7 @@ var dump = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		spqrlog.ReloadLogger("", logLevel, false, false)
+		spqrlog.ReloadLogger("", logLevel, false, false, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
 
 		spqrlog.Zero.Debug().
 			Str("endpoint", endpoint).
