@@ -461,6 +461,7 @@ var runCmd = &cobra.Command{
 
 				spqrlog.Zero.Error().Err(err).Msg("exiting")
 				spqrlog.CloseLogger()
+				spqrlog.CloseWdLogger()
 
 				/* XXXX: be slightly tidier here*/
 				os.Exit(1)
@@ -557,6 +558,7 @@ var testCmd = &cobra.Command{
 
 func main() {
 	defer spqrlog.CloseLogger()
+	defer spqrlog.CloseWdLogger()
 	if err := rootCmd.Execute(); err != nil {
 		spqrlog.Zero.Fatal().Err(err).Msg("")
 	}
