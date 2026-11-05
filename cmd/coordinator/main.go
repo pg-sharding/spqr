@@ -78,7 +78,7 @@ var rootCmd = &cobra.Command{
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
 
-		lcfgStr, err := config.LoadLoggerCfg(cfgPath)
+		lcfgStr, err := config.LoadLoggerCfg(lcfgPath)
 		if err != nil {
 			return err
 		}
@@ -160,6 +160,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/coordinator.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&lcfgPath, "logger-config", "", "", "path to logger config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
