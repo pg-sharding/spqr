@@ -265,11 +265,11 @@ func (m *MultiShardServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
 			if err != nil {
 				return err
 			}
-			switch msg.(type) {
+			switch response := msg.(type) {
 			case *pgproto3.ReadyForQuery:
 				syncCnt--
 			case *pgproto3.ErrorResponse:
-				return spqrerror.New(spqrerror.SPQR_UNEXPECTED, ErrMultiShardSyncBroken.Error()).
+				return spqrerror.New(response.Code, response.Message).
 					Detail(fmt.Sprintf("failed to prefetch result from shard %s", shkey.Name))
 			default:
 				// ok
