@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -36,16 +35,14 @@ func CloseLogger() {
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
 func NewZeroLogger(filePath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
-	f, _, err := newWriter(filePath)
+	_, writer, err := newWriter(filePath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
 	}
-	return newZeroLoggerInternal(f, logLevel, async, prettyLogging)
+	return newZeroLoggerInternal(writer, logLevel, async, prettyLogging)
 }
 
-func newZeroLoggerInternal(file *os.File, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
-	var writer io.Writer = file
-
+func newZeroLoggerInternal(writer io.Writer, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
 	level := parseLevel(logLevel)
 
 	if prettyLogging {
@@ -92,12 +89,12 @@ func ReloadRouterLoggers(logFileName string, wdLogFileName string, logLevel stri
 	if logFileName == wdLogFileName || wdLogFileName == "" {
 		sv := lastDiode
 		wdSv := wdLastDiode
-		f, _, err := newWriter(logFileName)
+		_, writer, err := newWriter(logFileName)
 		if err != nil {
 			log.Printf("failed to initialize logger: %v", err)
 		}
-		Zero = newZeroLoggerInternal(f, logLevel, asyncLog, prettyLogging)
-		WdLog = newWdLoggerInternal(f, logLevel, asyncLog, prettyLogging)
+		Zero = newZeroLoggerInternal(writer, logLevel, asyncLog, prettyLogging)
+		WdLog = newWdLoggerInternal(writer, logLevel, asyncLog, prettyLogging)
 		if sv != nil {
 			_ = sv.Close()
 		}

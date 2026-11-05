@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -35,18 +34,16 @@ func CloseWdLogger() {
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
 func NewWdLogger(filepath string, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
-	f, _, err := newWriter(filepath)
+	_, writer, err := newWriter(filepath)
 	if err != nil {
 		log.Printf("failed to initialize logger: %v", err)
 	}
 
-	return newWdLoggerInternal(f, logLevel, async, prettyLogging)
+	return newWdLoggerInternal(writer, logLevel, async, prettyLogging)
 }
 
-func newWdLoggerInternal(file *os.File, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
+func newWdLoggerInternal(writer io.Writer, logLevel string, async bool, prettyLogging bool) *zerolog.Logger {
 	level := parseLevel(logLevel)
-
-	var writer io.Writer = file
 
 	if prettyLogging {
 		writer = zerolog.ConsoleWriter{Out: writer}
