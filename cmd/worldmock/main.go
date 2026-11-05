@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 )
@@ -26,11 +25,7 @@ var runCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		w := NewWorldMock(addr, port)
 
-		_, err := config.LoadLoggerCfg("")
-		if err != nil {
-			return err
-		}
-		spqrlog.ReloadLogger("", loglevel, false, false, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
+		spqrlog.ReloadLogger("", loglevel, false, false, 0, 0)
 
 		return w.Run()
 	},
