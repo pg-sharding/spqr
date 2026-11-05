@@ -197,7 +197,7 @@ func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.Prep
 	serv := rst.Client().Server()
 
 	if serv == nil {
-		return nil, nil, server.ErrMultiShardSyncBroken
+		return nil, nil, server.NewMultiShardSyncBrokenError()
 	}
 
 	shards := serv.Datashards()
@@ -1138,7 +1138,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 	}
 
 	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-		return errAbortedTx
+		return newAbortedTxError()
 	}
 
 	switch currentMsg := msg.(type) {

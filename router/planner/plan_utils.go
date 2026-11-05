@@ -420,7 +420,7 @@ func ProcessInsertFromSelectOffsets(
 
 		return insertColsPos, currRFQN, nil
 	default:
-		return nil, nil, rerrors.ErrComplexQuery
+		return nil, nil, rerrors.NewComplexQueryError()
 	}
 }
 
@@ -556,7 +556,7 @@ func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, rou
 		rm.TableAliases[q.Alias] = rfqnNew
 	} else {
 		if rr, ok := rm.TableAliases[q.RelationName]; ok && rr.String() != rfqnNew.String() {
-			return rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation aliasing ambiguity: %s vs %s", rfqnNew.String(), rr.String()))
+			return rerrors.NewComplexQueryError().Hint(fmt.Sprintf("relation aliasing ambiguity: %s vs %s", rfqnNew.String(), rr.String()))
 		}
 		rm.TableAliases[q.RelationName] = rfqnNew
 	}

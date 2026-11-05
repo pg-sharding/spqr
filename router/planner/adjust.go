@@ -169,7 +169,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		}
 		values, ok := cte.SubQuery.(*lyx.ValueClause)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		rm.UsedSelectQueryAdjust = true
