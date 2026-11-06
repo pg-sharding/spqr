@@ -3646,6 +3646,27 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "err_test_server",
+					Query: "SELECT 1 / (random() * 0)::int",
+				},
+				&pgproto3.Bind{PreparedStatement: "err_test_server"},
+				&pgproto3.Execute{},
+				&pgproto3.Close{ObjectType: 'S', Name: "err_test_server"},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22012",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
