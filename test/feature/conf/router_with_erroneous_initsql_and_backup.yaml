@@ -9,6 +9,7 @@ memqdb_backup_path: memqdb.backup
 
 init_sql: /spqr/test/feature/conf/erroneous_init.sql
 use_init_sql: true
+exit_on_init_sql: true
 
 time_quantiles:
   - 0.75

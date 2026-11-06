@@ -170,7 +170,7 @@ Feature: MemQDB save state into a file
     Given cluster is failed up and running
     And file "/go/router.log" on host "router" should match regexp
     """
-    fake_init\.sql: no such file or directory
+    Shard .*sh0.* not found
     """
 
   Scenario: Router crashes when coordinator init is given as well as init.sql
