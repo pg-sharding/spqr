@@ -14,7 +14,10 @@ RUN apt-get update -o Acquire::AllowInsecureRepositories=true && apt-get install
 
 RUN install -d /usr/share/postgresql-common/pgdg && \
     curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
-    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    if [ "$POSTGRES_VERSION" = "19" ]; then \
+        sed -i 's/ main$/ main 19/' /etc/apt/sources.list.d/pgdg.list; \
+    fi
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo postgresql-${POSTGRES_VERSION} iptables

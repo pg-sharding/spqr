@@ -1,0 +1,96 @@
+-- Run last: promoting replica 6434 changes the five-node topology.
+\c spqr-console
+CREATE DISTRIBUTION d (int);
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE RELATION tsa_promote_test (i);
+            attach table             
+-------------------------------------
+ relation name   -> tsa_promote_test
+ distribution id -> d
+(2 rows)
+
+\c regress
+SET __spqr__execute_on TO sh1;
+SET __spqr__target_session_attrs TO 'read-write';
+SET __spqr__execute_host_filter TO ':6433';
+CREATE TABLE tsa_promote_test (i int);
+INSERT INTO tsa_promote_test VALUES (22);
+SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+ inet_server_port | pg_is_in_recovery | count 
+------------------+-------------------+-------
+             6433 | f                 |     1
+(1 row)
+
+-- A standby cannot serve a read-write request.
+SET __spqr__execute_host_filter TO ':6434';
+SELECT count(*) FROM tsa_promote_test;
+ERROR:  shard sh1: failed to find primary within host 127.0.0.1:6434: replica
+QUERY:  SELECT count(*) FROM tsa_promote_test;
+-- Make replica 6435 unavailable and promote replica 6434.
+\! iptables -A INPUT -p tcp --dport 6435 -j REJECT
+\! bash /regress/tests/5node/sql/promote.sh
+ pg_promote 
+------------
+ t
+(1 row)
+
+-- The same read-write route must now accept the promoted host.
+SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+ inet_server_port | pg_is_in_recovery | count 
+------------------+-------------------+-------
+             6434 | f                 |     1
+(1 row)
+
+INSERT INTO tsa_promote_test VALUES (23);
+SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+ inet_server_port | pg_is_in_recovery | count 
+------------------+-------------------+-------
+             6434 | f                 |     2
+(1 row)
+
+-- The unavailable replica must fail; the other replicas still serve reads.
+SET __spqr__target_session_attrs TO 'read-only';
+SET __spqr__execute_host_filter TO ':6435';
+SELECT count(*) FROM tsa_promote_test;
+ERROR:  shard sh1: failed to find replica within 
+QUERY:  SELECT count(*) FROM tsa_promote_test;
+SET __spqr__execute_host_filter TO ':6436';
+SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+ inet_server_port | pg_is_in_recovery | count 
+------------------+-------------------+-------
+             6436 | t                 |     1
+(1 row)
+
+SET __spqr__execute_host_filter TO ':6437';
+SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+ inet_server_port | pg_is_in_recovery | count 
+------------------+-------------------+-------
+             6437 | t                 |     1
+(1 row)
+
+\! iptables -D INPUT -p tcp --dport 6435 -j REJECT
+-- Clean up both timelines.
+SET __spqr__target_session_attrs TO 'read-write';
+SET __spqr__execute_host_filter TO ':6434';
+DROP TABLE tsa_promote_test;
+DELETE FROM spqr_metadata.spqr_distributed_relations;
+SET __spqr__execute_host_filter TO ':6433';
+DROP TABLE tsa_promote_test;
+DELETE FROM spqr_metadata.spqr_distributed_relations;
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+ distribution_id 
+-----------------
+ d
+(1 row)
+

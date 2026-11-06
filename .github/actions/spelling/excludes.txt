@@ -31,3 +31,6 @@ test/regress/tests/router/expected/expression_routing.out
 test/regress/tests/router/expected/hash_multicolumn_1.out
 test/regress/tests/router/sql/expression_routing.sql
 test/regress/tests/router/sql/hash_multicolumn_1.sql
+^test/regress/tests/5node/sql/tsa_promote\.sql$
+^test/regress/tests/5node/sql/promote\.sh$
+^test/regress/tests/5node/expected/tsa_promote\.out$

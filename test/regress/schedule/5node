@@ -1,3 +1,4 @@
 test: tsa_5node
 test: priority
 test: recheck_hosts
+test: tsa_promote
