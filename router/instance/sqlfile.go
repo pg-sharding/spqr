@@ -3,6 +3,7 @@ package instance
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 )
 
 type InitSQLMetadataBootstrapper struct {
-	InitSQLFIle        string
+	InitSQLFile        string
 	exitOnInitSQLError bool
 }
 
@@ -21,7 +22,7 @@ type InitSQLMetadataBootstrapper struct {
 func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
 	for _, fname := range []string{
 		// rcfg.InitSQL,
-		i.InitSQLFIle,
+		i.InitSQLFile,
 	} {
 		if len(fname) == 0 {
 			continue
@@ -35,11 +36,14 @@ func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r 
 		spqrlog.Zero.Info().Msg("executing init sql")
 		for _, query := range queries {
 			spqrlog.Zero.Info().Str("query", query).Msg("")
-			if err := r.Console().ProcessQuery(ctx, query, client.NewFakeClient(), &catalog.FakeChecker{}); err != nil {
+			fakeClient := client.NewFakeClient()
+			if err := r.Console().ProcessQuery(ctx, query, fakeClient, &catalog.FakeChecker{}); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				if i.exitOnInitSQLError {
 					return err
 				}
+			} else if fakeClient.AnyErrors() && i.exitOnInitSQLError {
+				return fmt.Errorf("failed to init router via init.sql")
 			}
 		}
 
@@ -56,7 +60,7 @@ func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r 
 
 func NewInitSQLMetadataBootstrapper(initSQLFIle string, exitOnInitSQLError bool) *InitSQLMetadataBootstrapper {
 	return &InitSQLMetadataBootstrapper{
-		InitSQLFIle:        initSQLFIle,
+		InitSQLFile:        initSQLFIle,
 		exitOnInitSQLError: exitOnInitSQLError,
 	}
 }
