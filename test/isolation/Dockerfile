@@ -13,7 +13,11 @@ RUN apt-get update -o Acquire::AllowInsecureRepositories=true && apt-get install
 	curl lsb-release ca-certificates gnupg git g++ gcc cmake make libicu-dev pkg-config build-essential flex bison libreadline-dev zlib1g-dev
 
 RUN install -d /usr/share/postgresql-common/pgdg && \
-    curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    { curl --fail --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 60 \
+        -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc || \
+      curl --fail --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 60 \
+        -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc; } && \
     echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
