@@ -1408,8 +1408,6 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 			continue
 		}
 
-		s.es.activeShards = append(s.es.activeShards, shkey)
-
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
 			Str("deploying tx", beforeTx.String()).
@@ -1418,6 +1416,8 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 		if err := s.Client().Server().ExpandGang(s.Client().AllocParams(), shkey, beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
+
+		s.es.activeShards = append(s.es.activeShards, shkey)
 	}
 	return nil
 }
