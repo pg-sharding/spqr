@@ -18,5 +18,13 @@ DROP TABLE x;
 
 
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
+
+-- A linearized query error must not leave unread responses on pinned connections.
+SET __spqr__session_connections_pin TO on;
+SELECT 1/0 /* __spqr__scatter_query: true, __spqr__linearize_dispatch: true */;
+SELECT 42 /* __spqr__execute_on: sh1 */;
+SELECT 43 /* __spqr__execute_on: sh1 */;
+RESET __spqr__session_connections_pin;
+
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
