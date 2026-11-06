@@ -66,7 +66,7 @@ func TestRouterGrpcListenHostDefaultWhenHostEmpty(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "router.yaml")
 
-	err := os.WriteFile(path, []byte("log_level: info\nhost: \"\"\n"), 0o600)
+	err := os.WriteFile(path, []byte("log_level: info\n"+"host: \"\"\n"), 0o600)
 	require.NoError(t, err)
 
 	r := &Router{}
