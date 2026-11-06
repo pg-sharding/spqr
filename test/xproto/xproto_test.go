@@ -7976,3 +7976,454 @@ func TestXProtoClosedUnnamedPortalStaysClosedAfterSync(t *testing.T) {
 		},
 	})
 }
+
+func TestXProtoParseInAbortedTransaction(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "missing_statement",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "SELECT 1",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "SELECT FROM",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "COMMIT",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "26000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "25P02",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "42601",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoBindInAbortedTransaction(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Name:  "read_stmt",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Parse{
+					Name:  "rollback_stmt",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "missing_statement",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "read_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "rollback_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "read_stmt",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "rollback_stmt",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "26000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "25P02",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoDescribeInAbortedTransaction(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Name:  "read_stmt",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Parse{
+					Name:  "rollback_stmt",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "missing_statement",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "read_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "rollback_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "missing_statement",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "missing_portal",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "rollback_stmt",
+					DestinationPortal: "rollback_portal",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "rollback_portal",
+				},
+				&pgproto3.Close{
+					ObjectType: 'P',
+					Name:       "rollback_portal",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "read_stmt",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "rollback_stmt",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "26000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "25P02",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.NoData{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "26000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "34000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoCloseInAbortedTransaction(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Name:  "read_stmt",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Parse{
+					Name:  "rollback_stmt",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "missing_statement",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "read_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "read_stmt",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Close{
+					ObjectType: 'P',
+					Name:       "missing_portal",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "rollback_stmt",
+					DestinationPortal: "rollback_portal",
+				},
+				&pgproto3.Close{
+					ObjectType: 'P',
+					Name:       "rollback_portal",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "rollback_portal",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "rollback_stmt",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'T',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "26000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "26000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "34000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'E',
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+}
