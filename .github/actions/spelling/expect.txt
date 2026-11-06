@@ -47,10 +47,12 @@ ccb
 ccfg
 ccmsg
 chardata
+chatgpt
 Cimpl
 CIn
 Citus
 cityhash
+claude
 clid
 clientinteractor
 clientpool
@@ -73,7 +75,6 @@ connmgr
 connstring
 coorctl
 coordctl
-coreutils
 cptr
 Cta
 CTEs
@@ -105,6 +106,7 @@ denchick
 denis
 deparsed
 deparses
+devin
 diffs
 dispatchable
 distrib
@@ -222,6 +224,7 @@ IDR
 IDTo
 idxs
 IExecute
+ijojooji
 IKill
 inds
 initdb
@@ -235,12 +238,14 @@ INTERVALOID
 IPrepare
 IRun
 isgomock
+isolationtester
 isready
 iuwehiuhweui
 ixxxd
 jackc
 jcmturner
 jidw
+jifdjew
 jiofewjijiojioji
 jodwjdewo
 jsons
@@ -358,14 +363,18 @@ nsecs
 nselect
 nspname
 NTuples
+numstat
 Objtype
 odssd
 ogima
 OIDKRB
 Oids
 oiwejow
+ojiswjiow
 OLAP
 ONCONFLICT
+oneline
+openai
 opgejrqr
 optarg
 optval
@@ -419,7 +428,6 @@ pppp
 prepstatement
 privs
 prj
-procps
 promhttp
 protobuf
 protoc
@@ -648,6 +656,7 @@ unregistration
 unroute
 unrouting
 unsync
+urandom
 usermd
 uuidv
 valgrind
