@@ -35,12 +35,14 @@ const (
 	defaultAcceptorMaxRetries = 10
 
 	defaultCancelRateLimit       = 100000 /* 100k per second is basically no limit */
+	defaultAcceptRateLimit       = 100000
 	defaultAcceptorRetrySleep    = 50 * time.Millisecond
 	defaultAcceptorRetrySleepMax = 1 * time.Second
 )
 
 var (
 	cancelRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().CancelRateLimit, defaultCancelRateLimit)), defaultCancelRateLimit)
+	acceptRateLim = rate.NewLimiter(rate.Limit(config.ValueOrDefaultInt(config.RouterConfig().AcceptRateLimit, defaultAcceptRateLimit)), 0)
 )
 
 // Accept connection and send it to channel.
@@ -111,6 +113,8 @@ func acceptLoop(l net.Listener, cChan chan net.Conn,
 
 		/*  XXX: what if channel is closed? */
 		cChan <- c
+
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
