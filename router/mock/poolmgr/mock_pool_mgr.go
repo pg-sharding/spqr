@@ -113,6 +113,20 @@ func (mr *MockGangMgrMockRecorder) DataPending() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockGangMgr)(nil).DataPending))
 }
 
+// Discard mocks base method.
+func (m *MockGangMgr) Discard(arg0 shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Discard", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Discard indicates an expected call of Discard.
+func (mr *MockGangMgrMockRecorder) Discard(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockGangMgr)(nil).Discard), arg0)
+}
+
 // SetTxStatus mocks base method.
 func (m *MockGangMgr) SetTxStatus(status txstatus.TXStatus) {
 	m.ctrl.T.Helper()

@@ -1,6 +1,7 @@
 package poolmgr
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -24,6 +25,7 @@ type GangMgr interface {
 	DataPending() bool
 
 	CleanupConnection(pool.MultiShardTSAPool, shard.ShardHostInstance) error
+	Discard(shard.ShardHostInstance) error
 
 	Client() client.RouterClient
 }
@@ -54,7 +56,11 @@ func UnrouteCommon(
 		if err := serv.Cleanup(&config.FrontendRule{
 			PoolRollback: true,
 		}); err != nil {
-			return err
+			for _, ds := range serv.Datashards() {
+				_, unrouteErr := serv.UnRouteShard(ds.SHKey())
+				err = errors.Join(err, unrouteErr, g.Discard(ds))
+			}
+			return errors.Join(err, cl.Unroute())
 		}
 	}
 
