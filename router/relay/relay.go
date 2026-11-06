@@ -513,7 +513,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		return err
 	}
 
-	// Sync preserves the unnamed portal while its transaction is active.
+	// Sync and empty simple queries preserve a portal in an active transaction.
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		rst.CloseUnnamedPortal()
 	}
@@ -1022,8 +1022,6 @@ func (rst *RelayStateImpl) BindPrepared(
 					return err
 				}
 
-				def := rst.Client().PreparedStatementDefinitionByName(preparedStatement)
-				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 				name := fmt.Sprintf("%d", hash)
 
 				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
