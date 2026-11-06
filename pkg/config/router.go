@@ -40,13 +40,6 @@ const (
 	CommitStrategy2pc        = "2pc"
 )
 
-const (
-	DefaultRouterPort        = "6432"
-	DefaultAdminConsolePort  = "7432"
-	DefaultRouterGrpcAPIHost = "127.0.0.1"
-	DefaultRouterGrpcAPIPort = "7000"
-)
-
 var cfgRouter Router
 
 type Router struct {
@@ -169,24 +162,17 @@ type Router struct {
 var _ Config = &Router{}
 
 func (r *Router) ApplyDefaults() {
-	r.RouterPort = DefaultRouterPort
-	r.AdminConsolePort = DefaultAdminConsolePort
-	r.GrpcAPIPort = DefaultRouterGrpcAPIPort
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
 }
 
 // GrpcListenHost returns the address the admin gRPC API should bind to.
-// Explicit grpc_api_host wins; otherwise host is reused; if both are empty,
-// loopback is used so the unauthenticated API is not exposed on all interfaces.
+// Explicit grpc_api_host wins; otherwise the existing host behavior is preserved.
 func (r *Router) GrpcListenHost() string {
 	if r.GrpcAPIHost != "" {
 		return r.GrpcAPIHost
 	}
-	if r.Host != "" {
-		return r.Host
-	}
-	return DefaultRouterGrpcAPIHost
+	return r.Host
 }
 
 func (r *Router) PostProcess() error {
