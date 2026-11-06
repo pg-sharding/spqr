@@ -18,8 +18,8 @@ Tests are maintained by people. Every test line is a cost. Write the shortest te
 | Needs several hosts or lifecycle events: coordinator + routers, restarts, failover, etcd, move/redistribute, auth (scram, ldap, krb), config reload, spqrdump | feature, `test/feature/features/*.feature` |
 | Concurrency: two sessions interleaving, locks, 2PC, move under load | isolation, `test/isolation/specs` |
 | Wire-protocol messages and their exact order (Parse/Bind/Execute, COPY sub-protocol, malformed packets) | xproto, `test/xproto` |
-| Bug seen only with a specific driver (JDBC, GORM, Hibernate) | driver test, `test/drivers/<driver>-regress` |
-| Bug fix | test of the type above that fails without the fix |
+| Bug seen only with a specific driver (JDBC, GORM, Hibernate) | driver test, in the driver's own repository (see below) |
+| Bug fix | a test of the matching type from this table that fails without the fix |
 | Pure function hard to reach from SQL (parser corner case, hashing, bound comparison, config parsing) | unit test, table-driven, in the existing `_test.go` next to the code |
 | Refactoring with no behavior change | no new tests |
 
@@ -51,7 +51,7 @@ Rules:
 - 5–30 lines of SQL. Only statements that prove the new behavior plus the minimal setup.
 - Deterministic output: `ORDER BY` in every `SHOW` with several rows; never print timestamps, PIDs, ports or random ids — select the columns that are stable.
 - Clean up at the end: `DROP DISTRIBUTION ALL CASCADE;` in console tests, `SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');` in router tests.
-- No comments in SQL except one line when output stability needs explaining.
+- No explanatory comments in SQL except one line when output stability needs explaining. Keep SPQR directives such as `/* __spqr__execute_on: sh1 */`: they change where the statement runs.
 
 Console example (`test/regress/tests/console/sql/<name>.sql`):
 
@@ -92,7 +92,13 @@ Generate it, do not invent it:
 make regress
 ```
 
-pg_regress writes actual output to `test/regress/tests/<suite>/results/<name>.out` inside the container and prints the diff. Check the output is correct, then save it as `expected/<name>.out`. If you cannot run Docker, write `expected/<name>.out` by copying the exact psql formatting of neighbouring `.out` files and let CI confirm it; do not mention this in the PR description.
+`make regress` prints the diff between expected and actual output. The actual output stays inside the stopped container at `/regress/tests/<suite>/results/<name>.out`; it is not in your checkout. Check it is correct, then copy it out:
+
+```bash
+docker cp "$(docker ps -alq)":/regress/tests/<suite>/results/<name>.out test/regress/tests/<suite>/expected/<name>.out
+```
+
+ If you cannot run Docker, write `expected/<name>.out` by copying the exact psql formatting of neighbouring `.out` files and let CI confirm it; do not mention this in the PR description.
 
 ## Writing a feature test
 
@@ -147,4 +153,4 @@ Go tests in `test/xproto` that send raw `pgproto3` messages and compare the exac
 
 ## Driver tests
 
-`test/drivers/{jdbc,gorm,hibernate}-regress`, run with `make jdbc_regress`, `make gorm_regress`, `make hibernate_regress`. Add a case only for a bug that reproduces with that driver and not with psql or xproto.
+Driver tests are not in this repository. `test/drivers/{jdbc,gorm,hibernate}-regress` only hold compose files that build the tests from [pg-sharding/jdbc-spqr](https://github.com/pg-sharding/jdbc-spqr), [pg-sharding/gorm-spqr](https://github.com/pg-sharding/gorm-spqr) and [pg-sharding/spqr-hibernation](https://github.com/pg-sharding/spqr-hibernation). Run them with `make jdbc_regress`, `make gorm_regress`, `make hibernate_regress`. Add a case there, in a separate PR, only for a bug that reproduces with that driver and not with psql or xproto.

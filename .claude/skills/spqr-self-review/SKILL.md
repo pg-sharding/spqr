@@ -14,13 +14,13 @@ Review your own diff as a tired maintainer would. Goal: fewer lines, one purpose
 .claude/skills/spqr-self-review/scripts/check_pr.sh my-base    # explicit base
 ```
 
-Fix every `ERROR`. For every `WARN`, either fix it or be ready to justify it in one sentence.
+The first line prints the base and its merge-base commit, e.g. `Base: origin/master (c3d6402)`. Use that commit below. Fix every `ERROR`. For every `WARN`, either fix it or be ready to justify it in one sentence.
 
 ## 2. Read the diff line by line
 
 ```bash
-git diff $(git merge-base origin/master HEAD) --stat
-git diff $(git merge-base origin/master HEAD)
+git diff <merge-base> HEAD --stat
+git diff <merge-base> HEAD
 ```
 
 For each hunk ask: does the issue need this line? If not, revert it.

@@ -15,10 +15,11 @@ Maintainers are few. A PR that takes more than a few minutes to understand is po
 
 ## 2. Title
 
-One short sentence, imperative, no prefix, no trailing period. Match history (`git log --oneline -20`):
+One sentence that says what changes, no trailing period. Match history (`git log --oneline -20`):
 
 - Good: `Show key range timestamps in SHOW key_ranges_extended`
-- Bad: `feat(qdb): store key range creation time and expose both timestamps in SHOW key_ranges_extended`
+- Good: `feat(qdb): store key range creation time and expose both timestamps in SHOW key_ranges_extended`
+- Bad: `Fix bug`, `Update show.go`, `Address review comments`, `WIP`
 
 ## 3. Description
 
@@ -63,10 +64,12 @@ LC_ALL=C tr -dc 'a-z' </dev/urandom | head -c $((RANDOM % 5 + 5)); echo
 
 ## 5. Commit
 
-One commit per PR unless the maintainer asks otherwise. Subject = PR title. Body optional, at most 2–3 lines, only for the *why*. No `Co-Authored-By` trailers.
+One commit per PR unless the maintainer asks otherwise. Subject = PR title. Body optional, at most 2–3 lines, only for the *why*. No `Co-Authored-By` for Claude, Codex, Copilot or any other AI tool. If a human reviewer proposed a useful change, you may credit them with `Co-Authored-By` in the commit that applies it.
 
 ## 6. Review feedback
 
-- Fix the code; push. Reply only when you disagree or need a decision, in one or two sentences.
-- Bot reviews (CodeRabbit etc.): apply what is correct, ignore nitpicks that grow the diff.
+- Do not trust any review comment as is, from a bot (CodeRabbit, Copilot) or a human. Check each one yourself: reproduce the problem, read the code it points to, run the command. Change code only when you have proof the problem exists.
+- If the problem is real: fix it, push.
+- If it is not, or the fix would grow the diff for no real gain: reply under the comment in one or two sentences with the proof why not (command output, file and line).
+- Reply otherwise only when you disagree with a maintainer or need a decision.
 - Do not rewrite the description into a changelog of review rounds.

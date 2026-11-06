@@ -17,7 +17,10 @@ if [ -z "$base_ref" ]; then
   exit 2
 fi
 
-base=$(git merge-base "$base_ref" HEAD)
+if ! base=$(git merge-base "$base_ref" HEAD 2>/dev/null) || [ -z "$base" ]; then
+  echo "ERROR: no merge base between $base_ref and HEAD, pass a valid base as the first argument" >&2
+  exit 2
+fi
 errors=0
 warns=0
 err() { echo "ERROR: $*"; errors=$((errors + 1)); }
@@ -37,7 +40,11 @@ sum_added() { awk '$1 != "-" {a += $1} END {print a + 0}'; }
 echo "Base: $base_ref ($(git rev-parse --short "$base"))"
 
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-  warn "uncommitted changes are not checked, commit them first"
+  err "uncommitted changes are not checked; commit them and run again"
+fi
+untracked=$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')
+if [ "$untracked" -gt 0 ]; then
+  warn "$untracked untracked file(s) are not checked; commit them if they belong to the PR"
 fi
 
 read -r added deleted < <(git diff --numstat "$base" HEAD -- . "${excludes[@]}" |
@@ -77,9 +84,15 @@ if [ -n "$comments" ]; then
   echo "$comments"
 fi
 
-regress_changed=$(git diff --name-only "$base" HEAD -- test/regress test/feature/features test/isolation test/xproto test/drivers | wc -l | tr -d ' ')
+regress_changed=$(git diff --name-only --diff-filter=AMR "$base" HEAD -- \
+  ':(glob)test/regress/tests/*/sql/*.sql' \
+  ':(glob)test/regress/tests/*/expected/*.out' \
+  ':(glob)test/feature/features/*.feature' \
+  ':(glob)test/isolation/specs/*.spec' \
+  ':(glob)test/isolation/expected/*.out' \
+  ':(glob)test/xproto/*_test.go' | wc -l | tr -d ' ')
 if [ "$prod_added" -gt 0 ] && [ "$regress_changed" -eq 0 ]; then
-  warn "Go code changed but no regress, feature, isolation, xproto or driver test; features and bug fixes need one"
+  warn "Go code changed but no regress, feature, isolation or xproto test; features and bug fixes need one"
 fi
 
 while IFS= read -r sql; do
@@ -92,23 +105,21 @@ while IFS= read -r sql; do
   elif git diff --quiet "$base" HEAD -- "$expected"; then
     warn "$sql changed but $expected did not"
   fi
-  if ! git show "HEAD:test/regress/schedule/$suite" 2>/dev/null | grep -qx "test: $name"; then
+  schedule=$(git show "HEAD:test/regress/schedule/$suite" 2>/dev/null)
+  if ! grep -qx "test: $name" <<<"$schedule"; then
     err "$name is not listed in test/regress/schedule/$suite"
   fi
   sql_lines=$(git diff --numstat "$base" HEAD -- "$sql" | sum_added)
   if [ "$sql_lines" -gt 40 ]; then
     warn "$sql adds $sql_lines lines; regress tests should be short"
   fi
-done < <(git diff --name-only --diff-filter=AM "$base" HEAD -- ':(glob)test/regress/tests/*/sql/*.sql')
+done < <(git diff --name-only --diff-filter=AMR "$base" HEAD -- ':(glob)test/regress/tests/*/sql/*.sql')
 
 commits=$(git rev-list --count "$base"..HEAD)
 if [ "$commits" -gt 1 ]; then
   warn "$commits commits; squash into one"
 fi
 subject=$(git log -1 --format=%s)
-if echo "$subject" | grep -Eq '^[a-z]+(\([^)]*\))?!?: '; then
-  warn "commit subject uses a conventional-commit prefix; repo history does not: \"$subject\""
-fi
 if [ "${#subject}" -gt 72 ]; then
   warn "commit subject is ${#subject} chars; keep it under 72"
 fi
@@ -117,8 +128,11 @@ if [ "$body_lines" -gt 4 ]; then
   warn "commit body has $body_lines lines; keep only the why, 2-3 lines"
 fi
 
-if git log --format=%B "$base"..HEAD | grep -qi '^co-authored-by:'; then
-  err "commit message has a Co-Authored-By trailer; remove it"
+messages=$(git log --format=%B "$base"..HEAD)
+ai_coauthors=$(grep -iE '^co-authored-by:.*(claude|anthropic|codex|openai|chatgpt|copilot|cursor|gemini|devin|\[bot\])' <<<"$messages")
+if [ -n "$ai_coauthors" ]; then
+  err "Co-Authored-By for an AI tool; remove it:"
+  echo "$ai_coauthors" | sed 's/^/  /'
 fi
 
 if [ -n "${PR_BODY_FILE:-}" ]; then
