@@ -233,6 +233,7 @@ func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
 }
 
 func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
+	stampKeyRangeCreate(keyRange)
 	return []Command{
 		NewUpdateCommand(q.State.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
 		NewUpdateCommand(q.State.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
@@ -270,6 +271,7 @@ func (q *MemQDB) DeleteKeyRangeMove(_ context.Context, _ string, _ bool) error {
 // ==============================================================================
 
 func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
+	stampKeyRangeCreate(keyRange)
 	commands := make([]QdbStatement, 4)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
@@ -317,6 +319,7 @@ func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, e
 }
 
 func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
+	stampKeyRangeUpdate(keyRange)
 	commands := make([]QdbStatement, 2)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err

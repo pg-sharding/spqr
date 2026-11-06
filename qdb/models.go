@@ -21,14 +21,22 @@ type KeyRange struct {
 	DistributionId string
 	Locked         bool
 	Version        int
+	// CreatedAt is set once when the key range is stored for the first time and
+	// preserved across updates and renames; nil means the record predates the
+	// field and the creation time could not be recovered.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	// UpdatedAt refreshes on every key range write; nil means unknown.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 // Do not marshal Locked field
 type internalKeyRange struct {
-	LowerBound     [][]byte `json:"from"`
-	ShardID        string   `json:"shard_id"`
-	KeyRangeID     string   `json:"key_range_id"`
-	DistributionId string   `json:"distribution_id"`
+	LowerBound     [][]byte   `json:"from"`
+	ShardID        string     `json:"shard_id"`
+	KeyRangeID     string     `json:"key_range_id"`
+	DistributionId string     `json:"distribution_id"`
+	CreatedAt      *time.Time `json:"created_at,omitempty"`
+	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
 }
 
 type KeyRangeMeta struct {
@@ -276,12 +284,32 @@ func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, err
 	return NewSequenceIdRange(currentRight, newRight)
 }
 
+// stampKeyRangeCreate sets the timestamps of a key range being stored for the
+// first time: CreatedAt only when the caller did not carry one (a rename
+// re-creates the record with its original creation time), UpdatedAt always.
+func stampKeyRangeCreate(keyRange *KeyRange) {
+	now := time.Now()
+	if keyRange.CreatedAt == nil {
+		keyRange.CreatedAt = &now
+	}
+	keyRange.UpdatedAt = &now
+}
+
+// stampKeyRangeUpdate refreshes UpdatedAt of a key range being rewritten,
+// leaving its creation time untouched.
+func stampKeyRangeUpdate(keyRange *KeyRange) {
+	now := time.Now()
+	keyRange.UpdatedAt = &now
+}
+
 func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
 	return &internalKeyRange{
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
 		KeyRangeID:     keyRange.KeyRangeID,
 		DistributionId: keyRange.DistributionId,
+		CreatedAt:      keyRange.CreatedAt,
+		UpdatedAt:      keyRange.UpdatedAt,
 	}
 }
 
@@ -293,6 +321,8 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 		DistributionId: keyRange.DistributionId,
 		Locked:         locked,
 		Version:        version,
+		CreatedAt:      keyRange.CreatedAt,
+		UpdatedAt:      keyRange.UpdatedAt,
 	}
 }
 

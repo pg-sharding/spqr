@@ -207,9 +207,17 @@ func TestTranGetKeyRange(t *testing.T) {
 		//check List
 		actualList, err := tranMngr.ListKeyRanges(ctx, "ds1")
 		is.NoError(err)
+		// created_at/updated_at are stamped with the wall clock; mirror them so
+		// this comparison stays about the key ranges themselves.
+		for i, expectedKr := range []*kr.KeyRange{kr2, kr1} {
+			expectedKr.CreatedAt, expectedKr.UpdatedAt = actualList[i].CreatedAt, actualList[i].UpdatedAt
+		}
 		is.Equal([]*kr.KeyRange{kr2, kr1}, actualList)
 		actualList, err = tranMngr.ListKeyRanges(ctx, "ds2")
 		is.NoError(err)
+		for i, expectedKr := range []*kr.KeyRange{kr2Ds2} {
+			expectedKr.CreatedAt, expectedKr.UpdatedAt = actualList[i].CreatedAt, actualList[i].UpdatedAt
+		}
 		is.Equal([]*kr.KeyRange{kr2Ds2}, actualList)
 
 		//check Get
@@ -261,6 +269,11 @@ func TestTranGetKeyRange(t *testing.T) {
 		//drop all kr one by one
 		actualList, err := tranMngr.ListKeyRanges(ctx, "ds1")
 		is.NoError(err)
+		// created_at/updated_at are stamped with the wall clock; mirror them so
+		// this comparison stays about the key ranges themselves.
+		for i, expectedKr := range []*kr.KeyRange{kr2, kr1} {
+			expectedKr.CreatedAt, expectedKr.UpdatedAt = actualList[i].CreatedAt, actualList[i].UpdatedAt
+		}
 		is.Equal([]*kr.KeyRange{kr2, kr1}, actualList)
 		err = tranMngr.DropKeyRange(ctx, "kr2")
 		is.NoError(err)

@@ -242,6 +242,7 @@ func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 
 	t := time.Now()
 
+	stampKeyRangeCreate(keyRange)
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
 		return nil, err
@@ -326,6 +327,7 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
 
+	stampKeyRangeUpdate(keyRange)
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
 		return nil, err

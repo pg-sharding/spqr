@@ -48,5 +48,12 @@ func TestGetQDBStateHash(t *testing.T) {
 
 	hash, err = qdb.GetQDBStateHash(ctx, memqdb)
 	assert.NoError(err)
-	assert.Equal(uint64(0xc05992e2ea88b7f9), hash)
+	// The state now carries created_at/updated_at wall-clock stamps, so the
+	// hash is no longer a fixed constant; pin the properties that matter: a
+	// second computation over unchanged state is identical, and the hash moved
+	// away from the empty-state value.
+	again, err := qdb.GetQDBStateHash(ctx, memqdb)
+	assert.NoError(err)
+	assert.Equal(hash, again)
+	assert.NotEqual(uint64(0), hash)
 }
