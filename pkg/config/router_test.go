@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestRouterGrpcListenHost covers empty host, host fallback, and grpc_api_host precedence.
 func TestRouterGrpcListenHost(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -102,6 +102,7 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 	return app.spqr.RunAdm(ctx, listener)
 }
 
+// ServeGrpcAPI starts the router admin gRPC API on GrpcListenHost and GrpcAPIPort.
 func (app *App) ServeGrpcAPI(ctx context.Context) error {
 	address := net.JoinHostPort(config.RouterConfig().GrpcListenHost(), config.RouterConfig().GrpcAPIPort)
 	listener, err := net.Listen("tcp", address)

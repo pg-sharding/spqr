@@ -161,13 +161,14 @@ type Router struct {
 
 var _ Config = &Router{}
 
+// ApplyDefaults sets router config fields that have fixed defaults.
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
 }
 
-// GrpcListenHost returns the address the admin gRPC API should bind to.
-// Explicit grpc_api_host wins; otherwise the existing host behavior is preserved.
+// GrpcListenHost returns the address the router gRPC API binds to:
+// grpc_api_host when set, otherwise host (empty host binds all interfaces).
 func (r *Router) GrpcListenHost() string {
 	if r.GrpcAPIHost != "" {
 		return r.GrpcAPIHost
