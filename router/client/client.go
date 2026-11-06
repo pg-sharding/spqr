@@ -1057,7 +1057,7 @@ var _ RouterClient = &PsqlClient{}
 type FakeClient struct {
 	RouterClient
 
-	anyErrors bool
+	lastError error
 }
 
 func (f *FakeClient) Usr() string {
@@ -1104,12 +1104,12 @@ func (f *FakeClient) Send(_ pgproto3.BackendMessage) error {
 
 func (f *FakeClient) ReplyErrMsgPure(e error) error {
 	spqrlog.Zero.Error().Err(e).Msg("sql init error")
-	f.anyErrors = true
+	f.lastError = e
 	return nil
 }
 
-func (f *FakeClient) AnyErrors() bool {
-	return f.anyErrors
+func (f *FakeClient) LastError() error {
+	return f.lastError
 }
 
 var _ RouterClient = &FakeClient{}

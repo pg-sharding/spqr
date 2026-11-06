@@ -3,7 +3,6 @@ package instance
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -42,8 +41,8 @@ func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r 
 				if i.exitOnInitSQLError {
 					return err
 				}
-			} else if fakeClient.AnyErrors() && i.exitOnInitSQLError {
-				return fmt.Errorf("failed to init router via init.sql")
+			} else if i.exitOnInitSQLError && fakeClient.LastError() != nil {
+				return fakeClient.LastError()
 			}
 		}
 
