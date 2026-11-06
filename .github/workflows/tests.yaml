@@ -151,7 +151,7 @@ jobs:
 
       - name: Run tests
         run: |
-          if !(make POSTGRES_VERSION=18 codename=noble regress_5node; ); then
+          if !(make POSTGRES_VERSION=19 codename=noble regress_5node; ); then
             docker compose -f test/regress/docker-compose-5node.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | awk 'tolower($0) ~ /unhealthy/ {print $1}' | xargs -r -n 1 docker logs;
             exit 1;
           fi
@@ -160,7 +160,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-reports-regress-5node-noble-18
+          name: test-reports-regress-5node-noble-19
           path: test-reports/regress-5node/**/*.xml
           if-no-files-found: ignore
 
