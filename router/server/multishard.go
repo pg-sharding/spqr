@@ -691,9 +691,6 @@ func (m *MultiShardServer) Cleanup(rule *config.FrontendRule) error {
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("multishard server tx status idle on cleanup")
 	}
 	for _, sh := range m.activeShards {
-		if sh.Sync() != 0 || sh.DataPending() {
-			continue
-		}
 		if err := sh.Cleanup(rule); err != nil {
 			return err
 		}
