@@ -7976,3 +7976,62 @@ func TestXProtoClosedUnnamedPortalStaysClosedAfterSync(t *testing.T) {
 		},
 	})
 }
+
+func TestXProtoQueryThenParseFlush(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "SELECT 41 + 1 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 42 + 1 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Flush{},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("43")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 'I',
+				},
+			},
+		},
+	})
+}
