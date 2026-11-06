@@ -1039,8 +1039,7 @@ func (cl *PsqlClient) Shutdown() error {
 		}
 	}
 
-	_ = cl.Unroute()
-
+	/* The relay releases backend connections after its processing loop exits. */
 	return cl.conn.Close()
 }
 
