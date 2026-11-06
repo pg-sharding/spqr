@@ -54,7 +54,7 @@ func UnrouteCommon(
 		if err := serv.Cleanup(&config.FrontendRule{
 			PoolRollback: true,
 		}); err != nil {
-			return err
+			anyerr = err
 		}
 	}
 
@@ -65,7 +65,9 @@ func UnrouteCommon(
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
 		if v, err := serv.UnRouteShard(shkey); err != nil {
-			anyerr = err
+			if anyerr == nil {
+				anyerr = err
+			}
 		} else {
 			if err := g.CleanupConnection(cl.Route().MultiShardPool(), v); err != nil {
 
@@ -76,14 +78,16 @@ func UnrouteCommon(
 					Err(err).
 					Msg("error returning connection to pool")
 
-				anyerr = err
+				if anyerr == nil {
+					anyerr = err
+				}
 			}
 		}
 	}
 
 	if len(serv.Datashards()) != 0 {
-		if err := serv.Reset(); err != nil {
-			return err
+		if err := serv.Reset(); err != nil && anyerr == nil {
+			anyerr = err
 		}
 	}
 
