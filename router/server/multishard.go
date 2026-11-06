@@ -690,13 +690,14 @@ func (m *MultiShardServer) Cleanup(rule *config.FrontendRule) error {
 	if m.TxStatus() == txstatus.TXIDLE {
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("multishard server tx status idle on cleanup")
 	}
+	var firstErr error
 	for _, sh := range m.activeShards {
-		if err := sh.Cleanup(rule); err != nil {
-			return err
+		if err := sh.Cleanup(rule); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 
-	return nil
+	return firstErr
 }
 
 func (m *MultiShardServer) Sync() int64 {
