@@ -373,7 +373,7 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
-	resp := make([]QdbStatement, 2)
+	resp := make([]QdbStatement, 3)
 	statement, err := NewQdbStatement(CmdDelete, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
@@ -385,8 +385,13 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		return nil, err
 	}
 	resp[1] = *statement
+	statement, err = NewQdbStatement(CmdDelete, LockPath(keyRangeNodePath(id)), "")
+	if err != nil {
+		return nil, err
+	}
+	resp[2] = *statement
 
-	return resp, err
+	return resp, nil
 }
 
 // TODO : unit tests
