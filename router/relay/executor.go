@@ -3,10 +3,9 @@ package relay
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
-
-	"slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -66,6 +65,7 @@ func (s *QueryStateExecutorImpl) Close() {
 	for _, sh := range s.localConn {
 		_ = s.Client().Route().MultiShardPool().Put(sh)
 	}
+	clear(s.localConn)
 }
 
 // Discard implements [pool.ConnectionProvider].
@@ -86,7 +86,6 @@ func (s *QueryStateExecutorImpl) View() pool.Statistics {
 
 // ConnectionWithTSA implements [pool.ConnectionProvider].
 func (s *QueryStateExecutorImpl) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
-
 	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
 	if err != nil {
 		return nil, err
@@ -95,6 +94,8 @@ func (s *QueryStateExecutorImpl) ConnectionWithTSA(params pool.ConnAllocParams, 
 	/* Connection are pinned - try to lookup local cache */
 	if guc.Get(s.Client()) {
 		if c, ok := s.localConn[key.Name]; ok {
+			/* The server owns the connection until cleanup. */
+			delete(s.localConn, key.Name)
 			return c, nil
 		}
 	}
@@ -130,7 +131,6 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	/* Connection are pinned - save to local cache */
 	if guc.Get(s.Client()) {
 		s.localConn[v.ShardKeyName()] = v
-
 		return nil
 	}
 
@@ -141,6 +141,7 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	}
 
 	if err := v.Cleanup(s.Client().Rule()); err != nil {
+		_ = p.Discard(v)
 		return err
 	}
 	return p.Put(v)
@@ -1398,7 +1399,6 @@ func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 }
 
 func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
-
 	beforeTx := s.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
@@ -1408,8 +1408,6 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 			continue
 		}
 
-		s.es.activeShards = append(s.es.activeShards, shkey)
-
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
 			Str("deploying tx", beforeTx.String()).
@@ -1418,6 +1416,8 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 		if err := s.Client().Server().ExpandGang(s.Client().AllocParams(), shkey, beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
+
+		s.es.activeShards = append(s.es.activeShards, shkey)
 	}
 	return nil
 }
