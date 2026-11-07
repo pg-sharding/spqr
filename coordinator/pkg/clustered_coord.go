@@ -850,7 +850,6 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 	return nil
 }
 
-// TODO : unit tests
 func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
