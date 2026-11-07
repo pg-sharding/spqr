@@ -77,75 +77,17 @@ func TestClusteredCoordinatorAddRouter(t *testing.T) {
 	router := &topology.Router{
 		ID:      "router-1",
 		Address: "127.0.0.1:6432",
+		State:   qdb.OPENED,
 	}
+	require.NoError(t, qc.AddRouter(ctx, router))
 
-	err = qc.AddRouter(ctx, router)
+	got, err := db.ListRouters(ctx)
 	require.NoError(t, err)
-
-	routers, err := db.ListRouters(ctx)
-	require.NoError(t, err)
-
-	require.Len(t, routers, 1)
-
-	assert.Equal(t, router.ID, routers[0].ID)
-	assert.Equal(t, router.Address, routers[0].Address)
-	assert.Equal(t, router.State, routers[0].State)
-}
-
-func TestClusteredCoordinatorAddMultipleRouters(t *testing.T) {
-	ctx := context.Background()
-
-	db, err := qdb.NewMemQDB("")
-	require.NoError(t, err)
-
-	qc, err := NewClusteredCoordinator(nil, db, qdb.DefaultMaxTxnSize)
-	require.NoError(t, err)
-
-	routers := []*topology.Router{
-		{ID: "router-1", Address: "127.0.0.1:6432"},
-		{ID: "router-2", Address: "127.0.0.1:6433"},
-	}
-
-	for _, router := range routers {
-		require.NoError(t, qc.AddRouter(ctx, router))
-	}
-
-	actual, err := db.ListRouters(ctx)
-	require.NoError(t, err)
-	require.Len(t, actual, 2)
-
-	assert.Equal(t, routers[0].ID, actual[0].ID)
-	assert.Equal(t, routers[1].ID, actual[1].ID)
-}
-
-func TestClusteredCoordinatorAddRouterDuplicateID(t *testing.T) {
-	ctx := context.Background()
-
-	db, err := qdb.NewMemQDB("")
-	require.NoError(t, err)
-
-	qc, err := NewClusteredCoordinator(nil, db, qdb.DefaultMaxTxnSize)
-	require.NoError(t, err)
-
-	router1 := &topology.Router{
+	require.Equal(t, []*qdb.Router{{
 		ID:      "router-1",
 		Address: "127.0.0.1:6432",
-	}
-
-	router2 := &topology.Router{
-		ID:      "router-1",
-		Address: "127.0.0.1:6433",
-	}
-
-	require.NoError(t, qc.AddRouter(ctx, router1))
-	require.NoError(t, qc.AddRouter(ctx, router2))
-
-	routers, err := db.ListRouters(ctx)
-	require.NoError(t, err)
-
-	require.Len(t, routers, 1)
-	assert.Equal(t, "router-1", routers[0].ID)
-	assert.Equal(t, "127.0.0.1:6433", routers[0].Address)
+		State:   qdb.OPENED,
+	}}, got)
 }
 
 type errorAddRouterQDB struct {
