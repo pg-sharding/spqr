@@ -127,7 +127,7 @@ func TestParseFileWireFormat(t *testing.T) {
 	// binary timestamp version 1, year 1 UTC; session 0x01020304;
 	// Query with length 6 (four length bytes plus "x\x00").
 	data := []byte{
-		1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff,
+		1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF,
 		1, 2, 3, 4,
 		'Q', 0, 0, 0, 6, 'x', 0,
 	}
@@ -186,7 +186,7 @@ func TestParseFileMalformedMessages(t *testing.T) {
 	terminate := encodeRecord(t, 1, &pgproto3.Terminate{})
 
 	badTimestamp := append([]byte(nil), query...)
-	badTimestamp[0] = 0xff // invalid time.MarshalBinary version
+	badTimestamp[0] = 0xFF // invalid time.MarshalBinary version
 
 	missingNUL := append([]byte(nil), query...)
 	missingNUL[len(missingNUL)-1] = '!'
