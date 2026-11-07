@@ -27,7 +27,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
-	github.com/xdg-go/scram v1.2.0
+	github.com/xdg-go/scram v1.3.0
 	go.etcd.io/etcd/client/v3 v3.7.3
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.58.0
