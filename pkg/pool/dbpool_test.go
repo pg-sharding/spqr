@@ -2,6 +2,7 @@ package pool_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -830,4 +831,85 @@ func TestBuildHostOrderNonExistentShard(t *testing.T) {
 	_, err := dbpool.BuildHostOrder(key, config.TargetSessionAttrsAny)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "shard with name \"non_existent_shard\" not found")
+}
+
+func TestPreferStandbySkipsKnownDeadStandbyBeforePrimaryFallback(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
+
+	key := kr.ShardKey{Name: "sh1"}
+	clientID := uint(1)
+	primaryHost := config.Host{Address: "primary:6432", AZ: "klg"}
+	deadStandbyHost := config.Host{Address: "standby:6432", AZ: "sas"}
+
+	dbpool := pool.NewDBPoolFromMultiPool(
+		topology.TopMgrFromMap(map[string]*topology.DataShard{
+			key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
+				RawHosts: []string{
+					"primary:6432:klg",
+					"standby:6432:sas",
+				},
+			}),
+		}),
+		&startup.StartupParams{}, underlyingPool, time.Hour,
+	)
+	defer dbpool.StopCacheWatchdog()
+	dbpool.ShuffleHosts = false
+	dbpool.PreferAZ = "klg"
+
+	// The local primary is alive but does not match the standby requirement.
+	dbpool.Cache().MarkUnmatched(
+		config.TargetSessionAttrsPS,
+		primaryHost.Address,
+		primaryHost.AZ,
+		true,
+		"primary",
+	)
+	// The only remote standby is already known to be dead.
+	dbpool.Cache().MarkUnmatched(
+		config.TargetSessionAttrsPS,
+		deadStandbyHost.Address,
+		deadStandbyHost.AZ,
+		false,
+		"connection refused",
+	)
+
+	primaryInstance := mockinst.NewMockDBInstance(ctrl)
+	primaryInstance.EXPECT().Hostname().AnyTimes().Return(primaryHost.Address)
+	primaryInstance.EXPECT().AvailabilityZone().AnyTimes().Return(primaryHost.AZ)
+
+	primary := mockshard.NewMockShardHostInstance(ctrl)
+	primary.EXPECT().Instance().AnyTimes().Return(primaryInstance)
+	primary.EXPECT().ID().AnyTimes().Return(uint(1))
+	primary.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Times(1).Return(nil)
+	primary.EXPECT().Receive().Return(&pgproto3.RowDescription{}, nil)
+	primary.EXPECT().Receive().Return(&pgproto3.DataRow{Values: [][]byte{[]byte("off")}}, nil)
+	primary.EXPECT().Receive().Return(&pgproto3.CommandComplete{}, nil)
+	primary.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
+
+	// First checkout identifies the host as an alive primary. The second one is
+	// the expected read-write fallback after no usable standby is found.
+	underlyingPool.EXPECT().ConnectionHost(clientID, key, primaryHost).Times(2).Return(primary, nil)
+	primary.EXPECT().Sync().Times(1).Return(int64(0))
+	primary.EXPECT().IsStale().Times(1).Return(false)
+	primary.EXPECT().TxStatus().Times(1).Return(txstatus.TXIDLE)
+	underlyingPool.EXPECT().Put(primary).Times(1).Return(nil)
+
+	deadHostAttempts := 0
+	underlyingPool.EXPECT().ConnectionHost(clientID, key, deadStandbyHost).
+		AnyTimes().
+		DoAndReturn(func(uint, kr.ShardKey, config.Host) (shard.ShardHostInstance, error) {
+			deadHostAttempts++
+			return nil, errors.New("host is down")
+		})
+
+	selected, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{
+		Clid: clientID,
+		Tsa:  config.TargetSessionAttrsPS,
+	}, key)
+
+	assert.NoError(t, err)
+	assert.Same(t, primary, selected)
+	assert.Zero(t, deadHostAttempts,
+		"a known dead standby must not be retried before falling back to an alive primary")
 }
