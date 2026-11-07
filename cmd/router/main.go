@@ -449,7 +449,7 @@ var runCmd = &cobra.Command{
 
 		go func() {
 			for {
-				_ = <-errCh
+				<-errCh
 
 				spqrlog.CloseLogger()
 
