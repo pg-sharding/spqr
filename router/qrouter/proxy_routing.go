@@ -202,10 +202,11 @@ func (qr *ProxyQrouter) planInsertV1(
 							continue
 						}
 
-						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
+						auxKey := rmeta.AuxValuesKey{
 							CTEName:    sRv.RelationName,
 							ColRefName: cc.ColName,
-						}]; ok {
+						}
+						if v, ok := rm.AuxValues[auxKey]; ok {
 
 							rList := [][]lyx.Node{}
 							for _, vv := range v {
@@ -226,10 +227,25 @@ func (qr *ProxyQrouter) planInsertV1(
 
 									/* try to rewrite, but only for simple protocol */
 									if len(rm.ParamRefs) == 0 {
-										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs, false)
+										for {
+											parent, ok := rm.AuxValuesParent[auxKey]
+											if !ok {
+												break
+											}
+											auxKey = parent
+										}
+										cte, ok := rm.CteNames[auxKey.CTEName]
+										if !ok {
+											return nil, rerrors.NewComplexQueryError()
+										}
+										values, ok := cte.SubQuery.(*lyx.ValueClause)
+										if !ok {
+											return nil, rerrors.NewComplexQueryError()
+										}
+										return planner.RewriteDistributedRelWithValues(rm.Query, values.ValuesLoc, shs, false)
 									}
 
-									return nil, rerrors.ErrComplexQuery
+									return nil, rerrors.NewComplexQueryError()
 								}
 							}
 							if len(shs) > 0 {
@@ -280,7 +296,7 @@ func (qr *ProxyQrouter) planInsertV1(
 						if len(routes) > 0 {
 							filterShard = routes[0]
 						}
-						return &plan.DataRowFilter{
+						return &plan.DataRowCustomProcess{
 							Plan: &plan.ScatterPlan{
 								BasePlan: plan.BasePlan{
 									H: planopts.PlanOpts{
@@ -289,7 +305,7 @@ func (qr *ProxyQrouter) planInsertV1(
 								},
 								ExecTargets: rel.ListStorageRoutes(),
 							},
-							FilterShard: filterShard,
+							CustomRowProcess: plan.RowFilter(filterShard),
 						}, nil
 					}
 					return &plan.ScatterPlan{
@@ -301,10 +317,10 @@ func (qr *ProxyQrouter) planInsertV1(
 						ExecTargets: rel.ListStorageRoutes(),
 					}, nil
 				default:
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 			}
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		} else {
 
 			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
@@ -319,7 +335,7 @@ func (qr *ProxyQrouter) planInsertV1(
 
 			for _, sh := range shs {
 				if sh.Name != shs[0].Name {
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 			}
 			if len(shs) > 0 {
@@ -353,9 +369,9 @@ func (qr *ProxyQrouter) planInsertV1(
 				if routes := rel.ListStorageRoutes(); len(routes) > 0 {
 					filterShard = routes[0]
 				}
-				return &plan.DataRowFilter{
-					Plan:        p,
-					FilterShard: filterShard,
+				return &plan.DataRowCustomProcess{
+					Plan:             p,
+					CustomRowProcess: plan.RowFilter(filterShard),
 				}, nil
 			}
 			return p, nil
@@ -375,9 +391,9 @@ func (qr *ProxyQrouter) planInsertV1(
 					/* try to rewrite,
 					* but only for simple protocol or unparametrized xproto */
 					if len(rm.ParamRefs) == 0 {
-						return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
+						return planner.RewriteDistributedRelBatchInsert(rm.Query, subS.ValuesLoc, shs)
 					}
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 			}
 
@@ -463,7 +479,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		rf, ok := stmt.TableRef.(*lyx.RangeVar)
 
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
@@ -507,11 +523,11 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		/* for now, only simple queries */
 		if stmt.WithClause != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		if stmt.Returning != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		/* we will have inital sql as bottom-level slice, because we need to
@@ -983,7 +999,7 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 	p plan.Plan) (plan.Plan, error) {
 
 	switch v := p.(type) {
-	case *plan.DataRowFilter:
+	case *plan.DataRowCustomProcess:
 		sp, err := qr.PostProcessPlan(ctx, rm, v.Plan)
 		if err != nil {
 			return nil, err
@@ -991,9 +1007,11 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 
 		/* XXX: Can we do better? */
 
-		return &plan.DataRowFilter{
-			Plan:        sp,
-			FilterShard: v.FilterShard,
+		return &plan.DataRowCustomProcess{
+			Plan:                    sp,
+			OpaqueInfo:              v.OpaqueInfo,
+			CustomRowProcess:        v.CustomRowProcess,
+			PrepareCustomRowProcess: v.PrepareCustomRowProcess,
 		}, err
 	case *plan.ShardDispatchPlan:
 		return v, nil
@@ -1058,7 +1076,7 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		}
 	default:
-		return nil, rerrors.ErrComplexQuery
+		return nil, rerrors.NewComplexQueryError()
 	}
 }
 
@@ -1106,22 +1124,22 @@ func (qr *ProxyQrouter) planSPQRCTID(
 	switch q := stmt.(type) {
 	case *lyx.Select:
 		if len(q.FromClause) != 0 {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		if q.WithClause != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		if q.LArg != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		if q.RArg != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		if len(q.TargetList) != 1 {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		tle := q.TargetList[0]
@@ -1132,10 +1150,10 @@ func (qr *ProxyQrouter) planSPQRCTID(
 		case *lyx.FuncApplication:
 
 			if f.Name != virtual.VirtualCTID {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 			if len(f.Args) != 1 {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 
 			switch v := f.Args[0].(type) {
@@ -1152,18 +1170,18 @@ func (qr *ProxyQrouter) planSPQRCTID(
 
 				val, ok := sVal.(string)
 				if !ok {
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 				relation = val
 
 			case *lyx.AExprSConst:
 				relation = v.Value
 			default:
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		scanPlan := &plan.ScatterPlan{
@@ -1235,7 +1253,7 @@ func (qr *ProxyQrouter) planSPQRCTID(
 			SubPlan: scanPlan,
 		}, nil
 	default:
-		return nil, rerrors.ErrComplexQuery
+		return nil, rerrors.NewComplexQueryError()
 	}
 }
 
@@ -1258,10 +1276,10 @@ func (qr *ProxyQrouter) planSplitUpdate(
 	case *lyx.Update:
 
 		if q.WithClause != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		if q.Returning != nil {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		var distribCols []string
@@ -1290,11 +1308,11 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 			if len(distribCols) != 1 {
 				/* TODO: multi-column support here */
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		var et kr.ShardKey
@@ -1348,7 +1366,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 					if len(valList) != 1 {
 						/* should not happen */
-						return nil, rerrors.ErrComplexQuery
+						return nil, rerrors.NewComplexQueryError()
 					}
 
 					compositeKey[0], err = hashfunction.ApplyHashFunction(valList[0], d.ColTypes[0], hf)
@@ -1366,7 +1384,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 					et = currroute
 				}
 			default:
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 		}
 
@@ -1516,7 +1534,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 		return rPlan, nil
 
 	default:
-		return nil, rerrors.ErrComplexQuery
+		return nil, rerrors.NewComplexQueryError()
 	}
 
 }
@@ -1590,7 +1608,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 
 	/* Postprocessing time. XXX: Adjust multishard select query for aux values case. */
 
-	if err := planner.AdjustPlanStateForUpsert(rm, p); err != nil {
+	if err := planner.AdjustPlanStateForAutoLinearize(rm, p); err != nil {
 		return nil, err
 	}
 

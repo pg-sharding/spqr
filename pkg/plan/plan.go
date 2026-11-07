@@ -276,21 +276,37 @@ func (vp *VirtualPlan) PrepareRunSlice(server.Server) error {
 
 var _ Plan = &VirtualPlan{}
 
-type DataRowFilter struct {
+type DataRowCustomProcess struct {
 	Plan
-	stmt        lyx.Node
-	FilterShard kr.ShardKey
+	stmt lyx.Node
+
+	OpaqueInfo any `json:"-"`
+	/* XXX: this is fragile API, which in vulnerable to underlying gang runtime change.
+	* We need better finalize step here. */
+	// Returning nil suppresses a row.
+	CustomRowProcess func(*pgproto3.DataRow, kr.ShardKey, any) *pgproto3.DataRow `json:"-"`
+	// Reset state for each execution, using the final dispatch targets.
+	PrepareCustomRowProcess func([]kr.ShardKey) any `json:"-"`
 }
 
-func (rf *DataRowFilter) Stmt() lyx.Node {
+func (rf *DataRowCustomProcess) Stmt() lyx.Node {
 	return rf.stmt
 }
 
-func (rf *DataRowFilter) SetStmt(n lyx.Node) {
+func (rf *DataRowCustomProcess) SetStmt(n lyx.Node) {
 	rf.stmt = n
 }
 
-var _ Plan = &DataRowFilter{}
+func RowFilter(filterShard kr.ShardKey) func(*pgproto3.DataRow, kr.ShardKey, any) *pgproto3.DataRow {
+	return func(row *pgproto3.DataRow, shard kr.ShardKey, _ any) *pgproto3.DataRow {
+		if shard.Name == filterShard.Name {
+			return row
+		}
+		return nil
+	}
+}
+
+var _ Plan = &DataRowCustomProcess{}
 
 type CopyPlan struct {
 	BasePlan
@@ -376,10 +392,12 @@ func Combine(p1, p2 Plan) Plan {
 		Msg("combine two plans")
 
 	switch v := p1.(type) {
-	case *DataRowFilter:
-		return &DataRowFilter{
-			Plan:        Combine(v.Plan, p2),
-			FilterShard: v.FilterShard,
+	case *DataRowCustomProcess:
+		return &DataRowCustomProcess{
+			Plan:                    Combine(v.Plan, p2),
+			OpaqueInfo:              v.OpaqueInfo,
+			CustomRowProcess:        v.CustomRowProcess,
+			PrepareCustomRowProcess: v.PrepareCustomRowProcess,
 		}
 	}
 
@@ -387,10 +405,12 @@ func Combine(p1, p2 Plan) Plan {
 	// let p2 be always non-virtual, except for p1 & p2 both virtual
 	case *VirtualPlan:
 		p1, p2 = p2, p1
-	case *DataRowFilter:
-		return &DataRowFilter{
-			Plan:        Combine(p1, v.Plan),
-			FilterShard: v.FilterShard,
+	case *DataRowCustomProcess:
+		return &DataRowCustomProcess{
+			Plan:                    Combine(p1, v.Plan),
+			OpaqueInfo:              v.OpaqueInfo,
+			CustomRowProcess:        v.CustomRowProcess,
+			PrepareCustomRowProcess: v.PrepareCustomRowProcess,
 		}
 	}
 

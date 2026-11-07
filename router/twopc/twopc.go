@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	CommitStrategyBestEffort = "best-effort"
-	CommitStrategy1pc        = "1pc"
-	CommitStrategy2pc        = "2pc"
+	CommitStrategyBestEffort = config.CommitStrategyBestEffort
+	CommitStrategy1pc        = config.CommitStrategy1pc
+	CommitStrategy2pc        = config.CommitStrategy2pc
 )
 
 /* This function accept nil as DCStateKeeper for some configurations */

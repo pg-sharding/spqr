@@ -48,6 +48,11 @@ QUERY:  SELECT pg_advisory_xact_lock(11);
 SET __spqr__advisory_lock_behaviour TO SCATTER;
 BEGIN;
 SELECT pg_advisory_lock(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  pg_advisory_lock 
 ------------------
@@ -58,6 +63,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 SELECT pg_advisory_unlock(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  pg_advisory_unlock 
 --------------------
@@ -82,6 +92,11 @@ SHOW __spqr__session_connections_pin;
 (1 row)
 
 SELECT pg_advisory_lock(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  pg_advisory_lock 
 ------------------
@@ -98,6 +113,11 @@ SHOW __spqr__session_connections_pin;
 (1 row)
 
 SELECT pg_advisory_unlock(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  pg_advisory_unlock 
 --------------------
@@ -114,6 +134,11 @@ SHOW __spqr__session_connections_pin;
 (1 row)
 
 SELECT pg_advisory_unlock_all();
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  pg_advisory_unlock_all 
 ------------------------

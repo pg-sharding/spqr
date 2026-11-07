@@ -50,6 +50,10 @@ type QueryStateExecutor interface {
 
 	Client() client.RouterClient
 
+	StartBlock()
+	FinishBlock()
+	ResetBlock()
+
 	/* Do all gang allocation required for plan processing */
 	InitPlan(p plan.Plan) error
 

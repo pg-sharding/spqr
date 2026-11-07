@@ -9,6 +9,7 @@ CREATE SHARD sh3 OPTIONS (HOST "spqr_shard_3:6432", HOST "spqr_shard_3_replica:6
 CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6432") FORCE;
 
 CREATE SHARD sh1 OPTIONS (HOST "localhost:6432") FORCE;
+CREATE SHARD sh5 OPTIONS (HOST "localhost::6432") FORCE;
 
 SHOW shards_extended;
 SHOW hosts;

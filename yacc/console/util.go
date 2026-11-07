@@ -1,6 +1,7 @@
 package spqrparser
 
 import (
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 )
 
@@ -48,12 +49,17 @@ func setParseTree(yylex any, stmt []Statement) {
 // Parse parses console query. On syntax error the returned error is a
 // *spqrerror.SpqrError with Position set to the 1-based offset of the
 // offending token, so psql can draw the error cursor.
+// Valid PostgreSQL queries receive a hint about connecting to the SQL endpoint.
 func Parse(sql string) ([]Statement, error) {
 	tokenizer := NewStringTokenizer(sql)
 	if yyParse(tokenizer) != 0 {
-		return nil, spqrerror.Newf(spqrerror.PG_SYNTAX_ERROR,
+		err := spqrerror.Newf(spqrerror.PG_SYNTAX_ERROR,
 			"failed to parse query \"%s\": %s", sql, tokenizer.LastError).
 			Pos(tokenizer.errorPosition())
+		if _, _, pgErr := lyx.Parse(sql); pgErr == nil {
+			return nil, err.Hint("To run PostgreSQL queries, connect to your application database on the router's PostgreSQL port instead of the spqr-console database or admin console port.")
+		}
+		return nil, err
 	}
 	ast := tokenizer.ParseTree
 	return ast, nil

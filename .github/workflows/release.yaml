@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: '1.26'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            runner: ubuntu-latest
+          - goos: linux
+            goarch: arm64
+            runner: ubuntu-24.04-arm
+          - goos: darwin
+            goarch: amd64
+            runner: macos-latest
+          - goos: darwin
+            goarch: arm64
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Extract version metadata
+        id: meta
+        run: |
+          GIT_REVISION=$(git rev-parse --short HEAD)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          SPQR_VERSION=${GITHUB_REF_NAME}
+          echo "git_revision=${GIT_REVISION}" >> "$GITHUB_OUTPUT"
+          echo "commit_count=${COMMIT_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "spqr_version=${SPQR_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build spqr-router
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '1'
+        run: |
+          go build \
+            -pgo=auto \
+            -ldflags "-w -s \
+              -X github.com/pg-sharding/spqr/pkg.GitRevision=${{ steps.meta.outputs.git_revision }} \
+              -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${{ steps.meta.outputs.spqr_version }} \
+              -X github.com/pg-sharding/spqr/pkg.GitCommitCount=${{ steps.meta.outputs.commit_count }}" \
+            -o spqr-router \
+            ./cmd/router
+
+      - name: Package archive
+        id: package
+        run: |
+          ARCHIVE_NAME="spqr-router-${{ steps.meta.outputs.spqr_version }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
+          tar czf "${ARCHIVE_NAME}" \
+            spqr-router \
+            examples/router.yaml \
+            examples/2shardproxy.yaml \
+            examples/init.sql
+          echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: spqr-router-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ steps.package.outputs.archive_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: sha256sum spqr-router-*.tar.gz > SHA256SUMS
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "SPQR ${{ github.ref_name }}" \
+            --generate-notes \
+            spqr-router-*.tar.gz SHA256SUMS

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/yacc/hostspec"
 )
 
 type PoolMode string
@@ -33,6 +34,12 @@ const (
 	AdvisoryLockBehaviourBlock   = AdvisoryLockBehaviour("BLOCK")
 )
 
+const (
+	CommitStrategyBestEffort = "best-effort"
+	CommitStrategy1pc        = "1pc"
+	CommitStrategy2pc        = "2pc"
+)
+
 var cfgRouter Router
 
 type Router struct {
@@ -58,6 +65,7 @@ type Router struct {
 	EnableRoleSystem bool   `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile        string `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
+	UnixSocketDir    string `json:"unix_socket_dir" toml:"unix_socket_dir" yaml:"unix_socket_dir"`
 	Host             string `json:"host" toml:"host" yaml:"host"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
@@ -134,11 +142,12 @@ type Router struct {
 
 	LogMinDurationStatement time.Duration `json:"log_min_duration_statement" toml:"log_min_duration_statement" yaml:"log_min_duration_statement"`
 
-	EnableICP        bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
-	EnableTwoPhaseWD bool `json:"enable_2pc_watchdog" toml:"enable_2pc_watchdog" yaml:"enable_2pc_watchdog"`
+	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 
+	EnableTwoPhaseWD      bool          `json:"enable_2pc_watchdog" toml:"enable_2pc_watchdog" yaml:"enable_2pc_watchdog"`
 	WatchdogBackendRule   *BackendRule  `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
 	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
+	WatchdogLogFile       string        `json:"watchdog_log_file" toml:"watchdog_log_file" yaml:"watchdog_log_file"`
 
 	StoreTxDataPostgresql    bool          `json:"store_tx_data_postgresql" toml:"store_tx_data_postgresql" yaml:"store_tx_data_postgresql"`
 	AdvisoryLockTwoPhaseTx   bool          `json:"2pc_tx_advisory_lock" yaml:"2pc_tx_advisory_lock" toml:"2pc_tx_advisory_lock"`
@@ -282,6 +291,12 @@ func validateRouterConfig(cfg *Router) error {
 		if shCfg == nil {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)
 		}
+
+		for _, host := range shCfg.RawHosts {
+			if _, err := hostspec.Parse(host); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "invalid host format: expected 'host:port[:availability_zone]', actually '%s'", host)
+			}
+		}
 	}
 	for _, rule := range cfg.BackendRules {
 		for name, authRule := range rule.AuthRules {
@@ -311,6 +326,12 @@ func validateRouterConfig(cfg *Router) error {
 		default:
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid auth method \"%s\"", rule.AuthRule.Method)
 		}
+	}
+
+	switch cfg.DefaultCommitStrategy {
+	case "", CommitStrategyBestEffort, CommitStrategy1pc, CommitStrategy2pc:
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid default_commit_strategy \"%s\": expected one of \"best-effort\", \"1pc\", \"2pc\"", cfg.DefaultCommitStrategy)
 	}
 	return nil
 }

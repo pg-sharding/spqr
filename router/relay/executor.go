@@ -43,6 +43,8 @@ type QueryStateExecutorImpl struct {
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
 
+	startedClientImplicitTx bool
+
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
 
@@ -227,19 +229,18 @@ func (s *QueryStateExecutorImpl) TryMatchExecTargets(p plan.Plan, ds []kr.ShardK
 			/* check if ref relation storage shards and out active shards
 			* have intersection */
 
-			activeOK := false
+			intersection := make([]kr.ShardKey, 0)
 
 			for _, curr := range s.ActiveShards() {
 				if slices.ContainsFunc(v.ExecTargets, func(sh kr.ShardKey) bool {
 					return sh.Name == curr.Name
 				}) {
-					activeOK = true
-					break
+					intersection = append(intersection, curr)
 				}
 			}
 
-			if activeOK {
-				return planner.SelectRandomDispatchPlan(s.ActiveShards())
+			if len(intersection) > 0 {
+				return planner.SelectRandomDispatchPlan(intersection)
 
 			} else {
 				/* reference relation case */
@@ -336,7 +337,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			simple: true,
 		}
 
-		if err := s.ExecuteSlice(qd, nil, false); err != nil {
+		if err := s.ExecuteSlice(qd, &plan.ScatterPlan{}, false); err != nil {
 			return err
 		}
 	}
@@ -385,7 +386,37 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
+func (s *QueryStateExecutorImpl) StartBlock() {
+	if s.TxStatus() == txstatus.TXIDLE {
+		s.startedClientImplicitTx = true
+	}
+}
+
+func (s *QueryStateExecutorImpl) FinishBlock() {
+	s.startedClientImplicitTx = false
+}
+
+func (s *QueryStateExecutorImpl) ResetBlock() {
+	if s.startedClientImplicitTx {
+		/* See flush vs sync */
+		s.SetTxStatus(txstatus.TXIDLE)
+	}
+}
+
 func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error {
+
+	if !implicit {
+		s.startedClientImplicitTx = false
+
+		/* XXX: unwind implicit tx here */
+
+		if s.TxStatus() != txstatus.TXIDLE {
+			// ignore this
+			_ = s.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
+			s.SetCommandCompleteTag("BEGIN")
+			return nil
+		}
+	}
 
 	s.es.implicitTx = implicit
 
@@ -910,7 +941,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 	}
 
 	if txt != s.cl.Server().TxStatus() {
-		return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+		return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 	}
 	s.SetTxStatus(txt)
 
@@ -963,7 +994,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 			}
 
 			if txt != s.cl.Server().TxStatus() {
-				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+				return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 			}
 			s.SetTxStatus(txt)
 
@@ -1170,6 +1201,11 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return err
 	}
 
+	customPlan, _ := topPlan.(*plan.DataRowCustomProcess)
+	if customPlan != nil && customPlan.PrepareCustomRowProcess != nil {
+		customPlan.OpaqueInfo = customPlan.PrepareCustomRowProcess(customPlan.ExecutionTargets())
+	}
+
 	for {
 		var o *planopts.PlanOpts
 		if topPlan != nil {
@@ -1252,18 +1288,15 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
-				switch v := topPlan.(type) {
-				case *plan.DataRowFilter:
-					if shs := serv.Datashards(); recvIndex < uint(len(shs)) &&
-						shs[recvIndex].SHKey().Name == v.FilterShard.Name {
-						err = s.Client().Send(msg)
-						if err != nil {
-							return err
-						}
+				if customPlan != nil && customPlan.CustomRowProcess != nil {
+					shs := serv.Datashards()
+					if recvIndex >= uint(len(shs)) {
+						continue
 					}
-				default:
-					err = s.Client().Send(msg)
-					if err != nil {
+					v = customPlan.CustomRowProcess(v, shs[recvIndex].SHKey(), customPlan.OpaqueInfo)
+				}
+				if v != nil {
+					if err := s.Client().Send(v); err != nil {
 						return err
 					}
 				}
@@ -1279,7 +1312,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.BindComplete:
 		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
+			return rerrors.NewExecutorSyncLostError().Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
@@ -1303,14 +1336,14 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
+				return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
-			return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
+			return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
 		}
 	}
 }
@@ -1321,7 +1354,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 	/* First thing first, do sanity check */
 	switch topPlan.(type) {
 	case *plan.CopyPlan:
-		return rerrors.ErrExecutorSyncLost.Detail("copy plan is not convertable to dispatchable plan")
+		return rerrors.NewExecutorSyncLostError().Detail("copy plan is not convertable to dispatchable plan")
 	}
 
 	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {

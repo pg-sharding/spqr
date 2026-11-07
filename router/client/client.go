@@ -205,7 +205,12 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessag
 		targetSessionAttrs = config.TargetSessionAttrsPS
 	}
 
-	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, twopc.CommitStrategy1pc)
+	defaultCommitStrategy := config.RouterConfig().DefaultCommitStrategy
+	if defaultCommitStrategy == "" {
+		defaultCommitStrategy = twopc.CommitStrategyBestEffort
+	}
+
+	sh := session.NewSimpleHandler(targetSessionAttrs, showNoticeMessages, defaultCommitStrategy)
 
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,
@@ -219,8 +224,6 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, showNoticeMessag
 
 		serverP: atomic.Pointer[server.Server]{},
 	}
-
-	cl.SetCommitStrategy(twopc.CommitStrategyBestEffort)
 
 	cl.id = spqrlog.GetPointer(cl)
 

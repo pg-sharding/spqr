@@ -74,7 +74,7 @@ func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.Rou
 		return nil
 	}
 
-	return rerrors.ErrComplexQuery
+	return rerrors.NewComplexQueryError()
 }
 
 // TODO : unit tests
@@ -334,7 +334,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	case *lyx.AExprList, *lyx.AExprNot:
 		/* ok */
 	default:
-		return fmt.Errorf("analyze where clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
+		return fmt.Errorf("analyze where clause, unknown expr %T: %w", expr, rerrors.NewComplexQueryError())
 	}
 	return nil
 }
@@ -565,7 +565,7 @@ func AnalyzeQueryV1(
 								}
 							}
 						default:
-							return rerrors.ErrComplexQuery
+							return rerrors.NewComplexQueryError()
 						}
 					}
 				}

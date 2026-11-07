@@ -81,14 +81,14 @@ func AdjustPlanStateForFluxAccess(rm *rmeta.RoutingMetadataContext, p plan.Plan)
 	return nil
 }
 
-func AdjustPlanStateForUpsert(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
+func AdjustPlanStateForAutoLinearize(rm *rmeta.RoutingMetadataContext, p plan.Plan) error {
 	_, ok := p.(*plan.ShardDispatchPlan)
 	if ok {
-		/* single shard dispatch is safe from hazard upsert */
+		/* Single-shard dispatch cannot cause distributed deadlocks. */
 		return nil
 	}
 
-	if rm.HasHazardUpsert {
+	if rm.HasHazardUpsert || rm.HasReferenceRelUpdate {
 		p.Opts().AutoLinearize = true
 	}
 
@@ -169,7 +169,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 		}
 		values, ok := cte.SubQuery.(*lyx.ValueClause)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		rm.UsedSelectQueryAdjust = true
@@ -195,10 +195,12 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 			return nil, err
 		}
 
-		p, err = RewriteDistributedRelWithValues(rm.Query, firstKey.CTEName, shs, true)
+		rewritten, err := RewriteDistributedRelWithValues(rm.Query, values.ValuesLoc, shs, true)
 		if err != nil {
 			return nil, err
 		}
+		rewritten.BasePlan = sc.BasePlan
+		p = rewritten
 	}
 	return p, nil
 }

@@ -113,6 +113,8 @@ func CopyBackendMsg(msg pgproto3.BackendMessage) (pgproto3.BackendMessage, error
 	case *pgproto3.ParseComplete:
 		cpQ := &pgproto3.ParseComplete{}
 		return cpQ, nil
+	case *pgproto3.NoticeResponse:
+		return v, nil
 	default:
 		/* All ok? */
 		return nil, fmt.Errorf("unexpected message type in copy: %T", msg)

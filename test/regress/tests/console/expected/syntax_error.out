@@ -6,6 +6,7 @@ SELECT 1;
 ERROR:  failed to parse query "SELECT 1;": syntax error
 LINE 1: SELECT 1;
                ^
+HINT:  To run PostgreSQL queries, connect to your application database on the router's PostgreSQL port instead of the spqr-console database or admin console port.
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra;
 ERROR:  failed to parse query "CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra;": syntax error
 LINE 1: CREATE DISTRIBUTION ds1 COLUMN TYPES integer extra;

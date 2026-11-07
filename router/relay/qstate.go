@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -69,7 +70,9 @@ func ReplyVirtualParamStateTTS(cl client.Client, tts *tupleslot.TupleTableSlot) 
 	}
 }
 
-var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
+func newAbortedTxError() *spqrerror.SpqrError {
+	return spqrerror.Newf(spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION, "current transaction is aborted, commands ignored until end of transaction block")
+}
 
 func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
@@ -115,7 +118,7 @@ l:
 			* and end tx block. */
 			st, ok := stmt.(*lyx.TransactionStmt)
 			if !ok {
-				return nil, errAbortedTx
+				return nil, newAbortedTxError()
 			}
 			/* It is necessary here to change state to trigger correct
 			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
@@ -125,7 +128,7 @@ l:
 				/* We will actually send COMMIT as use command to shards, do not
 				* override `query` */
 			} else if st.Kind != lyx.TRANS_STMT_ROLLBACK {
-				return nil, errAbortedTx
+				return nil, newAbortedTxError()
 			}
 		}
 
@@ -178,7 +181,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msgf("process relay state advanced: %+v", stmt)
+	spqrlog.Zero.Debug().Str("query", query).Str("txstatus", rst.qse.TxStatus().String()).Uint("client", rst.Client().ID()).Msg("process relay state advanced")
 
 	statistics.IncTotalRequest()
 
@@ -192,16 +195,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		switch st.Kind {
 		case lyx.TRANS_STMT_BEGIN:
-
-			/* XXX: unwind implicit tx here */
-
-			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
-				// ignore this
-				_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
-				rst.QueryExecutor().SetCommandCompleteTag("BEGIN")
-				return noDataPd, nil
-			}
-
 			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
@@ -295,7 +288,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		q, ok := stmt.(*lyx.VariableShowStmt)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		param := virtualParamTransformName(q.Name)
@@ -435,7 +428,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		q, ok := stmt.(*lyx.VariableSetStmt)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		switch q.Kind {
 		case lyx.VarTypeResetAll:
@@ -507,8 +500,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			// prepare *name* as *query*
-			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
+			// Extract the inner query using the token location recorded
+			// by the parser: PrepareStmt.QueryLoc points right at the
+			// first token of the query after the AS keyword.
+			ss := query[st.QueryLoc:]
 
 			if _, err := rst.relayParsePrepared(context.TODO(), st.Name, ss, nil); err != nil {
 				return nil, err
@@ -533,8 +528,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				switch q := p.(type) {
 				case *lyx.AExprSConst:
 					params = append(params, []byte(q.Value))
+				case *lyx.AExprIConst:
+					params = append(params, []byte(strconv.FormatInt(q.Value, 10)))
+				case *lyx.AExprBConst:
+					params = append(params, []byte(strconv.FormatBool(q.Value)))
+				case *lyx.AExprNConst:
+					/* NULL const */
+					params = append(params, nil)
 				default:
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 				parameterFormatCodes = append(parameterFormatCodes, xproto.FormatCodeText)
 				resultFormatCodes = append(resultFormatCodes, xproto.FormatCodeText)
@@ -572,6 +574,12 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	mp map[string]string, isLocal bool, isStmt bool) error {
+	for hintName := range mp {
+		name := virtualParamTransformName(hintName)
+		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
+			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+		}
+	}
 
 	lvl := session.VirtualParamLevelTxBlock
 

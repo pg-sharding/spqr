@@ -13,12 +13,22 @@ select __spqr__clear_2pc_data();
 SELECT __spqr__set_next_2pc_gid('auto_zzz1');
 BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
 SELECT __spqr__set_next_2pc_gid('auto_zzz2');
 set __spqr__allow_autoprotect_2pc to true;
 BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
 NOTICE: prepare tx auto_zzz2 on spqr_shard_1:6432
@@ -31,7 +41,12 @@ NOTICE: commit prepared tx auto_zzz2 on spqr_shard_3:6432
 NOTICE: commit prepared tx auto_zzz2 on spqr_shard_4:6432
 SELECT __spqr__set_next_2pc_gid('auto_zzz3');
 INSERT INTO ref_2pc (i) VALUES (1);
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: prepare tx auto_zzz3 on spqr_shard_1:6432
 NOTICE: prepare tx auto_zzz3 on spqr_shard_2:6432
@@ -43,7 +58,12 @@ NOTICE: commit prepared tx auto_zzz3 on spqr_shard_3:6432
 NOTICE: commit prepared tx auto_zzz3 on spqr_shard_4:6432
 SELECT __spqr__set_next_2pc_gid('auto_zzz4');
 UPDATE ref_2pc SET i = i + 1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: prepare tx auto_zzz4 on spqr_shard_1:6432
 NOTICE: prepare tx auto_zzz4 on spqr_shard_2:6432
@@ -55,7 +75,12 @@ NOTICE: commit prepared tx auto_zzz4 on spqr_shard_3:6432
 NOTICE: commit prepared tx auto_zzz4 on spqr_shard_4:6432
 SELECT __spqr__set_next_2pc_gid('auto_zzz5');
 DELETE FROM ref_2pc;
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: prepare tx auto_zzz5 on spqr_shard_1:6432
 NOTICE: prepare tx auto_zzz5 on spqr_shard_2:6432

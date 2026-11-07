@@ -101,6 +101,7 @@ SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
 SELECT * FROM test ORDER BY id;
 
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
+SELECT * FROM test ORDER BY id /* __spqr__unknown_hint: true */; -- error
 
 /* ERROR */
 SET __spqr__execute_on TO sh1xxx;

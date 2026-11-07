@@ -763,7 +763,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force); err != nil {
+		if err := mngr.AddDataShard(ctx, dataShard, stmt.Force, stmt.DryRun); err != nil {
 			return nil, err
 		}
 
@@ -2449,6 +2449,13 @@ func processShowInner(ctx context.Context,
 		for i, seq := range seqs {
 			tts.WriteDataRow(seq, fmt.Sprintf("%d", sequenceVals[i]))
 		}
+
+		return tts, nil
+	case spqrparser.TransactionReadOnlyStr:
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("transaction_read_only"),
+		}
+		tts.WriteDataRow("off")
 
 		return tts, nil
 	case spqrparser.IsReadOnlyStr:

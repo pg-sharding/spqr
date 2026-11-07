@@ -1288,7 +1288,7 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 
 	idx, ok := q.State.UniqueIndexes[id]
 	if !ok {
-		return fmt.Errorf("unique index \"%s\" not found", id)
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "unique index %q not found", id)
 	}
 
 	ds, ok := q.State.Distributions[idx.DistributionId]

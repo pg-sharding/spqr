@@ -29,6 +29,9 @@ SELECT __spqr__ctid('rel_al');
 WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1;
 
+WITH v (id, c) AS (VALUES (2222, 888), (3333, 1))
+INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT DO NOTHING;
+
 
 WITH v (id, c) AS (VALUES (2222, 888), (3333, 1)) 
 INSERT INTO rel_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
@@ -59,6 +62,11 @@ WITH v (id, c) AS (VALUES (1221, 888), (1222, 1))
 INSERT INTO rf_al (id, c) SELECT id, c FROM v ON CONFLICT (id) DO UPDATE SET c = rf_al.c + 1 RETURNING *;
 
 SELECT __spqr__ctid('rf_al');
+
+-- CTE/JOIN rewriting must preserve auto-linearize for ON CONFLICT DO UPDATE.
+WITH v(id) AS (VALUES (2222), (3333))
+INSERT INTO rel_al SELECT r.id, r.c FROM rel_al r JOIN v ON r.id = v.id
+ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
 
 DROP TABLE rel_al;
 DROP TABLE rf_al;

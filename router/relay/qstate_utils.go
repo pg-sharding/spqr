@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/client"
@@ -24,49 +24,42 @@ func virtualParamTransformName(name string) string {
 func DispatchSlice(qd *QueryDesc,
 	p plan.Plan, cl client.RouterClient, replyCl bool) error {
 
+	if p == nil {
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot dispatch query slice without a plan")
+	}
+
 	serv := cl.Server()
 
-	var et []kr.ShardKey
-
-	if p == nil {
+	et := p.ExecutionTargets()
+	if len(et) == 0 {
 		for _, ds := range serv.Datashards() {
 			et = append(et, ds.SHKey())
 		}
-	} else {
-		et = p.ExecutionTargets()
-
-		if len(et) == 0 {
-			for _, ds := range serv.Datashards() {
-				et = append(et, ds.SHKey())
-			}
-		}
 	}
+
+	forceLinearize := p.Opts().AutoLinearize
+
+	guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
+	if err != nil {
+		return err
+	}
+
+	forceLinearize = forceLinearize || guc.Get(cl)
 
 	for _, targ := range et {
 
 		if qd.simple {
 
-			forceLinearize := false
-
 			/*
 			* This is only execution path for non-top level slice
 			 */
-			if p != nil {
-				forceLinearize = p.Opts().AutoLinearize
-				if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
-					/* Uh, oh, this is very ugly hack */
+			if ovMsg := p.GetGangMemberMsg(targ); ovMsg != "" {
+				/* Uh, oh, this is very ugly hack */
 
-					if err := serv.SendShard(&pgproto3.Query{
-						String: ovMsg,
-					}, targ); err != nil {
-						return err
-					}
-
-				} else {
-					/* Assert for IsQuery here? */
-					if err := serv.SendShard(qd.Msg, targ); err != nil {
-						return err
-					}
+				if err := serv.SendShard(&pgproto3.Query{
+					String: ovMsg,
+				}, targ); err != nil {
+					return err
 				}
 			} else {
 				/* Assert for IsQuery here? */
@@ -75,12 +68,7 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			}
 
-			guc, err := cl.FindBoolGUC(session.SPQR_LINEARIZE_DISPATCH)
-			if err != nil {
-				return err
-			}
-
-			if guc.Get(cl) || forceLinearize {
+			if forceLinearize {
 				guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
 				if err != nil {
 					return err
@@ -102,10 +90,26 @@ func DispatchSlice(qd *QueryDesc,
 			if err := serv.SendShard(qd.exec, targ); err != nil {
 				return err
 			}
+
 			if qd.exec.MaxRows == 0 {
 				if err := serv.SendShard(pgsync, targ); err != nil {
 					return err
 				}
+
+				if forceLinearize {
+					guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+					if err != nil {
+						return err
+					}
+					if guc.Get(cl) {
+						_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+					}
+
+					if err := serv.PrefetchResult(targ, 1); err != nil {
+						return err
+					}
+				}
+
 			} else {
 				msg, err := cl.Peek()
 				if err != nil {
@@ -117,6 +121,21 @@ func DispatchSlice(qd *QueryDesc,
 					if err := serv.SendShard(pgsync, targ); err != nil {
 						return err
 					}
+
+					if forceLinearize {
+						guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+						if err != nil {
+							return err
+						}
+						if guc.Get(cl) {
+							_ = cl.ReplyNotice(fmt.Sprintf("dispatch prefetching results from shard %s", targ.Name))
+						}
+
+						if err := serv.PrefetchResult(targ, 1); err != nil {
+							return err
+						}
+					}
+
 				case *pgproto3.Flush:
 					/* empty buffer */
 					_, _ = cl.Receive()
@@ -134,17 +153,17 @@ func DispatchSlice(qd *QueryDesc,
 						return err
 					}
 				default:
-					return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("non sync of flush query for dispatch: %T", msg))
+					return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("non sync of flush query for dispatch: %T", msg))
 				}
 			}
 		}
 	}
 
-	guc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
+	rGuc, err := cl.FindBoolGUC(session.SPQR_REPLY_NOTICE)
 	if err != nil {
 		return err
 	}
-	if guc.Get(cl) && replyCl {
+	if rGuc.Get(cl) && replyCl {
 		_ = replyShardMatchesWithHosts(cl, serv, et)
 	}
 	return nil

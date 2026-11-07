@@ -394,10 +394,11 @@ Feature: Move test
     MOVE KEY RANGE krid1 to sh2
     """
     Then command return code should be "1"
-    And SQL error on host "coordinator" should match regexp
+    And SQL error on host "coordinator" should match json_exactly
     """
-    relation xMove does not exist on the destination shard
+    "ERROR: relation xMove does not exist on the destination shard (SQLSTATE SPQRt)"
     """
+
   
   Scenario: MOVE KEY RANGE works with hashed int keys, murmur3 hash
     When I execute SQL on host "coordinator"

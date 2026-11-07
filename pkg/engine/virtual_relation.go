@@ -546,8 +546,9 @@ func ClientsVirtualRelationScan(_ context.Context, clients []client.ClientInfo) 
 
 	var data [][][]byte
 	for _, cl := range clients {
-		if len(cl.Shards()) > 0 {
-			for _, sh := range cl.Shards() {
+		shards := cl.Shards()
+		if len(shards) > 0 {
+			for _, sh := range shards {
 				if sh == nil {
 					continue
 				}

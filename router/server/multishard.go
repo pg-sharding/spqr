@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -41,7 +42,10 @@ const (
 )
 
 type MultiShardServer struct {
-	activeShards []shard.ShardHostInstance
+	// The query goroutine owns activeShards. Protect its mutations and
+	// snapshots used by concurrent SHOW clients and cancellation requests.
+	activeShardsMu sync.Mutex
+	activeShards   []shard.ShardHostInstance
 
 	states []ShardState
 
@@ -152,7 +156,9 @@ func (m *MultiShardServer) expandGangUtil(params pool.ConnAllocParams,
 		}
 	}
 
+	m.activeShardsMu.Lock()
 	m.activeShards = append(m.activeShards, sh)
+	m.activeShardsMu.Unlock()
 
 	return nil
 }
@@ -178,9 +184,12 @@ func (m *MultiShardServer) ExpandGang(params pool.ConnAllocParams, shkey kr.Shar
 
 /* Unattach shard server connection pointed by shard key. */
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) (shard.ShardHostInstance, error) {
+	m.activeShardsMu.Lock()
+	defer m.activeShardsMu.Unlock()
+
 	for i, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
-			m.activeShards = slices.Delete(m.activeShards, i, i)
+			m.activeShards = slices.Delete(m.activeShards, i, i+1)
 			return activeShard, nil
 		}
 	}
@@ -330,7 +339,9 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 	return nil
 }
 
-var ErrMultiShardSyncBroken = spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
+func NewMultiShardSyncBrokenError() *spqrerror.SpqrError {
+	return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "multishard state is out of sync")
+}
 
 func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessage, uint, error) {
 
@@ -391,7 +402,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 					saveBC = retMsg
 				case *pgproto3.CopyInResponse:
 					if m.multistate != InitialState && m.multistate != CopyInState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, NewMultiShardSyncBrokenError()
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyInState
@@ -399,7 +410,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 
 				case *pgproto3.CopyOutResponse:
 					if m.multistate != InitialState && m.multistate != CopyOutState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, NewMultiShardSyncBrokenError()
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyOutState
@@ -434,7 +445,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 					saveRd = retMsg // all should be same
 				case *pgproto3.ReadyForQuery:
 					if m.multistate != InitialState {
-						return nil, 0, ErrMultiShardSyncBroken
+						return nil, 0, NewMultiShardSyncBrokenError()
 					}
 					m.states[i] = ShardRFQState
 					saveRFQ = retMsg
@@ -450,7 +461,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 				case *pgproto3.ErrorResponse:
 
 					if m.multistate != InitialState {
-						return nil, 0, ErrMultiShardSyncBroken.
+						return nil, 0, NewMultiShardSyncBrokenError().
 							Detail(retMsg.Detail).
 							Code(retMsg.Code).
 							Context(retMsg.Where).
@@ -464,7 +475,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
 					// sync is broken
-					return nil, 0, ErrMultiShardSyncBroken
+					return nil, 0, NewMultiShardSyncBrokenError()
 				}
 				break
 			}
@@ -509,7 +520,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 	case CopyInState:
 		fallthrough
 	case CopyOutState:
-		return nil, 0, ErrMultiShardSyncBroken
+		return nil, 0, NewMultiShardSyncBrokenError()
 	case RunningState:
 		anyCCTag := []byte{}
 		ccRewrite := false
@@ -580,7 +591,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 				m.states[i] = ErrorState
 				m.multistate = ServerErrorState
 				// sync is broken
-				return nil, 0, ErrMultiShardSyncBroken
+				return nil, 0, NewMultiShardSyncBrokenError()
 			default:
 				return msg, uint(i), nil
 			}
@@ -613,7 +624,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 			cntUnSync++
 
 			if m.states[i] != ShardCCState {
-				return nil, 0, ErrMultiShardSyncBroken
+				return nil, 0, NewMultiShardSyncBrokenError()
 			}
 
 			if err := func() error {
@@ -632,7 +643,7 @@ func (m *MultiShardServer) Receive(o *planopts.PlanOpts) (pgproto3.BackendMessag
 						return nil
 					default:
 						// sync is broken
-						return ErrMultiShardSyncBroken
+						return NewMultiShardSyncBrokenError()
 					}
 				}
 			}(); err != nil {
@@ -679,23 +690,14 @@ func (m *MultiShardServer) Cleanup(rule *config.FrontendRule) error {
 	if m.TxStatus() == txstatus.TXIDLE {
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("multishard server tx status idle on cleanup")
 	}
-	if rule.PoolRollback {
-		if err := m.Send(&pgproto3.Query{
-			String: "ROLLBACK",
-		}); err != nil {
-			return err
+	var firstErr error
+	for _, sh := range m.activeShards {
+		if err := sh.Cleanup(rule); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 
-	if rule.PoolDiscard {
-		if err := m.Send(&pgproto3.Query{
-			String: "DISCARD ALL",
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return firstErr
 }
 
 func (m *MultiShardServer) Sync() int64 {
@@ -708,7 +710,7 @@ func (m *MultiShardServer) Sync() int64 {
 
 func (m *MultiShardServer) Cancel() error {
 	var errs []error
-	for _, sh := range m.activeShards {
+	for _, sh := range m.Datashards() {
 		if err := sh.Cancel(); err != nil {
 			errs = append(errs, err)
 		}
@@ -722,7 +724,7 @@ func (m *MultiShardServer) Cancel() error {
 // CancellableIDs implements [Server].
 func (m *MultiShardServer) CancellableIDs() []uint32 {
 	var ids []uint32
-	for _, sh := range m.activeShards {
+	for _, sh := range m.Datashards() {
 		ids = append(ids, sh.CancellableIDs()...)
 	}
 	return ids
@@ -741,7 +743,10 @@ func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
 }
 
 func (m *MultiShardServer) Datashards() []shard.ShardHostInstance {
-	return m.activeShards
+	m.activeShardsMu.Lock()
+	defer m.activeShardsMu.Unlock()
+
+	return slices.Clone(m.activeShards)
 }
 
 var _ Server = &MultiShardServer{}

@@ -246,6 +246,9 @@ NOTICE: send query to shard(s) : sh1
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */; -- error
 ERROR:  shard xxxxx does not exist
 QUERY:  SELECT * FROM test ORDER BY id /* __spqr__execute_on: xxxxx */;
+SELECT * FROM test ORDER BY id /* __spqr__unknown_hint: true */; -- error
+ERROR:  hint "__spqr__unknown_hint" does not exist
+QUERY:  SELECT * FROM test ORDER BY id /* __spqr__unknown_hint: true */;
 /* ERROR */
 SET __spqr__execute_on TO sh1xxx;
 ERROR:  shard sh1xxx does not exist

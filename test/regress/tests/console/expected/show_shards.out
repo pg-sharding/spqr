@@ -48,6 +48,8 @@ CREATE SHARD sh4 OPTIONS (HOST "spqr_shard_4:6432", HOST "spqr_shard_4_replica:6
 
 CREATE SHARD sh1 OPTIONS (HOST "localhost:6432") FORCE;
 ERROR:  shard with id sh1 already exists
+CREATE SHARD sh5 OPTIONS (HOST "localhost::6432") FORCE;
+ERROR:  invalid host format: expected 'host:port[:availability_zone]', actually 'localhost::6432'
 SHOW shards_extended;
  shard |                         options                         
 -------+---------------------------------------------------------

@@ -101,27 +101,32 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 	return nil
 }
 
-func (kr *KeyRange) OutFunc(attribInd int) []byte {
-	switch kr.ColumnTypes[attribInd] {
+// EncodeBoundValue converts a typed key range bound value into its wire
+// representation, according to the distribution column type.
+func EncodeBoundValue(colType string, val any) []byte {
+	switch colType {
 	case qdb.ColumnTypeInteger:
 		raw := make([]byte, binary.MaxVarintLen64)
-		_ = binary.PutVarint(raw, kr.LowerBound[attribInd].(int64))
+		_ = binary.PutVarint(raw, val.(int64))
 		return raw
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUUIDHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
-		raw := hashfunction.EncodeUInt64(kr.LowerBound[attribInd].(uint64))
-		return raw
+		return hashfunction.EncodeUInt64(val.(uint64))
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
 	case qdb.ColumnTypeVarchar:
 		fallthrough
 	case qdb.ColumnTypeUUID:
-		return []byte(kr.LowerBound[attribInd].(string))
+		return []byte(val.(string))
 	}
 	return nil
+}
+
+func (kr *KeyRange) OutFunc(attribInd int) []byte {
+	return EncodeBoundValue(kr.ColumnTypes[attribInd], kr.LowerBound[attribInd])
 }
 
 func (kr *KeyRange) SendFunc(attribInd int) string {

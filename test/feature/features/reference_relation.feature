@@ -557,9 +557,9 @@ Scenario: Ref relation sync fails when table does not exist on destination shard
     SYNC REFERENCE TABLE t ON sh2;
     """
     Then command return code should be "1"
-    And SQL error on host "coordinator" should match regexp
+    And SQL error on host "coordinator" should match json_exactly
     """
-    relation t does not exist on the destination shard
+    "ERROR: relation t does not exist on the destination shard (SQLSTATE SPQRT)"
     """
 
 Scenario: Ref relation sync fails when table has constraints on not-yet-synced table

@@ -25,6 +25,7 @@ import (
 
 var (
 	cfgPath       string
+	lcfgPath      string
 	qdbImpl       string
 	gomaxprocs    int
 	prettyLogging bool
@@ -43,7 +44,7 @@ func getMaxTxnBatchSize(configCoord *config.Coordinator) uint16 {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "spqr-coordinator run --config `path-to-config`",
+	Use:   "spqr-coordinator --config `path-to-config`",
 	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
@@ -77,7 +78,13 @@ var rootCmd = &cobra.Command{
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
 
-		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
+		lcfgStr, err := config.LoadLoggerCfg(lcfgPath)
+		if err != nil {
+			return err
+		}
+		log.Println("Running logger config:", lcfgStr)
+
+		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
 
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
@@ -114,7 +121,7 @@ var rootCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging)
+					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, false, config.CoordinatorConfig().PrettyLogging, config.LoggerConfig().DiodeSize, config.LoggerConfig().PollInterval)
 				default:
 					return
 				}
@@ -153,6 +160,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/coordinator.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&lcfgPath, "logger-config", "", "", "path to logger config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
