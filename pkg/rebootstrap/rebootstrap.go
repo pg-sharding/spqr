@@ -262,4 +262,5 @@ func copyStateFields(swapDb, db *qdb.MemQDBState) {
 	swapDb.TaskGroupMoveTaskID = db.TaskGroupMoveTaskID
 	swapDb.UniqueIndexes = db.UniqueIndexes
 	swapDb.UniqueIndexesByRel = db.UniqueIndexesByRel
+	swapDb.TwoPhaseTx = db.TwoPhaseTx
 }
