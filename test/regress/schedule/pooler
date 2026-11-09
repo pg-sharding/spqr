@@ -1,2 +1,3 @@
 test: error
 test: copy
+test: pool_rollback
