@@ -1,20 +1,25 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag to build and upload assets for'
+        description: 'Release tag to build assets for'
         required: true
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 env:
   GO_VERSION: '1.26'
-  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -96,11 +101,22 @@ jobs:
       - name: Generate checksums
         run: sha256sum spqr-router-*.tar.gz > SHA256SUMS
 
-      - name: Upload release assets
+      # Releases are immutable once published, so assets go into a draft.
+      - name: Upload assets to draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${TAG}" \
-            --repo "${{ github.repository }}" \
-            --clobber \
-            spqr-router-*.tar.gz SHA256SUMS
+          if gh release view "${TAG}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" \
+              --repo "${{ github.repository }}" \
+              --clobber \
+              spqr-router-*.tar.gz SHA256SUMS
+          else
+            gh release create "${TAG}" \
+              --repo "${{ github.repository }}" \
+              --draft \
+              --verify-tag \
+              --title "SPQR ${TAG}" \
+              --generate-notes \
+              spqr-router-*.tar.gz SHA256SUMS
+          fi
