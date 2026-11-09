@@ -31,7 +31,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.7.3
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v2 v2.4.0
