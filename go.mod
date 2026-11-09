@@ -27,7 +27,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
-	github.com/xdg-go/scram v1.3.0
+	github.com/xdg-go/scram v1.4.0
 	go.etcd.io/etcd/client/v3 v3.7.3
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.58.0
@@ -95,7 +95,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.25.0
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.7.3
 	go.etcd.io/etcd/client/pkg/v3 v3.7.3 // indirect
