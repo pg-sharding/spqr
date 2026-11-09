@@ -9,9 +9,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	mockclient "github.com/pg-sharding/spqr/router/mock/client"
-	mockpoolmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
-	mockserver "github.com/pg-sharding/spqr/router/mock/server"
+	mockcl "github.com/pg-sharding/spqr/router/mock/client"
+	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
+	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -19,9 +19,9 @@ import (
 
 func TestUnrouteCommonDiscardsShardsAfterCleanupError(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	cl := mockclient.NewMockRouterClient(ctrl)
-	serv := mockserver.NewMockServer(ctrl)
-	gang := mockpoolmgr.NewMockGangMgr(ctrl)
+	cl := mockcl.NewMockRouterClient(ctrl)
+	serv := mocksrv.NewMockServer(ctrl)
+	gang := mockcmgr.NewMockGangMgr(ctrl)
 	sh1 := mockshard.NewMockShardHostInstance(ctrl)
 	sh2 := mockshard.NewMockShardHostInstance(ctrl)
 	cleanupErr := errors.New("shard connection is not synchronized on cleanup")
