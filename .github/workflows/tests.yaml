@@ -3,8 +3,21 @@ name: tests
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
   pull_request:
     branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   IMAGE_SHARD: spqr-shard-image
@@ -21,6 +34,12 @@ jobs:
      - name: Check out code
        uses: actions/checkout@v7
 
+     - name: Set up Go
+       uses: actions/setup-go@v7
+       with:
+         go-version-file: go.mod
+         cache: true
+
      - name: unit tests
        run: make unittest
   etcdqdb_integration:
@@ -30,6 +49,12 @@ jobs:
 
      - name: Check out code
        uses: actions/checkout@v7
+
+     - name: Set up Go
+       uses: actions/setup-go@v7
+       with:
+         go-version-file: go.mod
+         cache: true
 
      - name: etcdqdb_integration tests
        run: make etcdqdb_test
@@ -78,8 +103,8 @@ jobs:
 
     strategy:
       matrix:
-        os-version: ['jammy', 'noble']
-        version: ['15', '16', '17', '18', '19']
+        os-version: ${{ fromJSON((github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci')) && '["noble"]' || '["jammy", "noble"]') }}
+        version: ${{ fromJSON((github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci')) && '["15", "19"]' || '["15", "16", "17", "18", "19"]') }}
         # temporary solution due to problems with yandex registry
         # version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
 
@@ -118,8 +143,8 @@ jobs:
 
     strategy:
       matrix:
-        os-version: ['jammy', 'noble']
-        version: ['15', '16', '17', '18', '19']
+        os-version: ${{ fromJSON((github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci')) && '["noble"]' || '["jammy", "noble"]') }}
+        version: ${{ fromJSON((github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci')) && '["15", "19"]' || '["15", "16", "17", "18", "19"]') }}
     steps:
 
       - name: Check out code
