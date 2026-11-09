@@ -113,6 +113,20 @@ func (mr *MockGangMgrMockRecorder) DataPending() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockGangMgr)(nil).DataPending))
 }
 
+// Put mocks base method.
+func (m *MockGangMgr) Put(arg0 shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Put", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Put indicates an expected call of Put.
+func (mr *MockGangMgrMockRecorder) Put(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockGangMgr)(nil).Put), arg0)
+}
+
 // SetTxStatus mocks base method.
 func (m *MockGangMgr) SetTxStatus(status txstatus.TXStatus) {
 	m.ctrl.T.Helper()

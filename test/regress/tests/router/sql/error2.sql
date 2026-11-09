@@ -53,10 +53,14 @@ COMMIT;
 
 INSERT INTO ref_err_rel(i) VALUES(12);
 
+SET __spqr__session_connections_pin TO on;
 BEGIN;
 \set VERBOSITY SQLSTATE
 INSERT INTO ref_err_rel(i) VALUES(12);
 COMMIT;
+
+SELECT 42 /* __spqr__execute_on: sh1 */;
+RESET __spqr__session_connections_pin;
 
 DROP TABLE tt;
 DROP TABLE ref_err_rel;

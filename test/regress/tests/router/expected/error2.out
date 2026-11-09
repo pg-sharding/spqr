@@ -97,25 +97,25 @@ INSERT INTO ref_err_rel(i) VALUES(12);
 NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
 NOTICE: dispatch prefetching results from shard sh1
-NOTICE: dispatch prefetching results from shard sh2
-NOTICE: dispatch prefetching results from shard sh3
-NOTICE: dispatch prefetching results from shard sh4
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  column "i" of relation "ref_err_rel" does not exist
-LINE 1: INSERT INTO ref_err_rel(i) VALUES(12);
-                                ^
+DETAIL:  failed to prefetch result from shard sh1
+QUERY:  INSERT INTO ref_err_rel(i) VALUES(12);
+SET __spqr__session_connections_pin TO on;
 BEGIN;
 \set VERBOSITY SQLSTATE
 INSERT INTO ref_err_rel(i) VALUES(12);
 NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: dispatch prefetching results from shard sh1
-NOTICE: dispatch prefetching results from shard sh2
-NOTICE: dispatch prefetching results from shard sh3
-NOTICE: dispatch prefetching results from shard sh4
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  42703
 COMMIT;
-WARNING:  25P01
+SELECT 42 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ ?column? 
+----------
+       42
+(1 row)
+
+RESET __spqr__session_connections_pin;
 DROP TABLE tt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

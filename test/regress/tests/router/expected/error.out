@@ -63,11 +63,9 @@ NOTICE: send query to shard(s) : sh1
 SET __spqr__session_connections_pin TO on;
 SELECT 1/0 /* __spqr__scatter_query: true, __spqr__linearize_dispatch: true */;
 NOTICE: dispatch prefetching results from shard sh1
-NOTICE: dispatch prefetching results from shard sh2
-NOTICE: dispatch prefetching results from shard sh3
-NOTICE: dispatch prefetching results from shard sh4
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  division by zero
+DETAIL:  failed to prefetch result from shard sh1
+QUERY:  SELECT 1/0 /* __spqr__scatter_query: true, __spqr__linearize_dispatch: true */;
 SELECT 42 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  ?column? 

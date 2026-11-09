@@ -70,9 +70,11 @@ Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.c
 | `auth_rule`               | See [General Auth Settings](./auth)                                         | Object of `AuthCfg`      | (none) |
 | `pool_mode`               | The mode of connection pooling used                                            | `SESSION`, `TRANSACTION` | (none) |
 | `pool_discard`            | Determines if `DISCARD ALL` will be issued after transaction end               | `true`, `false`          | `false` |
-| `pool_rollback`           | Specifies whether to execute a rollback on connections returned to the pool    | `true`, `false`          | `false` |
+| `pool_rollback`           | Rolls back unfinished transactions before returning connections to the pool   | `true`, `false`          | `true` |
 | `pool_prepared_statement` | Indicates if prepared statements should be pooled                              | `true`, `false`          | `false` |
 | `pool_default`            | If set to true, uses the default pool settings defined elsewhere               | `true`, `false`          | `false` |
+
+Pinned connections always roll back unfinished transactions before being cached, regardless of `pool_rollback`. They do not run `DISCARD ALL`.
 
 ## Backend Rules
 

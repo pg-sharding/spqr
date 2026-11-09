@@ -76,6 +76,7 @@ func (s *QueryStateExecutorImpl) Discard(sh shard.ShardHostInstance) error {
 
 // Put implements [pool.ConnectionProvider].
 func (s *QueryStateExecutorImpl) Put(v shard.ShardHostInstance) error {
+	delete(s.localConn, v.ShardKeyName())
 	return s.Client().Route().MultiShardPool().Put(v)
 }
 
@@ -119,7 +120,7 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 		// Discard unfinished responses before caching pinned connections.
 		// Cleanup could block waiting for the query or a missing Sync.
 		delete(s.localConn, v.ShardKeyName())
-		return p.Discard(v)
+		return p.Put(v)
 	}
 
 	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
@@ -134,16 +135,24 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 		return err
 	}
 
-	/* Connection are pinned - save to local cache */
+	/* Connection are pinned - save to local cache. Never run actual 'discard' cleanup. */
 	if guc.Get(s.Client()) {
+		if err := v.Cleanup(&config.FrontendRule{PoolRollback: new(true)}); err != nil {
+			delete(s.localConn, v.ShardKeyName())
+			_ = p.Put(v)
+			return err
+		}
 		s.localConn[v.ShardKeyName()] = v
 
 		return nil
 	}
 
 	if err := v.Cleanup(s.Client().Rule()); err != nil {
+		delete(s.localConn, v.ShardKeyName())
+		_ = p.Put(v)
 		return err
 	}
+	delete(s.localConn, v.ShardKeyName())
 	return p.Put(v)
 }
 

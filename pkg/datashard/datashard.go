@@ -569,7 +569,7 @@ func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("shard connection is not synchronized on cleanup")
 	}
 
-	if rule.PoolRollback {
+	if rule.PoolRollback == nil || *rule.PoolRollback {
 		if sh.TxStatus() != txstatus.TXIDLE {
 			if err := sh.fire("ROLLBACK"); err != nil {
 				return err

@@ -19,7 +19,7 @@ func TestMultiShardServerCleanupAfterError(t *testing.T) {
 	sh1 := mockshard.NewMockShardHostInstance(ctrl)
 	sh2 := mockshard.NewMockShardHostInstance(ctrl)
 	sh3 := mockshard.NewMockShardHostInstance(ctrl)
-	rule := &config.FrontendRule{PoolRollback: true, PoolDiscard: true}
+	rule := &config.FrontendRule{PoolRollback: new(true), PoolDiscard: true}
 	firstErr := errors.New("first shard cleanup failed")
 
 	sh1.EXPECT().TxStatus().Return(txstatus.TXACT)
