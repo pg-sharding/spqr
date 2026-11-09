@@ -256,6 +256,7 @@ func (m *MultiShardServer) PrefetchUntilCommandComplete(shkey kr.ShardKey) error
 
 func (m *MultiShardServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error {
 	anyShard := false
+	var prefetchErr error
 	for _, shard := range m.activeShards {
 		if shard.SHKey().Name != shkey.Name {
 			continue
@@ -265,9 +266,13 @@ func (m *MultiShardServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
 			if err != nil {
 				return err
 			}
-			switch msg.(type) {
+			switch response := msg.(type) {
 			case *pgproto3.ReadyForQuery:
 				syncCnt--
+			case *pgproto3.ErrorResponse:
+				// Consume ReadyForQuery before a pinned connection can be reused.
+				prefetchErr = spqrerror.New(response.Code, response.Message).
+					Detail(fmt.Sprintf("failed to prefetch result from shard %s", shkey.Name))
 			default:
 				// ok
 			}
@@ -281,7 +286,10 @@ func (m *MultiShardServer) PrefetchResult(shkey kr.ShardKey, syncCnt uint) error
 				cpQ)
 
 			if syncCnt == 0 {
-				return nil
+				if prefetchErr != nil {
+					clear(m.prefetchMp)
+				}
+				return prefetchErr
 			}
 		}
 	}
