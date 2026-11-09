@@ -162,6 +162,17 @@ Feature: MemQDB save state into a file
     fake_init\.sql: no such file or directory
     """
 
+  Scenario: Sharding is not initialized if init.sql file contains erroneous statements
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_erroneous_initsql_and_backup.yaml
+    """
+    Given cluster is failed up and running
+    And file "/go/router.log" on host "router" should match regexp
+    """
+    Shard .*sh0.* not found
+    """
+
   Scenario: Router crashes when coordinator init is given as well as init.sql
     Given cluster environment is
     """
