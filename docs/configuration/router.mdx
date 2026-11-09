@@ -74,6 +74,8 @@ Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.c
 | `pool_prepared_statement` | Indicates if prepared statements should be pooled                              | `true`, `false`          | `false` |
 | `pool_default`            | If set to true, uses the default pool settings defined elsewhere               | `true`, `false`          | `false` |
 
+Pinned connections always roll back unfinished transactions before being cached, regardless of `pool_rollback`. They do not run `DISCARD ALL`.
+
 ## Backend Rules
 
 Backend Rule is a global setting that determines how the router connects to every shard.

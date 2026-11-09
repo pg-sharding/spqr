@@ -14,6 +14,7 @@ test: multishard
 test: multicolumn
 test: error
 test: error2
+test: pinned_connection_cleanup
 test: routing_hint
 test: sharding_key_distribution
 test: begin
