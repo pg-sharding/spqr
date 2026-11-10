@@ -103,7 +103,7 @@ l:
 			}
 
 			/* Okay, respond with CommandComplete first. */
-			err = rst.QueryExecutor().DeriveCommandComplete()
+			err = rst.QueryExecutor().SendCommandComplete()
 			if err != nil {
 				return nil, err
 			}
@@ -143,7 +143,7 @@ l:
 		}
 
 		/* outer function will complete relay here */
-		if err != nil {
+		if err != nil || rst.QueryExecutor().StatementFailed() {
 			return nil, err
 		}
 	}

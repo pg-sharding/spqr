@@ -3646,6 +3646,72 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT 1 / (random() * 0)::int /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{Query: "SELECT 42 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22012",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("42")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: "BEGIN"},
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{Query: "SET LOCAL work_mem = 'invalid'"},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Sync{},
+				&pgproto3.Query{String: "ROLLBACK"},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("42")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22023",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXERR)},
+				&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
@@ -3692,6 +3758,133 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter %d", gr, ind))
 		}
 	}
+}
+
+func TestXProtoPreparedSetCommandComplete(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Query: "SET LOCAL work_mem = '4MB'",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoBackendParseErrorIgnoresUntilSync(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT nonexistent_column /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{
+					String: "SELECT 99 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "42703",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	})
 }
 
 func TestSimpleQueryErrorClearsStatementHint(t *testing.T) {

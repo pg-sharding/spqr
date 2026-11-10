@@ -558,7 +558,8 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	/* XXX: double evaluation of CC here is not very wise, we should further refactor this to eliminate plan query from virtual processing in xproto */
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
 	s.Client().SetParam(name, value, isLocal)
@@ -578,7 +579,7 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 		return nil
 	}
 
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
 
@@ -1428,9 +1429,11 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 }
 
 func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
+	s.es.completionMsg = nil
 
 	if s.es.replyEmptyQuery {
-		return s.Client().Send(&s.cacheEQ)
+		s.es.completionMsg = &s.cacheEQ
+		return nil
 	}
 
 	/*
@@ -1445,11 +1448,23 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 		}
 		return fmt.Errorf("failed to derive command complete for query")
 	}
-	if s.es.cc != nil {
-		return s.Client().Send(s.es.cc)
+	if s.es.cc != nil && s.es.eMsg == nil {
+		s.es.completionMsg = s.es.cc
+		return nil
 	}
 
-	return s.Client().Send(s.es.eMsg)
+	s.es.completionMsg = s.es.eMsg
+	return nil
+}
+
+func (s *QueryStateExecutorImpl) SendCommandComplete() error {
+	if err := s.DeriveCommandComplete(); err != nil {
+		return err
+	}
+	if s.es.completionMsg != nil {
+		return s.Client().Send(s.es.completionMsg)
+	}
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
@@ -1465,12 +1480,17 @@ func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
 	s.es.eMsg = err
 }
 
+func (s *QueryStateExecutorImpl) StatementFailed() bool {
+	return s.es.eMsg != nil
+}
+
 func (s *QueryStateExecutorImpl) Reset() {
 	s.es.expectRowDesc = false
 	s.es.attachedCopy = false
 	s.es.doFinalizeTx = false
 	s.es.cc = nil
 	s.es.eMsg = nil
+	s.es.completionMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
 	s.es.portalSuspended = false

@@ -67,12 +67,13 @@ type RelayStateMgr interface {
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
-	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
+	/* process extended proto */
 	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
+	WaitingForSync() bool
 
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
@@ -694,6 +695,10 @@ func (rst *RelayStateImpl) relayParsePrepared(
 		return nil, err
 	}
 
+	if errResp, ok := retMsg.(*pgproto3.ErrorResponse); ok {
+		rst.QueryExecutor().FailStatement(errResp)
+	}
+
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, query, time.Since(startTime))
 	return retMsg, nil
 }
@@ -1117,6 +1122,10 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 	return nil
 }
 
+func (rst *RelayStateImpl) WaitingForSync() bool {
+	return rst.WaitSync
+}
+
 func (rst *RelayStateImpl) PipelineCleanup() {
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		/* XXX: normally these two map should be either both empty
@@ -1154,12 +1163,18 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 
 		return nil
 	case *pgproto3.Bind:
-		return rst.BindPrepared(ctx,
+		if err := rst.BindPrepared(ctx,
 			currentMsg.PreparedStatement,
 			currentMsg.DestinationPortal,
 			currentMsg.Parameters,
 			currentMsg.ParameterFormatCodes,
-			currentMsg.ResultFormatCodes)
+			currentMsg.ResultFormatCodes); err != nil {
+			return err
+		}
+		if rst.QueryExecutor().StatementFailed() {
+			return rst.QueryExecutor().SendCommandComplete()
+		}
+		return nil
 
 	case *pgproto3.Describe:
 		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)
@@ -1169,7 +1184,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		}
 
 		/* Okay, respond with CommandComplete first. */
-		return rst.QueryExecutor().DeriveCommandComplete()
+		return rst.QueryExecutor().SendCommandComplete()
 
 	case *pgproto3.Close:
 		/* Validate ObjectType */
@@ -1215,6 +1230,9 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 		rst.SetTxStatus(txstatus.TXERR)
 		rst.WaitSync = true
 		return err
+	}
+	if rst.QueryExecutor().StatementFailed() {
+		rst.WaitSync = true
 	}
 	return nil
 }
@@ -1469,6 +1487,12 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		simple: true,
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(
-		es, queryPlan /*  ugh... fix this someday */, replyCl)
+	if err := rst.QueryExecutor().ExecuteSlice(
+		es, queryPlan /*  ugh... fix this someday */, replyCl); err != nil {
+		return err
+	}
+	if replyCl {
+		return rst.QueryExecutor().DeriveCommandComplete()
+	}
+	return nil
 }
