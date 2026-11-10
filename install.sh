@@ -105,7 +105,8 @@ main() {
     CHECKSUMS_URL="${BASE_URL}/${VER}/SHA256SUMS"
 
     if [ -d "${INSTALL_DIR}" ]; then
-        die "destination '${INSTALL_DIR}' already exists. Remove it or set INSTALL_DIR to a different path."
+        log "destination '${INSTALL_DIR}' already exists, reinstalling..."
+        rm -rf "${INSTALL_DIR}"
     fi
 
     TMPDIR=$(mktemp -d)
@@ -130,16 +131,18 @@ main() {
     log "installation complete!"
     log ""
     log "  binary:   ${INSTALL_DIR}/spqr-router"
-    log "  config:   ${INSTALL_DIR}/examples/quickstart.yaml"
-    log "  init sql: ${INSTALL_DIR}/examples/init.sql"
-    log ""
-    log "quick start (requires two running PostgreSQL instances):"
-    log "  1. Start PostgreSQL on localhost:5432 and localhost:5433, or edit"
-    log "     the shard hosts in examples/quickstart.yaml."
-    log "  2. cd ${INSTALL_DIR} && ./spqr-router run --config examples/quickstart.yaml"
-    log "     The router applies examples/init.sql: ids below 50000 go to sh1, the rest to sh2."
-    log "  3. psql -h localhost -p 6432 -U postgres -d postgres"
-    log "  Admin console: psql -h localhost -p 7432 -U postgres -d postgres"
+    if [ -f "${INSTALL_DIR}/examples/quickstart.yaml" ]; then
+        log "  config:   ${INSTALL_DIR}/examples/quickstart.yaml"
+        log "  init sql: ${INSTALL_DIR}/examples/init.sql"
+        log ""
+        log "quick start (requires two running PostgreSQL instances):"
+        log "  1. Start PostgreSQL on localhost:5432 and localhost:5433, or edit"
+        log "     the shard hosts in examples/quickstart.yaml."
+        log "  2. cd ${INSTALL_DIR} && ./spqr-router run --config examples/quickstart.yaml"
+        log "     The router applies examples/init.sql: ids below 50000 go to sh1, the rest to sh2."
+        log "  3. psql -h localhost -p 6432 -U postgres -d postgres"
+        log "  Admin console: psql -h localhost -p 7432 -U postgres -d postgres"
+    fi
     log ""
     log "docs: https://docs.pg-sharding.tech/welcome/get_started"
 }

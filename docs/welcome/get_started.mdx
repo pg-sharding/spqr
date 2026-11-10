@@ -15,7 +15,7 @@ Let's set up the simplest possible installation scenario - when you have two sha
     ```bash
     curl -fsSL https://pg-sharding.tech/install.sh | sh
     # or a specific version and directory
-    curl -fsSL https://pg-sharding.tech/install.sh | VERSION=3.2.2 INSTALL_DIR=./spqr-3.2.2 sh
+    curl -fsSL https://pg-sharding.tech/install.sh | INSTALL_DIR=./spqr-custom sh
     ```
 
     The router does not install PostgreSQL. You need two running PostgreSQL instances, on `localhost:5432` and `localhost:5433` by default; change the shard hosts in `examples/quickstart.yaml` if yours run elsewhere. Then start the router:
