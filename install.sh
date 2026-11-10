@@ -106,7 +106,6 @@ main() {
 
     if [ -d "${INSTALL_DIR}" ]; then
         log "destination '${INSTALL_DIR}' already exists, reinstalling..."
-        rm -rf "${INSTALL_DIR}"
     fi
 
     TMPDIR=$(mktemp -d)

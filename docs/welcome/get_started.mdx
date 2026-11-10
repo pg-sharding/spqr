@@ -21,7 +21,7 @@ Let's set up the simplest possible installation scenario - when you have two sha
     The router does not install PostgreSQL. You need two running PostgreSQL instances, on `localhost:5432` and `localhost:5433` by default; change the shard hosts in `examples/quickstart.yaml` if yours run elsewhere. Then start the router:
 
     ```bash
-    cd spqr && ./spqr-router run --config examples/quickstart.yaml
+    cd "${INSTALL_DIR:-spqr}" && ./spqr-router run --config examples/quickstart.yaml
     ```
 
     The router applies `examples/init.sql`: rows with `id` below 50000 go to `sh1`, the rest to `sh2`. Check it through the router on port 6432:
