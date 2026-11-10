@@ -128,6 +128,7 @@ func randomHex(n int) (string, error) {
 	routingExpr				[]TypedColRef
 
 	alter_relation          *AlterRelationV2
+	resync_shard_local_id   *ResyncShardLocalID
 	alter_shard             *AlterShard
 	option				   	GenericOption
 	options				   	[]GenericOption
@@ -243,6 +244,7 @@ func randomHex(n int) (string, error) {
 %token<str> GRANT PRIVILEGES
 
 %token<str> LOCAL GLOBAL
+%token<str> RESYNC MARGIN DATA
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID TYPE
@@ -315,6 +317,8 @@ func randomHex(n int) (string, error) {
 %type<strlist> opt_show_columns show_columns_list
 
 %type<alter_relation> relation_alter_stmt_v2
+%type<str> shard_local_id_column opt_on_shard
+%type<resync_shard_local_id> opt_resync_source
 
 %type<begin> begin_stmt
 %type<commit> commit_stmt
@@ -899,6 +903,15 @@ reserved_keyword:
 	} | GLOBAL
 	{
 		$$ = $1
+	} | RESYNC
+	{
+		$$ = $1
+	} | MARGIN
+	{
+		$$ = $1
+	} | DATA
+	{
+		$$ = $1
 	} | VARCHAR
 	{
 		$$ = $1
@@ -1167,7 +1180,8 @@ show_statement_type:
 			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
 			ErrorStr, StartupFinishedStr, TwoPhaseTXStr, TwoPhaseTXExtStr,
 			TwoPhaseTXStorageStr, FileSettingsStr, TaskGroupWorkersStr,
-			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr, MigrationsStr:
+			ShardsExtendedStr, MeanKRLockTimeStr, HostsExtendedStr, MigrationsStr,
+			ShardLocalIDsStr, ShardNodesStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -1707,6 +1721,56 @@ relation_alter_stmt_v2:
 				NewName: $9,
 			},
 		}
+	} |
+	ALTER table_or_relation qualified_name ADD shard_local_id_column opt_auto_increment_start_clause {
+		$$ = &AlterRelationV2{
+			RelationName: $3,
+			Element: &AddShardLocalID{
+				Column: $5,
+				Start: uint64($6),
+			},
+		}
+	} |
+	ALTER table_or_relation qualified_name DROP shard_local_id_column {
+		$$ = &AlterRelationV2{
+			RelationName: $3,
+			Element: &DropShardLocalID{
+				Column: $5,
+			},
+		}
+	} |
+	ALTER table_or_relation qualified_name RESYNC shard_local_id_column opt_on_shard opt_resync_source {
+		$7.Column = $5
+		$7.Shard = $6
+		$$ = &AlterRelationV2{
+			RelationName: $3,
+			Element: $7,
+		}
+	}
+
+shard_local_id_column:
+	SHARD LOCAL IDENT any_id {
+		/* ID is matched as an identifier so that "id" stays usable as a column and relation name */
+		if strings.ToLower($3) != "id" {
+			yylex.Error("syntax error: expected SHARD LOCAL ID")
+			return 1
+		}
+		$$ = $4
+	}
+
+opt_on_shard:
+	ON SHARD any_id { $$ = $3 } | /* EMPTY */ { $$ = "" }
+
+opt_resync_source:
+	MARGIN any_uint {
+		margin := uint64($2)
+		$$ = &ResyncShardLocalID{MarginMs: &margin}
+	} |
+	FROM DATA {
+		$$ = &ResyncShardLocalID{FromData: true}
+	} |
+	/* EMPTY */ {
+		$$ = &ResyncShardLocalID{}
 	}
 
 opt_distributed:

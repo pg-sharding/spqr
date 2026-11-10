@@ -126,4 +126,7 @@ var reservedWords = map[string]int{
 	"call":         CALL,
 	"if":           IF,
 	"exists":       EXISTS,
+	"resync":       RESYNC,
+	"margin":       MARGIN,
+	"data":         DATA,
 }
