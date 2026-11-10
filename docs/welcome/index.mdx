@@ -1,16 +1,9 @@
 ---
 title: Welcome to SPQR
+description: what SPQR is and why
 ---
 
-import DockerImageShort from '/snippets/docker_image_short.mdx';
-
-## What is SPQR
-
 SPQR (Stateless Postgres Query Router) is a production-ready system for horizontal scaling of PostgreSQL via sharding. A real open source distributed under the PostgreSQL Global Development Group License.
-
-<DockerImageShort />
-
-## Why SPQR
 
 PostgreSQL is awesome, but it's hard to manage a single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Existing sharding solutions focus on analytical and hybrid workloads (OLAP, HTAP). Moreover, most of those solutions do not provide a simple, painless path for the monolith \<-\> sharded transitions. That's why the<br /> [Data Platform team of Yandex.Cloud](https://cloud.yandex.com/en-ru/services#data-platform) designed SPQR.
 
