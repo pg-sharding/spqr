@@ -667,3 +667,17 @@ Feature: MemQDB save state into a file
       }
     ]
     """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "name": "ref_t_a",
+        "value": "10"
+      }
+    ]
+    """
