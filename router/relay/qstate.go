@@ -89,6 +89,14 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		return nil, err
 	}
 	var pd *PortalDesc
+	rst.selectBatch = len(stmts) > 1
+	for _, stmt := range stmts {
+		if _, ok := stmt.(*lyx.Select); !ok {
+			rst.selectBatch = false
+			break
+		}
+	}
+	defer func() { rst.selectBatch = false }()
 
 l:
 	for i, stmt := range stmts {

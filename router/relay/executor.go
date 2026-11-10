@@ -1228,6 +1228,16 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			Type("msg-type", msg).
 			Msg("received message from server in execute")
 
+		if qd.simple && replyCl && overwriteCC == nil && s.es.cc != nil {
+			switch msg.(type) {
+			case *pgproto3.RowDescription, *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
+				if err := s.Client().Send(s.es.cc); err != nil {
+					return err
+				}
+				s.es.cc = nil
+			}
+		}
+
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:
 			// XXX: handle replyCl somehow
