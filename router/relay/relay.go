@@ -695,6 +695,10 @@ func (rst *RelayStateImpl) relayParsePrepared(
 		return nil, err
 	}
 
+	if errResp, ok := retMsg.(*pgproto3.ErrorResponse); ok {
+		rst.QueryExecutor().FailStatement(errResp)
+	}
+
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, query, time.Since(startTime))
 	return retMsg, nil
 }
@@ -1154,9 +1158,6 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		} else if retMsg != nil {
 			if err := rst.Client().Send(retMsg); err != nil {
 				return err
-			}
-			if errResp, ok := retMsg.(*pgproto3.ErrorResponse); ok {
-				rst.QueryExecutor().FailStatement(errResp)
 			}
 		}
 
