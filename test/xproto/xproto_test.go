@@ -3508,6 +3508,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 	defer func() {
 		_ = conn.Close()
 	}()
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -3644,6 +3645,35 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT 1 / (random() * 0)::int /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{Query: "SELECT 42 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22012",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("42")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
 			},
 		},
 	} {
