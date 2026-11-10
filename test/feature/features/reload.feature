@@ -45,3 +45,36 @@ Feature: Config reloading works
     """
     1
     """
+
+  @pure_pg
+  Scenario: Default target session attrs reload works
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_incorrect_password.yaml
+    """
+    Given cluster is up and running
+    When I run SQL on host "router" as user "regress"
+    """
+    SHOW __spqr__target_session_attrs;
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    read-write
+    """
+    # Edit config to toggle default_target_session_attrs and reload spqr-router via SIGHUP
+    When I run command on host "router"
+    """
+    sed -i 's/default_target_session_attrs: read-write/default_target_session_attrs: read-only/g' $ROUTER_CONFIG
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router" as user "regress"
+    """
+    SHOW __spqr__target_session_attrs;
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    read-only
+    """
