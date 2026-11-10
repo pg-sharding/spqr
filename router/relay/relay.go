@@ -73,6 +73,7 @@ type RelayStateMgr interface {
 	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
+	WaitingForSync() bool
 
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
@@ -1115,6 +1116,10 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 	return nil
+}
+
+func (rst *RelayStateImpl) WaitingForSync() bool {
+	return rst.WaitSync || rst.QueryExecutor().StatementFailed()
 }
 
 func (rst *RelayStateImpl) PipelineCleanup() {

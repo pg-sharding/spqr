@@ -84,6 +84,7 @@ type QueryStateExecutor interface {
 
 	ReplyEmptyQuery()
 	FailStatement(err *pgproto3.ErrorResponse)
+	StatementFailed() bool
 
 	ExecSet(rst RelayStateMgr, query, name, value string, isLocal bool) error
 	ExecReset(rst RelayStateMgr, query, name string) error

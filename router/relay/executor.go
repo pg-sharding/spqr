@@ -1465,6 +1465,10 @@ func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
 	s.es.eMsg = err
 }
 
+func (s *QueryStateExecutorImpl) StatementFailed() bool {
+	return s.es.eMsg != nil
+}
+
 func (s *QueryStateExecutorImpl) Reset() {
 	s.es.expectRowDesc = false
 	s.es.attachedCopy = false

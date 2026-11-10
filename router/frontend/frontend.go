@@ -148,6 +148,13 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+	if rst.WaitingForSync() {
+		switch msg.(type) {
+		case *pgproto3.Sync, *pgproto3.Flush, *pgproto3.Terminate:
+		default:
+			return nil
+		}
+	}
 
 	rst.QueryExecutor().StartBlock()
 
