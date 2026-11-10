@@ -26,9 +26,10 @@ type ExecutorState struct {
 	attachedCopy  bool
 	expectRowDesc bool
 
-	savedBegin *pgproto3.Query
-	cc         *pgproto3.CommandComplete
-	eMsg       *pgproto3.ErrorResponse
+	savedBegin    *pgproto3.Query
+	cc            *pgproto3.CommandComplete
+	eMsg          *pgproto3.ErrorResponse
+	completionMsg pgproto3.BackendMessage
 
 	replyEmptyQuery bool
 	portalSuspended bool
@@ -77,6 +78,7 @@ type QueryStateExecutor interface {
 	ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error
 
 	DeriveCommandComplete() error
+	SendCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
 	RFQ() *pgproto3.ReadyForQuery
 

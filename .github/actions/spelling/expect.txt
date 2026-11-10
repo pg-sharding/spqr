@@ -149,6 +149,7 @@ eshkere
 etcdctl
 etcdqdb
 etcdserverpb
+evaulation
 expd
 extldflags
 extversion
@@ -173,6 +174,7 @@ frsm
 frst
 frules
 ftts
+futher
 gcflags
 genproto
 getconn

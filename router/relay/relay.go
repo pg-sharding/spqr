@@ -1179,7 +1179,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		}
 
 		/* Okay, respond with CommandComplete first. */
-		return rst.QueryExecutor().DeriveCommandComplete()
+		return rst.QueryExecutor().SendCommandComplete()
 
 	case *pgproto3.Close:
 		/* Validate ObjectType */
@@ -1450,7 +1450,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query) error {
 
 	if err == nil {
 		/* Okay, respond with CommandComplete first. */
-		return rst.QueryExecutor().DeriveCommandComplete()
+		return rst.QueryExecutor().SendCommandComplete()
 	}
 	if sErr, ok := err.(*spqrerror.SpqrError); ok {
 		/* For simple query, set explicit query string in error message */
@@ -1498,6 +1498,12 @@ func (rst *RelayStateImpl) DispatchSimpleQuery(q *pgproto3.Query, replyCl bool) 
 		simple: true,
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(
-		es, queryPlan /*  ugh... fix this someday */, replyCl)
+	if err := rst.QueryExecutor().ExecuteSlice(
+		es, queryPlan /*  ugh... fix this someday */, replyCl); err != nil {
+		return err
+	}
+	if replyCl {
+		return rst.QueryExecutor().DeriveCommandComplete()
+	}
+	return nil
 }
