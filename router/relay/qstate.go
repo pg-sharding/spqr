@@ -143,7 +143,7 @@ l:
 		}
 
 		/* outer function will complete relay here */
-		if err != nil {
+		if err != nil || rst.QueryExecutor().StatementFailed() {
 			return nil, err
 		}
 	}

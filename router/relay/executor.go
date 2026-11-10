@@ -558,7 +558,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
 	s.Client().SetParam(name, value, isLocal)
@@ -578,7 +578,7 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 		return nil
 	}
 
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
 
@@ -1453,21 +1453,17 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	}
 
 	s.es.completionMsg = s.es.eMsg
-	err := s.es.eMsg
-	return spqrerror.New(err.Code, err.Message).
-		Hint(err.Hint).
-		Detail(err.Detail).
-		Context(err.Where).
-		Pos(err.Position).
-		Query(err.InternalQuery)
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) SendCommandComplete() error {
-	err := s.DeriveCommandComplete()
+	if err := s.DeriveCommandComplete(); err != nil {
+		return err
+	}
 	if s.es.completionMsg != nil {
 		return s.Client().Send(s.es.completionMsg)
 	}
-	return err
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {

@@ -200,7 +200,7 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 			return rst.ProcessSimpleQuery(q, true)
 		}, false)
 
-		if err == nil || rst.QueryExecutor().StatementFailed() {
+		if err == nil {
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().SendCommandComplete()
 		} else if sErr, ok := err.(*spqrerror.SpqrError); ok {
