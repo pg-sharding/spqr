@@ -121,6 +121,51 @@ Feature: MemQDB save state into a file
     ]
     """
 
+  Scenario: Reference relations sequence mapping is restored
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+    """
+    Given cluster is up and running
+    When I execute SQL on host "router-admin"
+    """
+    CREATE REFERENCE RELATION ref_t AUTO INCREMENT a START 10;
+    """
+    Then command return code should be "0"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
+    """
+    SHOW reference_relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_sequence_mapping":"map[a:ref_t_a]",
+        "schema_name":"public",
+        "schema_version":"1",
+        "shards":"[sh1 sh2]",
+        "table_name":"ref_t"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "name": "ref_t_a",
+        "value": "10"
+      }
+    ]
+    """
+
   Scenario: Unlock after restart
     Given cluster environment is
     """
@@ -382,6 +427,7 @@ Feature: MemQDB save state into a file
     ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
     ALTER DISTRIBUTION ds2 ATTACH RELATION b DISTRIBUTION KEY b_id;
     ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
+    CREATE REFERENCE RELATION ref_t AUTO INCREMENT a START 10;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     REGISTER ROUTER r1 ADDRESS "regress_router:7000";
@@ -416,6 +462,11 @@ Feature: MemQDB save state into a file
         "distribution_id": "ds2",
         "column_types": "varchar",
         "default_shard": "not exists"
+      },
+      {
+        "distribution_id": "REPLICATED",
+        "column_types": "",
+        "default_shard": "not exists"
       }
     ]
     """
@@ -444,6 +495,12 @@ Feature: MemQDB save state into a file
         "distribution_id": "ds2",
         "distribution_key": "(\"c_id\", identity)",
         "schema_name": "public"
+      },
+      {
+        "relation_name": "ref_t",
+        "distribution_id": "REPLICATED",
+        "distribution_key": "",
+        "schema_name": "public"
       }
     ]
     """
@@ -468,6 +525,37 @@ Feature: MemQDB save state into a file
         "lower_bound": "11",
         "shard_id": "sh1",
         "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW reference_relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_sequence_mapping":"map[a:ref_t_a]",
+        "schema_name":"public",
+        "schema_version":"1",
+        "shards":"[sh1 sh2]",
+        "table_name":"ref_t"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "name": "ref_t_a",
+        "value": "10"
       }
     ]
     """
@@ -493,6 +581,11 @@ Feature: MemQDB save state into a file
         "distribution_id": "ds2",
         "column_types": "varchar",
         "default_shard": "not exists"
+      },
+      {
+        "distribution_id": "REPLICATED",
+        "column_types": "",
+        "default_shard": "not exists"
       }
     ]
     """
@@ -520,6 +613,12 @@ Feature: MemQDB save state into a file
         "relation_name": "c",
         "distribution_id": "ds2",
         "distribution_key": "(\"c_id\", identity)",
+        "schema_name": "public"
+      },
+      {
+        "relation_name": "ref_t",
+        "distribution_id": "REPLICATED",
+        "distribution_key": "",
         "schema_name": "public"
       }
     ]
@@ -552,6 +651,37 @@ Feature: MemQDB save state into a file
         "lower_bound": "'a'",
         "shard_id": "sh1",
         "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW reference_relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_sequence_mapping":"map[a:ref_t_a]",
+        "schema_name":"public",
+        "schema_version":"1",
+        "shards":"[sh1 sh2]",
+        "table_name":"ref_t"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "name": "ref_t_a",
+        "value": "10"
       }
     ]
     """
@@ -574,6 +704,12 @@ Feature: MemQDB save state into a file
         "distribution_id": "ds2",
         "column_types": "varchar",
         "default_shard": "not exists"
+      },
+      {
+        "relation_name": "ref_t",
+        "distribution_id": "REPLICATED",
+        "distribution_key": "",
+        "schema_name": "public"
       }
     ]
     """
@@ -601,6 +737,12 @@ Feature: MemQDB save state into a file
         "relation_name": "c",
         "distribution_id": "ds2",
         "distribution_key": "(\"c_id\", identity)",
+        "schema_name": "public"
+      },
+      {
+        "relation_name": "ref_t",
+        "distribution_id": "REPLICATED",
+        "distribution_key": "",
         "schema_name": "public"
       }
     ]
@@ -633,6 +775,37 @@ Feature: MemQDB save state into a file
         "lower_bound": "'a'",
         "shard_id": "sh1",
         "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW reference_relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_sequence_mapping":"map[a:ref_t_a]",
+        "schema_name":"public",
+        "schema_version":"1",
+        "shards":"[sh1 sh2]",
+        "table_name":"ref_t"
+      }
+    ]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "name": "ref_t_a",
+        "value": "10"
       }
     ]
     """
