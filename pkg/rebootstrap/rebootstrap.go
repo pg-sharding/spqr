@@ -78,8 +78,7 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		}
 	}
 
-	memqdb.SwapState(swapDb.State)
-	return memqdb.DumpState()
+	return memqdb.SwapAndDumpState(swapDb.State)
 }
 
 func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.ClientConn) error {
@@ -163,8 +162,7 @@ func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.Cli
 		}
 	}
 
-	memqdb.SwapState(swapDb.State)
-	return memqdb.DumpState()
+	return memqdb.SwapAndDumpState(swapDb.State)
 }
 
 func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) error {

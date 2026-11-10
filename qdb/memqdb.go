@@ -219,6 +219,14 @@ func (q *MemQDB) SwapState(state *MemQDBState) {
 	q.State = state
 }
 
+func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.State = state
+	return q.DumpState()
+}
+
 // ==============================================================================
 //                               MISC
 // ==============================================================================
