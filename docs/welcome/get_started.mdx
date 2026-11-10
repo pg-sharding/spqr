@@ -24,7 +24,7 @@ Let's set up the simplest possible installation scenario - when you have two sha
     cd "${INSTALL_DIR:-spqr}" && ./spqr-router run --config examples/quickstart.yaml
     ```
 
-    The router applies `examples/init.sql`: rows with `id` below 50000 go to `sh1`, the rest to `sh2`. Check it through the router on port 6432:
+    The router applies `examples/init.sql`: rows with `id` from 0 through 49999 go to `sh1`, and rows with `id` 50000 or above go to `sh2`. Check it through the router on port 6432:
 
     ```sql
     ➜ psql -h localhost -p 6432 -U postgres -d postgres
