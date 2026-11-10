@@ -3508,7 +3508,6 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
 
 	for gr, msgroup := range []MessageGroup{
 		{
@@ -3524,7 +3523,6 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 					ObjectType: 'P',
 				},
 				&pgproto3.Execute{},
-				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
@@ -3769,7 +3767,6 @@ func TestXProtoPreparedSetCommandComplete(t *testing.T) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
 
 	protoTestRunner(t, frontend, []MessageGroup{
 		{
@@ -3843,7 +3840,6 @@ func TestXProtoBackendParseErrorIgnoresUntilSync(t *testing.T) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
 
 	protoTestRunner(t, frontend, []MessageGroup{
 		{

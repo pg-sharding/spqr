@@ -203,9 +203,11 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 		if err == nil {
 			/* Okay, respond with CommandComplete first. */
 			err = rst.QueryExecutor().SendCommandComplete()
-		} else if sErr, ok := err.(*spqrerror.SpqrError); ok {
-			/* For simple query, set explicit query string in error message */
-			err = sErr.Query(q.String)
+		} else {
+			if sErr, ok := err.(*spqrerror.SpqrError); ok {
+				/* For simple query, set explicit query string in error message */
+				err = sErr.Query(q.String)
+			}
 		}
 
 		rst.Client().ClosePreparedStatement("")

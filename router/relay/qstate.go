@@ -195,7 +195,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 
 		switch st.Kind {
 		case lyx.TRANS_STMT_BEGIN:
-			/* XXX: double evaluation of CC here is not very wise, we should further refactor this to eliminate plan query from virtual processing in xproto */
 			err := rst.QueryExecutor().ExecBegin(query, st, false)
 			return noDataPd, err
 
@@ -489,7 +488,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 					return nil, err
 				}
 			} else {
-				/* XXX: double evaluation of CC here is not very wise, we should further refactor this to eliminate plan query from virtual processing in xproto */
 				if err := rst.QueryExecutor().ExecSet(rst, query, name, val, q.IsLocal); err != nil {
 					return nil, err
 				}

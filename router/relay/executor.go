@@ -558,6 +558,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
+	/* XXX: double evaluation of CC here is not very wise, we should further refactor this to eliminate plan query from virtual processing in xproto */
 	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
