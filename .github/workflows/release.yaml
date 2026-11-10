@@ -82,6 +82,7 @@ jobs:
             spqr-router \
             examples/router.yaml \
             examples/2shardproxy.yaml \
+            examples/quickstart.yaml \
             examples/init.sql
           echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
 

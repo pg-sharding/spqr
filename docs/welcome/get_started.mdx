@@ -9,6 +9,42 @@ import BuildLocal from '/snippets/build_local.mdx';
 Let's set up the simplest possible installation scenario - when you have two shards and one router.
 
 <AccordionGroup>
+  <Accordion icon="download" title="Install a prebuilt binary">
+    Download `spqr-router` for Linux or macOS (amd64, arm64) into `./spqr`. The installer verifies the checksum and does not need `sudo`.
+
+    ```bash
+    curl -fsSL https://pg-sharding.tech/install.sh | sh
+    # or a specific version and directory
+    curl -fsSL https://pg-sharding.tech/install.sh | INSTALL_DIR=./spqr-custom sh
+    ```
+
+    The router does not install PostgreSQL. You need two running PostgreSQL instances, on `localhost:5432` and `localhost:5433` by default; change the shard hosts in `examples/quickstart.yaml` if yours run elsewhere. Then start the router:
+
+    ```bash
+    cd "${INSTALL_DIR:-spqr}" && ./spqr-router run --config examples/quickstart.yaml
+    ```
+
+    The router applies `examples/init.sql`: rows with `id` from 0 through 49999 go to `sh1`, and rows with `id` 50000 or above go to `sh2`. Check it through the router on port 6432:
+
+    ```sql
+    ➜ psql -h localhost -p 6432 -U postgres -d postgres
+    postgres=> CREATE TABLE users (id int PRIMARY KEY, name text);
+    CREATE TABLE
+    postgres=> INSERT INTO users VALUES (1, 'alice');
+    INSERT 0 1
+    postgres=> INSERT INTO users VALUES (60000, 'bob');
+    INSERT 0 1
+    ```
+
+    `CREATE TABLE` runs on both shards, and each row lands on its own one:
+
+    ```bash
+    ➜ psql -h localhost -p 5432 -U postgres -Atc 'SELECT * FROM users'
+    1|alice
+    ➜ psql -h localhost -p 5433 -U postgres -Atc 'SELECT * FROM users'
+    60000|bob
+    ```
+  </Accordion>
   <Accordion icon="docker" title="Pull the SPQR docker image">
     <DockerImage />
   </Accordion>
