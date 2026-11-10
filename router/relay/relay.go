@@ -1162,12 +1162,18 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 
 		return nil
 	case *pgproto3.Bind:
-		return rst.BindPrepared(ctx,
+		if err := rst.BindPrepared(ctx,
 			currentMsg.PreparedStatement,
 			currentMsg.DestinationPortal,
 			currentMsg.Parameters,
 			currentMsg.ParameterFormatCodes,
-			currentMsg.ResultFormatCodes)
+			currentMsg.ResultFormatCodes); err != nil {
+			return err
+		}
+		if rst.QueryExecutor().StatementFailed() {
+			return rst.QueryExecutor().DeriveCommandComplete()
+		}
+		return nil
 
 	case *pgproto3.Describe:
 		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)

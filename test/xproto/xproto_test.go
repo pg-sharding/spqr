@@ -3679,6 +3679,43 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: "BEGIN"},
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{Query: "SET LOCAL work_mem = 'invalid'"},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Sync{},
+				&pgproto3.Query{String: "ROLLBACK"},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("42")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22023",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXERR)},
+				&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
