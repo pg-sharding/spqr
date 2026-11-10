@@ -3543,17 +3543,19 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "err_test_2",
-					Query: "SELECT nonexistent_column FROM nonexistent_table",
+					Query: "SELECT nonexistent_column /* __spqr__execute_on: sh1 */",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "err_test_2",
 				},
 				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Severity: "ERROR",
+					Code:     "42703",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

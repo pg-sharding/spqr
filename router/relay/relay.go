@@ -1155,6 +1155,9 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			if err := rst.Client().Send(retMsg); err != nil {
 				return err
 			}
+			if errResp, ok := retMsg.(*pgproto3.ErrorResponse); ok {
+				rst.QueryExecutor().FailStatement(errResp)
+			}
 		}
 
 		return nil
