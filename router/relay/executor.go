@@ -545,6 +545,22 @@ func (s *QueryStateExecutorImpl) SetCommandCompleteTag(commandTag string) {
 	s.es.cc = &s.cacheCC
 }
 
+func (s *QueryStateExecutorImpl) execSimpleQuery(rst RelayStateMgr, q *pgproto3.Query, replyCl bool) error {
+	if err := rst.DispatchSimpleQuery(q, replyCl); err != nil {
+		return err
+	}
+	if replyCl && s.es.eMsg != nil {
+		err := s.es.eMsg
+		return spqrerror.New(err.Code, err.Message).
+			Hint(err.Hint).
+			Detail(err.Detail).
+			Context(err.Where).
+			Pos(err.Position).
+			Query(err.InternalQuery)
+	}
+	return nil
+}
+
 func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string, isLocal bool) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
@@ -558,7 +574,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	if err := s.execSimpleQuery(rst, &pgproto3.Query{String: query}, true); err != nil {
 		return err
 	}
 	s.Client().SetParam(name, value, isLocal)
@@ -568,7 +584,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 
 func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, _, _ string) error {
 	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
-		return rst.ProcessSimpleQuery(rst.Client().ConstructClientParams(), false)
+		return s.execSimpleQuery(rst, rst.Client().ConstructClientParams(), false)
 	}
 	return nil
 }
@@ -578,7 +594,7 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 		return nil
 	}
 
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	if err := s.execSimpleQuery(rst, &pgproto3.Query{String: query}, true); err != nil {
 		return err
 	}
 

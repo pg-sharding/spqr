@@ -196,20 +196,7 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 			statistics.RecordStartTime(statistics.StatisticsTypeRouter, tm, rst.Client())
 		}
 
-		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-			// this call completes relay, sends RFQ
-			return rst.ProcessSimpleQuery(q, true)
-		}, false)
-
-		if err == nil {
-			/* Okay, respond with CommandComplete first. */
-			err = rst.QueryExecutor().DeriveCommandComplete()
-		} else {
-			if sErr, ok := err.(*spqrerror.SpqrError); ok {
-				/* For simple query, set explicit query string in error message */
-				err = sErr.Query(q.String)
-			}
-		}
+		err := rst.ProcessSimpleQuery(q)
 
 		rst.Client().ClosePreparedStatement("")
 

@@ -67,9 +67,10 @@ type RelayStateMgr interface {
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
-	/* process extended proto */
-	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
+	ProcessSimpleQuery(q *pgproto3.Query) error
+	DispatchSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
+	/* process extended proto */
 	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
@@ -1163,18 +1164,12 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 
 		return nil
 	case *pgproto3.Bind:
-		if err := rst.BindPrepared(ctx,
+		return rst.BindPrepared(ctx,
 			currentMsg.PreparedStatement,
 			currentMsg.DestinationPortal,
 			currentMsg.Parameters,
 			currentMsg.ParameterFormatCodes,
-			currentMsg.ResultFormatCodes); err != nil {
-			return err
-		}
-		if rst.QueryExecutor().StatementFailed() {
-			return rst.QueryExecutor().DeriveCommandComplete()
-		}
-		return nil
+			currentMsg.ResultFormatCodes)
 
 	case *pgproto3.Describe:
 		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)
@@ -1448,7 +1443,23 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	}
 }
 
-func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
+func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query) error {
+	_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
+		return rst.DispatchSimpleQuery(q, true)
+	}, false)
+
+	if err == nil {
+		/* Okay, respond with CommandComplete first. */
+		return rst.QueryExecutor().DeriveCommandComplete()
+	}
+	if sErr, ok := err.(*spqrerror.SpqrError); ok {
+		/* For simple query, set explicit query string in error message */
+		return sErr.Query(q.String)
+	}
+	return err
+}
+
+func (rst *RelayStateImpl) DispatchSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 	ctx := context.TODO()
 
 	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Client(), rst.Client().Rule(), q.String, rst.Parser().Stmt(), rst.Cache())
