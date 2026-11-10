@@ -3524,6 +3524,7 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 					ObjectType: 'P',
 				},
 				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{

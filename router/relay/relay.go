@@ -73,6 +73,7 @@ type RelayStateMgr interface {
 	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
+	WaitingForSync() bool
 
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
@@ -1117,6 +1118,10 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 	return nil
 }
 
+func (rst *RelayStateImpl) WaitingForSync() bool {
+	return rst.WaitSync
+}
+
 func (rst *RelayStateImpl) PipelineCleanup() {
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		/* XXX: normally these two map should be either both empty
@@ -1215,6 +1220,9 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 		rst.SetTxStatus(txstatus.TXERR)
 		rst.WaitSync = true
 		return err
+	}
+	if rst.QueryExecutor().StatementFailed() {
+		rst.WaitSync = true
 	}
 	return nil
 }
