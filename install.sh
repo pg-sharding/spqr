@@ -2,9 +2,9 @@
 # install.sh — Download and install spqr-router.
 #
 # Usage:
-#   curl -fsSL https://pg-sharding.com/install.sh | sh
-#   curl -fsSL https://pg-sharding.com/install.sh | VERSION=3.2.0 sh
-#   curl -fsSL https://pg-sharding.com/install.sh | INSTALL_DIR=./mydir sh
+#   curl -fsSL https://pg-sharding.tech/install.sh | sh
+#   curl -fsSL https://pg-sharding.tech/install.sh | VERSION=3.2.0 sh
+#   curl -fsSL https://pg-sharding.tech/install.sh | INSTALL_DIR=./mydir sh
 set -eu
 
 GITHUB_REPO="pg-sharding/spqr"
@@ -136,7 +136,7 @@ main() {
     log "quick start:"
     log "  cd ${INSTALL_DIR} && ./spqr-router run --config examples/2shardproxy.yaml"
     log ""
-    log "docs: https://pg-sharding.tech/welcome/get_started"
+    log "docs: https://docs.pg-sharding.tech/welcome/get_started"
 }
 
 main
