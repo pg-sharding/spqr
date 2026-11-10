@@ -960,6 +960,18 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 	return m(tctx.commandOutput, strings.TrimSpace(body.Content))
 }
 
+func (tctx *testContext) stepCommandOutputShouldNotMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	err = m(tctx.commandOutput, strings.TrimSpace(body.Content))
+	if err != nil {
+		return nil
+	}
+	return fmt.Errorf("command output should not match, output: %s", tctx.commandOutput)
+}
+
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
@@ -1652,6 +1664,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run command on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunCommandOnHostWithTimeout)
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
+	s.Step(`^command output should not match (\w+)$`, tctx.stepCommandOutputShouldNotMatch)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)

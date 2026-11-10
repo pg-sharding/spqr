@@ -53,14 +53,14 @@ Feature: Config reloading works
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_incorrect_password.yaml
     """
     Given cluster is up and running
-    When I run SQL on host "router" as user "regress"
+    When I run command on host "router"
     """
-    SELECT 1
+    psql -h localhost -p 6432 -U regress -d regress -c "SELECT 1 /* __spqr__execute_on: sh1 */" 2>&1
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And command output should match regexp
     """
-    1
+    NOTICE:.*send query to shard\(s\) : sh1
     """
     # Edit config to toggle show_notice_messages and reload spqr-router via SIGHUP
     When I run command on host "router"
@@ -69,12 +69,12 @@ Feature: Config reloading works
     ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
     """
     Then command return code should be "0"
-    When I run SQL on host "router" as user "regress"
+    When I run command on host "router"
     """
-    SELECT 1
+    psql -h localhost -p 6432 -U regress -d regress -c "SELECT 1 /* __spqr__execute_on: sh1 */" 2>&1
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And command output should not match regexp
     """
-    1
+    NOTICE:.*send query to shard\(s\) : sh1
     """
