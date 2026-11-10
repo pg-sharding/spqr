@@ -32,20 +32,28 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CI
  distribution id -> ds1
 (2 rows)
 
+ALTER DISTRIBUTION ds1 ATTACH RELATION r5 KEY col1 HASH FUNCTION MURMUR;
+      attach table      
+------------------------
+ relation name   -> r5
+ distribution id -> ds1
+(2 rows)
+
 SHOW DISTRIBUTIONS;
  distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
  ds1             | uinteger     | not exists
 (1 row)
 
-SHOW RELATIONS;
+SHOW RELATIONS ORDER BY relation_name;
  relation_name | distribution_id |  distribution_key  | schema_name 
 ---------------+-----------------+--------------------+-------------
  r1            | ds1             | ("col1", identity) | public
  r2            | ds1             | ("col1", identity) | public
  r3            | ds1             | ("col1", murmur)   | public
  r4            | ds1             | ("col1", city)     | public
-(4 rows)
+ r5            | ds1             | ("col1", murmur)   | public
+(5 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
