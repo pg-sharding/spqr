@@ -1,0 +1,35 @@
+log_level: info
+
+host: '[localhost]'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7010'
+
+router_mode: PROXY
+
+init_sql: "examples/init.sql"
+use_init_sql: true
+
+frontend_rules:
+  - pool_mode: TRANSACTION
+    pool_default: true
+    auth_rule:
+      auth_method: ok
+
+backend_rules:
+  - pool_default: true
+    connection_limit: 10
+
+schema_cache_backend_rule:
+  usr: postgres
+  db: postgres
+
+shards:
+  sh1:
+    type: DATA
+    hosts:
+      - 'localhost:5432'
+  sh2:
+    type: DATA
+    hosts:
+      - 'localhost:5433'
