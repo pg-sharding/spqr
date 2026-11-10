@@ -65,8 +65,21 @@ Feature: Config reloading works
     # Edit config to toggle show_notice_messages and reload spqr-router via SIGHUP
     When I run command on host "router"
     """
+    prev_reload=$(psql -h localhost -p 7432 -U regress -d regress -Atc "SHOW instance" 2>/dev/null | awk -F'|' '{print $2}' || true)
     sed -i 's/show_notice_messages: true/show_notice_messages: false/g' $ROUTER_CONFIG
     ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    for i in $(seq 1 50); do
+      if [ -z "$prev_reload" ]; then
+        sleep 1
+        break
+      fi
+      cur_reload=$(psql -h localhost -p 7432 -U regress -d regress -Atc "SHOW instance" 2>/dev/null | awk -F'|' '{print $2}' || true)
+      if [ -n "$cur_reload" ] && [ "$cur_reload" != "$prev_reload" ]; then
+        sleep 0.1
+        break
+      fi
+      sleep 0.1
+    done
     """
     Then command return code should be "0"
     When I run command on host "router"

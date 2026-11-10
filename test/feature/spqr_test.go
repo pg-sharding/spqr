@@ -960,6 +960,7 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 	return m(tctx.commandOutput, strings.TrimSpace(body.Content))
 }
 
+// stepCommandOutputShouldNotMatch asserts that the last command output does not satisfy the named matcher.
 func (tctx *testContext) stepCommandOutputShouldNotMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
