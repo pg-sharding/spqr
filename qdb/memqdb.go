@@ -223,8 +223,13 @@ func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	oldState := q.State
 	q.State = state
-	return q.DumpState()
+	if err := q.DumpState(); err != nil {
+		q.State = oldState
+		return err
+	}
+	return nil
 }
 
 // ==============================================================================
