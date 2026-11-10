@@ -636,3 +636,34 @@ Feature: MemQDB save state into a file
       }
     ]
     """
+
+  Scenario: Reference relations sequence mapping is restored
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+    """
+    Given cluster is up and running
+    When I execute SQL on host "router-admin"
+    """
+    CREATE REFERENCE RELATION ref_t AUTO INCREMENT a START 10;
+    """
+    Then command return code should be "0"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
+    """
+    SHOW reference_relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_sequence_mapping":"map[a:ref_t_a]",
+        "schema_name":"public",
+        "schema_version":"1",
+        "shards":"[sh1 sh2]",
+        "table_name":"ref_t"
+      }
+    ]
+    """
