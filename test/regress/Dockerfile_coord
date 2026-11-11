@@ -18,7 +18,10 @@ RUN install -d /usr/share/postgresql-common/pgdg && \
         -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc || \
       curl --fail --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 60 \
         -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc; } && \
-    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    if [ "$POSTGRES_VERSION" = "19" ]; then \
+        sed -i 's/ main$/ main 19/' /etc/apt/sources.list.d/pgdg.list; \
+    fi
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo postgresql-${POSTGRES_VERSION}
