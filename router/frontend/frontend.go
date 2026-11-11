@@ -196,8 +196,8 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 			statistics.RecordStartTime(statistics.StatisticsTypeRouter, tm, rst.Client())
 		}
 
-		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-			return rst.ProcessSimpleQuery(q, true)
+		_, err := rst.ProcQueryAdvancedTx(q.String, func(query string) error {
+			return rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true)
 		}, false)
 
 		if err == nil {

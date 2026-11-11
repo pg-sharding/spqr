@@ -29,10 +29,6 @@ setup
 setup
 {
     CREATE SCHEMA sh;
-}
-
-setup
-{
     CREATE TABLE sh.r (i INTEGER, c INTEGER);
 }
 
