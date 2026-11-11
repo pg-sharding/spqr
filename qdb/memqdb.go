@@ -233,7 +233,6 @@ func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
 }
 
 func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
-	stampKeyRangeCreate(keyRange)
 	return []Command{
 		NewUpdateCommand(q.State.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
 		NewUpdateCommand(q.State.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
@@ -657,7 +656,9 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	kr.KeyRangeID = krIdNew
 	commands := make([]Command, 0)
 	commands = append(commands, q.dropKeyRangeCommands(krId)...)
-	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1))...)
+	renamed := keyRangeFromInternal(kr, false, 1)
+	stampKeyRangeUpdate(renamed)
+	commands = append(commands, q.createKeyRangeCommands(renamed)...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
 

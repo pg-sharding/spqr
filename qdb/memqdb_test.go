@@ -403,9 +403,9 @@ func TestKeyRangeTimestamps(t *testing.T) {
 // represent "unknown" without inventing a time.
 func TestFormatKeyRangeTimestamp(t *testing.T) {
 	assert := assert.New(t)
-	assert.Equal("NULL", engine.FormatKeyRangeTimestamp(nil))
+	assert.Nil(engine.FormatKeyRangeTimestamp(nil))
 	ts := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
-	assert.Equal("2026-11-03T12:00:00Z", engine.FormatKeyRangeTimestamp(&ts))
+	assert.Equal([]byte("2026-11-03T12:00:00Z"), engine.FormatKeyRangeTimestamp(&ts))
 }
 
 func Test_MemQDB_GetKeyRange(t *testing.T) {

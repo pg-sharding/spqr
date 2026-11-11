@@ -284,9 +284,6 @@ func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, err
 	return NewSequenceIdRange(currentRight, newRight)
 }
 
-// stampKeyRangeCreate sets the timestamps of a key range being stored for the
-// first time: CreatedAt only when the caller did not carry one (a rename
-// re-creates the record with its original creation time), UpdatedAt always.
 func stampKeyRangeCreate(keyRange *KeyRange) {
 	now := time.Now()
 	if keyRange.CreatedAt == nil {
@@ -295,8 +292,6 @@ func stampKeyRangeCreate(keyRange *KeyRange) {
 	keyRange.UpdatedAt = &now
 }
 
-// stampKeyRangeUpdate refreshes UpdatedAt of a key range being rewritten,
-// leaving its creation time untouched.
 func stampKeyRangeUpdate(keyRange *KeyRange) {
 	now := time.Now()
 	keyRange.UpdatedAt = &now

@@ -41,11 +41,11 @@ func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 // FormatKeyRangeTimestamp renders a key range timestamp for SHOW output:
 // RFC3339 in UTC, or NULL when the record carries none (stores predating the
 // field).
-func FormatKeyRangeTimestamp(t *time.Time) string {
+func FormatKeyRangeTimestamp(t *time.Time) []byte {
 	if t == nil {
-		return "NULL"
+		return nil
 	}
-	return t.UTC().Format(time.RFC3339)
+	return []byte(t.UTC().Format(time.RFC3339))
 }
 
 func KeyRangeVirtualRelationScan(
@@ -172,17 +172,17 @@ func KeyRangeVirtualRelationScanExtended(
 			coverage = "N/A"
 		}
 
-		tts.WriteDataRow(
-			keyRange.ID,
-			keyRange.ShardID,
-			keyRange.Distribution,
-			strings.Join(keyRange.SendRaw(), ","),
-			nextLowerBound,
-			coverage,
+		tts.Raw = append(tts.Raw, [][]byte{
+			[]byte(keyRange.ID),
+			[]byte(keyRange.ShardID),
+			[]byte(keyRange.Distribution),
+			[]byte(strings.Join(keyRange.SendRaw(), ",")),
+			[]byte(nextLowerBound),
+			[]byte(coverage),
 			FormatKeyRangeTimestamp(keyRange.CreatedAt),
 			FormatKeyRangeTimestamp(keyRange.UpdatedAt),
-			isLocked,
-		)
+			[]byte(isLocked),
+		})
 	}
 
 	return tts, nil
