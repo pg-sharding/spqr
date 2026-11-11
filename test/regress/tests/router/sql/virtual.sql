@@ -16,12 +16,11 @@ SELECT 1 \; SELECT 2;
 SELECT now() \; SELECT 2;
 SELECT 1 \; SELECT now();
 
-SET __spqr__engine_v2 TO off;
 BEGIN;
+SET LOCAL __spqr__engine_v2 TO off;
 SELECT 1 /* __spqr__execute_on: sh1 */;
 SELECT 1 \; SELECT 2;
 ROLLBACK;
-RESET __spqr__engine_v2;
 
 SELECT 1, 2, 3;
 
