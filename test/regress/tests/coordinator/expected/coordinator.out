@@ -1,3 +1,9 @@
+UNREGISTER ROUTER ALL;
+ unregister router 
+-------------------
+ router id -> *
+(1 row)
+
 REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
           register router           
 ------------------------------------
@@ -46,6 +52,60 @@ SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
 ERROR:  Shard "nonexistentshard" not found.
 HINT:  Run 'SHOW shards' to see all configured shards.
+UNREGISTER ROUTER ALL;
+ unregister router 
+-------------------
+ router id -> *
+(1 row)
+
+LOCK KEY RANGE krid2;
+    lock key range     
+-----------------------
+ key range id -> krid2
+(1 row)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ krid2
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 11
+(1 row)
+
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
+--------------+----------+-----------------+-------------+--------
+ krid2        | sh2      | ds1             | 11          | false
+(1 row)
+
+LOCK KEY RANGE krid2;
+    lock key range     
+-----------------------
+ key range id -> krid2
+(1 row)
+
+UNLOCK KEY RANGE krid2;
+   unlock key range    
+-----------------------
+ key range id -> krid2
+(1 row)
+
+DROP KEY RANGE ALL;
+ key_range_id 
+--------------
+ krid2
+(1 row)
+
+REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+          register router           
+------------------------------------
+ router -> r1-[regress_router]:7000
+(1 row)
+
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------

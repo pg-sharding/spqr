@@ -355,7 +355,10 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: drop all key ranges")
 
-	resp, err := q.cli.Delete(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Txn(ctx).Then(
+		clientv3.OpDelete(keyRangesNamespace, clientv3.WithPrefix()),
+		clientv3.OpDelete(keyRangeLockNamespace()+"/", clientv3.WithPrefix()),
+	).Commit()
 	if err != nil {
 		return err
 	}

@@ -1,3 +1,5 @@
+UNREGISTER ROUTER ALL;
+
 REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
@@ -13,6 +15,23 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 
 CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
+
+UNREGISTER ROUTER ALL;
+
+LOCK KEY RANGE krid2;
+
+DROP KEY RANGE ALL;
+
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+
+SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+
+LOCK KEY RANGE krid2;
+UNLOCK KEY RANGE krid2;
+
+DROP KEY RANGE ALL;
+
+REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
 
 DROP DISTRIBUTION ALL CASCADE;
 UNREGISTER ROUTER ALL;
