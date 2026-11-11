@@ -770,7 +770,7 @@ Feature: MemQDB save state into a file
   Scenario: MemQDB backup works with re-bootstrapping and use_coordinator_init
     Given cluster environment is
     """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_with_backup.yaml
     """
     Given cluster is up and running
     When I execute SQL on host "coordinator"
@@ -876,6 +876,13 @@ Feature: MemQDB save state into a file
         "key_range_id": "krid2",
         "distribution_id":"ds1",
         "lower_bound": "11",
+        "shard_id": "sh1",
+        "locked":"false"
+      },
+      {
+        "key_range_id": "krid3",
+        "distribution_id":"ds2",
+        "lower_bound": "'a'",
         "shard_id": "sh1",
         "locked":"false"
       }
@@ -1116,6 +1123,82 @@ Feature: MemQDB save state into a file
         "schema_version":"1",
         "shards":"[sh1 sh2]",
         "table_name":"ref_t"
+      }
+    ]
+    """
+
+    Scenario: MemQDB is able to only store 2pc tx data with coordinator
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_with_backup_tx_data_only.yaml
+    """
+    Given cluster is up and running
+    When I execute SQL on host "coordinator"
+    """
+    CREATE REFERENCE RELATION ref_2pc;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE ref_2pc(i INT);
+    SET __spqr__engine_v2 TO true;
+    SET __spqr__commit_strategy TO 2pc;
+    SELECT __spqr__set_next_2pc_gid('zzz1');
+    BEGIN;
+    INSERT INTO ref_2pc (i) VALUES (1);
+    COMMIT;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    ALTER SYSTEM REBOOTSTRAP;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW distributions;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_types":"",
+        "default_shard":"not exists",
+        "distribution_id":"REPLICATED"
+      },
+      {
+        "column_types":"integer",
+        "default_shard":"not exists",
+        "distribution_id":"ds1"
       }
     ]
     """
