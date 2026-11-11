@@ -1,3 +1,4 @@
+\c spqr-console
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
