@@ -1241,6 +1241,7 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, []string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
+		rst.qp.SetStmts(cache.ps)
 		rst.qp.SetOriginQuery(query)
 		return cache.ps, cache.comm, nil
 	}
@@ -1299,15 +1300,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
 
-	multiStatement := false
-	query := rst.Parser().OriginQuery()
-	if strings.Contains(strings.TrimSuffix(strings.TrimSpace(query), ";"), ";") {
-		stmts, _, err := lyx.Parse(query)
-		if err != nil {
-			return nil, err
-		}
-		multiStatement = len(stmts) > 1
-	}
+	multiStatement := len(rst.Parser().Stmts()) > 1
 
 	expandCurrentTx := false
 
@@ -1315,7 +1308,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		if !rst.Client().EnhancedMultiShardProcessing() {
 			if multiStatement {
-				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multistatement query cannot reuse an existing plan")
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "queries with multiple statements cannot reuse an existing plan")
 			}
 
 			/* TODO: fix this */
@@ -1335,7 +1328,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	case nil:
 		if multiStatement {
 			if vp, ok := q.(*plan.VirtualPlan); !ok || vp.Subplan() != nil {
-				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "non-virtual statements in a multistatement query are not supported")
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "non-virtual statements in queries with multiple statements are not supported")
 			}
 			return q, nil
 		}

@@ -48,7 +48,7 @@ SELECT 1 \; SELECT 2;
 (1 row)
 
 SELECT now() \; SELECT 2;
-ERROR:  non-virtual statements in a multistatement query are not supported
+ERROR:  non-virtual statements in queries with multiple statements are not supported
 QUERY:  SELECT now() ; SELECT 2;
 SELECT 1 \; SELECT now();
  ?column? 
@@ -56,7 +56,7 @@ SELECT 1 \; SELECT now();
         1
 (1 row)
 
-ERROR:  non-virtual statements in a multistatement query are not supported
+ERROR:  non-virtual statements in queries with multiple statements are not supported
 QUERY:  SELECT 1 ; SELECT now();
 SET __spqr__engine_v2 TO off;
 BEGIN;
@@ -68,7 +68,7 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 SELECT 1 \; SELECT 2;
-ERROR:  multistatement query cannot reuse an existing plan
+ERROR:  queries with multiple statements cannot reuse an existing plan
 QUERY:  SELECT 1 ; SELECT 2;
 ROLLBACK;
 RESET __spqr__engine_v2;
