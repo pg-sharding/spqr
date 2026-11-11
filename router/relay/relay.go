@@ -75,7 +75,7 @@ type RelayStateMgr interface {
 	PipelineCleanup()
 	WaitingForSync() bool
 
-	ProcQueryAdvancedTx(query string, binderQ func(string) error, doCaching bool) (*PortalDesc, error)
+	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
 
 type PortalDesc struct {
@@ -84,10 +84,9 @@ type PortalDesc struct {
 }
 
 type ParseCacheEntry struct {
-	ps        []lyx.Node
-	comm      []string
-	stmt      lyx.Node
-	locations []lyx.ParseLoc
+	ps   []lyx.Node
+	comm []string
+	stmt lyx.Node
 }
 
 type RelayStateImpl struct {
@@ -962,7 +961,7 @@ func (rst *RelayStateImpl) BindPrepared(
 		rst.executeMp[destinationPortal] = emptyExecFunc
 	}
 
-	pd, err := rst.ProcQueryAdvancedTx(def.Query, func(string) error {
+	pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 		var bnd *pgproto3.Bind
 
 		if destinationPortal == "" {
@@ -1243,7 +1242,6 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, []st
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
 		rst.qp.SetStmts(cache.ps)
-		rst.qp.SetStatementLocations(cache.locations)
 		rst.qp.SetOriginQuery(query)
 		return cache.ps, cache.comm, nil
 	}
@@ -1280,10 +1278,9 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, []st
 		switch stmt.(type) {
 		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
 			rst.parseCache[query] = ParseCacheEntry{
-				ps:        stmts,
-				comm:      comm,
-				stmt:      stmt,
-				locations: append([]lyx.ParseLoc(nil), rst.qp.StatementLocations()...),
+				ps:   stmts,
+				comm: comm,
+				stmt: stmt,
 			}
 		}
 	}
@@ -1304,28 +1301,20 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		Msg("preparing relay step for client")
 
 	multiStatement := len(rst.Parser().Stmts()) > 1
-	multiStatementDDL := multiStatement && allDDLStatements(rst.Parser().Stmts())
 
 	expandCurrentTx := false
-	reuseExistingGang := multiStatementDDL &&
-		rst.QueryExecutor().TxStatus() == txstatus.TXIDLE &&
-		len(rst.QueryExecutor().ActiveShards()) != 0
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		if !rst.Client().EnhancedMultiShardProcessing() {
-			if multiStatement && !multiStatementDDL {
+			if multiStatement {
 				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "queries with multiple statements cannot reuse an existing plan")
 			}
-			if multiStatementDDL {
-				reuseExistingGang = true
-			} else {
 
-				/* TODO: fix this */
-				prevPlan.SetStmt(rst.qp.Stmt())
+			/* TODO: fix this */
+			prevPlan.SetStmt(rst.qp.Stmt())
 
-				return prevPlan, nil
-			}
+			return prevPlan, nil
 		}
 		/* With engine v2 we can expand transaction on more targets */
 		/* TODO: XXX */
@@ -1338,26 +1327,14 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	switch err {
 	case nil:
 		if multiStatement {
-			if vp, ok := q.(*plan.VirtualPlan); ok && vp.Subplan() == nil {
-				return q, nil
-			}
-			if !multiStatementDDL {
+			if vp, ok := q.(*plan.VirtualPlan); !ok || vp.Subplan() != nil {
 				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "non-virtual statements in queries with multiple statements are not supported")
 			}
-			sp, ok := q.(*plan.ScatterPlan)
-			if !ok || !sp.IsDDL {
-				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-statement queries only support DDL plans")
-			}
+			return q, nil
 		}
 		q, err := rst.QueryExecutor().TryMatchExecTargets(q, rst.Qr.DataShardsRoutes())
 		if err != nil {
 			return nil, err
-		}
-		if reuseExistingGang {
-			if !sameShardKeys(q.ExecutionTargets(), rst.QueryExecutor().ActiveShards()) {
-				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-statement DDL cannot change shard routes in an existing transaction")
-			}
-			return q, nil
 		}
 
 		if expandCurrentTx {
@@ -1387,23 +1364,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	default:
 		return q, err
 	}
-}
-
-func sameShardKeys(left, right []kr.ShardKey) bool {
-	if len(left) != len(right) {
-		return false
-	}
-
-	keys := make(map[string]struct{}, len(left))
-	for _, key := range left {
-		keys[key.Name] = struct{}{}
-	}
-	for _, key := range right {
-		if _, ok := keys[key.Name]; !ok {
-			return false
-		}
-	}
-	return true
 }
 
 var noopCloseRouteFunc = func() error {

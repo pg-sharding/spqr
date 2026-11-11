@@ -74,26 +74,7 @@ func newAbortedTxError() *spqrerror.SpqrError {
 	return spqrerror.Newf(spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION, "current transaction is aborted, commands ignored until end of transaction block")
 }
 
-func allDDLStatements(stmts []lyx.Node) bool {
-	if len(stmts) < 2 {
-		return false
-	}
-
-	for _, stmt := range stmts {
-		switch stmt.(type) {
-		case *lyx.Alter, *lyx.CreateDatabase, *lyx.CreateExtension, *lyx.CreateIndex,
-			*lyx.CreateRole, *lyx.CreateSchema, *lyx.CreateTable, *lyx.DefineStmt,
-			*lyx.Drop, *lyx.DropTable, *lyx.Grant, *lyx.Truncate, *lyx.VacuumStmt,
-			*lyx.Cluster:
-		default:
-			return false
-		}
-	}
-
-	return true
-}
-
-func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func(string) error, doCaching bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 
 	stmts, comment, err := rst.Parse(query, doCaching)
 	if err != nil {
@@ -108,10 +89,6 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func(string
 		return nil, err
 	}
 	var pd *PortalDesc
-	multiStatementDDL := allDDLStatements(stmts)
-	if multiStatementDDL && len(rst.qp.StatementLocations()) != len(stmts)+1 {
-		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "cannot determine statement boundaries in a multi-statement DDL query")
-	}
 
 	for i, stmt := range stmts {
 		if i > 0 {
@@ -127,13 +104,6 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func(string
 		}
 
 		rst.qp.SetStmt(stmt)
-		statementQuery := query
-		statementComments := comment
-		if multiStatementDDL {
-			statementQuery = rst.qp.StatementQuery(i)
-			statementComments = qparser.ExtractComments(statementQuery)
-			rst.plainQ = statementQuery
-		}
 
 		txbefore := rst.QueryExecutor().TxStatus()
 		if txbefore == txstatus.TXERR {
@@ -158,11 +128,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func(string
 
 		startTime := time.Now()
 
-		currentBinder := func() error { return binderQ(statementQuery) }
-		if binderQ == nil {
-			currentBinder = nil
-		}
-		pd, err = rst.ProcQueryAdvanced(statementQuery, stmt, statementComments, currentBinder, doCaching)
+		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
 
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 

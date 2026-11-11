@@ -7,10 +7,9 @@ import (
 )
 
 type QParser struct {
-	query     string
-	stmt      lyx.Node
-	stmts     []lyx.Node
-	locations []lyx.ParseLoc
+	query string
+	stmt  lyx.Node
+	stmts []lyx.Node
 }
 
 func (qp *QParser) OriginQuery() string {
@@ -37,48 +36,11 @@ func (qp *QParser) SetStmts(stmts []lyx.Node) {
 	qp.stmts = stmts
 }
 
-func (qp *QParser) StatementLocations() []lyx.ParseLoc {
-	return qp.locations
-}
-
-func (qp *QParser) SetStatementLocations(locations []lyx.ParseLoc) {
-	qp.locations = locations
-}
-
-func (qp *QParser) StatementQuery(index int) string {
-	if index < 0 || index+1 >= len(qp.locations) {
-		return ""
-	}
-	return qp.query[qp.locations[index]:qp.locations[index+1]]
-}
-
 // TODO : unit tests
 func (qp *QParser) Parse(query string) ([]lyx.Node, []string, error) {
 	qp.query = query
 	qp.stmts = nil
-	qp.locations = nil
 
-	comments := ExtractComments(query)
-
-	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
-
-	routerStmts, locations, pos, err := lyx.ParseWithLocations(query)
-	if err != nil {
-		return nil, comments, &spqrerror.SpqrError{
-			Err:       err,
-			Position:  int32(pos),
-			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
-		}
-	}
-
-	qp.stmt = routerStmts[0]
-	qp.stmts = routerStmts
-	qp.locations = locations
-
-	return routerStmts, comments, nil
-}
-
-func ExtractComments(query string) []string {
 	comments := []string{}
 	for i := 0; i < len(query)-4; {
 
@@ -101,5 +63,20 @@ func ExtractComments(query string) []string {
 		comments = append(comments, query[i+2:j])
 		i = j + 3
 	}
-	return comments
+
+	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
+
+	routerStmts, pos, err := lyx.Parse(query)
+	if err != nil {
+		return nil, comments, &spqrerror.SpqrError{
+			Err:       err,
+			Position:  int32(pos),
+			ErrorCode: spqrerror.PG_SYNTAX_ERROR,
+		}
+	}
+
+	qp.stmt = routerStmts[0]
+	qp.stmts = routerStmts
+
+	return routerStmts, comments, nil
 }
