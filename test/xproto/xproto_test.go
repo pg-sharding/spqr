@@ -2894,6 +2894,38 @@ func TestPrepExtendedPipeline(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
+func TestXProtoParseMultipleStatements(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "p",
+					Query: "SELECT 1; SELECT 2",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_SYNTAX_ERROR,
+					Message:  "cannot insert multiple commands into a prepared statement",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+			CheckErrAll: true,
+		},
+	})
+}
+
 func TestPrepExtendedErrorParse(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
