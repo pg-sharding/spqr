@@ -77,7 +77,7 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	/* Should we proxy this request to coordinator? */
 
-	mgr := sess.EffectiveMgr()
+	mgr := l.entityMgr // sess.EffectiveMgr()
 
 	var cf func()
 	var err error
@@ -98,14 +98,14 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 			case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
 				spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.MigrationsStr,
 				spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
-				mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+				mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 				if err != nil {
 					return err
 				}
 				defer cf()
 			}
 		case spqrparser.SHOW_KIND_GLOBAL:
-			mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+			mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 			if err != nil {
 				return err
 			}
