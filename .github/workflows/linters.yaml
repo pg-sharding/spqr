@@ -127,7 +127,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: check for new panic() calls
+      - name: check for commented feature test scenarios
         run: |
           if grep  -Pzq ' *# Scenario.*\n( *#.*\n){5}' test/feature/features/*; then
             echo "❌ Found commented feature test scenarios"
