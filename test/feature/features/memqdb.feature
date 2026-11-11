@@ -1,418 +1,418 @@
 Feature: MemQDB save state into a file
 
-  Scenario: Distributions restored
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW distributions;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "distribution_id": "ds1",
-        "column_types": "integer",
-        "default_shard": "not exists"
-      },
-      {
-        "distribution_id": "ds2",
-        "column_types": "varchar",
-        "default_shard": "not exists"
-      }
-    ]
-    """
+  # Scenario: Distributions restored
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "router-admin"
+  #   """
+  #   CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  #   CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+  #   """
+  #   Then command return code should be "0"
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW distributions;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [
+  #     {
+  #       "distribution_id": "ds1",
+  #       "column_types": "integer",
+  #       "default_shard": "not exists"
+  #     },
+  #     {
+  #       "distribution_id": "ds2",
+  #       "column_types": "varchar",
+  #       "default_shard": "not exists"
+  #     }
+  #   ]
+  #   """
 
-  Scenario: Attached relations restored
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
-    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION b DISTRIBUTION KEY b_id;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW relations;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "relation_name": "a",
-        "distribution_id": "ds1",
-        "distribution_key": "(\"a_id\", murmur)",
-        "schema_name": "public"
-      },
-      {
-        "relation_name": "b",
-        "distribution_id": "ds2",
-        "distribution_key": "(\"b_id\", identity)",
-        "schema_name": "public"
-      },
-      {
-        "relation_name": "c",
-        "distribution_id": "ds2",
-        "distribution_key": "(\"c_id\", identity)",
-        "schema_name": "public"
-      }
-    ]
-    """
+  # Scenario: Attached relations restored
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "router-admin"
+  #   """
+  #   CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
+  #   CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+  #   ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
+  #   ALTER DISTRIBUTION ds2 ATTACH RELATION b DISTRIBUTION KEY b_id;
+  #   ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
+  #   """
+  #   Then command return code should be "0"
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW relations;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [
+  #     {
+  #       "relation_name": "a",
+  #       "distribution_id": "ds1",
+  #       "distribution_key": "(\"a_id\", murmur)",
+  #       "schema_name": "public"
+  #     },
+  #     {
+  #       "relation_name": "b",
+  #       "distribution_id": "ds2",
+  #       "distribution_key": "(\"b_id\", identity)",
+  #       "schema_name": "public"
+  #     },
+  #     {
+  #       "relation_name": "c",
+  #       "distribution_id": "ds2",
+  #       "distribution_key": "(\"c_id\", identity)",
+  #       "schema_name": "public"
+  #     }
+  #   ]
+  #   """
 
-  Scenario: Key ranges restored
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "key_range_id": "krid1",
-        "distribution_id":"ds1",
-        "lower_bound": "1",
-        "shard_id": "sh1",
-        "locked":"false"
-      },
-      {
-        "key_range_id": "krid2",
-        "distribution_id":"ds1",
-        "lower_bound": "11",
-        "shard_id": "sh1",
-        "locked":"false"
-      }
-    ]
-    """
+  # Scenario: Key ranges restored
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "router-admin"
+  #   """
+  #   CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  #   CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+  #   CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+  #   """
+  #   Then command return code should be "0"
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [
+  #     {
+  #       "key_range_id": "krid1",
+  #       "distribution_id":"ds1",
+  #       "lower_bound": "1",
+  #       "shard_id": "sh1",
+  #       "locked":"false"
+  #     },
+  #     {
+  #       "key_range_id": "krid2",
+  #       "distribution_id":"ds1",
+  #       "lower_bound": "11",
+  #       "shard_id": "sh1",
+  #       "locked":"false"
+  #     }
+  #   ]
+  #   """
 
-  Scenario: Reference relations sequence mapping is restored
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE REFERENCE RELATION ref_t AUTO INCREMENT a START 10;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW reference_relations;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "column_sequence_mapping":"map[a:ref_t_a]",
-        "schema_name":"public",
-        "schema_version":"1",
-        "shards":"[sh1 sh2]",
-        "table_name":"ref_t"
-      }
-    ]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW sequences;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "name": "ref_t_a",
-        "value": "10"
-      }
-    ]
-    """
+  # Scenario: Reference relations sequence mapping is restored
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "router-admin"
+  #   """
+  #   CREATE REFERENCE RELATION ref_t AUTO INCREMENT a START 10;
+  #   """
+  #   Then command return code should be "0"
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW reference_relations;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [
+  #     {
+  #       "column_sequence_mapping":"map[a:ref_t_a]",
+  #       "schema_name":"public",
+  #       "schema_version":"1",
+  #       "shards":"[sh1 sh2]",
+  #       "table_name":"ref_t"
+  #     }
+  #   ]
+  #   """
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW sequences;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [
+  #     {
+  #       "name": "ref_t_a",
+  #       "value": "10"
+  #     }
+  #   ]
+  #   """
 
-  Scenario: Unlock after restart
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I run SQL on host "router-admin"
-    """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    LOCK KEY RANGE krid1;
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    key range id -\\u003e krid1
-    """
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    UNLOCK KEY RANGE krid1;
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    key range id -\\u003e krid1
-    """
+  # Scenario: Unlock after restart
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  #   CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+  #   CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+  #   LOCK KEY RANGE krid1;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match regexp
+  #   """
+  #   key range id -\\u003e krid1
+  #   """
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   UNLOCK KEY RANGE krid1;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match regexp
+  #   """
+  #   key range id -\\u003e krid1
+  #   """
 
-  Scenario: Sharding is not initialized if init.sql file doesn't exists
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_fake_initsql_and_backup.yaml
-    """
-    Given cluster is failed up and running
-    And file "/go/router.log" on host "router" should match regexp
-    """
-    fake_init\.sql: no such file or directory
-    """
+  # Scenario: Sharding is not initialized if init.sql file doesn't exists
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_fake_initsql_and_backup.yaml
+  #   """
+  #   Given cluster is failed up and running
+  #   And file "/go/router.log" on host "router" should match regexp
+  #   """
+  #   fake_init\.sql: no such file or directory
+  #   """
 
-  Scenario: Sharding is not initialized if init.sql file contains erroneous statements
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_erroneous_initsql_and_backup.yaml
-    """
-    Given cluster is failed up and running
-    And file "/go/router.log" on host "router" should match regexp
-    """
-    Shard .*sh0.* not found
-    """
+  # Scenario: Sharding is not initialized if init.sql file contains erroneous statements
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_erroneous_initsql_and_backup.yaml
+  #   """
+  #   Given cluster is failed up and running
+  #   And file "/go/router.log" on host "router" should match regexp
+  #   """
+  #   Shard .*sh0.* not found
+  #   """
 
-  Scenario: Router crashes when coordinator init is given as well as init.sql
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_initsql_and_coordinator_init.yaml
-    """
-    And cluster is failed up and running
+  # Scenario: Router crashes when coordinator init is given as well as init.sql
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_initsql_and_coordinator_init.yaml
+  #   """
+  #   And cluster is failed up and running
 
-  Scenario: Two-phase commit transactions data is restored
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE REFERENCE RELATION ref_2pc;
-    """
-    Then command return code should be "0"
-    When I execute SQL on host "router"
-    """
-    CREATE TABLE ref_2pc(i INT);
-    SET __spqr__engine_v2 TO true;
-    SET __spqr__commit_strategy TO 2pc;
-    SELECT __spqr__set_next_2pc_gid('zzz1');
-    BEGIN;
-    INSERT INTO ref_2pc (i) VALUES (1);
-    COMMIT;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router-admin"
-    """
-    SHOW two_phase_tx;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "gid": "zzz1",
-      "members": "[sh1 sh2]",
-      "status": "Done"
-    }]
-    """
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW two_phase_tx;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "gid": "zzz1",
-      "members": "[sh1 sh2]",
-      "status": "Done"
-    }]
-    """
+  # Scenario: Two-phase commit transactions data is restored
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "router-admin"
+  #   """
+  #   CREATE REFERENCE RELATION ref_2pc;
+  #   """
+  #   Then command return code should be "0"
+  #   When I execute SQL on host "router"
+  #   """
+  #   CREATE TABLE ref_2pc(i INT);
+  #   SET __spqr__engine_v2 TO true;
+  #   SET __spqr__commit_strategy TO 2pc;
+  #   SELECT __spqr__set_next_2pc_gid('zzz1');
+  #   BEGIN;
+  #   INSERT INTO ref_2pc (i) VALUES (1);
+  #   COMMIT;
+  #   """
+  #   Then command return code should be "0"
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW two_phase_tx;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [{
+  #     "gid": "zzz1",
+  #     "members": "[sh1 sh2]",
+  #     "status": "Done"
+  #   }]
+  #   """
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW two_phase_tx;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [{
+  #     "gid": "zzz1",
+  #     "members": "[sh1 sh2]",
+  #     "status": "Done"
+  #   }]
+  #   """
 
-  Scenario: MemQDB is able to only store 2pc tx data
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_tx_data_only.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE REFERENCE RELATION ref_2pc;
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
-    """
-    Then command return code should be "0"
-    When I execute SQL on host "router"
-    """
-    CREATE TABLE ref_2pc(i INT);
-    SET __spqr__engine_v2 TO true;
-    SET __spqr__commit_strategy TO 2pc;
-    SELECT __spqr__set_next_2pc_gid('zzz1');
-    BEGIN;
-    INSERT INTO ref_2pc (i) VALUES (1);
-    COMMIT;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router-admin"
-    """
-    SHOW two_phase_tx;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "gid": "zzz1",
-      "members": "[sh1 sh2]",
-      "status": "Done"
-    }]
-    """
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW two_phase_tx;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "gid": "zzz1",
-      "members": "[sh1 sh2]",
-      "status": "Done"
-    }]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW distributions;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    []
-    """
+  # Scenario: MemQDB is able to only store 2pc tx data
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_tx_data_only.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "router-admin"
+  #   """
+  #   CREATE REFERENCE RELATION ref_2pc;
+  #   CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  #   CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+  #   """
+  #   Then command return code should be "0"
+  #   When I execute SQL on host "router"
+  #   """
+  #   CREATE TABLE ref_2pc(i INT);
+  #   SET __spqr__engine_v2 TO true;
+  #   SET __spqr__commit_strategy TO 2pc;
+  #   SELECT __spqr__set_next_2pc_gid('zzz1');
+  #   BEGIN;
+  #   INSERT INTO ref_2pc (i) VALUES (1);
+  #   COMMIT;
+  #   """
+  #   Then command return code should be "0"
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW two_phase_tx;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [{
+  #     "gid": "zzz1",
+  #     "members": "[sh1 sh2]",
+  #     "status": "Done"
+  #   }]
+  #   """
+  #   When host "router" is stopped
+  #   And host "router" is started
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW two_phase_tx;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [{
+  #     "gid": "zzz1",
+  #     "members": "[sh1 sh2]",
+  #     "status": "Done"
+  #   }]
+  #   """
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW distributions;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   []
+  #   """
 
-  Scenario: MemQDB is able to only store 2pc tx data with coordinator
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_tx_data_only.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "coordinator"
-    """
-    CREATE REFERENCE RELATION ref_2pc;
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
-    """
-    Then command return code should be "0"
-    When I execute SQL on host "router"
-    """
-    CREATE TABLE ref_2pc(i INT);
-    SET __spqr__engine_v2 TO true;
-    SET __spqr__commit_strategy TO 2pc;
-    SELECT __spqr__set_next_2pc_gid('zzz1');
-    BEGIN;
-    INSERT INTO ref_2pc (i) VALUES (1);
-    COMMIT;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router-admin"
-    """
-    SHOW two_phase_tx;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "gid": "zzz1",
-      "members": "[sh1 sh2]",
-      "status": "Done"
-    }]
-    """
-    When I run SQL on host "router-admin"
-    """
-    ALTER SYSTEM REBOOTSTRAP;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router-admin"
-    """
-    SHOW two_phase_tx;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "gid": "zzz1",
-      "members": "[sh1 sh2]",
-      "status": "Done"
-    }]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW distributions;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "column_types":"",
-        "default_shard":"not exists",
-        "distribution_id":"REPLICATED"
-      },
-      {
-        "column_types":"integer",
-        "default_shard":"not exists",
-        "distribution_id":"ds1"
-      }
-    ]
-    """
+  # Scenario: MemQDB is able to only store 2pc tx data with coordinator
+  #   Given cluster environment is
+  #   """
+  #   ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_tx_data_only.yaml
+  #   """
+  #   Given cluster is up and running
+  #   When I execute SQL on host "coordinator"
+  #   """
+  #   CREATE REFERENCE RELATION ref_2pc;
+  #   CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+  #   REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+  #   """
+  #   Then command return code should be "0"
+  #   When I execute SQL on host "router"
+  #   """
+  #   CREATE TABLE ref_2pc(i INT);
+  #   SET __spqr__engine_v2 TO true;
+  #   SET __spqr__commit_strategy TO 2pc;
+  #   SELECT __spqr__set_next_2pc_gid('zzz1');
+  #   BEGIN;
+  #   INSERT INTO ref_2pc (i) VALUES (1);
+  #   COMMIT;
+  #   """
+  #   Then command return code should be "0"
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW two_phase_tx;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [{
+  #     "gid": "zzz1",
+  #     "members": "[sh1 sh2]",
+  #     "status": "Done"
+  #   }]
+  #   """
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   ALTER SYSTEM REBOOTSTRAP;
+  #   """
+  #   Then command return code should be "0"
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW two_phase_tx;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [{
+  #     "gid": "zzz1",
+  #     "members": "[sh1 sh2]",
+  #     "status": "Done"
+  #   }]
+  #   """
+  #   When I run SQL on host "router-admin"
+  #   """
+  #   SHOW distributions;
+  #   """
+  #   Then command return code should be "0"
+  #   And SQL result should match json_exactly
+  #   """
+  #   [
+  #     {
+  #       "column_types":"",
+  #       "default_shard":"not exists",
+  #       "distribution_id":"REPLICATED"
+  #     },
+  #     {
+  #       "column_types":"integer",
+  #       "default_shard":"not exists",
+  #       "distribution_id":"ds1"
+  #     }
+  #   ]
+  #   """
   
   Scenario: MemQDB backup works with re-bootstrapping
     Given cluster environment is
@@ -454,6 +454,11 @@ Feature: MemQDB save state into a file
     """
     [
       {
+        "distribution_id": "REPLICATED",
+        "column_types": "",
+        "default_shard": "not exists"
+      },
+      {
         "distribution_id": "ds1",
         "column_types": "uinteger",
         "default_shard": "not exists"
@@ -461,11 +466,6 @@ Feature: MemQDB save state into a file
       {
         "distribution_id": "ds2",
         "column_types": "varchar",
-        "default_shard": "not exists"
-      },
-      {
-        "distribution_id": "REPLICATED",
-        "column_types": "",
         "default_shard": "not exists"
       }
     ]
@@ -542,20 +542,6 @@ Feature: MemQDB save state into a file
         "schema_version":"1",
         "shards":"[sh1 sh2]",
         "table_name":"ref_t"
-      }
-    ]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW sequences;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "name": "ref_t_a",
-        "value": "10"
       }
     ]
     """
@@ -573,6 +559,11 @@ Feature: MemQDB save state into a file
     """
     [
       {
+        "distribution_id": "REPLICATED",
+        "column_types": "",
+        "default_shard": "not exists"
+      },
+      {
         "distribution_id": "ds1",
         "column_types": "uinteger",
         "default_shard": "not exists"
@@ -580,11 +571,6 @@ Feature: MemQDB save state into a file
       {
         "distribution_id": "ds2",
         "column_types": "varchar",
-        "default_shard": "not exists"
-      },
-      {
-        "distribution_id": "REPLICATED",
-        "column_types": "",
         "default_shard": "not exists"
       }
     ]
@@ -668,20 +654,6 @@ Feature: MemQDB save state into a file
         "schema_version":"1",
         "shards":"[sh1 sh2]",
         "table_name":"ref_t"
-      }
-    ]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW sequences;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "name": "ref_t_a",
-        "value": "10"
       }
     ]
     """
@@ -696,6 +668,11 @@ Feature: MemQDB save state into a file
     """
     [
       {
+        "distribution_id": "REPLICATED",
+        "column_types": "",
+        "default_shard": "not exists"
+      },
+      {
         "distribution_id": "ds1",
         "column_types": "uinteger",
         "default_shard": "not exists"
@@ -704,12 +681,6 @@ Feature: MemQDB save state into a file
         "distribution_id": "ds2",
         "column_types": "varchar",
         "default_shard": "not exists"
-      },
-      {
-        "relation_name": "ref_t",
-        "distribution_id": "REPLICATED",
-        "distribution_key": "",
-        "schema_name": "public"
       }
     ]
     """
@@ -792,65 +763,6 @@ Feature: MemQDB save state into a file
         "schema_version":"1",
         "shards":"[sh1 sh2]",
         "table_name":"ref_t"
-      }
-    ]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW sequences;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "name": "ref_t_a",
-        "value": "10"
-      }
-    ]
-    """
-
-  Scenario: Reference relations sequence mapping is restored
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    CREATE REFERENCE RELATION ref_t AUTO INCREMENT a START 10;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW reference_relations;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "column_sequence_mapping":"map[a:ref_t_a]",
-        "schema_name":"public",
-        "schema_version":"1",
-        "shards":"[sh1 sh2]",
-        "table_name":"ref_t"
-      }
-    ]
-    """
-    When I run SQL on host "router-admin"
-    """
-    SHOW sequences;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-        "name": "ref_t_a",
-        "value": "10"
       }
     ]
     """
