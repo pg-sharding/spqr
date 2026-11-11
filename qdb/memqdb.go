@@ -171,7 +171,7 @@ func (q *MemQDB) DumpState() error {
 	}
 	tmpPath := q.backupPath + ".tmp"
 
-	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
@@ -217,6 +217,19 @@ func (q *MemQDB) SwapState(state *MemQDBState) {
 	defer q.mu.Unlock()
 
 	q.State = state
+}
+
+func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	oldState := q.State
+	q.State = state
+	if err := q.DumpState(); err != nil {
+		q.State = oldState
+		return err
+	}
+	return nil
 }
 
 // ==============================================================================
