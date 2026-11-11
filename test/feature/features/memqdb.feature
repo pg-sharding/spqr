@@ -1202,3 +1202,38 @@ Feature: MemQDB save state into a file
       }
     ]
     """
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
+    """
+    SHOW two_phase_tx;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "zzz1",
+      "members": "[sh1 sh2]",
+      "status": "Done"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW distributions;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "column_types":"",
+        "default_shard":"not exists",
+        "distribution_id":"REPLICATED"
+      },
+      {
+        "column_types":"integer",
+        "default_shard":"not exists",
+        "distribution_id":"ds1"
+      }
+    ]
+    """
