@@ -6,6 +6,7 @@ router_mode: PROXY
 log_level: debug
 memqdb_backup_path: memqdb.backup
 backup_tx_data_only: true
+allow_two_phase_commit: true
 time_quantiles:
   - 0.75
 world_shard_fallback: true
