@@ -90,16 +90,10 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 	var pd *PortalDesc
 
-l:
 	for i, stmt := range stmts {
-
 		if i > 0 {
-
-			switch stmt.(type) {
-			case *lyx.VariableSetStmt, *lyx.VariableShowStmt, *lyx.TransactionStmt:
-				/* ok */
-			default:
-				continue l
+			if stmt == nil {
+				continue
 			}
 
 			/* Okay, respond with CommandComplete first. */
