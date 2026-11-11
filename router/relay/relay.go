@@ -1299,11 +1299,24 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
 
+	multiStatement := false
+	query := rst.Parser().OriginQuery()
+	if strings.Contains(strings.TrimSuffix(strings.TrimSpace(query), ";"), ";") {
+		stmts, _, err := lyx.Parse(query)
+		if err != nil {
+			return nil, err
+		}
+		multiStatement = len(stmts) > 1
+	}
+
 	expandCurrentTx := false
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		if !rst.Client().EnhancedMultiShardProcessing() {
+			if multiStatement {
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multistatement query cannot reuse an existing plan")
+			}
 
 			/* TODO: fix this */
 			prevPlan.SetStmt(rst.qp.Stmt())
@@ -1320,6 +1333,12 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 	switch err {
 	case nil:
+		if multiStatement {
+			if vp, ok := q.(*plan.VirtualPlan); !ok || vp.Subplan() != nil {
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "non-virtual statements in a multistatement query are not supported")
+			}
+			return q, nil
+		}
 		q, err := rst.QueryExecutor().TryMatchExecTargets(q, rst.Qr.DataShardsRoutes())
 		if err != nil {
 			return nil, err
