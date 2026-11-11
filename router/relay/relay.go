@@ -91,7 +91,6 @@ type ParseCacheEntry struct {
 
 type RelayStateImpl struct {
 	routingDecisionPlan plan.Plan
-	selectBatch         bool
 
 	Qr      qrouter.QueryRouter
 	qse     QueryStateExecutor
@@ -369,13 +368,6 @@ func (rst *RelayStateImpl) CreateSlicedPlan(
 		// 		return nil, err
 		// 	}
 		// }
-	}
-
-	if rst.selectBatch {
-		if _, ok := queryPlan.(*plan.VirtualPlan); ok {
-			/* The shard must execute the entire batch, not just its first statement. */
-			queryPlan = &plan.RandomDispatchPlan{}
-		}
 	}
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {

@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -89,25 +90,44 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		return nil, err
 	}
 	var pd *PortalDesc
-	rst.selectBatch = len(stmts) > 1
-	for _, stmt := range stmts {
-		if _, ok := stmt.(*lyx.Select); !ok {
-			rst.selectBatch = false
-			break
-		}
-	}
-	defer func() { rst.selectBatch = false }()
 
 l:
 	for i, stmt := range stmts {
+		processQuery := binderQ
 
 		if i > 0 {
 
 			switch stmt.(type) {
 			case *lyx.VariableSetStmt, *lyx.VariableShowStmt, *lyx.TransactionStmt:
 				/* ok */
-			default:
+			case nil:
 				continue l
+			default:
+				if prevPlan, ok := rst.routingDecisionPlan.(*plan.VirtualPlan); !ok || prevPlan.Subplan() != nil {
+					continue l
+				}
+				processQuery = func() error {
+					ctx := context.TODO()
+					rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Client(), rst.Client().Rule(), query, stmt, rst.Cache())
+					if err != nil {
+						return err
+					}
+					queryPlan, err := rst.CreateSlicedPlan(ctx, rm)
+					if err != nil {
+						return err
+					}
+					if vp, ok := queryPlan.(*plan.VirtualPlan); !ok || vp.Subplan() != nil {
+						return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "non-virtual statements after a virtual statement are not supported")
+					}
+					rst.routingDecisionPlan = queryPlan
+					if err := rst.QueryExecutor().ExecuteSlice(&QueryDesc{
+						Msg:    &pgproto3.Query{String: query},
+						simple: true,
+					}, queryPlan, true); err != nil {
+						return err
+					}
+					return rst.QueryExecutor().DeriveCommandComplete()
+				}
 			}
 
 			/* Okay, respond with CommandComplete first. */
@@ -142,7 +162,7 @@ l:
 
 		startTime := time.Now()
 
-		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
+		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, processQuery, doCaching)
 
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 

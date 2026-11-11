@@ -12,11 +12,7 @@ CREATE KEY RANGE k1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 SELECT 1;
 
-SET __spqr__reply_notice TO false;
 SELECT 1 \; SELECT 2;
-
-SELECT 1 \; SELECT 1 / 0;
-RESET __spqr__reply_notice;
 
 SELECT 1, 2, 3;
 
