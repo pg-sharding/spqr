@@ -2896,7 +2896,9 @@ func TestPrepExtendedPipeline(t *testing.T) {
 
 func TestXProtoParseCacheAfterMultipleStatements(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
-	assert.NoError(t, err, "startup failed")
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
 
 	defer func() {
 		_ = conn.Close()
@@ -2959,7 +2961,9 @@ func TestXProtoParseCacheAfterMultipleStatements(t *testing.T) {
 
 func TestXProtoParseMultipleStatements(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
-	assert.NoError(t, err, "startup failed")
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
 
 	defer func() {
 		_ = conn.Close()
