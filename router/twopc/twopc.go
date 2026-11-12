@@ -82,6 +82,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		 */
 
 		defer func() { _ = q.ReleaseTxOwnership(ctx, gid) }()
+
+		if config.RouterConfig().EnableICP {
+			if err := icp.CheckControlPoint(cl, icp.TwoPhaseBeforePrepareCP); err != nil {
+				return txstatus.TXERR, err
+			}
+		}
 	}
 
 	retST := txstatus.TXERR

@@ -8,6 +8,7 @@ test: move_guard_check
 test: pg_advisory_lock
 test: pg_try_advisory_xact_lock
 test: 2pc
+test: 2pc_duplicate_gid
 test: 2pc_happy_path_recovery
 test: move_cancel
 test: 2pc_recover
