@@ -149,7 +149,11 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 		defer cf()
 	}
 
-	sess.SetMgr(mgr)
+	// Execute all commands on local router
+	// when inside a tx
+	if !sess.IsInTx() {
+		sess.SetMgr(mgr)
+	}
 
 	tts, err := meta.ProcMetadataCommand(ctx, tstmt, sess, l.rrouter, rc.Rule(), l.writer, false, rc)
 	if err != nil {

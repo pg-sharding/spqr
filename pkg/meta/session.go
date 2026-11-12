@@ -29,9 +29,6 @@ func (s *ConsoleSession) IsInTx() bool {
 }
 
 func (s *ConsoleSession) SetMgr(mgr EntityMgr) {
-	if s.inTx {
-		return
-	}
 	s.mgr = mgr
 }
 
