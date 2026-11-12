@@ -1067,7 +1067,6 @@ Feature: MemQDB with PG dc state keeper test
     ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml
     """
     Given cluster is up and running
-    And host "router2" is stopped
     And host "coordinator2" is stopped
     And host "coordinator2" is started
     And I wait for host "coordinator" to finish startup
@@ -1075,11 +1074,13 @@ Feature: MemQDB with PG dc state keeper test
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
     CREATE REFERENCE TABLE t ON sh1, sh2;
+    CREATE REFERENCE TABLE t2 ON sh1, sh2;
     """
     Then command return code should be "0"
     When I run SQL on host "router-admin"
@@ -1089,8 +1090,24 @@ Feature: MemQDB with PG dc state keeper test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{"storage": "sh1"}]
+    [{"storage": "local"}]
     """
+
+    When I run SQL on host "router2-admin"
+    """
+    ATTACH CONTROL POINT 2pc_after_decision_cp panic;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router2"
+    """
+    SET __spqr__engine_v2 TO on;
+    create table t2 (id int primary key, dat varchar);
+    SET __spqr__commit_strategy TO '2pc';
+    begin;
+    insert into t2 (id, dat) values (1, 'd1');
+    commit;
+    """
+    Then command return code should be "1"
 
     When I run SQL on host "shard1"
     """
@@ -1117,13 +1134,13 @@ Feature: MemQDB with PG dc state keeper test
     Then command return code should be "0"
     When I run SQL on host "shard1"
     """
-    SELECT gid FROM pg_prepared_xacts
+    SELECT count(gid) FROM pg_prepared_xacts
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [{
-      "gid": "gid1"
+      "count": 2
     }]
     """
     When I run SQL on host "shard2"
@@ -1134,7 +1151,7 @@ Feature: MemQDB with PG dc state keeper test
     And SQL result should match json_exactly
     """
     [{
-      "count": 0
+      "count": 1
     }]
     """
     When I run SQL on host "shard1"
@@ -1156,7 +1173,10 @@ Feature: MemQDB with PG dc state keeper test
     .*enter RecoverDistributedTx.*
     .*sh1.*fetching stale two phase commit data.*
     .*sh1.*found unfinished tx on shard.*
+    .*sh1.*found unfinished tx on shard.*
     .*sh2.*fetching stale two phase commit data.*
-    .*gid1.*failed to acquire tx ownership, doing nothing.*
+    .*sh2.*found unfinished tx on shard.*
+    .*failed to acquire tx ownership, doing nothing.*
+    .*failed to acquire tx ownership, doing nothing.*
     """
 
