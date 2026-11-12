@@ -11,6 +11,9 @@ show_notice_messages: true
 query_routing:
   forbid_direct_shard_queries: true
   use_spqrguard: true
+enable_icp: true
+allow_two_phase_commit: true
+watchdog_log_file: /var/log/spqr_2pc_wd.log
 frontend_rules:
   - db: regress
     usr: regress
