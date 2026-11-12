@@ -2,6 +2,7 @@ package qdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -165,13 +166,13 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, c
 	}
 
 	row := conn.QueryRow(ctx, "SELECT id FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
-	if err := row.Scan(nil); err != nil && err != pgx.ErrNoRows {
+	if err := row.Scan(nil); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return false, err
 	} else if err == pgx.ErrNoRows {
-		return true, nil
+		return create, nil
 	}
 
-	return create, nil
+	return true, nil
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
