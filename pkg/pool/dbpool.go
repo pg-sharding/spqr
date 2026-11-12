@@ -338,7 +338,7 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 //   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
 //
 // TODO : unit tests
-func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, cb func(shard.ShardHostInstance) bool) shard.ShardHostInstance {
+func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, hostToReason map[string]string, cb func(shard.ShardHostInstance) bool) shard.ShardHostInstance {
 	for _, host := range hosts {
 
 		/* skip	hosts whose hostname does not match the filter. */
@@ -361,6 +361,7 @@ func (s *DBPool) traverseHostsMatchCB(params ConnAllocParams, key kr.ShardKey, h
 		for retry := 0; retry < s.AcquireRetryCount; retry++ {
 			sh, err = s.pool.ConnectionHost(params.Clid, key, host)
 			if err != nil {
+				hostToReason[host.Address] = err.Error()
 
 				s.cache.MarkUnmatched(params.Tsa, host.Address, host.AZ, false, err.Error())
 
@@ -444,7 +445,7 @@ func (s *DBPool) selectReadWriteShardHost(params ConnAllocParams, key kr.ShardKe
 // // TODO : unit tests
 func (s *DBPool) selectShardHost(params ConnAllocParams, key kr.ShardKey, hosts []config.Host, kind AcquireHostKind) (shard.ShardHostInstance, error) {
 	hostToReason := map[string]string{}
-	sh := s.traverseHostsMatchCB(params, key, hosts, func(shard shard.ShardHostInstance) bool {
+	sh := s.traverseHostsMatchCB(params, key, hosts, hostToReason, func(shard shard.ShardHostInstance) bool {
 		if kind == AcquireHostKindANY {
 			s.cache.MarkMatched(params.Tsa,
 				shard.Instance().Hostname(),

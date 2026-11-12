@@ -36,7 +36,7 @@ SET __spqr__execute_on TO sh1;
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SET __spqr__execute_host_filter TO ':6434';
 SELECT count(*) FROM tsa_test;
-ERROR:  shard sh1: failed to find primary within 
+ERROR:  shard sh1: failed to find primary within host 127.0.0.1:6434: dial tcp 127.0.0.1:6434: connect: connection refused
 QUERY:  SELECT count(*) FROM tsa_test;
 RESET __spqr__execute_host_filter;
 RESET __spqr__target_session_attrs;
