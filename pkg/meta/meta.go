@@ -123,6 +123,83 @@ func keyRangeDoesNotExist(err error) bool {
 		strings.HasPrefix(err.Error(), "there is no key range ")
 }
 
+// lockKeyRangeForMetadataMutation serializes administrative key-range changes
+// with coordinator tasks and rejects ranges that still have a move task.
+type keyRangeOperationLocker interface {
+	LockKeyRangeOps(context.Context, string) (*kr.KeyRange, error)
+	UnlockKeyRangeOps(context.Context, string) error
+}
+
+type keyRangeMoveLister interface {
+	ListKeyRangeMoves(context.Context) ([]*qdb.MoveKeyRange, error)
+}
+
+func lockKeyRangeForMetadataMutation(ctx context.Context, mngr EntityMgr, id string, rejectDataLock bool) error {
+	locker, ok := mngr.(keyRangeOperationLocker)
+	if !ok {
+		if rejectDataLock {
+			return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "key range drop must be executed on the coordinator")
+		}
+		// Adapters forward LOCK/UNLOCK to the coordinator, where the operation
+		// lock is checked by the coordinator service.
+		return nil
+	}
+
+	keyRange, err := locker.LockKeyRangeOps(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	unlock := func() { _ = locker.UnlockKeyRangeOps(ctx, id) }
+	moveLister, ok := mngr.QDB().(keyRangeMoveLister)
+	if !ok {
+		unlock()
+		return fmt.Errorf("QDB does not support key range move lookup")
+	}
+	moves, err := moveLister.ListKeyRangeMoves(ctx)
+	if err != nil {
+		unlock()
+		return err
+	}
+	for _, move := range moves {
+		if move.KeyRangeID == id {
+			unlock()
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR,
+				"cannot modify key range %q while move task %q is unfinished", id, move.MoveId)
+		}
+	}
+	if rejectDataLock && keyRange.IsLocked {
+		unlock()
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cannot drop key range %q while it is locked", id)
+	}
+	return nil
+}
+
+func lockKeyRangesForMetadataMutation(ctx context.Context, mngr EntityMgr, keyRanges []*kr.KeyRange, rejectDataLock bool) ([]string, error) {
+	sort.Slice(keyRanges, func(i, j int) bool { return keyRanges[i].ID < keyRanges[j].ID })
+	locked := make([]string, 0, len(keyRanges))
+	for _, keyRange := range keyRanges {
+		if err := lockKeyRangeForMetadataMutation(ctx, mngr, keyRange.ID, rejectDataLock); err != nil {
+			releaseKeyRangeOperationLocks(ctx, mngr, locked)
+			return nil, err
+		}
+		locked = append(locked, keyRange.ID)
+	}
+	return locked, nil
+}
+
+func releaseKeyRangeOperationLocks(ctx context.Context, mngr EntityMgr, ids []string) {
+	locker, ok := mngr.(keyRangeOperationLocker)
+	if !ok {
+		return
+	}
+	for i := len(ids) - 1; i >= 0; i-- {
+		if err := locker.UnlockKeyRangeOps(ctx, ids[i]); err != nil {
+			spqrlog.Zero.Error().Err(err).Str("key-range", ids[i]).Msg("failed to release key range operation lock")
+		}
+	}
+}
+
 // TODO : unit tests
 
 // processDrop processes the drop command based on the type of statement provided.
@@ -147,6 +224,12 @@ func processDrop(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
+			releases, err := lockKeyRangesForMetadataMutation(ctx, mngr, krs, true)
+			if err != nil {
+				return nil, err
+			}
+			defer releaseKeyRangeOperationLocks(ctx, mngr, releases)
+
 			if err := mngr.DropKeyRangeAll(ctx); err != nil {
 				return nil, err
 			} else {
@@ -176,6 +259,11 @@ func processDrop(ctx context.Context,
 					}, nil
 				}
 			}
+
+			if err := lockKeyRangeForMetadataMutation(ctx, mngr, stmt.KeyRangeID, true); err != nil {
+				return nil, err
+			}
+			defer releaseKeyRangeOperationLocks(ctx, mngr, []string{stmt.KeyRangeID})
 
 			tranMngr := NewTranEntityManager(mngr)
 			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
@@ -1355,6 +1443,11 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.Lock:
+		if err := lockKeyRangeForMetadataMutation(ctx, mgr, stmt.KeyRangeID, false); err != nil {
+			return nil, err
+		}
+		defer releaseKeyRangeOperationLocks(ctx, mgr, []string{stmt.KeyRangeID})
+
 		if _, err := LockKeyRange(ctx, mgr, stmt.KeyRangeID); err != nil {
 			return nil, err
 		}
@@ -1371,6 +1464,17 @@ func ProcMetadataCommand(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
+			locked := make([]*kr.KeyRange, 0, len(krs))
+			for _, keyRange := range krs {
+				if keyRange.IsLocked {
+					locked = append(locked, keyRange)
+				}
+			}
+			operationLocks, err := lockKeyRangesForMetadataMutation(ctx, mgr, locked, false)
+			if err != nil {
+				return nil, err
+			}
+			defer releaseKeyRangeOperationLocks(ctx, mgr, operationLocks)
 
 			tts := &tupleslot.TupleTableSlot{
 				Desc: engine.GetVPHeader("unlock key range"),
@@ -1388,6 +1492,11 @@ func ProcMetadataCommand(ctx context.Context,
 
 			return tts, nil
 		} else {
+			if err := lockKeyRangeForMetadataMutation(ctx, mgr, stmt.KeyRangeID, false); err != nil {
+				return nil, err
+			}
+			defer releaseKeyRangeOperationLocks(ctx, mgr, []string{stmt.KeyRangeID})
+
 			if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 				return nil, err
 			}

@@ -97,7 +97,7 @@ Feature: Move test
     """
 
   @drop_during_transfer
-  Scenario: DROP KEY RANGE during transfer leaves a stale key range lock
+  Scenario: DROP and UNLOCK KEY RANGE are rejected during transfer
     When I run SQL on host "shard1"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -134,9 +134,14 @@ Feature: Move test
 
     When I run SQL on host "coordinator"
     """
+    UNLOCK KEY RANGE krid1;
+    """
+    Then command return code should be "1"
+    When I run SQL on host "coordinator"
+    """
     DROP KEY RANGE krid1;
     """
-    Then command return code should be "0"
+    Then command return code should be "1"
     When I run SQL on host "coordinator"
     """
     SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
@@ -144,7 +149,13 @@ Feature: Move test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    []
+    [{
+      "key_range_id":"krid1",
+      "shard_id":"sh1",
+      "distribution_id":"ds1",
+      "lower_bound":"1",
+      "locked":"true"
+    }]
     """
 
     When I run command on host "coordinator" with timeout "20" seconds
@@ -162,12 +173,11 @@ Feature: Move test
     Then command return code should be "0"
     And command output should match regexp
     """
-    move exit code: 1(.|\n)*ERROR:
+    move exit code: 0
     """
 
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
     """
     Then command return code should be "0"
@@ -175,15 +185,14 @@ Feature: Move test
     """
     [{
       "key_range_id":"krid1",
-      "shard_id":"sh1",
+      "shard_id":"sh2",
       "distribution_id":"ds1",
       "lower_bound":"1",
-      "locked":"true"
+      "locked":"false"
     }]
     """
     When I execute SQL on host "coordinator"
     """
-    UNLOCK KEY RANGE krid1;
     DROP KEY RANGE krid1;
     DETACH CONTROL POINT after_lock_key_range_cp;
     """

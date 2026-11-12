@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type CoordinatorService struct {
@@ -22,8 +24,21 @@ type CoordinatorService struct {
 
 // DropAllKeyRanges implements proto.KeyRangeServiceServer.
 func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, _ *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
-	err := c.impl.DropKeyRangeAll(ctx)
+	krs, err := c.impl.ListAllKeyRanges(ctx)
 	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(krs))
+	for _, keyRange := range krs {
+		ids = append(ids, keyRange.ID)
+	}
+	operationLocks, err := c.lockKeyRangeOperations(ctx, ids, true)
+	if err != nil {
+		return nil, err
+	}
+	defer c.releaseKeyRangeOperations(ctx, operationLocks)
+
+	if err := c.impl.DropKeyRangeAll(ctx); err != nil {
 		return nil, err
 	}
 
@@ -53,11 +68,77 @@ func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.L
 
 func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
+		keyRange, err := c.impl.GetKeyRange(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		// ClusteredCoordinator propagates an unlock after it has already
+		// released the shared QDB lock. Treat that as an idempotent router update.
+		if keyRange != nil && !keyRange.IsLocked {
+			continue
+		}
+
+		operationLocks, err := c.lockKeyRangeOperations(ctx, []string{id}, false)
+		if err != nil {
+			return nil, err
+		}
 		if err := c.impl.UnlockKeyRange(ctx, id); err != nil {
+			c.releaseKeyRangeOperations(ctx, operationLocks)
+			return nil, err
+		}
+		if err := c.releaseKeyRangeOperations(ctx, operationLocks); err != nil {
 			return nil, err
 		}
 	}
 	return &protos.ModifyReply{}, nil
+}
+
+func (c *CoordinatorService) lockKeyRangeOperations(ctx context.Context, ids []string, rejectDataLock bool) ([]string, error) {
+	sort.Strings(ids)
+	locked := make([]string, 0, len(ids))
+	for _, id := range ids {
+		keyRange, err := c.impl.QDB().LockKeyRangeOps(ctx, id)
+		if err != nil {
+			_ = c.releaseKeyRangeOperations(ctx, locked)
+			return nil, err
+		}
+		locked = append(locked, id)
+
+		moveLister, ok := c.impl.QDB().(interface {
+			ListKeyRangeMoves(context.Context) ([]*qdb.MoveKeyRange, error)
+		})
+		if !ok {
+			_ = c.releaseKeyRangeOperations(ctx, locked)
+			return nil, fmt.Errorf("QDB does not support key range move lookup")
+		}
+		moves, err := moveLister.ListKeyRangeMoves(ctx)
+		if err != nil {
+			_ = c.releaseKeyRangeOperations(ctx, locked)
+			return nil, err
+		}
+		for _, move := range moves {
+			if move.KeyRangeID == id {
+				_ = c.releaseKeyRangeOperations(ctx, locked)
+				return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR,
+					"cannot modify key range %q while move task %q is unfinished", id, move.MoveId)
+			}
+		}
+		if rejectDataLock && keyRange.Locked {
+			_ = c.releaseKeyRangeOperations(ctx, locked)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cannot drop key range %q while it is locked", id)
+		}
+	}
+	return locked, nil
+}
+
+func (c *CoordinatorService) releaseKeyRangeOperations(ctx context.Context, ids []string) error {
+	var firstErr error
+	for i := len(ids) - 1; i >= 0; i-- {
+		if err := c.impl.QDB().UnlockKeyRangeOps(ctx, ids[i]); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // TODO : unit tests
