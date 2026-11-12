@@ -158,9 +158,11 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, c
 		// Acquire advisory lock in postgres
 		hasher := murmur3.New64()
 		if _, err := hasher.Write([]byte(txid)); err != nil {
+			conn.Release()
 			return false, err
 		}
 		if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
+			conn.Release()
 			return false, err
 		}
 	}
@@ -169,7 +171,12 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, c
 	if err := row.Scan(nil); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return false, err
 	} else if err == pgx.ErrNoRows {
-		return create, nil
+		if !create {
+			q.locks[txid] = false
+			conn.Release()
+			return false, nil
+		}
+		return true, nil
 	}
 
 	return true, nil
