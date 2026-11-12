@@ -998,7 +998,7 @@ Feature: MemQDB with PG dc state keeper test
     CREATE TABLE t (id int);
     BEGIN;
     INSERT INTO t (id) VALUES (1);
-    PREPARE TRANSACION 'gid1';
+    PREPARE TRANSACTION 'gid1';
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
@@ -1058,5 +1058,5 @@ Feature: MemQDB with PG dc state keeper test
     .*sh1.*fetching stale two phase commit data.*
     .*sh1.*found unfinished tx on shard.*
     .*sh2.*fetching stale two phase commit data.*
-    .*sh2.*found unfinished tx on shard.*
+    .*gid1.*failed to acquire tx ownership, doing nothing.*
     """
