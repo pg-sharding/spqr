@@ -1,11 +1,12 @@
 Parsed test spec with 2 sessions
 
-starting permutation: s1_engine s2_engine s1_strategy s2_strategy s1_cleanup s1_gid s2_gid s2_attach s1_begin s1_query s2_begin s2_query s1_commit s2_commit s2_rollback s2_detach
+starting permutation: s1_engine s2_engine s1_strategy s2_strategy s1_cleanup s2_cleanup s1_gid s2_gid s2_attach s1_begin s1_query s2_begin s2_query s1_commit s2_commit s2_rollback s2_detach
 step s1_engine: SET __spqr__engine_v2 TO on;
 step s2_engine: SET __spqr__engine_v2 TO on;
 step s1_strategy: SET __spqr__commit_strategy TO '2pc';
 step s2_strategy: SET __spqr__commit_strategy TO '2pc';
 step s1_cleanup: SET __spqr__eager_cleanup_2pc TO on;
+step s2_cleanup: SET __spqr__eager_cleanup_2pc TO on;
 step s1_gid: SELECT __spqr__set_next_2pc_gid('duplicate_2pc_gid');
 step s2_gid: SELECT __spqr__set_next_2pc_gid('duplicate_2pc_gid');
 step s2_attach: SELECT __spqr__console_execute('ATTACH CONTROL POINT 2pc_before_prepare_cp WAIT');
