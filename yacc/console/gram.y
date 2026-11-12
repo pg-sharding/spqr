@@ -332,7 +332,7 @@ func randomHex(n int) (string, error) {
 
 %type<statement> alter_sys_target
 
-%token <str> ASC DESC ORDER
+%token <str> ASC DESC ORDER ERROR
 %type <order_clause> order_clause
 %type <opt_asc_desc> opt_asc_desc
 %type <group_clause> group_clause
@@ -2387,6 +2387,10 @@ opt_icp_action:
 	} | PANIC {
 		$$ = &ICPointAction{
 			Act: "panic",
+		}
+	} | ERROR {
+		$$ = &ICPointAction{
+			Act: "error",
 		}
 	} | /* empty */ {
 		$$ = &ICPointAction{

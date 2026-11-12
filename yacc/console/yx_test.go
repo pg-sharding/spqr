@@ -2736,6 +2736,17 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "attach control point p1 error",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "error",
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "detach control point p1",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",

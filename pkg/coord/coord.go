@@ -650,8 +650,19 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	if err != nil {
 		return err
 	}
+	keyRangeRenamed := false
+	defer func() {
+		if keyRangeRenamed {
+			return
+		}
+		if err := lc.UnlockKeyRange(ctx, krID); err != nil {
+			spqrlog.Zero.Error().Err(err).Str("key-range", krID).Msg("failed to unlock key range after rename")
+		}
+	}()
 	if !config.CoordinatorConfig().UseSPQRGuard {
-		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
+		err := lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
+		keyRangeRenamed = err == nil
+		return err
 	}
 	if err := updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.InsertKeyRangeMeta, krIDNew); err != nil {
 		return err
@@ -659,6 +670,7 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	if err := lc.qdb.RenameKeyRange(ctx, krID, krIDNew); err != nil {
 		return err
 	}
+	keyRangeRenamed = true
 	return updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.DeleteKeyRangeMeta, krID)
 }
 
