@@ -61,6 +61,15 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		} else if !ok {
 			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
 		}
+
+		/* We are holding lock on this GID while alive. */
+		defer func() { _ = q.ReleaseTxOwnership(ctx, gid) }()
+	}
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseBeforePrepareCP); err != nil {
+			return txstatus.TXERR, err
+		}
 	}
 
 	/* Store our intentions in state keeper */
@@ -78,10 +87,8 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 		/* From this point, 2PC GID is visible for other actors,
 		* including external clients running qdb inspect queries and
-		* recovery goroutines. We are holding lock on this GID while alive.
+		* recovery goroutines.
 		 */
-
-		defer func() { _ = q.ReleaseTxOwnership(ctx, gid) }()
 	}
 
 	retST := txstatus.TXERR
