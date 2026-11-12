@@ -3,8 +3,10 @@ package coord
 import (
 	"context"
 	"encoding/binary"
+	"os"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -183,4 +185,53 @@ func TestAlterOptions(t *testing.T) {
 		{Name: "dbname", Arg: "regress"},
 		{Name: "sslmode", Arg: "require"},
 	}, shard.Options())
+}
+
+func TestRenameKeyRangeUnlocksAfterShardUpdateFailure(t *testing.T) {
+	ctx := context.Background()
+
+	memqdb, err := prepareDB(ctx)
+	if !assert.NoError(t, err) {
+		return
+	}
+	entityMgr := NewLocalInstanceMetadataMgr(memqdb,
+		nil,
+		nil,
+		topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
+	tranMgr := meta.NewTranEntityManager(entityMgr)
+
+	ds := distributions.NewDistribution("ds1", []string{"integer"})
+	if !assert.NoError(t, tranMgr.CreateDistribution(ctx, ds)) {
+		return
+	}
+	keyRange := &kr.KeyRange{
+		ID:           "kr1",
+		ShardID:      "sh1",
+		Distribution: "ds1",
+		LowerBound:   []any{int64(1)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}
+	if !assert.NoError(t, tranMgr.CreateKeyRange(ctx, keyRange, ds.ColTypes)) {
+		return
+	}
+	if !assert.NoError(t, tranMgr.ExecNoTran(ctx)) {
+		return
+	}
+
+	shardDataCfg := t.TempDir() + "/shards.yaml"
+	if !assert.NoError(t, os.WriteFile(shardDataCfg, []byte("shards: {}\n"), 0600)) {
+		return
+	}
+	oldConfig := *config.CoordinatorConfig()
+	defer func() { *config.CoordinatorConfig() = oldConfig }()
+	config.CoordinatorConfig().ShardDataCfg = shardDataCfg
+	config.CoordinatorConfig().UseSPQRGuard = true
+
+	// The missing shard forces RenameKeyRange to fail after it acquires the data lock.
+	if err := entityMgr.RenameKeyRange(ctx, "kr1", "kr2"); !assert.ErrorContains(t, err, "shard \"sh1\" does not exist in shard data config") {
+		return
+	}
+
+	config.CoordinatorConfig().UseSPQRGuard = false
+	assert.NoError(t, entityMgr.RenameKeyRange(ctx, "kr1", "kr2"))
 }
