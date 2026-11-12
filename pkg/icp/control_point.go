@@ -183,14 +183,17 @@ func ResetICP(name string) error {
 	return fmt.Errorf("unknown control point name %s", name)
 }
 
-func CheckControlPoint(c ICPContextHolder, name string) error {
+func CheckControlPoint(c ICPContextHolder, name string) (err error) {
 	mu.Lock()
-	act := cpsMp[name]
-	mu.Unlock()
-	if act == nil {
-		return nil
+	{
+		/* XXX: support more behaviour modes */
+		if act, ok := cpsMp[name]; ok {
+			spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
+			defer func() {
+				err = act(c)
+			}()
+		}
 	}
-
-	spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
-	return act(c)
+	mu.Unlock()
+	return
 }
