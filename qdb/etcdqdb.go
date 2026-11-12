@@ -236,6 +236,11 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 
 // TODO : unit tests
 func (q *EtcdQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+	stampKeyRangeCreate(keyRange)
+	return q.createKeyRangeStatements(keyRange)
+}
+
+func (q *EtcdQDB) createKeyRangeStatements(keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
@@ -326,6 +331,7 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
 
+	stampKeyRangeUpdate(keyRange)
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
 		return nil, err
@@ -446,14 +452,14 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		spqrlog.Zero.Trace().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("acquire lock")
 	}
 
-	versions := make(map[string]int)
+	metadata := make(map[string]KeyRangeMeta)
 	for _, kv := range resp.Responses[2].GetResponseRange().Kvs {
 		id := strings.TrimPrefix(string(kv.Key), keyRangesMetadataNamespace)
-		meta := &KeyRangeMeta{}
+		var meta KeyRangeMeta
 		if err := json.Unmarshal(kv.Value, &meta); err != nil {
 			return nil, err
 		}
-		versions[id] = meta.Version
+		metadata[id] = meta
 	}
 
 	keyRanges := make([]*KeyRange, 0, len(krDbs))
@@ -469,12 +475,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		if ok {
 			krLocked = v
 		}
-		version := 0
-		ver, ok := versions[kRange.KeyRangeID]
-		if ok {
-			version = ver
-		}
-		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version))
+		keyRanges = append(keyRanges, keyRangeFromEtcd(kRange, krLocked, metadata[kRange.KeyRangeID]))
 	}
 
 	spqrlog.Zero.Trace().
@@ -545,16 +546,21 @@ func (q *EtcdQDB) parseKeyRange(keyRangeResp, lockResp, metaResp *etcdserverpb.R
 	}
 	isLocked := lockResp != nil && lockResp.GetResponseRange().Count > 0 && string(lockResp.GetResponseRange().Kvs[0].Value) == "locked"
 
-	version := 0
+	var meta KeyRangeMeta
 	if metaResp.GetResponseRange().Count > 0 {
-		var meta *KeyRangeMeta
 		if err := json.Unmarshal(metaResp.GetResponseRange().Kvs[0].Value, &meta); err != nil {
 			return nil, err
 		}
-		version = meta.Version
 	}
+	return keyRangeFromEtcd(kRange, isLocked, meta), nil
+}
 
-	return keyRangeFromInternal(kRange, isLocked, version), nil
+func keyRangeFromEtcd(keyRange *internalKeyRange, locked bool, meta KeyRangeMeta) *KeyRange {
+	rangeWithMetadata := keyRangeFromInternal(keyRange, locked, meta.Version)
+	if rangeWithMetadata.UpdatedAt == nil && !meta.UpdatedAt.IsZero() {
+		rangeWithMetadata.UpdatedAt = &meta.UpdatedAt
+	}
+	return rangeWithMetadata
 }
 
 // TODO : unit tests
@@ -743,7 +749,8 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	if !resp.Succeeded {
 		return fmt.Errorf("failed to rename key range: failed to delete old key range")
 	}
-	statements, err := q.CreateKeyRange(ctx, kr)
+	stampKeyRangeUpdate(kr)
+	statements, err := q.createKeyRangeStatements(kr)
 	if err != nil {
 		return err
 	}

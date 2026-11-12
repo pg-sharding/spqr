@@ -38,6 +38,16 @@ func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 	return desc
 }
 
+// FormatKeyRangeTimestamp renders a key range timestamp for SHOW output:
+// RFC3339 in UTC, or NULL when the record carries none (stores predating the
+// field).
+func FormatKeyRangeTimestamp(t *time.Time) []byte {
+	if t == nil {
+		return nil
+	}
+	return []byte(t.UTC().Format(time.RFC3339))
+}
+
 func KeyRangeVirtualRelationScan(
 	krs []*kr.KeyRange,
 	locks []string) *tupleslot.TupleTableSlot {
@@ -73,7 +83,7 @@ func KeyRangeVirtualRelationScanExtended(
 	locks []string,
 	dists []*distributions.Distribution) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "next_lower_bound", "coverage", "locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "next_lower_bound", "coverage", "created_at", "updated_at", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -162,15 +172,17 @@ func KeyRangeVirtualRelationScanExtended(
 			coverage = "N/A"
 		}
 
-		tts.WriteDataRow(
-			keyRange.ID,
-			keyRange.ShardID,
-			keyRange.Distribution,
-			strings.Join(keyRange.SendRaw(), ","),
-			nextLowerBound,
-			coverage,
-			isLocked,
-		)
+		tts.Raw = append(tts.Raw, [][]byte{
+			[]byte(keyRange.ID),
+			[]byte(keyRange.ShardID),
+			[]byte(keyRange.Distribution),
+			[]byte(strings.Join(keyRange.SendRaw(), ",")),
+			[]byte(nextLowerBound),
+			[]byte(coverage),
+			FormatKeyRangeTimestamp(keyRange.CreatedAt),
+			FormatKeyRangeTimestamp(keyRange.UpdatedAt),
+			[]byte(isLocked),
+		})
 	}
 
 	return tts, nil

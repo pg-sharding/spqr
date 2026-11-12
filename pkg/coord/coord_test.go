@@ -144,6 +144,11 @@ func TestSplitKeyRange(t *testing.T) {
 		is.Equal([]bool{false, false}, []bool{actual[0].IsLocked, actual[0].IsLocked})
 		actual[0].IsLocked = false
 		actual[1].IsLocked = false
+		// created_at/updated_at are stamped with the wall clock; mirror them so
+		// this comparison stays about the key ranges themselves.
+		for i := range expected {
+			expected[i].CreatedAt, expected[i].UpdatedAt = actual[i].CreatedAt, actual[i].UpdatedAt
+		}
 		is.Equal(expected, []kr.KeyRange{*actual[0], *actual[1]})
 	})
 }

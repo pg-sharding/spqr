@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -31,6 +32,10 @@ type KeyRange struct {
 	IsLocked     bool
 	ColumnTypes  []string
 	Version      int
+	// CreatedAt/UpdatedAt mirror the qdb record; nil when the underlying
+	// store predates the fields or could not recover them.
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
 }
 
 type CustomDataTypeRange struct {
@@ -362,6 +367,8 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 		ColumnTypes:  colTypes,
 		IsLocked:     krdb.Locked,
 		Version:      krdb.Version,
+		CreatedAt:    krdb.CreatedAt,
+		UpdatedAt:    krdb.UpdatedAt,
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
@@ -483,6 +490,8 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 		DistributionId: kr.Distribution,
 		Locked:         kr.IsLocked,
 		Version:        kr.Version,
+		CreatedAt:      kr.CreatedAt,
+		UpdatedAt:      kr.UpdatedAt,
 	}
 	for i := range len(kr.ColumnTypes) {
 		krDb.LowerBound[i] = kr.OutFunc(i)
