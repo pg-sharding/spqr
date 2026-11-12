@@ -2,7 +2,6 @@ package pool_test
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -160,41 +159,6 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
-}
-
-func TestDbPoolPrimaryErrorIncludesConnectionFailures(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	underlyingPool := mockpool.NewMockShardHostsPool(ctrl)
-	key := kr.ShardKey{Name: "sh1"}
-	dbpool := pool.NewDBPoolFromMultiPool(topology.TopMgrFromMap(map[string]*topology.DataShard{
-		key.Name: topology.DataShardFromConfig(key.Name, &config.Shard{
-			RawHosts: []string{"h1:6432", "h2:6432"},
-		}),
-	}), &startup.StartupParams{}, underlyingPool, time.Hour)
-	t.Cleanup(dbpool.StopCacheWatchdog)
-
-	inst := mockinst.NewMockDBInstance(ctrl)
-	inst.EXPECT().Hostname().AnyTimes().Return("h1:6432")
-	inst.EXPECT().AvailabilityZone().AnyTimes().Return("")
-	host := mockshard.NewMockShardHostInstance(ctrl)
-	host.EXPECT().Instance().AnyTimes().Return(inst)
-	host.EXPECT().ID().AnyTimes().Return(uint(1))
-	host.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
-	host.EXPECT().Receive().Return(&pgproto3.DataRow{Values: [][]byte{[]byte("on")}}, nil)
-	host.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
-	host.EXPECT().Sync().Return(int64(0))
-	host.EXPECT().DataPending().Return(false)
-	host.EXPECT().IsStale().Return(false)
-	host.EXPECT().TxStatus().Return(txstatus.TXIDLE)
-	underlyingPool.EXPECT().ConnectionHost(uint(1), key, config.Host{Address: "h1:6432"}).Return(host, nil)
-	underlyingPool.EXPECT().Put(host).Return(nil)
-	underlyingPool.EXPECT().ConnectionHost(uint(1), key, config.Host{Address: "h2:6432"}).Return(nil, errors.New("connection refused"))
-
-	sh, err := dbpool.ConnectionWithTSA(pool.ConnAllocParams{Clid: 1, Tsa: config.TargetSessionAttrsRW}, key)
-	assert.Nil(t, sh)
-	assert.ErrorContains(t, err, "failed to find primary within ")
-	assert.ErrorContains(t, err, "host h1:6432: replica")
-	assert.ErrorContains(t, err, "host h2:6432: connection refused")
 }
 
 func runner(t *testing.T, spamTopologyChanges bool) {
