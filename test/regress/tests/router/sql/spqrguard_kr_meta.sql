@@ -2,6 +2,19 @@
 CREATE DISTRIBUTION ds1 (INT);
 CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1;
 
+\c "host=regress_coordinator port=7002 dbname=regress user=regress"
+ATTACH CONTROL POINT after_insert_cp ERROR;
+
+\c spqr-console
+RENAME KEY RANGE kr1 TO kr2;
+
+\c "host=regress_coordinator port=7002 dbname=regress user=regress"
+DETACH CONTROL POINT after_insert_cp;
+
+\c spqr-console
+RENAME KEY RANGE kr1 TO kr2;
+RENAME KEY RANGE kr2 TO kr1;
+
 \c regress
 SET __spqr__execute_on=sh1;
 SELECT * FROM spqr_metadata.spqr_local_key_ranges;

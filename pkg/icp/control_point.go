@@ -46,7 +46,7 @@ type ICPContextHolder interface {
 var (
 	/* Lets keep it simple - performance does not matter here */
 	mu           sync.Mutex
-	cpsMp        = map[string]func(ICPContextHolder){}
+	cpsMp        = map[string]func(ICPContextHolder) error{}
 	cpsContextMp = map[string]ICPContextHolder{}
 	cpsResetMp   = map[string]func(ICPContextHolder){}
 
@@ -63,19 +63,30 @@ var (
 	}
 )
 
-func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) {
+func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) error {
 	switch a.Act {
 	case "panic":
-		return defaultPanicAction
+		return func(c ICPContextHolder) error {
+			defaultPanicAction(c)
+			return nil
+		}
+	case "error":
+		return func(ICPContextHolder) error {
+			return fmt.Errorf("injected error at control point %q", name)
+		}
 	case "sleep":
 		if a.Timeout == time.Duration(0) {
-			return defaultSleepAction
+			return func(c ICPContextHolder) error {
+				defaultSleepAction(c)
+				return nil
+			}
 		}
-		return func(ICPContextHolder) {
+		return func(ICPContextHolder) error {
 			time.Sleep(a.Timeout)
+			return nil
 		}
 	case "wait":
-		return func(c ICPContextHolder) {
+		return func(c ICPContextHolder) error {
 			log.Printf("reached control point '%s'\n", name)
 			cpsContextMp[name] = c
 			// nil is ok.
@@ -84,9 +95,13 @@ func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) 
 				BlockedPIDs[c.CancelPID()] = struct{}{}
 				c.Wait()
 			}
+			return nil
 		}
 	default:
-		return defaultPanicAction
+		return func(c ICPContextHolder) error {
+			defaultPanicAction(c)
+			return nil
+		}
 	}
 }
 
@@ -170,13 +185,12 @@ func ResetICP(name string) error {
 
 func CheckControlPoint(c ICPContextHolder, name string) error {
 	mu.Lock()
-	{
-		/* XXX: support more behaviour modes */
-		if act, ok := cpsMp[name]; ok {
-			spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
-			defer act(c)
-		}
-	}
+	act := cpsMp[name]
 	mu.Unlock()
-	return nil
+	if act == nil {
+		return nil
+	}
+
+	spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
+	return act(c)
 }

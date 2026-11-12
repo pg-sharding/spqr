@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -74,6 +75,11 @@ func updateKeyRangeMetaOnShard(ctx context.Context, shardId string, query string
 
 			if _, err := tx.Exec(ctx, query, args...); err != nil {
 				return err
+			}
+			if query == datatransfers.InsertKeyRangeMeta && config.CoordinatorConfig().EnableICP {
+				if err := icp.CheckControlPoint(nil, icp.AfterInsertCP); err != nil {
+					return err
+				}
 			}
 
 			return tx.Commit(ctx)
