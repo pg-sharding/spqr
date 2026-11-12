@@ -355,7 +355,10 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: drop all key ranges")
 
-	resp, err := q.cli.Delete(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Txn(ctx).Then(
+		clientv3.OpDelete(keyRangesNamespace, clientv3.WithPrefix()),
+		clientv3.OpDelete(keyRangeLockNamespace()+"/", clientv3.WithPrefix()),
+	).Commit()
 	if err != nil {
 		return err
 	}
@@ -373,7 +376,7 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
-	resp := make([]QdbStatement, 2)
+	resp := make([]QdbStatement, 3)
 	statement, err := NewQdbStatement(CmdDelete, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
@@ -385,8 +388,13 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		return nil, err
 	}
 	resp[1] = *statement
+	statement, err = NewQdbStatement(CmdDelete, LockPath(keyRangeNodePath(id)), "")
+	if err != nil {
+		return nil, err
+	}
+	resp[2] = *statement
 
-	return resp, err
+	return resp, nil
 }
 
 // TODO : unit tests
