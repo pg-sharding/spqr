@@ -95,11 +95,15 @@ func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) 
 				BlockedPIDs[c.CancelPID()] = struct{}{}
 			}
 			mu.Unlock()
-			if c != nil {
-				log.Println("waiting...")
-				c.Wait()
+
+			wait := func() error {
+				if c != nil {
+					log.Println("waiting...")
+					c.Wait()
+				}
+				return nil
 			}
-			return nil
+			return wait()
 		}
 	default:
 		return func(c ICPContextHolder) error {
