@@ -96,6 +96,99 @@ Feature: Move test
     ]
     """
 
+  @drop_during_transfer
+  Scenario: DROP KEY RANGE during transfer leaves a stale key range lock
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    INSERT INTO xMove(w_id, s) VALUES (1, 'source row');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "coordinator"
+    """
+    ATTACH CONTROL POINT after_lock_key_range_cp SLEEP 10 SECONDS;
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator"
+    """
+    rm -f /tmp/drop-during-transfer.out /tmp/drop-during-transfer.rc
+    (PGPASSWORD=password psql -X -h localhost -p 7002 -U regress -d regress -c 'MOVE KEY RANGE krid1 TO sh2' > /tmp/drop-during-transfer.out 2>&1; echo $? > /tmp/drop-during-transfer.rc) </dev/null >/dev/null 2>&1 &
+    for i in $(seq 1 100); do
+      state=$(PGPASSWORD=password psql -XAt -F '|' -h localhost -p 7002 -U regress -d regress -c 'SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked)')
+      if printf '%s\n' "$state" | grep -Fq 'krid1|sh1|ds1|1|true'; then
+        sleep 1
+        exit 0
+      fi
+      sleep 0.1
+    done
+    cat /tmp/drop-during-transfer.out
+    exit 1
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    DROP KEY RANGE krid1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+
+    When I run command on host "coordinator" with timeout "20" seconds
+    """
+    for i in $(seq 1 200); do
+      if [ -f /tmp/drop-during-transfer.rc ]; then
+        echo "move exit code: $(cat /tmp/drop-during-transfer.rc)"
+        cat /tmp/drop-during-transfer.out
+        exit 0
+      fi
+      sleep 0.1
+    done
+    exit 1
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    move exit code: 1(.|\n)*ERROR:
+    """
+
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "key_range_id":"krid1",
+      "shard_id":"sh1",
+      "distribution_id":"ds1",
+      "lower_bound":"1",
+      "locked":"true"
+    }]
+    """
+    When I execute SQL on host "coordinator"
+    """
+    UNLOCK KEY RANGE krid1;
+    DROP KEY RANGE krid1;
+    DETACH CONTROL POINT after_lock_key_range_cp;
+    """
+    Then command return code should be "0"
+
   Scenario: MOVE KEY RANGE works with varchar keys
     When I execute SQL on host "coordinator"
     """
