@@ -650,6 +650,11 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := lc.UnlockKeyRange(ctx, krID); err != nil {
+			spqrlog.Zero.Error().Err(err).Str("key-range", krID).Msg("failed to unlock key range after rename")
+		}
+	}()
 	if !config.CoordinatorConfig().UseSPQRGuard {
 		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
 	}
