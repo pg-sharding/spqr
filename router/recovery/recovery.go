@@ -195,7 +195,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string) error {
 	recoverCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid)
+	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid, false)
 	if err != nil {
 		return err
 	}

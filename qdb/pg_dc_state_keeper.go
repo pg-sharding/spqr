@@ -138,7 +138,7 @@ func (q *PgDCStateKeeper) releaseConn(txid string) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, create bool) (bool, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -149,12 +149,12 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 
 	q.locks[txid] = true
 
+	conn, err := q.getConn(ctx, txid)
+	if err != nil {
+		return false, err
+	}
 	if config.RouterConfig().AdvisoryLockTwoPhaseTx {
 		// Acquire advisory lock in postgres
-		conn, err := q.getConn(ctx, txid)
-		if err != nil {
-			return false, err
-		}
 		hasher := murmur3.New64()
 		if _, err := hasher.Write([]byte(txid)); err != nil {
 			return false, err
@@ -164,7 +164,14 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 		}
 	}
 
-	return true, nil
+	row := conn.QueryRow(ctx, "SELECT id FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	if err := row.Scan(nil); err != nil && err != pgx.ErrNoRows {
+		return false, err
+	} else if err == pgx.ErrNoRows {
+		return true, nil
+	}
+
+	return create, nil
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
