@@ -647,6 +647,9 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	defer func() {
 		_ = lc.UnlockKeyRangeOps(ctx, krID)
 	}()
+	if keyRange.IsLocked {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cannot rename key range \"%s\": key range is locked", keyRange.ID)
+	}
 	if !config.CoordinatorConfig().UseSPQRGuard {
 		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
 	}
