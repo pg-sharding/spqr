@@ -88,11 +88,15 @@ func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) 
 	case "wait":
 		return func(c ICPContextHolder) error {
 			log.Printf("reached control point '%s'\n", name)
+			mu.Lock()
 			cpsContextMp[name] = c
 			// nil is ok.
 			if c != nil {
-				log.Println("waiting...")
 				BlockedPIDs[c.CancelPID()] = struct{}{}
+			}
+			mu.Unlock()
+			if c != nil {
+				log.Println("waiting...")
 				c.Wait()
 			}
 			return nil
@@ -183,17 +187,22 @@ func ResetICP(name string) error {
 	return fmt.Errorf("unknown control point name %s", name)
 }
 
-func CheckControlPoint(c ICPContextHolder, name string) (err error) {
+func IsPIDBlocked(pid uint32) bool {
 	mu.Lock()
-	{
-		/* XXX: support more behaviour modes */
-		if act, ok := cpsMp[name]; ok {
-			spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
-			defer func() {
-				err = act(c)
-			}()
-		}
-	}
+	defer mu.Unlock()
+	_, ok := BlockedPIDs[pid]
+	return ok
+}
+
+func CheckControlPoint(c ICPContextHolder, name string) error {
+	mu.Lock()
+	act := cpsMp[name]
 	mu.Unlock()
-	return
+
+	if act == nil {
+		return nil
+	}
+
+	spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
+	return act(c)
 }
