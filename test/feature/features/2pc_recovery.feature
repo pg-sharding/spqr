@@ -961,3 +961,222 @@ Feature: MemQDB with PG dc state keeper test
     .*sh2.*fetching stale two phase commit data.*
     .*sh2.*found unfinished tx on shard.*
     """
+
+  Scenario: router leaves alone foreign transactions with mempgqdb
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb.yaml
+    """
+    Given cluster is up and running
+    And host "router2" is stopped
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+    And I wait for host "coordinator" to finish startup
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1, sh2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW dcs_storage;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{"storage": "sh1"}]
+    """
+
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE t (id int);
+    BEGIN;
+    INSERT INTO t (id) VALUES (1);
+    PREPARE TRANSACTION 'gid1';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
+    """
+    Then command return code should be "0"
+    And SQL result should match json_regexp
+    """
+    []
+    """
+    When host "router" is started
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__run_2pc_recover();
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT gid FROM pg_prepared_xacts
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "gid": "gid1"
+    }]
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(gid) FROM pg_prepared_xacts
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "count": 0
+    }]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
+    """
+    Then command return code should be "0"
+    And SQL result should match json_regexp
+    """
+    []
+    """
+    When I run command on host "router"
+    """
+    cat /var/log/spqr_2pc_wd.log
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    .*enter RecoverDistributedTx.*
+    .*sh1.*fetching stale two phase commit data.*
+    .*sh1.*found unfinished tx on shard.*
+    .*sh2.*fetching stale two phase commit data.*
+    .*gid1.*failed to acquire tx ownership, doing nothing.*
+    """
+
+    Scenario: router leaves alone foreign transactions with memqdb
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml
+    """
+    Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+    And I wait for host "coordinator" to finish startup
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1, sh2;
+    CREATE REFERENCE TABLE t2 ON sh1, sh2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW dcs_storage;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{"storage": "local"}]
+    """
+
+    When I run SQL on host "router2-admin"
+    """
+    ATTACH CONTROL POINT 2pc_after_decision_cp panic;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router2"
+    """
+    SET __spqr__engine_v2 TO on;
+    create table t2 (id int primary key, dat varchar);
+    SET __spqr__commit_strategy TO '2pc';
+    begin;
+    insert into t2 (id, dat) values (1, 'd1');
+    commit;
+    """
+    Then command return code should be "1"
+
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE t (id int);
+    BEGIN;
+    INSERT INTO t (id) VALUES (1);
+    PREPARE TRANSACTION 'gid1';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
+    """
+    Then command return code should be "0"
+    And SQL result should match json_regexp
+    """
+    []
+    """
+    When host "router" is started
+    When I run SQL on host "router"
+    """
+    SELECT __spqr__run_2pc_recover();
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT count(gid) FROM pg_prepared_xacts
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "count": 2
+    }]
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(gid) FROM pg_prepared_xacts
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "count": 1
+    }]
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
+    """
+    Then command return code should be "0"
+    And SQL result should match json_regexp
+    """
+    []
+    """
+    When I run command on host "router"
+    """
+    cat /var/log/spqr_2pc_wd.log
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    .*enter RecoverDistributedTx.*
+    .*sh1.*fetching stale two phase commit data.*
+    .*sh1.*found unfinished tx on shard.*
+    .*sh1.*found unfinished tx on shard.*
+    .*sh2.*fetching stale two phase commit data.*
+    .*sh2.*found unfinished tx on shard.*
+    .*failed to acquire tx ownership, doing nothing.*
+    .*failed to acquire tx ownership, doing nothing.*
+    """
+

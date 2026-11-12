@@ -56,7 +56,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+		if ok, err := q.AcquireTxOwnership(ctx, gid, true); err != nil {
 			return txstatus.TXERR, err
 		} else if !ok {
 			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)

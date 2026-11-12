@@ -195,8 +195,9 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string) error {
 	recoverCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid)
+	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid, false)
 	if err != nil {
+		spqrlog.WdLog.Debug().Err(err).Str("gid", gid).Msg("error to acquiring tx ownership")
 		return err
 	}
 	if acq {
@@ -204,7 +205,9 @@ func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid st
 		if err := d.Recover2PhaseCommitTX(recoverCtx, gid); err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to recover unfinished distributed tx %q: %v", gid, err)
 		}
+		return nil
 	}
+	spqrlog.WdLog.Debug().Str("gid", gid).Msg("failed to acquire tx ownership, doing nothing")
 	return nil
 }
 
