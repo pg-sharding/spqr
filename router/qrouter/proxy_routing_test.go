@@ -614,7 +614,6 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh2",
