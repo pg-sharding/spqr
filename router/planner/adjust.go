@@ -195,7 +195,7 @@ func AdjustPlanForJoins(ctx context.Context, rm *rmeta.RoutingMetadataContext, p
 			return nil, err
 		}
 
-		rewritten, err := RewriteDistributedRelWithValues(rm.Query, values.ValuesLoc, shs, true)
+		rewritten, err := RewriteDistributedRelWithValues(rm.Query, values, shs, true)
 		if err != nil {
 			return nil, err
 		}

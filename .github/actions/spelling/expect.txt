@@ -299,6 +299,7 @@ libprotobuf
 libreadline
 Linting
 localrouter
+locs
 logdir
 logproxy
 lol
