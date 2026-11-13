@@ -291,51 +291,47 @@ func (rm *RoutingMetadataContext) ComputeRoutingExpr(
 		return nil, err
 	}
 
-	var ret []any
-
-	var rec func(acc []byte, i int) error
-
-	rec = func(acc []byte, i int) error {
-
-		if i == len(rExpr.ColRefs) {
-			b, err := hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
-			if err != nil {
-				return err
-			}
-			ret = append(ret, b)
-			return nil
+	accs := [][]byte{{}}
+	for _, colRef := range rExpr.ColRefs {
+		if len(accs) == 0 {
+			break
 		}
 
-		if len(rm.ParamRefs[*qualName][rExpr.ColRefs[i].ColName]) == 0 && len(rm.Exprs[*qualName][rExpr.ColRefs[i].ColName]) == 0 {
-			return nil
+		if len(rm.ParamRefs[*qualName][colRef.ColName]) == 0 && len(rm.Exprs[*qualName][colRef.ColName]) == 0 {
+			return nil, nil
 		}
 
-		vals, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
+		vals, err := rm.ResolveValue(qualName, colRef.ColName, queryParamsFormatCodes)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		for _, v := range vals {
+		var nextAccs [][]byte
+		for _, acc := range accs {
+			for _, v := range vals {
+				lExpr, err := hashfunction.ApplyNonIdentHashFunction(v, colRef.ColType, hf)
+				if err != nil {
+					/* Is this ok? */
+					return nil, err
+				}
 
-			lExpr, err := hashfunction.ApplyNonIdentHashFunction(v, rExpr.ColRefs[i].ColType, hf)
-			if err != nil {
-				/* Is this ok? */
-				return err
-			}
-
-			buf := hashfunction.EncodeUInt64(uint64(lExpr))
-
-			localAcc := append(acc, buf...)
-
-			if err := rec(localAcc, i+1); err != nil {
-				return err
+				buf := hashfunction.EncodeUInt64(uint64(lExpr))
+				localAcc := make([]byte, len(acc)+len(buf))
+				copy(localAcc, acc)
+				copy(localAcc[len(acc):], buf)
+				nextAccs = append(nextAccs, localAcc)
 			}
 		}
-		return nil
+		accs = nextAccs
 	}
 
-	if err := rec([]byte{}, 0); err != nil {
-		return nil, err
+	var ret []any
+	for _, acc := range accs {
+		b, err := hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, b)
 	}
 
 	return ret, nil
