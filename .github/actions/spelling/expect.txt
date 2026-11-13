@@ -103,6 +103,7 @@ dcs
 ddl
 debian
 dedup
+demogen
 denchick
 denis
 deparsed
