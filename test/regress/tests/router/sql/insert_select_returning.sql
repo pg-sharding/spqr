@@ -18,6 +18,23 @@ insert into t_city (id, name, val)
 select * from (select *, case when 1 = 1 then 'y' else 'z' end as val from (select 12 as id, 'n' as name) as a) as b
 returning id;
 
+WITH vals AS (
+    SELECT * FROM (VALUES (2, 'n', 'x'), (13, 'm', 'y')) v(id, name, val)
+), ins AS (
+    INSERT INTO t_city (id, name, val)
+    SELECT * FROM (SELECT * FROM vals) q
+    RETURNING *
+)
+SELECT * FROM (SELECT * FROM ins) q;
+
+SELECT id FROM t_city WHERE id IN (2, 13) /* __spqr__execute_on: sh1 */;
+SELECT id FROM t_city WHERE id IN (2, 13) /* __spqr__execute_on: sh2 */;
+
+INSERT INTO t_city (id, name, val)
+SELECT * FROM (VALUES (3, 'n', 'x'), (14, 'n', 'y')) v(id, name, val) FETCH FIRST 1 ROW ONLY;
+INSERT INTO t_city (id, name, val)
+SELECT DISTINCT ON (name) * FROM (VALUES (3, 'n', 'x'), (14, 'n', 'y')) v(id, name, val);
+
 SELECT id FROM t_city WHERE id = 1 ORDER BY 1;
 SELECT id FROM t_city WHERE id = 12 ORDER BY 1;
 
