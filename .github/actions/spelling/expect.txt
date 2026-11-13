@@ -137,7 +137,9 @@ eedba
 efef
 elephantsql
 Elts
+emoji
 emptypb
+Emre
 ENONET
 ents
 epn
@@ -174,6 +176,7 @@ frsm
 frst
 frules
 ftts
+Gamers
 gcflags
 genproto
 getconn
@@ -210,6 +213,7 @@ hba
 healthcheck
 helpgen
 Highload
+Horvat
 hostnossl
 hostspec
 hostssl
@@ -249,6 +253,7 @@ jidw
 jifdjew
 jiofewjijiojioji
 jodwjdewo
+Jovanovic
 jsons
 kadmin
 kadmind
@@ -267,6 +272,7 @@ keytabfile
 killall
 kinit
 Kirill
+Kofi
 kpass
 krb
 krdb
@@ -373,6 +379,7 @@ OIDKRB
 Oids
 oiwejow
 ojiswjiow
+Okafor
 OLAP
 ONCONFLICT
 oneline
@@ -385,7 +392,9 @@ ordersdb
 osixia
 outputdir
 Patroni
+PCG
 Percona
+Petrov
 PGAASINTERNALNETS
 pgbench
 pgbin
@@ -401,6 +410,7 @@ pgflush
 PGHOST
 pgi
 pgoption
+pgpass
 PGPORT
 pgproto
 PGQDB
@@ -585,6 +595,7 @@ SVFOP
 SVGID
 syscache
 tablesample
+tada
 targ
 taskgroup
 taskmgr
