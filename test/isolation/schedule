@@ -1,5 +1,6 @@
 test: simple
 test: simple_lock_kr
+test: rename_key_range_race
 test: simple_move_data
 test: simple_move_subsequent
 test: move_schema_qualify
