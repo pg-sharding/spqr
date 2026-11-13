@@ -707,7 +707,7 @@ RETURNING meta.campaigns.id, meta.campaigns.uuid, meta.campaigns.title, meta.cam
 	}
 }
 
-func parseValuesLocation(t testing.TB, query, cteName string) lyx.ParseLoc {
+func parseValuesClause(t testing.TB, query, cteName string) *lyx.ValueClause {
 	t.Helper()
 	stmts, _, err := lyx.Parse(query)
 	require.NoError(t, err)
@@ -718,23 +718,23 @@ func parseValuesLocation(t testing.TB, query, cteName string) lyx.ParseLoc {
 		if cteName == "" {
 			values, ok := stmt.SubSelect.(*lyx.ValueClause)
 			require.True(t, ok)
-			return values.ValuesLoc
+			return values
 		}
 		withClause = stmt.WithClause
 	case *lyx.Select:
 		withClause = stmt.WithClause
 	case *lyx.ValueClause:
-		return stmt.ValuesLoc
+		return stmt
 	}
 	for _, cte := range withClause {
 		if cte.Name == cteName {
 			values, ok := cte.SubQuery.(*lyx.ValueClause)
 			require.True(t, ok)
-			return values.ValuesLoc
+			return values
 		}
 	}
 	t.Fatalf("VALUES clause for CTE %q not found", cteName)
-	return lyx.ParseLocUnknown
+	return nil
 }
 
 func TestModifyDistributedInsertQuery(t *testing.T) {
@@ -882,8 +882,8 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			loc := parseValuesLocation(t, tt.query, "")
-			result, err := RewriteDistributedRelBatchInsert(tt.query, loc, tt.shs)
+			values := parseValuesClause(t, tt.query, "")
+			result, err := RewriteDistributedRelBatchInsert(tt.query, values, tt.shs)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
@@ -1035,8 +1035,8 @@ func TestModifyDistributedWithAUXQuery(t *testing.T) {
 		},
 	} {
 		t.Run("rewrite", func(t *testing.T) {
-			loc := parseValuesLocation(t, tt.query, tt.cteName)
-			result, err := RewriteDistributedRelWithValues(tt.query, loc, tt.shs, tt.ro)
+			values := parseValuesClause(t, tt.query, tt.cteName)
+			result, err := RewriteDistributedRelWithValues(tt.query, values, tt.shs, tt.ro)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery expected error, got nil. Plan: %+v", result)
@@ -1109,8 +1109,8 @@ func TestCommonValuesRewriteLocations(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			loc := parseValuesLocation(t, tt.query, tt.cteName)
-			p, err := CommonValuesRewrite(tt.query, loc, []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}}, tt.ro)
+			values := parseValuesClause(t, tt.query, tt.cteName)
+			p, err := CommonValuesRewrite(tt.query, values, []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}}, tt.ro)
 			require.NoError(t, err)
 			assert.Equal(t, tt.queries, p.OverwriteQuery)
 			assert.Equal(t, []kr.ShardKey{{Name: "sh1"}, {Name: "sh2"}}, p.ExecTargets)
@@ -1127,7 +1127,9 @@ func TestCommonValuesRewriteInvalidLocation(t *testing.T) {
 	query := "INSERT INTO t VALUES (1)"
 	for _, loc := range []lyx.ParseLoc{lyx.ParseLocUnknown, 0, len(query), len(query) + 1} {
 		t.Run(fmt.Sprint(loc), func(t *testing.T) {
-			p, err := CommonValuesRewrite(query, loc, []kr.ShardKey{{Name: "sh1"}}, false)
+			values := parseValuesClause(t, query, "")
+			values.ValuesLoc = loc
+			p, err := CommonValuesRewrite(query, values, []kr.ShardKey{{Name: "sh1"}}, false)
 			require.Error(t, err)
 			assert.Nil(t, p)
 		})
@@ -1203,12 +1205,12 @@ func BenchmarkCommonValuesRewrite(b *testing.B) {
 	} {
 		b.Run(tt.name, func(b *testing.B) {
 			query, shs := tt.build()
-			loc := parseValuesLocation(b, query, "")
+			values := parseValuesClause(b, query, "")
 			b.SetBytes(int64(len(query)))
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				_, _ = CommonValuesRewrite(query, loc, shs, false)
+				_, _ = CommonValuesRewrite(query, values, shs, false)
 			}
 		})
 	}
@@ -1268,12 +1270,12 @@ func BenchmarkRewriteDistributedRelWithValues(b *testing.B) {
 	} {
 		b.Run(tt.name, func(b *testing.B) {
 			query, shs := tt.build()
-			loc := parseValuesLocation(b, query, "vals")
+			values := parseValuesClause(b, query, "vals")
 			b.SetBytes(int64(len(query)))
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				_, _ = RewriteDistributedRelWithValues(query, loc, shs, false)
+				_, _ = RewriteDistributedRelWithValues(query, values, shs, false)
 			}
 		})
 	}
@@ -1291,17 +1293,17 @@ type rewritePerfCase struct {
 func runner(t *testing.T, tt rewritePerfCase) {
 	t.Helper()
 	query, shs := buildInsertLargeValues(tt.tuples, tt.strLen)
-	loc := parseValuesLocation(t, query, "")
+	values := parseValuesClause(t, query, "")
 
 	// warm up
-	if _, err := CommonValuesRewrite(query, loc, shs, false); err != nil {
+	if _, err := CommonValuesRewrite(query, values, shs, false); err != nil {
 		t.Fatalf("rewrite failed: %v", err)
 	}
 
 	var total time.Duration
 	for i := 0; i < perfRuns; i++ {
 		start := time.Now()
-		if _, err := CommonValuesRewrite(query, loc, shs, false); err != nil {
+		if _, err := CommonValuesRewrite(query, values, shs, false); err != nil {
 			t.Fatalf("rewrite failed: %v", err)
 		}
 		total += time.Since(start)

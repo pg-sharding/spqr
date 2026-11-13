@@ -56,11 +56,15 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 }
 
 // CommonValuesRewrite splits the VALUES clause at the location recorded by lyx.
-func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
+func CommonValuesRewrite(query string, values *lyx.ValueClause, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
 	const valuesKeyword = "VALUES"
+	valuesLoc := values.ValuesLoc
 	if valuesLoc < 0 || valuesLoc > len(query)-len(valuesKeyword) ||
 		!strings.EqualFold(query[valuesLoc:valuesLoc+len(valuesKeyword)], valuesKeyword) {
 		return nil, fmt.Errorf("invalid query: invalid VALUES location %d", valuesLoc)
+	}
+	if len(values.RowLocs) == 0 || len(values.RowLocs) != len(shs) {
+		return nil, fmt.Errorf("invalid query: VALUES row count does not match shard count")
 	}
 
 	p := &plan.ScatterPlan{
@@ -74,91 +78,27 @@ func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey
 		p.SubPlan = &plan.ModifyTable{}
 	}
 
-	// Find and process each VALUES clause
-	pos := valuesLoc + len(valuesKeyword)
-
-	prefix := query[:pos] + " " /* add one space to make query pretty */
+	prefix := query[:valuesLoc+len(valuesKeyword)] + " " /* add one space to make query pretty */
 	mp := make(map[string]*strings.Builder, len(shs))
-	frst := make(map[string]bool, len(shs))
-	for _, sh := range shs {
-		if _, ok := mp[sh.Name]; !ok {
-			b := &strings.Builder{}
+	for i, loc := range values.RowLocs {
+		sh := shs[i]
+		b, ok := mp[sh.Name]
+		if !ok {
+			b = &strings.Builder{}
 			b.Grow(len(prefix) + len(query)/len(shs))
 			b.WriteString(prefix)
 			mp[sh.Name] = b
-			frst[sh.Name] = true
-		}
-	}
-
-	valIndx := 0
-
-	for {
-		// Skip whitespace
-		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
-			pos++
-		}
-
-		if pos >= len(query) {
-			break
-		}
-
-		// Look for opening parenthesis of VALUES clause
-		if query[pos] != '(' {
-			// If not a parenthesis and we've processed at least one VALUES clause, we're done
-			if valIndx == len(shs) {
-				break
-			}
-			return nil, fmt.Errorf("invalid query: expected opening parenthesis for VALUES clause")
-		}
-
-		// Find matching closing parenthesis for this VALUES clause
-		valuesOpenInd := pos
-		valuesCloseInd := findMatchingClosingParenthesis(query, valuesOpenInd)
-		if valuesCloseInd == -1 {
-			return nil, fmt.Errorf("invalid query: missing closing parenthesis in VALUES clause")
-		}
-
-		// Format the VALUES clause content
-		shName := shs[valIndx].Name
-		b := mp[shName]
-		if !frst[shName] {
+		} else {
 			b.WriteString(", ")
 		}
-		b.WriteString(query[valuesOpenInd : valuesCloseInd+1])
-
-		// Move past this VALUES clause
-		pos = valuesCloseInd + 1
-
-		// Skip whitespace and look for comma
-		whitespaceStart := pos
-		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
-			pos++
-		}
-
-		if pos >= len(query) || query[pos] != ',' {
-			// No more VALUES clauses, preserve the whitespace and add remaining query
-			if whitespaceStart < len(query) {
-				suffix := query[whitespaceStart:]
-				for _, b := range mp {
-					b.WriteString(suffix)
-				}
-			}
-			break
-		}
-
-		// Skip the comma
-		pos++
-
-		frst[shName] = false
-		valIndx++
+		b.WriteString(query[loc[0]:loc[1]])
 	}
 
+	suffix := query[values.RowLocs[len(values.RowLocs)-1][1]:]
 	result := make(map[string]string, len(mp))
 	for sh, b := range mp {
+		b.WriteString(suffix)
 		result[sh] = b.String()
-	}
-
-	for sh := range frst {
 		p.ExecTargets = append(p.ExecTargets, kr.ShardKey{
 			Name: sh,
 		})
@@ -173,12 +113,12 @@ func CommonValuesRewrite(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey
 	return p, nil
 }
 
-func RewriteDistributedRelBatchInsert(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	return RewriteDistributedRelWithValues(query, valuesLoc, shs, false)
+func RewriteDistributedRelBatchInsert(query string, values *lyx.ValueClause, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+	return RewriteDistributedRelWithValues(query, values, shs, false)
 }
 
-func RewriteDistributedRelWithValues(query string, valuesLoc lyx.ParseLoc, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
-	p, err := CommonValuesRewrite(query, valuesLoc, shs, ro)
+func RewriteDistributedRelWithValues(query string, values *lyx.ValueClause, shs []kr.ShardKey, ro bool) (*plan.ScatterPlan, error) {
+	p, err := CommonValuesRewrite(query, values, shs, ro)
 	if err != nil {
 		return nil, err
 	}

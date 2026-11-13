@@ -184,6 +184,32 @@ NOTICE: send query to shard(s) : sh1
          Filter: (a = 1)
 (4 rows)
 
+INSERT INTO xx_insert_rel (a, b, c) VALUES (10 /* ) */, 20, 30), /* ( */ (110, 40, 50) RETURNING *;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: send query to shard(s) : sh1,sh2
+  a  | b  | c  
+-----+----+----
+  10 | 20 | 30
+ 110 | 40 | 50
+(2 rows)
+
+SELECT a FROM xx_insert_rel WHERE a IN (10, 110) /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ a  
+----
+ 10
+(1 row)
+
+SELECT a FROM xx_insert_rel WHERE a IN (10, 110) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+  a  
+-----
+ 110
+(1 row)
+
 DROP TABLE xx_insert_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
