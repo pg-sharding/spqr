@@ -214,8 +214,6 @@ services:
             context: .
         hostname: regress_tests
         container_name: regress_tests
-        volumes:
-            - ../../test-reports/isolation:/regress/test-reports/isolation
         depends_on:
             - router
             - router2

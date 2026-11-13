@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/client"
@@ -19,6 +20,8 @@ type InitSQLMetadataBootstrapper struct {
 
 // InitializeMetadata implements RouterMetadataBootstrapper.
 func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
+	sess := meta.NewConsoleSession(r.Console().Mgr())
+
 	for _, fname := range []string{
 		// rcfg.InitSQL,
 		i.InitSQLFile,
@@ -36,7 +39,7 @@ func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r 
 		for _, query := range queries {
 			spqrlog.Zero.Info().Str("query", query).Msg("")
 			fakeClient := client.NewFakeClient()
-			if err := r.Console().ProcessQuery(ctx, query, fakeClient, &catalog.FakeChecker{}); err != nil {
+			if err := r.Console().ProcessQuery(ctx, query, sess, fakeClient, &catalog.FakeChecker{}); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				if i.exitOnInitSQLError {
 					return err
