@@ -16,10 +16,6 @@ on:
   schedule:
     - cron: '30 06 * * 6'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 env:
   GO_VERSION: 1.26.0
 

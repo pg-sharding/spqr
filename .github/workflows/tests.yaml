@@ -15,10 +15,6 @@ on:
       - 'LICENSE'
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 env:
   IMAGE_SHARD: spqr-shard-image
   SHARD_CACHE_KEY: sha256sum-of-docker-shard
