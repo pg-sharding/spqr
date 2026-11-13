@@ -625,6 +625,24 @@ func TestRoutingByExpression(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id1 IN (5, 100) AND id2 IN ('jidw', 'jidw');",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh2"}, {Name: "sh1"}},
+			},
+		},
+		{
+			query: "DELETE FROM distrr_mm_test WHERE id1 IN (5, 100) AND id2 IN ('jidw', 'jidw');",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh2"}, {Name: "sh1"}},
+			},
+		},
 
 		{
 			query: "INSERT INTO distrr_mm_test (id1, id2) VALUES(100, 'jidw');",
