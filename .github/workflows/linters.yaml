@@ -13,30 +13,69 @@ env:
   GO_VERSION: 1.26.0
 
 jobs:
-  fmtcheck:
-    name: go fmt check
+  static-checks:
+    name: static checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+          submodules: true
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.0'
+          go-version: ${{ env.GO_VERSION }}
           cache: true
+
       - name: go fmt check
+        if: ${{ !cancelled() }}
         run: make fmtcheck
-  
-  protos-check:
-    name: check proto generated code
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
+
+      - name: goimports check
+        if: ${{ !cancelled() }}
+        uses: DarthBenro008/goimports-check-action@v0.2.0
         with:
-          fetch-depth: 1
-          submodules: true
+          root-path: './' # The relative root path to run goimports
+          excludes: "./yacc/"
+
+      - name: check for new panic() calls
+        if: ${{ !cancelled() }}
+        run: |
+          # Check for panic() only in newly added lines (lines starting with +)
+          # Exclude lines with // nolint comments
+          if git diff origin/master...HEAD --unified=0 -- "*.go" | \
+             grep "^+" | grep -v "^+++" | grep -v "// nolint" | grep -q "panic("; then
+            echo "❌ Found panic() in new code"
+            exit 1
+          fi
+          echo "✓ No new panic() calls"
+
+      - name: check for commented feature test scenarios
+        if: ${{ !cancelled() }}
+        run: |
+          if grep  -Pzq ' *# Scenario.*\n( *#.*\n){5}' test/feature/features/*; then
+            echo "❌ Found commented feature test scenarios"
+            exit 1
+          fi
+          echo "✓ No commented scenarios"
+
+      # Steps below regenerate files; each resets the tree so a failure does not leak into the next check.
+      - name: go mod tidy check
+        if: ${{ !cancelled() }}
+        run: |
+          go mod tidy
+          DIFF=$(git diff .);
+          git checkout -- .
+          if [ -n "$DIFF" ]; then
+            echo "$DIFF" && echo "run 'go mod tidy' and commit the changes" && exit 1;
+          fi
+
       - name: check proto generated code
-        run: make generate && git diff --exit-code
+        if: ${{ !cancelled() }}
+        run: make generate && git diff --exit-code || { git checkout -- .; exit 1; }
+
+      - name: check generated help
+        if: ${{ !cancelled() }}
+        run: make generate_help && git diff --exit-code || { git checkout -- .; exit 1; }
 
   golangci:
     name: golangci-lint
@@ -54,83 +93,3 @@ jobs:
         with:
           version: latest
           args: --timeout=10m --color=always --build-tags=all
-
-  goimports:
-    runs-on: ubuntu-latest
-    name: goimports check
-    steps:
-      - name: checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-      - name: goimports check
-        uses: DarthBenro008/goimports-check-action@v0.2.0
-        with:
-          root-path: './' # The relative root path to run goimports
-          excludes: "./yacc/"
-
-  go-mod-tidy:
-    name: go mod tidy check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v7
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-      - name: ensure go.mod is tidy
-        run: |
-          go mod tidy
-          DIFF=$(git diff .);
-          if [ -n "$DIFF" ]; then
-            echo "$DIFF" && echo "run 'go mod tidy' and commit the changes" && exit 1;
-          fi
-
-  panic-check:
-    name: check for new panic() calls
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: check for new panic() calls
-        run: |
-          # Compare against master branch
-          BASE_REF="${{ github.base_ref || 'origin/master' }}"
-
-          # Check for panic() only in newly added lines (lines starting with +)
-          # Exclude lines with // nolint comments
-          if git diff origin/master...HEAD --unified=0 -- "*.go" | \
-             grep "^+" | grep -v "^+++" | grep -v "// nolint" | grep -q "panic("; then
-            echo "❌ Found panic() in new code"
-            exit 1
-          fi
-          echo "✓ No new panic() calls"
-
-  docs-check:
-    name: check generated help
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-          submodules: true
-      - name: check proto generated code
-        run: make generate_help && git diff --exit-code
-
-  commented-features-check:
-    name: check for commented feature test scenarios
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: check for commented feature test scenarios
-        run: |
-          if grep  -Pzq ' *# Scenario.*\n( *#.*\n){5}' test/feature/features/*; then
-            echo "❌ Found commented feature test scenarios"
-            exit 1
-          fi
-          echo "✓ No commented scenarios"
