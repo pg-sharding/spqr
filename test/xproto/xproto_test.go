@@ -4267,6 +4267,115 @@ func TestExtendedErrorDescribeAfterSync(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
+// Scenario from https://github.com/yandex/odyssey/issues/1840: after a query
+// error inside an explicit transaction, Bind referencing the same prepared
+// statement name must be answered with 25P02 (aborted transaction), not 26000
+// (statement mapping lost), and ROLLBACK must leave the connection reusable.
+func TestExtendedErrorKeepsPrepStmtMapping(t *testing.T) {
+
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tt := []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Close{
+					Name:       "s0",
+					ObjectType: 'S',
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Parse{
+					Name:  "s0",
+					Query: "SELECT 1/(x-x) FROM generate_series(1,1) AS s(x)",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "s0",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				// drain the remaining batch item before ROLLBACK
+				&pgproto3.Bind{
+					PreparedStatement: "s0",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+				&pgproto3.Query{
+					String: "SELECT 42",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_ERRCODE_DIVISION_BY_ZERO,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_ERRCODE_IN_FAILED_SQL_TRANSACTION,
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXERR),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	}
+	protoTestRunner(t, frontend, tt)
+}
+
 func TestExtendedErrorWithFlush(t *testing.T) {
 
 	frontend, conn, err := bootstrapConnection(t)
