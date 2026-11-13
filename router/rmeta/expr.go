@@ -314,6 +314,7 @@ func (rm *RoutingMetadataContext) ComputeRoutingExpr(
 		if err != nil {
 			return err
 		}
+		vals = dedupRoutingValues(vals)
 
 		for _, v := range vals {
 
@@ -339,4 +340,17 @@ func (rm *RoutingMetadataContext) ComputeRoutingExpr(
 	}
 
 	return ret, nil
+}
+
+func dedupRoutingValues(vals []any) []any {
+	seen := make(map[any]struct{}, len(vals))
+	unique := make([]any, 0, len(vals))
+	for _, val := range vals {
+		if _, ok := seen[val]; ok {
+			continue
+		}
+		seen[val] = struct{}{}
+		unique = append(unique, val)
+	}
+	return unique
 }
