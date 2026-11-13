@@ -4,10 +4,20 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/planopts"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/xproto"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestCombineAutoLinearize(t *testing.T) {
+	t.Parallel()
+
+	p := plan.Combine(&plan.ScatterPlan{
+		BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
+	}, &plan.ScatterPlan{})
+	assert.True(t, p.Opts().AutoLinearize)
+}
 
 func TestParseResolveParamValueEmptyBindParams(t *testing.T) {
 	t.Parallel()

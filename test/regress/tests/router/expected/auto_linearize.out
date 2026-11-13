@@ -247,6 +247,19 @@ NOTICE: send query to shard(s) : sh3,sh4
  3333 | 5
 (2 rows)
 
+WITH ins AS (
+    INSERT INTO rel_al (id, c) VALUES (112, 1), (1112, 1) RETURNING *
+)
+SELECT * FROM rel_al WHERE id IN (112, 1112);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: send query to shard(s) : sh1,sh2
+ id | c 
+----+---
+(0 rows)
+
 DROP TABLE rel_al;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

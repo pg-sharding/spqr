@@ -414,6 +414,10 @@ func Combine(p1, p2 Plan) Plan {
 		}
 	}
 
+	basePlan := BasePlan{H: planopts.PlanOpts{
+		AutoLinearize: p1.Opts().AutoLinearize || p2.Opts().AutoLinearize,
+	}}
+
 	switch shq1 := p1.(type) {
 	case *VirtualPlan:
 		return p2
@@ -429,6 +433,7 @@ func Combine(p1, p2 Plan) Plan {
 		}
 
 		return &ScatterPlan{
+			BasePlan:       basePlan,
 			OverwriteQuery: merged,
 			ExecTargets:    mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 		}
@@ -440,6 +445,7 @@ func Combine(p1, p2 Plan) Plan {
 			return p1
 		case *ScatterPlan:
 			return &ScatterPlan{
+				BasePlan:    basePlan,
 				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 			}
 		case *ShardDispatchPlan:
@@ -447,6 +453,7 @@ func Combine(p1, p2 Plan) Plan {
 				return p1
 			} else {
 				return &ScatterPlan{
+					BasePlan:    basePlan,
 					ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 				}
 			}
@@ -454,5 +461,5 @@ func Combine(p1, p2 Plan) Plan {
 	}
 
 	/* execute on all shards */
-	return &ScatterPlan{}
+	return &ScatterPlan{BasePlan: basePlan}
 }
