@@ -43,6 +43,18 @@ UPDATE xxm_expd SET j = j + 1 WHERE id = 299 /* __spqr__engine_v2: true */;
 UPDATE xxm_expd SET j = j + 1 WHERE id = 399 /* __spqr__engine_v2: true */;
 COMMIT;
 
+\c spqr-console
+ATTACH CONTROL POINT after_gang_deploy_cp ERROR;
+\c regress
+BEGIN;
+SELECT * FROM xxm_expd WHERE id = 1 /* __spqr__engine_v2: true */;
+SELECT * FROM xxm_expd WHERE id = 101 /* __spqr__engine_v2: true */;
+ROLLBACK;
+\c spqr-console
+DETACH CONTROL POINT after_gang_deploy_cp;
+SHOW BACKEND_CONNECTIONS (tx_status) WHERE hostname = 'spqr_shard_2:6432' AND tx_status = 'TXACT';
+\c regress
+
 BEGIN;
 INSERT INTO xxm_expd (id, j) VALUES(55, 55) /* __spqr__engine_v2: true */;
 INSERT INTO xxm_expd (id, j) VALUES(155, 155) /* __spqr__engine_v2: true */;
