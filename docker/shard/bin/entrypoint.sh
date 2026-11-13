@@ -8,7 +8,8 @@ then
     exit 1
 fi
 
-rm -fr /var/lib/postgresql/$POSTGRES_VERSION/main/ 
+rm -fr /var/lib/postgresql/$POSTGRES_VERSION/main/
+chown postgres /var/log/postgresql
 
 if [ "x" != "x$PG_MASTER" ]; then
     PG_SLOT_NAME=${PG_SLOT_NAME:-replication_slot}
