@@ -101,11 +101,11 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) (shard.ShardHostInstance
 		return nil, nil
 	}
 
-	srv.shard.Store(nil)
-
 	if (*v).SHKey().Name != shkey.Name {
 		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
 	}
+
+	srv.shard.Store(nil)
 	return *v, nil
 }
 
