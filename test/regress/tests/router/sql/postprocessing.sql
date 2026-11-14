@@ -24,6 +24,7 @@ SELECT * FROM r_pp limit 2;
 
 SET __spqr__allow_postprocessing TO true;
 
+SELECT 1 AS tie FROM r_pp ORDER BY 1 FETCH FIRST 1 ROW WITH TIES;
 SELECT i FROM r_pp ORDER BY i;
 SELECT * FROM r_pp limit 2;
 
