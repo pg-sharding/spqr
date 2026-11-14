@@ -45,3 +45,37 @@ Feature: Config reloading works
     """
     1
     """
+
+  @pure_pg
+  Scenario: Maintain params reload works
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_incorrect_password.yaml
+    """
+    Given cluster is up and running
+    When I run SQL on host "router" as user "regress"
+    """
+    SHOW __spqr__maintain_params;
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    false
+    """
+    # Edit config to toggle maintain_params and reload spqr-router via SIGHUP
+    When I run command on host "router"
+    """
+    sed -i 's/maintain_params: false/maintain_params: true/g' $ROUTER_CONFIG
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    """
+    Then command return code should be "0"
+    And we wait for "1" seconds
+    When I run SQL on host "router" as user "regress"
+    """
+    SHOW __spqr__maintain_params;
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    true
+    """
