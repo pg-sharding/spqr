@@ -600,7 +600,9 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				return err
 			}
 
-			guc.Set(rst.Client(), lvl, v)
+			if err := guc.Set(rst.Client(), lvl, v); err != nil {
+				return err
+			}
 		} else if session.ParamIsString(name) {
 
 			guc, err := rst.Client().FindStrGUC(name)

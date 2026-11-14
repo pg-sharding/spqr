@@ -47,19 +47,19 @@ type BoolGUCimpl struct {
 	initBoot  func() bool
 	bootVal   bool
 	show      func(sph SessionParamsHolder) (string, error)
-	assign    func(sph SessionParamsHolder, level string, val bool)
+	assign    func(sph SessionParamsHolder, level string, val bool) error
 }
 
-func (guc *BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) {
+func (guc *BoolGUCimpl) Set(cl SessionParamsHolder, level string, val bool) error {
 	if guc.assign != nil {
-		guc.assign(cl, level, val)
-		return
+		return guc.assign(cl, level, val)
 	}
 	if val {
 		cl.RecordVirtualParam(level, guc.n, "ok")
 	} else {
 		cl.RecordVirtualParam(level, guc.n, "no")
 	}
+	return nil
 }
 
 func (guc *BoolGUCimpl) ShortName() string {
@@ -506,6 +506,18 @@ var BoolGUCs = []*BoolGUCimpl{
 		initBoot: func() bool {
 			return config.RouterConfig().SessionConnectionsPin
 		},
+		assign: func(sph SessionParamsHolder, level string, val bool) error {
+			if val && config.RouterConfig().ForceConnectionCleanup {
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST,
+					"cannot enable %s while force_connection_cleanup is enabled", SPQR_SESSION_CONNECTIONS_PIN)
+			}
+			value := "no"
+			if val {
+				value = "ok"
+			}
+			sph.RecordVirtualParam(level, SPQR_SESSION_CONNECTIONS_PIN, value)
+			return nil
+		},
 	},
 	{
 		n:         SPQR_REPLY_NOTICE,
@@ -538,12 +550,13 @@ var BoolGUCs = []*BoolGUCimpl{
 			return "", spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "parameter \"%s\" isn't user accessible",
 				SPQR_SCATTER_QUERY)
 		},
-		assign: func(sph SessionParamsHolder, _ string, val bool) {
+		assign: func(sph SessionParamsHolder, _ string, val bool) error {
 			if val {
 				sph.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "ok")
 			} else {
 				sph.RecordVirtualParam(VirtualParamLevelStatement, SPQR_SCATTER_QUERY, "no")
 			}
+			return nil
 		},
 	},
 	{

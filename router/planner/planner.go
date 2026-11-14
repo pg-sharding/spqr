@@ -1053,7 +1053,9 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true)
+		if err := guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true); err != nil {
+			return nil, err
+		}
 	case virtual.PGAdvisoryUnlockAll:
 		/* Unpin connections */
 		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
@@ -1061,7 +1063,9 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false)
+		if err := guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false); err != nil {
+			return nil, err
+		}
 	}
 
 	switch fname {
