@@ -112,7 +112,7 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	}
 
 	if config.RouterConfig().ForceConnectionCleanup {
-		return v.Close()
+		return p.Discard(v)
 	}
 
 	if v.Sync() != 0 || v.DataPending() {
