@@ -67,19 +67,15 @@ NOTICE: send query to shard(s) : sh1,sh2
  13 | m    | y
 (2 rows)
 
-SELECT id FROM t_city WHERE id IN (2, 13) /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
- id 
-----
-  2
-(1 row)
-
-SELECT id FROM t_city WHERE id IN (2, 13) /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
- id 
-----
- 13
-(1 row)
+SELECT __spqr__ctid('t_city');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | id | name | val 
+--------------+----+------+-----
+ shard sh1    |  1 | n    | x
+ shard sh1    |  2 | n    | x
+ shard sh2    | 12 | n    | y
+ shard sh2    | 13 | m    | y
+(4 rows)
 
 INSERT INTO t_city (id, name, val)
 SELECT * FROM (VALUES (3, 'n', 'x'), (14, 'n', 'y')) v(id, name, val) FETCH FIRST 1 ROW ONLY;

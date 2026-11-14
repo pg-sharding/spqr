@@ -27,8 +27,7 @@ WITH vals AS (
 )
 SELECT * FROM (SELECT * FROM ins) q;
 
-SELECT id FROM t_city WHERE id IN (2, 13) /* __spqr__execute_on: sh1 */;
-SELECT id FROM t_city WHERE id IN (2, 13) /* __spqr__execute_on: sh2 */;
+SELECT __spqr__ctid('t_city');
 
 INSERT INTO t_city (id, name, val)
 SELECT * FROM (VALUES (3, 'n', 'x'), (14, 'n', 'y')) v(id, name, val) FETCH FIRST 1 ROW ONLY;
