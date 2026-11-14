@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -80,7 +79,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 		query := rm.Query
 		if withTies {
 			var err error
-			query, err = trimWithTiesQuery(query, selectLim)
+			query, err = stripWithTies(query, stmt)
 			if err != nil {
 				return nil, err
 			}
@@ -155,23 +154,24 @@ func (qr *ProxyQrouter) addLimitToPlan(
 	return p, nil
 }
 
-var withTiesClause = regexp.MustCompile(`(?is)^(?:OFFSET\s+[0-9]+(?:\s+ROWS?)?\s+)?FETCH\s+(?:FIRST|NEXT)(?:\s+[0-9]+)?\s+ROWS?\s+WITH\s+TIES(?:\s+OFFSET\s+[0-9]+(?:\s+ROWS?)?)?`)
-var withTiesTrailer = regexp.MustCompile(`(?s)^(?:\s|;|/\*.*?\*/|--[^\n]*(?:\n|$))*$`)
-
-func trimWithTiesQuery(query string, limit *lyx.SelectLimit) (string, error) {
-	loc := limit.CountLoc
-	if limit.LimitOffset != nil && limit.OffsetLoc < loc {
-		loc = limit.OffsetLoc
-	}
-	if loc < 0 || loc > len(query) {
+func stripWithTies(query string, stmt *lyx.Select) (string, error) {
+	if stmt.HasLockingClause {
 		return "", rerrors.NewComplexQueryError()
 	}
-	suffix := query[loc:]
-	match := withTiesClause.FindStringIndex(suffix)
-	if match == nil || !withTiesTrailer.MatchString(suffix[match[1]:]) {
+	statements, _, err := lyx.Parse(query)
+	if err != nil || len(statements) != 1 {
 		return "", rerrors.NewComplexQueryError()
 	}
-	return strings.TrimSpace(query[:loc]), nil
+	limit := stmt.Limit.(*lyx.SelectLimit)
+	start := limit.CountLoc
+	if limit.OffsetLoc != lyx.ParseLocUnknown && (start == lyx.ParseLocUnknown || limit.OffsetLoc < start) {
+		start = limit.OffsetLoc
+	}
+	end := limit.EndLoc
+	if start < 0 || end < start || end > len(query) {
+		return "", rerrors.NewComplexQueryError()
+	}
+	return strings.TrimSpace(query[:start] + query[end:]), nil
 }
 
 func withTiesLimits(stmt *lyx.Select) (int64, int64, error) {

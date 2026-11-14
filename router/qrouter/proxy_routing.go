@@ -1028,7 +1028,7 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 				if err != nil {
 					return nil, err
 				}
-				if _, err := trimWithTiesQuery(rm.Query, limit); err != nil {
+				if _, err := stripWithTies(rm.Query, stmt); err != nil {
 					return nil, err
 				}
 				if err := applyWithTies(v.TTS, stmt.SortClause, offset, count); err != nil {

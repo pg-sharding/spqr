@@ -146,6 +146,24 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  b
 (3 rows)
 
+SELECT k FROM r_ties ORDER BY k OFFSET 1 /* split */ FETCH FIRST 2 ROWS WITH TIES /* trailing */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+ a
+ b
+ b
+(3 rows)
+
+SELECT k FROM r_ties ORDER BY k FETCH FIRST 2 ROWS WITH TIES /* split */ OFFSET 1 ROWS /* trailing */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+ a
+ b
+ b
+(3 rows)
+
 SELECT k FROM r_ties ORDER BY k DESC FETCH NEXT 2 ROWS WITH TIES;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  k 
