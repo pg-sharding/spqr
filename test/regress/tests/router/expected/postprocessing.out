@@ -84,6 +84,25 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (8 rows)
 
 SET __spqr__allow_postprocessing TO true;
+SELECT 1 AS tie FROM r_pp ORDER BY 1 FETCH FIRST 1 ROW WITH TIES;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ tie 
+-----
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+   1
+(13 rows)
+
 SELECT i FROM r_pp ORDER BY i;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  i 
