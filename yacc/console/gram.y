@@ -332,7 +332,7 @@ func randomHex(n int) (string, error) {
 
 %type<statement> alter_sys_target
 
-%token <str> ASC DESC ORDER
+%token <str> ASC DESC ORDER ERROR
 %type <order_clause> order_clause
 %type <opt_asc_desc> opt_asc_desc
 %type <group_clause> group_clause
@@ -1153,7 +1153,10 @@ where_clause:
 
 
 show_statement_type:
-	IDENT
+	ERROR
+	{
+		$$ = ErrorStr
+	} | IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
 		case DatabasesStr, RoutersStr, PoolsStr, 
@@ -2387,6 +2390,10 @@ opt_icp_action:
 	} | PANIC {
 		$$ = &ICPointAction{
 			Act: "panic",
+		}
+	} | ERROR {
+		$$ = &ICPointAction{
+			Act: "error",
 		}
 	} | /* empty */ {
 		$$ = &ICPointAction{

@@ -279,6 +279,22 @@ func TestSimpleShow(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "SHOW error",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.ErrorStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
+		{
+			query: "SELECT * FROM error",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.ErrorStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 		/* case insensitive */
 		{
 			query: "ShOw versIon",
@@ -2731,6 +2747,17 @@ func TestICP(t *testing.T) {
 				Enable: true,
 				A: &spqrparser.ICPointAction{
 					Act: "panic",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point p1 error",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "error",
 				},
 			},
 			err: nil,

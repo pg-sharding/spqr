@@ -34,6 +34,7 @@ const (
 	AfterMoveCP                 = "after_move_cp"
 	AfterUniteKeyRangeCP        = "after_unite_key_range_cp"
 	CopyReferenceRelationDataCP = "copy_reference_relation_data_cp"
+	AfterGangDeployCP           = "after_gang_deploy_cp"
 )
 
 type ICPContextHolder interface {
@@ -47,7 +48,7 @@ type ICPContextHolder interface {
 var (
 	/* Lets keep it simple - performance does not matter here */
 	mu           sync.Mutex
-	cpsMp        = map[string]func(ICPContextHolder){}
+	cpsMp        = map[string]func(ICPContextHolder) error{}
 	cpsContextMp = map[string]ICPContextHolder{}
 	cpsResetMp   = map[string]func(ICPContextHolder){}
 
@@ -64,30 +65,53 @@ var (
 	}
 )
 
-func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) {
+func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) error {
 	switch a.Act {
 	case "panic":
-		return defaultPanicAction
+		return func(c ICPContextHolder) error {
+			defaultPanicAction(c)
+			return nil
+		}
+	case "error":
+		return func(ICPContextHolder) error {
+			return fmt.Errorf("injected error at control point %q", name)
+		}
 	case "sleep":
 		if a.Timeout == time.Duration(0) {
-			return defaultSleepAction
+			return func(c ICPContextHolder) error {
+				defaultSleepAction(c)
+				return nil
+			}
 		}
-		return func(ICPContextHolder) {
+		return func(ICPContextHolder) error {
 			time.Sleep(a.Timeout)
+			return nil
 		}
 	case "wait":
-		return func(c ICPContextHolder) {
+		return func(c ICPContextHolder) error {
 			log.Printf("reached control point '%s'\n", name)
+			mu.Lock()
 			cpsContextMp[name] = c
 			// nil is ok.
 			if c != nil {
-				log.Println("waiting...")
 				BlockedPIDs[c.CancelPID()] = struct{}{}
-				c.Wait()
 			}
+			mu.Unlock()
+
+			wait := func() error {
+				if c != nil {
+					log.Println("waiting...")
+					c.Wait()
+				}
+				return nil
+			}
+			return wait()
 		}
 	default:
-		return defaultPanicAction
+		return func(c ICPContextHolder) error {
+			defaultPanicAction(c)
+			return nil
+		}
 	}
 }
 
@@ -120,7 +144,7 @@ func DefineICP(name string, a *spqrparser.ICPointAction) error {
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
 		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
 		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
-		AwaitPidCP:
+		AfterGangDeployCP, AwaitPidCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -147,7 +171,7 @@ func ResetICP(name string) error {
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
 		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
 		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
-		AwaitPidCP:
+		AfterGangDeployCP, AwaitPidCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]
@@ -169,15 +193,22 @@ func ResetICP(name string) error {
 	return fmt.Errorf("unknown control point name %s", name)
 }
 
+func IsPIDBlocked(pid uint32) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	_, ok := BlockedPIDs[pid]
+	return ok
+}
+
 func CheckControlPoint(c ICPContextHolder, name string) error {
 	mu.Lock()
-	{
-		/* XXX: support more behaviour modes */
-		if act, ok := cpsMp[name]; ok {
-			spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
-			defer act(c)
-		}
-	}
+	act := cpsMp[name]
 	mu.Unlock()
-	return nil
+
+	if act == nil {
+		return nil
+	}
+
+	spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
+	return act(c)
 }

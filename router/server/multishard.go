@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/planopts"
@@ -149,10 +150,15 @@ func (m *MultiShardServer) expandGangUtil(params pool.ConnAllocParams,
 			String: "BEGIN",
 		}, "multishard gang dispatch", txstatus.TXACT)
 
+		if err == nil && retst != txstatus.TXACT {
+			err = fmt.Errorf("failed to expand transaction on shard")
+		}
+		if err == nil && config.RouterConfig().EnableICP {
+			err = icp.CheckControlPoint(nil, icp.AfterGangDeployCP)
+		}
 		if err != nil {
+			_ = m.pool.Discard(sh)
 			return err
-		} else if retst != txstatus.TXACT {
-			return fmt.Errorf("failed to expand transaction on shard")
 		}
 	}
 
