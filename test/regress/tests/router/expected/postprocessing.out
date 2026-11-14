@@ -36,9 +36,19 @@ CREATE DISTRIBUTED RELATION r_pp (i HASH MURMUR) FOR DISTRIBUTION ds1;
  distribution id -> ds1
 (2 rows)
 
+CREATE DISTRIBUTED RELATION r_ties (i HASH MURMUR) FOR DISTRIBUTION ds1;
+       attach table        
+---------------------------
+ relation name   -> r_ties
+ distribution id -> ds1
+(2 rows)
+
 \c regress
 SET search_path TO 'public';
 CREATE TABLE r_pp(i TEXT, id INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE r_ties(i TEXT, k TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 insert into r_pp(i) values('a'),('b'),('c'),('d'),('e'),('f'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
@@ -83,7 +93,15 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  h |   
 (8 rows)
 
+SELECT i FROM r_pp ORDER BY i FETCH FIRST 1 ROW WITH TIES;
+ERROR:  too complex query to route
+QUERY:  SELECT i FROM r_pp ORDER BY i FETCH FIRST 1 ROW WITH TIES;
 SET __spqr__allow_postprocessing TO true;
+SELECT 1 ORDER BY 1 FETCH FIRST 0 ROWS WITH TIES;
+ ?column? 
+----------
+(0 rows)
+
 SELECT 1 AS tie FROM r_pp ORDER BY 1 FETCH FIRST 1 ROW WITH TIES;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  tie 
@@ -102,6 +120,52 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
    1
    1
 (13 rows)
+
+INSERT INTO r_ties VALUES ('a', 'a'), ('b', 'a'), ('c', 'b'), ('d', 'b'), ('e', 'c');
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT k FROM r_ties ORDER BY k FETCH FIRST 1 ROW WITH TIES;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+ a
+ a
+(2 rows)
+
+SELECT k FROM r_ties ORDER BY k OFFSET 1 FETCH FIRST 2 ROWS WITH TIES;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+ a
+ b
+ b
+(3 rows)
+
+SELECT k FROM r_ties ORDER BY k DESC FETCH NEXT 2 ROWS WITH TIES;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+ c
+ b
+ b
+(3 rows)
+
+SELECT k FROM r_ties ORDER BY k FETCH FIRST 0 ROWS WITH TIES;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+(0 rows)
+
+SELECT k FROM r_ties ORDER BY k OFFSET 10 FETCH FIRST 1 ROW WITH TIES;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ k 
+---
+(0 rows)
 
 SELECT i FROM r_pp ORDER BY i;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -163,6 +227,9 @@ SELECT count(id), i FROM r_pp GROUP BY i;
 ERROR:  in-router postprocessing for GROUP BY aggregate is not yet supported
 HINT:  turn __spqr__allow_postprocessing to off to retrieve underlaying data rows
 QUERY:  SELECT count(id), i FROM r_pp GROUP BY i;
+DROP TABLE r_ties;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
