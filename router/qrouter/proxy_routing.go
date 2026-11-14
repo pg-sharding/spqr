@@ -158,6 +158,57 @@ func (qr *ProxyQrouter) planInsertV1(
 		return p, nil
 	}
 
+	if _, ok := selectStmt.(*lyx.Select); ok {
+		seen := map[lyx.Node]bool{}
+	valuesSource:
+		for source := selectStmt; source != nil; {
+			if seen[source] {
+				break
+			}
+			seen[source] = true
+			switch sourceStmt := source.(type) {
+			case *lyx.Select:
+				if len(sourceStmt.TargetList) != 1 || len(sourceStmt.FromClause) != 1 ||
+					len(sourceStmt.WithClause) != 0 || sourceStmt.GroupBy != nil ||
+					len(sourceStmt.SortClause) != 0 || sourceStmt.Limit != nil || sourceStmt.Distinct || sourceStmt.Op != "" {
+					break valuesSource
+				}
+				if _, ok := sourceStmt.TargetList[0].(*lyx.AExprEmpty); !ok {
+					break valuesSource
+				}
+				if sourceStmt.Where != nil {
+					if _, ok := sourceStmt.Where.(*lyx.AExprEmpty); !ok {
+						break valuesSource
+					}
+				}
+				switch from := sourceStmt.FromClause[0].(type) {
+				case *lyx.SubSelect:
+					source = from.Arg
+				case *lyx.RangeVar:
+					cte, ok := rm.CteNames[from.RelationName]
+					if !ok || from.SchemaName != "" {
+						break valuesSource
+					}
+					source = cte.SubQuery
+				default:
+					break valuesSource
+				}
+			case *lyx.ValueClause:
+				ds, err := rm.GetRelationDistribution(ctx, qualName)
+				if err != nil {
+					return nil, err
+				}
+				if ds.Id == distributions.REPLICATED {
+					break valuesSource
+				}
+				selectStmt = sourceStmt
+				break valuesSource
+			default:
+				break valuesSource
+			}
+		}
+	}
+
 	var routingList [][]lyx.Node
 
 	switch subS := selectStmt.(type) {
