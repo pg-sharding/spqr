@@ -1,11 +1,17 @@
 package qrouter
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -29,6 +35,11 @@ func (qr *ProxyQrouter) addLimitToPlan(
 	scatterSlice, ok := p.(*plan.ScatterPlan)
 
 	if !ok {
+		if stmt, ok := rm.Stmt.(*lyx.Select); ok {
+			if limit, ok := stmt.Limit.(*lyx.SelectLimit); ok && limit.LimitOption == lyx.LIMIT_OPTION_WITH_TIES && len(p.ExecutionTargets()) > 1 {
+				return nil, rerrors.NewComplexQueryError()
+			}
+		}
 		return p, nil
 	}
 
@@ -41,22 +52,43 @@ func (qr *ProxyQrouter) addLimitToPlan(
 			return p, nil
 		}
 
-		limitVal := int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
 			return nil, rerrors.NewComplexQueryError()
 		}
 
-		q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
-
-		if !ok || selectLim.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
-			/* no support */
+		withTies := selectLim.LimitOption == lyx.LIMIT_OPTION_WITH_TIES
+		if withTies && len(scatterSlice.ExecTargets) == 1 {
 			return p, nil
 		}
-		limitVal = q.Value
+
+		limitVal, offset := int64(0), int64(0)
+		if withTies {
+			var err error
+			limitVal, offset, err = withTiesLimits(stmt)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
+			if !ok {
+				return p, nil
+			}
+			limitVal = q.Value
+		}
+
+		query := rm.Query
+		if withTies {
+			var err error
+			query, err = trimWithTiesQuery(query, selectLim)
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		retSlice := &plan.VirtualPlan{
-			TTS: &tupleslot.TupleTableSlot{},
+			TTS:                     &tupleslot.TupleTableSlot{},
+			SendEmptyRowDescription: withTies,
 		}
 
 		retSlice.SubPlan = scatterSlice
@@ -64,7 +96,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 		scatterSlice.OverwriteQuery = map[string]string{}
 
 		for _, sh := range scatterSlice.ExecTargets {
-			scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+			scatterSlice.OverwriteQuery[sh.Name] = query
 		}
 
 		scatterSlice.RunF = func(serv server.Server) error {
@@ -86,8 +118,11 @@ func (qr *ProxyQrouter) addLimitToPlan(
 
 					switch v := msg.(type) {
 					case *pgproto3.ReadyForQuery:
+						if errmsg != nil {
+							return spqrerror.New(errmsg.Code, errmsg.Message)
+						}
 						if v.TxStatus == byte(txstatus.TXERR) {
-							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+							return fmt.Errorf("failed to run inner slice, tx status error")
 						}
 
 						break shLoop
@@ -99,7 +134,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 						errmsg = v
 					case *pgproto3.DataRow:
 
-						if len(retSlice.TTS.Raw) < int(limitVal) {
+						if withTies || int64(len(retSlice.TTS.Raw)) < limitVal {
 							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
@@ -109,12 +144,162 @@ func (qr *ProxyQrouter) addLimitToPlan(
 				}
 			}
 
+			if withTies {
+				return applyWithTies(retSlice.TTS, stmt.SortClause, offset, limitVal)
+			}
 			return nil
 		}
 
 		return retSlice, nil
 	}
 	return p, nil
+}
+
+var withTiesClause = regexp.MustCompile(`(?is)^(?:OFFSET\s+[0-9]+(?:\s+ROWS?)?\s+)?FETCH\s+(?:FIRST|NEXT)(?:\s+[0-9]+)?\s+ROWS?\s+WITH\s+TIES(?:\s+OFFSET\s+[0-9]+(?:\s+ROWS?)?)?`)
+var withTiesTrailer = regexp.MustCompile(`(?s)^(?:\s|;|/\*.*?\*/|--[^\n]*(?:\n|$))*$`)
+
+func trimWithTiesQuery(query string, limit *lyx.SelectLimit) (string, error) {
+	loc := limit.CountLoc
+	if limit.LimitOffset != nil && limit.OffsetLoc < loc {
+		loc = limit.OffsetLoc
+	}
+	if loc < 0 || loc > len(query) {
+		return "", rerrors.NewComplexQueryError()
+	}
+	suffix := query[loc:]
+	match := withTiesClause.FindStringIndex(suffix)
+	if match == nil || !withTiesTrailer.MatchString(suffix[match[1]:]) {
+		return "", rerrors.NewComplexQueryError()
+	}
+	return strings.TrimSpace(query[:loc]), nil
+}
+
+func withTiesLimits(stmt *lyx.Select) (int64, int64, error) {
+	limit, ok := stmt.Limit.(*lyx.SelectLimit)
+	if !ok || len(stmt.SortClause) == 0 {
+		return 0, 0, rerrors.NewComplexQueryError()
+	}
+	count, ok := limit.LimitCount.(*lyx.AExprIConst)
+	if !ok || count.Value < 0 {
+		return 0, 0, rerrors.NewComplexQueryError()
+	}
+	offset := int64(0)
+	if limit.LimitOffset != nil {
+		o, ok := limit.LimitOffset.(*lyx.AExprIConst)
+		if !ok || o.Value < 0 {
+			return 0, 0, rerrors.NewComplexQueryError()
+		}
+		offset = o.Value
+	}
+	return count.Value, offset, nil
+}
+
+type withTiesKey struct {
+	column     int
+	oid        uint32
+	descending bool
+}
+
+func applyWithTies(tts *tupleslot.TupleTableSlot, order []lyx.Node, offset, count int64) error {
+	keys := make([]withTiesKey, 0, len(order))
+	for _, node := range order {
+		sb, ok := node.(*lyx.SortBy)
+		if !ok {
+			return rerrors.NewComplexQueryError()
+		}
+		key := withTiesKey{descending: sb.SortbyDir == lyx.SORTBY_DESC}
+		if sb.SortbyDir != lyx.SORTBY_ASC && sb.SortbyDir != lyx.SORTBY_DESC && sb.SortbyDir != lyx.SORTBY_DEFAULT {
+			return rerrors.NewComplexQueryError()
+		}
+		switch v := sb.Node.(type) {
+		case *lyx.ColumnRef:
+			var err error
+			key.column, err = tts.ColNameOffset(v.ColName)
+			if err != nil {
+				return rerrors.NewComplexQueryError()
+			}
+		case *lyx.AExprIConst:
+			key.column = int(v.Value - 1)
+		default:
+			return rerrors.NewComplexQueryError()
+		}
+		if key.column < 0 || key.column >= len(tts.Desc) {
+			return rerrors.NewComplexQueryError()
+		}
+		field := tts.Desc[key.column]
+		if field.Format != 0 {
+			return rerrors.NewComplexQueryError()
+		}
+		key.oid = field.DataTypeOID
+		switch key.oid {
+		case pgtype.TextOID, pgtype.VarcharOID,
+			pgtype.Int2OID, pgtype.Int4OID, pgtype.Int8OID:
+		default:
+			return rerrors.NewComplexQueryError()
+		}
+		keys = append(keys, key)
+	}
+	for _, row := range tts.Raw {
+		for _, key := range keys {
+			if key.column >= len(row) || row[key.column] == nil {
+				return rerrors.NewComplexQueryError()
+			}
+			switch key.oid {
+			case pgtype.Int2OID, pgtype.Int4OID, pgtype.Int8OID:
+				if _, err := strconv.ParseInt(string(row[key.column]), 10, 64); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	sort.SliceStable(tts.Raw, func(i, j int) bool {
+		for _, key := range keys {
+			left, right := tts.Raw[i][key.column], tts.Raw[j][key.column]
+			comparison := bytes.Compare(left, right)
+			switch key.oid {
+			case pgtype.Int2OID, pgtype.Int4OID, pgtype.Int8OID:
+				a, _ := strconv.ParseInt(string(left), 10, 64)
+				b, _ := strconv.ParseInt(string(right), 10, 64)
+				comparison = 0
+				if a < b {
+					comparison = -1
+				} else if a > b {
+					comparison = 1
+				}
+			}
+			if comparison != 0 {
+				if key.descending {
+					return comparison > 0
+				}
+				return comparison < 0
+			}
+		}
+		return false
+	})
+	if offset >= int64(len(tts.Raw)) || count == 0 {
+		tts.Raw = nil
+		return nil
+	}
+	start := int(offset)
+	end := len(tts.Raw)
+	if count < int64(end-start) {
+		end = start + int(count)
+	}
+	for end < len(tts.Raw) {
+		match := true
+		for _, key := range keys {
+			if !bytes.Equal(tts.Raw[end-1][key.column], tts.Raw[end][key.column]) {
+				match = false
+				break
+			}
+		}
+		if !match {
+			break
+		}
+		end++
+	}
+	tts.Raw = tts.Raw[start:end]
+	return nil
 }
 
 func (qr *ProxyQrouter) addSortToPlan(
@@ -125,6 +310,11 @@ func (qr *ProxyQrouter) addSortToPlan(
 	/* No point in cluster-wide sorting */
 	if len(p.ExecutionTargets()) == 1 {
 		return p, nil
+	}
+	if stmt, ok := rm.Stmt.(*lyx.Select); ok {
+		if limit, ok := stmt.Limit.(*lyx.SelectLimit); ok && limit.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
+			return p, nil
+		}
 	}
 
 	switch v := p.(type) {

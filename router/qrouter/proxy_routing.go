@@ -1016,6 +1016,27 @@ func (qr *ProxyQrouter) PostProcessPlan(ctx context.Context,
 	case *plan.ShardDispatchPlan:
 		return v, nil
 	case *plan.VirtualPlan:
+		if v.SendEmptyRowDescription {
+			return v, nil
+		}
+		if stmt, ok := rm.Stmt.(*lyx.Select); ok {
+			if limit, ok := stmt.Limit.(*lyx.SelectLimit); ok && limit.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
+				if v.SubPlan != nil || v.TTS == nil {
+					return nil, rerrors.NewComplexQueryError()
+				}
+				count, offset, err := withTiesLimits(stmt)
+				if err != nil {
+					return nil, err
+				}
+				if _, err := trimWithTiesQuery(rm.Query, limit); err != nil {
+					return nil, err
+				}
+				if err := applyWithTies(v.TTS, stmt.SortClause, offset, count); err != nil {
+					return nil, err
+				}
+				v.SendEmptyRowDescription = true
+			}
+		}
 		return v, nil
 	case *plan.RandomDispatchPlan:
 		return v, nil
@@ -1623,6 +1644,15 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	guc, err := rm.SPH.FindBoolGUC(session.SPQR_ALLOW_POSTPROCESSING)
 	if err != nil {
 		return nil, err
+	}
+	if !guc.Get(rm.SPH) {
+		if stmt, ok := rm.Stmt.(*lyx.Select); ok {
+			if limit, ok := stmt.Limit.(*lyx.SelectLimit); ok && limit.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
+				if scatter, ok := p.(*plan.ScatterPlan); ok && len(scatter.ExecTargets) != 1 {
+					return nil, rerrors.NewComplexQueryError()
+				}
+			}
+		}
 	}
 
 	if guc.Get(rm.SPH) && !rm.HasOnlyReferenceRels() {
