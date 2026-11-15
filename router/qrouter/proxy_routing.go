@@ -242,27 +242,22 @@ func (qr *ProxyQrouter) planInsertV1(
 					for _, sh := range shs {
 						if sh.Name != shs[0].Name {
 
-							/* try to rewrite, but only for simple protocol */
-							if len(rm.ParamRefs) == 0 {
-								for {
-									parent, ok := rm.AuxValuesParent[auxKey]
-									if !ok {
-										break
-									}
-									auxKey = parent
-								}
-								cte, ok := rm.CteNames[auxKey.CTEName]
+							for {
+								parent, ok := rm.AuxValuesParent[auxKey]
 								if !ok {
-									return nil, rerrors.NewComplexQueryError()
+									break
 								}
-								values, ok := cte.SubQuery.(*lyx.ValueClause)
-								if !ok {
-									return nil, rerrors.NewComplexQueryError()
-								}
-								return planner.RewriteDistributedRelWithValues(rm.Query, values, shs, false)
+								auxKey = parent
 							}
-
-							return nil, rerrors.NewComplexQueryError()
+							cte, ok := rm.CteNames[auxKey.CTEName]
+							if !ok {
+								return nil, rerrors.NewComplexQueryError()
+							}
+							values, ok := cte.SubQuery.(*lyx.ValueClause)
+							if !ok {
+								return nil, rerrors.NewComplexQueryError()
+							}
+							return planner.RewriteDistributedRelWithValues(rm.Query, values, shs, false)
 						}
 					}
 					if len(shs) > 0 {

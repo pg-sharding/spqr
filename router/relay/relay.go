@@ -1013,6 +1013,7 @@ func (rst *RelayStateImpl) BindPrepared(
 				p = rst.bindQueryPlanMP[destinationPortal]
 			}
 			forceSimple := false
+			var preparedStatements map[string]string
 
 			switch q := p.(type) {
 			case *plan.ScatterPlan:
@@ -1031,18 +1032,23 @@ func (rst *RelayStateImpl) BindPrepared(
 				hash := rst.Client().PreparedStatementQueryHashByName(preparedStatement)
 				name := fmt.Sprintf("%d", hash)
 
-				_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+				rd, _, err := rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
 					Name:          name,
 					Query:         def.Query,
 					ParameterOIDs: def.ParameterOIDs,
 				})
-
 				if err != nil {
 					return err
 				}
+				if len(bnd.Parameters) != 0 {
+					preparedStatements, err = rst.deployRewrittenPreparedStatements(p, hash, rd)
+					if err != nil {
+						return err
+					}
+				}
 			}
 
-			return BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows)
+			return BindAndReadSliceResult(rst, p, forceSimple, bnd, destinationPortal, maxrows, preparedStatements)
 		}
 
 		/* only populate map for non-empty portal */
