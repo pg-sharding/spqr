@@ -206,7 +206,7 @@ func (qr *ProxyQrouter) planInsertV1(
 						}
 
 						/* Found tle which can be used to route query, do it right away.
-						* XXX: should be carefully reject confugion here? */
+						* XXX: should be carefully reject confusion here? */
 
 						routeCC = cc
 						break tle_loop
