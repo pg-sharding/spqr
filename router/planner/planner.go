@@ -943,8 +943,8 @@ func ConsoleFunctionCall(
 		}
 		return tts, nil
 	case virtual.VirtualClear2PCData:
-		if len(args) > 1 {
-			return nil, fmt.Errorf("%s function accepts 0 one or arg", fname)
+		if len(args) > 2 {
+			return nil, fmt.Errorf("%s function accepts up to two arguments", fname)
 		}
 		db, err := qdb.GetStateKeeperQDB()
 		if err != nil {
@@ -953,19 +953,42 @@ func ConsoleFunctionCall(
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("clear_2pc_data"),
 		}
-		if len(args) == 0 {
-			if err := db.ClearTxStatuses(ctx); err != nil {
-				return nil, err
+		crazyDrop := false
+		var gid string
+		legacyGIDOnly := false
+		switch len(args) {
+		case 1:
+			switch arg := args[0].(type) {
+			case *lyx.AExprBConst:
+				crazyDrop = arg.Value
+			case *lyx.AExprSConst:
+				gid = arg.Value
+				legacyGIDOnly = true
+			default:
+				return nil, rerrors.NewComplexQueryError()
 			}
-		} else {
-			strVal, ok := args[0].(*lyx.AExprSConst)
+		case 2:
+			arg, ok := args[0].(*lyx.AExprSConst)
 			if !ok {
 				return nil, rerrors.NewComplexQueryError()
 			}
-			if err := db.RemoveTXData(ctx, strVal.Value); err != nil {
-				return nil, err
+			gid = arg.Value
+			mode, ok := args[1].(*lyx.AExprBConst)
+			if !ok {
+				return nil, rerrors.NewComplexQueryError()
 			}
-			tts.WriteDataRow(strVal.Value)
+			crazyDrop = mode.Value
+		}
+		if legacyGIDOnly {
+			err = db.RemoveTXData(ctx, gid)
+		} else {
+			err = db.ClearTxStatuses(ctx, crazyDrop, gid)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if gid != "" {
+			tts.WriteDataRow(gid)
 		}
 		return tts, nil
 	case virtual.VirtualCleanOutdated2PCData:

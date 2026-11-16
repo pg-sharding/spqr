@@ -454,13 +454,26 @@ func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) error {
 	return (*tx).Commit(ctx)
 }
 
-func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error {
 	conn, err := q.getConn(ctx, "")
 	if err != nil {
 		return err
 	}
-	/* XXX: returning * */
-	_, err = conn.Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status")
+
+	query := "DELETE FROM spqr_metadata.spqr_tx_status"
+	var args []any
+	if gid != "" {
+		query += " WHERE id = $1"
+		args = append(args, gid)
+		if !crazyDrop {
+			query += " AND status IN ($2, $3)"
+			args = append(args, pgStateCommitted, pgStateRejected)
+		}
+	} else if !crazyDrop {
+		query += " WHERE status IN ($1, $2)"
+		args = append(args, pgStateCommitted, pgStateRejected)
+	}
+	_, err = conn.Exec(ctx, query, args...)
 	return err
 }
 

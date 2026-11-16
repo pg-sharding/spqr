@@ -1856,17 +1856,17 @@ func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpe
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+func (m *MockDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx)
+	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
-func (mr *MockDCStateKeeperMockRecorder) ClearTxStatuses(ctx any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ClearTxStatuses(ctx, crazyDrop, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockDCStateKeeper)(nil).ClearTxStatuses), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockDCStateKeeper)(nil).ClearTxStatuses), ctx, crazyDrop, gid)
 }
 
 // GetTXs mocks base method.
@@ -2097,17 +2097,17 @@ func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExp
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockXDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+func (m *MockXDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx)
+	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
-func (mr *MockXDCStateKeeperMockRecorder) ClearTxStatuses(ctx any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ClearTxStatuses(ctx, crazyDrop, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockXDCStateKeeper)(nil).ClearTxStatuses), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockXDCStateKeeper)(nil).ClearTxStatuses), ctx, crazyDrop, gid)
 }
 
 // CloseRouter mocks base method.
@@ -4284,17 +4284,17 @@ func (mr *MockStateKeeperQDBMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *g
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockStateKeeperQDB) ClearTxStatuses(ctx context.Context) error {
+func (m *MockStateKeeperQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx)
+	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
-func (mr *MockStateKeeperQDBMockRecorder) ClearTxStatuses(ctx any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ClearTxStatuses(ctx, crazyDrop, gid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockStateKeeperQDB)(nil).ClearTxStatuses), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockStateKeeperQDB)(nil).ClearTxStatuses), ctx, crazyDrop, gid)
 }
 
 // CloseRouter mocks base method.
