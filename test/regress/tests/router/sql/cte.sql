@@ -141,6 +141,9 @@ select __spqr__ctid ('table2');
 
 TRUNCATE table2;
 
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals /* XXX: improve error location report */ limit 1;
+select __spqr__ctid ('table2');
+
 with vals (i) as (values (201), (288)),
 	z as (insert into table2 (a)
 		select i from vals returning *) table z;

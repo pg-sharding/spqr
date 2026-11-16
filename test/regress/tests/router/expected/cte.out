@@ -285,6 +285,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals /* XXX: improve error location report */ limit 1;
+ERROR:  too complex query to route
+LINE 1: ... from vals /* XXX: improve error location report */ limit 1;
+                                                               ^
+QUERY:  with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals /* XXX: improve error location report */ limit 1;
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (i) as (values (201), (288)),
 	z as (insert into table2 (a)
 		select i from vals returning *) table z;
