@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/engine"
@@ -241,6 +242,14 @@ func (qr *ProxyQrouter) planInsertV1(
 					}
 					for _, sh := range shs {
 						if sh.Name != shs[0].Name {
+							if subS.Limit != nil {
+								limit := subS.Limit.(*lyx.SelectLimit)
+								loc := limit.CountLoc
+								if loc == lyx.ParseLocUnknown {
+									loc = limit.OffsetLoc
+								}
+								return nil, rerrors.NewComplexQueryError().Pos(int32(utf8.RuneCountInString(rm.Query[:loc]) + 1))
+							}
 
 							/* try to rewrite, but only for simple protocol */
 							if len(rm.ParamRefs) == 0 {
