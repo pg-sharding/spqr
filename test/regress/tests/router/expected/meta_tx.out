@@ -42,19 +42,19 @@ COMMIT;
  Commit
 (1 row)
 
-SHOW DISTRIBUTIONS;
+SHOW DISTRIBUTIONS(distribution_id, column_types, default_shard) ORDER BY distribution_id;
  distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
  ds1             | integer      | not exists
 (1 row)
 
-SHOW RELATIONS;
- relation_name | distribution_id | distribution_key | schema_name 
----------------+-----------------+------------------+-------------
- test          | ds1             | ("id", identity) | public
+SHOW RELATIONS(relation_name, distribution_id, distribution_key) ORDER BY relation_name;
+ relation_name | distribution_id | distribution_key 
+---------------+-----------------+------------------
+ test          | ds1             | ("id", identity)
 (1 row)
 
-SHOW KEY_RANGES;
+SHOW KEY_RANGES(key_range_id, shard_id, distribution_id, lower_bound, locked) ORDER BY key_range_id;
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  kr1_new      | sh1      | ds1             | 100         | false
@@ -79,19 +79,19 @@ ROLLBACK;
  Rollback
 (1 row)
 
-SHOW DISTRIBUTIONS;
+SHOW DISTRIBUTIONS(distribution_id, column_types, default_shard) ORDER BY distribution_id;
  distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
  ds1             | integer      | not exists
 (1 row)
 
-SHOW RELATIONS;
- relation_name | distribution_id | distribution_key | schema_name 
----------------+-----------------+------------------+-------------
- test          | ds1             | ("id", identity) | public
+SHOW RELATIONS(relation_name, distribution_id, distribution_key) ORDER BY relation_name;
+ relation_name | distribution_id | distribution_key 
+---------------+-----------------+------------------
+ test          | ds1             | ("id", identity)
 (1 row)
 
-SHOW KEY_RANGES;
+SHOW KEY_RANGES(key_range_id, shard_id, distribution_id, lower_bound, locked) ORDER BY key_range_id;
  key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  kr1_new      | sh1      | ds1             | 100         | false

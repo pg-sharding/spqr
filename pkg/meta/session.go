@@ -48,10 +48,13 @@ func (s *ConsoleSession) Begin(ctx context.Context) error {
 		return fmt.Errorf("there is already a transaction in progress")
 	}
 
-	s.txMgr = s.mgr.Snapshot()
+	txMgr := s.mgr.Snapshot()
+	if err := txMgr.Begin(ctx); err != nil {
+		return err
+	}
+	s.txMgr = txMgr
 	s.inTx = true
-
-	return s.txMgr.Begin(ctx)
+	return nil
 }
 
 func (s *ConsoleSession) Commit(ctx context.Context) error {
@@ -81,11 +84,11 @@ func (s *ConsoleSession) Rollback(ctx context.Context) error {
 	}
 
 	txMgr := s.txMgr
-	s.txMgr = nil
 
 	if err := txMgr.Rollback(ctx); err != nil {
 		return err
 	}
+	s.txMgr = nil
 	s.inTx = false
 	return nil
 }

@@ -10,9 +10,9 @@ RENAME KEY RANGE kr1 TO kr1_new;
 
 COMMIT;
 
-SHOW DISTRIBUTIONS;
-SHOW RELATIONS;
-SHOW KEY_RANGES;
+SHOW DISTRIBUTIONS(distribution_id, column_types, default_shard) ORDER BY distribution_id;
+SHOW RELATIONS(relation_name, distribution_id, distribution_key) ORDER BY relation_name;
+SHOW KEY_RANGES(key_range_id, shard_id, distribution_id, lower_bound, locked) ORDER BY key_range_id;
 
 BEGIN;
 
@@ -20,8 +20,8 @@ DROP DISTRIBUTION ALL CASCADE;
 
 ROLLBACK;
 
-SHOW DISTRIBUTIONS;
-SHOW RELATIONS;
-SHOW KEY_RANGES;
+SHOW DISTRIBUTIONS(distribution_id, column_types, default_shard) ORDER BY distribution_id;
+SHOW RELATIONS(relation_name, distribution_id, distribution_key) ORDER BY relation_name;
+SHOW KEY_RANGES(key_range_id, shard_id, distribution_id, lower_bound, locked) ORDER BY key_range_id;
 
 DROP DISTRIBUTION ALL CASCADE;
