@@ -2189,15 +2189,25 @@ func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.TwoPhaseTx, gid))
 }
 
-func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
+func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	commands := make([]Command, 0, len(q.State.TwoPhaseTx))
-	for gid := range q.State.TwoPhaseTx {
-		commands = append(commands, NewDeleteCommand(q.State.TwoPhaseTx, gid))
+	if crazyDrop && gid == "" {
+		return ExecuteCommands(q.DumpState, NewDropCommand(q.State.TwoPhaseTx))
 	}
-	q.State.TwoPhaseTx = map[string]*TwoPCInfo{}
+
+	commands := make([]Command, 0, len(q.State.TwoPhaseTx))
+	for txID, info := range q.State.TwoPhaseTx {
+		if gid != "" && txID != gid {
+			continue
+
+		}
+		if !crazyDrop && info.State != TwoPhaseP2 && info.State != TwoPhaseP2Rejected {
+			continue
+		}
+		commands = append(commands, NewDeleteCommand(q.State.TwoPhaseTx, txID))
+	}
 	return ExecuteCommands(q.DumpState, commands...)
 }
 
