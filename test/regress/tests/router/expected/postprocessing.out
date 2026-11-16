@@ -130,6 +130,25 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  d |   
 (2 rows)
 
+SELECT i FROM r_pp ORDER BY i LIMIT 2 OFFSET 2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ i 
+---
+ c
+ d
+(2 rows)
+
+WITH vals(x) AS (VALUES ('a'), ('b'), ('c'), ('d'))
+SELECT 1 AS n FROM r_pp r JOIN vals v ON r.i = v.x OFFSET 1;
+NOTICE: query used select adjust for JOIN semantics
+NOTICE: send query to shard(s) : sh1,sh3,sh4
+ n 
+---
+ 1
+ 1
+ 1
+(3 rows)
+
 SELECT count(1) FROM r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  count 
