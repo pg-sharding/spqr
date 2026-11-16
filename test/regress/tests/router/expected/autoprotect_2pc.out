@@ -99,6 +99,9 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
  auto_zzz5 | Done
 (4 rows)
 
+SELECT __spqr__clear_2pc_data(false, 'auto_zzz3');
+ERROR:  too complex query to route
+QUERY:  SELECT __spqr__clear_2pc_data(false, 'auto_zzz3');
 SELECT __spqr__clear_2pc_data('auto_zzz2', false);
  clear_2pc_data 
 ----------------

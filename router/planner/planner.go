@@ -968,23 +968,16 @@ func ConsoleFunctionCall(
 				return nil, rerrors.NewComplexQueryError()
 			}
 		case 2:
-			if arg, ok := args[0].(*lyx.AExprSConst); ok {
-				gid = arg.Value
-				mode, ok := args[1].(*lyx.AExprBConst)
-				if !ok {
-					return nil, rerrors.NewComplexQueryError()
-				}
-				crazyDrop = mode.Value
-			} else if mode, ok := args[0].(*lyx.AExprBConst); ok {
-				crazyDrop = mode.Value
-				target, ok := args[1].(*lyx.AExprSConst)
-				if !ok {
-					return nil, rerrors.NewComplexQueryError()
-				}
-				gid = target.Value
-			} else {
+			arg, ok := args[0].(*lyx.AExprSConst)
+			if !ok {
 				return nil, rerrors.NewComplexQueryError()
 			}
+			gid = arg.Value
+			mode, ok := args[1].(*lyx.AExprBConst)
+			if !ok {
+				return nil, rerrors.NewComplexQueryError()
+			}
+			crazyDrop = mode.Value
 		}
 		if legacyGIDOnly {
 			err = db.RemoveTXData(ctx, gid)

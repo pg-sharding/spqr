@@ -34,6 +34,8 @@ DELETE FROM ref_2pc;
 
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
+SELECT __spqr__clear_2pc_data(false, 'auto_zzz3');
+
 SELECT __spqr__clear_2pc_data('auto_zzz2', false);
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
