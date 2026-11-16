@@ -653,7 +653,7 @@ func ConsoleFunctionCall(
 		}
 		 XXX: fix this, support proper handling of second arg */
 
-		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
+		if icp.IsPIDBlocked(lockedVirtualPID) {
 			res = byte('t')
 		}
 

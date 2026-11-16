@@ -54,6 +54,38 @@ NOTICE: send query to shard(s) : sh3
 UPDATE xxm_expd SET j = j + 1 WHERE id = 399 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh4
 COMMIT;
+\c spqr-console
+ATTACH CONTROL POINT after_gang_deploy_cp ERROR;
+    control point     
+----------------------
+ ATTACH CONTROL POINT
+(1 row)
+
+\c regress
+BEGIN;
+SELECT * FROM xxm_expd WHERE id = 1 /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1
+ id | j 
+----+---
+  1 | 2
+(1 row)
+
+SELECT * FROM xxm_expd WHERE id = 101 /* __spqr__engine_v2: true */;
+ERROR:  injected error at control point "after_gang_deploy_cp"
+ROLLBACK;
+\c spqr-console
+DETACH CONTROL POINT after_gang_deploy_cp;
+    control point     
+----------------------
+ DETACH CONTROL POINT
+(1 row)
+
+SHOW BACKEND_CONNECTIONS (tx_status) WHERE hostname = 'spqr_shard_2:6432' AND tx_status = 'TXACT';
+ tx_status 
+-----------
+(0 rows)
+
+\c regress
 BEGIN;
 INSERT INTO xxm_expd (id, j) VALUES(55, 55) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1
