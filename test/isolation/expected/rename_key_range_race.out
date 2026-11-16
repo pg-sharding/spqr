@@ -1,0 +1,52 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s2_attach_cp s1_rename s2_wait_for_rename s2_create_new s2_detach_cp s2_show_key_ranges
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+add key range
+-------------
+bound -> 100 
+(1 row)
+
+step s2_attach_cp: select __spqr__remote_execute('host=regress_coordinator port=7002 user=regress dbname=regress', 'ATTACH CONTROL POINT after_lock_key_range_cp wait') /*__spqr__preferred_engine: v2 */;
+control point       
+--------------------
+ATTACH CONTROL POINT
+(1 row)
+
+step s1_rename: select __spqr__console_execute('RENAME KEY RANGE kr_old TO kr_new') /*__spqr__preferred_engine: v2 */; <waiting ...>
+step s2_wait_for_rename: SELECT pg_sleep(1) /* __spqr__execute_on: sh1 */;
+pg_sleep
+--------
+        
+(1 row)
+
+step s2_create_new: select __spqr__console_execute('CREATE KEY RANGE kr_new FROM 0 ROUTE TO sh2') /*__spqr__preferred_engine: v2 */;
+add key range
+-------------
+bound -> 0   
+(1 row)
+
+step s2_detach_cp: select __spqr__remote_execute('host=regress_coordinator port=7002 user=regress dbname=regress', 'DETACH CONTROL POINT after_lock_key_range_cp') /*__spqr__preferred_engine: v2 */;
+control point       
+--------------------
+DETACH CONTROL POINT
+(1 row)
+
+step s2_show_key_ranges: select __spqr__console_execute('SHOW key_ranges(key_range_id, shard_id)') /*__spqr__preferred_engine: v2 */;
+key_range_id|shard_id
+------------+--------
+kr_new      |sh2     
+kr_old      |sh1     
+(2 rows)
+
+step s1_rename: <... completed>
+ERROR:  failed to rename key range: key range "kr_new" already exists
+distribution_id
+---------------
+d              
+(1 row)
+

@@ -54,6 +54,25 @@ var (
 	BlockedPIDs = map[uint32]struct{}{}
 )
 
+func MarkBlockedPID(pid uint32) {
+	mu.Lock()
+	defer mu.Unlock()
+	BlockedPIDs[pid] = struct{}{}
+}
+
+func UnmarkBlockedPID(pid uint32) {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(BlockedPIDs, pid)
+}
+
+func IsBlockedPID(pid uint32) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	_, ok := BlockedPIDs[pid]
+	return ok
+}
+
 var (
 	defaultPanicAction = func(ICPContextHolder) {
 		log.Fatal("reached control point")
@@ -82,7 +101,7 @@ func getAction(name string, a *spqrparser.ICPointAction) func(ICPContextHolder) 
 			// nil is ok.
 			if c != nil {
 				log.Println("waiting...")
-				BlockedPIDs[c.CancelPID()] = struct{}{}
+				MarkBlockedPID(c.CancelPID())
 				c.Wait()
 			}
 		}

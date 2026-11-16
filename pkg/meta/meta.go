@@ -1553,7 +1553,7 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 		return tts, nil
 	case *spqrparser.Rename:
-		return processRename(ctx, stmt, mgr)
+		return processRename(ctx, stmt, mgr, icpCH)
 	case *spqrparser.Begin:
 		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "Meta transactions are not supported")
 	case *spqrparser.Commit:
@@ -2667,10 +2667,18 @@ func processAlterShard(ctx context.Context,
 	}
 }
 
-func processRename(ctx context.Context, astmt *spqrparser.Rename, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+func processRename(ctx context.Context, astmt *spqrparser.Rename, mngr EntityMgr, icpCH icp.ICPContextHolder) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.Element.(type) {
 	case *spqrparser.KeyRangeSelector:
-		if err := mngr.RenameKeyRange(ctx, stmt.KeyRangeID, astmt.NewID); err != nil {
+		var err error
+		if renamer, ok := mngr.(interface {
+			RenameKeyRangeWithICP(context.Context, string, string, icp.ICPContextHolder) error
+		}); ok {
+			err = renamer.RenameKeyRangeWithICP(ctx, stmt.KeyRangeID, astmt.NewID, icpCH)
+		} else {
+			err = mngr.RenameKeyRange(ctx, stmt.KeyRangeID, astmt.NewID)
+		}
+		if err != nil {
 			return nil, err
 		}
 		return &tupleslot.TupleTableSlot{

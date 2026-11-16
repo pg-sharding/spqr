@@ -487,6 +487,16 @@ func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	return spqrerror.CleanGrpcError(err)
 }
 
+func (a *Adapter) RenameKeyRangeWithICP(ctx context.Context, krId, krIdNew string, holder icp.ICPContextHolder) error {
+	if holder != nil {
+		pid := holder.CancelPID()
+		// The isolation runner checks blocked PIDs in the router process while the rename waits on the coordinator RPC.
+		icp.MarkBlockedPID(pid)
+		defer icp.UnmarkBlockedPID(pid)
+	}
+	return a.RenameKeyRange(ctx, krId, krIdNew)
+}
+
 // DEPRECATED
 func (a *Adapter) DropKeyRange(_ context.Context, _ string) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -647,6 +648,12 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	defer func() {
 		_ = lc.UnlockKeyRangeOps(ctx, krID)
 	}()
+	if config.CoordinatorConfig().EnableICP {
+		// The coordinator has no router client here; this local holder lets DETACH release a wait control point.
+		if err := icp.CheckControlPoint(&renameKeyRangeControlPointHolder{wake: make(chan struct{})}, icp.AfterLockKeyRangeCP); err != nil {
+			spqrlog.Zero.Info().Str("cp", icp.AfterLockKeyRangeCP).Err(err).Msg("error while checking control point")
+		}
+	}
 	if !config.CoordinatorConfig().UseSPQRGuard {
 		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
 	}
@@ -657,6 +664,23 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 		return err
 	}
 	return updateKeyRangeMetaOnShard(ctx, keyRange.ShardID, datatransfers.DeleteKeyRangeMeta, krID)
+}
+
+type renameKeyRangeControlPointHolder struct {
+	wake chan struct{}
+	once sync.Once
+}
+
+func (h *renameKeyRangeControlPointHolder) Wait() {
+	<-h.wake
+}
+
+func (h *renameKeyRangeControlPointHolder) Wake() {
+	h.once.Do(func() { close(h.wake) })
+}
+
+func (*renameKeyRangeControlPointHolder) CancelPID() uint32 {
+	return 0
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.

@@ -509,7 +509,11 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 	}
 
 	return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
-		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false, nil)
+		var icpCH icp.ICPContextHolder
+		if holder, ok := rm.SPH.(icp.ICPContextHolder); ok {
+			icpCH = holder
+		}
+		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false, icpCH)
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
 				return nil, retry.RetryableError(err)
@@ -653,7 +657,7 @@ func ConsoleFunctionCall(
 		}
 		 XXX: fix this, support proper handling of second arg */
 
-		if _, ok := icp.BlockedPIDs[lockedVirtualPID]; ok {
+		if icp.IsBlockedPID(lockedVirtualPID) {
 			res = byte('t')
 		}
 
