@@ -2146,7 +2146,15 @@ func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.State.TwoPhaseTx, nil
+	txs := make(map[string]*TwoPCInfo, len(q.State.TwoPhaseTx))
+	for gid, info := range q.State.TwoPhaseTx {
+		tx := *info
+		if info.ShardsIDs != nil {
+			tx.ShardsIDs = append([]string{}, info.ShardsIDs...)
+		}
+		txs[gid] = &tx
+	}
+	return txs, nil
 }
 
 // TXInfo implements [DCStateKeeper].

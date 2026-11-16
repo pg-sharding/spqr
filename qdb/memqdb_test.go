@@ -415,6 +415,31 @@ func TestMemQDB_CreateSequence(t *testing.T) {
 	assert.Equal([]string{"seq"}, actual)
 }
 
+func TestMemQDB_GetTXsReturnsSnapshot(t *testing.T) {
+	ctx := context.Background()
+	memqdb, err := qdb.NewMemQDB("")
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	assert.NoError(t, memqdb.RecordTwoPhaseMembers(ctx, "gid", []string{"sh1"}))
+	txs, err := memqdb.GetTXs(ctx)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	txs["gid"].Gid = "changed"
+	txs["gid"].ShardsIDs[0] = "sh2"
+	tx, err := memqdb.TXInfo(ctx, "gid")
+	if assert.NoError(t, err) {
+		assert.Equal(t, "gid", tx.Gid)
+		assert.Equal(t, []string{"sh1"}, tx.ShardsIDs)
+	}
+
+	assert.NoError(t, memqdb.RemoveTXData(ctx, "gid"))
+	assert.Contains(t, txs, "gid")
+}
+
 func TestMemQDB_NextVal(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
