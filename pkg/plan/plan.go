@@ -154,7 +154,7 @@ type ShardDispatchPlan struct {
 	/* Subplan */
 
 	SP   Plan
-	RunF func(server.Server) error
+	RunF func(server.Server) error `json:"-"`
 
 	OverWriteQuery string
 
