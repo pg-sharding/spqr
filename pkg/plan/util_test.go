@@ -1,6 +1,7 @@
 package plan_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -9,6 +10,13 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestShardDispatchPlanJSONMarshal(t *testing.T) {
+	t.Parallel()
+
+	_, err := json.Marshal(&plan.ShardDispatchPlan{})
+	assert.NoError(t, err)
+}
 
 func TestCombineAutoLinearize(t *testing.T) {
 	t.Parallel()
