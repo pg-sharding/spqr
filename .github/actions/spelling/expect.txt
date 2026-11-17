@@ -171,7 +171,6 @@ FQNTo
 frmp
 frrule
 frsm
-frst
 frules
 ftts
 gcflags
@@ -300,7 +299,6 @@ libprotobuf
 libreadline
 Linting
 localrouter
-locs
 logdir
 logproxy
 lol
@@ -682,6 +680,7 @@ xmove
 xmovestr
 xproto
 XQDB
+xrec
 xrecord
 xtab
 xxerr
