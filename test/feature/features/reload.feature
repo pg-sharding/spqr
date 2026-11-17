@@ -45,3 +45,52 @@ Feature: Config reloading works
     """
     1
     """
+
+  @pure_pg
+  Scenario: Frontend rules reload works
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_incorrect_password.yaml
+    """
+    Given cluster is up and running
+    When I run SQL on host "router" as user "regress"
+    """
+    SELECT 1
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1
+    """
+    # Edit frontend_rules to block user regress and reload spqr-router via SIGHUP
+    When I run command on host "router"
+    """
+    sed -i 's/auth_method: ok/auth_method: notok/g' $ROUTER_CONFIG
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router" as user "regress"
+    """
+    SELECT 1
+    """
+    Then command return code should be "1"
+    And SQL error on host "router" should match regexp
+    """
+    user regress regress blocked
+    """
+    # Restore frontend_rules to unblock user regress
+    When I run command on host "router"
+    """
+    sed -i 's/auth_method: notok/auth_method: ok/g' $ROUTER_CONFIG
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router" as user "regress"
+    """
+    SELECT 1
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1
+    """
