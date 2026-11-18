@@ -7,11 +7,11 @@ You need Docker with Compose 2.23.1 or later and free local ports `6432` and `74
 
 ## Start the local demo
 
-Run these commands from a terminal. The first run pulls Docker images and downloads the dataset (~400 MB total). You will see PostgreSQL logs while the cluster starts and row counts when loading finishes.
+Clone the demo repository and load the data. The first run pulls Docker images and downloads the dataset (~400 MB total). You will see PostgreSQL logs while the cluster starts and row counts when loading finishes.
 
 ```bash
-mkdir spqr-demo && cd spqr-demo &&
-curl -fLO https://raw.githubusercontent.com/pg-sharding/spqr/master/examples/messenger/compose.yaml &&
+git clone https://github.com/pg-sharding/messenger.git
+cd messenger
 docker compose run --rm load
 ```
 
@@ -20,7 +20,7 @@ docker compose run --rm load
 From the same directory, open a SQL session on the router.
 
 ```bash
-docker compose exec router psql -X
+docker compose run --rm psql
 ```
 
 Turn on routing notices and query two chats at opposite ends of the key space.
@@ -67,8 +67,8 @@ For more queries — joins, cross-shard lookups, and cleanup — continue to the
 
 ## Stop or remove the local demo
 
-Exit `psql` with `\q`. From the demo directory, run `docker compose stop` to pause the cluster. Use `docker compose up -d --wait router` to resume it with the same data.
+Exit `psql` with `Ctrl-D` or `\q`. From the demo directory, run `docker compose stop` to pause the cluster. Use `docker compose up -d --wait router` to resume it with the same data.
 
-To delete the local demo, including its data and routing rules, run `docker compose down --volumes`. You can then start fresh with `docker compose run --rm load`.
+To reset the demo data without removing the containers, run `docker compose run --rm load` again. To delete everything, run `docker compose down --volumes`.
 
 For other installations, see the [router binaries](https://github.com/pg-sharding/spqr/releases), [source build instructions](https://github.com/pg-sharding/spqr#development), and [deployment guide](/deployment/overview).

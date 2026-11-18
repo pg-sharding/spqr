@@ -118,7 +118,7 @@ If your cluster has a coordinator, [move the key range containing chat 1 to a ne
 
 ## Reset the demo
 
-For the Docker setup, use the [local cleanup commands](/welcome/get_started#stop-or-remove-the-local-demo). On your own demo cluster, exit `psql` with `\q` and run the following command in the shell you used for loading. It deletes the seven demo tables and their routing rules. Substitute your admin port for `7432` if needed.
+For the Docker setup, use the [local cleanup commands](/welcome/get_started#stop-or-remove-the-local-demo). On your own cluster, exit `psql` with `\q` and run the following command in the shell you used for loading. It deletes the seven demo tables and their routing rules. Substitute your admin port for `7432` if needed.
 
 ```bash
 psql -X -v ON_ERROR_STOP=1 <<'SQL'
