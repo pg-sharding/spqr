@@ -1,6 +1,7 @@
 log_level: info
 
 host: '[localhost]'
+unix_socket_dir: '.'
 router_port: '6432'
 admin_console_port: '7432'
 grpc_api_port: '7010'
