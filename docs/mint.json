@@ -57,6 +57,7 @@
             "pages": [
                 "welcome/index",
                 "welcome/get_started",
+                "welcome/demo_database",
                 {
                     "group": "Features",
                     "pages": [
