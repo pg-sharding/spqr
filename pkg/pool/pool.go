@@ -22,6 +22,8 @@ type ConnectionKeeper interface {
 	Put(host shard.ShardHostInstance) error
 	Discard(sh shard.ShardHostInstance) error
 	View() Statistics
+
+	BeRule() *config.BackendRule
 }
 
 type Statistics struct {

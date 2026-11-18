@@ -755,6 +755,10 @@ func (s *DBPool) StopCacheWatchdog() {
 	s.StopBackgroundHealthCheck()
 }
 
+func (s *DBPool) BeRule() *config.BackendRule {
+	return s.pool.BeRule()
+}
+
 // NewDBPool creates a new DBPool instance with the given shard mapping.
 // It uses the provided mapping to allocate shards based on the shard key,
 // and initializes the necessary connections and configurations for each shard.

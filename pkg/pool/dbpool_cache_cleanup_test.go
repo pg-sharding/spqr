@@ -102,3 +102,4 @@ func (e *emptyMultiShardPool) Discard(_ shard.ShardHostInstance) error          
 func (e *emptyMultiShardPool) ForEachPool(_ func(pool Pool) error) error         { return nil }
 func (e *emptyMultiShardPool) View() Statistics                                  { return Statistics{} }
 func (e *emptyMultiShardPool) ID() uint                                          { return 0 }
+func (e *emptyMultiShardPool) BeRule() *config.BackendRule                       { return nil }

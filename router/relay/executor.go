@@ -84,6 +84,10 @@ func (s *QueryStateExecutorImpl) View() pool.Statistics {
 	return s.Client().Route().MultiShardPool().View()
 }
 
+func (s *QueryStateExecutorImpl) BeRule() *config.BackendRule {
+	return s.Client().Route().MultiShardPool().BeRule()
+}
+
 // ConnectionWithTSA implements [pool.ConnectionProvider].
 func (s *QueryStateExecutorImpl) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
 

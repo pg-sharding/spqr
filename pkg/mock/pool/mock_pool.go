@@ -45,6 +45,20 @@ func (m *MockConnectionKeeper) EXPECT() *MockConnectionKeeperMockRecorder {
 	return m.recorder
 }
 
+// BeRule mocks base method.
+func (m *MockConnectionKeeper) BeRule() *config.BackendRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeRule")
+	ret0, _ := ret[0].(*config.BackendRule)
+	return ret0
+}
+
+// BeRule indicates an expected call of BeRule.
+func (mr *MockConnectionKeeperMockRecorder) BeRule() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeRule", reflect.TypeOf((*MockConnectionKeeper)(nil).BeRule))
+}
+
 // Discard mocks base method.
 func (m *MockConnectionKeeper) Discard(sh shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
@@ -109,6 +123,20 @@ func NewMockPool(ctrl *gomock.Controller) *MockPool {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPool) EXPECT() *MockPoolMockRecorder {
 	return m.recorder
+}
+
+// BeRule mocks base method.
+func (m *MockPool) BeRule() *config.BackendRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeRule")
+	ret0, _ := ret[0].(*config.BackendRule)
+	return ret0
+}
+
+// BeRule indicates an expected call of BeRule.
+func (mr *MockPoolMockRecorder) BeRule() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeRule", reflect.TypeOf((*MockPool)(nil).BeRule))
 }
 
 // Connection mocks base method.
@@ -204,6 +232,20 @@ func NewMockShardHostsPool(ctrl *gomock.Controller) *MockShardHostsPool {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockShardHostsPool) EXPECT() *MockShardHostsPoolMockRecorder {
 	return m.recorder
+}
+
+// BeRule mocks base method.
+func (m *MockShardHostsPool) BeRule() *config.BackendRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeRule")
+	ret0, _ := ret[0].(*config.BackendRule)
+	return ret0
+}
+
+// BeRule indicates an expected call of BeRule.
+func (mr *MockShardHostsPoolMockRecorder) BeRule() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeRule", reflect.TypeOf((*MockShardHostsPool)(nil).BeRule))
 }
 
 // ConnectionHost mocks base method.
@@ -341,6 +383,20 @@ func (m *MockConnectionProvider) EXPECT() *MockConnectionProviderMockRecorder {
 	return m.recorder
 }
 
+// BeRule mocks base method.
+func (m *MockConnectionProvider) BeRule() *config.BackendRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeRule")
+	ret0, _ := ret[0].(*config.BackendRule)
+	return ret0
+}
+
+// BeRule indicates an expected call of BeRule.
+func (mr *MockConnectionProviderMockRecorder) BeRule() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeRule", reflect.TypeOf((*MockConnectionProvider)(nil).BeRule))
+}
+
 // ConnectionWithTSA mocks base method.
 func (m *MockConnectionProvider) ConnectionWithTSA(params pool.ConnAllocParams, key kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
@@ -420,6 +476,20 @@ func NewMockMultiShardTSAPool(ctrl *gomock.Controller) *MockMultiShardTSAPool {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockMultiShardTSAPool) EXPECT() *MockMultiShardTSAPoolMockRecorder {
 	return m.recorder
+}
+
+// BeRule mocks base method.
+func (m *MockMultiShardTSAPool) BeRule() *config.BackendRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeRule")
+	ret0, _ := ret[0].(*config.BackendRule)
+	return ret0
+}
+
+// BeRule indicates an expected call of BeRule.
+func (mr *MockMultiShardTSAPoolMockRecorder) BeRule() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeRule", reflect.TypeOf((*MockMultiShardTSAPool)(nil).BeRule))
 }
 
 // ConnectionHost mocks base method.

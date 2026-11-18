@@ -106,6 +106,10 @@ func (h *shardHostPool) View() Statistics {
 	}
 }
 
+func (h *shardHostPool) BeRule() *config.BackendRule {
+	return h.beRule
+}
+
 var (
 	ConnLimitToken = struct{}{}
 )
@@ -439,23 +443,34 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 // TODO : unit tests
 func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	var pool Pool
-	if val, ok := c.pools.Load(host.Address); !ok {
+	alloc := func() error {
 		pool = NewShardHostPool(c.alloc, host, c.beRule)
-		v, _ := c.pools.LoadOrStore(host.Address, pool)
+		c.pools.Store(host.Address, pool)
 
-		p, ok := v.(Pool)
-		if !ok {
-			return nil, fmt.Errorf("unexpected pool type %T for host %s", v, host.Address)
+		return nil
+	}
+	if val, ok := c.pools.Load(host.Address); !ok {
+		if err := alloc(); err != nil {
+			return nil, err
 		}
-		pool = p
 	} else {
 		p, ok := val.(Pool)
 		if !ok {
 			return nil, fmt.Errorf("unexpected pool type %T for host %s", val, host.Address)
 		}
-		pool = p
+		if c.beRuleCmp(p.BeRule(), c.beRule) {
+			pool = p
+		} else {
+			if err := alloc(); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return pool.Connection(clid, shardKey)
+}
+
+func (c *cPool) beRuleCmp(l, r *config.BackendRule) bool {
+	return l.Usr == r.Usr && l.DB == r.DB
 }
 
 // Put adds a shard to the pool.

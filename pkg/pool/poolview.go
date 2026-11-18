@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -55,6 +56,10 @@ func (r *PoolView) Connection(_ uint, _ kr.ShardKey) (shard.ShardHostInstance, e
 
 func (r *PoolView) ForEach(_ func(p shard.ShardHostCtl) error) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.ForEach method not implemented")
+}
+
+func (r *PoolView) BeRule() *config.BackendRule {
+	return nil
 }
 
 func (r *PoolView) View() Statistics {
