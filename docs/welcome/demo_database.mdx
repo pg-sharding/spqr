@@ -1,199 +1,83 @@
 ---
-title: 'Demo Database'
-description: 'Explore SPQR routing with a ready-to-load messenger database'
+title: 'Messenger demo database'
+description: 'Load 100,000 messages and trace queries by chat and by user'
 ---
 
-The messenger demo contains chats, messages, members, and reactions. Load it into an empty SPQR cluster to try single-shard queries, local joins, and queries across all shards.
+## Load the demo
 
-## Before you start
+Use a dedicated, empty SPQR cluster with at least two shards. Your user needs permission to create and populate tables through the router and configure routing through its admin console.
 
-You need:
+If you're using the [local quickstart](/welcome/get_started), set `use_init_sql: false` in `examples/quickstart.yaml` before the first router start. The quickstart's sample rules already assign `users` to another distribution.
 
-- A running SPQR router with at least two PostgreSQL shards. See [Get Started](/welcome/get_started) to set up a cluster.
-- An empty, dedicated database available on every shard, with permission to create tables and load data.
-- Administrative access to the router's console using the same host, database, and user as the router connection.
-- `psql`, `curl`, and `gzip` on the machine where you load the demo.
-
-The SQL file creates sharding metadata and seven tables in the `public` schema. Use a cluster without existing demo tables or the `ds_chats` distribution. To load another size or retry a partial load, [reset the demo](#reset-the-demo) first.
-
-## Choose a size
-
-All sizes use the same schema and include the sharding setup. The files are compressed SQL scripts for `psql`, not `pg_restore` archives.
-
-| Size | Messages | Compressed download |
-| --- | --- | --- |
-| Small | 100,000 | [About 1.5 MiB](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-small.sql.gz) |
-| Medium | 10 million | [About 160 MiB](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-medium.sql.gz) |
-| Big | 100 million | [About 1.6 GiB](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-big.sql.gz) |
-
-Start with Small for the examples below. Larger sizes need more disk space for the decompressed SQL, PostgreSQL data, indexes, and WAL.
-
-## Load the database
-
-Set your router connection parameters. Replace these values with those for your cluster:
+Set the connection details for your cluster. The local quickstart uses these values.
 
 ```bash
-export PGHOST=localhost
-export PGPORT=6432
-export PGDATABASE=demo
-export PGUSER=demo
+export PGHOST=localhost PGPORT=6432 PGDATABASE=postgres PGUSER=postgres
 ```
 
-The script reconnects to the administrative console on port `7432`, then returns to the router port. If authentication requires a password, put entries for both ports in `~/.pgpass`, or set `PGPASSWORD` before loading. Configure `PGSSLMODE` and other libpq SSL parameters as required by your cluster.
+The loader reconnects to the admin console on port `7432` with the same host, database, and user. If you use a password file, include both ports. For a different admin port, pass `-v admin_port=PORT` to `psql` below.
 
-Download and decompress the Small dataset:
+Download and load Small (1.5 MiB). It contains 1,000 chats and 100,000 messages.
 
 ```bash
-curl -fL -o messenger-small.sql.gz \
-  https://storage.yandexcloud.net/spqr-demo-messenger/messenger-small.sql.gz &&
-gzip -t messenger-small.sql.gz &&
-gzip -dc messenger-small.sql.gz > messenger-small.sql
+curl -fLO https://storage.yandexcloud.net/spqr-demo-messenger/messenger-small.sql.gz &&
+gzip -dc messenger-small.sql.gz > messenger-small.sql &&
+psql -X -f messenger-small.sql
 ```
 
-Load it through the router. Set `admin_port` to your administrative console port if it differs:
+For a larger demo, load [Medium (10 million messages, 160 MiB)](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-medium.sql.gz) or [Big (100 million, 1.6 GiB)](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-big.sql.gz) the same way. [Reset the demo](#reset-the-demo) before switching sizes or retrying a partial load.
 
-```bash
-psql -X -v ON_ERROR_STOP=1 -v admin_port=7432 -f messenger-small.sql
-```
+## Which shard holds a chat?
 
-The script creates the distribution, key ranges, reference-table metadata, and physical tables, then loads the data with `COPY`. It does not drop an existing demo before loading.
-
-## How the data is distributed
-
-| Tables | Distribution |
-| --- | --- |
-| `chats`, `chat_members`, `messages`, `reactions` | Sharded by `chat_id` in the `ds_chats` distribution, declared with the `integer` column type |
-| `users`, `emoji`, `languages` | Reference tables, copied in full to every shard |
-
-The sharded tables share the same key ranges, so data for one chat stays together. Key ranges are assigned to the shards configured in your cluster; shard names are not fixed by the demo.
-
-Inspect the metadata through the administrative console, adjusting the port if needed:
-
-```bash
-psql -X -p 7432
-```
-
-```sql
-SHOW shards;
-SHOW distributions;
-SHOW key_ranges;
-SHOW relations;
-SHOW reference_relations;
-```
-
-Exit this session with `\q`, then connect through the router for the following queries:
-
-```bash
-psql -X
-```
-
-## Try routing queries
-
-Enable routing notices and use the simple routing engine for this tour:
+Open `psql -X` in the same shell. Turn on routing notices and compare two chats at opposite ends of the Small dataset.
 
 ```sql
 SET __spqr__reply_notice TO true;
-SET __spqr__engine_v2 TO off;
+
+SELECT count(*) FROM messages WHERE chat_id = 1;
+SELECT count(*) FROM messages WHERE chat_id = 1000;
 ```
 
-### Read from one shard
+Chat 1 has 1,990 messages and chat 1000 has 22. Each query names one shard in its `NOTICE`. On a two-shard cluster the boundary is chat 501, so the two notices name different shards.
 
-The `chat_id` condition lets SPQR select one shard. Compare the shard names in the notices for chats at opposite ends of the Small dataset:
+## Who wrote the latest message in chat 1?
 
-```sql
-SELECT message_id, author_id, body, sent_at
-FROM messages
-WHERE chat_id = 1
-ORDER BY message_id DESC
-LIMIT 5;
-
-SELECT message_id, author_id, body, sent_at
-FROM messages
-WHERE chat_id = 1000
-ORDER BY message_id DESC
-LIMIT 5;
-```
-
-### Join tables on one shard
-
-Chats and their messages share a sharding key. This join stays on the shard that owns chat `1`:
+`chats`, `chat_members`, `messages`, and `reactions` share the `chat_id` key in the `ds_chats` distribution. Every shard also has a copy of `users`, so the shard that holds chat 1 can look up the author of its latest message.
 
 ```sql
-SELECT c.title, m.message_id, m.body
+SELECT c.title, u.name AS author, m.body
 FROM chats c
 JOIN messages m ON m.chat_id = c.chat_id
+JOIN users u ON u.user_id = m.author_id
 WHERE c.chat_id = 1
 ORDER BY m.message_id DESC
-LIMIT 5;
+LIMIT 1;
 ```
 
-A reference table can also join locally because each shard has a complete copy of `users`:
+In Small, this returns `Space Daily | Emre Adams | Honestly, happy birthday!`. The notice names the same shard as the first count.
+
+## Which chats has a user joined?
+
+A user's memberships can span several chat IDs. To find them all, send the query to every shard with the scatter hint. The notice now lists all shards.
 
 ```sql
-SELECT m.message_id, u.name AS author, m.body
-FROM messages m
-JOIN users u ON u.user_id = m.author_id
-WHERE m.chat_id = 7
-ORDER BY m.message_id DESC
-LIMIT 5;
-```
-
-### Query all shards
-
-Without a `chat_id` condition, use an explicit scatter hint:
-
-```sql
-SELECT count(*) AS messages
-FROM messages /* __spqr__scatter_query: true */;
-
-SELECT chat_id
-FROM chat_members
+SELECT chat_id FROM chat_members
 WHERE user_id = 42 /* __spqr__scatter_query: true */;
 ```
 
-With the simple routing engine, `count(*)` returns a separate count from each shard. SPQR concatenates these rows; it does not sum them into a global count. The second query finds the user's chats across all shards.
-
-### Write to one chat
-
-Writes use the same sharding key. This transaction adds a message and changes its chat title on one shard, then rolls both changes back:
-
-```sql
-BEGIN;
-INSERT INTO messages (chat_id, message_id, author_id, body, sent_at)
-VALUES (1000, 1000000, 42, 'Hello from the SPQR demo!', now());
-UPDATE chats SET title = 'Renamed by the demo' WHERE chat_id = 1000;
-SELECT c.title, m.body
-FROM chats c
-JOIN messages m ON m.chat_id = c.chat_id
-WHERE c.chat_id = 1000 AND m.message_id = 1000000;
-ROLLBACK;
-```
-
-For a next step, use [Manual Rebalancing](/sharding/manual_rebalancing) to explore moving key ranges between shards.
+If your cluster has a coordinator, [move the key range containing chat 1 to a new shard](/sharding/manual_rebalancing). Repeat the first count to see the new shard in its notice.
 
 ## Reset the demo
 
-The following commands delete all seven demo tables and their SPQR routing metadata, including `ds_chats`. Run them only against the dedicated demo cluster.
-
-Exit the interactive session with `\q`, then run these commands with the same connection parameters used for loading. Adjust `admin_port` if needed:
+Exit `psql` with `\q`. Run the following command in the same shell to delete the seven demo tables and their routing rules. Substitute your admin port for `7432` if needed.
 
 ```bash
-psql -X -v ON_ERROR_STOP=1 -v admin_port=7432 <<'SQL'
-\set router_port :PORT
-DROP TABLE IF EXISTS reactions;
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS chat_members;
-DROP TABLE IF EXISTS chats;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS emoji;
-DROP TABLE IF EXISTS languages;
-\connect - - - :admin_port
+psql -X -v ON_ERROR_STOP=1 <<'SQL'
+DROP TABLE IF EXISTS reactions, messages, chat_members, chats, users, emoji, languages;
+\connect - - - 7432
 DROP DISTRIBUTION IF EXISTS ds_chats CASCADE;
 DROP REFERENCE TABLE IF EXISTS users;
 DROP REFERENCE TABLE IF EXISTS emoji;
 DROP REFERENCE TABLE IF EXISTS languages;
-\connect - - - :router_port
 SQL
 ```
-
-You can now reload the Small dataset or download and load another size.
