@@ -1,191 +1,44 @@
 ---
 title: 'Get Started'
-description: 'Start sharding your PostgreSQL cluster in 5 minutes'
+description: 'Start two PostgreSQL shards and find out which one holds a chat'
 ---
 
-import DockerImage from '/snippets/docker_image.mdx';
-import BuildLocal from '/snippets/build_local.mdx';
+You need Docker with Compose 2.23.1 or later and free local ports `6432` and `7432`. The example includes PostgreSQL, the SPQR router, and the `psql` client. If you already have an empty SPQR cluster, [load the demo there](/welcome/demo_database).
 
-Let's set up the simplest possible installation scenario - when you have two shards and one router.
+## Start the local demo
 
-To try the [messenger demo database](/welcome/demo_database), follow its setup instructions before starting the router.
+Run these commands from a terminal. The loader starts the cluster, creates the messenger tables and routing rules, and loads 100,000 messages. At the end it prints a message count for each shard.
 
-<AccordionGroup>
-  <Accordion icon="download" title="Install a prebuilt binary">
-    Download `spqr-router` for Linux or macOS (amd64, arm64) into `./spqr`. The installer verifies the checksum and does not need `sudo`.
-
-    ```bash
-    curl -fsSL https://pg-sharding.tech/install.sh | sh
-    # or a specific version and directory
-    curl -fsSL https://pg-sharding.tech/install.sh | INSTALL_DIR=./spqr-custom sh
-    ```
-
-    The router does not install PostgreSQL. You need two running PostgreSQL instances, on `localhost:5432` and `localhost:5433` by default; change the shard hosts in `examples/quickstart.yaml` if yours run elsewhere. Then start the router:
-
-    ```bash
-    cd "${INSTALL_DIR:-spqr}" && ./spqr-router run --config examples/quickstart.yaml
-    ```
-
-    The router applies `examples/init.sql`: rows with `id` from 0 through 49999 go to `sh1`, and rows with `id` 50000 or above go to `sh2`. Check it through the router on port 6432:
-
-    ```sql
-    ➜ psql -h localhost -p 6432 -U postgres -d postgres
-    postgres=> CREATE TABLE users (id int PRIMARY KEY, name text);
-    CREATE TABLE
-    postgres=> INSERT INTO users VALUES (1, 'alice');
-    INSERT 0 1
-    postgres=> INSERT INTO users VALUES (60000, 'bob');
-    INSERT 0 1
-    ```
-
-    `CREATE TABLE` runs on both shards, and each row lands on its own one:
-
-    ```bash
-    ➜ psql -h localhost -p 5432 -U postgres -Atc 'SELECT * FROM users'
-    1|alice
-    ➜ psql -h localhost -p 5433 -U postgres -Atc 'SELECT * FROM users'
-    60000|bob
-    ```
-  </Accordion>
-  <Accordion icon="docker" title="Pull the SPQR docker image">
-    <DockerImage />
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Build the SPQR locally">
-    <BuildLocal />
-  </Accordion>
-</AccordionGroup>
-
-
-## Setting up sharding
-
-First, you need to configure the rules by which the router will decide which of the shards to send each request to.
-
-For this purpose, SPQR has an **administrative console**. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
-
-```sql
-➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
-SPQR router admin console
-Here you can set up your own routing rules
-------------------------------------------------
-You can find the documentation here
-https://github.com/pg-sharding/spqr/tree/master/docs
-
-psql (14.5 (Homebrew), server console)
-Type "help" to get help.
-
-demo=> SHOW shards;
-  listing data shards  
------------------------
- datashard with ID shard1
- datashard with ID shard2
-(2 rows)
+```bash
+mkdir spqr-demo && cd spqr-demo &&
+curl -fLO https://raw.githubusercontent.com/pg-sharding/spqr/master/examples/messenger/compose.yaml &&
+docker compose run --rm load
 ```
-
-To make all things work, the router needs to know the following:
-
-- What tables do you query
-- Which columns in each table should the router search for
-- Types of these columns
-- Mapping from [range of values] to [shard number]
-
-Let's create a distribution first:
-
-```sql
-➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
-demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
-(1 row)
-```
-
-The next step is to specify a list of tables and columns.
-
-```sql
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
-                 attach table               
---------------------------------------------
- attached relation orders to distribution ds1
-(1 row)
-
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
-                 attach table                 
-----------------------------------------------
- attached relation items to distribution ds1
-(1 row)
-```
-
-And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
-
-```sql
-CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
-```
-<Tip>
-`CREATE KEY RANGES FOR DISTRIBUTION` automatically handles the creation order. If you create key ranges manually with `CREATE KEY RANGE`, you must create them in descending order by lower bound (highest first).
-</Tip>
-
-Here we go! You can play with some SELECTs or INSERTs.
 
 ## Connect to SPQR router
 
-Now we can connect to proxy a.k.a. router and play with it. Please use psql again, but this time connect to a different port.
+From the same directory, open a SQL session on the router.
 
 ```bash
-➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=6432"
-psql (13.3, server 9.6.22)
-Type "help" for help.
-
-demo=> CREATE TABLE orders (
-    id SERIAL NOT NULL PRIMARY KEY,
-    customer_id INT,
-    order_date DATE
-);
-NOTICE: send query to shard(s) : shard01,shard02
-CREATE TABLE
-
-demo=> CREATE TABLE items (
-    id SERIAL NOT NULL PRIMARY KEY,
-    order_id SERIAL NOT NULL,
-    name VARCHAR
-);
-NOTICE: send query to shard(s) : shard01,shard02
-CREATE TABLE
+docker compose exec router psql -X
 ```
 
-Then, populate it with an order:
-
-```bash
-demo=> BEGIN;
-BEGIN
-demo=> INSERT INTO orders (id, customer_id, order_date) VALUES (777, 123456, '2024-01-08');
-NOTICE: send query to shard(s) : shard01
-INSERT 0 1
-demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
-INSERT 0 1
-demo=> COMMIT;
-COMMIT
+```sql
+SET __spqr__reply_notice TO true;
+SELECT title FROM chats WHERE chat_id = 1;
+SELECT title FROM chats WHERE chat_id = 1000;
 ```
 
-> NOTICE messages are disabled by default, specify `show_notice_messages` setting in the router config to enable them
+The titles are `Space Daily` and `Football Daily`. Both queries went through the same router connection on port `6432`. The `NOTICE` for each query names the shard that answered it.
 
-The order can be found on the first shard:
+## Setting up sharding
 
-```bash
-demo=> SELECT * FROM orders WHERE id = 777;
-NOTICE: send query to shard(s) : shard01
-  id  | customer_id | order_date 
-------+-------------+--------------
-  777 |   123456    | '2024-01-08'
-(1 row)
-```
+The router knows the shard addresses from `compose.yaml`. The loader used the admin console on port `7432` to tell the router which tables share a key and which shard owns each range of keys. Keep your SQL session open and [inspect the rules for the two chats you just queried](/welcome/demo_database#read-the-routing-rules).
 
-SPQR can handle such queries as `SELECT * FROM table` but we don't recommend using it. This feature is implemented in a non-transactional way.
+## Stop or remove the local demo
 
-```bash
-demo=> SELECT * FROM orders;
-NOTICE: send query to shard(s) : shard01,shard02
-  id  | customer_id | order_date 
-------+-------------+--------------
-  777 |   123456    | '2024-01-08'
-(1 row)
-```
+Exit `psql` with `\q`. From the demo directory, run `docker compose stop` to pause the cluster. Use `docker compose up -d --wait router` to resume it with the same data.
+
+To delete the local demo, including its data and routing rules, run `docker compose down --volumes`. You can then start fresh with `docker compose run --rm load`.
+
+For other installations, see the [router binaries](https://github.com/pg-sharding/spqr/releases), [source build instructions](https://github.com/pg-sharding/spqr#development), and [deployment guide](/deployment/overview).

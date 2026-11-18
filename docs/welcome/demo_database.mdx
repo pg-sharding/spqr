@@ -3,6 +3,8 @@ title: 'Demo Database'
 description: 'Load 100,000 messages and trace queries by chat and by user'
 ---
 
+Use these downloads with an existing empty SPQR cluster, or [start a local cluster with Small already loaded](/welcome/get_started). If you have the data, [skip to the queries](#which-shard-holds-a-chat).
+
 ## Download a dataset
 
 The examples use Small, which contains 1,000 chats. Each download includes the schema and data in a compressed SQL file.
@@ -26,9 +28,9 @@ The examples use Small, which contains 1,000 chats. Each download includes the s
 
 Use a dedicated, empty SPQR cluster with at least two shards. Your user needs permission to create and populate tables through the router and configure routing through its admin console.
 
-If you're using the [local quickstart](/welcome/get_started), set `use_init_sql: false` in `examples/quickstart.yaml` before the first router start. The quickstart's sample rules already assign `users` to another distribution.
+Start with empty routing metadata as well as empty databases. For example, the sample rules in `examples/init.sql` already register `users`, which the demo creates as a reference table.
 
-Set the connection details for your cluster. The local quickstart uses these values.
+Set the connection details for your cluster. These are the defaults for the local demo.
 
 ```bash
 export PGHOST=localhost PGPORT=6432 PGDATABASE=postgres PGUSER=postgres
@@ -48,7 +50,7 @@ psql -X -f "$dataset.sql"
 
 ## Which shard holds a chat?
 
-Open `psql -X` in the same shell. Turn on routing notices and compare two chats at opposite ends of the Small dataset.
+In your router session (or a new `psql -X` from the shell you used for loading), turn on routing notices and compare two chats at opposite ends of Small.
 
 ```sql
 SET __spqr__reply_notice TO true;
@@ -57,7 +59,37 @@ SELECT count(*) FROM messages WHERE chat_id = 1;
 SELECT count(*) FROM messages WHERE chat_id = 1000;
 ```
 
-Chat 1 has 1,990 messages and chat 1000 has 22. Each query names one shard in its `NOTICE`. On a two-shard cluster the boundary is chat 501, so the two notices name different shards.
+Chat 1 has 1,990 messages and chat 1000 has 22. On a two-shard cluster the notices name different shards.
+
+## Read the routing rules
+
+Switch from the router to its admin console in the same `psql` session. Substitute your admin port for `7432` if needed.
+
+```sql
+\set router_port :PORT
+\connect - - - 7432
+SHOW relations WHERE relation_name = 'messages';
+SHOW key_ranges WHERE distribution_id = 'ds_chats' ORDER BY lower_bound;
+\connect - - - :router_port
+SET __spqr__reply_notice TO true;
+```
+
+The first result identifies `chat_id` as the key for `messages` and `ds_chats` as its distribution. The second gives the *inclusive* lower bound of each range and the shard that owns it. In Small on two shards the bounds are `1` and `501`. Use that map to predict which shard will answer each query, then check the notices.
+
+```sql
+SELECT count(*) FROM messages WHERE chat_id = 500;
+SELECT count(*) FROM messages WHERE chat_id = 501;
+```
+
+<Accordion title="Where did these rules come from?">
+  The loader ran these statements on the admin console before it created the tables and copied the rows through the router.
+
+  ```sql
+  CREATE DISTRIBUTION IF NOT EXISTS ds_chats COLUMN TYPES integer;
+  CREATE KEY RANGES FOR DISTRIBUTION ds_chats BETWEEN 1 AND 1001;
+  ALTER DISTRIBUTION ds_chats ATTACH RELATION IF NOT EXISTS "messages" DISTRIBUTION KEY chat_id;
+  ```
+</Accordion>
 
 ## Who wrote the latest message in chat 1?
 
@@ -88,7 +120,7 @@ If your cluster has a coordinator, [move the key range containing chat 1 to a ne
 
 ## Reset the demo
 
-Exit `psql` with `\q`. Run the following command in the same shell to delete the seven demo tables and their routing rules. Substitute your admin port for `7432` if needed.
+For the Docker setup, use the [local cleanup commands](/welcome/get_started#stop-or-remove-the-local-demo). On your own demo cluster, exit `psql` with `\q` and run the following command in the shell you used for loading. It deletes the seven demo tables and their routing rules. Substitute your admin port for `7432` if needed.
 
 ```bash
 psql -X -v ON_ERROR_STOP=1 <<'SQL'

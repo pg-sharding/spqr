@@ -103,7 +103,6 @@
                 {
                     "group": "Sharding",
                     "pages": [
-                        "welcome/get_started",
                         "sharding/ranged",
                         "sharding/hashed",
                         "sharding/sharded_tables",
