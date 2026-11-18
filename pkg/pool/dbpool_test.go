@@ -213,6 +213,8 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				sh.EXPECT().TxStatus().Return(txstatus.TXIDLE).AnyTimes()
 
 				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
+				sh.EXPECT().Usr().Return("").AnyTimes()
+				sh.EXPECT().DB().Return("").AnyTimes()
 
 				counter := 0
 				rwCounter := 0
