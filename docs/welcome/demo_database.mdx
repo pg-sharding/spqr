@@ -3,6 +3,25 @@ title: 'Messenger demo database'
 description: 'Load 100,000 messages and trace queries by chat and by user'
 ---
 
+## Download a dataset
+
+The examples use Small, which contains 1,000 chats. Each download includes the schema and data in a compressed SQL file.
+
+<CardGroup cols={2}>
+  <Card title="Small" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-small.sql.gz">
+    100,000 messages · 1.5 MiB
+  </Card>
+  <Card title="Medium" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-medium.sql.gz">
+    10 million messages · 160 MiB
+  </Card>
+  <Card title="Big" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-big.sql.gz">
+    100 million messages · 1.6 GiB
+  </Card>
+  <Card title="Huge" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-huge.sql.gz">
+    1 billion messages · 15.9 GiB
+  </Card>
+</CardGroup>
+
 ## Load the demo
 
 Use a dedicated, empty SPQR cluster with at least two shards. Your user needs permission to create and populate tables through the router and configure routing through its admin console.
@@ -17,15 +36,15 @@ export PGHOST=localhost PGPORT=6432 PGDATABASE=postgres PGUSER=postgres
 
 The loader reconnects to the admin console on port `7432` with the same host, database, and user. If you use a password file, include both ports. For a different admin port, pass `-v admin_port=PORT` to `psql` below.
 
-Download and load Small (1.5 MiB). It contains 1,000 chats and 100,000 messages.
+Run this in your download directory. For another size, change `messenger-small` to the name of your dataset.
 
 ```bash
-curl -fLO https://storage.yandexcloud.net/spqr-demo-messenger/messenger-small.sql.gz &&
-gzip -dc messenger-small.sql.gz > messenger-small.sql &&
-psql -X -f messenger-small.sql
+dataset=messenger-small
+gzip -dc "$dataset.sql.gz" > "$dataset.sql" &&
+psql -X -f "$dataset.sql"
 ```
 
-For a larger demo, load [Medium (10 million messages, 160 MiB)](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-medium.sql.gz) or [Big (100 million, 1.6 GiB)](https://storage.yandexcloud.net/spqr-demo-messenger/messenger-big.sql.gz) the same way. [Reset the demo](#reset-the-demo) before switching sizes or retrying a partial load.
+[Reset the demo](#reset-the-demo) before switching sizes or retrying a partial load.
 
 ## Which shard holds a chat?
 
