@@ -161,6 +161,7 @@ func TestShardSwitchTSA(t *testing.T) {
 	usr1Shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 	usr1Shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 	usr1Shardconn.EXPECT().Usr().AnyTimes().Return("usr1")
+	usr1Shardconn.EXPECT().DB().AnyTimes().Return("")
 
 	usr2Shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	usr2Shardconn.EXPECT().Instance().AnyTimes().Return(ins)
@@ -168,6 +169,7 @@ func TestShardSwitchTSA(t *testing.T) {
 	usr2Shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 	usr2Shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 	usr2Shardconn.EXPECT().Usr().AnyTimes().Return("usr2")
+	usr2Shardconn.EXPECT().DB().AnyTimes().Return("")
 
 	cPool := pool.NewPool(func(_ kr.ShardKey, _ config.Host, be *config.BackendRule) (shard.ShardHostInstance, error) {
 		switch be.Usr {

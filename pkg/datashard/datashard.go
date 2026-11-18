@@ -664,3 +664,7 @@ func (sh *Conn) AuthRule() *config.AuthBackendCfg {
 	}
 	return rule
 }
+
+// func (sh *Conn) Usr() string {
+
+// }

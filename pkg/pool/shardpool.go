@@ -359,6 +359,12 @@ type cPool struct {
 	beRule *config.BackendRule
 }
 
+type connId struct {
+	HostName string
+	Usr      string
+	DB       string
+}
+
 // ID implements MultiShardPool.
 func (c *cPool) ID() uint {
 	return c.id
@@ -439,9 +445,10 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 // TODO : unit tests
 func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	var pool Pool
-	if val, ok := c.pools.Load(host.Address); !ok {
+	mapKey := connId{HostName: host.Address, Usr: c.beRule.Usr, DB: c.beRule.DB}
+	if val, ok := c.pools.Load(mapKey); !ok {
 		pool = NewShardHostPool(c.alloc, host, c.beRule)
-		v, _ := c.pools.LoadOrStore(host.Address, pool)
+		v, _ := c.pools.LoadOrStore(mapKey, pool)
 
 		p, ok := v.(Pool)
 		if !ok {
@@ -470,7 +477,7 @@ func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host
 //
 // TODO : unit tests
 func (c *cPool) Put(sh shard.ShardHostInstance) error {
-	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
+	if val, ok := c.pools.Load(connId{HostName: sh.Instance().Hostname(), Usr: sh.Usr(), DB: sh.DB()}); ok {
 		return val.(Pool).Put(sh)
 	} else {
 		panic(fmt.Sprintf("cPool.Put failed, hostname %s not found", sh.Instance().Hostname()))
@@ -489,7 +496,7 @@ func (c *cPool) Put(sh shard.ShardHostInstance) error {
 //
 // TODO : unit tests
 func (c *cPool) Discard(sh shard.ShardHostInstance) error {
-	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
+	if val, ok := c.pools.Load(connId{HostName: sh.Instance().Hostname(), Usr: sh.Usr(), DB: sh.DB()}); ok {
 		return val.(Pool).Discard(sh)
 	} else {
 		panic(fmt.Sprintf("cPool.Discard failed, hostname %s not found", sh.Instance().Hostname()))
