@@ -16,7 +16,7 @@ services:
     <<: *shard
     volumes: [sh2-data:/var/lib/postgresql/data]
   router:
-    image: pgsharding/spqr-router:nightly-3.2.2-3007-2c9e6b92
+    image: pgsharding/spqr-router:stable
     depends_on:
       sh1: {condition: service_healthy}
       sh2: {condition: service_healthy}
@@ -44,6 +44,7 @@ services:
     environment:
       PGHOST: router
       PGPORT: "6432"
+      PGDATABASE: postgres
       PGUSER: postgres
     entrypoint: [sh, -ec]
     command:

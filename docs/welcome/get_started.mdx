@@ -7,7 +7,7 @@ You need Docker with Compose 2.23.1 or later and free local ports `6432` and `74
 
 ## Start the local demo
 
-Run these commands from a terminal. The loader starts the cluster, creates the messenger tables and routing rules, and loads 100,000 messages. At the end it prints a message count for each shard.
+Run these commands from a terminal. The first run pulls Docker images and downloads the dataset (~400 MB total). You will see PostgreSQL logs while the cluster starts and row counts when loading finishes.
 
 ```bash
 mkdir spqr-demo && cd spqr-demo &&
@@ -23,17 +23,47 @@ From the same directory, open a SQL session on the router.
 docker compose exec router psql -X
 ```
 
+Turn on routing notices and query two chats at opposite ends of the key space.
+
 ```sql
 SET __spqr__reply_notice TO true;
 SELECT title FROM chats WHERE chat_id = 1;
 SELECT title FROM chats WHERE chat_id = 1000;
 ```
 
-The titles are `Space Daily` and `Football Daily`. Both queries went through the same router connection on port `6432`. The `NOTICE` for each query names the shard that answered it.
+Each query returns a `NOTICE` naming the shard that answered it:
 
-## Setting up sharding
+```
+NOTICE:  send query to shard(s) : sh1
+  title
+-----------
+ Space Daily
+(1 row)
+```
 
-The router knows the shard addresses from `compose.yaml`. The loader used the admin console on port `7432` to tell the router which tables share a key and which shard owns each range of keys. Keep your SQL session open and [inspect the rules for the two chats you just queried](/welcome/demo_database#read-the-routing-rules).
+Chat 1 (`Space Daily`) and chat 1000 (`Football Daily`) land on different shards.
+
+## Read the routing rules
+
+Stay in the same `psql` session. Switch to the admin console on port `7432`, inspect the rules, and switch back.
+
+```sql
+\set router_port :PORT
+\connect - - - 7432
+SHOW relations WHERE relation_name = 'messages';
+SHOW key_ranges WHERE distribution_id = 'ds_chats' ORDER BY lower_bound;
+\connect - - - :router_port
+SET __spqr__reply_notice TO true;
+```
+
+The first result identifies `chat_id` as the sharding key for `messages`. The second shows the lower bound of each key range and the shard that owns it. In Small on two shards the bounds are `1` and `501`. Use that map to predict which shard will answer, then check with notices:
+
+```sql
+SELECT count(*) FROM messages WHERE chat_id = 500;
+SELECT count(*) FROM messages WHERE chat_id = 501;
+```
+
+For more queries — joins, cross-shard lookups, and cleanup — continue to the [demo database page](/welcome/demo_database#who-wrote-the-latest-message-in-chat-1).
 
 ## Stop or remove the local demo
 

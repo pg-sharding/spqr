@@ -38,12 +38,10 @@ export PGHOST=localhost PGPORT=6432 PGDATABASE=postgres PGUSER=postgres
 
 The loader reconnects to the admin console on port `7432` with the same host, database, and user. If you use a password file, include both ports. For a different admin port, pass `-v admin_port=PORT` to `psql` below.
 
-Run this in your download directory. For another size, change `messenger-small` to the name of your dataset.
+Run this in your download directory. For another size, replace `messenger-small` with the file name of your dataset.
 
 ```bash
-dataset=messenger-small
-gzip -dc "$dataset.sql.gz" > "$dataset.sql" &&
-psql -X -f "$dataset.sql"
+gzip -dc messenger-small.sql.gz | psql -X
 ```
 
 [Reset the demo](#reset-the-demo) before switching sizes or retrying a partial load.
