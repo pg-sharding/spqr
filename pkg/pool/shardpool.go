@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -356,8 +357,7 @@ type cPool struct {
 
 	id uint
 
-	beRuleMu sync.RWMutex
-	beRule   *config.BackendRule
+	beRule atomic.Pointer[config.BackendRule]
 }
 
 type connId struct {
@@ -382,9 +382,8 @@ func (c *cPool) ID() uint {
 //   - MultiShardPool: The created MultiShardPool.
 func NewPool(allocFn ConnectionAllocFn) ShardHostsPool {
 	rt := &cPool{
-		pools:    sync.Map{},
-		alloc:    allocFn,
-		beRuleMu: sync.RWMutex{},
+		pools: sync.Map{},
+		alloc: allocFn,
 	}
 
 	rt.id = spqrlog.GetPointer(rt)
@@ -446,17 +445,15 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 //
 // TODO : unit tests
 func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
-	c.beRuleMu.RLock()
-	defer c.beRuleMu.RUnlock()
-
-	if c.beRule == nil {
+	beRule := c.beRule.Load()
+	if beRule == nil {
 		return nil, fmt.Errorf("pool backend rule is not set")
 	}
 
 	var pool Pool
-	mapKey := connId{HostName: host.Address, Usr: c.beRule.Usr, DB: c.beRule.DB}
+	mapKey := connId{HostName: host.Address, Usr: beRule.Usr, DB: beRule.DB}
 	if val, ok := c.pools.Load(mapKey); !ok {
-		pool = NewShardHostPool(c.alloc, host, c.beRule)
+		pool = NewShardHostPool(c.alloc, host, beRule)
 		v, _ := c.pools.LoadOrStore(mapKey, pool)
 
 		p, ok := v.(Pool)
@@ -520,10 +517,7 @@ func (c *cPool) Discard(sh shard.ShardHostInstance) error {
 //
 // TODO : unit tests
 func (c *cPool) SetRule(rule *config.BackendRule) {
-	c.beRuleMu.Lock()
-	defer c.beRuleMu.Unlock()
-
-	c.beRule = rule
+	c.beRule.Store(rule)
 }
 
 var _ ShardHostsPool = &cPool{}
