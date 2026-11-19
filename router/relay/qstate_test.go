@@ -11,13 +11,33 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/session/sessiontest"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func TestAbortedTransactionErrorIsolation(t *testing.T) {
+	first := &RelayStateImpl{qse: &QueryStateExecutorImpl{txStatus: txstatus.TXERR}}
+	_, err := first.ProcQueryAdvancedTx("SELECT 1", nil, false)
+	var firstErr *spqrerror.SpqrError
+	require.ErrorAs(t, err, &firstErr)
+	firstErr = firstErr.Query("SELECT 1")
+
+	second := &RelayStateImpl{qse: &QueryStateExecutorImpl{txStatus: txstatus.TXERR}}
+	_, err = second.ProcQueryAdvancedTx("SELECT 2", nil, false)
+	var secondErr *spqrerror.SpqrError
+	require.ErrorAs(t, err, &secondErr)
+	assert.Empty(t, secondErr.InternalQuery)
+	secondErr = secondErr.Query("SELECT 2")
+
+	assert.Equal(t, "SELECT 1", firstErr.InternalQuery)
+	assert.Equal(t, "SELECT 2", secondErr.InternalQuery)
+}
 
 func TestAutoDistributionSetFail(t *testing.T) {
 

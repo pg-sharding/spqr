@@ -640,16 +640,13 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krID string, krIDNew 
 	}
 	lockCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	if _, err := lc.LockKeyRangeOps(lockCtx, krID); err != nil {
+	keyRange, err := lc.LockKeyRangeOps(lockCtx, krID)
+	if err != nil {
 		return err
 	}
 	defer func() {
 		_ = lc.UnlockKeyRangeOps(ctx, krID)
 	}()
-	keyRange, err := meta.LockKeyRange(ctx, lc, krID)
-	if err != nil {
-		return err
-	}
 	if !config.CoordinatorConfig().UseSPQRGuard {
 		return lc.qdb.RenameKeyRange(ctx, krID, krIDNew)
 	}

@@ -1056,17 +1056,19 @@ var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {
 	RouterClient
+
+	lastError error
 }
 
-func (f FakeClient) Usr() string {
+func (f *FakeClient) Usr() string {
 	return DefaultUsr
 }
 
-func (f FakeClient) DB() string {
+func (f *FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) Rule() *config.FrontendRule {
+func (f *FakeClient) Rule() *config.FrontendRule {
 	return &config.FrontendRule{
 		Usr: DefaultUsr,
 		DB:  DefaultDB,
@@ -1077,32 +1079,37 @@ func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
 
-func (f FakeClient) ID() uint {
+func (f *FakeClient) ID() uint {
 	return spqrlog.GetPointer(f)
 }
 
 // AllocParams implements [RouterClient].
-func (f FakeClient) AllocParams() pool.ConnAllocParams {
+func (f *FakeClient) AllocParams() pool.ConnAllocParams {
 	return pool.ConnAllocParams{
 		Clid: f.ID(),
 	}
 }
 
-func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
+func (f *FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
-func (f FakeClient) Peek() (pgproto3.FrontendMessage, error) {
+func (f *FakeClient) Peek() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
-func (f FakeClient) Send(_ pgproto3.BackendMessage) error {
+func (f *FakeClient) Send(_ pgproto3.BackendMessage) error {
 	return nil
 }
 
-func (f FakeClient) ReplyErrMsgPure(e error) error {
+func (f *FakeClient) ReplyErrMsgPure(e error) error {
 	spqrlog.Zero.Error().Err(e).Msg("sql init error")
+	f.lastError = e
 	return nil
+}
+
+func (f *FakeClient) LastError() error {
+	return f.lastError
 }
 
 var _ RouterClient = &FakeClient{}

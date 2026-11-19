@@ -48,6 +48,10 @@ SELECT __spqr__ctid('xx_insert_rel');
 
 explain (COSTS OFF ) SELECT * FROM xx_insert_rel WHERE a = 1 ORDER BY 1,2,3;
 
+INSERT INTO xx_insert_rel (a, b, c) VALUES (10 /* ) */, 20, 30), /* ( */ (110, 40, 50) RETURNING *;
+SELECT a FROM xx_insert_rel WHERE a IN (10, 110) /* __spqr__execute_on: sh1 */;
+SELECT a FROM xx_insert_rel WHERE a IN (10, 110) /* __spqr__execute_on: sh2 */;
+
 DROP TABLE xx_insert_rel;
 
 

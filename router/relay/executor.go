@@ -43,6 +43,8 @@ type QueryStateExecutorImpl struct {
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
 
+	startedClientImplicitTx bool
+
 	cacheCC pgproto3.CommandComplete
 	cacheEQ pgproto3.EmptyQueryResponse
 
@@ -110,7 +112,13 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 	}
 
 	if config.RouterConfig().ForceConnectionCleanup {
-		return v.Close()
+		return p.Discard(v)
+	}
+
+	if v.Sync() != 0 || v.DataPending() {
+		/* will automatically discard connection,
+		but we will not perform cleanup, which may stuck forever */
+		return p.Put(v)
 	}
 
 	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
@@ -125,20 +133,19 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 		return err
 	}
 
-	/* Connection are pinned - save to local cache */
+	/* Connection are pinned - save to local cache. Never run actual 'discard' cleanup. */
 	if guc.Get(s.Client()) {
+		if err := v.Cleanup(&config.FrontendRule{PoolRollback: true}); err != nil {
+			_ = p.Put(v)
+			return err
+		}
 		s.localConn[v.ShardKeyName()] = v
 
 		return nil
 	}
 
-	if v.Sync() != 0 {
-		/* will automatically discard connection,
-		but we will not perform cleanup, which may stuck forever */
-		return p.Put(v)
-	}
-
 	if err := v.Cleanup(s.Client().Rule()); err != nil {
+		_ = p.Put(v)
 		return err
 	}
 	return p.Put(v)
@@ -384,7 +391,37 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
+func (s *QueryStateExecutorImpl) StartBlock() {
+	if s.TxStatus() == txstatus.TXIDLE {
+		s.startedClientImplicitTx = true
+	}
+}
+
+func (s *QueryStateExecutorImpl) FinishBlock() {
+	s.startedClientImplicitTx = false
+}
+
+func (s *QueryStateExecutorImpl) ResetBlock() {
+	if s.startedClientImplicitTx {
+		/* See flush vs sync */
+		s.SetTxStatus(txstatus.TXIDLE)
+	}
+}
+
 func (s *QueryStateExecutorImpl) ExecBegin(query string, st *lyx.TransactionStmt, implicit bool) error {
+
+	if !implicit {
+		s.startedClientImplicitTx = false
+
+		/* XXX: unwind implicit tx here */
+
+		if s.TxStatus() != txstatus.TXIDLE {
+			// ignore this
+			_ = s.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
+			s.SetCommandCompleteTag("BEGIN")
+			return nil
+		}
+	}
 
 	s.es.implicitTx = implicit
 
@@ -521,7 +558,8 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	/* XXX: double evaluation of CC here is not very wise, we should further refactor this to eliminate plan query from virtual processing in xproto */
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
 	s.Client().SetParam(name, value, isLocal)
@@ -541,7 +579,7 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 		return nil
 	}
 
-	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil || s.StatementFailed() {
 		return err
 	}
 
@@ -909,7 +947,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 	}
 
 	if txt != s.cl.Server().TxStatus() {
-		return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+		return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 	}
 	s.SetTxStatus(txt)
 
@@ -962,7 +1000,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 			}
 
 			if txt != s.cl.Server().TxStatus() {
-				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
+				return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("failed to set target transaction status: %v", txt.String()))
 			}
 			s.SetTxStatus(txt)
 
@@ -1169,9 +1207,9 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		return err
 	}
 
-	var processRow func(*pgproto3.DataRow, kr.ShardKey) *pgproto3.DataRow
-	if p, ok := topPlan.(*plan.DataRowCustomProcess); ok {
-		processRow = p.CustomRowProcess
+	customPlan, _ := topPlan.(*plan.DataRowCustomProcess)
+	if customPlan != nil && customPlan.PrepareCustomRowProcess != nil {
+		customPlan.OpaqueInfo = customPlan.PrepareCustomRowProcess(customPlan.ExecutionTargets())
 	}
 
 	for {
@@ -1256,12 +1294,12 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			}
 		case *pgproto3.DataRow:
 			if replyCl && overwriteCC == nil {
-				if processRow != nil {
+				if customPlan != nil && customPlan.CustomRowProcess != nil {
 					shs := serv.Datashards()
 					if recvIndex >= uint(len(shs)) {
 						continue
 					}
-					v = processRow(v, shs[recvIndex].SHKey())
+					v = customPlan.CustomRowProcess(v, shs[recvIndex].SHKey(), customPlan.OpaqueInfo)
 				}
 				if v != nil {
 					if err := s.Client().Send(v); err != nil {
@@ -1280,7 +1318,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.BindComplete:
 		// never expect these msgs
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-			return rerrors.ErrExecutorSyncLost.Detail("Unexpected prepared statement response in plan deploy")
+			return rerrors.NewExecutorSyncLostError().Detail("Unexpected prepared statement response in plan deploy")
 		case *pgproto3.CommandComplete:
 			/*
 			* Safe for later reuse. For multi-slice statements
@@ -1304,14 +1342,14 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 					}
 				}
 			} else {
-				return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
+				return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("unexpected row description in slice deploy:%+v", msg))
 			}
 		case *pgproto3.ParameterStatus:
 			/* do not resent this to client */
 		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
-			return rerrors.ErrExecutorSyncLost.Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
+			return rerrors.NewExecutorSyncLostError().Detail(fmt.Sprintf("unexpected %T message type in executor slice deploy", msg))
 		}
 	}
 }
@@ -1322,7 +1360,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 	/* First thing first, do sanity check */
 	switch topPlan.(type) {
 	case *plan.CopyPlan:
-		return rerrors.ErrExecutorSyncLost.Detail("copy plan is not convertable to dispatchable plan")
+		return rerrors.NewExecutorSyncLostError().Detail("copy plan is not convertable to dispatchable plan")
 	}
 
 	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {
@@ -1391,9 +1429,11 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 }
 
 func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
+	s.es.completionMsg = nil
 
 	if s.es.replyEmptyQuery {
-		return s.Client().Send(&s.cacheEQ)
+		s.es.completionMsg = &s.cacheEQ
+		return nil
 	}
 
 	/*
@@ -1408,11 +1448,23 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 		}
 		return fmt.Errorf("failed to derive command complete for query")
 	}
-	if s.es.cc != nil {
-		return s.Client().Send(s.es.cc)
+	if s.es.cc != nil && s.es.eMsg == nil {
+		s.es.completionMsg = s.es.cc
+		return nil
 	}
 
-	return s.Client().Send(s.es.eMsg)
+	s.es.completionMsg = s.es.eMsg
+	return nil
+}
+
+func (s *QueryStateExecutorImpl) SendCommandComplete() error {
+	if err := s.DeriveCommandComplete(); err != nil {
+		return err
+	}
+	if s.es.completionMsg != nil {
+		return s.Client().Send(s.es.completionMsg)
+	}
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
@@ -1428,12 +1480,17 @@ func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
 	s.es.eMsg = err
 }
 
+func (s *QueryStateExecutorImpl) StatementFailed() bool {
+	return s.es.eMsg != nil
+}
+
 func (s *QueryStateExecutorImpl) Reset() {
 	s.es.expectRowDesc = false
 	s.es.attachedCopy = false
 	s.es.doFinalizeTx = false
 	s.es.cc = nil
 	s.es.eMsg = nil
+	s.es.completionMsg = nil
 	s.es.replyEmptyQuery = false
 	s.es.copyStmt = nil
 	s.es.portalSuspended = false

@@ -219,10 +219,13 @@ LINE 1: INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
                                                   ^
 INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ROLLBACK;
 -- test ignore of all cmds after metadata error
 BEGIN;
@@ -239,10 +242,13 @@ ERROR:  distribution for relation "fff" not found
 QUERY:  INSERT INTO fff (id) VALUES(1);
 INSERT INTO fff (id) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO fff (id) VALUES(1);
 INSERT INTO fff (id) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO fff (id) VALUES(1);
 INSERT INTO fff (id) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO fff (id) VALUES(1);
 ROLLBACK;
 \set VERBOSITY terse
 BEGIN;

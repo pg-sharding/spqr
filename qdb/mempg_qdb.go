@@ -74,8 +74,8 @@ func RestoreMemPgQDB(backupPath string) (*MemPgQDB, error) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *MemPgQDB) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
-	return q.stateKeeper.AcquireTxOwnership(ctx, txid)
+func (q *MemPgQDB) AcquireTxOwnership(ctx context.Context, txid string, create bool) (bool, error) {
+	return q.stateKeeper.AcquireTxOwnership(ctx, txid, create)
 }
 
 // ChangeTxStatus implements [DCStateKeeper].
@@ -133,6 +133,6 @@ func (q *MemPgQDB) RemoveTXData(ctx context.Context, txid string) error {
 	return q.stateKeeper.RemoveTXData(ctx, txid)
 }
 
-func (q *MemPgQDB) ClearTxStatuses(ctx context.Context) error {
-	return q.stateKeeper.ClearTxStatuses(ctx)
+func (q *MemPgQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error {
+	return q.stateKeeper.ClearTxStatuses(ctx, crazyDrop, gid)
 }

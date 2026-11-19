@@ -1,15 +1,37 @@
 package server
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func TestMultiShardServerCleanupAfterError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	sh1 := mockshard.NewMockShardHostInstance(ctrl)
+	sh2 := mockshard.NewMockShardHostInstance(ctrl)
+	sh3 := mockshard.NewMockShardHostInstance(ctrl)
+	rule := &config.FrontendRule{PoolRollback: true, PoolDiscard: true}
+	firstErr := errors.New("first shard cleanup failed")
+
+	sh1.EXPECT().TxStatus().Return(txstatus.TXACT)
+	sh1.EXPECT().Cleanup(rule).Return(firstErr)
+	sh2.EXPECT().Cleanup(rule).Return(errors.New("second shard cleanup failed"))
+	sh3.EXPECT().Cleanup(rule).Return(nil)
+
+	m := &MultiShardServer{
+		activeShards: []shard.ShardHostInstance{sh1, sh2, sh3},
+	}
+	require.ErrorIs(t, m.Cleanup(rule), firstErr)
+}
 
 func newMockShardWithName(ctrl *gomock.Controller, name string) *mockshard.MockShardHostInstance {
 	sh := mockshard.NewMockShardHostInstance(ctrl)

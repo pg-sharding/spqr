@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -163,7 +164,7 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		}
 		// column rewrite is not yet supported to planner v2
 		if len(r.ColumnSequenceMapping) != 0 && !allowRewrite {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		shs = r.ListStorageRoutes()
@@ -213,7 +214,7 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 			ExecTargets: shs,
 		}, nil
 	default:
-		return nil, rerrors.ErrComplexQuery
+		return nil, rerrors.NewComplexQueryError()
 	}
 }
 
@@ -335,7 +336,7 @@ func TuplePlansByDistributionEntry(
 			if len(distribKey[j].Column) == 0 {
 
 				if len(distribKey[j].Expr.ColRefs) == 0 {
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 
 				acc := []byte{}
@@ -453,7 +454,7 @@ func PlanDistributedRelationForKeys(
 	/* Omit distributed relations */
 	if ds.Id == distributions.REPLICATED {
 		/* should not happen */
-		return nil, rerrors.ErrComplexQuery
+		return nil, rerrors.NewComplexQueryError()
 	}
 	relation, ok := ds.TryGetRelation(qualName)
 	if !ok {
@@ -576,7 +577,7 @@ func ConsoleFunctionCall(
 				Desc: []pgproto3.FieldDescription{},
 			}, nil
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 
 		}
 
@@ -605,7 +606,7 @@ func ConsoleFunctionCall(
 			}
 			return tts, nil
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 	case virtual.PGIsolationTestSessionIsBlocked:
@@ -633,7 +634,7 @@ func ConsoleFunctionCall(
 
 			lockedVirtualPID = uint32(sVal.(uint64))
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		_ = rm.CSM.ClientPoolForeach(func(client client.ClientInfo) error {
@@ -707,7 +708,7 @@ func ConsoleFunctionCall(
 		case *lyx.AExprSConst:
 			target = v.Value
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		return meta.ProcessShow(ctx, &spqrparser.Show{
@@ -845,12 +846,12 @@ func ConsoleFunctionCall(
 		}
 		strVal, ok := args[0].(*lyx.AExprSConst)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		dsn := strVal.Value
 		strVal, ok = args[1].(*lyx.AExprSConst)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		queriesStr := strVal.Value
 		queries := strings.Split(queriesStr, ";")
@@ -923,7 +924,7 @@ func ConsoleFunctionCall(
 		if len(args) == 1 {
 			strVal, ok := args[0].(*lyx.AExprSConst)
 			if !ok {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 			gid := strVal.Value
 
@@ -942,8 +943,8 @@ func ConsoleFunctionCall(
 		}
 		return tts, nil
 	case virtual.VirtualClear2PCData:
-		if len(args) > 1 {
-			return nil, fmt.Errorf("%s function accepts 0 one or arg", fname)
+		if len(args) > 2 {
+			return nil, fmt.Errorf("%s function accepts up to two arguments", fname)
 		}
 		db, err := qdb.GetStateKeeperQDB()
 		if err != nil {
@@ -952,19 +953,42 @@ func ConsoleFunctionCall(
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("clear_2pc_data"),
 		}
-		if len(args) == 0 {
-			if err := db.ClearTxStatuses(ctx); err != nil {
-				return nil, err
+		crazyDrop := false
+		var gid string
+		legacyGIDOnly := false
+		switch len(args) {
+		case 1:
+			switch arg := args[0].(type) {
+			case *lyx.AExprBConst:
+				crazyDrop = arg.Value
+			case *lyx.AExprSConst:
+				gid = arg.Value
+				legacyGIDOnly = true
+			default:
+				return nil, rerrors.NewComplexQueryError()
 			}
-		} else {
-			strVal, ok := args[0].(*lyx.AExprSConst)
+		case 2:
+			arg, ok := args[0].(*lyx.AExprSConst)
 			if !ok {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
-			if err := db.RemoveTXData(ctx, strVal.Value); err != nil {
-				return nil, err
+			gid = arg.Value
+			mode, ok := args[1].(*lyx.AExprBConst)
+			if !ok {
+				return nil, rerrors.NewComplexQueryError()
 			}
-			tts.WriteDataRow(strVal.Value)
+			crazyDrop = mode.Value
+		}
+		if legacyGIDOnly {
+			err = db.RemoveTXData(ctx, gid)
+		} else {
+			err = db.ClearTxStatuses(ctx, crazyDrop, gid)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if gid != "" {
+			tts.WriteDataRow(gid)
 		}
 		return tts, nil
 	case virtual.VirtualCleanOutdated2PCData:
@@ -1022,7 +1046,7 @@ func ConsoleFunctionCall(
 		}
 		strVal, ok := args[0].(*lyx.AExprSConst)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("__spqr__set_next_2pc_gid"),
@@ -1052,7 +1076,9 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true)
+		if err := guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true); err != nil {
+			return nil, err
+		}
 	case virtual.PGAdvisoryUnlockAll:
 		/* Unpin connections */
 		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
@@ -1060,7 +1086,9 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false)
+		if err := guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false); err != nil {
+			return nil, err
+		}
 	}
 
 	switch fname {
@@ -1086,7 +1114,45 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 					Detail("engine V2 is OFF").
 					Hint("try to turn engine V2 to ON")
 			}
-			return &plan.ScatterPlan{BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}}}, nil
+			switch fname {
+			case virtual.PGTryAdvisoryXactLock:
+				type xactLockState struct {
+					pending map[string]struct{}
+					result  []byte
+					seen    bool
+				}
+				return &plan.DataRowCustomProcess{
+					Plan: &plan.ScatterPlan{},
+					PrepareCustomRowProcess: func(targets []kr.ShardKey) any {
+						state := &xactLockState{pending: make(map[string]struct{}, len(targets))}
+						for _, target := range targets {
+							/* XXX: Which shards we expect ? */
+							state.pending[target.Name] = struct{}{}
+						}
+						return state
+					},
+					CustomRowProcess: func(row *pgproto3.DataRow, shard kr.ShardKey, opaque any) *pgproto3.DataRow {
+						state := opaque.(*xactLockState)
+						if _, ok := state.pending[shard.Name]; !ok {
+							return nil
+						}
+						delete(state.pending, shard.Name)
+						value := row.Values[0]
+						if state.seen {
+							value = engine.BoolAnd(state.result, value)
+						}
+						state.result = bytes.Clone(value)
+						state.seen = true
+						if len(state.pending) != 0 {
+							return nil
+						}
+						row.Values[0] = state.result
+						return row
+					},
+				}, nil
+			default:
+				return &plan.ScatterPlan{BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}}}, nil
+			}
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		}
@@ -1197,7 +1263,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 		}
 
 		if len(v.FromClause) > 1 {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		/* we only support reference relation here */
@@ -1218,10 +1284,10 @@ func (p *PlannerV2) PlanDistributedQuery(
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if ds.ID() != distributions.REPLICATED {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			}
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		s.Projection = v.TargetList
@@ -1237,13 +1303,13 @@ func (p *PlannerV2) PlanDistributedQuery(
 			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			} else if ds.Id != distributions.REPLICATED {
 
 				switch q := v.SubSelect.(type) {
 				case *lyx.ValueClause:
 					if v.WithClause != nil {
-						return nil, rerrors.ErrComplexQuery
+						return nil, rerrors.NewComplexQueryError()
 					}
 
 					insertColsPos, _, err := ProcessInsertFromSelectOffsets(ctx, v, rm)
@@ -1260,9 +1326,9 @@ func (p *PlannerV2) PlanDistributedQuery(
 						if sh.Name != shs[0].Name {
 							/* try to rewrite, but only for simple protocol */
 							if len(rm.ParamRefs) == 0 {
-								return RewriteDistributedRelBatchInsert(rm.Query, q.ValuesLoc, shs)
+								return RewriteDistributedRelBatchInsert(rm.Query, q, shs)
 							}
-							return nil, rerrors.ErrComplexQuery
+							return nil, rerrors.NewComplexQueryError()
 						}
 					}
 
@@ -1272,17 +1338,17 @@ func (p *PlannerV2) PlanDistributedQuery(
 							TargetSessionAttrs: config.TargetSessionAttrsRW,
 						}, nil
 					}
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 
 				default:
 					/* XXX: support some simple patterns here?  */
-					return nil, rerrors.ErrComplexQuery
+					return nil, rerrors.NewComplexQueryError()
 				}
 			}
 
 			return p.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 	case *lyx.Update:
@@ -1294,7 +1360,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			}
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
 					BasePlan: plan.BasePlan{
@@ -1322,7 +1388,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			}
 			return p, err
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 	case *lyx.Delete:
@@ -1335,7 +1401,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			}
 
 			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
-				return nil, rerrors.ErrComplexQuery
+				return nil, rerrors.NewComplexQueryError()
 			} else if ds.Id != distributions.REPLICATED {
 				return &plan.ScatterPlan{
 					BasePlan: plan.BasePlan{
@@ -1363,7 +1429,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 			}
 			return p, err
 		default:
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED).Detail(fmt.Sprintf("%T is not yet supported in planner V2", stmt))

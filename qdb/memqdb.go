@@ -171,7 +171,7 @@ func (q *MemQDB) DumpState() error {
 	}
 	tmpPath := q.backupPath + ".tmp"
 
-	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
@@ -217,6 +217,19 @@ func (q *MemQDB) SwapState(state *MemQDBState) {
 	defer q.mu.Unlock()
 
 	q.State = state
+}
+
+func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	oldState := q.State
+	q.State = state
+	if err := q.DumpState(); err != nil {
+		q.State = oldState
+		return err
+	}
+	return nil
 }
 
 // ==============================================================================
@@ -2034,7 +2047,7 @@ func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state, _ TwoPhaseT
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TwoPhaseTx, id, info))
 }
 
-func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) {
+func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string, create bool) (bool, error) {
 	n := time.Now()
 
 	q.mu.Lock()
@@ -2046,6 +2059,9 @@ func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string) (bool, error) 
 		}
 		info.Locked = true
 		return true, nil
+	}
+	if !create {
+		return false, nil
 	}
 	info := &TwoPCInfo{
 		Gid:       id,
@@ -2130,7 +2146,15 @@ func (q *MemQDB) GetTXs(_ context.Context) (map[string]*TwoPCInfo, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.State.TwoPhaseTx, nil
+	txs := make(map[string]*TwoPCInfo, len(q.State.TwoPhaseTx))
+	for gid, info := range q.State.TwoPhaseTx {
+		tx := *info
+		if info.ShardsIDs != nil {
+			tx.ShardsIDs = append([]string{}, info.ShardsIDs...)
+		}
+		txs[gid] = &tx
+	}
+	return txs, nil
 }
 
 // TXInfo implements [DCStateKeeper].
@@ -2173,15 +2197,25 @@ func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.TwoPhaseTx, gid))
 }
 
-func (q *MemQDB) ClearTxStatuses(_ context.Context) error {
+func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gid string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	commands := make([]Command, 0, len(q.State.TwoPhaseTx))
-	for gid := range q.State.TwoPhaseTx {
-		commands = append(commands, NewDeleteCommand(q.State.TwoPhaseTx, gid))
+	if crazyDrop && gid == "" {
+		return ExecuteCommands(q.DumpState, NewDropCommand(q.State.TwoPhaseTx))
 	}
-	q.State.TwoPhaseTx = map[string]*TwoPCInfo{}
+
+	commands := make([]Command, 0, len(q.State.TwoPhaseTx))
+	for txID, info := range q.State.TwoPhaseTx {
+		if gid != "" && txID != gid {
+			continue
+
+		}
+		if !crazyDrop && info.State != TwoPhaseP2 && info.State != TwoPhaseP2Rejected {
+			continue
+		}
+		commands = append(commands, NewDeleteCommand(q.State.TwoPhaseTx, txID))
+	}
 	return ExecuteCommands(q.DumpState, commands...)
 }
 

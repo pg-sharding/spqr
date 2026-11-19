@@ -36,6 +36,11 @@ SET __spqr__commit_strategy TO 1pc;
 PREPARE p1 AS INSERT INTO ref_p_exec (i) VALUES (1);
 BEGIN;
 EXECUTE p1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
 SELECT __spqr__ctid('ref_p_exec');
@@ -50,6 +55,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 BEGIN;
 EXECUTE p1;
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ROLLBACK;
 SELECT __spqr__ctid('ref_p_exec');

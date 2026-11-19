@@ -154,7 +154,7 @@ type ShardDispatchPlan struct {
 	/* Subplan */
 
 	SP   Plan
-	RunF func(server.Server) error
+	RunF func(server.Server) error `json:"-"`
 
 	OverWriteQuery string
 
@@ -280,8 +280,13 @@ type DataRowCustomProcess struct {
 	Plan
 	stmt lyx.Node
 
+	OpaqueInfo any `json:"-"`
+	/* XXX: this is fragile API, which in vulnerable to underlying gang runtime change.
+	* We need better finalize step here. */
 	// Returning nil suppresses a row.
-	CustomRowProcess func(*pgproto3.DataRow, kr.ShardKey) *pgproto3.DataRow `json:"-"`
+	CustomRowProcess func(*pgproto3.DataRow, kr.ShardKey, any) *pgproto3.DataRow `json:"-"`
+	// Reset state for each execution, using the final dispatch targets.
+	PrepareCustomRowProcess func([]kr.ShardKey) any `json:"-"`
 }
 
 func (rf *DataRowCustomProcess) Stmt() lyx.Node {
@@ -292,8 +297,8 @@ func (rf *DataRowCustomProcess) SetStmt(n lyx.Node) {
 	rf.stmt = n
 }
 
-func RowFilter(filterShard kr.ShardKey) func(*pgproto3.DataRow, kr.ShardKey) *pgproto3.DataRow {
-	return func(row *pgproto3.DataRow, shard kr.ShardKey) *pgproto3.DataRow {
+func RowFilter(filterShard kr.ShardKey) func(*pgproto3.DataRow, kr.ShardKey, any) *pgproto3.DataRow {
+	return func(row *pgproto3.DataRow, shard kr.ShardKey, _ any) *pgproto3.DataRow {
 		if shard.Name == filterShard.Name {
 			return row
 		}
@@ -389,8 +394,10 @@ func Combine(p1, p2 Plan) Plan {
 	switch v := p1.(type) {
 	case *DataRowCustomProcess:
 		return &DataRowCustomProcess{
-			Plan:             Combine(v.Plan, p2),
-			CustomRowProcess: v.CustomRowProcess,
+			Plan:                    Combine(v.Plan, p2),
+			OpaqueInfo:              v.OpaqueInfo,
+			CustomRowProcess:        v.CustomRowProcess,
+			PrepareCustomRowProcess: v.PrepareCustomRowProcess,
 		}
 	}
 
@@ -400,10 +407,16 @@ func Combine(p1, p2 Plan) Plan {
 		p1, p2 = p2, p1
 	case *DataRowCustomProcess:
 		return &DataRowCustomProcess{
-			Plan:             Combine(p1, v.Plan),
-			CustomRowProcess: v.CustomRowProcess,
+			Plan:                    Combine(p1, v.Plan),
+			OpaqueInfo:              v.OpaqueInfo,
+			CustomRowProcess:        v.CustomRowProcess,
+			PrepareCustomRowProcess: v.PrepareCustomRowProcess,
 		}
 	}
+
+	basePlan := BasePlan{H: planopts.PlanOpts{
+		AutoLinearize: p1.Opts().AutoLinearize || p2.Opts().AutoLinearize,
+	}}
 
 	switch shq1 := p1.(type) {
 	case *VirtualPlan:
@@ -420,6 +433,7 @@ func Combine(p1, p2 Plan) Plan {
 		}
 
 		return &ScatterPlan{
+			BasePlan:       basePlan,
 			OverwriteQuery: merged,
 			ExecTargets:    mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 		}
@@ -431,6 +445,7 @@ func Combine(p1, p2 Plan) Plan {
 			return p1
 		case *ScatterPlan:
 			return &ScatterPlan{
+				BasePlan:    basePlan,
 				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 			}
 		case *ShardDispatchPlan:
@@ -438,6 +453,7 @@ func Combine(p1, p2 Plan) Plan {
 				return p1
 			} else {
 				return &ScatterPlan{
+					BasePlan:    basePlan,
 					ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 				}
 			}
@@ -445,5 +461,5 @@ func Combine(p1, p2 Plan) Plan {
 	}
 
 	/* execute on all shards */
-	return &ScatterPlan{}
+	return &ScatterPlan{BasePlan: basePlan}
 }

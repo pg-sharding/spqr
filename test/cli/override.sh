@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # Requirements: bash, jq, awk, sed, mktemp, timeout
-# Usage: ./cli_test.sh [/path/to/spqr-router]
+# Usage: ./cli_test.sh [/path/to/spqr-router] [/path/to/router.yaml]
 BIN="${1:-./spqr-router}"
+CFG="${2:-./test/cli/router.yaml}"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq is required. Please install jq." >&2

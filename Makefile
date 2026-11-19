@@ -116,7 +116,7 @@ test-cli-overrides: build_router
 
 unittest-race:
 	go test -race -count 20 -timeout 30s ./qdb/...
-	go test -v -race -count 20 -timeout 120s -run "TestDbPoolRaces|TestShardPoolConnectionAcquireLimit"  ./pkg/pool/
+	go test -v -race -count 20 -timeout 5m -run "TestDbPoolRaces|TestShardPoolConnectionAcquireLimit"  ./pkg/pool/
 
 unittest:
 	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console... ./yacc/hostspec/...

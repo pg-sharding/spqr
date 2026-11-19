@@ -8,10 +8,13 @@ LINE 1: INSERT INTO tt VALUES(1);
                     ^
 INSERT INTO tt VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO tt VALUES(1);
 INSERT INTO tt VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO tt VALUES(1);
 INSERT INTO tt VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO tt VALUES(1);
 ROLLBACK;
 /* should exists */
 TABLE tt;

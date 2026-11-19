@@ -565,6 +565,10 @@ func (sh *Conn) fire(q string) error {
 // Returns:
 // - error: an error if there was a problem during cleanup, otherwise nil.
 func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
+	if sh.Sync() != 0 || sh.DataPending() {
+		return spqrerror.NewByCode(spqrerror.SPQR_UNEXPECTED).Detail("shard connection is not synchronized on cleanup")
+	}
+
 	if rule.PoolRollback {
 		if sh.TxStatus() != txstatus.TXIDLE {
 			if err := sh.fire("ROLLBACK"); err != nil {

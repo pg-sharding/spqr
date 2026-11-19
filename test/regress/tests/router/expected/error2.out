@@ -58,6 +58,7 @@ DETAIL:  Key (id)=(1) already exists.
 -- after error, transaction should be aborted - this should fail with SPQRU
 INSERT INTO tt (id, data) VALUES (3, 'should_fail');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  INSERT INTO tt (id, data) VALUES (3, 'should_fail');
 ROLLBACK;
 -- test that table is still accessible after rollback
 SELECT COUNT(*) FROM tt;
@@ -84,6 +85,7 @@ DETAIL:  Key (id)=(51) already exists.
 -- should fail with transaction aborted error
 SELECT * FROM tt WHERE id = 10;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+QUERY:  SELECT * FROM tt WHERE id = 10;
 ROLLBACK;
 -- test ending tx block with COMMIT
 BEGIN;
@@ -92,7 +94,12 @@ NOTICE: send query to shard(s) : sh1
 ERROR:  division by zero
 COMMIT;
 INSERT INTO ref_err_rel(i) VALUES(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  column "i" of relation "ref_err_rel" does not exist
 LINE 1: INSERT INTO ref_err_rel(i) VALUES(12);
@@ -100,6 +107,11 @@ LINE 1: INSERT INTO ref_err_rel(i) VALUES(12);
 BEGIN;
 \set VERBOSITY SQLSTATE
 INSERT INTO ref_err_rel(i) VALUES(12);
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  42703
 COMMIT;

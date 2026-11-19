@@ -1615,8 +1615,12 @@ distribution_key_entry:
 		$$ = $1
 	}
 
+opt_distribution:
+	DISTRIBUTION
+	| /* EMPTY */
+
 distributed_relation_def:
-	table_or_relation opt_if_not_exists qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	table_or_relation opt_if_not_exists qualified_name opt_distribution KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Relation:    	 $3,

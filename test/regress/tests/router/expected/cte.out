@@ -285,6 +285,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 TRUNCATE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals /* XXX: improve error location report */ limit 1;
+ERROR:  too complex query to route
+LINE 1: ... from vals /* XXX: improve error location report */ limit 1;
+                                                               ^
+QUERY:  with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals /* XXX: improve error location report */ limit 1;
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (i) as (values (201), (288)),
 	z as (insert into table2 (a)
 		select i from vals returning *) table z;
@@ -361,7 +368,12 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+NOTICE: auto-linearize query dispatch because of hazard upsert
 NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
 NOTICE: send query to shard(s) : sh1

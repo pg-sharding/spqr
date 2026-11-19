@@ -54,7 +54,7 @@ step s2_show_2pc_tx         { select __spqr__console_execute('SHOW two_phase_tx(
 step s2_run_2pc_recovery    { select __spqr__run_2pc_recover(); }
 
 session s3
-step s3_clear_2pc_data    { select __spqr__clear_2pc_data() /* __spqr__preferred_engine: v2 */; }
+step s3_clear_2pc_data    { select __spqr__clear_2pc_data(true) /* __spqr__preferred_engine: v2 */; }
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */; }
 
 

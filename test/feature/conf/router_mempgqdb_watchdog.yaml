@@ -16,6 +16,7 @@ use_coordinator_init: true
 enable_icp: true
 allow_two_phase_commit: true
 enable_2pc_watchdog: true
+watchdog_log_file: /var/log/spqr_2pc_wd.log
 watchdog_backend_rule:
   db: regress
   usr: regress

@@ -355,7 +355,10 @@ func (q *EtcdQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbSt
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: drop all key ranges")
 
-	resp, err := q.cli.Delete(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Txn(ctx).Then(
+		clientv3.OpDelete(keyRangesNamespace, clientv3.WithPrefix()),
+		clientv3.OpDelete(keyRangeLockNamespace()+"/", clientv3.WithPrefix()),
+	).Commit()
 	if err != nil {
 		return err
 	}
@@ -373,7 +376,7 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
-	resp := make([]QdbStatement, 2)
+	resp := make([]QdbStatement, 3)
 	statement, err := NewQdbStatement(CmdDelete, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
@@ -385,8 +388,13 @@ func (q *EtcdQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, er
 		return nil, err
 	}
 	resp[1] = *statement
+	statement, err = NewQdbStatement(CmdDelete, LockPath(keyRangeNodePath(id)), "")
+	if err != nil {
+		return nil, err
+	}
+	resp[2] = *statement
 
-	return resp, err
+	return resp, nil
 }
 
 // TODO : unit tests
@@ -728,19 +736,21 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	kr.KeyRangeID = krIdNew
 	kr.Locked = false
 
-	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeNodePath(krId)), clientv3.OpDelete(LockPath(keyRangeNodePath(krId))), clientv3.OpDelete(keyRangeMetaNodePath(krId))).Commit()
+	createStatements, err := q.CreateKeyRange(ctx, kr)
+	if err != nil {
+		return err
+	}
+	etcdCommands, err := packEtcdCommands(createStatements)
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyMissing(keyRangeNodePath(krIdNew))).Then(append([]clientv3.Op{clientv3.OpDelete(keyRangeNodePath(krId)), clientv3.OpDelete(LockPath(keyRangeNodePath(krId))), clientv3.OpDelete(keyRangeMetaNodePath(krId))}, etcdCommands...)...).Commit()
 	if err != nil {
 		return err
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("failed to rename key range: failed to delete old key range")
-	}
-	statements, err := q.CreateKeyRange(ctx, kr)
-	if err != nil {
-		return err
-	}
-	if err = q.ExecNoTransaction(ctx, statements); err != nil {
-		return err
+		return fmt.Errorf("failed to rename key range: key range \"%s\" already exists", krIdNew)
 	}
 	statistics.RecordQDBOperation("RenameKeyRange", time.Since(t))
 	return err

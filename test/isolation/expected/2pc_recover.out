@@ -32,7 +32,7 @@ add key range
 bound -> 0   
 (1 row)
 
-step s3_clear_2pc_data: select __spqr__clear_2pc_data() /* __spqr__preferred_engine: v2 */;
+step s3_clear_2pc_data: select __spqr__clear_2pc_data(true) /* __spqr__preferred_engine: v2 */;
 step s2_set_gid: SELECT __spqr__set_next_2pc_gid('2pc_rec_gid');
 step s2_attach_cp: select __spqr__remote_execute('host=regress_router_2 port=6432 user=regress dbname=spqr-console', 'ATTACH CONTROL POINT 2pc_decision_cp WAIT') /*__spqr__preferred_engine: v2 */;
 control point       
@@ -66,7 +66,7 @@ control point
 DETACH CONTROL POINT
 (1 row)
 
-step s3_clear_2pc_data: select __spqr__clear_2pc_data() /* __spqr__preferred_engine: v2 */;
+step s3_clear_2pc_data: select __spqr__clear_2pc_data(true) /* __spqr__preferred_engine: v2 */;
 step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
 distribution_id
 ---------------
@@ -139,7 +139,7 @@ control point
 DETACH CONTROL POINT
 (1 row)
 
-step s3_clear_2pc_data: select __spqr__clear_2pc_data() /* __spqr__preferred_engine: v2 */;
+step s3_clear_2pc_data: select __spqr__clear_2pc_data(true) /* __spqr__preferred_engine: v2 */;
 step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
 distribution_id
 ---------------

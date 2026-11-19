@@ -40,6 +40,34 @@ var mockDataTransferTransaction = &qdb.DataTransferTransaction{
 	Status:      "fake_st",
 }
 
+func TestMemQDBClearTxStatuses(t *testing.T) {
+	memqdb, err := qdb.NewMemQDB("")
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	memqdb.State.TwoPhaseTx = map[string]*qdb.TwoPCInfo{
+		"planned":    {Gid: "planned", State: qdb.TwoPhaseInitState},
+		"committing": {Gid: "committing", State: qdb.TwoPhaseP1},
+		"committed":  {Gid: "committed", State: qdb.TwoPhaseP2},
+		"rejected":   {Gid: "rejected", State: qdb.TwoPhaseP2Rejected},
+	}
+
+	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), false, ""))
+	assert.Len(t, memqdb.State.TwoPhaseTx, 2)
+	assert.Contains(t, memqdb.State.TwoPhaseTx, "planned")
+	assert.Contains(t, memqdb.State.TwoPhaseTx, "committing")
+	assert.NotContains(t, memqdb.State.TwoPhaseTx, "committed")
+	assert.NotContains(t, memqdb.State.TwoPhaseTx, "rejected")
+
+	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), true, "planned"))
+	assert.Len(t, memqdb.State.TwoPhaseTx, 1)
+	assert.Contains(t, memqdb.State.TwoPhaseTx, "committing")
+
+	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), true, ""))
+	assert.Empty(t, memqdb.State.TwoPhaseTx)
+}
+
 func TestMemQDBGetShardReturnsShardNotFound(t *testing.T) {
 	memqdb, err := qdb.RestoreQDB(MemQDBPath)
 	assert.NoError(t, err)
@@ -413,6 +441,31 @@ func TestMemQDB_CreateSequence(t *testing.T) {
 	actual, err := memqdb.ListSequences(ctx)
 	assert.NoError(err)
 	assert.Equal([]string{"seq"}, actual)
+}
+
+func TestMemQDB_GetTXsReturnsSnapshot(t *testing.T) {
+	ctx := context.Background()
+	memqdb, err := qdb.NewMemQDB("")
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	assert.NoError(t, memqdb.RecordTwoPhaseMembers(ctx, "gid", []string{"sh1"}))
+	txs, err := memqdb.GetTXs(ctx)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	txs["gid"].Gid = "changed"
+	txs["gid"].ShardsIDs[0] = "sh2"
+	tx, err := memqdb.TXInfo(ctx, "gid")
+	if assert.NoError(t, err) {
+		assert.Equal(t, "gid", tx.Gid)
+		assert.Equal(t, []string{"sh1"}, tx.ShardsIDs)
+	}
+
+	assert.NoError(t, memqdb.RemoveTXData(ctx, "gid"))
+	assert.Contains(t, txs, "gid")
 }
 
 func TestMemQDB_NextVal(t *testing.T) {
