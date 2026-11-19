@@ -184,6 +184,11 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 		"sh3",
 	}
 
+	beRule := &config.BackendRule{
+		Usr: "",
+		DB:  "",
+	}
+
 	for i, shname := range shards {
 		mp[shname] = map[string][]shard.ShardHostInstance{}
 		mpCounters[shname] = map[string]*atomic.Uint32{}
@@ -213,8 +218,7 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				sh.EXPECT().TxStatus().Return(txstatus.TXIDLE).AnyTimes()
 
 				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
-				sh.EXPECT().Usr().Return("").AnyTimes()
-				sh.EXPECT().DB().Return("").AnyTimes()
+				sh.EXPECT().BeRule().Return(beRule).AnyTimes()
 
 				counter := 0
 				rwCounter := 0

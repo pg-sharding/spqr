@@ -486,7 +486,7 @@ func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host
 //
 // TODO : unit tests
 func (c *cPool) Put(sh shard.ShardHostInstance) error {
-	if val, ok := c.pools.Load(connId{HostName: sh.Instance().Hostname(), Usr: sh.Usr(), DB: sh.DB()}); ok {
+	if val, ok := c.pools.Load(connId{HostName: sh.Instance().Hostname(), Usr: sh.BeRule().Usr, DB: sh.BeRule().DB}); ok {
 		return val.(Pool).Put(sh)
 	} else {
 		panic(fmt.Sprintf("cPool.Put failed, hostname %s not found", sh.Instance().Hostname()))
@@ -505,7 +505,7 @@ func (c *cPool) Put(sh shard.ShardHostInstance) error {
 //
 // TODO : unit tests
 func (c *cPool) Discard(sh shard.ShardHostInstance) error {
-	if val, ok := c.pools.Load(connId{HostName: sh.Instance().Hostname(), Usr: sh.Usr(), DB: sh.DB()}); ok {
+	if val, ok := c.pools.Load(connId{HostName: sh.Instance().Hostname(), Usr: sh.BeRule().Usr, DB: sh.BeRule().DB}); ok {
 		return val.(Pool).Discard(sh)
 	} else {
 		panic(fmt.Sprintf("cPool.Discard failed, hostname %s not found", sh.Instance().Hostname()))

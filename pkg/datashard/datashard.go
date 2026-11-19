@@ -362,7 +362,14 @@ func (sh *Conn) ID() uint {
 // Returns:
 // - string: The username from auth config or associated with the Conn struct.
 func (sh *Conn) Usr() string {
+	if rule := sh.AuthRule(); rule != nil && rule.Usr != "" {
+		return rule.Usr
+	}
 	return sh.beRule.Usr
+}
+
+func (sh *Conn) BeRule() *config.BackendRule {
+	return sh.beRule
 }
 
 // DB returns the database associated with the Conn struct.
@@ -440,16 +447,12 @@ func NewShardHostInstance(
 // Returns:
 //   - error: An error if authentication fails.
 func (sh *Conn) Auth(sp *startup.StartupParams) error {
-	user := sh.beRule.Usr
-	if rule := sh.AuthRule(); rule != nil && rule.Usr != "" {
-		user = rule.Usr
-	}
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             user,
+			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
 			"spqrguard.prevent_distributed_table_modify": "off",
 			"spqrguard.prevent_reference_table_modify":   "off",

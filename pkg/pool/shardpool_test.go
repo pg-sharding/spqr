@@ -155,13 +155,16 @@ func TestShardSwitchTSA(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
+	beRuleUsr1 := &config.BackendRule{Usr: "usr1", ConnectionLimit: 10}
+	beRuleUsr2 := &config.BackendRule{Usr: "usr2", ConnectionLimit: 10}
+
 	usr1Shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	usr1Shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	usr1Shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	usr1Shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 	usr1Shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 	usr1Shardconn.EXPECT().Usr().AnyTimes().Return("usr1")
-	usr1Shardconn.EXPECT().DB().AnyTimes().Return("")
+	usr1Shardconn.EXPECT().BeRule().AnyTimes().Return(beRuleUsr1)
 
 	usr2Shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	usr2Shardconn.EXPECT().Instance().AnyTimes().Return(ins)
@@ -169,7 +172,7 @@ func TestShardSwitchTSA(t *testing.T) {
 	usr2Shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 	usr2Shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 	usr2Shardconn.EXPECT().Usr().AnyTimes().Return("usr2")
-	usr2Shardconn.EXPECT().DB().AnyTimes().Return("")
+	usr1Shardconn.EXPECT().BeRule().AnyTimes().Return(beRuleUsr2)
 
 	cPool := pool.NewPool(func(_ kr.ShardKey, _ config.Host, be *config.BackendRule) (shard.ShardHostInstance, error) {
 		switch be.Usr {
@@ -182,7 +185,7 @@ func TestShardSwitchTSA(t *testing.T) {
 		}
 	})
 
-	cPool.SetRule(&config.BackendRule{Usr: "usr1", ConnectionLimit: 10})
+	cPool.SetRule(beRuleUsr1)
 
 	conn, err := cPool.ConnectionHost(0, kr.ShardKey{Name: "sh1"}, config.Host{Address: "h1"})
 	assert.NoError(err)
@@ -190,7 +193,7 @@ func TestShardSwitchTSA(t *testing.T) {
 
 	assert.NoError(cPool.Put(conn))
 
-	cPool.SetRule(&config.BackendRule{Usr: "usr2", ConnectionLimit: 10})
+	cPool.SetRule(beRuleUsr2)
 
 	conn, err = cPool.ConnectionHost(0, kr.ShardKey{Name: "sh1"}, config.Host{Address: "h1"})
 	assert.NoError(err)
