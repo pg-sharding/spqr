@@ -137,7 +137,9 @@ eedba
 efef
 elephantsql
 Elts
+emoji
 emptypb
+Emre
 ENONET
 ents
 epn
@@ -171,7 +173,6 @@ FQNTo
 frmp
 frrule
 frsm
-frst
 frules
 ftts
 gcflags
@@ -300,7 +301,6 @@ libprotobuf
 libreadline
 Linting
 localrouter
-locs
 logdir
 logproxy
 lol

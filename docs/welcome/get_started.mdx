@@ -1,189 +1,125 @@
 ---
 title: 'Get Started'
-description: 'Start sharding your PostgreSQL cluster in 5 minutes'
+description: 'Start two PostgreSQL shards and find out which one holds a chat'
 ---
 
-import DockerImage from '/snippets/docker_image.mdx';
-import BuildLocal from '/snippets/build_local.mdx';
+The local demo includes two PostgreSQL shards, the SPQR router, and the `psql` client. If you already have an empty SPQR cluster, [load the demo there](/welcome/demo_database).
 
-Let's set up the simplest possible installation scenario - when you have two shards and one router.
+<Accordion title="Installed the router with install.sh?">
+  If your router is already running with `examples/init.sql`, skip to the `psql` command below.
+  To start it, you need two empty PostgreSQL instances on `localhost:5432` and `localhost:5433` that accept connections as `postgres` without a password.
+  Run these commands from the directory containing `spqr-router`. The first downloads the example configuration if your release omitted it.
 
-<AccordionGroup>
-  <Accordion icon="download" title="Install a prebuilt binary">
-    Download `spqr-router` for Linux or macOS (amd64, arm64) into `./spqr`. The installer verifies the checksum and does not need `sudo`.
+  ```bash
+  test -f examples/quickstart.yaml || curl -fsSL -o examples/quickstart.yaml \
+    https://raw.githubusercontent.com/pg-sharding/spqr/master/examples/quickstart.yaml
+  ./spqr-router run --config examples/quickstart.yaml
+  ```
 
-    ```bash
-    curl -fsSL https://pg-sharding.tech/install.sh | sh
-    # or a specific version and directory
-    curl -fsSL https://pg-sharding.tech/install.sh | INSTALL_DIR=./spqr-custom sh
-    ```
+  If the router reports a socket permission error with an older config, set `unix_socket_dir: .` in `examples/quickstart.yaml` and start the router again.
 
-    The router does not install PostgreSQL. You need two running PostgreSQL instances, on `localhost:5432` and `localhost:5433` by default; change the shard hosts in `examples/quickstart.yaml` if yours run elsewhere. Then start the router:
+  Open a second terminal and connect to the running router.
 
-    ```bash
-    cd "${INSTALL_DIR:-spqr}" && ./spqr-router run --config examples/quickstart.yaml
-    ```
+  ```bash
+  psql -h localhost -p 6432 -U postgres -d postgres
+  ```
 
-    The router applies `examples/init.sql`: rows with `id` from 0 through 49999 go to `sh1`, and rows with `id` 50000 or above go to `sh2`. Check it through the router on port 6432:
+  On fresh shards, run these commands in `psql`.
 
-    ```sql
-    ➜ psql -h localhost -p 6432 -U postgres -d postgres
-    postgres=> CREATE TABLE users (id int PRIMARY KEY, name text);
-    CREATE TABLE
-    postgres=> INSERT INTO users VALUES (1, 'alice');
-    INSERT 0 1
-    postgres=> INSERT INTO users VALUES (60000, 'bob');
-    INSERT 0 1
-    ```
+  ```sql
+  CREATE TABLE users (id int PRIMARY KEY, name text);
+  INSERT INTO users VALUES (1, 'Alice');
+  INSERT INTO users VALUES (60000, 'Bob');
+  SET __spqr__reply_notice TO true;
+  SELECT name FROM users WHERE id = 1;
+  SELECT name FROM users WHERE id = 60000;
+  ```
 
-    `CREATE TABLE` runs on both shards, and each row lands on its own one:
+  The notices show Alice on `sh1` and Bob on `sh2`. The sample rules place IDs starting at 50000 on `sh2`.
+</Accordion>
 
-    ```bash
-    ➜ psql -h localhost -p 5432 -U postgres -Atc 'SELECT * FROM users'
-    1|alice
-    ➜ psql -h localhost -p 5433 -U postgres -Atc 'SELECT * FROM users'
-    60000|bob
-    ```
-  </Accordion>
-  <Accordion icon="docker" title="Pull the SPQR docker image">
-    <DockerImage />
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Build the SPQR locally">
-    <BuildLocal />
-  </Accordion>
-</AccordionGroup>
+## Start the local demo
 
+You need Git, Docker with Compose 2.23.1 or later, and four free local ports. SPQR uses `6432` and `7432`. The shards use `5441` and `5442`.
 
-## Setting up sharding
+<Accordion title="Port already in use?">
+  Choose free local ports and export them in the terminal you'll use for the demo.
 
-First, you need to configure the rules by which the router will decide which of the shards to send each request to.
+  ```bash
+  export ROUTER_PORT=16432 ADMIN_PORT=17432 SHARD1_PORT=15441 SHARD2_PORT=15442
+  ```
+</Accordion>
 
-For this purpose, SPQR has an **administrative console**. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
+Clone the repository, which includes the Small dataset. The load command starts the router and both shards, then loads the data.
 
-```sql
-➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
-SPQR router admin console
-Here you can set up your own routing rules
-------------------------------------------------
-You can find the documentation here
-https://github.com/pg-sharding/spqr/tree/master/docs
-
-psql (14.5 (Homebrew), server console)
-Type "help" to get help.
-
-demo=> SHOW shards;
-  listing data shards  
------------------------
- datashard with ID shard1
- datashard with ID shard2
-(2 rows)
+```bash
+git clone https://github.com/pg-sharding/messenger.git
+cd messenger
+docker compose run --rm load
 ```
 
-To make all things work, the router needs to know the following:
-
-- What tables do you query
-- Which columns in each table should the router search for
-- Types of these columns
-- Mapping from [range of values] to [shard number]
-
-Let's create a distribution first:
-
-```sql
-➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
-demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
-(1 row)
-```
-
-The next step is to specify a list of tables and columns.
-
-```sql
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
-                 attach table               
---------------------------------------------
- attached relation orders to distribution ds1
-(1 row)
-
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
-                 attach table                 
-----------------------------------------------
- attached relation items to distribution ds1
-(1 row)
-```
-
-And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
-
-```sql
-CREATE KEY RANGES FOR DISTRIBUTION ds1 BETWEEN 0 AND 2000;
-```
-<Tip>
-`CREATE KEY RANGES FOR DISTRIBUTION` automatically handles the creation order. If you create key ranges manually with `CREATE KEY RANGE`, you must create them in descending order by lower bound (highest first).
-</Tip>
-
-Here we go! You can play with some SELECTs or INSERTs.
+When the loader prints `Messenger demo is loaded` and the row counts for both shards, you're ready to connect.
 
 ## Connect to SPQR router
 
-Now we can connect to proxy a.k.a. router and play with it. Please use psql again, but this time connect to a different port.
+From the same directory, open a SQL session on the router.
 
 ```bash
-➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=6432"
-psql (13.3, server 9.6.22)
-Type "help" for help.
-
-demo=> CREATE TABLE orders (
-    id SERIAL NOT NULL PRIMARY KEY,
-    customer_id INT,
-    order_date DATE
-);
-NOTICE: send query to shard(s) : shard01,shard02
-CREATE TABLE
-
-demo=> CREATE TABLE items (
-    id SERIAL NOT NULL PRIMARY KEY,
-    order_id SERIAL NOT NULL,
-    name VARCHAR
-);
-NOTICE: send query to shard(s) : shard01,shard02
-CREATE TABLE
+docker compose run --rm psql
 ```
 
-Then, populate it with an order:
+Turn on routing notices and query two chats at opposite ends of the key space.
 
-```bash
-demo=> BEGIN;
-BEGIN
-demo=> INSERT INTO orders (id, customer_id, order_date) VALUES (777, 123456, '2024-01-08');
-NOTICE: send query to shard(s) : shard01
-INSERT 0 1
-demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
-INSERT 0 1
-demo=> COMMIT;
-COMMIT
+```sql
+SET __spqr__reply_notice TO true;
+SELECT title FROM chats WHERE chat_id = 1;
+SELECT title FROM chats WHERE chat_id = 1000;
 ```
 
-> NOTICE messages are disabled by default, specify `show_notice_messages` setting in the router config to enable them
+Compare each title with the shard named in its `NOTICE`.
 
-The order can be found on the first shard:
+| `chat_id` | `title` | Shard shown in `NOTICE` |
+| --- | --- | --- |
+| 1 | Space Daily | `sh2@shard2:5432` |
+| 1000 | Football Daily | `sh1@shard1:5432` |
 
-```bash
-demo=> SELECT * FROM orders WHERE id = 777;
-NOTICE: send query to shard(s) : shard01
-  id  | customer_id | order_date 
-------+-------------+--------------
-  777 |   123456    | '2024-01-08'
-(1 row)
+You used the same connection for both queries. SPQR read the `chat_id` in each query and sent it to the shard that owns that range.
+
+## Read the routing rules
+
+Stay in the same `psql` session. Switch to the admin console on port `7432`, inspect the rules, and switch back.
+
+```sql
+\set router_port :PORT
+\connect - - - 7432
+SHOW relations WHERE relation_name = 'messages';
+SHOW key_ranges WHERE distribution_id = 'ds_chats' ORDER BY lower_bound;
+\connect - - - :router_port
+SET __spqr__reply_notice TO true;
 ```
 
-SPQR can handle such queries as `SELECT * FROM table` but we don't recommend using it. This feature is implemented in a non-transactional way.
+The first result identifies `chat_id` as the sharding key for `messages`. The second shows where each range starts and which shard owns it. Use that map to predict which shard will answer each query below.
 
-```bash
-demo=> SELECT * FROM orders;
-NOTICE: send query to shard(s) : shard01,shard02
-  id  | customer_id | order_date 
-------+-------------+--------------
-  777 |   123456    | '2024-01-08'
-(1 row)
+```sql
+SELECT count(*) FROM messages WHERE chat_id = 500;
+SELECT count(*) FROM messages WHERE chat_id = 501;
 ```
+
+Both counts are 43. Check the notices. Chat 500 is on `sh2` and chat 501 is on `sh1`, where the second range starts.
+
+Next, [find the author of a message and query both shards](/welcome/demo_database#who-wrote-the-latest-message-in-chat-1) in the same `psql` session.
+
+## Stop or remove the local demo
+
+Exit `psql` with `\q`. Run the command you need from the demo directory.
+
+| Action | Command |
+| --- | --- |
+| Pause the demo | `docker compose pause` |
+| Resume after a pause | `docker compose unpause` |
+| Reset the sample data and discard your changes to the demo tables | `docker compose run --rm load` |
+| Remove the demo and its data | `docker compose down --volumes` |
+
+The router keeps its routing rules in memory. After a router restart, use the reset command to recreate the rules and reload the sample data.
+
+For other installations, see the [router binaries](https://github.com/pg-sharding/spqr/releases), [source build instructions](https://github.com/pg-sharding/spqr#development), and [deployment guide](/deployment/overview).

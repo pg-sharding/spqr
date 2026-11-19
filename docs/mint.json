@@ -57,6 +57,7 @@
             "pages": [
                 "welcome/index",
                 "welcome/get_started",
+                "welcome/demo_database",
                 {
                     "group": "Features",
                     "pages": [
@@ -102,7 +103,6 @@
                 {
                     "group": "Sharding",
                     "pages": [
-                        "welcome/get_started",
                         "sharding/ranged",
                         "sharding/hashed",
                         "sharding/sharded_tables",
