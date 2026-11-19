@@ -1161,7 +1161,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
-		if q.TTS != nil && len(q.TTS.Raw) != 0 {
+		if q.TTS != nil && (len(q.TTS.Raw) != 0 || q.SendEmptyRowDescription && len(q.TTS.Desc) != 0) {
 			/* only send row description for simple proto case */
 			if s.es.expectRowDesc {
 				if replyCl {

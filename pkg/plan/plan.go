@@ -238,9 +238,10 @@ type VirtualPlan struct {
 
 	stmt lyx.Node
 
-	OverwriteCC *pgproto3.CommandComplete
-	TTS         *tupleslot.TupleTableSlot
-	SubPlan     Plan
+	OverwriteCC             *pgproto3.CommandComplete
+	TTS                     *tupleslot.TupleTableSlot
+	SubPlan                 Plan
+	SendEmptyRowDescription bool
 }
 
 func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {
