@@ -440,12 +440,16 @@ func NewShardHostInstance(
 // Returns:
 //   - error: An error if authentication fails.
 func (sh *Conn) Auth(sp *startup.StartupParams) error {
+	user := sh.beRule.Usr
+	if rule := sh.AuthRule(); rule != nil && rule.Usr != "" {
+		user = rule.Usr
+	}
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             sh.Usr(),
+			"user":             user,
 			"database":         sh.beRule.DB,
 			"spqrguard.prevent_distributed_table_modify": "off",
 			"spqrguard.prevent_reference_table_modify":   "off",
