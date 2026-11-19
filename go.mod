@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2
-	buf.build/go/protovalidate v1.4.0
+	buf.build/go/protovalidate v1.4.1
 	github.com/BurntSushi/toml v1.6.0
 	github.com/caio/go-tdigest v3.1.0+incompatible
 	github.com/containerd/errdefs v1.0.0
@@ -39,7 +39,7 @@ require (
 )
 
 require (
-	cel.dev/cel-go v0.32.0 // indirect
+	cel.dev/cel-go v0.33.2 // indirect
 	cel.dev/expr v0.25.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
