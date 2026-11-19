@@ -10,16 +10,18 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/xproto"
+	"github.com/spaolacci/murmur3"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, p plan.Plan, forceSimple bool, bind *pgproto3.Bind, portal string, maxrows uint32) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, p plan.Plan, forceSimple bool, bind *pgproto3.Bind, portal string, maxrows uint32, preparedStatements map[string]string) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
 	qd := &QueryDesc{
-		Msg:       bind,
-		ParamsNum: len(bind.Parameters),
-		simple:    forceSimple,
+		Msg:                bind,
+		ParamsNum:          len(bind.Parameters),
+		preparedStatements: preparedStatements,
+		simple:             forceSimple,
 	}
 
 	if portal == "" {
@@ -201,4 +203,46 @@ recvLoop:
 	}
 
 	return rd, nil
+}
+
+func (rst *RelayStateImpl) deployRewrittenPreparedStatements(
+	p plan.Plan,
+	originalHash uint64,
+	original *prepstatement.PreparedStatementDescriptor,
+) (map[string]string, error) {
+	scatter, ok := p.(*plan.ScatterPlan)
+	if !ok || len(scatter.OverwriteQuery) == 0 {
+		return nil, nil
+	}
+	if original == nil || original.ParamDesc == nil {
+		return nil, spqrerror.New(spqrerror.SPQR_UNEXPECTED, "missing parameter types for rewritten query")
+	}
+
+	names := make(map[string]string, len(scatter.OverwriteQuery))
+	for _, shard := range rst.Client().Server().Datashards() {
+		shardName := shard.SHKey().Name
+		query, ok := scatter.OverwriteQuery[shardName]
+		if !ok {
+			continue
+		}
+
+		hash := murmur3.Sum64([]byte(fmt.Sprintf("%d:%s", originalHash, query)))
+		name := fmt.Sprintf("spqr_rewrite_%d", hash)
+		_, msg, err := gangMemberDeployPreparedStatement(shard, hash, &prepstatement.PreparedStatementDefinition{
+			Name:          name,
+			Query:         query,
+			ParameterOIDs: original.ParamDesc.ParameterOIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if response, ok := msg.(*pgproto3.ErrorResponse); ok {
+			return nil, spqrerror.New(response.Code, response.Message)
+		}
+		names[shardName] = name
+	}
+	if len(names) != len(scatter.OverwriteQuery) {
+		return nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "missing shard for rewritten query")
+	}
+	return names, nil
 }
