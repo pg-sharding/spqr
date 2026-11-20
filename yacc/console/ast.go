@@ -461,6 +461,31 @@ type RenameDistributionColumn struct {
 func (*RenameDistributionColumn) iStatement()     {}
 func (*RenameDistributionColumn) iAlterRelation() {}
 
+type AddShardLocalID struct {
+	Column string
+	Start  uint64
+}
+
+func (*AddShardLocalID) iStatement()     {}
+func (*AddShardLocalID) iAlterRelation() {}
+
+type DropShardLocalID struct {
+	Column string
+}
+
+func (*DropShardLocalID) iStatement()     {}
+func (*DropShardLocalID) iAlterRelation() {}
+
+type ResyncShardLocalID struct {
+	Column   string
+	Shard    string
+	MarginMs *uint64
+	FromData bool
+}
+
+func (*ResyncShardLocalID) iStatement()     {}
+func (*ResyncShardLocalID) iAlterRelation() {}
+
 type DetachRelation struct {
 	RelationName *rfqn.RelationFQN
 	IfExists     bool
@@ -578,6 +603,8 @@ const (
 	TaskGroupWorkersStr    = "task_group_workers"
 	ShardsExtendedStr      = "shards_extended"
 	MeanKRLockTimeStr      = "mean_key_range_lock_time"
+	ShardLocalIDsStr       = "shard_local_ids"
+	ShardNodesStr          = "shard_nodes"
 )
 
 // not SHOW target

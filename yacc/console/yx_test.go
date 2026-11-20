@@ -368,6 +368,22 @@ func TestSimpleShow(t *testing.T) {
 				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 		},
+		{
+			query: "SHOW shard_local_ids",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.ShardLocalIDsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
+		{
+			query: "SHOW shard_nodes",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.ShardNodesStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -1222,6 +1238,8 @@ func TestAlter(t *testing.T) {
 		err   error
 	}
 
+	margin := uint64(300000)
+
 	for _, tt := range []tcase{
 		{
 			query: "ALTER SYSTEM RESTART",
@@ -1826,6 +1844,66 @@ func TestAlter(t *testing.T) {
 							OldName: "old_col",
 							NewName: "new_col",
 						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION orders ADD SHARD LOCAL ID id START 1000000;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "orders",
+						},
+						Element: &spqrparser.AddShardLocalID{Column: "id", Start: 1000000},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION orders DROP SHARD LOCAL ID id;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "orders",
+						},
+						Element: &spqrparser.DropShardLocalID{Column: "id"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION orders RESYNC SHARD LOCAL ID id ON SHARD sh2 MARGIN 300000;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "orders",
+						},
+						Element: &spqrparser.ResyncShardLocalID{Column: "id", Shard: "sh2", MarginMs: &margin},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION orders RESYNC SHARD LOCAL ID id FROM DATA;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "orders",
+						},
+						Element: &spqrparser.ResyncShardLocalID{Column: "id", FromData: true},
 					},
 				},
 			},
