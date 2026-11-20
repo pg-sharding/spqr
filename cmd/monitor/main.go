@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
@@ -23,23 +24,23 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
-	shardDataFilePath string
-	qdbAddrs          []string
-	coordAddr         string
-	stateFilePath     string
-	tableSampleSize   float64
-	keyRangeId        string
-	dryRun            bool
-	routerHost        string
-	routerPort        string
-	routerUser        string
-	routerDatabase    string
-	routerPassword    string
-	simpleProtocol    bool
+	shardDataFilePath  string
+	qdbAddrs           []string
+	coordAddr          string
+	coordinatorCfgPath string
+	stateFilePath      string
+	tableSampleSize    float64
+	keyRangeId         string
+	dryRun             bool
+	routerHost         string
+	routerPort         string
+	routerUser         string
+	routerDatabase     string
+	routerPassword     string
+	simpleProtocol     bool
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-monitor command args...",
@@ -149,7 +150,17 @@ var (
 				}
 				lockedKeyRanges[id] = keyRange
 			}
-			conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if coordinatorCfgPath == "" {
+				return fmt.Errorf("coordinator config path must be provided via --coordinator-config to establish a connection")
+			}
+			if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+				return fmt.Errorf("failed to load coordinator config: %w", err)
+			}
+			dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+			if err != nil {
+				return fmt.Errorf("init coordinator gRPC TLS: %w", err)
+			}
+			conn, err := grpc.NewClient(coordAddr, dialOption)
 			if err != nil {
 				return err
 			}
@@ -399,6 +410,7 @@ func init() {
 
 	recoverKeyRangesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "only check key ranges, do not delete anything")
 	recoverKeyRangesCmd.Flags().StringVar(&coordAddr, "coordinator-addr", "localhost:7003", "coordinator grpc api address")
+	recoverKeyRangesCmd.Flags().StringVar(&coordinatorCfgPath, "coordinator-config", "", "path to coordinator config file (required)")
 
 	verifyKeyRangeCmd.Flags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
 	checkMigrationsCmd.Flags().StringVar(&stateFilePath, "file", "", "result file path")

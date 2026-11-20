@@ -2,9 +2,11 @@ package rebootstrap
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -14,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.EtcdQDB) error {
@@ -215,7 +216,11 @@ func RebootstrapQDB(ctx context.Context, db qdb.QDB, mgr topology.RouterMgr) err
 		if coordAddr == "" {
 			return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "cannot re-bootstrap router").Hint("re-bootstrapping is only allowed for coordinator-managed routers")
 		}
-		cc, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+		if err != nil {
+			return fmt.Errorf("init coordinator gRPC TLS for %q: %w", coordAddr, err)
+		}
+		cc, err := grpc.NewClient(coordAddr, dialOption)
 		if err != nil {
 			return err
 		}

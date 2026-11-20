@@ -11,14 +11,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -29,6 +30,7 @@ var (
 	maxRedistributeTasks int
 	qdbAddrs             []string
 	coordinatorAddr      string
+	coordinatorCfgPath   string
 	dryRun               bool
 	interval             time.Duration
 
@@ -86,6 +88,7 @@ func init() {
 	generateTaskCmd.AddCommand(runCmd)
 	generateTaskCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
 	generateTaskCmd.PersistentFlags().StringVar(&coordinatorAddr, "coordinator-addr", "", "address of coordinator grpc server")
+	generateTaskCmd.PersistentFlags().StringVar(&coordinatorCfgPath, "coordinator-config", "", "path to coordinator config file (required)")
 	generateTaskCmd.PersistentFlags().IntVar(&chunkSize, "chunk-size", 0, "how many keys are transferred by one redistribute task")
 	generateTaskCmd.PersistentFlags().IntVar(&batchSize, "batch-size", 0, "how many keys are transferred at a time")
 	generateTaskCmd.PersistentFlags().StringVar(&shardToID, "shard-id", "", "ID of the shard to transfer data to")
@@ -113,7 +116,17 @@ func generateTask(_ *cobra.Command, _ []string) error {
 	if chunkSize <= 0 {
 		return fmt.Errorf("chunk size must be more than zero")
 	}
-	conn, err := grpc.NewClient(coordinatorAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if coordinatorCfgPath == "" {
+		return fmt.Errorf("coordinator config path must be provided via --coordinator-config to establish a connection")
+	}
+	if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+		return fmt.Errorf("failed to load coordinator config: %w", err)
+	}
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return fmt.Errorf("init coordinator gRPC TLS: %w", err)
+	}
+	conn, err := grpc.NewClient(coordinatorAddr, dialOption)
 	if err != nil {
 		return err
 	}
