@@ -572,7 +572,13 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 		name := virtualParamTransformName(hintName)
 		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
 			if !config.RouterConfig().Qr.IgnoreUnknownHints {
-				return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+				if err := rst.Client().Send(&pgproto3.NoticeResponse{
+					Severity: "WARNING",
+					Code:     "01000",
+					Message:  fmt.Sprintf("hint %q does not exist", hintName),
+				}); err != nil {
+					return err
+				}
 			}
 			delete(mp, hintName)
 		}
