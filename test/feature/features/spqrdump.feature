@@ -142,7 +142,8 @@ Feature: spqr-dump test
     When I run SQL on host "coordinator"
     """
     CREATE REFERENCE TABLE "ref_t" AUTO INCREMENT "id" START 10 ON sh1, sh2 ;
-    CREATE REFERENCE TABLE "schema.ref_t" ON sh1;
+    CREATE REFERENCE TABLE "schema"."ref_schema" ON sh1;
+    CREATE REFERENCE TABLE ref_multi_increment AUTO INCREMENT id, id2;
     """
     Then command return code should be "0"
     
@@ -154,5 +155,6 @@ Feature: spqr-dump test
     And command output should match regexp
     """
     CREATE REFERENCE RELATION .*ref_t.* AUTO INCREMENT .*id.* ON SHARDS sh1, sh2;
-    CREATE REFERENCE RELATION .*schema.ref_t.*  ON SHARDS sh1;
+    CREATE REFERENCE RELATION .*schema.*\..*ref_schema.*  ON SHARDS sh1;
+    CREATE REFERENCE RELATION .*ref_multi_increment.* AUTO INCREMENT .*id.*, .*id2.* ON SHARDS sh1, sh2;
     """

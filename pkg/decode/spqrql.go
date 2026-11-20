@@ -60,9 +60,9 @@ func ReferenceRelation(rel *protos.ReferenceRelation) string {
 	if len(rel.SequenceColumns) > 0 {
 		cols := make([]string, 0, len(rel.SequenceColumns))
 		for col := range rel.SequenceColumns {
-			cols = append(cols, col)
+			cols = append(cols, fmt.Sprintf("\"%s\"", col))
 		}
-		autoIncEntry = fmt.Sprintf("AUTO INCREMENT \"%s\"", strings.Join(cols, ", "))
+		autoIncEntry = fmt.Sprintf("AUTO INCREMENT %s", strings.Join(cols, ", "))
 	}
-	return fmt.Sprintf("CREATE REFERENCE RELATION \"%s\" %s ON SHARDS %s;", rfqn.RelationFQNFromProto(rel.RelName).String(), autoIncEntry, strings.Join(rel.ShardIds, ", "))
+	return fmt.Sprintf("CREATE REFERENCE RELATION \"%s\" %s ON SHARDS %s;", rfqn.RelationFQNFromProto(rel.RelName).QuotedString(), autoIncEntry, strings.Join(rel.ShardIds, ", "))
 }

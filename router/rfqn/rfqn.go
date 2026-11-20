@@ -46,6 +46,13 @@ func (n RelationFQN) String() string {
 	return n.SchemaName + "." + n.RelationName
 }
 
+func (n RelationFQN) QuotedString() string {
+	if len(n.SchemaName) < 1 {
+		return "\"" + n.RelationName + "\""
+	}
+	return "\"" + n.SchemaName + "\".\"" + n.RelationName + "\""
+}
+
 func (n RelationFQN) MetadataKey() string {
 	sch := n.GetSchema()
 	return sch + "." + n.RelationName
