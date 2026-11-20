@@ -178,7 +178,7 @@ func (q *MemQDB) DumpState() error {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file in MemQDB.DumpState")
 		}
 	}(f)
 
@@ -197,12 +197,6 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
-		}
-	}(f)
 
 	err = os.Rename(tmpPath, q.backupPath)
 	if err != nil {
