@@ -1,0 +1,55 @@
+host: ''
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7000'
+router_mode: PROXY
+log_level: debug
+memqdb_backup_path: metadb.backup
+
+time_quantiles:
+  - 0.75
+world_shard_fallback: true
+show_notice_messages: true
+allow_two_phase_commit: true
+backup_tx_data_only: true
+tx_data_ttl: 60m
+enable_2pc_watchdog: true
+query_routing:
+  forbid_direct_shard_queries: true
+  use_spqrguard: true
+frontend_rules:
+  - usr: user1
+    db: db1
+    pool_default: true
+    pool_mode: TRANSACTION
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
+shards:
+  sh1:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_1:6432'
+  sh2:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_2:6432'
+
+backend_rules:
+  - usr: user1
+    db: db1
+    connection_limit: 50
