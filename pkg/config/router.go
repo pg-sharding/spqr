@@ -207,7 +207,6 @@ type QRouter struct {
 	DefaultTSA                   string                `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
-	IgnoreUnknownHints           bool                  `json:"ignore_unknown_hints" toml:"ignore_unknown_hints" yaml:"ignore_unknown_hints"`
 	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
 	PreferEngine                 string                `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
 
