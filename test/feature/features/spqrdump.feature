@@ -137,3 +137,22 @@ Feature: spqr-dump test
     CREATE KEY RANGE kr5 FROM 75 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     CREATE KEY RANGE kr4 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds2;
     """
+
+  Scenario: dump via GRPC works with reference tables
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE "ref_t" AUTO INCREMENT "id" START 10 ON sh1, sh2 ;
+    CREATE REFERENCE TABLE "schema.ref_t" ON sh1;
+    """
+    Then command return code should be "0"
+    
+    When I run command on host "router"
+    """
+    /spqr/spqr-dump dump -e regress_router:7000
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    CREATE REFERENCE RELATION .*ref_t.* AUTO INCREMENT .*id.* ON SHARDS sh1, sh2;
+    CREATE REFERENCE RELATION .*schema.ref_t.*  ON SHARDS sh1;
+    """
