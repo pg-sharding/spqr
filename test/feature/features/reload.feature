@@ -91,3 +91,34 @@ Feature: Config reloading works
     """
     NOTICE:.*send query to shard\(s\) : sh1
     """
+
+  @pure_pg
+  Scenario: Backend auth works with overwritten user in auth rules
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_auth_rules.yaml
+    """
+    Given cluster is up and running
+    When I run command on host "shard1"
+    """
+    psql -c "CREATE user regress2 WITH PASSWORD '12345678' LOGIN" -d postgres -U postgres -p 6432
+    """
+    Then command return code should be "0"
+    When I run command on host "shard1"
+    """
+    datadir=$(sudo -u postgres psql -p 6432 -c "SHOW data_directory" | grep 'var/lib')
+    echo 'host all all all password' > $datadir/pg_hba.conf
+    service postgresql reload
+    """
+    Then command return code should be "0"
+    And I wait for host "shard1" to respond
+
+    When I run SQL on host "router" as user "regress3"
+    """
+    SELECT 1 /* __spqr__execute_on: sh1 */
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1
+    """
