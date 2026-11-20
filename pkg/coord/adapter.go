@@ -469,15 +469,8 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return spqrerror.CleanGrpcError(err)
 }
 
-func (a *Adapter) RebalanceDistribution(ctx context.Context, distributionID string, _ *kr.CustomDataTypeRange, shards []string) error {
-	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.RebalanceDistribution(ctx, &proto.RebalanceDistributionRequest{
-		DistributionId: distributionID,
-		Shards:         shards,
-	})
-
-	spqrlog.Zero.Debug().Err(err).Msg("proxy RebalanceKeyRange to coordinator")
-	return spqrerror.CleanGrpcError(err)
+func (a *Adapter) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "RebalanceDistribution is not supported via adapter")
 }
 
 // RenameKeyRange renames a key range.
