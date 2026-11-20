@@ -75,6 +75,7 @@ func randomHex(n int) (string, error) {
 	
 	redistribute           *RedistributeKeyRange
 	rebalance 			   *RebalanceDistribution
+	stopRebalance          *StopRebalance
 
 	invalidate             *Invalidate
 	sync_reference_tables  *SyncReferenceTables
@@ -356,6 +357,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
+%type <stopRebalance> stop_rebalance_stmt
 %type <bool> opt_no_wait opt_immediate
 
 %type<grant> GrantStmt
@@ -495,6 +497,10 @@ command:
 		$$ = $1
 	}
 	| stop_move_task_group
+	{
+		$$ = $1
+	}
+	| stop_rebalance_stmt
 	{
 		$$ = $1
 	}
@@ -936,6 +942,9 @@ reserved_keyword:
 	{
 		$$ = $1
 	} | ORDER
+	{
+		$$ = $1
+	} | REBALANCE
 	{
 		$$ = $1
 	}
@@ -1906,6 +1915,8 @@ help_word:
 	| STALE { $$ = "STALE" }
 	| BACKENDS { $$ = "BACKENDS" }
 	| SCHEMA { $$ = "SCHEMA" }
+	| REBALANCE { $$ = "REBALANCE" }
+	| STOP { $$ = "STOP" }
 
 lock_stmt:
 	LOCK key_range_select_stmt
@@ -2242,25 +2253,34 @@ redistribute_stmt:
 	}
 
 rebalance_stmt:
-	REBALANCE distribution_select_stmt opt_custom_distr_range
+	REBALANCE distribution_select_stmt opt_custom_distr_range opt_batch_size
 	{
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
 			DataKeyRange: $3,
 			Shards: []string{"*"},
+			BatchSize: $4,
 		}
-	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING ALL SHARDS {
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING ALL SHARDS opt_batch_size {
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
 			DataKeyRange: $3,
 			Shards: []string{"*"},
+			BatchSize: $7,
 		}
-	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING SHARDS any_id_list {
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING SHARDS any_id_list opt_batch_size {
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
 			DataKeyRange: $3,
 			Shards: $6,
+			BatchSize: $7,
 		}
+	}
+
+stop_rebalance_stmt:
+	STOP REBALANCE
+	{
+		$$ = &StopRebalance{}
 	}
 
 opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }

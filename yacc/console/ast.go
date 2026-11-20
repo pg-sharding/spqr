@@ -220,7 +220,10 @@ type RebalanceDistribution struct {
 	Distribution *DistributionSelector
 	Shards       []string
 	DataKeyRange *CustomDistributionRange
+	BatchSize    int
 }
+
+type StopRebalance struct{}
 
 type KeyRangeSelector struct {
 	KeyRangeID string
@@ -619,6 +622,7 @@ func (*Listen) iStatement()                             {}
 func (*MoveKeyRange) iStatement()                       {}
 func (*RedistributeKeyRange) iStatement()               {}
 func (*RebalanceDistribution) iStatement()              {}
+func (*StopRebalance) iStatement()                      {}
 func (*SplitKeyRange) iStatement()                      {}
 func (*UniteKeyRange) iStatement()                      {}
 func (*DistributionDefinition) iStatement()             {}

@@ -1451,6 +1451,8 @@ func ProcMetadataCommand(ctx context.Context,
 		return processRedistribute(ctx, stmt, mgr, icpCH)
 	case *spqrparser.RebalanceDistribution:
 		return processRebalanceDistribution(ctx, stmt, mgr)
+	case *spqrparser.StopRebalance:
+		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "STOP REBALANCE is not implemented yet")
 	case *spqrparser.Invalidate:
 
 		tts := &tupleslot.TupleTableSlot{
