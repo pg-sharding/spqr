@@ -232,6 +232,29 @@ func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
 	return nil
 }
 
+func (q *MemQDB) Snapshot() XQDB {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	b, err := json.Marshal(q.State)
+	if err != nil {
+		return nil
+	}
+	qdb, err := NewMemQDB("")
+	if err != nil {
+		return nil
+	}
+	if err := json.Unmarshal(b, qdb.State); err != nil {
+		return nil
+	}
+	for kr, locked := range qdb.State.Freq {
+		if locked {
+			qdb.State.Locks[kr].Lock()
+		}
+	}
+	return qdb
+}
+
 // ==============================================================================
 //                               MISC
 // ==============================================================================
