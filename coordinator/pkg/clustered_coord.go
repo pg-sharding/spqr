@@ -2471,17 +2471,6 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 	}
 }
 
-// RebalanceDistribution recalculates key ranges for the given distribution,
-// splitting the whole data range into even key ranges and distributing them
-// among the provided shards. If shards contains "*", all available shards are used.
-//
-// Parameters:
-//   - ctx (context.Context): The context for the operation.
-//   - distributionID (string): The ID of the distribution to rebalance.
-//   - shards ([]string): The shard IDs to distribute key ranges among. Use ["*"] for all shards.
-//
-// Returns:
-//   - error: An error if the rebalance fails.
 func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, dataRange *kr.CustomDataTypeRange, shards []string) error {
 	return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 }
