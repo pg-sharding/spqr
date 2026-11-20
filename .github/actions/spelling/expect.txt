@@ -88,6 +88,7 @@ cyclomatic
 Darth
 datacenter
 datadir
+datarange
 datarow
 datashard
 datatransfer
@@ -622,6 +623,7 @@ topmgr
 tpcc
 tracelog
 tran
+tranmngr
 transferworker
 truncatable
 tsa
