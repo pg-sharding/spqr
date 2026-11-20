@@ -64,5 +64,5 @@ func ReferenceRelation(rel *protos.ReferenceRelation) string {
 		}
 		autoIncEntry = fmt.Sprintf("AUTO INCREMENT %s", strings.Join(cols, ", "))
 	}
-	return fmt.Sprintf("CREATE REFERENCE RELATION \"%s\" %s ON SHARDS %s;", rfqn.RelationFQNFromProto(rel.RelName).QuotedString(), autoIncEntry, strings.Join(rel.ShardIds, ", "))
+	return fmt.Sprintf("CREATE REFERENCE RELATION %s %s ON SHARDS %s;", rfqn.RelationFQNFromProto(rel.RelName).QuotedString(), autoIncEntry, strings.Join(rel.ShardIds, ", "))
 }

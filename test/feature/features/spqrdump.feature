@@ -154,7 +154,13 @@ Feature: spqr-dump test
     Then command return code should be "0"
     And command output should match regexp
     """
-    CREATE REFERENCE RELATION .*ref_t.* AUTO INCREMENT .*id.* ON SHARDS sh1, sh2;
-    CREATE REFERENCE RELATION .*schema.*\..*ref_schema.*  ON SHARDS sh1;
-    CREATE REFERENCE RELATION .*ref_multi_increment.* AUTO INCREMENT .*id.*, .*id2.* ON SHARDS sh1, sh2;
+    CREATE REFERENCE RELATION "ref_multi_increment" AUTO INCREMENT ("id2", "id"|"id", "id2") ON SHARDS sh1, sh2;
+    """
+    And command output should match regexp
+    """
+    CREATE REFERENCE RELATION "schema"\."ref_schema"  ON SHARDS sh1;
+    """
+    And command output should match regexp
+    """
+    CREATE REFERENCE RELATION "ref_t" AUTO INCREMENT "id" ON SHARDS sh1, sh2;
     """
