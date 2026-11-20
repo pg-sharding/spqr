@@ -4,5 +4,7 @@ SELECT FROM copy_test WHERE id = 29;
 --
 (0 rows)
 
-COPY copy_test(id) FROM STDIN;
+SET __spqr__allow_multishard TO true;
+COPY copy_test(id) FROM STDIN /* __spqr__allow_multishard: true, __spqr__reply_notice: true */;
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432
 ROLLBACK;

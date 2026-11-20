@@ -571,7 +571,10 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	for hintName := range mp {
 		name := virtualParamTransformName(hintName)
 		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
-			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+			if !config.RouterConfig().Qr.IgnoreUnknownHints {
+				return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+			}
+			delete(mp, hintName)
 		}
 	}
 
