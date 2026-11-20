@@ -2471,7 +2471,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 	}
 }
 
-func (qc *ClusteredCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, dataRange *kr.CustomDataTypeRange, shards []string) error {
+func (qc *ClusteredCoordinator) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
 	return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 }
 
