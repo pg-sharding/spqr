@@ -624,7 +624,7 @@ func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.Redistribut
 }
 
 func (lc *Coordinator) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
-	panic("unimplemneted")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "RebalanceDistribution requires a clustered coordinator")
 }
 
 // RegisterRouter implements meta.EntityMgr.
