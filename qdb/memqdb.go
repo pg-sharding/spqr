@@ -3,8 +3,10 @@ package qdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -164,6 +166,9 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	return qdb, nil
 }
 
+// Once renamed, rolling back in-memory state would diverge from the visible backup.
+var errBackupRenamed = errors.New("backup renamed but directory sync failed")
+
 // TODO : unit tests
 func (q *MemQDB) DumpState() error {
 	if q.backupPath == "" {
@@ -197,6 +202,9 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
@@ -204,9 +212,18 @@ func (q *MemQDB) DumpState() error {
 		}
 	}(f)
 
+	dir, err := os.Open(filepath.Dir(q.backupPath))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dir.Close() }()
+
 	err = os.Rename(tmpPath, q.backupPath)
 	if err != nil {
 		return err
+	}
+	if err := dir.Sync(); err != nil {
+		return fmt.Errorf("%w: %w", errBackupRenamed, err)
 	}
 
 	return nil
@@ -226,7 +243,9 @@ func (q *MemQDB) SwapAndDumpState(state *MemQDBState) error {
 	oldState := q.State
 	q.State = state
 	if err := q.DumpState(); err != nil {
-		q.State = oldState
+		if !errors.Is(err, errBackupRenamed) {
+			q.State = oldState
+		}
 		return err
 	}
 	return nil
