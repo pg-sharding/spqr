@@ -1,6 +1,7 @@
 package qdb
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 
@@ -153,6 +154,9 @@ func ExecuteCommands(saver func() error, commands ...Command) error {
 	completed, err := doCommands(commands...)
 	if err == nil {
 		err = saver()
+		if errors.Is(err, errBackupRenamed) {
+			return err
+		}
 	}
 	if err != nil {
 		undoErr := undoCommands(commands[:completed]...)
