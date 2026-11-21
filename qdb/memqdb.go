@@ -198,6 +198,7 @@ func (q *MemQDB) DumpState() error {
 		return err
 	}
 
+	/* XXX: sic! this overwrites dest file */
 	err = os.Rename(tmpPath, q.backupPath)
 	if err != nil {
 		return err
