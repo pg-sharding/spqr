@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -197,14 +198,23 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+
+	dir, err := os.Open(filepath.Dir(q.backupPath))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dir.Close() }()
 
 	/* XXX: sic! this overwrites dest file */
 	err = os.Rename(tmpPath, q.backupPath)
 	if err != nil {
 		return err
 	}
-
-	return nil
+	/* XXX: backup is already replaced if this fails, but the caller rolls back in-memory state. */
+	return dir.Sync()
 }
 
 func (q *MemQDB) SwapState(state *MemQDBState) {
