@@ -463,7 +463,7 @@ func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, g
 	query := "DELETE FROM spqr_metadata.spqr_tx_status"
 	var args []any
 	if len(gids) > 0 {
-		query += " WHERE id IN ($1::text)"
+		query += " WHERE id = ANY($1::text[])"
 		args = append(args, gids)
 		if !crazyDrop {
 			query += " AND status IN ($2, $3)"
