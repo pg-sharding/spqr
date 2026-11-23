@@ -238,6 +238,7 @@ installable
 interactor
 INTERVALOID
 IPrepare
+IReload
 IRun
 isgomock
 isolationtester
@@ -417,6 +418,7 @@ PIDs
 pids
 pitr
 pkgclient
+pkill
 planopts
 plpgsql
 podman
