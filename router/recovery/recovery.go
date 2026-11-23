@@ -383,7 +383,7 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 
 	res := make([]string, 0)
 	for _, tx := range txs {
-		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && !tx.UpdatedAt.IsZero() && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
 			res = append(res, tx.Gid)
 			if err := d.d.RemoveTXData(ctx, tx.Gid); err != nil {
 				return nil, err
