@@ -43,9 +43,11 @@ func TestCleanUpOldTXs(t *testing.T) {
 
 	// Only the two finalized+stale GIDs must be removed.
 	removed := map[string]bool{}
-	d.EXPECT().RemoveTXData(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(_ context.Context, gid string) error {
-			removed[gid] = true
+	d.EXPECT().ClearTxStatuses(gomock.Any(), false, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ bool, gids []string) error {
+			for _, gid := range gids {
+				removed[gid] = true
+			}
 			return nil
 		}).AnyTimes()
 
