@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 // KeyRange returns query to create given key range
@@ -52,4 +53,16 @@ func DistributedRelation(rel *protos.DistributedRelation, ds string) string {
 
 	}
 	return fmt.Sprintf("ALTER DISTRIBUTION %s ATTACH RELATION %s DISTRIBUTION KEY %s;", ds, rel.Name, strings.Join(elems, ", "))
+}
+
+func ReferenceRelation(rel *protos.ReferenceRelation) string {
+	autoIncEntry := ""
+	if len(rel.SequenceColumns) > 0 {
+		cols := make([]string, 0, len(rel.SequenceColumns))
+		for col := range rel.SequenceColumns {
+			cols = append(cols, fmt.Sprintf("\"%s\"", col))
+		}
+		autoIncEntry = fmt.Sprintf("AUTO INCREMENT %s", strings.Join(cols, ", "))
+	}
+	return fmt.Sprintf("CREATE REFERENCE RELATION %s %s ON SHARDS %s;", rfqn.RelationFQNFromProto(rel.RelName).QuotedString(), autoIncEntry, strings.Join(rel.ShardIds, ", "))
 }
