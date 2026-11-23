@@ -686,6 +686,7 @@ xmove
 xmovestr
 xproto
 XQDB
+xrec
 xrecord
 xtab
 xxerr
