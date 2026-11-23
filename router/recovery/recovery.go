@@ -376,7 +376,7 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 }
 
 func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
-	txs, err := d.d.GetTXs(ctx)
+	txs, err := d.d.TXInfos(ctx)
 	if err != nil {
 		return nil, err
 	}
