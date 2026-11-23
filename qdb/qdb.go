@@ -207,6 +207,7 @@ type DCStateKeeper interface {
 	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState, curExpectedState TwoPhaseTxState) error
 
 	ListTXNames(ctx context.Context) ([]string, error)
+	// Deprecated: Use TXInfos
 	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
 
 	TXInfo(ctx context.Context, gid string) (TwoPCInfo, error)

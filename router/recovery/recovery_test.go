@@ -39,7 +39,14 @@ func TestCleanUpOldTXs(t *testing.T) {
 	}
 
 	d := mock.NewMockXDCStateKeeper(ctrl)
-	d.EXPECT().GetTXs(gomock.Any()).Return(txs, nil).AnyTimes()
+	d.EXPECT().TXInfos(gomock.Any()).DoAndReturn(func(_ context.Context) ([]qdb.TwoPCInfo, error) {
+		res := make([]qdb.TwoPCInfo, 0, len(txs))
+		for _, tx := range txs {
+			txCopy := *tx
+			res = append(res, txCopy)
+		}
+		return res, nil
+	}).AnyTimes()
 
 	// Only the two finalized+stale GIDs must be removed.
 	removed := map[string]bool{}
