@@ -20,14 +20,14 @@ Feature: Config reloading works
     Then command return code should be "0"
     And I wait for host "shard1" to respond
 
-    When I run SQL on host "router" as user "regress2"
+    When I run command on host "router"
     """
-    SELECT 1 /* __spqr__execute_on: sh1 */
+    psql -h localhost -p 6432 -U regress2 -d regress -c 'SELECT 1' 2>&1
     """
-    Then command return code should be "1"
-    And SQL error on host "router" should match regexp
+    Then command return code should be "2"
+    And command output should match regexp
     """
-    shard sh1: failed to find primary
+    password authentication failed for user "regress2"
     """
     When I run command on host "router"
     """
