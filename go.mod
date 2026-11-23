@@ -28,7 +28,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
 	github.com/xdg-go/scram v1.4.0
-	go.etcd.io/etcd/client/v3 v3.7.3
+	go.etcd.io/etcd/client/v3 v3.7.4
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.59.0
 	golang.org/x/sync v0.25.0
@@ -98,7 +98,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.7.4
-	go.etcd.io/etcd/client/pkg/v3 v3.7.3 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.7.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/otel v1.47.0 // indirect

@@ -201,10 +201,10 @@ github.com/xdg-go/stringprep v1.0.4/go.mod h1:mPGuuIYwz7CmR2bT9j4GbQqutWS1zV24gi
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.etcd.io/etcd/api/v3 v3.7.4 h1:XeVz+kb/YqdiWbXeO1XioYKKUxgzSIdPi9/cTl6kmZw=
 go.etcd.io/etcd/api/v3 v3.7.4/go.mod h1:RkZB2cGH5bimslxfGAcfWWySiPTzHDnu/CEBB4McD+c=
-go.etcd.io/etcd/client/pkg/v3 v3.7.3 h1:5zMwNu3ycrzCeA5NwOfQbxFRhqq974chq1DrYMua4QI=
-go.etcd.io/etcd/client/pkg/v3 v3.7.3/go.mod h1:/OhzqYrF0U7d1NOk55VMyUQGbYD1WoIe4bJwxb47wOk=
-go.etcd.io/etcd/client/v3 v3.7.3 h1:UrXcetgkuSEocaBlQlulQRJlXLEnUAHuBRbHh0lue1Q=
-go.etcd.io/etcd/client/v3 v3.7.3/go.mod h1:DcPxpqcpV8WIaRi/2waPCx0/Uq8rQUweDJaDYZk1gEE=
+go.etcd.io/etcd/client/pkg/v3 v3.7.4 h1:633yLMDAQHWqLTRMxUNuZfOy6a4REJPcA3juoMRx5qU=
+go.etcd.io/etcd/client/pkg/v3 v3.7.4/go.mod h1:I1lMmoiq2SF4Wg0Gru7uXMovS1eEo6wwAxcFPFPk/v0=
+go.etcd.io/etcd/client/v3 v3.7.4 h1:dxgqiynqZkr7TCAWmILTBubRRNFJMNO0tb5BGBE41Bg=
+go.etcd.io/etcd/client/v3 v3.7.4/go.mod h1:XUTIBL+gwVM+AJDpJ7p8nKW4N7Ay3sF61Oc3lrwo/D8=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 h1:8tvICD4vSTOOsNrsI4Ljf6C+6UKvpTEH5XY3JMoyPoo=
