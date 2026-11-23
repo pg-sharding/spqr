@@ -982,7 +982,7 @@ func ConsoleFunctionCall(
 		if legacyGIDOnly {
 			err = db.RemoveTXData(ctx, gid)
 		} else {
-			err = db.ClearTxStatuses(ctx, crazyDrop, gid)
+			err = db.ClearTxStatuses(ctx, crazyDrop, []string{gid})
 		}
 		if err != nil {
 			return nil, err

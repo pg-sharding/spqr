@@ -133,6 +133,6 @@ func (q *MemPgQDB) RemoveTXData(ctx context.Context, txid string) error {
 	return q.stateKeeper.RemoveTXData(ctx, txid)
 }
 
-func (q *MemPgQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error {
-	return q.stateKeeper.ClearTxStatuses(ctx, crazyDrop, gid)
+func (q *MemPgQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error {
+	return q.stateKeeper.ClearTxStatuses(ctx, crazyDrop, gids)
 }

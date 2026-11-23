@@ -2192,17 +2192,22 @@ func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.TwoPhaseTx, gid))
 }
 
-func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gid string) error {
+func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gids []string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if crazyDrop && gid == "" {
+	if crazyDrop && len(gids) == 0 {
 		return ExecuteCommands(q.DumpState, NewDropCommand(q.State.TwoPhaseTx))
+	}
+
+	gidSet := make(map[string]struct{}, len(gids))
+	for _, gid := range gids {
+		gidSet[gid] = struct{}{}
 	}
 
 	commands := make([]Command, 0, len(q.State.TwoPhaseTx))
 	for txID, info := range q.State.TwoPhaseTx {
-		if gid != "" && txID != gid {
+		if _, ok := gidSet[txID]; len(gids) > 0 && !ok {
 			continue
 
 		}

@@ -219,7 +219,7 @@ type DCStateKeeper interface {
 	TXCohortShards(ctx context.Context, gid string) ([]string, error)
 
 	RemoveTXData(ctx context.Context, gid string) error
-	ClearTxStatuses(ctx context.Context, crazyDrop bool, gid string) error
+	ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error
 }
 
 type XDCStateKeeper interface {

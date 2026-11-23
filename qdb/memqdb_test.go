@@ -53,18 +53,18 @@ func TestMemQDBClearTxStatuses(t *testing.T) {
 		"rejected":   {Gid: "rejected", State: qdb.TwoPhaseP2Rejected},
 	}
 
-	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), false, ""))
+	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), false, []string{}))
 	assert.Len(t, memqdb.State.TwoPhaseTx, 2)
 	assert.Contains(t, memqdb.State.TwoPhaseTx, "planned")
 	assert.Contains(t, memqdb.State.TwoPhaseTx, "committing")
 	assert.NotContains(t, memqdb.State.TwoPhaseTx, "committed")
 	assert.NotContains(t, memqdb.State.TwoPhaseTx, "rejected")
 
-	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), true, "planned"))
+	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), true, []string{"planned"}))
 	assert.Len(t, memqdb.State.TwoPhaseTx, 1)
 	assert.Contains(t, memqdb.State.TwoPhaseTx, "committing")
 
-	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), true, ""))
+	assert.NoError(t, memqdb.ClearTxStatuses(context.Background(), true, []string{}))
 	assert.Empty(t, memqdb.State.TwoPhaseTx)
 }
 
