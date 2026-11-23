@@ -74,6 +74,8 @@ func randomHex(n int) (string, error) {
 	unite                  *UniteKeyRange
 	
 	redistribute           *RedistributeKeyRange
+	rebalance 			   *RebalanceDistribution
+	stopRebalance          *StopRebalance
 
 	invalidate             *Invalidate
 	sync_reference_tables  *SyncReferenceTables
@@ -210,7 +212,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE RENAME CALL
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REBALANCE REFERENCE CHECK APPLY UNIQUE RENAME CALL
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE RANGES USING DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS SHARD COLUMNS HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR BETWEEN
@@ -343,6 +345,7 @@ func randomHex(n int) (string, error) {
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
 %type <redistribute> redistribute_stmt
+%type <rebalance> rebalance_stmt
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
@@ -354,6 +357,7 @@ func randomHex(n int) (string, error) {
 
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
+%type <stopRebalance> stop_rebalance_stmt
 %type <bool> opt_no_wait opt_immediate
 
 %type<grant> GrantStmt
@@ -464,6 +468,10 @@ command:
 	{
 		$$ = $1
 	}
+	| rebalance_stmt
+	{
+		$$ = $1
+	}
 	| unite_key_range_stmt
 	{
 		$$ = $1
@@ -489,6 +497,10 @@ command:
 		$$ = $1
 	}
 	| stop_move_task_group
+	{
+		$$ = $1
+	}
+	| stop_rebalance_stmt
 	{
 		$$ = $1
 	}
@@ -930,6 +942,9 @@ reserved_keyword:
 	{
 		$$ = $1
 	} | ORDER
+	{
+		$$ = $1
+	} | REBALANCE
 	{
 		$$ = $1
 	}
@@ -1900,6 +1915,8 @@ help_word:
 	| STALE { $$ = "STALE" }
 	| BACKENDS { $$ = "BACKENDS" }
 	| SCHEMA { $$ = "SCHEMA" }
+	| REBALANCE { $$ = "REBALANCE" }
+	| STOP { $$ = "STOP" }
 
 lock_stmt:
 	LOCK key_range_select_stmt
@@ -2233,6 +2250,37 @@ redistribute_stmt:
 			Apply: true,
 			NoWait: true,
 		}
+	}
+
+rebalance_stmt:
+	REBALANCE distribution_select_stmt opt_custom_distr_range opt_batch_size
+	{
+		$$ = &RebalanceDistribution{
+			Distribution: $2,
+			DataKeyRange: $3,
+			Shards: []string{"*"},
+			BatchSize: $4,
+		}
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING ALL SHARDS opt_batch_size {
+		$$ = &RebalanceDistribution{
+			Distribution: $2,
+			DataKeyRange: $3,
+			Shards: []string{"*"},
+			BatchSize: $7,
+		}
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING SHARDS any_id_list opt_batch_size {
+		$$ = &RebalanceDistribution{
+			Distribution: $2,
+			DataKeyRange: $3,
+			Shards: $6,
+			BatchSize: $7,
+		}
+	}
+
+stop_rebalance_stmt:
+	STOP REBALANCE
+	{
+		$$ = &StopRebalance{}
 	}
 
 opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }

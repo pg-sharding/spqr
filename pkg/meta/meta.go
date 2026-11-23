@@ -1449,6 +1449,18 @@ func ProcMetadataCommand(ctx context.Context,
 		return processAlter(ctx, stmt.Element, mgr)
 	case *spqrparser.RedistributeKeyRange:
 		return processRedistribute(ctx, stmt, mgr, icpCH)
+	case *spqrparser.RebalanceDistribution:
+		ds, err := mgr.GetDistribution(ctx, stmt.Distribution.ID)
+		if err != nil {
+			return nil, err
+		}
+		dataTypeRange, err := kr.CustomDataTypeRangeFromSQL(ds.ColTypes, stmt.DataKeyRange)
+		if err != nil {
+			return nil, err
+		}
+		return nil, mgr.RebalanceDistribution(ctx, stmt.Distribution.ID, dataTypeRange, stmt.Shards)
+	case *spqrparser.StopRebalance:
+		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "STOP REBALANCE is not implemented yet")
 	case *spqrparser.Invalidate:
 
 		tts := &tupleslot.TupleTableSlot{
