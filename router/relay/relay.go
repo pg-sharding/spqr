@@ -1141,11 +1141,6 @@ func (rst *RelayStateImpl) PipelineCleanup() {
 }
 
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
-
-	if rst.WaitSync {
-		return nil
-	}
-
 	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 		return newAbortedTxError()
 	}
