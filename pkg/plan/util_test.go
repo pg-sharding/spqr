@@ -55,3 +55,22 @@ func TestParseResolveParamValueValidBind(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(42), val)
 }
+
+func TestParseResolveParamValueUUIDFormats(t *testing.T) {
+	t.Parallel()
+
+	binaryUUID := make([]byte, 16)
+	binaryUUID[15] = 1
+
+	for _, tc := range []struct {
+		format int16
+		value  []byte
+	}{
+		{xproto.FormatCodeText, []byte("00000000000000000000000000000001")},
+		{xproto.FormatCodeBinary, binaryUUID},
+	} {
+		value, err := plan.ParseResolveParamValue(tc.format, 0, qdb.ColumnTypeUUID, [][]byte{tc.value})
+		assert.NoError(t, err)
+		assert.Equal(t, "00000000-0000-0000-0000-000000000001", value)
+	}
+}

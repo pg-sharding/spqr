@@ -176,9 +176,8 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 	switch hf {
 	case HashFunctionIdent:
 		if ctype == qdb.ColumnTypeUUID || ctype == qdb.ColumnTypeUUIDHashed {
-			if err := uuid.Validate(strings.ToLower(input.(string))); err != nil {
-				return nil, err
-			}
+			value, err := canonicalUUIDBytes(input, hf)
+			return string(value), err
 		}
 		return input, nil
 	case HashFunctionMurmur:

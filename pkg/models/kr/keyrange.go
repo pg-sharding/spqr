@@ -66,8 +66,8 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) error {
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = string(raw)
 	case qdb.ColumnTypeUUID:
-		value := strings.ToLower(string(raw))
-		if err := uuid.Validate(value); err != nil {
+		value, err := canonicalUUID(string(raw))
+		if err != nil {
 			return err
 		}
 		kr.LowerBound[attribInd] = value
@@ -92,8 +92,8 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = string(raw)
 	case qdb.ColumnTypeUUID:
-		value := strings.ToLower(string(raw))
-		if err := uuid.Validate(value); err != nil {
+		value, err := canonicalUUID(string(raw))
+		if err != nil {
 			return err
 		}
 		kr.LowerBound[attribInd] = value
@@ -172,15 +172,28 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 			return err
 		}
 	case qdb.ColumnTypeUUID:
-		if err := uuid.Validate(strings.ToLower(val)); err != nil {
+		value, err := canonicalUUID(val)
+		if err != nil {
 			return err
 		}
-		kr.LowerBound[attribInd] = strings.ToLower(val)
+		kr.LowerBound[attribInd] = value
 
 	default:
 		return fmt.Errorf("unknown column type %s", kr.ColumnTypes[attribInd])
 	}
 	return nil
+}
+
+func canonicalUUID(value string) (string, error) {
+	// uuid.Parse ignores the first and last bytes of a bracketed UUID.
+	if len(value) == 36+2 && (value[0] != '{' || value[len(value)-1] != '}') {
+		return "", fmt.Errorf("invalid bracketed UUID format")
+	}
+	parsed, err := uuid.Parse(value)
+	if err != nil {
+		return "", err
+	}
+	return parsed.String(), nil
 }
 
 func (kr *KeyRange) Raw() [][]byte {
