@@ -21,11 +21,11 @@ SHOW key_ranges WHERE distribution_id = 'ds1';
 SHOW key_ranges WHERE shard_id = 'sh3';
 
 -- order by for output stability which is otherwise not guaranteed.
-SHOW key_ranges_extended ORDER BY key_range_id;
+SHOW key_ranges_extended(key_range_id, shard_id, distribution_id, lower_bound, next_lower_bound, coverage, locked) ORDER BY key_range_id;
 
-SHOW key_ranges_extended WHERE distribution_id = 'ds1' ORDER BY key_range_id;
+SHOW key_ranges_extended(key_range_id, shard_id, distribution_id, lower_bound, next_lower_bound, coverage, locked) WHERE distribution_id = 'ds1' ORDER BY key_range_id;
 
-SHOW key_ranges_extended ORDER BY "lower_bound" ASC;
+SHOW key_ranges_extended(key_range_id, shard_id, distribution_id, lower_bound, next_lower_bound, coverage, locked) ORDER BY "lower_bound" ASC;
 
 CREATE DISTRIBUTION ds3 COLUMN TYPES integer;
 CREATE KEY RANGE krid3_0 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds3;
@@ -39,6 +39,6 @@ CREATE KEY RANGE krid3_7 FROM 7000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION 
 CREATE KEY RANGE krid3_8 FROM 8000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
 CREATE KEY RANGE krid3_9 FROM 9223372036854775807 ROUTE TO sh1 FOR DISTRIBUTION ds3;
 
-SHOW key_ranges_extended WHERE distribution_id = 'ds3';
+SHOW key_ranges_extended(key_range_id, shard_id, distribution_id, lower_bound, next_lower_bound, coverage, locked) WHERE distribution_id = 'ds3';
 
 DROP DISTRIBUTION ALL CASCADE;

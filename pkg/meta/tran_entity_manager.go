@@ -165,9 +165,11 @@ func (t *TranEntityManager) DropKeyRange(_ context.Context, idKeyRange string) e
 
 // UpdateKeyRange implements [EntityMgr].
 func (t *TranEntityManager) UpdateKeyRange(_ context.Context, kr *kr.KeyRange, colTypes []string) error {
+	keyRangeInfo := kr.ToProto()
+	keyRangeInfo.UpdatedAt = nil
 	commands := []*proto.MetaTransactionGossipCommand{
 		{UpdateKeyRange: &proto.UpdateKeyRangeGossip{
-			KeyRangeInfo: kr.ToProto(),
+			KeyRangeInfo: keyRangeInfo,
 			ColumnTypes:  colTypes,
 		}},
 	}

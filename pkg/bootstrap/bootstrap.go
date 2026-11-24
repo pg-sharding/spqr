@@ -97,6 +97,16 @@ func EtcdReBootstrap(ctx context.Context, mngr meta.EntityMgr, qdbAddrs []string
 				if err != nil {
 					return err
 				}
+				if memPgQDB, ok := db.(*qdb.MemPgQDB); ok {
+					statements, err := memPgQDB.RestoreKeyRange(kRange.ToDB())
+					if err != nil {
+						return err
+					}
+					if err := memPgQDB.ExecNoTransaction(ctx, statements); err != nil {
+						return err
+					}
+					continue
+				}
 				tranMngr := meta.NewTranEntityManager(mngr)
 				if err := tranMngr.CreateKeyRange(ctx, kRange, d.ColTypes); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")

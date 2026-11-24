@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -12,6 +13,7 @@ import (
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type KeyRangeBound []any
@@ -31,6 +33,8 @@ type KeyRange struct {
 	IsLocked     bool
 	ColumnTypes  []string
 	Version      int
+	CreatedAt    *time.Time
+	UpdatedAt    *time.Time
 }
 
 type CustomDataTypeRange struct {
@@ -362,6 +366,8 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 		ColumnTypes:  colTypes,
 		IsLocked:     krdb.Locked,
 		Version:      krdb.Version,
+		CreatedAt:    krdb.CreatedAt,
+		UpdatedAt:    krdb.UpdatedAt,
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
@@ -455,6 +461,14 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) (*KeyRang
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
+	if krproto.CreatedAt != nil {
+		timestamp := krproto.CreatedAt.AsTime()
+		kr.CreatedAt = &timestamp
+	}
+	if krproto.UpdatedAt != nil {
+		timestamp := krproto.UpdatedAt.AsTime()
+		kr.UpdatedAt = &timestamp
+	}
 
 	if krproto.Bound == nil || len(krproto.Bound.Values) != len(colTypes) {
 		return nil, fmt.Errorf("invalid key range bound value")
@@ -483,6 +497,8 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 		DistributionId: kr.Distribution,
 		Locked:         kr.IsLocked,
 		Version:        kr.Version,
+		CreatedAt:      kr.CreatedAt,
+		UpdatedAt:      kr.UpdatedAt,
 	}
 	for i := range len(kr.ColumnTypes) {
 		krDb.LowerBound[i] = kr.OutFunc(i)
@@ -506,6 +522,12 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 		Krid:           kr.ID,
 		DistributionId: kr.Distribution,
 		Locked:         kr.IsLocked,
+	}
+	if kr.CreatedAt != nil {
+		krProto.CreatedAt = timestamppb.New(*kr.CreatedAt)
+	}
+	if kr.UpdatedAt != nil {
+		krProto.UpdatedAt = timestamppb.New(*kr.UpdatedAt)
 	}
 
 	for i := range len(kr.ColumnTypes) {

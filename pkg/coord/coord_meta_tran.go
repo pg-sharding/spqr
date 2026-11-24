@@ -10,6 +10,7 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Here are methods for converting gossip commands into QDB commands.
@@ -43,6 +44,13 @@ func createKeyRangePrepare(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	if krToCreate.UpdatedAt == nil {
+		timestamp := qdb.KeyRangeWriteTime(ctx)
+		krToCreate.UpdatedAt = &timestamp
+	}
+	if krToCreate.CreatedAt == nil {
+		krToCreate.CreatedAt = krToCreate.UpdatedAt
+	}
 	qdbStatements, err := mngr.CreateKeyRange(ctx, krToCreate)
 	if err != nil {
 		return nil, err
@@ -50,6 +58,8 @@ func createKeyRangePrepare(ctx context.Context,
 	if len(qdbStatements) == 0 {
 		return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
 	}
+	gossip.KeyRangeInfo.CreatedAt = timestamppb.New(*krToCreate.CreatedAt)
+	gossip.KeyRangeInfo.UpdatedAt = timestamppb.New(*krToCreate.UpdatedAt)
 	result = append(result, qdbStatements...)
 	return result, nil
 }
@@ -58,17 +68,22 @@ func updateKeyRangePrepare(ctx context.Context,
 	mngr meta.EntityMgr,
 	gossip *proto.UpdateKeyRangeGossip) ([]qdb.QdbStatement, error) {
 	result := make([]qdb.QdbStatement, 0)
-	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, gossip.ColumnTypes)
+	krToUpdate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, gossip.ColumnTypes)
 	if err != nil {
 		return nil, err
 	}
-	qdbStatements, err := mngr.UpdateKeyRange(ctx, krToCreate)
+	if krToUpdate.UpdatedAt == nil {
+		timestamp := qdb.KeyRangeWriteTime(ctx)
+		krToUpdate.UpdatedAt = &timestamp
+	}
+	qdbStatements, err := mngr.UpdateKeyRange(qdb.WithKeyRangeWriteTime(ctx, *krToUpdate.UpdatedAt), krToUpdate)
 	if err != nil {
 		return nil, err
 	}
 	if len(qdbStatements) == 0 {
 		return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
 	}
+	gossip.KeyRangeInfo.UpdatedAt = timestamppb.New(*krToUpdate.UpdatedAt)
 	result = append(result, qdbStatements...)
 	return result, nil
 }

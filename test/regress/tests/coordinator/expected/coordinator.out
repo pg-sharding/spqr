@@ -52,6 +52,44 @@ SHOW key_ranges(key_range_id, shard_id, distribution_id, lower_bound, locked);
 CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
 ERROR:  Shard "nonexistentshard" not found.
 HINT:  Run 'SHOW shards' to see all configured shards.
+SHOW key_ranges_extended(created_at, updated_at) WHERE key_range_id = 'krid2' AND created_at <> 'N/A' \gset
+\c - - regress_router 7432
+SHOW LOCAL key_ranges_extended(key_range_id) WHERE key_range_id = 'krid2' AND created_at = :'created_at' AND updated_at = :'updated_at';
+ key_range_id 
+--------------
+ krid2
+(1 row)
+
+\c - - regress_coordinator 7002
+LOCK KEY RANGE krid2;
+    lock key range     
+-----------------------
+ key range id -> krid2
+(1 row)
+
+MOVE KEY RANGE krid2 TO sh2 META ONLY;
+          move key range           
+-----------------------------------
+ move key range krid2 to shard sh2
+(1 row)
+
+UNLOCK KEY RANGE krid2;
+   unlock key range    
+-----------------------
+ key range id -> krid2
+(1 row)
+
+SHOW key_ranges_extended(updated_at)
+WHERE key_range_id = 'krid2' AND shard_id = 'sh2' AND created_at = :'created_at' AND updated_at <> 'N/A' \gset moved_
+\c - - regress_router 7432
+SHOW LOCAL key_ranges_extended(key_range_id, shard_id)
+WHERE key_range_id = 'krid2' AND created_at = :'created_at' AND updated_at = :'moved_updated_at';
+ key_range_id | shard_id 
+--------------+----------
+ krid2        | sh2
+(1 row)
+
+\c - - regress_coordinator 7002
 -- XXX: fix router meta deploy here
 UNREGISTER ROUTER ALL;
  unregister router 

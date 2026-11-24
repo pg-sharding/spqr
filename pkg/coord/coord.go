@@ -1567,7 +1567,9 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 
 	if req.SplitLeft {
 		krTemp.ID = req.SourceID
+		krTemp.CreatedAt = krOld.CreatedAt
 		krOld.ID = req.KeyRangeID
+		krOld.CreatedAt, krOld.UpdatedAt = nil, nil
 		krOld.IsLocked = false
 		err = tranMngr.CreateKeyRange(ctx, krOld, ds.ColTypes)
 		if err != nil {

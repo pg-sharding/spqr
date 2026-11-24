@@ -1,6 +1,7 @@
 package qdb
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"math"
@@ -21,6 +22,8 @@ type KeyRange struct {
 	DistributionId string
 	Locked         bool
 	Version        int
+	CreatedAt      *time.Time `json:"created_at,omitempty"`
+	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
 }
 
 // Do not marshal Locked field
@@ -29,6 +32,9 @@ type internalKeyRange struct {
 	ShardID        string   `json:"shard_id"`
 	KeyRangeID     string   `json:"key_range_id"`
 	DistributionId string   `json:"distribution_id"`
+
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 type KeyRangeMeta struct {
@@ -276,12 +282,41 @@ func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, err
 	return NewSequenceIdRange(currentRight, newRight)
 }
 
+type keyRangeWriteTimeKey struct{}
+
+func WithKeyRangeWriteTime(ctx context.Context, timestamp time.Time) context.Context {
+	return context.WithValue(ctx, keyRangeWriteTimeKey{}, timestamp.UTC())
+}
+
+func KeyRangeWriteTime(ctx context.Context) time.Time {
+	if timestamp, ok := ctx.Value(keyRangeWriteTimeKey{}).(time.Time); ok {
+		return timestamp
+	}
+	return time.Now().UTC()
+}
+
+func stampKeyRangeCreate(ctx context.Context, keyRange *KeyRange) {
+	if keyRange.UpdatedAt == nil {
+		stampKeyRangeUpdate(ctx, keyRange)
+	}
+	if keyRange.CreatedAt == nil {
+		keyRange.CreatedAt = keyRange.UpdatedAt
+	}
+}
+
+func stampKeyRangeUpdate(ctx context.Context, keyRange *KeyRange) {
+	timestamp := KeyRangeWriteTime(ctx)
+	keyRange.UpdatedAt = &timestamp
+}
+
 func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
 	return &internalKeyRange{
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
 		KeyRangeID:     keyRange.KeyRangeID,
 		DistributionId: keyRange.DistributionId,
+		CreatedAt:      keyRange.CreatedAt,
+		UpdatedAt:      keyRange.UpdatedAt,
 	}
 }
 
@@ -293,6 +328,8 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) 
 		DistributionId: keyRange.DistributionId,
 		Locked:         locked,
 		Version:        version,
+		CreatedAt:      keyRange.CreatedAt,
+		UpdatedAt:      keyRange.UpdatedAt,
 	}
 }
 

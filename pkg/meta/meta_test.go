@@ -84,7 +84,8 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 }
 
 func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
-	ctx := context.Background()
+	now := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	ctx := qdb.WithKeyRangeWriteTime(context.Background(), now)
 	statement := spqrparser.DistributionDefinition{
 		ID:           "dbTestDefault",
 		ColTypes:     []string{"integer"},
@@ -105,6 +106,8 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 		KeyRangeID:     "dbTestDefault.DEFAULT",
 		DistributionId: "dbTestDefault",
 		Version:        1,
+		CreatedAt:      &now,
+		UpdatedAt:      &now,
 	}
 	actualKr, errKr := memqdb.GetKeyRange(ctx, "dbTestDefault.DEFAULT")
 	assert.Nil(t, errKr)

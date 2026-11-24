@@ -105,7 +105,10 @@ func GetQDBStateHash(ctx context.Context, q QDB) (uint64, error) {
 		return 0, err
 	}
 	for _, keyRange := range keyRanges {
-		krJSON, err := json.Marshal(keyRange)
+		// Keep hashes comparable during upgrades with routers that omit timestamps.
+		metadata := *keyRange
+		metadata.CreatedAt, metadata.UpdatedAt = nil, nil
+		krJSON, err := json.Marshal(&metadata)
 		if err != nil {
 			return 0, err
 		}
