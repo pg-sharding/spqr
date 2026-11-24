@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"strconv"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -564,6 +566,18 @@ var BoolGUCs = []*BoolGUCimpl{
 		shortName: "autonomous transactions",
 		initBoot:  func() bool { return false },
 	},
+}
+
+func ParseShardingKeyRef(value string) (int, error) {
+	number, ok := strings.CutPrefix(value, "$")
+	if !ok {
+		return 0, nil
+	}
+	if n, err := strconv.ParseUint(number, 10, 16); err == nil && n > 0 {
+		return int(n), nil
+	}
+	return 0, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR,
+		"invalid value %q for %s: expected a parameter reference such as $1", value, SPQR_SHARDING_KEY)
 }
 
 var StrGUCs = []*StrGUCimpl{

@@ -6380,6 +6380,11 @@ func TestHintRoutingXproto(t *testing.T) {
 		_ = conn.Close()
 	}()
 
+	unknownHint := &pgproto3.NoticeResponse{
+		Severity: "WARNING",
+		Code:     "01000",
+		Message:  `hint "__spqr__unknown_hint" does not exist`,
+	}
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -6529,6 +6534,109 @@ func TestHintRoutingXproto(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},
+			},
+		},
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: "RESET ALL"},
+				&pgproto3.Query{String: "SET __spqr__distribution = 'ds1'"},
+				&pgproto3.Query{String: "INSERT INTO t (id) VALUES (1)"},
+				&pgproto3.Query{String: "INSERT INTO t (id) VALUES (20) /* __spqr__sharding_key: 20 */"},
+				&pgproto3.Query{String: "SET __spqr__sharding_key = '$2'"},
+				&pgproto3.Parse{
+					Name:  "bound_routing_key",
+					Query: "SELECT id FROM t WHERE id < $1::int + $2::int",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "bound_routing_key",
+					Parameters: [][]byte{
+						[]byte("2"),
+						[]byte("1"),
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement:    "bound_routing_key",
+					ParameterFormatCodes: []int16{xproto.FormatCodeText, xproto.FormatCodeBinary},
+					Parameters: [][]byte{
+						[]byte("2"),
+						{0, 0, 0, 12},
+					},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Query{String: "RESET __spqr__sharding_key"},
+				&pgproto3.Query{String: "DELETE FROM t WHERE id = 1"},
+				&pgproto3.Parse{
+					Query: "SELECT $1 FROM t /* __spqr__sharding_key: $0 */",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Query: "SELECT $1 FROM t /* __spqr__sharding_key: $2 */",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Name:  "inline_sharding_key",
+					Query: "SELECT $1 FROM t /* __spqr__sharding_key: $1, __spqr__unknown_hint: true */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "inline_sharding_key",
+					Parameters:        [][]byte{[]byte("20")},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "inline_sharding_key",
+					Parameters:        [][]byte{[]byte("1")},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Query{String: "DELETE FROM t WHERE id = 20"},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("RESET")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("INSERT 0 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("INSERT 0 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("RESET")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("DELETE 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.ErrorResponse{Severity: "ERROR", Code: spqrerror.SPQR_VALUE_ERROR},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.ErrorResponse{Severity: "ERROR", Code: spqrerror.SPQR_VALUE_ERROR},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				unknownHint,
+				&pgproto3.DataRow{Values: [][]byte{[]byte("20")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.BindComplete{},
+				unknownHint,
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.CommandComplete{CommandTag: []byte("DELETE 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
 			},
 		},
 	}

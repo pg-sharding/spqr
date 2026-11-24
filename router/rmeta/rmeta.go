@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -86,6 +87,9 @@ type RoutingMetadataContext struct {
 	IsSplitUpdate bool
 	IsSPQRCTID    bool
 
+	IsBind                bool
+	ParsedShardingKeyHint string
+	ShardingKeyParam      int
 	LastResultFormatCodes []int16
 
 	MetaCache *MetadataCache
@@ -494,7 +498,8 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 	if err != nil {
 		return nil, err
 	}
-	if val := shardingGuc.Get(rm.SPH); val != "" {
+	val := shardingGuc.Get(rm.SPH)
+	if val != "" {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
 		dsId := rm.SPH.Distribution()
@@ -507,11 +512,27 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, err
 		}
 
-		if len(distrib.ColTypes) > 1 {
-			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
+		if len(distrib.ColTypes) != 1 {
+			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "sharding key hints require a single-column distribution")
 		}
 
-		et, err := rm.ResolveKeyShard(ctx, distrib, val)
+		var param int
+		if rm.IsBind && val[0] == '$' {
+			if val == rm.ParsedShardingKeyHint {
+				param = rm.ShardingKeyParam
+			} else {
+				param, err = session.ParseShardingKeyRef(val)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		var et kr.ShardKey
+		if param != 0 {
+			et, err = rm.resolveBoundKeyShard(ctx, distrib, param)
+		} else {
+			et, err = rm.ResolveKeyShard(ctx, distrib, val)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -521,6 +542,30 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 	}
 
 	return nil, nil
+}
+
+func (rm *RoutingMetadataContext) resolveBoundKeyShard(
+	ctx context.Context, distrib *distributions.Distribution, param int) (kr.ShardKey, error) {
+	params := rm.SPH.BindParams()
+	if param > len(params) {
+		return kr.ShardKey{}, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "sharding key parameter $%d is not bound", param)
+	}
+	index := param - 1
+	if params[index] == nil {
+		return kr.ShardKey{}, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR, "sharding key parameter $%d is NULL", param)
+	}
+	formats, err := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), params)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+	if formats[index] == xproto.FormatCodeText {
+		return rm.ResolveKeyShard(ctx, distrib, string(params[index]))
+	}
+	key, err := plan.ParseResolveParamValue(formats[index], index, distrib.ColTypes[0], params)
+	if err != nil {
+		return kr.ShardKey{}, err
+	}
+	return rm.ResolveKeyShard(ctx, distrib, fmt.Sprint(key))
 }
 
 func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation *rfqn.RelationFQN, colname string) (int, string) {
