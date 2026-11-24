@@ -81,7 +81,7 @@ func updateKeyRangePrepare(ctx context.Context,
 		return nil, err
 	}
 	if len(qdbStatements) == 0 {
-		return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
+		return nil, fmt.Errorf("transaction chunk must have a qdb statement (updateKeyRangePrepare)")
 	}
 	gossip.KeyRangeInfo.UpdatedAt = timestamppb.New(*krToUpdate.UpdatedAt)
 	result = append(result, qdbStatements...)
