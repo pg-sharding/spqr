@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type taskGroupResultQDB struct {
@@ -62,4 +63,66 @@ func TestAwaitMoveTaskGroupResultUpdatesErrorStatus(t *testing.T) {
 		assert.Equal(t, string(tasks.TaskGroupError), status.State)
 		assert.Equal(t, taskErr.Error(), status.Message)
 	}
+}
+
+func TestClusteredCoordinatorAddRouter(t *testing.T) {
+	ctx := context.Background()
+
+	db, err := qdb.NewMemQDB("")
+	require.NoError(t, err)
+
+	qc, err := NewClusteredCoordinator(nil, db, qdb.DefaultMaxTxnSize)
+	require.NoError(t, err)
+
+	router := &topology.Router{
+		ID:      "router-1",
+		Address: "127.0.0.1:6432",
+		State:   qdb.OPENED,
+	}
+	require.NoError(t, qc.AddRouter(ctx, router))
+
+	got, err := db.ListRouters(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []*qdb.Router{{
+		ID:      "router-1",
+		Address: "127.0.0.1:6432",
+		State:   qdb.OPENED,
+	}}, got)
+}
+
+type errorAddRouterQDB struct {
+	qdb.XQDB
+	addRouterErr error
+}
+
+func (db *errorAddRouterQDB) AddRouter(
+	_ context.Context,
+	_ *qdb.Router,
+) error {
+	return db.addRouterErr
+}
+
+func TestClusteredCoordinatorAddRouterError(t *testing.T) {
+	ctx := context.Background()
+	expectedErr := errors.New("failed to add router")
+
+	memDB, err := qdb.NewMemQDB("")
+	require.NoError(t, err)
+
+	db := &errorAddRouterQDB{
+		XQDB:         memDB,
+		addRouterErr: expectedErr,
+	}
+
+	qc, err := NewClusteredCoordinator(nil, db, qdb.DefaultMaxTxnSize)
+	require.NoError(t, err)
+
+	router := &topology.Router{
+		ID:      "router-1",
+		Address: "127.0.0.1:6432",
+	}
+
+	err = qc.AddRouter(ctx, router)
+
+	require.ErrorIs(t, err, expectedErr)
 }
