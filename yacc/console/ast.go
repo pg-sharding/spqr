@@ -221,7 +221,6 @@ type RebalanceDistribution struct {
 	Shards       []string
 	DataKeyRange *CustomDistributionRange
 	BatchSize    int
-	
 }
 
 type StopRebalance struct{}
