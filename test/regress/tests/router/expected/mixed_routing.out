@@ -210,6 +210,15 @@ NOTICE: send query to shard(s) : sh2
  ffffffff-ffff-ffff-ffff-fffffffffffe
 (2 rows)
 
+INSERT INTO xxmixeduuid (id) VALUES('88888888-0000-0000-0000-000000000001');
+NOTICE: send query to shard(s) : sh1
+SELECT id FROM xxmixeduuid WHERE id = '88888888000000000000000000000001';
+NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 88888888-0000-0000-0000-000000000001
+(1 row)
+
 INSERT INTO xxmixeduuid (id) VALUES('something');
 ERROR:  invalid UUID length: 9
 QUERY:  INSERT INTO xxmixeduuid (id) VALUES('something');
