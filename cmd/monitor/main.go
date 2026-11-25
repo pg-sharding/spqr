@@ -223,7 +223,7 @@ var (
 	checkMigrationsCmd = &cobra.Command{
 		Use:   "check-migrations --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`",
 		Short: "check if schema matches on shards",
-		Run: func(_ *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
 				_ = f.Close()
 				_, _ = fmt.Printf("2;schema diverges on shards, check \"%s\" file\n", stateFilePath)
