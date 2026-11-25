@@ -223,7 +223,7 @@ var (
 	checkMigrationsCmd = &cobra.Command{
 		Use:   "check-migrations --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`",
 		Short: "check if schema matches on shards",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
 				_ = f.Close()
 				_, _ = fmt.Printf("2;schema diverges on shards, check \"%s\" file\n", stateFilePath)
@@ -266,8 +266,6 @@ var (
 						AND a.attnum > 0
 						AND NOT a.attisdropped`
 
-			fmt.Printf("relNames: %s\n", relNames)
-
 			shardColumns := map[string]map[string]map[string]struct{}{}
 			for id, shardConf := range shardData.ShardsData {
 				if err := func() error {
@@ -276,7 +274,7 @@ var (
 						_, _ = fmt.Printf("2;could not connect to shard \"%s\": %v", id, err)
 						return err
 					}
-					defer conn.Close(ctx)
+					defer func() { _ = conn.Close(ctx) }()
 
 					rows, err := conn.Query(ctx, query, relNames)
 					if err != nil {
@@ -323,7 +321,6 @@ var (
 				}
 
 				target := sets[pickMajority(setCounts)]
-				fmt.Printf("sets: %#v, shardColumns: %#v\ntarget: %#v, checking %s\n", sets, shardColumns, target, relationKey)
 				for id := range shardData.ShardsData {
 					shardIssues := []string{}
 					cols, ok := shardColumns[id][relationKey]
@@ -351,14 +348,12 @@ var (
 				}
 			}
 
-			fmt.Printf("issues: %#v\n", issues)
-
 			f, err := os.OpenFile(stateFilePath, os.O_CREATE|os.O_RDWR, 0644)
 			if err != nil {
 				_, _ = fmt.Println("2;failed to open state file")
 				return
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			for id := range shardData.ShardsData {
 				msgs, ok := issues[id]
