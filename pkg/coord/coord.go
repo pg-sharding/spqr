@@ -638,7 +638,7 @@ func (lc *Coordinator) RedistributeKeyRange(_ context.Context, _ *kr.Redistribut
 	panic("unimplemented")
 }
 
-func (lc *Coordinator) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
+func (lc *Coordinator) RebalanceDistribution(_ context.Context, _ *kr.RebalanceDistribution) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "RebalanceDistribution requires a clustered coordinator")
 }
 

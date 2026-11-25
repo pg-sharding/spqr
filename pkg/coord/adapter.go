@@ -469,7 +469,7 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return spqrerror.CleanGrpcError(err)
 }
 
-func (a *Adapter) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
+func (a *Adapter) RebalanceDistribution(_ context.Context, _ *kr.RebalanceDistribution) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "RebalanceDistribution is not supported via adapter")
 }
 

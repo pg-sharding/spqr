@@ -1462,7 +1462,12 @@ func ProcMetadataCommand(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		return nil, mgr.RebalanceDistribution(ctx, stmt.Distribution.ID, dataTypeRange, stmt.Shards)
+		return nil, mgr.RebalanceDistribution(ctx, &kr.RebalanceDistribution{
+			DistributionID: stmt.Distribution.ID,
+			DataRange:      dataTypeRange,
+			Shards:         stmt.Shards,
+			DryRun:         false,
+		})
 	case *spqrparser.StopRebalance:
 		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "STOP REBALANCE is not implemented yet")
 	case *spqrparser.Invalidate:

@@ -1130,17 +1130,17 @@ func (mr *MockCoordinatorMockRecorder) QDB() *gomock.Call {
 }
 
 // RebalanceDistribution mocks base method.
-func (m *MockCoordinator) RebalanceDistribution(ctx context.Context, distributionID string, datarange *kr.CustomDataTypeRange, shards []string) error {
+func (m *MockCoordinator) RebalanceDistribution(ctx context.Context, req *kr.RebalanceDistribution) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RebalanceDistribution", ctx, distributionID, datarange, shards)
+	ret := m.ctrl.Call(m, "RebalanceDistribution", ctx, req)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RebalanceDistribution indicates an expected call of RebalanceDistribution.
-func (mr *MockCoordinatorMockRecorder) RebalanceDistribution(ctx, distributionID, datarange, shards any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) RebalanceDistribution(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RebalanceDistribution", reflect.TypeOf((*MockCoordinator)(nil).RebalanceDistribution), ctx, distributionID, datarange, shards)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RebalanceDistribution", reflect.TypeOf((*MockCoordinator)(nil).RebalanceDistribution), ctx, req)
 }
 
 // RedistributeKeyRange mocks base method.
