@@ -127,4 +127,5 @@ var reservedWords = map[string]int{
 	"if":           IF,
 	"exists":       EXISTS,
 	"rebalance":    REBALANCE,
+	"usage":        USAGE,
 }

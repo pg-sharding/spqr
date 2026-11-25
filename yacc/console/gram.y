@@ -245,7 +245,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> SECONDS WAIT PANIC SLEEP
 
-%token<str> GRANT PRIVILEGES
+%token<str> GRANT PRIVILEGES USAGE
 
 %token<str> LOCAL GLOBAL
 
@@ -1441,9 +1441,9 @@ privilege:
 		} | ALTER SYSTEM
 		{
 			$$ = Privilege("alter system");
-		} | any_id 
+		} | USAGE
 		{
-			$$ = Privilege($1);
+			$$ = Privilege("usage");
 		}
 		;
 
