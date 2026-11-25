@@ -172,7 +172,7 @@ func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *k
 	return ErrNotCoordinator
 }
 
-func (lc *LocalInstanceMetadataMgr) RebalanceDistribution(_ context.Context, _ string, _ *kr.CustomDataTypeRange, _ []string) error {
+func (lc *LocalInstanceMetadataMgr) RebalanceDistribution(_ context.Context, _ *kr.RebalanceDistribution) error {
 	return ErrNotCoordinator
 }
 
