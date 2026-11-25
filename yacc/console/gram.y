@@ -141,6 +141,9 @@ func randomHex(n int) (string, error) {
 	call                    *Call
 
 	drop_selector           DropSelector
+
+	privilege               Privilege
+	privilege_list          []Privilege
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -284,8 +287,11 @@ func randomHex(n int) (string, error) {
 %type <customDistrRange> opt_custom_distr_range
 %type <shard> shard_define_stmt
 
-%type<strlist> privileges grantee_list privilege_list
-%type<str> privilege grantee
+%type<strlist> grantee_list
+%type<str> grantee
+
+%type<privilege> privilege
+%type<privilege_list> privileges privilege_list
 
 %type<dEntrieslist> distribution_key_argument_list
 %type<aiEntrieslist> opt_auto_increment
@@ -1424,21 +1430,20 @@ privileges: privilege_list
 
 		;
 
-privilege_list:	privilege							{ $$ = []string{$1}; }
+privilege_list:	privilege							{ $$ = []Privilege{$1}; }
 			| privilege_list TCOMMA privilege   	{ $$ = append($1, $3); }
 		;
 
 privilege:
 		CREATE
 		{
-			$$ = "create"
+			$$ = Privilege("create")
 		} | ALTER SYSTEM
 		{
-			$$ = "alter system";
-		}
-		| any_id
+			$$ = Privilege("alter system");
+		} | any_id 
 		{
-			$$ = $1;
+			$$ = Privilege($1);
 		}
 		;
 
