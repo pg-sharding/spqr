@@ -740,6 +740,30 @@ func TestRedistribute(t *testing.T) {
 			exp:   &spqrparser.StopRebalance{},
 			err:   nil,
 		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 CHECK",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"*"},
+				BatchSize: -1,
+				DryRun:    true,
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING SHARDS sh1, sh2 BATCH SIZE 512 CHECK",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"sh1", "sh2"},
+				BatchSize: 512,
+				DryRun:    true,
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

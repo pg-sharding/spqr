@@ -358,7 +358,7 @@ func randomHex(n int) (string, error) {
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
 %type <stopRebalance> stop_rebalance_stmt
-%type <bool> opt_no_wait opt_immediate
+%type <bool> opt_no_wait opt_immediate opt_check
 
 %type<grant> GrantStmt
 %type<privilege_target> privilege_target
@@ -2253,29 +2253,36 @@ redistribute_stmt:
 	}
 
 rebalance_stmt:
-	REBALANCE distribution_select_stmt opt_custom_distr_range opt_batch_size
+	REBALANCE distribution_select_stmt opt_custom_distr_range opt_batch_size opt_check
 	{
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
 			DataKeyRange: $3,
 			Shards: []string{"*"},
 			BatchSize: $4,
+			DryRun: $5,
 		}
-	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING ALL SHARDS opt_batch_size {
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING ALL SHARDS opt_batch_size opt_check {
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
 			DataKeyRange: $3,
 			Shards: []string{"*"},
 			BatchSize: $7,
+			DryRun: $8,
 		}
-	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING SHARDS any_id_list opt_batch_size {
+	} | REBALANCE distribution_select_stmt opt_custom_distr_range USING SHARDS any_id_list opt_batch_size opt_check {
 		$$ = &RebalanceDistribution{
 			Distribution: $2,
 			DataKeyRange: $3,
 			Shards: $6,
 			BatchSize: $7,
+			DryRun: $8,
 		}
 	}
+
+opt_check:
+	CHECK         { $$ = true }
+	| /* EMPTY */ { $$ = false }
 
 stop_rebalance_stmt:
 	STOP REBALANCE
