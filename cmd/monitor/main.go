@@ -19,6 +19,7 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -217,6 +218,74 @@ var (
 			}
 			log.Printf("key range \"%s\" is safe to unlock\n", keyRangeId)
 			return nil
+		},
+	}
+	checkMigrationsCmd = &cobra.Command{
+		Use:   "check-migrations --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`",
+		Short: "check if schema matches on shards",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
+			if err != nil {
+				_, _ = fmt.Println("no shard data file found, skipping...")
+				return nil
+			}
+			db, err := qdb.NewEtcdQDB(qdbAddrs, 0)
+			if err != nil {
+				return fmt.Errorf("could not connect to QDB: %w", err)
+			}
+			ctx := context.Background()
+			c := coord.NewCoordinator(db, nil, qdb.DefaultMaxTxnSize)
+
+			ds, err := c.ListDistributions(ctx)
+			if err != nil {
+				return err
+			}
+			rfqns := []string{}
+			for _, d := range ds {
+				for _, r := range d.Relations {
+					rfqns = append(rfqns, r.Relation.String())
+				}
+			}
+			query := `SELECT *
+						n.nspname AS schema,
+						c.relname AS relation,
+						a.attname AS column
+					FROM pg_attribute a
+					JOIN pg_class c ON c.oid=a.attrelid
+					JOIN pg_namespace n ON n.oid=c.relnamespace
+					WHERE c.relname = ANY($1)
+						AND a.attnum > 0`
+
+			type schemaEntry struct {
+				shard      string
+				db         string
+				rfqn       rfqn.RelationFQN
+				columnName string
+			}
+			entries := []schemaEntry{}
+
+			for id, shardConf := range shardData.ShardsData {
+				conn, err := connectWithTSA(ctx, shardConf, "prefer-standby")
+				if err != nil {
+					return err
+				}
+				defer func() { _ = conn.Close(ctx) }()
+
+				rows, err := conn.Query(ctx, query, rfqns)
+				if err != nil {
+					return err
+				}
+
+				for rows.Next() {
+					entry := schemaEntry{shard: id, db: shardConf.DB}
+					if err := rows.Scan(&entry.rfqn.SchemaName, &entry.rfqn.RelationName, &entry.columnName); err != nil {
+						return err
+					}
+					entries = append(entries, entry)
+				}
+			}
+
+			return fmt.Errorf("not implemented")
 		},
 	}
 )
