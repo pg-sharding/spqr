@@ -223,69 +223,160 @@ var (
 	checkMigrationsCmd = &cobra.Command{
 		Use:   "check-migrations --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`",
 		Short: "check if schema matches on shards",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
+			if f, err := os.Open(stateFilePath); err == nil {
+				_ = f.Close()
+				_, _ = fmt.Printf("2;schema diverges on shards, check \"%s\" file\n", stateFilePath)
+				return
+			}
+
 			shardData, err := config.LoadShardDataCfg(shardDataFilePath)
 			if err != nil {
-				_, _ = fmt.Println("no shard data file found, skipping...")
-				return nil
+				_, _ = fmt.Println("0;no shard data file found, skipping...")
+				return
 			}
 			db, err := qdb.NewEtcdQDB(qdbAddrs, 0)
 			if err != nil {
-				return fmt.Errorf("could not connect to QDB: %w", err)
+				_, _ = fmt.Printf("2;could not connect to QDB: %v", err)
+				return
 			}
 			ctx := context.Background()
 			c := coord.NewCoordinator(db, nil, qdb.DefaultMaxTxnSize)
 
-			ds, err := c.ListDistributions(ctx)
+			dss, err := c.ListDistributions(ctx)
 			if err != nil {
-				return err
+				_, _ = fmt.Printf("2;could not list distributions: %v", err)
+				return
 			}
-			rfqns := []string{}
-			for _, d := range ds {
-				for _, r := range d.Relations {
-					rfqns = append(rfqns, r.Relation.String())
+			relations := map[string]*rfqn.RelationFQN{}
+			relNames := make([]string, 0, len(relations))
+			for _, d := range dss {
+				for _, rel := range d.ListRelations() {
+					key := strings.ToLower(rel.Relation.GetSchema() + "." + rel.Relation.RelationName)
+					relations[key] = rel.Relation
+					relNames = append(relNames, key)
 				}
 			}
-			query := `SELECT *
-						n.nspname AS schema,
-						c.relname AS relation,
-						a.attname AS column
+
+			query := `SELECT n.nspname, c.relname, a.attname
 					FROM pg_attribute a
 					JOIN pg_class c ON c.oid=a.attrelid
 					JOIN pg_namespace n ON n.oid=c.relnamespace
-					WHERE c.relname = ANY($1)
-						AND a.attnum > 0`
+					WHERE lower(n.nspname || '.' || c.relname) = ANY($1)
+						AND a.attnum > 0
+						AND NOT a.attisdropped`
 
-			type schemaEntry struct {
-				shard      string
-				db         string
-				rfqn       rfqn.RelationFQN
-				columnName string
-			}
-			entries := []schemaEntry{}
+			fmt.Printf("relNames: %s\n", relNames)
 
+			shardColumns := map[string]map[string]map[string]struct{}{}
 			for id, shardConf := range shardData.ShardsData {
-				conn, err := connectWithTSA(ctx, shardConf, "prefer-standby")
-				if err != nil {
-					return err
-				}
-				defer func() { _ = conn.Close(ctx) }()
-
-				rows, err := conn.Query(ctx, query, rfqns)
-				if err != nil {
-					return err
-				}
-
-				for rows.Next() {
-					entry := schemaEntry{shard: id, db: shardConf.DB}
-					if err := rows.Scan(&entry.rfqn.SchemaName, &entry.rfqn.RelationName, &entry.columnName); err != nil {
+				if err := func() error {
+					conn, err := connectWithTSA(ctx, shardConf, "prefer-standby")
+					if err != nil {
+						_, _ = fmt.Printf("2;could not connect to shard \"%s\": %v", id, err)
 						return err
 					}
-					entries = append(entries, entry)
+					defer conn.Close(ctx)
+
+					rows, err := conn.Query(ctx, query, relNames)
+					if err != nil {
+						_, _ = fmt.Printf("2;could get schema on shard \"%s\": %v", id, err)
+						return err
+					}
+
+					tables := map[string]map[string]struct{}{}
+					for rows.Next() {
+						var schema, rel, column string
+						if err := rows.Scan(&schema, &rel, &column); err != nil {
+							rows.Close()
+							_, _ = fmt.Printf("2;could get schema on shard \"%s\": %v", id, err)
+							return err
+						}
+						key := strings.ToLower(schema + "." + rel)
+						if _, ok := tables[key]; !ok {
+							tables[key] = map[string]struct{}{}
+						}
+						tables[key][column] = struct{}{}
+					}
+					rows.Close()
+					shardColumns[id] = tables
+					return nil
+				}(); err != nil {
+					return
 				}
 			}
 
-			return fmt.Errorf("not implemented")
+			issues := map[string][]string{}
+			for _, relationKey := range relNames {
+				rfqn := relations[relationKey]
+
+				setCounts := map[string]int{}
+				sets := map[string]map[string]struct{}{}
+				for shardId := range shardData.ShardsData {
+					cols, ok := shardColumns[shardId][relationKey]
+					if !ok {
+						continue
+					}
+					canonical := canonicalColumns(cols)
+					setCounts[canonical]++
+					sets[canonical] = cols
+				}
+
+				target := sets[pickMajority(setCounts)]
+				fmt.Printf("sets: %#v, shardColumns: %#v\ntarget: %#v, checking %s\n", sets, shardColumns, target, relationKey)
+				for id := range shardData.ShardsData {
+					shardIssues := []string{}
+					cols, ok := shardColumns[id][relationKey]
+					if !ok {
+						shardIssues = append(shardIssues, fmt.Sprintf("- table \"%s\" is absent", rfqn.String()))
+					} else {
+						for col := range target {
+							if _, ok := cols[col]; !ok {
+								shardIssues = append(shardIssues, fmt.Sprintf("- column \"%s.%s\" in \"%s\" is absent", rfqn.GetSchema(), col, rfqn.String()))
+							}
+						}
+						for col := range cols {
+							if _, ok := target[col]; !ok {
+								shardIssues = append(shardIssues, fmt.Sprintf("- column \"%s.%s\" in \"%s\" is extra", rfqn.GetSchema(), col, rfqn.String()))
+							}
+						}
+					}
+
+					if len(shardIssues) > 0 {
+						if _, ok := issues[id]; !ok {
+							issues[id] = []string{}
+						}
+						issues[id] = append(issues[id], shardIssues...)
+					}
+				}
+			}
+
+			fmt.Printf("issues: %#v\n", issues)
+
+			f, err := os.OpenFile(stateFilePath, os.O_CREATE|os.O_RDWR, 0644)
+			if err != nil {
+				_, _ = fmt.Println("2;failed to open state file")
+				return
+			}
+			defer f.Close()
+
+			for id := range shardData.ShardsData {
+				msgs, ok := issues[id]
+				if !ok || len(msgs) == 0 {
+					continue
+				}
+
+				_, _ = fmt.Fprintf(f, "%s:\n", id)
+				for _, msg := range msgs {
+					_, _ = fmt.Fprintln(f, msg)
+				}
+			}
+
+			if len(issues) == 0 {
+				_, _ = fmt.Println("0;OK")
+			} else {
+				_, _ = fmt.Printf("2;schema diverges, check \"%s\" file\n", stateFilePath)
+			}
 		},
 	}
 )
@@ -304,12 +395,14 @@ func init() {
 	recoverKeyRangesCmd.Flags().StringVar(&coordAddr, "coordinator-addr", "localhost:7003", "coordinator grpc api address")
 
 	verifyKeyRangeCmd.Flags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
+	checkMigrationsCmd.Flags().StringVar(&stateFilePath, "file", "", "result file path")
 
 	rootCmd.PersistentFlags().StringVarP(&shardDataFilePath, "shard-data", "c", "/etc/spqr/shard-data.yaml", "path to shard data config")
 	rootCmd.PersistentFlags().StringArrayVar(&qdbAddrs, "etcd-addr", []string{"localhost:2389"}, "etcd address to retrieve metadata")
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(recoverKeyRangesCmd)
 	rootCmd.AddCommand(verifyKeyRangeCmd)
+	rootCmd.AddCommand(checkMigrationsCmd)
 }
 
 func main() {
@@ -660,4 +753,25 @@ func processKeyRange(ctx context.Context, db *qdb.EtcdQDB, keyRangeService proto
 
 	log.Printf("deleting task group \"%s\". source key range: \"%s\", dest key range: \"%s\", state: \"%s\", error msg: \"%s\"", taskGroupId, taskGroup.KrIdFrom, taskGroup.KrIdTo, status.State, status.Message)
 	return db.DropMoveTaskGroup(ctx, taskGroupId)
+}
+
+func canonicalColumns(cols map[string]struct{}) string {
+	names := make([]string, 0, len(cols))
+	for col := range cols {
+		names = append(names, col)
+	}
+	slices.Sort(names)
+	return strings.Join(names, ",")
+}
+
+func pickMajority(setCounts map[string]int) string {
+	best := ""
+	bestCount := -1
+	for set, count := range setCounts {
+		if count > bestCount || (count == bestCount && set < best) {
+			best = set
+			bestCount = count
+		}
+	}
+	return best
 }
