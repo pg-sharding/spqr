@@ -336,10 +336,12 @@ type AlterSystemMigration struct {
 
 func (*AlterSystemMigration) iStatement() {}
 
+type Privilege string
+
 type GrantStmt struct {
 	IsGrant bool
 
-	Privileges []string
+	Privileges []Privilege
 	Objtype    string
 	Objects    []*rfqn.RelationFQN
 

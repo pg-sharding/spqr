@@ -2931,11 +2931,43 @@ func TestGrant(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "GRANT create on distribution d to user1",
+			exp: &spqrparser.GrantStmt{
+				IsGrant: true,
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("create"),
+				},
+				Objtype: "distribution",
+				Objects: []*rfqn.RelationFQN{
+					{
+						RelationName: "d",
+					}},
+				Grantees: []string{"user1"},
+			},
+			err: nil,
+		},
+		{
+			query: "GRANT usage on distribution d to user1",
+			exp: &spqrparser.GrantStmt{
+				IsGrant: true,
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("usage"),
+				},
+				Objtype: "distribution",
+				Objects: []*rfqn.RelationFQN{
+					{
+						RelationName: "d",
+					}},
+				Grantees: []string{"user1"},
+			},
+			err: nil,
+		},
+		{
 			query: "GRANT usage, create on distribution d to user1",
 			exp: &spqrparser.GrantStmt{
 				IsGrant: true,
-				Privileges: []string{
-					"usage", "create",
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("usage"), spqrparser.Privilege("create"),
 				},
 				Objtype: "distribution",
 				Objects: []*rfqn.RelationFQN{
@@ -2950,8 +2982,8 @@ func TestGrant(t *testing.T) {
 			query: "GRANT usage, create on relation r1, r2 to user1, user2",
 			exp: &spqrparser.GrantStmt{
 				IsGrant: true,
-				Privileges: []string{
-					"usage", "create",
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("usage"), spqrparser.Privilege("create"),
 				},
 				Objtype: "table",
 				Objects: []*rfqn.RelationFQN{
