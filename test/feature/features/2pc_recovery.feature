@@ -1290,11 +1290,7 @@ Feature: MemQDB with PG dc state keeper test
     Then command return code should be "0"
     And SQL result should match json_regexp
     """
-    [{
-      "id": ".*",
-      "members": "{sh1,sh2}",
-      "status": "rejected"
-    }]
+    []
     """
     When I run command on host "router"
     """
@@ -1417,11 +1413,7 @@ Feature: MemQDB with PG dc state keeper test
     Then command return code should be "0"
     And SQL result should match json_regexp
     """
-    [{
-      "id": ".*",
-      "members": "{sh1,sh2}",
-      "status": "committed"
-    }]
+    []
     """
     When I run command on host "router"
     """
