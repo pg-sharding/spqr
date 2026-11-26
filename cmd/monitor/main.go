@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -257,6 +258,8 @@ var (
 					relNames = append(relNames, key)
 				}
 			}
+
+			sort.Strings(relNames)
 
 			query := `SELECT n.nspname, c.relname, a.attname
 					FROM pg_attribute a
