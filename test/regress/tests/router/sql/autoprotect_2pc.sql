@@ -5,8 +5,6 @@ CREATE TABLE ref_2pc(i INT);
 
 SET __spqr__engine_v2 TO true;
 
-select __spqr__clear_2pc_data(true);
-
 SELECT __spqr__set_next_2pc_gid('auto_zzz1');
 
 BEGIN;
@@ -37,6 +35,7 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 SELECT __spqr__clear_2pc_data(false, 'auto_zzz3');
 
 SELECT __spqr__clear_2pc_data('auto_zzz2', false);
+SELECT __spqr__clear_2pc_data('auto_zzz2');
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
 SELECT __spqr__clear_2pc_data();

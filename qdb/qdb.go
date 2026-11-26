@@ -219,8 +219,8 @@ type DCStateKeeper interface {
 	TXStatus(ctx context.Context, gid string) (TwoPhaseTxState, error)
 	TXCohortShards(ctx context.Context, gid string) ([]string, error)
 
-	RemoveTXData(ctx context.Context, gid string) error
-	ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error
+	RemoveTXData(ctx context.Context, gid string) (bool, error)
+	ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error)
 }
 
 type XDCStateKeeper interface {

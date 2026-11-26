@@ -440,24 +440,28 @@ func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
 	return nil
 }
 
-func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) error {
+func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) (bool, error) {
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() {
 		_ = (*tx).Rollback(ctx)
 	}()
-	if _, err = (*tx).Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid); err != nil {
-		return err
+	tag, err := (*tx).Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	if err != nil {
+		return false, err
 	}
-	return (*tx).Commit(ctx)
+	if err := (*tx).Commit(ctx); err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() != 0, nil
 }
 
-func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error {
+func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	conn, err := q.getConn(ctx, "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	query := "DELETE FROM spqr_metadata.spqr_tx_status"
@@ -473,8 +477,11 @@ func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, g
 		query += " WHERE status IN ($1, $2)"
 		args = append(args, pgStateCommitted, pgStateRejected)
 	}
-	_, err = conn.Exec(ctx, query, args...)
-	return err
+	rows, err := conn.Query(ctx, query+" RETURNING id", args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
 func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {

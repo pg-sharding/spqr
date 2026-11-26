@@ -1,6 +1,6 @@
 Parsed test spec with 2 sessions
 
-starting permutation: s1_report s1_ev2 s1_commit_strategy s1_set_conf s1_set_conf2 s1_set_failing_gid s1_begin s1_curr_set s1_s_m s1_commit s2_show_pg_prep_xacts s1_commit s2_show_pg_prep_xacts
+starting permutation: s1_report s1_ev2 s1_commit_strategy s1_set_conf s1_set_conf2 s1_set_failing_gid s1_begin s1_curr_set s1_s_m s1_commit s2_show_pg_prep_xacts s1_commit s2_show_pg_prep_xacts s2_clear_2pc_data
 step s1_report: SET __spqr__reply_notice TO on;
 step s1_ev2: set __spqr__engine_v2 to true;
 step s1_commit_strategy: set __spqr__commit_strategy to 2pc;
@@ -44,3 +44,9 @@ ERROR:  error while deploying shard: prepare tx-injected error
 step s2_show_pg_prep_xacts: select __spqr__ctid('pg_prepared_xacts');
 step s1_commit: COMMIT;
 step s2_show_pg_prep_xacts: select __spqr__ctid('pg_prepared_xacts');
+step s2_clear_2pc_data: SELECT __spqr__clear_2pc_data('2pc_happy_path_fail_gid', true);
+clear_2pc_data         
+-----------------------
+2pc_happy_path_fail_gid
+(1 row)
+
