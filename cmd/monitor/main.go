@@ -222,7 +222,7 @@ var (
 		},
 	}
 	checkMigrationsCmd = &cobra.Command{
-		Use:   "check-migrations --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database`",
+		Use:   "check-migrations --shard-data `path-to-shard-data config` --etcd-addr `address of etcd database` --file `result file`",
 		Short: "check if schema matches on shards",
 		Run: func(_ *cobra.Command, _ []string) {
 			if f, err := os.Open(stateFilePath); err == nil {
@@ -259,8 +259,6 @@ var (
 				}
 			}
 
-			sort.Strings(relNames)
-
 			query := `SELECT n.nspname, c.relname, a.attname
 					FROM pg_attribute a
 					JOIN pg_class c ON c.oid=a.attrelid
@@ -270,7 +268,10 @@ var (
 						AND NOT a.attisdropped`
 
 			shardColumns := map[string]map[string]map[string]struct{}{}
+			shardIds := make([]string, 0, len(shardData.ShardsData))
 			for id, shardConf := range shardData.ShardsData {
+				shardIds = append(shardIds, id)
+
 				if err := func() error {
 					conn, err := connectWithTSA(ctx, shardConf, "prefer-standby")
 					if err != nil {
@@ -300,12 +301,19 @@ var (
 						tables[key][column] = struct{}{}
 					}
 					rows.Close()
+					if rows.Err() != nil {
+						_, _ = fmt.Printf("2;could get schema on shard \"%s\": %v", id, rows.Err())
+						return rows.Err()
+					}
 					shardColumns[id] = tables
 					return nil
 				}(); err != nil {
 					return
 				}
 			}
+
+			sort.Strings(relNames)
+			sort.Strings(shardIds)
 
 			issues := map[string][]string{}
 			for _, relationKey := range relNames {
@@ -324,7 +332,7 @@ var (
 				}
 
 				target := sets[pickMajority(setCounts)]
-				for id := range shardData.ShardsData {
+				for _, id := range shardIds {
 					shardIssues := []string{}
 					cols, ok := shardColumns[id][relationKey]
 					if !ok {
