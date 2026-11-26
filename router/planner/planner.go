@@ -982,19 +982,25 @@ func ConsoleFunctionCall(
 			}
 			crazyDrop = mode.Value
 		}
+		var cleared []string
 		if legacyGIDOnly {
-			err = db.RemoveTXData(ctx, gid)
+			var removed bool
+			removed, err = db.RemoveTXData(ctx, gid)
+			if removed {
+				cleared = []string{gid}
+			}
 		} else {
 			gids := []string{}
 			if gid != "" {
 				gids = append(gids, gid)
 			}
-			err = db.ClearTxStatuses(ctx, crazyDrop, gids)
+			cleared, err = db.ClearTxStatuses(ctx, crazyDrop, gids)
 		}
 		if err != nil {
 			return nil, err
 		}
-		if gid != "" {
+		sort.Strings(cleared)
+		for _, gid := range cleared {
 			tts.WriteDataRow(gid)
 		}
 		return tts, nil

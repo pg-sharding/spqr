@@ -52,14 +52,13 @@ func TestCleanUpOldTXs(t *testing.T) {
 		return res, nil
 	}).AnyTimes()
 
-	// Only the two finalized+stale GIDs must be removed.
-	removed := map[string]bool{}
+	candidates := map[string]bool{}
 	d.EXPECT().ClearTxStatuses(gomock.Any(), false, gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ bool, gids []string) error {
+		func(_ context.Context, _ bool, gids []string) ([]string, error) {
 			for _, gid := range gids {
-				removed[gid] = true
+				candidates[gid] = true
 			}
-			return nil
+			return gids, nil
 		}).AnyTimes()
 	d.EXPECT().AcquireTxOwnership(gomock.Any(), "gid-init-stale", false).Return(true, nil).AnyTimes()
 	d.EXPECT().AcquireTxOwnership(gomock.Any(), "gid-p1-stale", false).Return(true, nil).AnyTimes()
@@ -79,7 +78,7 @@ func TestCleanUpOldTXs(t *testing.T) {
 	res, err := wd.CleanUpOldTXs(context.Background())
 	assert.NoError(err)
 
-	rm := map[string]bool{
+	wantCandidates := map[string]bool{
 		"gid-committed-stale": true,
 		"gid-rejected-stale":  true,
 		/* won't finalize bc of empty backend rules
@@ -89,9 +88,9 @@ func TestCleanUpOldTXs(t *testing.T) {
 	}
 
 	assert.ElementsMatch([]string{"gid-committed-stale", "gid-rejected-stale" /* "gid-init-stale", "gid-p1-stale" */}, res)
-	assert.Equal(rm, removed)
+	assert.Equal(wantCandidates, candidates)
 
-	for k := range rm {
+	for k := range wantCandidates {
 		delete(txs, k)
 	}
 

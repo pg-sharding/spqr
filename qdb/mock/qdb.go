@@ -1856,11 +1856,12 @@ func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpe
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error {
+func (m *MockDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gids)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
@@ -1928,11 +1929,12 @@ func (mr *MockDCStateKeeperMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomoc
 }
 
 // RemoveTXData mocks base method.
-func (m *MockDCStateKeeper) RemoveTXData(ctx context.Context, gid string) error {
+func (m *MockDCStateKeeper) RemoveTXData(ctx context.Context, gid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTXData", ctx, gid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RemoveTXData indicates an expected call of RemoveTXData.
@@ -2097,11 +2099,12 @@ func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExp
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockXDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error {
+func (m *MockXDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gids)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
@@ -2299,11 +2302,12 @@ func (mr *MockXDCStateKeeperMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomo
 }
 
 // RemoveTXData mocks base method.
-func (m *MockXDCStateKeeper) RemoveTXData(ctx context.Context, gid string) error {
+func (m *MockXDCStateKeeper) RemoveTXData(ctx context.Context, gid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTXData", ctx, gid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RemoveTXData indicates an expected call of RemoveTXData.
@@ -4298,11 +4302,12 @@ func (mr *MockStateKeeperQDBMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *g
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockStateKeeperQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) error {
+func (m *MockStateKeeperQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gids)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
@@ -5365,11 +5370,12 @@ func (mr *MockStateKeeperQDBMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomo
 }
 
 // RemoveTXData mocks base method.
-func (m *MockStateKeeperQDB) RemoveTXData(ctx context.Context, gid string) error {
+func (m *MockStateKeeperQDB) RemoveTXData(ctx context.Context, gid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTXData", ctx, gid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RemoveTXData indicates an expected call of RemoveTXData.

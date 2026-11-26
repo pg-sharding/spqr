@@ -398,9 +398,14 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 		}
 	}
 	if len(gids) > 0 {
-		if err := d.d.ClearTxStatuses(ctx, false, gids); err != nil {
+		cleared, err := d.d.ClearTxStatuses(ctx, false, gids)
+		if err != nil {
 			return nil, err
 		}
+		if len(cleared) > 0 {
+			spqrlog.WdLog.Debug().Strs("gids", cleared).Msg("cleared expired 2pc transaction statuses")
+		}
+		return cleared, nil
 	}
 	return gids, nil
 }

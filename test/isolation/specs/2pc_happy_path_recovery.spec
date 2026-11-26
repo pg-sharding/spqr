@@ -1,5 +1,4 @@
 
-
 session s1
 step s1_report             { SET __spqr__reply_notice TO on; }
 step s1_commit_strategy    { set __spqr__commit_strategy to 2pc; }
@@ -14,6 +13,7 @@ step s1_set_conf2          { select set_config('twopc_aux_tester.error_on_prepar
 
 session s2
 step s2_show_pg_prep_xacts { select __spqr__ctid('pg_prepared_xacts'); }
+step s2_clear_2pc_data    { SELECT __spqr__clear_2pc_data('2pc_happy_path_fail_gid', true); }
 
 
 permutation
@@ -26,3 +26,4 @@ permutation
     s2_show_pg_prep_xacts
     s1_commit
     s2_show_pg_prep_xacts
+    s2_clear_2pc_data

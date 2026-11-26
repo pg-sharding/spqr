@@ -9,7 +9,6 @@ CREATE TABLE ref_2pc(i INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__engine_v2 TO true;
-select __spqr__clear_2pc_data(true);
 SELECT __spqr__set_next_2pc_gid('auto_zzz1');
 BEGIN;
 INSERT INTO ref_2pc (i) VALUES (1);
@@ -108,6 +107,7 @@ SELECT __spqr__clear_2pc_data('auto_zzz2', false);
  auto_zzz2
 (1 row)
 
+SELECT __spqr__clear_2pc_data('auto_zzz2');
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
     gid    | status 
 -----------+--------
@@ -117,6 +117,13 @@ SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 (3 rows)
 
 SELECT __spqr__clear_2pc_data();
+ clear_2pc_data 
+----------------
+ auto_zzz3
+ auto_zzz4
+ auto_zzz5
+(3 rows)
+
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 SELECT __spqr__set_next_2pc_gid('drop_table_gid');
 DROP TABLE ref_2pc;
@@ -131,6 +138,11 @@ NOTICE: commit prepared tx drop_table_gid on spqr_shard_2:6432
 NOTICE: commit prepared tx drop_table_gid on spqr_shard_3:6432
 NOTICE: commit prepared tx drop_table_gid on spqr_shard_4:6432
 select __spqr__clear_2pc_data(true);
+ clear_2pc_data 
+----------------
+ drop_table_gid
+(1 row)
+
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 NOTICE: send query to shard(s) : sh1

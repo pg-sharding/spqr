@@ -2217,20 +2217,31 @@ func (q *MemQDB) GetTxMetaStorage(_ context.Context) ([]string, error) {
 	return []string{"local"}, nil
 }
 
-func (q *MemQDB) RemoveTXData(_ context.Context, gid string) error {
+func (q *MemQDB) RemoveTXData(_ context.Context, gid string) (bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.State.TwoPhaseTx, gid)
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.TwoPhaseTx, gid))
+	_, existed := q.State.TwoPhaseTx[gid]
+	if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.State.TwoPhaseTx, gid)); err != nil {
+		return false, err
+	}
+	return existed, nil
 }
 
-func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gids []string) error {
+func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	var cleared []string
 	if crazyDrop && len(gids) == 0 {
-		return ExecuteCommands(q.DumpState, NewDropCommand(q.State.TwoPhaseTx))
+		cleared = make([]string, 0, len(q.State.TwoPhaseTx))
+		for gid := range q.State.TwoPhaseTx {
+			cleared = append(cleared, gid)
+		}
+		if err := ExecuteCommands(q.DumpState, NewDropCommand(q.State.TwoPhaseTx)); err != nil {
+			return nil, err
+		}
+		return cleared, nil
 	}
 
 	gidSet := make(map[string]struct{}, len(gids))
@@ -2242,14 +2253,17 @@ func (q *MemQDB) ClearTxStatuses(_ context.Context, crazyDrop bool, gids []strin
 	for txID, info := range q.State.TwoPhaseTx {
 		if _, ok := gidSet[txID]; len(gids) > 0 && !ok {
 			continue
-
 		}
 		if !crazyDrop && info.State != TwoPhaseP2 && info.State != TwoPhaseP2Rejected {
 			continue
 		}
 		commands = append(commands, NewDeleteCommand(q.State.TwoPhaseTx, txID))
+		cleared = append(cleared, txID)
 	}
-	return ExecuteCommands(q.DumpState, commands...)
+	if err := ExecuteCommands(q.DumpState, commands...); err != nil {
+		return nil, err
+	}
+	return cleared, nil
 }
 
 // ==============================================================================

@@ -52,3 +52,5 @@ SET __spqr__eager_cleanup_2pc TO false;
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 
 SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');
+
+SELECT __spqr__clear_2pc_data(true);
