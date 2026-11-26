@@ -1180,7 +1180,7 @@ Feature: MemQDB with PG dc state keeper test
     .*failed to acquire tx ownership, doing nothing.*
     """
 
-  Scenario: planned transaction is rejected with watchdog without prepared xacts
+  Scenario: planned transaction is rejected without prepared xacts
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb.yaml
