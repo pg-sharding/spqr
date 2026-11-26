@@ -507,8 +507,8 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, err
 		}
 
-		if len(distrib.ColTypes) > 1 {
-			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
+		if len(distrib.ColTypes) != 1 {
+			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "sharding key hints require a single-column distribution")
 		}
 
 		et, err := rm.ResolveKeyShard(ctx, distrib, val)

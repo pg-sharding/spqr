@@ -68,6 +68,8 @@ COPY test_distr_ref_rel(id, val) FROM STDIN WITH DELIMITER '|';
 
 set __spqr__default_route_behaviour to allow;
 
+SELECT * FROM test_ref_rel /* __spqr__sharding_key: 1, __spqr__distribution: REPLICATED */;
+
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 
 set __spqr__default_route_behaviour to block;

@@ -84,6 +84,9 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_distr_ref_rel(id, val) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 set __spqr__default_route_behaviour to allow;
+SELECT * FROM test_ref_rel /* __spqr__sharding_key: 1, __spqr__distribution: REPLICATED */;
+ERROR:  sharding key hints require a single-column distribution
+QUERY:  SELECT * FROM test_ref_rel /* __spqr__sharding_key: 1, __spqr__distribution: REPLICATED */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
