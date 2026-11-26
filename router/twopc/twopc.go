@@ -212,6 +212,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		retST = st
 	}
 
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseAfterCommitCP); err != nil {
+			spqrlog.Zero.Info().Uint("client", cl.ID()).Str("txid", gid).Err(err).Msg("error while checking control point")
+		}
+	}
+
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
 		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2, qdb.TwoPhaseP1); err != nil {
