@@ -1250,6 +1250,11 @@ Feature: MemQDB with PG dc state keeper test
       "status": "planned"
     }]
     """
+    When I run SQL on host "shard1"
+    """
+    UPDATE spqr_metadata.spqr_tx_status SET created_at=now() - INTERVAL '120 minutes', updated_at=now() - INTERVAL '80 minutes';
+    """
+    Then command return code should be "0"
     When host "router" is started
     When I run SQL on host "router"
     """
@@ -1298,10 +1303,7 @@ Feature: MemQDB with PG dc state keeper test
     Then command return code should be "0"
     And command output should match regexp
     """
-    .*enter RecoverDistributedTx.*
-    .*sh1.*fetching stale two phase commit data.*
-    .*sh1.*found unfinished tx on shard.*
-    .*sh2.*fetching stale two phase commit data.*
-    .*sh2.*found unfinished tx on shard.*
+    .*tx already committed/rejected.*
+    .*tx already committed/rejected.*
     """
 

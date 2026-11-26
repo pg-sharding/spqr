@@ -386,6 +386,11 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
 			gids = append(gids, tx.Gid)
 		}
+		if tx.State == qdb.TwoPhaseInitState && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			if err := d.LockAndRecover2PhaseCommitTX(ctx, tx.Gid); err != nil {
+				spqrlog.Zero.Debug().Str("gid", tx.Gid).Err(err).Msg("failed to clean up outdated init-state tx")
+			}
+		}
 	}
 	if len(gids) > 0 {
 		if err := d.d.ClearTxStatuses(ctx, false, gids); err != nil {
