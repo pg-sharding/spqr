@@ -12,9 +12,10 @@ import (
 
 /* Known control point list */
 const (
-	TwoPhaseBeforePrepareCP = "2pc_before_prepare_cp"
-	TwoPhaseDecisionCP      = "2pc_decision_cp"
-	TwoPhaseDecisionCP2     = "2pc_after_decision_cp"
+	TwoPhaseBeforePrepareCP      = "2pc_before_prepare_cp"
+	TwoPhaseAfterRecordMembersCP = "2pc_after_record_members_cp"
+	TwoPhaseDecisionCP           = "2pc_decision_cp"
+	TwoPhaseDecisionCP2          = "2pc_after_decision_cp"
 
 	AfterRenameKeyRangeCP       = "after_rename_key_range_cp"
 	AfterSplitKeyRangeCP        = "after_split_key_range_cp"
@@ -120,7 +121,7 @@ func DefineICP(name string, a *spqrparser.ICPointAction) error {
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
 		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
 		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
-		AwaitPidCP:
+		AwaitPidCP, TwoPhaseAfterRecordMembersCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -147,7 +148,7 @@ func ResetICP(name string) error {
 		AfterRouterUpdateKeyRangeCP, AfterUnlockKeyRangeCP, AfterRenameKeyRangeCP,
 		AfterSplitKeyRangeCP, AfterMoveCP, AfterUniteKeyRangeCP,
 		BeforeInsertCP, AfterInsertCP, AfterDeleteQueryCP,
-		AwaitPidCP:
+		AwaitPidCP, TwoPhaseAfterRecordMembersCP:
 		/* OK */
 
 		f, ok := cpsResetMp[name]

@@ -91,6 +91,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		 */
 	}
 
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseAfterRecordMembersCP); err != nil {
+			return txstatus.TXERR, err
+		}
+	}
+
 	retST := txstatus.TXERR
 
 	undoShards := []shard.ShardHostInstance{}
