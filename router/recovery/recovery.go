@@ -392,7 +392,9 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 		} else if tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
 			if err := d.LockAndRecover2PhaseCommitTX(ctx, tx.Gid); err != nil {
 				spqrlog.WdLog.Debug().Str("gid", tx.Gid).Err(err).Msg("failed to clean up outdated init-state tx")
+				continue
 			}
+			gids = append(gids, tx.Gid)
 		}
 	}
 	if len(gids) > 0 {
