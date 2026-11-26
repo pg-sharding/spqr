@@ -48,30 +48,30 @@ func TestCleanUpOldTXs(t *testing.T) {
 		return res, nil
 	}).AnyTimes()
 
-	// Only the two finalized+stale GIDs must be removed.
-	removed := map[string]bool{}
+	candidates := map[string]bool{}
 	d.EXPECT().ClearTxStatuses(gomock.Any(), false, gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ bool, gids []string) error {
+		func(_ context.Context, _ bool, gids []string) ([]string, error) {
 			for _, gid := range gids {
-				removed[gid] = true
+				candidates[gid] = true
 			}
-			return nil
-		}).AnyTimes()
+			// Another cleanup can delete a GID before this call reaches storage.
+			return []string{"gid-committed-stale"}, nil
+		}).Times(1)
 
 	wd := recovery.NewTwoPCWatchDogForTest(d)
 
 	res, err := wd.CleanUpOldTXs(context.Background())
 	assert.NoError(err)
 
-	rm := map[string]bool{
+	wantCandidates := map[string]bool{
 		"gid-committed-stale": true,
 		"gid-rejected-stale":  true,
 	}
 
-	assert.ElementsMatch([]string{"gid-committed-stale", "gid-rejected-stale"}, res)
-	assert.Equal(rm, removed)
+	assert.Equal([]string{"gid-committed-stale"}, res)
+	assert.Equal(wantCandidates, candidates)
 
-	for k := range rm {
+	for k := range wantCandidates {
 		delete(txs, k)
 	}
 
