@@ -1253,7 +1253,7 @@ Feature: MemQDB with PG dc state keeper test
     When host "router" is started
     When I run SQL on host "router"
     """
-    SELECT __spqr__run_2pc_recover();
+    SELECT __spqr__clean_outdated_2pc_data();
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
