@@ -34,11 +34,10 @@ var rootCmd = &cobra.Command{
 		}
 		log.Println("Running config:", cfgStr)
 
-		if coordinatorCfgPath == "" {
-			return fmt.Errorf("coordinator config path must be provided via --coordinator-config to establish a connection")
-		}
-		if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
-			return fmt.Errorf("failed to load coordinator config: %w", err)
+		if coordinatorCfgPath != "" {
+			if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+				return fmt.Errorf("failed to load coordinator config: %w", err)
+			}
 		}
 
 		// TODO add config.BalancerConfig().LogFileName
@@ -71,7 +70,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/balancer.yaml", "path to config file")
-	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file (required)")
+	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file")
 	rootCmd.AddCommand(testCmd)
 }
 

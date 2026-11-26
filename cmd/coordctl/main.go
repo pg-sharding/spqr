@@ -26,11 +26,10 @@ var (
 )
 
 func DialCoordinator(r *topology.Router) (*grpc.ClientConn, error) {
-	if coordinatorCfgPath == "" {
-		return nil, fmt.Errorf("coordinator config path must be provided via --coordinator-config to establish a connection")
-	}
-	if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
-		return nil, fmt.Errorf("failed to load coordinator config: %w", err)
+	if coordinatorCfgPath != "" {
+		if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+			return nil, fmt.Errorf("failed to load coordinator config: %w", err)
+		}
 	}
 	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
@@ -215,7 +214,7 @@ var listShardCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&coordinatorEndpoint, "endpoint", "e", "localhost:7003", "coordinator endpoint")
-	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file (required)")
+	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file")
 
 	addRouterCmd.PersistentFlags().StringVarP(&routerEndpoint, "router-endpoint", "", "", "router endpoint to add")
 	addRouterCmd.PersistentFlags().StringVarP(&routerID, "router-id", "", "", "router id to add")

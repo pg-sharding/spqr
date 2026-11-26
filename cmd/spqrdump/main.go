@@ -25,11 +25,10 @@ import (
 )
 
 func Dial(addr string) (*grpc.ClientConn, error) {
-	if coordinatorCfgPath == "" {
-		return nil, fmt.Errorf("coordinator config path must be provided via --coordinator-config to establish a connection")
-	}
-	if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
-		return nil, fmt.Errorf("failed to load coordinator config: %w", err)
+	if coordinatorCfgPath != "" {
+		if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+			return nil, fmt.Errorf("failed to load coordinator config: %w", err)
+		}
 	}
 	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 	if err != nil {
@@ -378,7 +377,7 @@ var dump = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7000", "endpoint for dump metadata")
 
-	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file (required)")
+	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file")
 
 	rootCmd.PersistentFlags().StringVarP(&proto, "proto", "t", "grpc", "protocol to use for communication")
 

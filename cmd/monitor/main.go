@@ -150,11 +150,10 @@ var (
 				}
 				lockedKeyRanges[id] = keyRange
 			}
-			if coordinatorCfgPath == "" {
-				return fmt.Errorf("coordinator config path must be provided via --coordinator-config to establish a connection")
-			}
-			if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
-				return fmt.Errorf("failed to load coordinator config: %w", err)
+			if coordinatorCfgPath != "" {
+				if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+					return fmt.Errorf("failed to load coordinator config: %w", err)
+				}
 			}
 			dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
 			if err != nil {
@@ -410,7 +409,7 @@ func init() {
 
 	recoverKeyRangesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "only check key ranges, do not delete anything")
 	recoverKeyRangesCmd.Flags().StringVar(&coordAddr, "coordinator-addr", "localhost:7003", "coordinator grpc api address")
-	recoverKeyRangesCmd.Flags().StringVar(&coordinatorCfgPath, "coordinator-config", "", "path to coordinator config file (required)")
+	recoverKeyRangesCmd.Flags().StringVar(&coordinatorCfgPath, "coordinator-config", "", "path to coordinator config file")
 
 	verifyKeyRangeCmd.Flags().StringVarP(&keyRangeId, "key-range", "k", "", "ID of the key range to check")
 	checkMigrationsCmd.Flags().StringVar(&stateFilePath, "file", "", "result file path")
