@@ -337,6 +337,7 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 		}
 
 		aggStates := make([]engine.AggregateState, 0)
+		var aggregateErr error
 
 		/* Current implementation restriction is all-aggregate in query result relation
 		target list. Check that.  */
@@ -429,27 +430,39 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 							retSlice.TTS.Desc = xproto.CopyFieldDescriptions(v.Fields)
 
 							for i, agg := range aggStates {
-								agg.Init(int(v.Fields[i].DataTypeOID))
+								if err := agg.Init(int(v.Fields[i].DataTypeOID)); err != nil && aggregateErr == nil {
+									aggregateErr = err
+								}
 							}
 						}
 					case *pgproto3.ErrorResponse:
 						errmsg = v
 					case *pgproto3.DataRow:
+						if aggregateErr != nil {
+							continue
+						}
 						for i, agg := range aggStates {
-							agg.Aggregate(v.Values[i])
+							if err := agg.Aggregate(v.Values[i]); err != nil {
+								aggregateErr = err
+								break
+							}
 						}
 					default:
 						/* All ok? */
 					}
 				}
 			}
-
-			datRow := []string{}
-			for _, agg := range aggStates {
-				datRow = append(datRow, fmt.Sprintf("%+v", agg.Finalize()))
+			if aggregateErr != nil {
+				return aggregateErr
 			}
 
-			retSlice.TTS.WriteDataRow(datRow...)
+			datRow := make([][]byte, len(aggStates))
+			for i, agg := range aggStates {
+				if value := agg.Finalize(); value != nil {
+					datRow[i] = []byte(fmt.Sprintf("%+v", value))
+				}
+			}
+			retSlice.TTS.Raw = append(retSlice.TTS.Raw, datRow)
 
 			return nil
 		}

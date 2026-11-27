@@ -8,6 +8,12 @@ const TEXTOID = 25 /* #no-spell-check-line */
 // DOUBLEOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L223 /* #no-spell-check-line */
 const DOUBLEOID = 701 /* #no-spell-check-line */
 
+// FLOAT4OID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L211 /* #no-spell-check-line */
+const FLOAT4OID = 700 /* #no-spell-check-line */
+
+// NUMERICOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L246 /* #no-spell-check-line */
+const NUMERICOID = 1700 /* #no-spell-check-line */
+
 // INT8OID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L55 /* #no-spell-check-line */
 const INT8OID = 20 /* #no-spell-check-line */
 

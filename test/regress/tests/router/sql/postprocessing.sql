@@ -34,6 +34,14 @@ SELECT count(*) FROM r_pp;
 SELECT count(i) FROM r_pp;
 SELECT count(i), count(1), count(*) FROM r_pp;
 
+SELECT SUM(length(i)) FROM r_pp WHERE id IS NOT NULL;
+
+SELECT SUM(length(i)), SUM(length(i)::bigint), SUM(length(i)::real),
+       SUM(length(i)::double precision), SUM(length(i)::numeric)
+FROM r_pp;
+
+SELECT SUM(DISTINCT length(i)) FROM r_pp;
+
 -- XXX: support later?
 SELECT count(DISTINCT id) AS n FROM r_pp;
 

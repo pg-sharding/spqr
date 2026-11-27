@@ -165,6 +165,26 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
     13 |    13 |    13
 (1 row)
 
+SELECT SUM(length(i)) FROM r_pp WHERE id IS NOT NULL;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ sum 
+-----
+     
+(1 row)
+
+SELECT SUM(length(i)), SUM(length(i)::bigint), SUM(length(i)::real),
+       SUM(length(i)::double precision), SUM(length(i)::numeric)
+FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ sum | sum | sum | sum | sum 
+-----+-----+-----+-----+-----
+  13 |  13 |  13 |  13 |  13
+(1 row)
+
+SELECT SUM(DISTINCT length(i)) FROM r_pp;
+ERROR:  in-router postprocessing for DISTINCT aggregate is not supported
+QUERY:  SELECT SUM(DISTINCT length(i)) FROM r_pp;
+
 -- XXX: support later?
 SELECT count(DISTINCT id) AS n FROM r_pp;
 ERROR:  in-router postprocessing for DISTINCT aggregate is not supported
