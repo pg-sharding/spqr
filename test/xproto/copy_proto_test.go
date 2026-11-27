@@ -3,7 +3,9 @@
 package prep_stmt_test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -348,4 +350,63 @@ func TestCopyOutProtocols(t *testing.T) {
 			protoTestRunner(t, frontend, []MessageGroup{{Request: tc.request, Response: tc.response}})
 		})
 	}
+}
+
+func TestCopyDistributedCommandTag(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer func() { _ = conn.Close() }()
+
+	ids := []int{2, 12, 1002}
+	value := int(time.Now().UnixNano()%1000000) + 1000000
+	copyOut := fmt.Sprintf("COPY (SELECT id FROM t2 WHERE val = %d ORDER BY id) TO STDOUT", value)
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: fmt.Sprintf("DELETE FROM t2 WHERE val = %d", value)},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+			SkipCheckCommandTag: true,
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: fmt.Sprintf("INSERT INTO t2(id, val) VALUES (%d, %d), (%d, %d), (%d, %d)", ids[0], value, ids[1], value, ids[2], value)},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+			SkipCheckCommandTag: true,
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: copyOut},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CopyOutResponse{ColumnFormatCodes: []uint16{0}},
+				&pgproto3.CopyData{Data: []byte(fmt.Sprintf("%d\n", ids[0]))},
+				&pgproto3.CopyData{Data: []byte(fmt.Sprintf("%d\n", ids[1]))},
+				&pgproto3.CopyData{Data: []byte(fmt.Sprintf("%d\n", ids[2]))},
+				&pgproto3.CopyDone{},
+				&pgproto3.CommandComplete{CommandTag: []byte("COPY 3")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: fmt.Sprintf("DELETE FROM t2 WHERE val = %d", value)},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+			SkipCheckCommandTag: true,
+		},
+	})
 }

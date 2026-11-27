@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -847,10 +848,10 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage, simple bool) (txstatus.TXStatus, error) {
-	return s.procCopyComplete(query, simple)
+	return s.procCopyComplete(query, simple, false)
 }
 
-func (s *QueryStateExecutorImpl) procCopyComplete(query pgproto3.FrontendMessage, simple bool) (txstatus.TXStatus, error) {
+func (s *QueryStateExecutorImpl) procCopyComplete(query pgproto3.FrontendMessage, simple, aggregateCopyCount bool) (txstatus.TXStatus, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Type("query-type", query).
@@ -879,6 +880,8 @@ func (s *QueryStateExecutorImpl) procCopyComplete(query pgproto3.FrontendMessage
 
 	var ccmsg *pgproto3.CommandComplete
 	var errmsg *pgproto3.ErrorResponse
+	var copyCount int64
+	hasCopyCount := false
 
 	txt := txstatus.TXIDLE
 
@@ -902,6 +905,18 @@ func (s *QueryStateExecutorImpl) procCopyComplete(query pgproto3.FrontendMessage
 				break wl
 			case *pgproto3.CommandComplete:
 				ccmsg = v
+				if aggregateCopyCount {
+					countText, ok := strings.CutPrefix(string(v.CommandTag), "COPY ")
+					if !ok {
+						return txt, fmt.Errorf("unexpected COPY command tag %q", v.CommandTag)
+					}
+					count, err := strconv.ParseInt(countText, 10, 64)
+					if err != nil {
+						return txt, err
+					}
+					copyCount += count
+					hasCopyCount = true
+				}
 			case *pgproto3.ErrorResponse:
 				errmsg = v
 			default:
@@ -916,7 +931,11 @@ func (s *QueryStateExecutorImpl) procCopyComplete(query pgproto3.FrontendMessage
 			return txt, fmt.Errorf("copy state out of sync")
 		}
 
-		s.cacheCC.CommandTag = append([]byte(nil), ccmsg.CommandTag...)
+		if aggregateCopyCount && hasCopyCount {
+			s.cacheCC.CommandTag = fmt.Appendf([]byte("COPY"), " %d", copyCount)
+		} else {
+			s.cacheCC.CommandTag = append([]byte(nil), ccmsg.CommandTag...)
+		}
 
 		s.es.cc = &s.cacheCC
 	}
@@ -952,7 +971,7 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 	}
 
 	// DispatchSlice already sent Sync for extended COPY OUT.
-	txt, err := s.procCopyComplete(nil, simple)
+	txt, err := s.procCopyComplete(nil, simple, true)
 	if err != nil {
 		return err
 	}
