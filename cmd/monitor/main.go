@@ -278,9 +278,9 @@ var (
 						AND NOT a.attisdropped`
 
 			shardColumns := map[string]map[string]map[string]struct{}{}
-			shardIds := make([]string, 0, len(shardData.ShardsData))
+			shardIDs := make([]string, 0, len(shardData.ShardsData))
 			for id, shardConf := range shardData.ShardsData {
-				shardIds = append(shardIds, id)
+				shardIDs = append(shardIDs, id)
 
 				if err := func() error {
 					conn, err := connectWithTSA(ctx, shardConf, "prefer-standby")
@@ -323,7 +323,7 @@ var (
 			}
 
 			sort.Strings(relNames)
-			sort.Strings(shardIds)
+			sort.Strings(shardIDs)
 
 			issues := map[string][]string{}
 			for _, relationKey := range relNames {
@@ -342,7 +342,7 @@ var (
 				}
 
 				target := sets[pickMajority(setCounts)]
-				for _, id := range shardIds {
+				for _, id := range shardIDs {
 					shardIssues := []string{}
 					cols, ok := shardColumns[id][relationKey]
 					if !ok {
