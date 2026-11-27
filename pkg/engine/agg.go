@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	CountAgg = "count"
-	MinAgg   = "min"
-	MaxAgg   = "max"
-	SumAgg   = "sum"
+	CountAgg  = "count"
+	MinAgg    = "min"
+	MaxAgg    = "max"
+	SumAgg    = "sum"
+	ExistsAgg = "exists"
 )
 
 type AggregateState interface {
@@ -53,9 +54,35 @@ func (c *CountAggregate) Init(oid int) {
 
 var _ AggregateState = &CountAggregate{}
 
+type ExistsAggregate struct {
+	v bool
+}
+
+// Aggregate implements [AggregateState].
+func (c *ExistsAggregate) Aggregate(v []byte) {
+	nv, _ := strconv.ParseBool(string(v))
+	c.v = c.v || nv
+}
+
+// Finalize implements [AggregateState].
+func (c *ExistsAggregate) Finalize() any {
+	if c.v {
+		return "t"
+	} else {
+		return "f"
+	}
+}
+
+// Init implements [AggregateState].
+func (c *ExistsAggregate) Init(oid int) {
+	c.v = false
+}
+
+var _ AggregateState = &ExistsAggregate{}
+
 func EngineV2AggregateFunction(n string) bool {
 	switch n {
-	case CountAgg, MaxAgg, MinAgg, SumAgg:
+	case CountAgg, MaxAgg, MinAgg, SumAgg, ExistsAgg:
 		return true
 	default:
 		return false
@@ -66,6 +93,8 @@ func CreateAggregate(name string, _ []lyx.Node) (AggregateState, error) {
 	switch name {
 	case CountAgg:
 		return &CountAggregate{}, nil
+	case ExistsAgg:
+		return &ExistsAggregate{}, nil
 	default:
 		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "not supported aggregate %s", name)
 	}
