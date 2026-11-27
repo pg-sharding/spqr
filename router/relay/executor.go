@@ -742,18 +742,26 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	prevDelimiter := 0
 	prevLine := 0
 	attrIndx := 0
+	escaped := false
 
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
 			prevLine = len(data.Data)
 			break
 		}
-		if b == '\n' || b == cps.Delimiter {
+		isEscaped := escaped
+		if b == '\\' {
+			escaped = !escaped
+		} else {
+			escaped = false
+		}
+
+		if b == '\n' || (b == cps.Delimiter && !isEscaped) {
 			if attrIndx >= len(cps.SchemaColumns) {
 				return nil, fmt.Errorf("malformed data in copy")
 			}
 			if indx, ok := cps.SchemaColumnMp[cps.SchemaColumns[attrIndx]]; ok {
-				routingTupleItems[indx] = append(routingTupleItems[indx], data.Data[prevDelimiter:i])
+				routingTupleItems[indx] = append(routingTupleItems[indx], decodeCopyTextField(data.Data[prevDelimiter:i]))
 			}
 
 			attrIndx++
@@ -823,6 +831,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
 		attrIndx = 0
 		prevLine = i + 1
+		escaped = false
 	}
 
 	if prevLine != len(data.Data) {
@@ -843,6 +852,79 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 	// shouldn't exit from here
 	return leftoverMsgData, nil
+}
+
+func decodeCopyTextField(data []byte) []byte {
+	if string(data) == `\N` {
+		return data
+	}
+
+	decoded := make([]byte, 0, len(data))
+	for i := 0; i < len(data); i++ {
+		if data[i] != '\\' || i+1 == len(data) {
+			decoded = append(decoded, data[i])
+			continue
+		}
+
+		i++
+		switch data[i] {
+		case 'b':
+			decoded = append(decoded, '\b')
+		case 'f':
+			decoded = append(decoded, '\f')
+		case 'n':
+			decoded = append(decoded, '\n')
+		case 'r':
+			decoded = append(decoded, '\r')
+		case 't':
+			decoded = append(decoded, '\t')
+		case 'v':
+			decoded = append(decoded, '\v')
+		case 'x':
+			value, digits := 0, 0
+			for digits < 2 && i+1 < len(data) {
+				n, ok := hexDigit(data[i+1])
+				if !ok {
+					break
+				}
+				i++
+				value = value*16 + n
+				digits++
+			}
+			if digits == 0 {
+				decoded = append(decoded, 'x')
+			} else {
+				decoded = append(decoded, byte(value))
+			}
+		default:
+			if data[i] >= '0' && data[i] <= '7' {
+				value, digits := int(data[i]-'0'), 1
+				for digits < 3 && i+1 < len(data) && data[i+1] >= '0' && data[i+1] <= '7' {
+					i++
+					value = value*8 + int(data[i]-'0')
+					digits++
+				}
+				decoded = append(decoded, byte(value))
+			} else {
+				decoded = append(decoded, data[i])
+			}
+		}
+	}
+
+	return decoded
+}
+
+func hexDigit(b byte) (int, bool) {
+	switch {
+	case b >= '0' && b <= '9':
+		return int(b - '0'), true
+	case b >= 'a' && b <= 'f':
+		return int(b-'a') + 10, true
+	case b >= 'A' && b <= 'F':
+		return int(b-'A') + 10, true
+	default:
+		return 0, false
+	}
 }
 
 // TODO : unit tests
