@@ -931,7 +931,7 @@ func ConsoleFunctionCall(
 			}
 			gid := strVal.Value
 
-			if err := wd.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
+			if err := wd.LockAndRecover2PhaseCommitTX(ctx, gid, true); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(gid)

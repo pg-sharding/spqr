@@ -139,7 +139,7 @@ func (q *PgDCStateKeeper) releaseConn(txid string) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, create bool) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, create bool, lock bool) (bool, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -162,10 +162,20 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, c
 			q.releaseConn(txid)
 			return false, err
 		}
-		if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
-			delete(q.locks, txid)
-			q.releaseConn(txid)
-			return false, err
+		if lock {
+			if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
+				delete(q.locks, txid)
+				q.releaseConn(txid)
+				return false, err
+			}
+		} else {
+			row := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", int64(hasher.Sum64()))
+			acquired := false
+			if err = row.Scan(&acquired); err != nil || !acquired {
+				delete(q.locks, txid)
+				q.releaseConn(txid)
+				return false, err
+			}
 		}
 	}
 

@@ -60,8 +60,8 @@ func TestCleanUpOldTXs(t *testing.T) {
 			}
 			return gids, nil
 		}).AnyTimes()
-	d.EXPECT().AcquireTxOwnership(gomock.Any(), "gid-init-stale", false).Return(true, nil).AnyTimes()
-	d.EXPECT().AcquireTxOwnership(gomock.Any(), "gid-p1-stale", false).Return(true, nil).AnyTimes()
+	d.EXPECT().AcquireTxOwnership(gomock.Any(), "gid-init-stale", false, false).Return(true, nil).AnyTimes()
+	d.EXPECT().AcquireTxOwnership(gomock.Any(), "gid-p1-stale", false, false).Return(true, nil).AnyTimes()
 	d.EXPECT().ReleaseTxOwnership(gomock.Any(), "gid-init-stale").Return(nil).AnyTimes()
 	d.EXPECT().ReleaseTxOwnership(gomock.Any(), "gid-p1-stale").Return(nil).AnyTimes()
 	d.EXPECT().TXStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, gid string) (qdb.TwoPhaseTxState, error) {

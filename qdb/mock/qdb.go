@@ -1827,18 +1827,18 @@ func (m *MockDCStateKeeper) EXPECT() *MockDCStateKeeperMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string, create bool) (bool, error) {
+func (m *MockDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string, create, lock bool) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create, lock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid, create any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid, create, lock any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid, create)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid, create, lock)
 }
 
 // ChangeTxStatus mocks base method.
@@ -2028,18 +2028,18 @@ func (m *MockXDCStateKeeper) EXPECT() *MockXDCStateKeeperMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockXDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string, create bool) (bool, error) {
+func (m *MockXDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string, create, lock bool) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create, lock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid, create any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid, create, lock any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid, create)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid, create, lock)
 }
 
 // AddRouter mocks base method.
@@ -4001,18 +4001,18 @@ func (m *MockStateKeeperQDB) EXPECT() *MockStateKeeperQDBMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockStateKeeperQDB) AcquireTxOwnership(ctx context.Context, gid string, create bool) (bool, error) {
+func (m *MockStateKeeperQDB) AcquireTxOwnership(ctx context.Context, gid string, create, lock bool) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create, lock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(ctx, gid, create any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(ctx, gid, create, lock any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).AcquireTxOwnership), ctx, gid, create)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).AcquireTxOwnership), ctx, gid, create, lock)
 }
 
 // AddMoveTaskGroupStopFlag mocks base method.
