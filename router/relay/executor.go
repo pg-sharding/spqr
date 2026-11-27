@@ -847,6 +847,10 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage, simple bool) (txstatus.TXStatus, error) {
+	return s.procCopyComplete(query, simple)
+}
+
+func (s *QueryStateExecutorImpl) procCopyComplete(query pgproto3.FrontendMessage, simple bool) (txstatus.TXStatus, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Type("query-type", query).
@@ -860,13 +864,15 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	}
 
 	for _, sh := range server.Datashards() {
-		if err := sh.Send(query); err != nil {
-			return txstatus.TXERR, err
-		}
-		/* https://git.postgresql.org/cgit/postgresql.git/tree/src/interfaces/libpq/fe-exec.c?h=REL_18_3#n2797 */
-		if !simple {
-			if err := sh.Send(pgsync); err != nil {
+		if query != nil {
+			if err := sh.Send(query); err != nil {
 				return txstatus.TXERR, err
+			}
+			/* https://git.postgresql.org/cgit/postgresql.git/tree/src/interfaces/libpq/fe-exec.c?h=REL_18_3#n2797 */
+			if !simple {
+				if err := sh.Send(pgsync); err != nil {
+					return txstatus.TXERR, err
+				}
 			}
 		}
 	}
@@ -941,7 +947,12 @@ func (s *QueryStateExecutorImpl) copyToExecutor(serv server.Server, simple bool)
 		}
 	}
 
-	txt, err := s.ProcCopyComplete(&pgproto3.CopyDone{}, simple)
+	if err := s.Client().Send(&pgproto3.CopyDone{}); err != nil {
+		return err
+	}
+
+	// DispatchSlice already sent Sync for extended COPY OUT.
+	txt, err := s.procCopyComplete(nil, simple)
 	if err != nil {
 		return err
 	}
