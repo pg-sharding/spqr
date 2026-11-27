@@ -5,17 +5,18 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/randutil"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
 	coordinatorEndpoint string
+	coordinatorCfgPath  string
 
 	routerEndpoint string
 	routerID       string
@@ -25,8 +26,16 @@ var (
 )
 
 func DialCoordinator(r *topology.Router) (*grpc.ClientConn, error) {
-	// TODO: add creds
-	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if coordinatorCfgPath != "" {
+		if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+			return nil, fmt.Errorf("failed to load coordinator config: %w", err)
+		}
+	}
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC TLS: %w", err)
+	}
+	return grpc.NewClient(r.Address, dialOption)
 }
 
 var rootCmd = &cobra.Command{
@@ -205,6 +214,7 @@ var listShardCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&coordinatorEndpoint, "endpoint", "e", "localhost:7003", "coordinator endpoint")
+	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file")
 
 	addRouterCmd.PersistentFlags().StringVarP(&routerEndpoint, "router-endpoint", "", "", "router endpoint to add")
 	addRouterCmd.PersistentFlags().StringVarP(&routerID, "router-id", "", "", "router id to add")

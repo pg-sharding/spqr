@@ -11,9 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/grpccreds"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -24,8 +25,16 @@ import (
 )
 
 func Dial(addr string) (*grpc.ClientConn, error) {
-	// TODO: add creds
-	return grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if coordinatorCfgPath != "" {
+		if _, err := config.LoadCoordinatorCfg(coordinatorCfgPath); err != nil {
+			return nil, fmt.Errorf("failed to load coordinator config: %w", err)
+		}
+	}
+	dialOption, err := grpccreds.DialOption(config.CoordinatorConfig().ClientTLS)
+	if err != nil {
+		return nil, fmt.Errorf("init coordinator gRPC TLS: %w", err)
+	}
+	return grpc.NewClient(addr, dialOption)
 }
 
 var rootCmd = &cobra.Command{
@@ -42,6 +51,7 @@ var proto string
 var passwd string
 var logLevel string
 var insecureSkipVerify bool
+var coordinatorCfgPath string
 
 // TODO : unit tests
 func waitRFQ(fr *pgproto3.Frontend) error {
@@ -366,6 +376,8 @@ var dump = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7000", "endpoint for dump metadata")
+
+	rootCmd.PersistentFlags().StringVarP(&coordinatorCfgPath, "coordinator-config", "", "", "path to coordinator config file")
 
 	rootCmd.PersistentFlags().StringVarP(&proto, "proto", "t", "grpc", "protocol to use for communication")
 
