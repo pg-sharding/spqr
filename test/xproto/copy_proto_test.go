@@ -4,6 +4,7 @@ package prep_stmt_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -65,6 +66,82 @@ func TestCopySimpleData(t *testing.T) {
 			assert.Equal(t, []byte("DELETE 2"), deleteCopiedRows(t, frontend, tc.cleanup))
 		})
 	}
+}
+
+func TestCopyDistributedInTransactionEngineV2(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+	defer func() { _ = conn.Close() }()
+	assert.NoError(t, conn.SetDeadline(time.Now().Add(30*time.Second)))
+
+	cleanup := "DELETE FROM t WHERE id IN (10, 15)"
+	deleteCopiedRows(t, frontend, cleanup)
+
+	sendCopyMessages(t, frontend, &pgproto3.Query{String: "BEGIN"})
+	expectCopyMessage(t, frontend, &pgproto3.CommandComplete{CommandTag: []byte("BEGIN")})
+	expectCopyMessage(t, frontend, &pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)})
+
+	sendCopyMessages(t, frontend, &pgproto3.Query{String: "SET LOCAL __spqr__.engine_v2 TO true"})
+	expectCopyMessage(t, frontend, &pgproto3.CommandComplete{CommandTag: []byte("SET")})
+	expectCopyMessage(t, frontend, &pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)})
+
+	sendCopyMessages(t, frontend, &pgproto3.Query{String: "SELECT id FROM t /* __spqr__scatter_query: true */"})
+	commandComplete := false
+	for {
+		msg, err := frontend.Receive()
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		if errResponse, ok := msg.(*pgproto3.ErrorResponse); ok {
+			t.Fatalf("failed to route inside transaction: %s", errResponse.Message)
+		}
+		if _, ok := msg.(*pgproto3.CommandComplete); ok {
+			commandComplete = true
+		}
+		if ready, ok := msg.(*pgproto3.ReadyForQuery); ok {
+			assert.True(t, commandComplete)
+			assert.Equal(t, byte(txstatus.TXACT), ready.TxStatus)
+			break
+		}
+	}
+
+	sendCopyMessages(t, frontend, &pgproto3.Query{String: "COPY t(id) FROM STDIN"})
+	expectCopyMessage(t, frontend, &pgproto3.CopyInResponse{ColumnFormatCodes: []uint16{0}})
+	sendCopyMessages(t, frontend, &pgproto3.CopyData{Data: []byte("10\n15\n")})
+	sendCopyMessages(t, frontend, &pgproto3.CopyDone{})
+	copyComplete, err := frontend.Receive()
+	assert.NoError(t, err)
+	assert.IsType(t, &pgproto3.CommandComplete{}, copyComplete)
+	if cc, ok := copyComplete.(*pgproto3.CommandComplete); ok {
+		t.Logf("COPY command tag: %s", cc.CommandTag)
+	}
+	expectCopyMessage(t, frontend, &pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)})
+
+	sendCopyMessages(t, frontend, &pgproto3.Query{String: "SELECT id FROM t WHERE id IN (10, 15)"})
+	var copiedIDs []string
+	for {
+		msg, err := frontend.Receive()
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		if errResponse, ok := msg.(*pgproto3.ErrorResponse); ok {
+			t.Fatalf("failed to read copied rows inside transaction: %s", errResponse.Message)
+		}
+		if row, ok := msg.(*pgproto3.DataRow); ok {
+			copiedIDs = append(copiedIDs, string(row.Values[0]))
+		}
+		if ready, ok := msg.(*pgproto3.ReadyForQuery); ok {
+			assert.Equal(t, byte(txstatus.TXACT), ready.TxStatus)
+			break
+		}
+	}
+
+	sendCopyMessages(t, frontend, &pgproto3.Query{String: "ROLLBACK"})
+	expectCopyMessage(t, frontend, &pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")})
+	expectCopyMessage(t, frontend, &pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)})
+
+	assert.ElementsMatch(t, []string{"10", "15"}, copiedIDs)
+	assert.Equal(t, []byte("DELETE 0"), deleteCopiedRows(t, frontend, cleanup))
 }
 
 func TestCopyExtendedData(t *testing.T) {
