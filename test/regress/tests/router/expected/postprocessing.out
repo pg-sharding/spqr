@@ -202,6 +202,20 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  t
 (1 row)
 
+SELECT NOT EXISTS(SELECT 1 FROM r_p WHERE id = 1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ ?column? 
+----------
+ f
+(1 row)
+
+SELECT NOT EXISTS(SELECT 1 FROM r_p WHERE id = 2);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ ?column? 
+----------
+ t
+(1 row)
+
 DROP TABLE r_pp;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
