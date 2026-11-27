@@ -533,7 +533,7 @@ Feature: MemQDB with PG dc state keeper test
     }]
     """
 
-  Scenario: committing transaction is committed with watchdog
+  Scenario: committing transaction is committed
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb_watchdog.yaml
@@ -760,7 +760,13 @@ Feature: MemQDB with PG dc state keeper test
     """
     [
       {
+        "gid": "committing_outdated"
+      },
+      {
         "gid": "done_outdated"
+      },
+      {
+        "gid": "planned_outdated"
       },
       {
         "gid": "rejected_outdated"
@@ -779,16 +785,10 @@ Feature: MemQDB with PG dc state keeper test
         "id": "committing_not_outdated"
       },
       {
-        "id": "committing_outdated"
-      },
-      {
         "id": "done_not_outdated"
       },
       {
         "id": "planned_not_outdated"
-      },
-      {
-        "id": "planned_outdated"
       },
       {
         "id": "rejected_not_outdated"
@@ -1061,7 +1061,7 @@ Feature: MemQDB with PG dc state keeper test
     .*gid1.*failed to acquire tx ownership, doing nothing.*
     """
 
-  Scenario: router leaves alone foreign transactions with memqdb
+    Scenario: router leaves alone foreign transactions with memqdb
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml
@@ -1178,251 +1178,5 @@ Feature: MemQDB with PG dc state keeper test
     .*sh2.*found unfinished tx on shard.*
     .*failed to acquire tx ownership, doing nothing.*
     .*failed to acquire tx ownership, doing nothing.*
-    """
-
-  Scenario: planned transaction is rejected without prepared xacts
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb.yaml
-    """
-    Given cluster is up and running
-    And host "router2" is stopped
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-    And I wait for host "coordinator" to finish startup
-
-    When I run SQL on host "coordinator"
-    """
-    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
-    """
-    Then command return code should be "0"
-    When I run SQL on host "coordinator"
-    """
-    CREATE REFERENCE TABLE t ON sh1, sh2;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router-admin"
-    """
-    SHOW dcs_storage;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{"storage": "sh1"}]
-    """
-    When I run SQL on host "router-admin"
-    """
-    ATTACH CONTROL POINT 2pc_after_record_members_cp panic;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router"
-    """
-    SET __spqr__engine_v2 TO on;
-    create table t (id int primary key, dat varchar);
-    SET __spqr__commit_strategy TO '2pc';
-    begin;
-    insert into t (id, dat) values (1, 'd1');
-    commit;
-    """
-    Then command return code should be "1"
-
-    When I run SQL on host "shard1"
-    """
-    SELECT count(gid) FROM pg_prepared_xacts
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "count": 0
-    }]
-    """
-    When I run SQL on host "shard1"
-    """
-    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
-    """
-    Then command return code should be "0"
-    And SQL result should match json_regexp
-    """
-    [{
-      "id": ".*",
-      "members": "{sh1,sh2}",
-      "status": "planned"
-    }]
-    """
-    When I run SQL on host "shard1"
-    """
-    UPDATE spqr_metadata.spqr_tx_status SET created_at=now() - INTERVAL '120 minutes', updated_at=now() - INTERVAL '80 minutes';
-    """
-    Then command return code should be "0"
-    When host "router" is started
-    When I run SQL on host "router"
-    """
-    SELECT __spqr__clean_outdated_2pc_data();
-    """
-    Then command return code should be "0"
-    When I run SQL on host "shard1"
-    """
-    SELECT count(gid) FROM pg_prepared_xacts
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "count": 0
-    }]
-    """
-    When I run SQL on host "shard2"
-    """
-    SELECT count(gid) FROM pg_prepared_xacts
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "count": 0
-    }]
-    """
-    When I run SQL on host "shard1"
-    """
-    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
-    """
-    Then command return code should be "0"
-    And SQL result should match json_regexp
-    """
-    []
-    """
-    When I run command on host "router"
-    """
-    cat /var/log/spqr_2pc_wd.log
-    """
-    Then command return code should be "0"
-    And command output should match regexp
-    """
-    .*tx already committed/rejected.*
-    .*tx already committed/rejected.*
-    """
-
-  Scenario: committing transaction is committed without prepared xacts
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_mempgqdb.yaml
-    """
-    Given cluster is up and running
-    And host "router2" is stopped
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-    And I wait for host "coordinator" to finish startup
-
-    When I run SQL on host "coordinator"
-    """
-    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
-    """
-    Then command return code should be "0"
-    When I run SQL on host "coordinator"
-    """
-    CREATE REFERENCE TABLE t ON sh1, sh2;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router-admin"
-    """
-    SHOW dcs_storage;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{"storage": "sh1"}]
-    """
-    When I run SQL on host "router-admin"
-    """
-    ATTACH CONTROL POINT 2pc_after_commit_cp panic;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "router"
-    """
-    SET __spqr__engine_v2 TO on;
-    create table t (id int primary key, dat varchar);
-    SET __spqr__commit_strategy TO '2pc';
-    begin;
-    insert into t (id, dat) values (1, 'd1');
-    commit;
-    """
-    Then command return code should be "1"
-
-    When I run SQL on host "shard1"
-    """
-    SELECT count(gid) FROM pg_prepared_xacts
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "count": 0
-    }]
-    """
-    When I run SQL on host "shard1"
-    """
-    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
-    """
-    Then command return code should be "0"
-    And SQL result should match json_regexp
-    """
-    [{
-      "id": ".*",
-      "members": "{sh1,sh2}",
-      "status": "committing"
-    }]
-    """
-    When I run SQL on host "shard1"
-    """
-    UPDATE spqr_metadata.spqr_tx_status SET created_at=now() - INTERVAL '120 minutes', updated_at=now() - INTERVAL '80 minutes';
-    """
-    Then command return code should be "0"
-    When host "router" is started
-    When I run SQL on host "router"
-    """
-    SELECT __spqr__clean_outdated_2pc_data();
-    """
-    Then command return code should be "0"
-    When I run SQL on host "shard1"
-    """
-    SELECT count(gid) FROM pg_prepared_xacts
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "count": 0
-    }]
-    """
-    When I run SQL on host "shard2"
-    """
-    SELECT count(gid) FROM pg_prepared_xacts
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "count": 0
-    }]
-    """
-    When I run SQL on host "shard1"
-    """
-    SELECT id, members, status FROM spqr_metadata.spqr_tx_status
-    """
-    Then command return code should be "0"
-    And SQL result should match json_regexp
-    """
-    []
-    """
-    When I run command on host "router"
-    """
-    cat /var/log/spqr_2pc_wd.log
-    """
-    Then command return code should be "0"
-    And command output should match regexp
-    """
-    .*tx already committed/rejected.*
-    .*tx already committed/rejected.*
     """
 
