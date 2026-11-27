@@ -56,7 +56,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if ok, err := q.AcquireTxOwnership(ctx, gid, true); err != nil {
+		if ok, err := q.AcquireTxOwnership(ctx, gid, true, true); err != nil {
 			return txstatus.TXERR, err
 		} else if !ok {
 			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
@@ -89,6 +89,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		* including external clients running qdb inspect queries and
 		* recovery goroutines.
 		 */
+	}
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseAfterRecordMembersCP); err != nil {
+			return txstatus.TXERR, err
+		}
 	}
 
 	retST := txstatus.TXERR
@@ -204,6 +210,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		spqrlog.Zero.Info().Uint("client", cl.ID()).Str("status", st.String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
 
 		retST = st
+	}
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseAfterCommitCP); err != nil {
+			spqrlog.Zero.Info().Uint("client", cl.ID()).Str("txid", gid).Err(err).Msg("error while checking control point")
+		}
 	}
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */

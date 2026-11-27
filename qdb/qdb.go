@@ -213,7 +213,7 @@ type DCStateKeeper interface {
 	TXInfo(ctx context.Context, gid string) (TwoPCInfo, error)
 	TXInfos(ctx context.Context) ([]TwoPCInfo, error)
 
-	AcquireTxOwnership(ctx context.Context, gid string, create bool) (bool, error)
+	AcquireTxOwnership(ctx context.Context, gid string, create bool, lock bool) (bool, error)
 	ReleaseTxOwnership(ctx context.Context, gid string) error
 
 	TXStatus(ctx context.Context, gid string) (TwoPhaseTxState, error)

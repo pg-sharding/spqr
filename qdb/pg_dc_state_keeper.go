@@ -139,7 +139,7 @@ func (q *PgDCStateKeeper) releaseConn(txid string) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, create bool) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, create bool, lock bool) (bool, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -162,10 +162,20 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, c
 			q.releaseConn(txid)
 			return false, err
 		}
-		if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
-			delete(q.locks, txid)
-			q.releaseConn(txid)
-			return false, err
+		if lock {
+			if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
+				delete(q.locks, txid)
+				q.releaseConn(txid)
+				return false, err
+			}
+		} else {
+			row := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", int64(hasher.Sum64()))
+			acquired := false
+			if err = row.Scan(&acquired); err != nil || !acquired {
+				delete(q.locks, txid)
+				q.releaseConn(txid)
+				return false, err
+			}
 		}
 	}
 
@@ -212,7 +222,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 	default:
 		return fmt.Errorf("unknown tx state value \"%s\"", state)
 	}
-	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1 WHERE id = $2", pgState, txid)
+	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1, updated_at=now() WHERE id = $2", pgState, txid)
 	if err != nil {
 		return err
 	}
@@ -233,9 +243,9 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 		return err
 	}
 	if count > 0 {
-		_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1 WHERE id = $2", shards, txid)
+		_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1, updated_at=now() WHERE id = $2", shards, txid)
 	} else {
-		_, err = (*tx).Exec(ctx, "INSERT INTO spqr_metadata.spqr_tx_status (id, members, status) VALUES ($1, $2, $3)", txid, shards, pgStatePlanned)
+		_, err = (*tx).Exec(ctx, "INSERT INTO spqr_metadata.spqr_tx_status (id, members, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())", txid, shards, pgStatePlanned)
 	}
 	if err != nil {
 		return err

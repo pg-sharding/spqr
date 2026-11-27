@@ -2075,7 +2075,7 @@ func (q *MemQDB) ChangeTxStatus(_ context.Context, id string, state, _ TwoPhaseT
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.State.TwoPhaseTx, id, info))
 }
 
-func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string, create bool) (bool, error) {
+func (q *MemQDB) AcquireTxOwnership(_ context.Context, id string, create bool, _ bool) (bool, error) {
 	n := time.Now()
 
 	q.mu.Lock()

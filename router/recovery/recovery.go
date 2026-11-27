@@ -177,7 +177,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 		* when DCStateKeeper in router-local mem-QDB, not etcd)
 		* 3) another recovery routine raced with us and won the race.
 		*/
-		if err := d.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
+		if err := d.LockAndRecover2PhaseCommitTX(ctx, gid, true); err != nil {
 			spqrlog.WdLog.Error().Str("gid", gid).Err(err).Msg("failed to recover unfinished distributed tx")
 			if recoverErr == nil {
 				recoverErr = err
@@ -192,10 +192,10 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 	return gids, nil
 }
 
-func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string) error {
+func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string, lock bool) error {
 	recoverCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid, false)
+	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid, false, lock)
 	if err != nil {
 		spqrlog.WdLog.Debug().Err(err).Str("gid", gid).Msg("error to acquiring tx ownership")
 		return err
@@ -376,6 +376,10 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 }
 
 func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
+	if config.RouterConfig().TxDataTTL == 0 {
+		spqrlog.WdLog.Info().Msg("2pc data ttl set to zero, doing nothing")
+		return []string{}, nil
+	}
 	txs, err := d.d.TXInfos(ctx)
 	if err != nil {
 		return nil, err
@@ -384,6 +388,12 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 	gids := make([]string, 0)
 	for _, tx := range txs {
 		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			gids = append(gids, tx.Gid)
+		} else if tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			if err := d.LockAndRecover2PhaseCommitTX(ctx, tx.Gid, false); err != nil {
+				spqrlog.WdLog.Debug().Str("gid", tx.Gid).Err(err).Msg("failed to clean up outdated init-state tx")
+				continue
+			}
 			gids = append(gids, tx.Gid)
 		}
 	}
