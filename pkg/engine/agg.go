@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"strconv"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -55,27 +56,25 @@ func (c *CountAggregate) Init(oid int) {
 var _ AggregateState = &CountAggregate{}
 
 type ExistsAggregate struct {
-	v bool
+	v []byte
 }
 
 // Aggregate implements [AggregateState].
 func (c *ExistsAggregate) Aggregate(v []byte) {
-	nv, _ := strconv.ParseBool(string(v))
-	c.v = c.v || nv
+	c.v = bytes.Clone(BoolOr(c.v, v))
 }
 
 // Finalize implements [AggregateState].
 func (c *ExistsAggregate) Finalize() any {
-	if c.v {
+	if len(c.v) == 1 && (c.v[0] == 't' || c.v[0] == 1) {
 		return "t"
-	} else {
-		return "f"
 	}
+	return "f"
 }
 
 // Init implements [AggregateState].
 func (c *ExistsAggregate) Init(_ int) {
-	c.v = false
+	c.v = []byte{'f'}
 }
 
 var _ AggregateState = &ExistsAggregate{}
