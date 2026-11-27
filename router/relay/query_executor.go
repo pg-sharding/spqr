@@ -22,9 +22,10 @@ type QueryDesc struct {
 }
 
 type ExecutorState struct {
-	doFinalizeTx  bool
-	attachedCopy  bool
-	expectRowDesc bool
+	doFinalizeTx       bool
+	attachedCopy       bool
+	copyAggregateCount bool
+	expectRowDesc      bool
 
 	savedBegin    *pgproto3.Query
 	cc            *pgproto3.CommandComplete

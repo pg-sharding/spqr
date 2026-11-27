@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -873,6 +874,8 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 
 	var ccmsg *pgproto3.CommandComplete
 	var errmsg *pgproto3.ErrorResponse
+	var copyCount int64
+	var hasCopyCount bool
 
 	txt := txstatus.TXIDLE
 
@@ -896,6 +899,18 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 				break wl
 			case *pgproto3.CommandComplete:
 				ccmsg = v
+				if s.es.copyAggregateCount {
+					count, ok := strings.CutPrefix(string(v.CommandTag), "COPY ")
+					if !ok {
+						return txt, fmt.Errorf("unexpected COPY command tag %q", v.CommandTag)
+					}
+					parsedCount, err := strconv.ParseInt(count, 10, 64)
+					if err != nil {
+						return txt, err
+					}
+					copyCount += parsedCount
+					hasCopyCount = true
+				}
 			case *pgproto3.ErrorResponse:
 				errmsg = v
 			default:
@@ -910,7 +925,11 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 			return txt, fmt.Errorf("copy state out of sync")
 		}
 
-		s.cacheCC.CommandTag = append([]byte(nil), ccmsg.CommandTag...)
+		if hasCopyCount {
+			s.cacheCC.CommandTag = []byte(fmt.Sprintf("COPY %d", copyCount))
+		} else {
+			s.cacheCC.CommandTag = append([]byte(nil), ccmsg.CommandTag...)
+		}
 
 		s.es.cc = &s.cacheCC
 	}
@@ -971,6 +990,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 	if err != nil {
 		return err
 	}
+	s.es.copyAggregateCount = !cps.Attached && !cps.Scatter
 
 	for {
 		cpMsg, err := s.Client().Receive()
@@ -1487,6 +1507,7 @@ func (s *QueryStateExecutorImpl) StatementFailed() bool {
 func (s *QueryStateExecutorImpl) Reset() {
 	s.es.expectRowDesc = false
 	s.es.attachedCopy = false
+	s.es.copyAggregateCount = false
 	s.es.doFinalizeTx = false
 	s.es.cc = nil
 	s.es.eMsg = nil
