@@ -994,6 +994,13 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(simple bool) error {
 				return err
 			}
 		case *pgproto3.CopyDone, *pgproto3.CopyFail:
+			if _, ok := cpMsg.(*pgproto3.CopyDone); ok && len(leftoverMsgData) != 0 {
+				data := append(append([]byte(nil), leftoverMsgData...), '\n')
+				if _, err := s.ProcCopy(ctx, &pgproto3.CopyData{Data: data}, cps); err != nil {
+					return err
+				}
+			}
+
 			txt, err := s.ProcCopyComplete(cpMsg, simple)
 			if err != nil {
 				return err
