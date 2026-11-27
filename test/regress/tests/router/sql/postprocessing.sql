@@ -32,6 +32,7 @@ SELECT count(1) FROM r_pp;
 SELECT count(*) FROM r_pp;
 SELECT count(i) FROM r_pp;
 SELECT count(i), count(1), count(*) FROM r_pp;
+SELECT count(i = 'a'), count(CASE WHEN i = 'a' THEN true WHEN i = 'b' THEN false END) FROM r_pp;
 
 -- should be rejected in router
 SELECT count(id), i FROM r_pp GROUP BY i;

@@ -158,6 +158,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
     13 |    13 |    13
 (1 row)
 
+SELECT count(i = 'a'), count(CASE WHEN i = 'a' THEN true WHEN i = 'b' THEN false END) FROM r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ count | count 
+-------+-------
+    13 |     2
+(1 row)
+
 -- should be rejected in router
 SELECT count(id), i FROM r_pp GROUP BY i;
 ERROR:  in-router postprocessing for GROUP BY aggregate is not yet supported
