@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -375,7 +376,7 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 	}
 }
 
-func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
+func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context, ch icp.ICPContextHolder) ([]string, error) {
 	if config.RouterConfig().TxDataTTL == 0 {
 		spqrlog.WdLog.Info().Msg("2pc data ttl set to zero, doing nothing")
 		return []string{}, nil
@@ -398,6 +399,32 @@ func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
 		}
 	}
 	if len(gids) > 0 {
+		if ch != nil && config.RouterConfig().EnableICP {
+			if err := icp.CheckControlPoint(ch, icp.TwoPhaseCleanupCP); err != nil {
+				return nil, err
+			}
+		}
+		/* Possible ABA hazard - check. XXX: do we really care? */
+		txs, err = d.d.TXInfos(ctx)
+		if err != nil {
+			return nil, err
+		}
+		stillExpired := make(map[string]struct{}, len(gids))
+		for _, tx := range txs {
+			if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+				stillExpired[tx.Gid] = struct{}{}
+			}
+		}
+		filteredGIDs := gids[:0]
+		for _, gid := range gids {
+			if _, ok := stillExpired[gid]; ok {
+				filteredGIDs = append(filteredGIDs, gid)
+			}
+		}
+		gids = filteredGIDs
+		if len(gids) == 0 {
+			return []string{}, nil
+		}
 		cleared, err := d.d.ClearTxStatuses(ctx, false, gids)
 		if err != nil {
 			return nil, err
