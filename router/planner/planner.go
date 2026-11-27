@@ -1012,7 +1012,8 @@ func ConsoleFunctionCall(
 		if err != nil {
 			return nil, err
 		}
-		gids, err := wd.CleanUpOldTXs(ctx)
+		ch, _ := rm.SPH.(icp.ICPContextHolder)
+		gids, err := wd.CleanUpOldTXs(ctx, ch)
 		if err != nil {
 			return nil, err
 		}

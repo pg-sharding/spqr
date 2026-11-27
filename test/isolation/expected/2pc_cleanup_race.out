@@ -1,0 +1,60 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1_engine s1_strategy s1_cleanup s1_gid s1_begin s1_query s1_commit s1_age_tx s2_attach s1_clean s2_clear s2_engine s2_strategy s2_cleanup s2_gid s2_begin s2_query s2_commit s2_detach s2_check
+step s1_engine: SET __spqr__engine_v2 TO on;
+step s1_strategy: SET __spqr__commit_strategy TO 2pc;
+step s1_cleanup: SET __spqr__eager_cleanup_2pc TO off;
+step s1_gid: SELECT __spqr__set_next_2pc_gid('cleanup_race_gid');
+step s1_begin: BEGIN;
+step s1_query: SELECT 1 /* __spqr__scatter_query: true */;
+?column?
+--------
+       1
+       1
+       1
+       1
+(4 rows)
+
+step s1_commit: COMMIT;
+step s1_age_tx: UPDATE spqr_metadata.spqr_tx_status SET updated_at = now() - INTERVAL '1 day' WHERE id = 'cleanup_race_gid' /* __spqr__execute_on: sh1 */;
+step s2_attach: SELECT __spqr__console_execute('ATTACH CONTROL POINT 2pc_cleanup_cp WAIT');
+control point       
+--------------------
+ATTACH CONTROL POINT
+(1 row)
+
+step s1_clean: SELECT __spqr__clean_outdated_2pc_data() /* __spqr__preferred_engine: v2 */; <waiting ...>
+step s2_clear: SELECT __spqr__clear_2pc_data('cleanup_race_gid', true);
+clear_2pc_data  
+----------------
+cleanup_race_gid
+(1 row)
+
+step s2_engine: SET __spqr__engine_v2 TO on;
+step s2_strategy: SET __spqr__commit_strategy TO 2pc;
+step s2_cleanup: SET __spqr__eager_cleanup_2pc TO off;
+step s2_gid: SELECT __spqr__set_next_2pc_gid('cleanup_race_gid');
+step s2_begin: BEGIN;
+step s2_query: SELECT 1 /* __spqr__scatter_query: true */;
+?column?
+--------
+       1
+       1
+       1
+       1
+(4 rows)
+
+step s2_commit: COMMIT;
+step s2_detach: SELECT __spqr__console_execute('DETACH CONTROL POINT 2pc_cleanup_cp');
+control point       
+--------------------
+DETACH CONTROL POINT
+(1 row)
+
+step s1_clean: <... completed>
+
+step s2_check: SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = 'cleanup_race_gid' /* __spqr__execute_on: sh1 */;
+status
+------
+Done
+(1 row)

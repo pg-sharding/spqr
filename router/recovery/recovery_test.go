@@ -75,7 +75,7 @@ func TestCleanUpOldTXs(t *testing.T) {
 
 	wd := recovery.NewTwoPCWatchDogForTest(d)
 
-	res, err := wd.CleanUpOldTXs(context.Background())
+	res, err := wd.CleanUpOldTXs(context.Background(), nil)
 	assert.NoError(err)
 
 	wantCandidates := map[string]bool{
@@ -94,7 +94,7 @@ func TestCleanUpOldTXs(t *testing.T) {
 		delete(txs, k)
 	}
 
-	res, err = wd.CleanUpOldTXs(context.Background())
+	res, err = wd.CleanUpOldTXs(context.Background(), nil)
 	assert.NoError(err)
 	assert.Empty(res)
 }

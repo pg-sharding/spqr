@@ -23,6 +23,8 @@ query_routing:
     enhanced_multishard_processing: true
 store_tx_data_postgresql: True
 2pc_tx_advisory_lock: true
+tx_data_ttl: 1m
+watchdog_sleep_interval: 1h
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt
