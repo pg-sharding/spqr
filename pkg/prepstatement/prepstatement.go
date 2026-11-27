@@ -10,6 +10,7 @@ type PreparedStatementDefinition struct {
 	Name          string
 	Query         string
 	ParameterOIDs []uint32
+	Hints         []map[string]string
 	// if we did prepared statement override for any reason,
 	// store here some state to make client see what it actually wants
 

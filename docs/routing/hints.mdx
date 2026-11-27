@@ -230,6 +230,15 @@ The `__spqr__sharding_key` explicitly pass the sharding key to the SPQR Router.
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 ```
 
+In the extended query protocol, `__spqr__sharding_key` also accepts a positional reference such as `$1` or `$2`.
+
+```sql
+SELECT * FROM users WHERE id = $1
+/* __spqr__distribution: ds1, __spqr__sharding_key: $1 */;
+```
+
+SPQR validates an inline reference during Parse and reads the non-NULL parameter during Bind in text or binary format. A session setting such as `SET __spqr__sharding_key = '$1'` is resolved during Bind. Simple Query treats the setting as a literal sharding key.
+
 ### __spqr__distribution
 
 The `__spqr__distribution` hint specifies which distribution the SPQR router should use for query routing.

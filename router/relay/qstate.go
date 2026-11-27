@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -75,8 +76,11 @@ func newAbortedTxError() *spqrerror.SpqrError {
 }
 
 func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
+	return rst.procQueryAdvancedTx(query, binderQ, doCaching, nil)
+}
 
-	stmts, comment, err := rst.Parse(query, doCaching)
+func (rst *RelayStateImpl) procQueryAdvancedTx(query string, binderQ func() error, doCaching bool, prepared *prepstatement.PreparedStatementDefinition) (*PortalDesc, error) {
+	stmts, comments, err := rst.Parse(query, doCaching)
 	if err != nil {
 		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
 			/* this way we format next msg correctly */
@@ -87,6 +91,12 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, err
 		}
 		return nil, err
+	}
+	var hints []map[string]string
+	if prepared != nil {
+		hints = prepared.Hints
+	} else {
+		hints = parseQueryHints(comments)
 	}
 	var pd *PortalDesc
 
@@ -128,7 +138,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 		startTime := time.Now()
 
-		pd, err = rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
+		pd, err = rst.ProcQueryAdvanced(query, stmt, hints, binderQ, doCaching)
 
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 
@@ -145,14 +155,20 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	return pd, err
 }
 
-func (rst *RelayStateImpl) queryProc(comments []string, binderQ func() error) error {
+func parseQueryHints(comments []string) []map[string]string {
+	var hints []map[string]string
 	for _, comment := range comments {
-		mp, err := qparser.ParseComment(comment)
+		if hint, err := qparser.ParseComment(comment); err == nil {
+			hints = append(hints, hint)
+		}
+	}
+	return hints
+}
 
-		if err == nil {
-			if err := rst.processSpqrHint(context.TODO(), mp, false, true); err != nil {
-				return err
-			}
+func (rst *RelayStateImpl) queryProc(hints []map[string]string, binderQ func() error) error {
+	for _, hint := range hints {
+		if err := rst.processSpqrHint(context.TODO(), hint, false, true); err != nil {
+			return err
 		}
 	}
 
@@ -171,7 +187,7 @@ var (
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comments []string, binderQ func() error, _ bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, hints []map[string]string, binderQ func() error, _ bool) (*PortalDesc, error) {
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
@@ -193,20 +209,17 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return noDataPd, err
 
 		case lyx.TRANS_STMT_COMMIT:
-			for _, comment := range comments {
-				if mp, err := qparser.ParseComment(comment); err == nil {
-
-					if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
-						switch val {
-						case twopc.CommitStrategy2pc:
-							fallthrough
-						case twopc.CommitStrategy1pc:
-							fallthrough
-						case twopc.CommitStrategyBestEffort:
-							rst.Client().SetCommitStrategy(val)
-						default:
-							/*should error-out*/
-						}
+			for _, hint := range hints {
+				if val, ok := hint[session.SPQR_COMMIT_STRATEGY]; ok {
+					switch val {
+					case twopc.CommitStrategy2pc:
+						fallthrough
+					case twopc.CommitStrategy1pc:
+						fallthrough
+					case twopc.CommitStrategyBestEffort:
+						rst.Client().SetCommitStrategy(val)
+					default:
+						/*should error-out*/
 					}
 				}
 			}
@@ -406,7 +419,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				} else {
 					/* If router does dot have any info about param, fire query to random shard. */
 					if _, ok := rst.Client().Params()[param]; !ok {
-						err := rst.queryProc(comments, binderQ)
+						err := rst.queryProc(hints, binderQ)
 						return pd, err
 					}
 
@@ -508,7 +521,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return nil, nil
 		} else {
 			// process like regular query
-			err := rst.queryProc(comments, binderQ)
+			err := rst.queryProc(hints, binderQ)
 			return nil, err
 		}
 	case *lyx.ExecuteStmt:
@@ -557,11 +570,11 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			return nil, nil
 		} else {
 			// process like regular query
-			err := rst.queryProc(comments, binderQ)
+			err := rst.queryProc(hints, binderQ)
 			return nil, err
 		}
 	default:
-		err := rst.queryProc(comments, binderQ)
+		err := rst.queryProc(hints, binderQ)
 		return nil, err
 	}
 }
@@ -578,7 +591,6 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 			}); err != nil {
 				return err
 			}
-			delete(mp, hintName)
 		}
 	}
 
@@ -594,6 +606,9 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 
 	for hintName, hintVal := range mp {
 		name := virtualParamTransformName(hintName)
+		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
+			continue
+		}
 		value := strings.ToLower(hintVal)
 
 		if session.ParamIsBoolean(name) {

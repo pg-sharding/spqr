@@ -585,7 +585,18 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	startTime := time.Now()
 
 	// analyze statement and maybe rewrite query
-	stmts, _, err := rst.Parse(query, true)
+	stmts, comments, err := rst.Parse(query, true)
+	if err != nil {
+		return nil, err
+	}
+	hints := parseQueryHints(comments)
+	var shardingKey string
+	for _, hint := range hints {
+		if value, ok := hint[session.SPQR_SHARDING_KEY]; ok {
+			shardingKey = value
+		}
+	}
+	shardingKeyParam, err := session.ParseShardingKeyRef(shardingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -601,12 +612,18 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	/* From now, our cached portal description is stale */
 	delete(rst.savedPortalDesc, name)
 
+	// LocalQrouter shares a context without session parameters and does not resolve routing hints.
+	if shardingKeyParam != 0 && rm.SPH != nil {
+		rm.ParsedShardingKeyHint = shardingKey
+		rm.ShardingKeyParam = shardingKeyParam
+	}
 	rst.savedRM[name] = rm
 
 	def := &prepstatement.PreparedStatementDefinition{
 		Name:          name,
 		Query:         query,
 		ParameterOIDs: parameterOIDs,
+		Hints:         hints,
 	}
 
 	/* XXX: very stupid here - is query exactly like insert into ref_rel values()
@@ -681,7 +698,7 @@ func (rst *RelayStateImpl) relayParsePrepared(
 	/* TODO: refactor code to make this less ugly */
 	saveTxStatus := rst.qse.TxStatus()
 
-	_, retMsg, err := rst.gangDeployPrepStmtByName(name)
+	desc, retMsg, err := rst.gangDeployPrepStmtByName(name)
 	if err != nil {
 		return nil, err
 	}
@@ -697,6 +714,14 @@ func (rst *RelayStateImpl) relayParsePrepared(
 
 	if errResp, ok := retMsg.(*pgproto3.ErrorResponse); ok {
 		rst.QueryExecutor().FailStatement(errResp)
+	} else if shardingKeyParam != 0 {
+		_, internalParam := def.OverwriteRemoveParamIDs[shardingKeyParam]
+		if internalParam || desc == nil || desc.ParamDesc == nil || shardingKeyParam > len(desc.ParamDesc.ParameterOIDs) {
+			rst.Client().ClosePreparedStatement(name)
+			delete(rst.savedRM, name)
+			return nil, spqrerror.Newf(spqrerror.SPQR_VALUE_ERROR,
+				"sharding key parameter $%d does not exist in the prepared statement", shardingKeyParam)
+		}
 	}
 
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, query, time.Since(startTime))
@@ -961,7 +986,7 @@ func (rst *RelayStateImpl) BindPrepared(
 		rst.executeMp[destinationPortal] = emptyExecFunc
 	}
 
-	pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
+	pd, err := rst.procQueryAdvancedTx(def.Query, func() error {
 		var bnd *pgproto3.Bind
 
 		if destinationPortal == "" {
@@ -974,6 +999,7 @@ func (rst *RelayStateImpl) BindPrepared(
 		bnd.DestinationPortal = destinationPortal
 
 		rm := rst.savedRM[preparedStatement]
+		rm.IsBind = true
 
 		rm.LastResultFormatCodes = resultFormatCodes
 
@@ -1056,7 +1082,7 @@ func (rst *RelayStateImpl) BindPrepared(
 
 		return nil
 
-	}, true /* cache parsing for prep statement */)
+	}, true /* cache parsing for prep statement */, def)
 
 	if err != nil {
 		return err
