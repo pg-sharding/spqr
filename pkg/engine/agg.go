@@ -74,7 +74,7 @@ func (c *ExistsAggregate) Finalize() any {
 }
 
 // Init implements [AggregateState].
-func (c *ExistsAggregate) Init(oid int) {
+func (c *ExistsAggregate) Init(_ int) {
 	c.v = false
 }
 
