@@ -307,11 +307,20 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 		}
 
 		anyAgg := false
+		/* XXX: sic! best effort fast-check only, will not detect complex SQL with non-top-level-query aggregates */
 		for _, tle := range stmt.TargetList {
-			switch q := tle.(type) {
+			expr := tle
+			if rt, ok := tle.(*lyx.ResTarget); ok {
+				expr = rt.Value
+			}
+			switch q := expr.(type) {
 			case *lyx.FuncApplication:
 				/* thats ok */
 				if engine.EngineV2AggregateFunction(q.Name) {
+					if q.Distinct {
+						return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED,
+							"in-router postprocessing for DISTINCT aggregate is not supported")
+					}
 					anyAgg = true
 				}
 			case *lyx.SubLink:
