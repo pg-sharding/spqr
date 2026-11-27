@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	CountAgg  = "count"
-	MinAgg    = "min"
-	MaxAgg    = "max"
-	SumAgg    = "sum"
-	ExistsAgg = "exists"
+	CountAgg     = "count"
+	MinAgg       = "min"
+	MaxAgg       = "max"
+	SumAgg       = "sum"
+	ExistsAgg    = "exists"
 )
 
 type AggregateState interface {

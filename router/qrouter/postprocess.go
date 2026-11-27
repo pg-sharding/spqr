@@ -318,6 +318,10 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 				if engine.EngineV2AggregateFunction(strings.ToLower(string(q.Type))) {
 					anyAgg = true
 				}
+			case *lyx.AExprNot:
+				if sublink, ok := q.Arg.(*lyx.SubLink); ok && sublink.Type == lyx.ExistsSubLink {
+					anyAgg = true
+				}
 			default:
 			}
 		}
@@ -328,6 +332,7 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 		}
 
 		aggStates := make([]engine.AggregateState, 0)
+		negateAggResults := make([]bool, 0)
 
 		/* Current implementation restriction is all-aggregate in query result relation
 		target list. Check that.  */
@@ -347,6 +352,7 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 						return nil, err
 					}
 					aggStates = append(aggStates, aggState)
+					negateAggResults = append(negateAggResults, false)
 				}
 			case *lyx.SubLink:
 				/* thats ok */
@@ -362,7 +368,22 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 						return nil, err
 					}
 					aggStates = append(aggStates, aggState)
+					negateAggResults = append(negateAggResults, false)
 				}
+			case *lyx.AExprNot:
+				sublink, ok := q.Arg.(*lyx.SubLink)
+				if !ok || sublink.Type != lyx.ExistsSubLink {
+					return nil,
+						spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED,
+							"malformed query for aggregate: unexpected non-aggregate function in target list").
+							Detail(fmt.Sprintf("target list entry index %d, type %T", i, q))
+				}
+				aggState, err := engine.CreateAggregate(engine.ExistsAgg, nil)
+				if err != nil {
+					return nil, err
+				}
+				aggStates = append(aggStates, aggState)
+				negateAggResults = append(negateAggResults, true)
 			default:
 				/* everything else is unexpected */
 				return nil,
@@ -436,8 +457,16 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 			}
 
 			datRow := []string{}
-			for _, agg := range aggStates {
-				datRow = append(datRow, fmt.Sprintf("%+v", agg.Finalize()))
+			for i, agg := range aggStates {
+				result := agg.Finalize()
+				if negateAggResults[i] {
+					if result == "t" {
+						result = "f"
+					} else {
+						result = "t"
+					}
+				}
+				datRow = append(datRow, fmt.Sprintf("%+v", result))
 			}
 
 			retSlice.TTS.WriteDataRow(datRow...)
