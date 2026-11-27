@@ -44,6 +44,68 @@ func TestCopySimple(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
+func TestCopyDistributedFinalRowWithoutNewline(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	cleanup := MessageGroup{
+		Request: []pgproto3.FrontendMessage{
+			&pgproto3.Query{String: "DELETE FROM t WHERE id IN (2102, 2103)"},
+		},
+		Response: []pgproto3.BackendMessage{
+			&pgproto3.CommandComplete{CommandTag: []byte("DELETE 2")},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+		},
+	}
+
+	copySimple := MessageGroup{
+		Request: []pgproto3.FrontendMessage{
+			&pgproto3.Query{String: "COPY t(id) FROM STDIN"},
+			&pgproto3.CopyData{Data: []byte("2102\n2103")},
+			&pgproto3.CopyDone{},
+		},
+		Response: []pgproto3.BackendMessage{
+			&pgproto3.CopyInResponse{ColumnFormatCodes: []uint16{0}},
+			&pgproto3.CommandComplete{},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+		},
+		SkipCheckCommandTag: true,
+	}
+
+	copyExtended := MessageGroup{
+		Request: []pgproto3.FrontendMessage{
+			&pgproto3.Parse{Query: "COPY t(id) FROM STDIN"},
+			&pgproto3.Bind{PreparedStatement: ""},
+			&pgproto3.Execute{},
+			&pgproto3.CopyData{Data: []byte("2102\n2103")},
+			&pgproto3.CopyDone{},
+			&pgproto3.Sync{},
+		},
+		Response: []pgproto3.BackendMessage{
+			&pgproto3.ParseComplete{},
+			&pgproto3.BindComplete{},
+			&pgproto3.CopyInResponse{ColumnFormatCodes: []uint16{0}},
+			&pgproto3.CommandComplete{},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+		},
+		SkipCheckCommandTag: true,
+	}
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{Request: cleanup.Request, Response: []pgproto3.BackendMessage{
+			&pgproto3.CommandComplete{},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+		}, SkipCheckCommandTag: true},
+		copySimple,
+		cleanup,
+		copyExtended,
+		cleanup,
+	})
+}
+
 func TestCopyExtendedExecuteSyncCopyDoneSync(t *testing.T) {
 	frontend, conn, err := bootstrapConnection(t)
 	assert.NoError(t, err, "startup failed")
