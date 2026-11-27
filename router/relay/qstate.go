@@ -241,6 +241,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 				rst.QueryExecutor().SetCommandCompleteTag("ROLLBACK")
 				return noDataPd, nil
 			}
+			clear(rst.rollbackPortals)
 			err := rst.QueryExecutor().ExecRollback(query)
 			return noDataPd, err
 

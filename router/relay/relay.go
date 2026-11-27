@@ -112,6 +112,8 @@ type RelayStateImpl struct {
 	execute   func(maxrows uint32) error
 	executeMp map[string]func(maxrows uint32) error
 
+	rollbackPortals map[string]bool
+
 	saveBind        pgproto3.Bind
 	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
@@ -154,6 +156,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		poolMgr:             manager,
 		execute:             nil,
 		executeMp:           map[string]func(uint32) error{},
+		rollbackPortals:     map[string]bool{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
 		lastBindNameMP:      map[string]string{},
@@ -474,6 +477,7 @@ func (rst *RelayStateImpl) CompleteRelayClient() error {
 }
 
 func (rst *RelayStateImpl) CloseUnnamedPortal() {
+	delete(rst.rollbackPortals, "")
 	rst.unnamedPortalExists = false
 	rst.execute = nil
 	rst.bindQueryPlan = nil
@@ -514,8 +518,11 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		return err
 	}
 
+	if rst.TxStatus() == txstatus.TXIDLE {
+		clear(rst.rollbackPortals)
+	}
 	// Sync preserves the unnamed portal while its transaction is active.
-	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+	if rst.TxStatus() != txstatus.TXACT && !rst.rollbackPortals[""] {
 		rst.CloseUnnamedPortal()
 	}
 
@@ -1140,8 +1147,52 @@ func (rst *RelayStateImpl) PipelineCleanup() {
 	rst.WaitSync = false
 }
 
+func isPlainRollback(query string) bool {
+	tokens := lyx.NewStringTokenizer(query)
+	if tokens.LexT() != lyx.ROLLBACK {
+		return false
+	}
+	token := tokens.LexT()
+	return token == 0 || (token == ';' && tokens.LexT() == 0)
+}
+
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
 	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+		switch msg := msg.(type) {
+		case *pgproto3.Parse:
+			if len(msg.ParameterOIDs) == 0 && isPlainRollback(msg.Query) {
+				delete(rst.savedPortalDesc, msg.Name)
+				delete(rst.savedRM, msg.Name)
+				rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{Name: msg.Name, Query: msg.Query})
+				return rst.Client().ReplyParseComplete()
+			}
+		case *pgproto3.Bind:
+			def := rst.Client().PreparedStatementDefinitionByName(msg.PreparedStatement)
+			if def != nil && len(def.ParameterOIDs) == 0 && len(msg.Parameters) == 0 && isPlainRollback(def.Query) {
+				if _, err := prepstatement.GetParams(msg.ParameterFormatCodes, msg.Parameters); err != nil {
+					return err
+				}
+				if msg.DestinationPortal == "" {
+					rst.CloseUnnamedPortal()
+				}
+				delete(rst.executeMp, msg.DestinationPortal)
+				rst.rollbackPortals[msg.DestinationPortal] = true
+				return rst.Client().ReplyBindComplete()
+			}
+		case *pgproto3.Execute:
+			if rst.rollbackPortals[msg.Portal] {
+				clear(rst.rollbackPortals)
+				if err := rst.QueryExecutor().ExecRollback("ROLLBACK"); err != nil {
+					return err
+				}
+				return rst.QueryExecutor().SendCommandComplete()
+			}
+		case *pgproto3.Close:
+			if msg.ObjectType == 'P' && rst.rollbackPortals[msg.Name] {
+				delete(rst.rollbackPortals, msg.Name)
+				return rst.Client().ReplyCloseComplete()
+			}
+		}
 		return newAbortedTxError()
 	}
 
