@@ -36,6 +36,13 @@ CREATE DISTRIBUTED RELATION r_pp (i HASH MURMUR) FOR DISTRIBUTION ds1;
  distribution id -> ds1
 (2 rows)
 
+CREATE DISTRIBUTED RELATION r_p (i HASH MURMUR) FOR DISTRIBUTION ds1;
+      attach table      
+------------------------
+ relation name   -> r_p
+ distribution id -> ds1
+(2 rows)
+
 \c regress
 SET search_path TO 'public';
 CREATE TABLE r_pp(i TEXT, id INT);
@@ -163,7 +170,42 @@ SELECT count(id), i FROM r_pp GROUP BY i;
 ERROR:  in-router postprocessing for GROUP BY aggregate is not yet supported
 HINT:  turn __spqr__allow_postprocessing to off to retrieve underlaying data rows
 QUERY:  SELECT count(id), i FROM r_pp GROUP BY i;
+CREATE TABLE r_p(i TEXT, id INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+insert into r_p(i) values('a'),('b'),('c'),('d'),('e'),('h'),('g'),('k'),('l'),('m'),('o'),('p');
+NOTICE: auto-linearize query dispatch because of hazard upsert
+NOTICE: start implicit transaction because of multishard modify plan
+NOTICE: dispatch prefetching results from shard sh1
+NOTICE: dispatch prefetching results from shard sh2
+NOTICE: dispatch prefetching results from shard sh3
+NOTICE: dispatch prefetching results from shard sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+insert into r_p(i, id) values('f', 1);
+NOTICE: send query to shard(s) : sh1
+SET __spqr__allow_postprocessing TO false;
+SELECT EXISTS(SELECT 1 FROM r_p WHERE id = 1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ exists 
+--------
+ t
+ f
+ f
+ f
+(4 rows)
+
+SET __spqr__allow_postprocessing TO true;
+SELECT EXISTS(SELECT 1 FROM r_p WHERE id = 1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ exists 
+--------
+ t
+(1 row)
+
 DROP TABLE r_pp;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE r_p;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;

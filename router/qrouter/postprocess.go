@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -313,6 +314,10 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 				if engine.EngineV2AggregateFunction(q.Name) {
 					anyAgg = true
 				}
+			case *lyx.SubLink:
+				if engine.EngineV2AggregateFunction(strings.ToLower(string(q.Type))) {
+					anyAgg = true
+				}
 			default:
 			}
 		}
@@ -338,6 +343,21 @@ func (qr *ProxyQrouter) addAggregateToPlan(
 							Detail(fmt.Sprintf("target list entry index %d, function name %s", i, q.Name))
 				} else {
 					aggState, err := engine.CreateAggregate(q.Name, q.Args)
+					if err != nil {
+						return nil, err
+					}
+					aggStates = append(aggStates, aggState)
+				}
+			case *lyx.SubLink:
+				/* thats ok */
+				aggType := strings.ToLower(string(q.Type))
+				if !engine.EngineV2AggregateFunction(aggType) {
+					return nil,
+						spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED,
+							"not supported query aggregate function").
+							Detail(fmt.Sprintf("target list entry index %d, sublink %s", i, string(q.Type)))
+				} else {
+					aggState, err := engine.CreateAggregate(aggType, nil)
 					if err != nil {
 						return nil, err
 					}
