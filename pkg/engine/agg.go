@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"strconv"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -9,10 +10,11 @@ import (
 )
 
 const (
-	CountAgg = "count"
-	MinAgg   = "min"
-	MaxAgg   = "max"
-	SumAgg   = "sum"
+	CountAgg  = "count"
+	MinAgg    = "min"
+	MaxAgg    = "max"
+	SumAgg    = "sum"
+	ExistsAgg = "exists"
 )
 
 type AggregateState interface {
@@ -56,9 +58,33 @@ func (c *CountAggregate) Init(oid int) {
 
 var _ AggregateState = &CountAggregate{}
 
+type ExistsAggregate struct {
+	v []byte
+}
+
+// Aggregate implements [AggregateState].
+func (c *ExistsAggregate) Aggregate(v []byte) {
+	c.v = bytes.Clone(BoolOr(c.v, v))
+}
+
+// Finalize implements [AggregateState].
+func (c *ExistsAggregate) Finalize() any {
+	if len(c.v) == 1 && (c.v[0] == 't' || c.v[0] == 1) {
+		return "t"
+	}
+	return "f"
+}
+
+// Init implements [AggregateState].
+func (c *ExistsAggregate) Init(_ int) {
+	c.v = []byte{'f'}
+}
+
+var _ AggregateState = &ExistsAggregate{}
+
 func EngineV2AggregateFunction(n string) bool {
 	switch n {
-	case CountAgg, MaxAgg, MinAgg, SumAgg:
+	case CountAgg, MaxAgg, MinAgg, SumAgg, ExistsAgg:
 		return true
 	default:
 		return false
@@ -69,6 +95,8 @@ func CreateAggregate(name string, _ []lyx.Node) (AggregateState, error) {
 	switch name {
 	case CountAgg:
 		return &CountAggregate{}, nil
+	case ExistsAgg:
+		return &ExistsAggregate{}, nil
 	default:
 		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "not supported aggregate %s", name)
 	}
