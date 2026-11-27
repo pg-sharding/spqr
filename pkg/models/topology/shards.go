@@ -26,10 +26,15 @@ type TopologyMgr interface {
 	SetOptions(string, []GenericOption)
 
 	Snap() map[string]*DataShard
+	Snapshot() TopologyMgr
 }
 
 type TopologyMgrImpl struct {
 	shardMapping sync.Map
+}
+
+func (t *TopologyMgrImpl) Snapshot() TopologyMgr {
+	return TopMgrFromMap(t.Snap())
 }
 
 func (t *TopologyMgrImpl) Snap() map[string]*DataShard {
@@ -125,7 +130,7 @@ type DataShard struct {
 }
 
 type ShardsMgr interface {
-	AddDataShard(ctx context.Context, shard *DataShard, force bool) error
+	AddDataShard(ctx context.Context, shard *DataShard, force bool, dryRun bool) error
 	AddWorldShard(ctx context.Context, shard *DataShard) error
 	ListShards(ctx context.Context) ([]*DataShard, error)
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)

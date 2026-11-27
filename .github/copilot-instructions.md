@@ -1,5 +1,7 @@
 # GitHub Copilot Instructions for SPQR
 
+The contribution rules in `AGENTS.md` take precedence over this file.
+
 ## Project Overview
 
 SPQR (Stateless Postgres Query Router) is a production-ready system for horizontal scaling of PostgreSQL via sharding. The project provides routing and query distribution across multiple PostgreSQL shards.
@@ -63,11 +65,10 @@ SPQR (Stateless Postgres Query Router) is a production-ready system for horizont
 
 ### Test Guidelines
 
-- Write tests for new functionality
-- Maintain existing test coverage
-- Use mocks for external dependencies
-- Keep tests fast and isolated
-- Test edge cases and error conditions
+- New user-visible behavior and bug fixes get a short regress test in `test/regress`
+- Unit tests only for pure logic that is hard to reach from SQL; never duplicate the regress test
+- Do not rewrite unrelated tests or expected outputs
+- See `.claude/skills/spqr-tests/SKILL.md`
 
 ## Build and Development
 
@@ -140,16 +141,17 @@ make lint          # Run golangci-lint
 
 ### Adding a New Feature
 
-1. Implement the feature with minimal changes
-2. Add unit tests alongside the code
-3. Add integration/feature tests if needed
+1. Make sure there is an issue; one PR solves one issue
+2. Implement the feature with the smallest possible diff, no comments that restate code
+3. Add a short regress test in `test/regress`
 4. Update documentation if API changes
 5. Run linters and tests before committing
 6. Ensure backward compatibility
+7. PR description: 1-3 sentences plus `Closes #N`, no Testing section
 
 ### Fixing Bugs
 
-1. Write a test that reproduces the bug
+1. Write a regress test that reproduces the bug
 2. Fix the issue with minimal changes
 3. Verify the fix with tests
 4. Check for similar issues in related code

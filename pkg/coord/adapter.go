@@ -469,6 +469,10 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return spqrerror.CleanGrpcError(err)
 }
 
+func (a *Adapter) RebalanceDistribution(_ context.Context, _ *kr.RebalanceDistribution) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "RebalanceDistribution is not supported via adapter")
+}
+
 // RenameKeyRange renames a key range.
 //
 // Parameters:
@@ -610,15 +614,16 @@ func (a *Adapter) GetRouterMetadataHash(context.Context, *topology.Router) (uint
 //
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
-func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool, dryRun bool) error {
 	client := proto.NewShardServiceClient(a.conn)
 	protoShard, err := topology.DataShardToProto(shard, true)
 	if err != nil {
 		return err
 	}
 	_, err = client.AddDataShard(ctx, &proto.AddShardRequest{
-		Shard: protoShard,
-		Force: force,
+		Shard:  protoShard,
+		Force:  force,
+		DryRun: dryRun,
 	})
 	return spqrerror.CleanGrpcError(err)
 }
@@ -1317,8 +1322,28 @@ func (a *Adapter) GetTxnBatchSize() uint16 {
 	return a.maxTxnBatch
 }
 
-func (a *Adapter) ApplyXRecords(_ context.Context, _ []*mtran.XRecord) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Adapter ApplyXRecords not implemented")
+func (a *Adapter) ApplyXRecords(ctx context.Context, xrecords []*mtran.XRecord) error {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	_, err := conn.ApplyXRecords(ctx, &proto.ApplyXRecordsRequest{
+		Records: models.ConvertMany(xrecords, mtran.XRecordToProto),
+	})
+	return spqrerror.CleanGrpcError(err)
+}
+
+func (a *Adapter) XRecords() []*mtran.XRecord {
+	return nil
+}
+func (a *Adapter) Snapshot() meta.EntityMgr {
+	return a
+}
+func (a *Adapter) Begin(_ context.Context) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Begin not implemented in Adapter")
+}
+func (a *Adapter) Commit(_ context.Context) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Commit not implemented in Adapter")
+}
+func (a *Adapter) Rollback(_ context.Context) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Rollback not implemented in Adapter")
 }
 
 // CreateUniqueIndex implements meta.EntityMgr.

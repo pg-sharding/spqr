@@ -553,6 +553,20 @@ func (m *MockShardHostInstance) EXPECT() *MockShardHostInstanceMockRecorder {
 	return m.recorder
 }
 
+// BeRule mocks base method.
+func (m *MockShardHostInstance) BeRule() *config.BackendRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeRule")
+	ret0, _ := ret[0].(*config.BackendRule)
+	return ret0
+}
+
+// BeRule indicates an expected call of BeRule.
+func (mr *MockShardHostInstanceMockRecorder) BeRule() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeRule", reflect.TypeOf((*MockShardHostInstance)(nil).BeRule))
+}
+
 // Cancel mocks base method.
 func (m *MockShardHostInstance) Cancel() error {
 	m.ctrl.T.Helper()

@@ -1,4 +1,5 @@
 aaaa
+aarch
 aboba
 abortable
 abracadabras
@@ -18,6 +19,9 @@ appdefaults
 APREQ
 argexpr
 astmt
+attisdropped
+attnum
+attrelid
 authed
 Autoattach
 autoprotect
@@ -46,10 +50,12 @@ ccb
 ccfg
 ccmsg
 chardata
+chatgpt
 Cimpl
 CIn
 Citus
 cityhash
+claude
 clid
 clientinteractor
 clientpool
@@ -72,7 +78,6 @@ connmgr
 connstring
 coorctl
 coordctl
-coreutils
 cptr
 Cta
 CTEs
@@ -100,10 +105,12 @@ DClocal
 dcs
 ddl
 debian
+dedup
 denchick
 denis
 deparsed
 deparses
+devin
 diffs
 dispatchable
 distrib
@@ -133,7 +140,9 @@ eedba
 efef
 elephantsql
 Elts
+emoji
 emptypb
+Emre
 ENONET
 ents
 epn
@@ -167,7 +176,6 @@ FQNTo
 frmp
 frrule
 frsm
-frst
 frules
 ftts
 gcflags
@@ -221,6 +229,7 @@ IDR
 IDTo
 idxs
 IExecute
+ijojooji
 IKill
 inds
 initdb
@@ -232,14 +241,17 @@ installable
 interactor
 INTERVALOID
 IPrepare
+IReload
 IRun
 isgomock
+isolationtester
 isready
 iuwehiuhweui
 ixxxd
 jackc
 jcmturner
 jidw
+jifdjew
 jiofewjijiojioji
 jodwjdewo
 jsons
@@ -277,6 +289,7 @@ ktadd
 KVs
 laooog
 larg
+lcfg
 LDAPS
 ldapserver
 LDAPTLS
@@ -335,6 +348,7 @@ multishard
 murmurhash
 mvccpb
 mydb
+mydir
 mylogs
 myuser
 myworkloadlog
@@ -355,14 +369,18 @@ nsecs
 nselect
 nspname
 NTuples
+numstat
 Objtype
 odssd
 ogima
 OIDKRB
 Oids
 oiwejow
+ojiswjiow
 OLAP
 ONCONFLICT
+oneline
+openai
 opgejrqr
 optarg
 optval
@@ -403,6 +421,7 @@ PIDs
 pids
 pitr
 pkgclient
+pkill
 planopts
 plpgsql
 podman
@@ -416,7 +435,6 @@ pppp
 prepstatement
 privs
 prj
-procps
 promhttp
 protobuf
 protoc
@@ -593,6 +611,7 @@ tfstate
 tgid
 timeb
 timestamptz
+tle
 tlist
 tlsconfig
 tlt
@@ -645,6 +664,7 @@ unregistration
 unroute
 unrouting
 unsync
+urandom
 usermd
 uuidv
 valgrind
@@ -667,6 +687,7 @@ xmove
 xmovestr
 xproto
 XQDB
+xrec
 xrecord
 xtab
 xxerr

@@ -15,6 +15,7 @@ import (
 	reflect "reflect"
 
 	icp "github.com/pg-sharding/spqr/pkg/icp"
+	meta "github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -54,17 +55,17 @@ func (m *MockCoordinator) EXPECT() *MockCoordinatorMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
+func (m *MockCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force, dryRun bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, force)
+	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard, force, dryRun)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddDataShard indicates an expected call of AddDataShard.
-func (mr *MockCoordinatorMockRecorder) AddDataShard(ctx, shard, force any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) AddDataShard(ctx, shard, force, dryRun any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockCoordinator)(nil).AddDataShard), ctx, shard, force)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockCoordinator)(nil).AddDataShard), ctx, shard, force, dryRun)
 }
 
 // AddWorldShard mocks base method.
@@ -235,6 +236,20 @@ func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer, ch an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer, ch)
 }
 
+// Begin mocks base method.
+func (m *MockCoordinator) Begin(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Begin", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Begin indicates an expected call of Begin.
+func (mr *MockCoordinatorMockRecorder) Begin(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockCoordinator)(nil).Begin), ctx)
+}
+
 // BeginTran mocks base method.
 func (m *MockCoordinator) BeginTran(ctx context.Context) (*transaction.MetaTransaction, error) {
 	m.ctrl.T.Helper()
@@ -262,6 +277,20 @@ func (m *MockCoordinator) Cache() *cache.SchemaCache {
 func (mr *MockCoordinatorMockRecorder) Cache() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cache", reflect.TypeOf((*MockCoordinator)(nil).Cache))
+}
+
+// Commit mocks base method.
+func (m *MockCoordinator) Commit(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Commit", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Commit indicates an expected call of Commit.
+func (mr *MockCoordinatorMockRecorder) Commit(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockCoordinator)(nil).Commit), ctx)
 }
 
 // CommitTran mocks base method.
@@ -1100,6 +1129,20 @@ func (mr *MockCoordinatorMockRecorder) QDB() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QDB", reflect.TypeOf((*MockCoordinator)(nil).QDB))
 }
 
+// RebalanceDistribution mocks base method.
+func (m *MockCoordinator) RebalanceDistribution(ctx context.Context, req *kr.RebalanceDistribution) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RebalanceDistribution", ctx, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RebalanceDistribution indicates an expected call of RebalanceDistribution.
+func (mr *MockCoordinatorMockRecorder) RebalanceDistribution(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RebalanceDistribution", reflect.TypeOf((*MockCoordinator)(nil).RebalanceDistribution), ctx, req)
+}
+
 // RedistributeKeyRange mocks base method.
 func (m *MockCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange, ch icp.ICPContextHolder) error {
 	m.ctrl.T.Helper()
@@ -1170,6 +1213,20 @@ func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx, id, nowait, icpCH
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx, id, nowait, icpCH)
 }
 
+// Rollback mocks base method.
+func (m *MockCoordinator) Rollback(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Rollback", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Rollback indicates an expected call of Rollback.
+func (mr *MockCoordinatorMockRecorder) Rollback(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockCoordinator)(nil).Rollback), ctx)
+}
+
 // RunCoordinator mocks base method.
 func (m *MockCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
 	m.ctrl.T.Helper()
@@ -1236,6 +1293,20 @@ func (m *MockCoordinator) ShareKeyRange(id string) error {
 func (mr *MockCoordinatorMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockCoordinator)(nil).ShareKeyRange), id)
+}
+
+// Snapshot mocks base method.
+func (m *MockCoordinator) Snapshot() meta.EntityMgr {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(meta.EntityMgr)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockCoordinatorMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockCoordinator)(nil).Snapshot))
 }
 
 // Split mocks base method.
@@ -1448,4 +1519,18 @@ func (m *MockCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tas
 func (mr *MockCoordinatorMockRecorder) WriteMoveTaskGroup(ctx, taskGroup any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).WriteMoveTaskGroup), ctx, taskGroup)
+}
+
+// XRecords mocks base method.
+func (m *MockCoordinator) XRecords() []*transaction.XRecord {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "XRecords")
+	ret0, _ := ret[0].([]*transaction.XRecord)
+	return ret0
+}
+
+// XRecords indicates an expected call of XRecords.
+func (mr *MockCoordinatorMockRecorder) XRecords() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "XRecords", reflect.TypeOf((*MockCoordinator)(nil).XRecords))
 }

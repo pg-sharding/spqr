@@ -9,6 +9,7 @@ import (
 type QParser struct {
 	query string
 	stmt  lyx.Node
+	stmts []lyx.Node
 }
 
 func (qp *QParser) OriginQuery() string {
@@ -27,9 +28,18 @@ func (qp *QParser) SetStmt(stmt lyx.Node) {
 	qp.stmt = stmt
 }
 
+func (qp *QParser) Stmts() []lyx.Node {
+	return qp.stmts
+}
+
+func (qp *QParser) SetStmts(stmts []lyx.Node) {
+	qp.stmts = stmts
+}
+
 // TODO : unit tests
 func (qp *QParser) Parse(query string) ([]lyx.Node, []string, error) {
 	qp.query = query
+	qp.stmts = nil
 
 	comments := []string{}
 	for i := 0; i < len(query)-4; {
@@ -66,6 +76,7 @@ func (qp *QParser) Parse(query string) ([]lyx.Node, []string, error) {
 	}
 
 	qp.stmt = routerStmts[0]
+	qp.stmts = routerStmts
 
 	return routerStmts, comments, nil
 }

@@ -11,7 +11,7 @@ type BoolGUC interface {
 	ShortName() string
 	Get(sph SessionParamsHolder) bool
 	Show(sph SessionParamsHolder) (string, error)
-	Set(sph SessionParamsHolder, level string, val bool)
+	Set(sph SessionParamsHolder, level string, val bool) error
 	Reset()
 }
 

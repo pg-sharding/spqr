@@ -56,10 +56,19 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if ok, err := q.AcquireTxOwnership(ctx, gid); err != nil {
+		if ok, err := q.AcquireTxOwnership(ctx, gid, true, true); err != nil {
 			return txstatus.TXERR, err
 		} else if !ok {
 			return txstatus.TXERR, spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to acquire ownership for tx \"%s\"", gid)
+		}
+
+		/* We are holding lock on this GID while alive. */
+		defer func() { _ = q.ReleaseTxOwnership(ctx, gid) }()
+	}
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseBeforePrepareCP); err != nil {
+			return txstatus.TXERR, err
 		}
 	}
 
@@ -78,10 +87,14 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 		/* From this point, 2PC GID is visible for other actors,
 		* including external clients running qdb inspect queries and
-		* recovery goroutines. We are holding lock on this GID while alive.
+		* recovery goroutines.
 		 */
+	}
 
-		defer func() { _ = q.ReleaseTxOwnership(ctx, gid) }()
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseAfterRecordMembersCP); err != nil {
+			return txstatus.TXERR, err
+		}
 	}
 
 	retST := txstatus.TXERR
@@ -115,7 +128,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		if eagerCleanupGuc.Get(cl) {
 			/* If we managed to rollback tx on all shards, also cleanup two phase metadata */
 			if !anyErr {
-				if err := q.RemoveTXData(ctx, gid); err != nil {
+				if _, err := q.RemoveTXData(ctx, gid); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
 				}
 			}
@@ -199,6 +212,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 		retST = st
 	}
 
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(cl, icp.TwoPhaseAfterCommitCP); err != nil {
+			spqrlog.Zero.Info().Uint("client", cl.ID()).Str("txid", gid).Err(err).Msg("error while checking control point")
+		}
+	}
+
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
 		if err := q.ChangeTxStatus(ctx, gid, qdb.TwoPhaseP2, qdb.TwoPhaseP1); err != nil {
@@ -207,7 +226,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper,
 
 		/* XXX: consider opt-in for doing this unconditionally */
 		if eagerCleanupGuc.Get(cl) {
-			if err := q.RemoveTXData(ctx, gid); err != nil {
+			if _, err := q.RemoveTXData(ctx, gid); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("happy path error recovery failed to cleanup two phase metadata")
 			}
 		}

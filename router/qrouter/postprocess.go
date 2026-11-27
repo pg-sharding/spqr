@@ -44,12 +44,12 @@ func (qr *ProxyQrouter) addLimitToPlan(
 		limitVal := int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.NewComplexQueryError()
 		}
 
 		q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
 
-		if !ok {
+		if !ok || selectLim.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
 			/* no support */
 			return p, nil
 		}

@@ -192,7 +192,7 @@ func TestCreateShardAllowsGrpcWrappedUnknownShardError(t *testing.T) {
 
 	mngr := mockmgr.NewMockEntityMgr(ctrl)
 	mngr.EXPECT().GetShard(ctx, "sh-new").Return(nil, spqrerror.ToGrpcError(spqrerror.ShardNotFound("sh-new")))
-	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _ bool) error {
+	mngr.EXPECT().AddDataShard(ctx, gomock.Any(), statement.Force, statement.DryRun).DoAndReturn(func(_ context.Context, shard *topology.DataShard, _, _ bool) error {
 		assert.Equal(t, "sh-new", shard.ID)
 		assert.Equal(t, []config.Host{config.Host{Address: listener.Addr().String()}}, shard.HostsAZ())
 		return nil
@@ -257,7 +257,8 @@ func TestMoveKeyRangeReplyDoesntIncludeHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, cl.Rule(), nil, false, nil)
 	assert.NoError(t, err)
 
 	cli := clientinteractor.NewPSQLInteractor(cl)
@@ -390,7 +391,8 @@ func TestRenameDistributionColumnSuccess(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, nil, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, tts)
 }
@@ -431,7 +433,8 @@ func TestRenameDistributionColumnNotFound(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "column \"nonexistent\" not found in distribution key")
 }
@@ -466,7 +469,8 @@ func TestRenameDistributionColumnRelationNotAttached(t *testing.T) {
 		},
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, nil, nil, false, nil)
+	sess := meta.NewConsoleSession(mmgr)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, nil, nil, nil, false, nil)
 	assert.Nil(t, tts)
 	assert.ErrorContains(t, err, "relation \"missing_rel\" is not attached to distribution \"ds1\"")
 }
@@ -481,15 +485,13 @@ func TestApplyXRecords(t *testing.T) {
 		ctx := context.Background()
 		mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
-		// AddDataShard(ctx context.Context, shard *DataShard, force bool) error
 		datashard := &topology.DataShard{
 			ID: "sh1",
 		}
-		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false).Times(1).Return(nil)
-		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false)
+		mmgr.EXPECT().AddDataShard(gomock.Any(), datashard, false, true).Times(1).Return(nil)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, false, true)
 		assert.NoError(err)
 
-		// CreateReferenceRelation(ctx context.Context, r *ReferenceRelation, e []*AutoIncrementEntry) error
 		referenceRelation := &rrelation.ReferenceRelation{
 			RelationName: &rfqn.RelationFQN{
 				RelationName: "relation",
@@ -526,7 +528,7 @@ func TestApplyXRecords(t *testing.T) {
 
 		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)
 		assert.Error(err)
-		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 3")
+		assert.Contains(err.Error(), "invalid argument count for AddDataShard. Got 1, expected 4")
 	})
 
 	t.Run("invalid xrecord - argument type mismatch", func(t *testing.T) {
@@ -542,7 +544,7 @@ func TestApplyXRecords(t *testing.T) {
 		datashard := &topology.DataShard{
 			ID: "sh1",
 		}
-		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1)
+		addDataShardXRecord, err := meta.MakeXRecord("AddDataShard", datashard, -1, false)
 		assert.NoError(err)
 
 		err = meta.ApplyXRecords(ctx, mmgr, addDataShardXRecord)

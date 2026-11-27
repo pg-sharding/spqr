@@ -34,17 +34,36 @@ setup
 setup
 {
     CREATE SCHEMA sh1;
+}
+
+setup
+{
     CREATE TABLE sh1.r (i INTEGER, c INTEGER);
+}
+
+setup
+{
     CREATE SCHEMA sh2;
+}
+
+setup
+{
     CREATE TABLE sh2.r (i INTEGER, c INTEGER);
+}
+
+setup
+{
     CREATE SCHEMA sh3;
+}
+
+setup
+{
     CREATE TABLE sh3.r (j INTEGER, c INTEGER);
 }
 
 teardown
 {
-    DROP SCHEMA sh1 CASCADE;
-    DROP SCHEMA sh2 CASCADE;
+    DROP SCHEMA sh1, sh2 CASCADE;
 }
 
 

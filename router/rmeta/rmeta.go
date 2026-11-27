@@ -332,7 +332,7 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias, colname string) 
 			if l, ok := rm.RelationsByDistributionCol[colname]; ok {
 				if len(l) > 1 {
 					// ambiguity in column aliasing
-					return nil, rerrors.ErrComplexQuery.Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
+					return nil, rerrors.NewComplexQueryError().Hint(fmt.Sprintf("relation reference ambiguity by alias/colref: %v/%v", alias, colname))
 				}
 				return l[0], nil
 			} else {
@@ -507,8 +507,8 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			return nil, err
 		}
 
-		if len(distrib.ColTypes) > 1 {
-			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
+		if len(distrib.ColTypes) != 1 {
+			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "sharding key hints require a single-column distribution")
 		}
 
 		et, err := rm.ResolveKeyShard(ctx, distrib, val)

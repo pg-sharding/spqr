@@ -1,0 +1,132 @@
+---
+title: 'Demo Database'
+description: 'Load 100,000 messages and trace queries by chat and by user'
+---
+
+If you already ran `docker compose run --rm load`, [skip to the queries](#which-shard-holds-a-chat). To load your own empty SPQR cluster, choose a dataset below. To start a local cluster, follow [Get Started](/welcome/get_started).
+
+## Download a dataset
+
+The examples use Small, which contains 1,000 chats. Each download includes the schema and data in a compressed SQL file.
+
+<CardGroup cols={2}>
+  <Card title="Small" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-small.sql.gz">
+    100,000 messages · 1.5 MiB
+  </Card>
+  <Card title="Medium" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-medium.sql.gz">
+    10 million messages · 160 MiB
+  </Card>
+  <Card title="Big" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-big.sql.gz">
+    100 million messages · 1.6 GiB
+  </Card>
+  <Card title="Huge" icon="download" href="https://storage.yandexcloud.net/spqr-demo-messenger/messenger-huge.sql.gz">
+    1 billion messages · 15.9 GiB
+  </Card>
+</CardGroup>
+
+## Load the demo
+
+Use a dedicated, empty SPQR cluster with at least two shards. Your user needs permission to create and populate tables through the router and configure routing through its admin console.
+
+Start with empty routing metadata as well as empty databases. For example, the sample rules in `examples/init.sql` already register `users`, which the demo creates as a reference table.
+
+Set the router host, port, database, and user for your cluster. This example uses the local demo's defaults.
+
+```bash
+export PGHOST=localhost PGPORT=6432 PGDATABASE=demo PGUSER=demo
+```
+
+The loader reconnects to the admin console on port `7432` with the same host, database, and user. If you use a password file, include both ports. For a different admin port, pass `-v admin_port=PORT` to `psql` below.
+
+Run this in your download directory. For another size, replace `messenger-small` with the file name of your dataset.
+
+```bash
+gzip -dc messenger-small.sql.gz | psql -X
+```
+
+[Reset the demo](#reset-the-demo) before switching sizes or retrying a partial load.
+
+## Which shard holds a chat?
+
+Open a router session with `docker compose run --rm psql` from the local demo directory, or `psql -X` from the shell you used to load your own cluster. Turn on routing notices and compare two chats at opposite ends of Small.
+
+```sql
+SET __spqr__reply_notice TO true;
+
+SELECT count(*) FROM messages WHERE chat_id = 1;
+SELECT count(*) FROM messages WHERE chat_id = 1000;
+```
+
+Chat 1 has 1,990 messages and chat 1000 has 22. On a two-shard cluster the notices name different shards.
+
+## Read the routing rules
+
+Switch from the router to its admin console in the same `psql` session. Substitute your admin port for `7432` if needed.
+
+```sql
+\set router_port :PORT
+\connect - - - 7432
+SHOW relations WHERE relation_name = 'messages';
+SHOW key_ranges WHERE distribution_id = 'ds_chats' ORDER BY lower_bound;
+\connect - - - :router_port
+SET __spqr__reply_notice TO true;
+```
+
+The first result identifies `chat_id` as the key for `messages` and `ds_chats` as its distribution. The second gives the *inclusive* lower bound of each range and the shard that owns it. In Small on two shards the bounds are `1` and `501`. Use that map to predict which shard will answer each query, then check the notices.
+
+```sql
+SELECT count(*) FROM messages WHERE chat_id = 500;
+SELECT count(*) FROM messages WHERE chat_id = 501;
+```
+
+<Accordion title="Where did these rules come from?">
+  The loader ran these statements on the admin console before it created the tables and copied the rows through the router.
+
+  ```sql
+  CREATE DISTRIBUTION IF NOT EXISTS ds_chats COLUMN TYPES integer;
+  CREATE KEY RANGES FOR DISTRIBUTION ds_chats BETWEEN 1 AND 1001;
+  ALTER DISTRIBUTION ds_chats ATTACH RELATION IF NOT EXISTS "messages" DISTRIBUTION KEY chat_id;
+  ```
+</Accordion>
+
+## Who wrote the latest message in chat 1?
+
+`chats`, `chat_members`, `messages`, and `reactions` share the `chat_id` key in the `ds_chats` distribution. Every shard also has a copy of `users`, so the shard that holds chat 1 can look up the author of its latest message.
+
+```sql
+SELECT c.title, u.name AS author, m.body
+FROM chats c
+JOIN messages m ON m.chat_id = c.chat_id
+JOIN users u ON u.user_id = m.author_id
+WHERE c.chat_id = 1
+ORDER BY m.message_id DESC
+LIMIT 1;
+```
+
+In Small, this returns `Space Daily | Emre Adams | Honestly, happy birthday!`. The notice names the same shard as the first count.
+
+## Which chats has a user joined?
+
+A user's memberships can span several chat IDs. To find them all, send the query to every shard with the scatter hint. The notice now lists all shards.
+
+```sql
+SELECT chat_id FROM chat_members
+WHERE user_id = 42 /* __spqr__scatter_query: true */;
+```
+
+If your cluster has a coordinator, [move the key range containing chat 1 to a new shard](/sharding/manual_rebalancing). Repeat the first count to see the new shard in its notice.
+
+## Reset the demo
+
+For the Docker setup, use the [local cleanup commands](/welcome/get_started#stop-or-remove-the-local-demo). On your own cluster, exit `psql` with `\q` and run the following command in the shell you used for loading. It deletes the seven demo tables and their routing rules. Substitute your admin port for `7432` if needed.
+
+```bash
+psql -X -v ON_ERROR_STOP=1 <<'SQL'
+DROP TABLE IF EXISTS reactions, messages, chat_members, chats, users, emoji, languages;
+\connect - - - 7432
+DROP DISTRIBUTION IF EXISTS ds_chats CASCADE;
+DROP REFERENCE TABLE IF EXISTS users;
+DROP REFERENCE TABLE IF EXISTS emoji;
+DROP REFERENCE TABLE IF EXISTS languages;
+SQL
+```

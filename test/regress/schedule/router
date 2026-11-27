@@ -14,6 +14,7 @@ test: multishard
 test: multicolumn
 test: error
 test: error2
+test: pinned_connection_cleanup
 test: routing_hint
 test: sharding_key_distribution
 test: begin
@@ -77,3 +78,4 @@ test: target_list_alias_routing
 test: prepare_execute
 test: single_shard_reference
 test: meta
+test: meta_tx

@@ -68,6 +68,11 @@ WITH v(id) AS (VALUES (2222), (3333))
 INSERT INTO rel_al SELECT r.id, r.c FROM rel_al r JOIN v ON r.id = v.id
 ON CONFLICT (id) DO UPDATE SET c = rel_al.c + 1 RETURNING *;
 
+WITH ins AS (
+    INSERT INTO rel_al (id, c) VALUES (112, 1), (1112, 1) RETURNING *
+)
+SELECT * FROM rel_al WHERE id IN (112, 1112);
+
 DROP TABLE rel_al;
 DROP TABLE rf_al;
 

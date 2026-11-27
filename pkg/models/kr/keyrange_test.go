@@ -264,6 +264,22 @@ func TestCmpRangesEqual_UUIDHashed(t *testing.T) {
 	))
 }
 
+func TestKeyRangeBoundFromStrings_UUIDCanonicalizes(t *testing.T) {
+	bound, err := kr.KeyRangeBoundFromStrings(
+		[]string{qdb.ColumnTypeUUID},
+		[]string{"00000000000000000000000000000001"},
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []any{"00000000-0000-0000-0000-000000000001"}, bound)
+
+	_, err = kr.KeyRangeBoundFromStrings(
+		[]string{qdb.ColumnTypeUUID},
+		[]string{"x00000000-0000-0000-0000-000000000001y"},
+	)
+	assert.Error(t, err)
+}
+
 func TestKeyRangeBoundFromStrings_UUIDHashed(t *testing.T) {
 	bound, err := kr.KeyRangeBoundFromStrings(
 		[]string{qdb.ColumnTypeUUIDHashed},

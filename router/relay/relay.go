@@ -55,6 +55,7 @@ type RelayStateMgr interface {
 
 	CompleteRelay() error
 	CompleteRelayClient() error
+	CloseUnnamedPortal()
 	Close() error
 	Client() client.RouterClient
 
@@ -66,12 +67,13 @@ type RelayStateMgr interface {
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
-	/* process extended proto */
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
+	/* process extended proto */
 	ProcessOneMsgCarefully(ctx context.Context, msg pgproto3.FrontendMessage) error
 
 	PipelineCleanup()
+	WaitingForSync() bool
 
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching bool) (*PortalDesc, error)
 }
@@ -196,7 +198,7 @@ func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.Prep
 	serv := rst.Client().Server()
 
 	if serv == nil {
-		return nil, nil, server.ErrMultiShardSyncBroken
+		return nil, nil, server.NewMultiShardSyncBrokenError()
 	}
 
 	shards := serv.Datashards()
@@ -259,9 +261,7 @@ func (rst *RelayStateImpl) Cleanup() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 	err := rst.Cleanup()
-
-	/* See flush vs sync */
-	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
+	rst.QueryExecutor().ResetBlock()
 
 	return err
 }
@@ -473,12 +473,16 @@ func (rst *RelayStateImpl) CompleteRelayClient() error {
 	return rst.Client().Send(rst.QueryExecutor().RFQ())
 }
 
-func (rst *RelayStateImpl) CompleteRelay() error {
+func (rst *RelayStateImpl) CloseUnnamedPortal() {
 	rst.unnamedPortalExists = false
+	rst.execute = nil
+	rst.bindQueryPlan = nil
+}
 
+func (rst *RelayStateImpl) CompleteRelay() error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Str("txstatus", rst.qse.TxStatus().String()).
+		Str("txstatus", rst.QueryExecutor().TxStatus().String()).
 		Bool("implicitTx", rst.QueryExecutor().ImplicitTx()).
 		Msg("complete relay iter")
 
@@ -508,6 +512,11 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 			return err
 		}
 		return err
+	}
+
+	// Sync preserves the unnamed portal while its transaction is active.
+	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
+		rst.CloseUnnamedPortal()
 	}
 
 	rst.QueryExecutor().Reset()
@@ -684,6 +693,10 @@ func (rst *RelayStateImpl) relayParsePrepared(
 
 	if err := fin(); err != nil {
 		return nil, err
+	}
+
+	if errResp, ok := retMsg.(*pgproto3.ErrorResponse); ok {
+		rst.QueryExecutor().FailStatement(errResp)
 	}
 
 	spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, query, time.Since(startTime))
@@ -1113,9 +1126,11 @@ func (rst *RelayStateImpl) ExecutePortal(portal string, maxrows uint32) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) PipelineCleanup() {
-	rst.bindQueryPlan = nil
+func (rst *RelayStateImpl) WaitingForSync() bool {
+	return rst.WaitSync
+}
 
+func (rst *RelayStateImpl) PipelineCleanup() {
 	if rst.QueryExecutor().TxStatus() != txstatus.TXACT {
 		/* XXX: normally these two map should be either both empty
 		* either both not */
@@ -1130,13 +1145,8 @@ func (rst *RelayStateImpl) PipelineCleanup() {
 }
 
 func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.FrontendMessage) error {
-
-	if rst.WaitSync {
-		return nil
-	}
-
 	if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-		return errAbortedTx
+		return newAbortedTxError()
 	}
 
 	switch currentMsg := msg.(type) {
@@ -1152,12 +1162,18 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 
 		return nil
 	case *pgproto3.Bind:
-		return rst.BindPrepared(ctx,
+		if err := rst.BindPrepared(ctx,
 			currentMsg.PreparedStatement,
 			currentMsg.DestinationPortal,
 			currentMsg.Parameters,
 			currentMsg.ParameterFormatCodes,
-			currentMsg.ResultFormatCodes)
+			currentMsg.ResultFormatCodes); err != nil {
+			return err
+		}
+		if rst.QueryExecutor().StatementFailed() {
+			return rst.QueryExecutor().SendCommandComplete()
+		}
+		return nil
 
 	case *pgproto3.Describe:
 		return rst.DescribePrepared(currentMsg.ObjectType, currentMsg.Name, currentMsg)
@@ -1167,7 +1183,7 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 		}
 
 		/* Okay, respond with CommandComplete first. */
-		return rst.QueryExecutor().DeriveCommandComplete()
+		return rst.QueryExecutor().SendCommandComplete()
 
 	case *pgproto3.Close:
 		/* Validate ObjectType */
@@ -1176,6 +1192,8 @@ func (rst *RelayStateImpl) ProcessOneMsg(ctx context.Context, msg pgproto3.Front
 			/* Portal */
 			if currentMsg.Name != "" {
 				delete(rst.executeMp, currentMsg.Name)
+			} else {
+				rst.CloseUnnamedPortal()
 			}
 			if err := rst.Client().ReplyCloseComplete(); err != nil {
 				return err
@@ -1208,8 +1226,12 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 	}
 
 	if err := rst.ProcessOneMsg(ctx, msg); err != nil {
+		rst.SetTxStatus(txstatus.TXERR)
 		rst.WaitSync = true
 		return err
+	}
+	if rst.QueryExecutor().StatementFailed() {
+		rst.WaitSync = true
 	}
 	return nil
 }
@@ -1218,6 +1240,7 @@ func (rst *RelayStateImpl) ProcessOneMsgCarefully(ctx context.Context, msg pgpro
 func (rst *RelayStateImpl) Parse(query string, doCaching bool) ([]lyx.Node, []string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
+		rst.qp.SetStmts(cache.ps)
 		rst.qp.SetOriginQuery(query)
 		return cache.ps, cache.comm, nil
 	}
@@ -1276,11 +1299,16 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
 
+	multiStatement := len(rst.Parser().Stmts()) > 1
+
 	expandCurrentTx := false
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		if !rst.Client().EnhancedMultiShardProcessing() {
+			if multiStatement {
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "queries with multiple statements cannot reuse an existing plan")
+			}
 
 			/* TODO: fix this */
 			prevPlan.SetStmt(rst.qp.Stmt())
@@ -1297,6 +1325,12 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 	switch err {
 	case nil:
+		if multiStatement {
+			if vp, ok := q.(*plan.VirtualPlan); !ok || vp.Subplan() != nil {
+				return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "non-virtual statements in queries with multiple statements are not supported")
+			}
+			return q, nil
+		}
 		q, err := rst.QueryExecutor().TryMatchExecTargets(q, rst.Qr.DataShardsRoutes())
 		if err != nil {
 			return nil, err
@@ -1464,6 +1498,12 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		simple: true,
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(
-		es, queryPlan /*  ugh... fix this someday */, replyCl)
+	if err := rst.QueryExecutor().ExecuteSlice(
+		es, queryPlan /*  ugh... fix this someday */, replyCl); err != nil {
+		return err
+	}
+	if replyCl {
+		return rst.QueryExecutor().DeriveCommandComplete()
+	}
+	return nil
 }

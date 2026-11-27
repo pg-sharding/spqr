@@ -302,9 +302,10 @@ type TwoPCInfo struct {
 
 	State TwoPhaseTxState `json:"state"`
 
+	UpdatedAt time.Time `json:"updated_at"`
+
 	/* ephemeral part of state */
-	UpdatedAt time.Time `json:"-"`
-	Locked    bool      `json:"-"`
+	Locked bool `json:"-"`
 }
 
 type ACLItem struct {

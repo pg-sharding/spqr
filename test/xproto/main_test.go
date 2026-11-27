@@ -62,6 +62,8 @@ func protoTestRunner(t *testing.T, frontend *pgproto3.Frontend, tt []MessageGrou
 					retMsgType.Hint = ""
 					retMsgType.Detail = ""
 
+					retMsgType.InternalQuery = ""
+
 					retMsgType.SeverityUnlocalized = ""
 					retMsgType.File = ""
 					retMsgType.Where = ""

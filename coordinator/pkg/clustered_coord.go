@@ -61,6 +61,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var txNotSupported = spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Transactions are not supported in clustered coordinator")
+
 type grpcConnMgr struct {
 	InstanceStartTime time.Time
 	*ClusteredCoordinator
@@ -565,6 +567,11 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
+func (qc *ClusteredCoordinator) Snapshot() meta.EntityMgr {
+	coord, _ := NewClusteredCoordinator(qc.tlsconfig, qc.db, qc.maxTxnBatch)
+	return coord
+}
+
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB, maxTxnBatch uint16) (*ClusteredCoordinator, error) {
 	if err := grpccreds.ValidateClient(config.CoordinatorConfig().ClientTLS); err != nil {
 		return nil, fmt.Errorf("init router gRPC client TLS: %w", err)
@@ -685,7 +692,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.AddDataShard(context.TODO(), shard, true); err != nil {
+				if err := qc.AddDataShard(context.TODO(), shard, true, false); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -850,7 +857,6 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 	return nil
 }
 
-// TODO : unit tests
 func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
@@ -2471,6 +2477,10 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 	}
 }
 
+func (qc *ClusteredCoordinator) RebalanceDistribution(_ context.Context, _ *kr.RebalanceDistribution) error {
+	return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+}
+
 // TODO : unit tests
 
 // RenameKeyRange renames a key range.
@@ -2849,6 +2859,8 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		return nil
 	}
 
+	sess := meta.NewConsoleSession(qc)
+
 	ci := grpcConnMgr{ClusteredCoordinator: qc, InstanceStartTime: time.Now()}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
@@ -2883,7 +2895,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 					}
 					continue
 				}
-				tts, err := meta.ProcMetadataCommand(ctx, stmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
+				tts, err := meta.ProcMetadataCommand(ctx, stmt, sess, ci, cl.Rule(), nil, qc.IsReadOnly(), cl)
 				if err != nil {
 					if err := cli.ReportError(err); err != nil {
 						return err
@@ -2902,9 +2914,13 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 	}
 }
 
-func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool) error {
-	if err := qc.Coordinator.AddDataShard(ctx, shard, force); err != nil {
+func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard, force bool, dryRun bool) error {
+	if err := qc.Coordinator.AddDataShard(ctx, shard, force, dryRun); err != nil {
 		return err
+	}
+
+	if dryRun {
+		return nil
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -3461,6 +3477,28 @@ func (qc *ClusteredCoordinator) GetRouterMetadataHash(ctx context.Context, r *to
 	defer cf()
 	rCl := proto.NewRouterServiceClient(cc)
 	return qc.getRouterMetaHashInternal(ctx, rCl)
+}
+
+func (qc *ClusteredCoordinator) ApplyXRecords(ctx context.Context, records []*mtran.XRecord) error {
+	spqrlog.Zero.Debug().Int("count", len(records)).Msg("apply xrecords")
+
+	for _, record := range records {
+		if err := meta.ApplyXRecords(ctx, qc, record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (qc *ClusteredCoordinator) Begin(_ context.Context) error {
+	return txNotSupported
+}
+func (qc *ClusteredCoordinator) Rollback(_ context.Context) error {
+	return txNotSupported
+}
+func (qc *ClusteredCoordinator) Commit(_ context.Context) error {
+	return txNotSupported
 }
 
 func (qc *ClusteredCoordinator) getRouterMetaHashInternal(ctx context.Context, rCl proto.RouterServiceClient) (uint64, error) {

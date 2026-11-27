@@ -152,7 +152,8 @@ type ShardDefinition struct {
 	Id      string
 	Options []GenericOption
 
-	Force bool
+	Force  bool
+	DryRun bool
 }
 
 type GenericOption struct {
@@ -214,6 +215,15 @@ type RedistributeKeyRange struct {
 	Apply       bool
 	NoWait      bool
 }
+
+type RebalanceDistribution struct {
+	Distribution *DistributionSelector
+	Shards       []string
+	DataKeyRange *CustomDistributionRange
+	BatchSize    int
+}
+
+type StopRebalance struct{}
 
 type KeyRangeSelector struct {
 	KeyRangeID string
@@ -326,10 +336,12 @@ type AlterSystemMigration struct {
 
 func (*AlterSystemMigration) iStatement() {}
 
+type Privilege string
+
 type GrantStmt struct {
 	IsGrant bool
 
-	Privileges []string
+	Privileges []Privilege
 	Objtype    string
 	Objects    []*rfqn.RelationFQN
 
@@ -611,6 +623,8 @@ func (*Shutdown) iStatement()                           {}
 func (*Listen) iStatement()                             {}
 func (*MoveKeyRange) iStatement()                       {}
 func (*RedistributeKeyRange) iStatement()               {}
+func (*RebalanceDistribution) iStatement()              {}
+func (*StopRebalance) iStatement()                      {}
 func (*SplitKeyRange) iStatement()                      {}
 func (*UniteKeyRange) iStatement()                      {}
 func (*DistributionDefinition) iStatement()             {}

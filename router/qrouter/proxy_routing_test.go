@@ -614,7 +614,6 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh2",
@@ -625,6 +624,24 @@ func TestRoutingByExpression(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+		{
+			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id1 IN (5, 100) AND id2 IN ('jidw', 'jidw');",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh2"}, {Name: "sh1"}},
+			},
+		},
+		{
+			query: "DELETE FROM distrr_mm_test WHERE id1 IN (5, 100) AND id2 IN ('jidw', 'jidw');",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh2"}, {Name: "sh1"}},
+			},
 		},
 
 		{
@@ -749,7 +766,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		// we do not currently support SELECT rewrite
 		{
 			query: `INSERT INTO test_ref_rel SELECT 1;`,
-			err:   rerrors.ErrComplexQuery,
+			err:   rerrors.NewComplexQueryError(),
 		},
 		{
 			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
@@ -757,6 +774,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				OverwriteQuery: map[string]string{
@@ -850,6 +868,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 					BasePlan: plan.BasePlan{
 						H: planopts.PlanOpts{
 							ResultRelationIsRef: true,
+							AutoLinearize:       true,
 						},
 					},
 					OverwriteQuery: map[string]string{
@@ -876,6 +895,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				OverwriteQuery: map[string]string{
@@ -896,6 +916,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
 				SubPlan: &plan.ScatterPlan{
 					BasePlan: plan.BasePlan{
 						H: planopts.PlanOpts{
@@ -939,6 +960,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				SubPlan: &plan.ModifyTable{
@@ -967,6 +989,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 				BasePlan: plan.BasePlan{
 					H: planopts.PlanOpts{
 						ResultRelationIsRef: true,
+						AutoLinearize:       true,
 					},
 				},
 				SubPlan: &plan.ModifyTable{
@@ -1017,14 +1040,49 @@ func TestReferenceRelationRouting(t *testing.T) {
 			if custom, ok := tmp.(*plan.DataRowCustomProcess); ok {
 				if assert.NotNil(custom.CustomRowProcess) {
 					row := &pgproto3.DataRow{Values: [][]byte{[]byte("1")}}
-					assert.Same(row, custom.CustomRowProcess(row, kr.ShardKey{Name: "sh1"}))
-					assert.Nil(custom.CustomRowProcess(row, kr.ShardKey{Name: "sh2"}))
+					assert.Same(row, custom.CustomRowProcess(row, kr.ShardKey{Name: "sh1"}, custom.OpaqueInfo))
+					assert.Nil(custom.CustomRowProcess(row, kr.ShardKey{Name: "sh2"}, custom.OpaqueInfo))
 				}
 				// Functions cannot be compared with assert.Equal.
 				custom.CustomRowProcess = nil
 				tt.exp.(*plan.DataRowCustomProcess).CustomRowProcess = nil
 			}
 			assert.Equal(tt.exp, tmp, tt.query)
+		}
+	}
+
+	for _, preferredEngine := range []string{"", planner.EnhancedEngineVersion} {
+		for _, query := range []string{
+			"INSERT INTO test_ref_rel VALUES (1) ON CONFLICT DO NOTHING",
+			"INSERT INTO test_ref_rel SELECT 1",
+			"UPDATE test_ref_rel SET i = i + 1",
+			"UPDATE test_ref_rel SET i = i + 1 WHERE i = 1 RETURNING *",
+			"DELETE FROM test_ref_rel",
+			"DELETE FROM test_ref_rel WHERE i = 1 RETURNING *",
+			"SELECT * FROM test_ref_rel",
+		} {
+			stmts, _, err := lyx.Parse(query)
+			if !assert.NoError(err) {
+				return
+			}
+			dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "")
+			dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+			guc, err := dh.FindStrGUC(session.SPQR_PREFERRED_ENGINE)
+			if !assert.NoError(err) || !assert.NoError(guc.Set(dh, preferredEngine, "")) {
+				return
+			}
+			rm, err := pr.AnalyzeQuery(context.Background(), dh, &config.FrontendRule{}, query, stmts[0], &rmeta.MetadataCache{
+				Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+			})
+			if !assert.NoError(err) {
+				return
+			}
+			p, err := pr.PlanQuery(context.Background(), rm)
+			if !assert.NoError(err) || !assert.NotNil(p) {
+				return
+			}
+			_, readOnly := stmts[0].(*lyx.Select)
+			assert.Equal(!readOnly, p.Opts().AutoLinearize, "engine %q: %s", preferredEngine, query)
 		}
 	}
 }
@@ -1370,6 +1428,7 @@ func TestCTE(t *testing.T) {
 		{
 			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
 				OverwriteQuery: map[string]string{
 					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
 					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
@@ -2139,7 +2198,7 @@ func TestJoins(t *testing.T) {
 			query: "SELECT * FROM xjoin x JOIN yjoin y on x.i=y.i where i = 15 ORDER BY id;",
 			exp:   nil,
 
-			err: rerrors.ErrComplexQuery,
+			err: rerrors.NewComplexQueryError().Hint("relation reference ambiguity by alias/colref: /i"),
 		},
 
 		// non-sharding columns
@@ -2487,7 +2546,7 @@ func TestCopyMultiShard(t *testing.T) {
 		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
 		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
 		scatterGuc, _ := dh.FindBoolGUC(session.SPQR_SCATTER_QUERY)
-		scatterGuc.Set(dh, session.VirtualParamLevelStatement, false)
+		_ = scatterGuc.Set(dh, session.VirtualParamLevelStatement, false)
 
 		stmt := parserRes[0]
 

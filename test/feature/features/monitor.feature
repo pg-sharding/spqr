@@ -1179,3 +1179,48 @@ Feature: spqr-monitor test
     """
     Corruption found: row \[101 001\], rel "xMove" shard "sh1"
     """
+
+  Scenario: spqr-monitor check-migrations works correctly
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard3"
+    """
+    CREATE TABLE xMove(w_id INT);
+    """
+    Then command return code should be "0"
+
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    /spqr/spqr-monitor check-migrations --etcd-addr regress_qdb_0_1:2379 --file /tmp/report.txt -c /spqr/test/feature/conf/shard_data_three_shards.yaml
+    """
+    And command output should match regexp
+    """
+    2;schema diverges, check "/tmp/report.txt" file
+    """
+    Then command return code should be "0"
+
+    When I run command on host "coordinator" with timeout "30" seconds
+    """
+    cat /tmp/report.txt
+    """
+    Then command return code should be "0"
+    And command output should match regexp
+    """
+    sh1:
+    - table "xMove2" is absent
+    sh2:
+    - table "xMove2" is absent
+    sh3:
+    - column "public.s" in "xMove" is absent
+    - table "xMove2" is absent
+    """

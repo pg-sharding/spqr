@@ -62,6 +62,7 @@ step s2_show_2pc_tx              { select __spqr__console_execute('SHOW two_phas
 
 
 session s3
+step s3_clear_2pc_data    { SELECT __spqr__clear_2pc_data('2pc_flow_gid', true); }
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}
 
 
@@ -78,4 +79,5 @@ permutation
     s2_show_2pc_tx
     s2_detach_after_cp
     s2_show_2pc_tx
+    s3_clear_2pc_data
     s3_clean
