@@ -11,6 +11,7 @@ type CopyState struct {
 	RM *rmeta.RoutingMetadataContext
 
 	Delimiter byte
+	CSV       bool
 	Ds        *distributions.Distribution
 	Drel      *distributions.DistributedRelation
 
