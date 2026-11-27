@@ -51,12 +51,32 @@ func TestCopyDistributedFinalRowWithoutNewline(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	cleanup := MessageGroup{
+	begin := MessageGroup{
 		Request: []pgproto3.FrontendMessage{
-			&pgproto3.Query{String: "DELETE FROM t WHERE id IN (2102, 2103)"},
+			&pgproto3.Query{String: "BEGIN"},
+			&pgproto3.Query{String: "SELECT 1 /* __spqr__execute_on: sh4 */"},
 		},
 		Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{CommandTag: []byte("DELETE 2")},
+			&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+			&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{{
+				Name:         []byte("?column?"),
+				DataTypeOID:  23,
+				DataTypeSize: 4,
+				TypeModifier: -1,
+			}}},
+			&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
+			&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+		},
+	}
+
+	rollback := MessageGroup{
+		Request: []pgproto3.FrontendMessage{
+			&pgproto3.Query{String: "ROLLBACK"},
+		},
+		Response: []pgproto3.BackendMessage{
+			&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
 			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
 		},
 	}
@@ -70,7 +90,7 @@ func TestCopyDistributedFinalRowWithoutNewline(t *testing.T) {
 		Response: []pgproto3.BackendMessage{
 			&pgproto3.CopyInResponse{ColumnFormatCodes: []uint16{0}},
 			&pgproto3.CommandComplete{},
-			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
 		},
 		SkipCheckCommandTag: true,
 	}
@@ -89,20 +109,18 @@ func TestCopyDistributedFinalRowWithoutNewline(t *testing.T) {
 			&pgproto3.BindComplete{},
 			&pgproto3.CopyInResponse{ColumnFormatCodes: []uint16{0}},
 			&pgproto3.CommandComplete{},
-			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
 		},
 		SkipCheckCommandTag: true,
 	}
 
 	protoTestRunner(t, frontend, []MessageGroup{
-		{Request: cleanup.Request, Response: []pgproto3.BackendMessage{
-			&pgproto3.CommandComplete{},
-			&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
-		}, SkipCheckCommandTag: true},
+		begin,
 		copySimple,
-		cleanup,
+		rollback,
+		begin,
 		copyExtended,
-		cleanup,
+		rollback,
 	})
 }
 
