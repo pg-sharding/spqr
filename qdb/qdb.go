@@ -207,19 +207,20 @@ type DCStateKeeper interface {
 	ChangeTxStatus(ctx context.Context, gid string, state TwoPhaseTxState, curExpectedState TwoPhaseTxState) error
 
 	ListTXNames(ctx context.Context) ([]string, error)
+	// Deprecated: Use TXInfos
 	GetTXs(ctx context.Context) (map[string]*TwoPCInfo, error)
 
 	TXInfo(ctx context.Context, gid string) (TwoPCInfo, error)
 	TXInfos(ctx context.Context) ([]TwoPCInfo, error)
 
-	AcquireTxOwnership(ctx context.Context, gid string) (bool, error)
+	AcquireTxOwnership(ctx context.Context, gid string, create bool, lock bool) (bool, error)
 	ReleaseTxOwnership(ctx context.Context, gid string) error
 
 	TXStatus(ctx context.Context, gid string) (TwoPhaseTxState, error)
 	TXCohortShards(ctx context.Context, gid string) ([]string, error)
 
-	RemoveTXData(ctx context.Context, gid string) error
-	ClearTxStatuses(ctx context.Context) error
+	RemoveTXData(ctx context.Context, gid string) (bool, error)
+	ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error)
 }
 
 type XDCStateKeeper interface {
@@ -243,6 +244,8 @@ type XQDB interface {
 	TwoPhaseTxMetaKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
+
+	Snapshot() XQDB
 }
 
 type StateKeeperQDB interface {

@@ -3,16 +3,20 @@
 package prep_stmt_test
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/xproto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrepStmtSimple(t *testing.T) {
@@ -2894,6 +2898,105 @@ func TestPrepExtendedPipeline(t *testing.T) {
 	protoTestRunner(t, frontend, tt)
 }
 
+func TestXProtoParseCacheAfterMultipleStatements(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "p",
+					Query: "SELECT 1 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "BEGIN; COMMIT",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "p",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Close{
+					ObjectType: 'S',
+					Name:       "p",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.CloseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoParseMultipleStatements(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	if !assert.NoError(t, err, "startup failed") {
+		return
+	}
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "p",
+					Query: "SELECT 1; SELECT 2",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_SYNTAX_ERROR,
+					Message:  "cannot insert multiple commands into a prepared statement",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+			CheckErrAll: true,
+		},
+	})
+}
+
 func TestPrepExtendedErrorParse(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
@@ -3646,6 +3749,72 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 				},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT 1 / (random() * 0)::int /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{Query: "SELECT 42 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22012",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("42")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: "BEGIN"},
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{Query: "SET LOCAL work_mem = 'invalid'"},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{String: "SELECT 99 /* __spqr__execute_on: sh1 */"},
+				&pgproto3.Sync{},
+				&pgproto3.Query{String: "ROLLBACK"},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("42")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "22023",
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXERR)},
+				&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
@@ -3692,6 +3861,133 @@ func TestExtendedErrorIgnoresUntilSync(t *testing.T) {
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter %d", gr, ind))
 		}
 	}
+}
+
+func TestXProtoPreparedSetCommandComplete(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Query: "SET LOCAL work_mem = '4MB'",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Describe{
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	})
+}
+
+func TestXProtoBackendParseErrorIgnoresUntilSync(t *testing.T) {
+	frontend, conn, err := bootstrapConnection(t)
+	assert.NoError(t, err, "startup failed")
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			CheckCodeOnly: true,
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT nonexistent_column /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Query{
+					String: "SELECT 99 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Query: "SELECT 42 /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "42703",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("42")},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	})
 }
 
 func TestSimpleQueryErrorClearsStatementHint(t *testing.T) {
@@ -5978,6 +6274,100 @@ func TestSplitUpdateXproto(t *testing.T) {
 	}
 
 	protoTestRunner(t, frontend, tt)
+}
+
+func TestUUIDBindRouting(t *testing.T) {
+	thisIsSPQRSpecificTest(t)
+
+	ctx := context.Background()
+	host := os.Getenv("POSTGRES_HOST")
+	if host == "" {
+		host = "[::1]"
+	}
+	port := os.Getenv("POSTGRES_PORT")
+	if port == "" {
+		port = "6432"
+	}
+
+	suffix := fmt.Sprintf("%d", os.Getpid())
+	distribution := "xproto_uuid_ds_" + suffix
+	table := "xproto_uuid_table_" + suffix
+
+	consoleConn, err := pgx.Connect(ctx, fmt.Sprintf(
+		"host=%s port=%s user=spqr-console dbname=spqr-console", host, port))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = consoleConn.Close(ctx) })
+	params := getConnectionParams()
+	appDSN := fmt.Sprintf("host=%s port=%s user=%s dbname=%s",
+		host, port, params["user"], params["database"])
+	if password := params["password"]; password != "" {
+		appDSN += " password=" + password
+	}
+	appConn, err := pgx.Connect(ctx, appDSN)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_, _ = appConn.Exec(ctx, "DROP TABLE IF EXISTS "+table)
+		_, _ = consoleConn.Exec(ctx, "DROP DISTRIBUTION "+distribution+" CASCADE")
+		_ = appConn.Close(ctx)
+	})
+
+	for _, query := range []string{
+		"CREATE DISTRIBUTION " + distribution + " COLUMN TYPES uuid",
+		"CREATE KEY RANGE xproto_uuid_hi_" + suffix + " FROM '88888888-8888-8888-8888-888888888888' ROUTE TO sh2 FOR DISTRIBUTION " + distribution,
+		"CREATE KEY RANGE xproto_uuid_lo_" + suffix + " FROM '00000000-0000-0000-0000-000000000000' ROUTE TO sh1 FOR DISTRIBUTION " + distribution,
+		"ALTER DISTRIBUTION " + distribution + " ATTACH RELATION " + table + " DISTRIBUTION KEY id",
+	} {
+		_, err := consoleConn.Exec(ctx, query)
+		require.NoError(t, err, query)
+	}
+	_, err = appConn.Exec(ctx, "CREATE TABLE "+table+" (id uuid)")
+	require.NoError(t, err)
+	_, err = appConn.Exec(ctx, "INSERT INTO "+table+" (id) VALUES ('88888888-0000-0000-0000-000000000001')")
+	require.NoError(t, err)
+
+	query := "SELECT 1 FROM " + table + " WHERE id = $1"
+	response := []pgproto3.BackendMessage{
+		&pgproto3.ParseComplete{},
+		&pgproto3.BindComplete{},
+		&pgproto3.DataRow{Values: [][]byte{[]byte("1")}},
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+	}
+
+	frontend, conn, err := bootstrapConnection(t)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	binaryUUID := []byte{0x88, 0x88, 0x88, 0x88, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	protoTestRunner(t, frontend, []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{Query: query, ParameterOIDs: []uint32{2950}},
+				&pgproto3.Bind{
+					Parameters:           [][]byte{[]byte("88888888000000000000000000000001")},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: response,
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{Query: query, ParameterOIDs: []uint32{2950}},
+				&pgproto3.Bind{
+					Parameters:           [][]byte{binaryUUID},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: response,
+		},
+	})
 }
 
 func TestHintRoutingXproto(t *testing.T) {

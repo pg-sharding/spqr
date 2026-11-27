@@ -614,7 +614,6 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh2",
@@ -625,6 +624,24 @@ func TestRoutingByExpression(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+		{
+			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id1 IN (5, 100) AND id2 IN ('jidw', 'jidw');",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh2"}, {Name: "sh1"}},
+			},
+		},
+		{
+			query: "DELETE FROM distrr_mm_test WHERE id1 IN (5, 100) AND id2 IN ('jidw', 'jidw');",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{{Name: "sh2"}, {Name: "sh1"}},
+			},
 		},
 
 		{
@@ -1411,6 +1428,7 @@ func TestCTE(t *testing.T) {
 		{
 			query: `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1), (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
 			exp: &plan.ScatterPlan{
+				BasePlan: plan.BasePlan{H: planopts.PlanOpts{AutoLinearize: true}},
 				OverwriteQuery: map[string]string{
 					"sh1": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (1)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
 					"sh3": `WITH ignored(x) AS (VALUES (7)), vals(x) AS (VALUES (202)), selected AS (SELECT v.x FROM vals v JOIN t ON t.i = v.x) INSERT INTO t(i) SELECT x FROM selected;`,
@@ -2528,7 +2546,7 @@ func TestCopyMultiShard(t *testing.T) {
 		guc, _ := dh.FindStrGUC(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
 		_ = guc.Set(dh, session.VirtualParamLevelTxBlock, "BLOCK")
 		scatterGuc, _ := dh.FindBoolGUC(session.SPQR_SCATTER_QUERY)
-		scatterGuc.Set(dh, session.VirtualParamLevelStatement, false)
+		_ = scatterGuc.Set(dh, session.VirtualParamLevelStatement, false)
 
 		stmt := parserRes[0]
 

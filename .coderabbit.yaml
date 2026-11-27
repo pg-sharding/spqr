@@ -50,6 +50,10 @@ reviews:
   review_details: false
   enable_prompt_for_ai_agents: false
 
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+
   path_instructions:
     - path: "**/*"
       instructions: |

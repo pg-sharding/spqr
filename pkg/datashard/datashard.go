@@ -362,11 +362,14 @@ func (sh *Conn) ID() uint {
 // Returns:
 // - string: The username from auth config or associated with the Conn struct.
 func (sh *Conn) Usr() string {
-	rule := sh.AuthRule()
-	if rule != nil && rule.Usr != "" {
+	if rule := sh.AuthRule(); rule != nil && rule.Usr != "" {
 		return rule.Usr
 	}
 	return sh.beRule.Usr
+}
+
+func (sh *Conn) BeRule() *config.BackendRule {
+	return sh.beRule
 }
 
 // DB returns the database associated with the Conn struct.

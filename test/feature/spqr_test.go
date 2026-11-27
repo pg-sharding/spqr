@@ -906,6 +906,47 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	return fmt.Errorf("host \"%s\" did not respond until timeout", host)
 }
 
+func (tctx *testContext) stepIReloadConfigurationOnHost(ctx context.Context, host string) error {
+	db, err := tctx.getPostgresqlConnection(shardUser, host+"-admin")
+	if err != nil {
+		return fmt.Errorf("connect to router console on host %q: %w", host, err)
+	}
+	ctx, cancel := context.WithTimeout(ctx, postgresqlQueryTimeout)
+	defer cancel()
+	readReloadTime := func(ctx context.Context) (string, error) {
+		var reloadTime string
+		err := db.QueryRowContext(ctx, "SHOW instance (reload_time)").Scan(&reloadTime)
+		return reloadTime, err
+	}
+	previous, err := readReloadTime(ctx)
+	if err != nil {
+		return fmt.Errorf("read reload_time on host %q before SIGHUP: %w", host, err)
+	}
+
+	code, _, err := tctx.composer.RunCommandJSON(host, []string{"pkill", "-HUP", "-x", "spqr-router"}, commandExecutionTimeout)
+	if err != nil {
+		return fmt.Errorf("send SIGHUP to spqr-router on host %q: %w", host, err)
+	}
+	if code != 0 {
+		return fmt.Errorf("sending SIGHUP to spqr-router on host %q exited with code %d", host, code)
+	}
+
+	err = retry.Do(ctx, retry.NewConstant(100*time.Millisecond), func(ctx context.Context) error {
+		current, err := readReloadTime(ctx)
+		if err != nil {
+			return err
+		}
+		if current == previous {
+			return retry.RetryableError(errors.New("reload_time has not changed"))
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("wait for reload_time to change from %q on host %q: %w", previous, host, err)
+	}
+	return nil
+}
+
 func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocString) error {
 	cmd := strings.TrimSpace(body.Content)
 	var err error
@@ -958,6 +999,19 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 		return err
 	}
 	return m(tctx.commandOutput, strings.TrimSpace(body.Content))
+}
+
+// stepCommandOutputShouldNotMatch asserts that the last command output does not satisfy the named matcher.
+func (tctx *testContext) stepCommandOutputShouldNotMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	err = m(tctx.commandOutput, strings.TrimSpace(body.Content))
+	if err != nil {
+		return nil
+	}
+	return fmt.Errorf("command output should not match, output: %s", tctx.commandOutput)
 }
 
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
@@ -1645,6 +1699,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	})
 	s.Step(`^host "([^"]*)" is stopped$`, tctx.stepHostIsStopped)
 	s.Step(`^host "([^"]*)" is started$`, tctx.stepHostIsStarted)
+	s.Step(`^I reload configuration on host "([^"]*)"$`, tctx.stepIReloadConfigurationOnHost)
 
 	// command and SQL execution
 	s.Step(`^I run command on host "([^"]*)"$`, tctx.stepIRunCommandOnHost)
@@ -1652,6 +1707,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run command on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunCommandOnHostWithTimeout)
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
+	s.Step(`^command output should not match (\w+)$`, tctx.stepCommandOutputShouldNotMatch)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)

@@ -4,12 +4,22 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build assets for'
+        required: true
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 env:
   GO_VERSION: '1.26'
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -32,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ env.TAG }}
           fetch-depth: 0
 
       - uses: actions/setup-go@v7
@@ -43,7 +54,7 @@ jobs:
         run: |
           GIT_REVISION=$(git rev-parse --short HEAD)
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          SPQR_VERSION=${GITHUB_REF_NAME}
+          SPQR_VERSION=${TAG}
           echo "git_revision=${GIT_REVISION}" >> "$GITHUB_OUTPUT"
           echo "commit_count=${COMMIT_COUNT}" >> "$GITHUB_OUTPUT"
           echo "spqr_version=${SPQR_VERSION}" >> "$GITHUB_OUTPUT"
@@ -71,6 +82,7 @@ jobs:
             spqr-router \
             examples/router.yaml \
             examples/2shardproxy.yaml \
+            examples/quickstart.yaml \
             examples/init.sql
           echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
 
@@ -90,12 +102,22 @@ jobs:
       - name: Generate checksums
         run: sha256sum spqr-router-*.tar.gz > SHA256SUMS
 
-      - name: Create GitHub Release
+      # Releases are immutable once published, so assets go into a draft.
+      - name: Upload assets to draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
-            --title "SPQR ${{ github.ref_name }}" \
-            --generate-notes \
-            spqr-router-*.tar.gz SHA256SUMS
+          if gh release view "${TAG}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" \
+              --repo "${{ github.repository }}" \
+              --clobber \
+              spqr-router-*.tar.gz SHA256SUMS
+          else
+            gh release create "${TAG}" \
+              --repo "${{ github.repository }}" \
+              --draft \
+              --verify-tag \
+              --title "SPQR ${TAG}" \
+              --generate-notes \
+              spqr-router-*.tar.gz SHA256SUMS
+          fi

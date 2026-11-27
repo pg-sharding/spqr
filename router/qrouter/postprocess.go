@@ -49,7 +49,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 
 		q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
 
-		if !ok {
+		if !ok || selectLim.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
 			/* no support */
 			return p, nil
 		}

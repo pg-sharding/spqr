@@ -89,6 +89,7 @@ type ShardHostInstance interface {
 	CancellableIDs() []uint32
 	Params() ParameterSet
 	Close() error
+	BeRule() *config.BackendRule
 }
 
 type ShardHostIterator interface {

@@ -669,6 +669,77 @@ func TestRedistribute(t *testing.T) {
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),
 		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"*"},
+				BatchSize: -1,
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING ALL SHARDS",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"*"},
+				BatchSize: -1,
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING SHARDS sh1, sh2",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"sh1", "sh2"},
+				BatchSize: -1,
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 BATCH SIZE 256",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"*"},
+				BatchSize: 256,
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING ALL SHARDS BATCH SIZE 64",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"*"},
+				BatchSize: 64,
+			},
+			err: nil,
+		},
+		{
+			query: "REBALANCE DISTRIBUTION ds1 USING SHARDS sh1, sh2 BATCH SIZE 512",
+			exp: &spqrparser.RebalanceDistribution{
+				Distribution: &spqrparser.DistributionSelector{
+					ID: "ds1",
+				},
+				Shards:    []string{"sh1", "sh2"},
+				BatchSize: 512,
+			},
+			err: nil,
+		},
+		{
+			query: "STOP REBALANCE",
+			exp:   &spqrparser.StopRebalance{},
+			err:   nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
@@ -2860,11 +2931,43 @@ func TestGrant(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "GRANT create on distribution d to user1",
+			exp: &spqrparser.GrantStmt{
+				IsGrant: true,
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("create"),
+				},
+				Objtype: "distribution",
+				Objects: []*rfqn.RelationFQN{
+					{
+						RelationName: "d",
+					}},
+				Grantees: []string{"user1"},
+			},
+			err: nil,
+		},
+		{
+			query: "GRANT usage on distribution d to user1",
+			exp: &spqrparser.GrantStmt{
+				IsGrant: true,
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("usage"),
+				},
+				Objtype: "distribution",
+				Objects: []*rfqn.RelationFQN{
+					{
+						RelationName: "d",
+					}},
+				Grantees: []string{"user1"},
+			},
+			err: nil,
+		},
+		{
 			query: "GRANT usage, create on distribution d to user1",
 			exp: &spqrparser.GrantStmt{
 				IsGrant: true,
-				Privileges: []string{
-					"usage", "create",
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("usage"), spqrparser.Privilege("create"),
 				},
 				Objtype: "distribution",
 				Objects: []*rfqn.RelationFQN{
@@ -2879,8 +2982,8 @@ func TestGrant(t *testing.T) {
 			query: "GRANT usage, create on relation r1, r2 to user1, user2",
 			exp: &spqrparser.GrantStmt{
 				IsGrant: true,
-				Privileges: []string{
-					"usage", "create",
+				Privileges: []spqrparser.Privilege{
+					spqrparser.Privilege("usage"), spqrparser.Privilege("create"),
 				},
 				Objtype: "table",
 				Objects: []*rfqn.RelationFQN{

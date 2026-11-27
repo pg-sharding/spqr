@@ -69,8 +69,6 @@ func TestFrontendSimple(t *testing.T) {
 	cl := mockcl.NewMockRouterClient(ctrl)
 	srv := mocksrv.NewMockServer(ctrl)
 
-	sh := mocksh.NewMockShardHostInstance(ctrl)
-
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
@@ -97,10 +95,8 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 
 	srv.EXPECT().TxStatus().AnyTimes()
-	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(sh, nil)
+	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(nil, nil)
 	srv.EXPECT().Reset().AnyTimes()
-
-	sh.EXPECT().Close().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
@@ -230,7 +226,8 @@ func TestFrontendXProto(t *testing.T) {
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 	srv.EXPECT().TxStatus().AnyTimes()
-	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(sh, nil)
+	// The mock shard is used for protocol messages but is not owned by the route pool.
+	srv.EXPECT().UnRouteShard(gomock.Any()).AnyTimes().Return(nil, nil)
 	srv.EXPECT().Reset().AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
@@ -364,8 +361,6 @@ func TestFrontendXProto(t *testing.T) {
 	sh.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
-
-	sh.EXPECT().Close().AnyTimes()
 
 	// receive this 4 msgs
 	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)

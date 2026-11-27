@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
@@ -247,11 +248,34 @@ func DumpDistributions() error {
 			Msg("failed to dump endpoint distributions")
 	} else {
 		for _, ds := range dss.Distributions {
-			fmt.Println(decode.Distribution(ds))
-			for _, rel := range ds.Relations {
-				fmt.Println(decode.DistributedRelation(rel, ds.Id))
+			if ds.Id != distributions.REPLICATED {
+				fmt.Println(decode.Distribution(ds))
+				for _, rel := range ds.Relations {
+					fmt.Println(decode.DistributedRelation(rel, ds.Id))
+				}
 			}
 		}
+	}
+
+	return nil
+}
+
+func DumpReferenceRelations() error {
+	cc, err := Dial(endpoint)
+	if err != nil {
+		return err
+	}
+
+	rCl := protos.NewReferenceRelationsServiceClient(cc)
+	rels, err := rCl.ListReferenceRelations(context.Background(), nil)
+	if err != nil {
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("failed to dump endpoint distributions")
+		return err
+	}
+	for _, rel := range rels.Relations {
+		fmt.Println(decode.ReferenceRelation(rel))
 	}
 
 	return nil
@@ -312,6 +336,9 @@ var dump = &cobra.Command{
 		switch proto {
 		case "grpc":
 			if err := DumpDistributions(); err != nil {
+				return err
+			}
+			if err := DumpReferenceRelations(); err != nil {
 				return err
 			}
 			if err := DumpKeyRanges(); err != nil {

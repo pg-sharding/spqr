@@ -131,3 +131,11 @@ SELECT __spqr__console_execute('DROP DISTRIBUTION ALL CASCADE');
  REPLICATED
 (1 row)
 
+SELECT __spqr__clear_2pc_data(true);
+ clear_2pc_data 
+----------------
+ zzz1
+ zzz2
+ zzz3
+(3 rows)
+

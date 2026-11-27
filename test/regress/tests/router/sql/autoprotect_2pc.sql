@@ -5,8 +5,6 @@ CREATE TABLE ref_2pc(i INT);
 
 SET __spqr__engine_v2 TO true;
 
-select __spqr__clear_2pc_data();
-
 SELECT __spqr__set_next_2pc_gid('auto_zzz1');
 
 BEGIN;
@@ -34,10 +32,20 @@ DELETE FROM ref_2pc;
 
 SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
+SELECT __spqr__clear_2pc_data(false, 'auto_zzz3');
+
+SELECT __spqr__clear_2pc_data('auto_zzz2', false);
+SELECT __spqr__clear_2pc_data('auto_zzz2');
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+
+SELECT __spqr__clear_2pc_data();
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
+
 SELECT __spqr__set_next_2pc_gid('drop_table_gid');
 DROP TABLE ref_2pc;
 
-select __spqr__clear_2pc_data();
+select __spqr__clear_2pc_data(true);
+SELECT __spqr__console_execute('show two_phase_tx (gid, status)');
 
 /* __spqr__execute_on: sh1 */ SELECT * FROM spqr_metadata.spqr_distributed_relations;
 

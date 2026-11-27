@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/engine"
@@ -190,6 +191,9 @@ func (qr *ProxyQrouter) planInsertV1(
 
 				cols := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
 
+				var routeCC *lyx.ColumnRef
+
+			tle_loop:
 				for i, colRef := range subS.TargetList {
 					switch cc := colRef.(type) {
 					case *lyx.ColumnRef:
@@ -202,61 +206,81 @@ func (qr *ProxyQrouter) planInsertV1(
 							continue
 						}
 
-						auxKey := rmeta.AuxValuesKey{
-							CTEName:    sRv.RelationName,
-							ColRefName: cc.ColName,
+						/* Found tle which can be used to route query, do it right away.
+						* XXX: should be carefully reject confusion here? */
+
+						routeCC = cc
+						break tle_loop
+					}
+				}
+
+				if routeCC == nil {
+					/* lyx.RangeVar case */
+					break
+				}
+
+				auxKey := rmeta.AuxValuesKey{
+					CTEName:    sRv.RelationName,
+					ColRefName: routeCC.ColName,
+				}
+
+				if v, ok := rm.AuxValues[auxKey]; ok {
+
+					rList := [][]lyx.Node{}
+					for _, vv := range v {
+						/* XXX: ugly hack. We want this list size to match insert columns*/
+						inner := []lyx.Node{}
+						for range len(insertColsPos) {
+							inner = append(inner, vv)
 						}
-						if v, ok := rm.AuxValues[auxKey]; ok {
+						rList = append(rList, inner)
+					}
 
-							rList := [][]lyx.Node{}
-							for _, vv := range v {
-								/* XXX: ugly hack. We want this list size to match insert columns*/
-								inner := []lyx.Node{}
-								for range len(insertColsPos) {
-									inner = append(inner, vv)
+					shs, err := planner.PlanDistributedRelationForKeys(ctx, rList, rm, insertColsPos, qualName)
+					if err != nil {
+						return nil, err
+					}
+					for _, sh := range shs {
+						if sh.Name != shs[0].Name {
+							if subS.Limit != nil {
+								limit := subS.Limit.(*lyx.SelectLimit)
+								loc := limit.CountLoc
+								if loc == lyx.ParseLocUnknown {
+									loc = limit.OffsetLoc
 								}
-								rList = append(rList, inner)
+								return nil, rerrors.NewComplexQueryError().Pos(int32(utf8.RuneCountInString(rm.Query[:loc]) + 1))
 							}
 
-							shs, err := planner.PlanDistributedRelationForKeys(ctx, rList, rm, insertColsPos, qualName)
-							if err != nil {
-								return nil, err
-							}
-							for _, sh := range shs {
-								if sh.Name != shs[0].Name {
-
-									/* try to rewrite, but only for simple protocol */
-									if len(rm.ParamRefs) == 0 {
-										for {
-											parent, ok := rm.AuxValuesParent[auxKey]
-											if !ok {
-												break
-											}
-											auxKey = parent
-										}
-										cte, ok := rm.CteNames[auxKey.CTEName]
-										if !ok {
-											return nil, rerrors.NewComplexQueryError()
-										}
-										values, ok := cte.SubQuery.(*lyx.ValueClause)
-										if !ok {
-											return nil, rerrors.NewComplexQueryError()
-										}
-										return planner.RewriteDistributedRelWithValues(rm.Query, values.ValuesLoc, shs, false)
+							/* try to rewrite, but only for simple protocol */
+							if len(rm.ParamRefs) == 0 {
+								for {
+									parent, ok := rm.AuxValuesParent[auxKey]
+									if !ok {
+										break
 									}
-
+									auxKey = parent
+								}
+								cte, ok := rm.CteNames[auxKey.CTEName]
+								if !ok {
 									return nil, rerrors.NewComplexQueryError()
 								}
+								values, ok := cte.SubQuery.(*lyx.ValueClause)
+								if !ok {
+									return nil, rerrors.NewComplexQueryError()
+								}
+								return planner.RewriteDistributedRelWithValues(rm.Query, values, shs, false)
 							}
-							if len(shs) > 0 {
-								p = plan.Combine(p, &plan.ShardDispatchPlan{
-									ExecTarget:         shs[0],
-									TargetSessionAttrs: config.TargetSessionAttrsRW,
-								})
-							}
-							return p, nil
+
+							return nil, rerrors.NewComplexQueryError()
 						}
 					}
+					if len(shs) > 0 {
+						p = plan.Combine(p, &plan.ShardDispatchPlan{
+							ExecTarget:         shs[0],
+							TargetSessionAttrs: config.TargetSessionAttrsRW,
+						})
+					}
+					return p, nil
 				}
 			}
 		}
@@ -391,7 +415,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					/* try to rewrite,
 					* but only for simple protocol or unparametrized xproto */
 					if len(rm.ParamRefs) == 0 {
-						return planner.RewriteDistributedRelBatchInsert(rm.Query, subS.ValuesLoc, shs)
+						return planner.RewriteDistributedRelBatchInsert(rm.Query, subS, shs)
 					}
 					return nil, rerrors.NewComplexQueryError()
 				}

@@ -148,6 +148,13 @@ func ReplyErrUtil(rst relay.RelayStateMgr, err error) error {
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+	if rst.WaitingForSync() {
+		switch msg.(type) {
+		case *pgproto3.Sync, *pgproto3.Flush, *pgproto3.Terminate:
+		default:
+			return nil
+		}
+	}
 
 	rst.QueryExecutor().StartBlock()
 
@@ -190,13 +197,12 @@ func ProcessMessage(rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error
 		}
 
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-			// this call completes relay, sends RFQ
 			return rst.ProcessSimpleQuery(q, true)
 		}, false)
 
 		if err == nil {
 			/* Okay, respond with CommandComplete first. */
-			err = rst.QueryExecutor().DeriveCommandComplete()
+			err = rst.QueryExecutor().SendCommandComplete()
 		} else {
 			if sErr, ok := err.(*spqrerror.SpqrError); ok {
 				/* For simple query, set explicit query string in error message */

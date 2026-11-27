@@ -2,6 +2,7 @@ package qdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -138,7 +139,7 @@ func (q *PgDCStateKeeper) releaseConn(txid string) {
 }
 
 // AcquireTxOwnership implements [DCStateKeeper].
-func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (bool, error) {
+func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string, create bool, lock bool) (bool, error) {
 	spqrlog.Zero.Debug().Str("gid", txid).Msg("pg dc state keeper: acquire tx ownership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -149,19 +150,45 @@ func (q *PgDCStateKeeper) AcquireTxOwnership(ctx context.Context, txid string) (
 
 	q.locks[txid] = true
 
+	conn, err := q.getConn(ctx, txid)
+	if err != nil {
+		return false, err
+	}
 	if config.RouterConfig().AdvisoryLockTwoPhaseTx {
 		// Acquire advisory lock in postgres
-		conn, err := q.getConn(ctx, txid)
-		if err != nil {
-			return false, err
-		}
 		hasher := murmur3.New64()
 		if _, err := hasher.Write([]byte(txid)); err != nil {
+			delete(q.locks, txid)
+			q.releaseConn(txid)
 			return false, err
 		}
-		if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
-			return false, err
+		if lock {
+			if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(hasher.Sum64())); err != nil {
+				delete(q.locks, txid)
+				q.releaseConn(txid)
+				return false, err
+			}
+		} else {
+			row := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", int64(hasher.Sum64()))
+			acquired := false
+			if err = row.Scan(&acquired); err != nil || !acquired {
+				delete(q.locks, txid)
+				q.releaseConn(txid)
+				return false, err
+			}
 		}
+	}
+
+	row := conn.QueryRow(ctx, "SELECT id FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	if err := row.Scan(nil); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return false, err
+	} else if err == pgx.ErrNoRows {
+		if !create {
+			delete(q.locks, txid)
+			q.releaseConn(txid)
+			return false, nil
+		}
+		return true, nil
 	}
 
 	return true, nil
@@ -195,7 +222,7 @@ func (q *PgDCStateKeeper) ChangeTxStatus(ctx context.Context, txid string, state
 	default:
 		return fmt.Errorf("unknown tx state value \"%s\"", state)
 	}
-	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1 WHERE id = $2", pgState, txid)
+	_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET status=$1, updated_at=now() WHERE id = $2", pgState, txid)
 	if err != nil {
 		return err
 	}
@@ -216,9 +243,9 @@ func (q *PgDCStateKeeper) RecordTwoPhaseMembers(ctx context.Context, txid string
 		return err
 	}
 	if count > 0 {
-		_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1 WHERE id = $2", shards, txid)
+		_, err = (*tx).Exec(ctx, "UPDATE spqr_metadata.spqr_tx_status SET members=$1, updated_at=now() WHERE id = $2", shards, txid)
 	} else {
-		_, err = (*tx).Exec(ctx, "INSERT INTO spqr_metadata.spqr_tx_status (id, members, status) VALUES ($1, $2, $3)", txid, shards, pgStatePlanned)
+		_, err = (*tx).Exec(ctx, "INSERT INTO spqr_metadata.spqr_tx_status (id, members, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())", txid, shards, pgStatePlanned)
 	}
 	if err != nil {
 		return err
@@ -423,28 +450,48 @@ func (q *PgDCStateKeeper) SetTxMetaStorage(storage []string) error {
 	return nil
 }
 
-func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) error {
+func (q *PgDCStateKeeper) RemoveTXData(ctx context.Context, txid string) (bool, error) {
 	tx, err := q.getTx(ctx, txid)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() {
 		_ = (*tx).Rollback(ctx)
 	}()
-	if _, err = (*tx).Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid); err != nil {
-		return err
+	tag, err := (*tx).Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status WHERE id = $1", txid)
+	if err != nil {
+		return false, err
 	}
-	return (*tx).Commit(ctx)
+	if err := (*tx).Commit(ctx); err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() != 0, nil
 }
 
-func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+func (q *PgDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	conn, err := q.getConn(ctx, "")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	/* XXX: returning * */
-	_, err = conn.Exec(ctx, "DELETE FROM spqr_metadata.spqr_tx_status")
-	return err
+
+	query := "DELETE FROM spqr_metadata.spqr_tx_status"
+	var args []any
+	if len(gids) > 0 {
+		query += " WHERE id = ANY($1::text[])"
+		args = append(args, gids)
+		if !crazyDrop {
+			query += " AND status IN ($2, $3)"
+			args = append(args, pgStateCommitted, pgStateRejected)
+		}
+	} else if !crazyDrop {
+		query += " WHERE status IN ($1, $2)"
+		args = append(args, pgStateCommitted, pgStateRejected)
+	}
+	rows, err := conn.Query(ctx, query+" RETURNING id", args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
 func NewPgQDB(shards *config.DatatransferConnections) *PgDCStateKeeper {

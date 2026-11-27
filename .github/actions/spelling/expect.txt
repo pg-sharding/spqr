@@ -19,6 +19,9 @@ appdefaults
 APREQ
 argexpr
 astmt
+attisdropped
+attnum
+attrelid
 authed
 Autoattach
 autoprotect
@@ -102,6 +105,7 @@ DClocal
 dcs
 ddl
 debian
+dedup
 denchick
 denis
 deparsed
@@ -136,7 +140,9 @@ eedba
 efef
 elephantsql
 Elts
+emoji
 emptypb
+Emre
 ENONET
 ents
 epn
@@ -170,7 +176,6 @@ FQNTo
 frmp
 frrule
 frsm
-frst
 frules
 ftts
 gcflags
@@ -236,6 +241,7 @@ installable
 interactor
 INTERVALOID
 IPrepare
+IReload
 IRun
 isgomock
 isolationtester
@@ -415,6 +421,7 @@ PIDs
 pids
 pitr
 pkgclient
+pkill
 planopts
 plpgsql
 podman
@@ -604,6 +611,7 @@ tfstate
 tgid
 timeb
 timestamptz
+tle
 tlist
 tlsconfig
 tlt
@@ -679,6 +687,7 @@ xmove
 xmovestr
 xproto
 XQDB
+xrec
 xrecord
 xtab
 xxerr

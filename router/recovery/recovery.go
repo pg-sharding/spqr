@@ -177,7 +177,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 		* when DCStateKeeper in router-local mem-QDB, not etcd)
 		* 3) another recovery routine raced with us and won the race.
 		*/
-		if err := d.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
+		if err := d.LockAndRecover2PhaseCommitTX(ctx, gid, true); err != nil {
 			spqrlog.WdLog.Error().Str("gid", gid).Err(err).Msg("failed to recover unfinished distributed tx")
 			if recoverErr == nil {
 				recoverErr = err
@@ -192,11 +192,12 @@ func (d *TwoPCWatchDog) RecoverDistributedTx(ctx context.Context) (map[string]st
 	return gids, nil
 }
 
-func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string) error {
+func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid string, lock bool) error {
 	recoverCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid)
+	acq, err := d.d.AcquireTxOwnership(recoverCtx, gid, false, lock)
 	if err != nil {
+		spqrlog.WdLog.Debug().Err(err).Str("gid", gid).Msg("error to acquiring tx ownership")
 		return err
 	}
 	if acq {
@@ -204,7 +205,9 @@ func (d *TwoPCWatchDog) LockAndRecover2PhaseCommitTX(ctx context.Context, gid st
 		if err := d.Recover2PhaseCommitTX(recoverCtx, gid); err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TWO_PHASE_ERROR, "failed to recover unfinished distributed tx %q: %v", gid, err)
 		}
+		return nil
 	}
+	spqrlog.WdLog.Debug().Str("gid", gid).Msg("failed to acquire tx ownership, doing nothing")
 	return nil
 }
 
@@ -323,10 +326,13 @@ func (d *TwoPCWatchDog) DeployQueryOnShard(serv shard.ShardHostInstance, s strin
 			ccReceived = true
 
 		case *pgproto3.ReadyForQuery:
+			if deployErr != nil {
+				return deployErr
+			}
 			if !ccReceived {
 				return spqrerror.New(spqrerror.SPQR_TWO_PHASE_ERROR, "missing command complete message in 2pc recovery")
 			}
-			return deployErr
+			return nil
 		}
 	}
 }
@@ -370,19 +376,36 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(ctx context.Context, gid string) e
 }
 
 func (d *TwoPCWatchDog) CleanUpOldTXs(ctx context.Context) ([]string, error) {
-	txs, err := d.d.GetTXs(ctx)
+	if config.RouterConfig().TxDataTTL == 0 {
+		spqrlog.WdLog.Info().Msg("2pc data ttl set to zero, doing nothing")
+		return []string{}, nil
+	}
+	txs, err := d.d.TXInfos(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]string, 0)
+	gids := make([]string, 0)
 	for _, tx := range txs {
-		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && !tx.UpdatedAt.IsZero() && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
-			res = append(res, tx.Gid)
-			if err := d.d.RemoveTXData(ctx, tx.Gid); err != nil {
-				return nil, err
+		if (tx.State == qdb.TwoPhaseP2 || tx.State == qdb.TwoPhaseP2Rejected) && tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			gids = append(gids, tx.Gid)
+		} else if tx.UpdatedAt.Add(config.RouterConfig().TxDataTTL).Before(time.Now()) {
+			if err := d.LockAndRecover2PhaseCommitTX(ctx, tx.Gid, false); err != nil {
+				spqrlog.WdLog.Debug().Str("gid", tx.Gid).Err(err).Msg("failed to clean up outdated init-state tx")
+				continue
 			}
+			gids = append(gids, tx.Gid)
 		}
 	}
-	return res, nil
+	if len(gids) > 0 {
+		cleared, err := d.d.ClearTxStatuses(ctx, false, gids)
+		if err != nil {
+			return nil, err
+		}
+		if len(cleared) > 0 {
+			spqrlog.WdLog.Debug().Strs("gids", cleared).Msg("cleared expired 2pc transaction statuses")
+		}
+		return cleared, nil
+	}
+	return gids, nil
 }

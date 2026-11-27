@@ -90,20 +90,14 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 	var pd *PortalDesc
 
-l:
 	for i, stmt := range stmts {
-
 		if i > 0 {
-
-			switch stmt.(type) {
-			case *lyx.VariableSetStmt, *lyx.VariableShowStmt, *lyx.TransactionStmt:
-				/* ok */
-			default:
-				continue l
+			if stmt == nil {
+				continue
 			}
 
 			/* Okay, respond with CommandComplete first. */
-			err = rst.QueryExecutor().DeriveCommandComplete()
+			err = rst.QueryExecutor().SendCommandComplete()
 			if err != nil {
 				return nil, err
 			}
@@ -143,7 +137,7 @@ l:
 		}
 
 		/* outer function will complete relay here */
-		if err != nil {
+		if err != nil || rst.QueryExecutor().StatementFailed() {
 			return nil, err
 		}
 	}
@@ -577,7 +571,14 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 	for hintName := range mp {
 		name := virtualParamTransformName(hintName)
 		if strings.HasPrefix(name, "__spqr__") && !session.IsKnownSPQRHint(name) {
-			return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "hint %q does not exist", hintName)
+			if err := rst.Client().Send(&pgproto3.NoticeResponse{
+				Severity: "WARNING",
+				Code:     "01000",
+				Message:  fmt.Sprintf("hint %q does not exist", hintName),
+			}); err != nil {
+				return err
+			}
+			delete(mp, hintName)
 		}
 	}
 
@@ -606,7 +607,9 @@ func (rst *RelayStateImpl) processSpqrHint(_ context.Context,
 				return err
 			}
 
-			guc.Set(rst.Client(), lvl, v)
+			if err := guc.Set(rst.Client(), lvl, v); err != nil {
+				return err
+			}
 		} else if session.ParamIsString(name) {
 
 			guc, err := rst.Client().FindStrGUC(name)

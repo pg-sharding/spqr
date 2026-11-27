@@ -1827,18 +1827,18 @@ func (m *MockDCStateKeeper) EXPECT() *MockDCStateKeeperMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string) (bool, error) {
+func (m *MockDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string, create, lock bool) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create, lock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid, create, lock any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid, create, lock)
 }
 
 // ChangeTxStatus mocks base method.
@@ -1856,17 +1856,18 @@ func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExpe
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+func (m *MockDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gids)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
-func (mr *MockDCStateKeeperMockRecorder) ClearTxStatuses(ctx any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ClearTxStatuses(ctx, crazyDrop, gids any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockDCStateKeeper)(nil).ClearTxStatuses), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockDCStateKeeper)(nil).ClearTxStatuses), ctx, crazyDrop, gids)
 }
 
 // GetTXs mocks base method.
@@ -1928,11 +1929,12 @@ func (mr *MockDCStateKeeperMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomoc
 }
 
 // RemoveTXData mocks base method.
-func (m *MockDCStateKeeper) RemoveTXData(ctx context.Context, gid string) error {
+func (m *MockDCStateKeeper) RemoveTXData(ctx context.Context, gid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTXData", ctx, gid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RemoveTXData indicates an expected call of RemoveTXData.
@@ -2026,18 +2028,18 @@ func (m *MockXDCStateKeeper) EXPECT() *MockXDCStateKeeperMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockXDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string) (bool, error) {
+func (m *MockXDCStateKeeper) AcquireTxOwnership(ctx context.Context, gid string, create, lock bool) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create, lock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) AcquireTxOwnership(ctx, gid, create, lock any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockXDCStateKeeper)(nil).AcquireTxOwnership), ctx, gid, create, lock)
 }
 
 // AddRouter mocks base method.
@@ -2097,17 +2099,18 @@ func (mr *MockXDCStateKeeperMockRecorder) ChangeTxStatus(ctx, gid, state, curExp
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockXDCStateKeeper) ClearTxStatuses(ctx context.Context) error {
+func (m *MockXDCStateKeeper) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gids)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
-func (mr *MockXDCStateKeeperMockRecorder) ClearTxStatuses(ctx any) *gomock.Call {
+func (mr *MockXDCStateKeeperMockRecorder) ClearTxStatuses(ctx, crazyDrop, gids any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockXDCStateKeeper)(nil).ClearTxStatuses), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockXDCStateKeeper)(nil).ClearTxStatuses), ctx, crazyDrop, gids)
 }
 
 // CloseRouter mocks base method.
@@ -2299,11 +2302,12 @@ func (mr *MockXDCStateKeeperMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomo
 }
 
 // RemoveTXData mocks base method.
-func (m *MockXDCStateKeeper) RemoveTXData(ctx context.Context, gid string) error {
+func (m *MockXDCStateKeeper) RemoveTXData(ctx context.Context, gid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTXData", ctx, gid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RemoveTXData indicates an expected call of RemoveTXData.
@@ -3761,6 +3765,20 @@ func (mr *MockXQDBMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockXQDB)(nil).ShareKeyRange), id)
 }
 
+// Snapshot mocks base method.
+func (m *MockXQDB) Snapshot() qdb.XQDB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(qdb.XQDB)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockXQDBMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockXQDB)(nil).Snapshot))
+}
+
 // TryCoordinatorLock mocks base method.
 func (m *MockXQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 	m.ctrl.T.Helper()
@@ -3983,18 +4001,18 @@ func (m *MockStateKeeperQDB) EXPECT() *MockStateKeeperQDBMockRecorder {
 }
 
 // AcquireTxOwnership mocks base method.
-func (m *MockStateKeeperQDB) AcquireTxOwnership(ctx context.Context, gid string) (bool, error) {
+func (m *MockStateKeeperQDB) AcquireTxOwnership(ctx context.Context, gid string, create, lock bool) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid)
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", ctx, gid, create, lock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
-func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(ctx, gid any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) AcquireTxOwnership(ctx, gid, create, lock any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).AcquireTxOwnership), ctx, gid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockStateKeeperQDB)(nil).AcquireTxOwnership), ctx, gid, create, lock)
 }
 
 // AddMoveTaskGroupStopFlag mocks base method.
@@ -4284,17 +4302,18 @@ func (mr *MockStateKeeperQDBMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *g
 }
 
 // ClearTxStatuses mocks base method.
-func (m *MockStateKeeperQDB) ClearTxStatuses(ctx context.Context) error {
+func (m *MockStateKeeperQDB) ClearTxStatuses(ctx context.Context, crazyDrop bool, gids []string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "ClearTxStatuses", ctx, crazyDrop, gids)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClearTxStatuses indicates an expected call of ClearTxStatuses.
-func (mr *MockStateKeeperQDBMockRecorder) ClearTxStatuses(ctx any) *gomock.Call {
+func (mr *MockStateKeeperQDBMockRecorder) ClearTxStatuses(ctx, crazyDrop, gids any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockStateKeeperQDB)(nil).ClearTxStatuses), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearTxStatuses", reflect.TypeOf((*MockStateKeeperQDB)(nil).ClearTxStatuses), ctx, crazyDrop, gids)
 }
 
 // CloseRouter mocks base method.
@@ -5351,11 +5370,12 @@ func (mr *MockStateKeeperQDBMockRecorder) ReleaseTxOwnership(ctx, gid any) *gomo
 }
 
 // RemoveTXData mocks base method.
-func (m *MockStateKeeperQDB) RemoveTXData(ctx context.Context, gid string) error {
+func (m *MockStateKeeperQDB) RemoveTXData(ctx context.Context, gid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTXData", ctx, gid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RemoveTXData indicates an expected call of RemoveTXData.
@@ -5446,6 +5466,20 @@ func (m *MockStateKeeperQDB) ShareKeyRange(id string) error {
 func (mr *MockStateKeeperQDBMockRecorder) ShareKeyRange(id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShareKeyRange", reflect.TypeOf((*MockStateKeeperQDB)(nil).ShareKeyRange), id)
+}
+
+// Snapshot mocks base method.
+func (m *MockStateKeeperQDB) Snapshot() qdb.XQDB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Snapshot")
+	ret0, _ := ret[0].(qdb.XQDB)
+	return ret0
+}
+
+// Snapshot indicates an expected call of Snapshot.
+func (mr *MockStateKeeperQDBMockRecorder) Snapshot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockStateKeeperQDB)(nil).Snapshot))
 }
 
 // TXCohortShards mocks base method.

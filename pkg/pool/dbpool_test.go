@@ -109,6 +109,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 			underlyingPool.EXPECT().Put(h).Return(nil)
 
 			h.EXPECT().Sync().Return(int64(0))
+			h.EXPECT().DataPending().Return(false)
 
 			h.EXPECT().TxStatus().Return(txstatus.TXIDLE)
 		}
@@ -183,6 +184,11 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 		"sh3",
 	}
 
+	beRule := &config.BackendRule{
+		Usr: "",
+		DB:  "",
+	}
+
 	for i, shname := range shards {
 		mp[shname] = map[string][]shard.ShardHostInstance{}
 		mpCounters[shname] = map[string]*atomic.Uint32{}
@@ -208,9 +214,11 @@ func runner(t *testing.T, spamTopologyChanges bool) {
 				sh.EXPECT().Send(gomock.Any()).AnyTimes()
 
 				sh.EXPECT().Sync().Return(int64(0)).AnyTimes()
+				sh.EXPECT().DataPending().Return(false).AnyTimes()
 				sh.EXPECT().TxStatus().Return(txstatus.TXIDLE).AnyTimes()
 
 				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
+				sh.EXPECT().BeRule().Return(beRule).AnyTimes()
 
 				counter := 0
 				rwCounter := 0
@@ -422,6 +430,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 			underlyingPool.EXPECT().Put(h).Return(nil)
 
 			h.EXPECT().Sync().Return(int64(0))
+			h.EXPECT().DataPending().Return(false)
 
 			h.EXPECT().TxStatus().Return(txstatus.TXIDLE)
 		}
@@ -464,6 +473,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	underlyingPool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
 
 	h3.EXPECT().Sync().Return(int64(0)).MaxTimes(1)
+	h3.EXPECT().DataPending().Return(false).MaxTimes(1)
 
 	h3.EXPECT().TxStatus().Return(txstatus.TXIDLE).MaxTimes(1)
 

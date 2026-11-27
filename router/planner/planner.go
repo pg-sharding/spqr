@@ -495,6 +495,8 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 			}
 			defer cf()
 		}
+	case *spqrparser.Begin, *spqrparser.Commit, *spqrparser.Rollback:
+		return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Transactions are not supported via virtual functions")
 	default:
 		/* TODO - fix
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
@@ -508,8 +510,9 @@ func executeSingleMetaQuery(ctx context.Context, tstmt spqrparser.Statement, rm 
 		defer cf()
 	}
 
+	sess := meta.NewConsoleSession(mgr)
 	return retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*tupleslot.TupleTableSlot, error) {
-		tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false, nil)
+		tts, err := meta.ProcMetadataCommand(ctx, tstmt, sess, rm.CSM, rm.ClientRule, nil, false, nil)
 		if err != nil {
 			if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
 				return nil, retry.RetryableError(err)
@@ -928,7 +931,7 @@ func ConsoleFunctionCall(
 			}
 			gid := strVal.Value
 
-			if err := wd.LockAndRecover2PhaseCommitTX(ctx, gid); err != nil {
+			if err := wd.LockAndRecover2PhaseCommitTX(ctx, gid, true); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(gid)
@@ -943,8 +946,8 @@ func ConsoleFunctionCall(
 		}
 		return tts, nil
 	case virtual.VirtualClear2PCData:
-		if len(args) > 1 {
-			return nil, fmt.Errorf("%s function accepts 0 one or arg", fname)
+		if len(args) > 2 {
+			return nil, fmt.Errorf("%s function accepts up to two arguments", fname)
 		}
 		db, err := qdb.GetStateKeeperQDB()
 		if err != nil {
@@ -953,19 +956,52 @@ func ConsoleFunctionCall(
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("clear_2pc_data"),
 		}
-		if len(args) == 0 {
-			if err := db.ClearTxStatuses(ctx); err != nil {
-				return nil, err
+		crazyDrop := false
+		var gid string
+		legacyGIDOnly := false
+		switch len(args) {
+		case 1:
+			switch arg := args[0].(type) {
+			case *lyx.AExprBConst:
+				crazyDrop = arg.Value
+			case *lyx.AExprSConst:
+				gid = arg.Value
+				legacyGIDOnly = true
+			default:
+				return nil, rerrors.NewComplexQueryError()
 			}
-		} else {
-			strVal, ok := args[0].(*lyx.AExprSConst)
+		case 2:
+			arg, ok := args[0].(*lyx.AExprSConst)
 			if !ok {
 				return nil, rerrors.NewComplexQueryError()
 			}
-			if err := db.RemoveTXData(ctx, strVal.Value); err != nil {
-				return nil, err
+			gid = arg.Value
+			mode, ok := args[1].(*lyx.AExprBConst)
+			if !ok {
+				return nil, rerrors.NewComplexQueryError()
 			}
-			tts.WriteDataRow(strVal.Value)
+			crazyDrop = mode.Value
+		}
+		var cleared []string
+		if legacyGIDOnly {
+			var removed bool
+			removed, err = db.RemoveTXData(ctx, gid)
+			if removed {
+				cleared = []string{gid}
+			}
+		} else {
+			gids := []string{}
+			if gid != "" {
+				gids = append(gids, gid)
+			}
+			cleared, err = db.ClearTxStatuses(ctx, crazyDrop, gids)
+		}
+		if err != nil {
+			return nil, err
+		}
+		sort.Strings(cleared)
+		for _, gid := range cleared {
+			tts.WriteDataRow(gid)
 		}
 		return tts, nil
 	case virtual.VirtualCleanOutdated2PCData:
@@ -1053,7 +1089,9 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true)
+		if err := guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, true); err != nil {
+			return nil, err
+		}
 	case virtual.PGAdvisoryUnlockAll:
 		/* Unpin connections */
 		guc, err := rm.SPH.FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
@@ -1061,7 +1099,9 @@ func MetadataVirtualFunctionCall(ctx context.Context,
 			return nil, err
 		}
 
-		guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false)
+		if err := guc.Set(rm.SPH, session.VirtualParamLevelTxBlock, false); err != nil {
+			return nil, err
+		}
 	}
 
 	switch fname {
@@ -1299,7 +1339,7 @@ func (p *PlannerV2) PlanDistributedQuery(
 						if sh.Name != shs[0].Name {
 							/* try to rewrite, but only for simple protocol */
 							if len(rm.ParamRefs) == 0 {
-								return RewriteDistributedRelBatchInsert(rm.Query, q.ValuesLoc, shs)
+								return RewriteDistributedRelBatchInsert(rm.Query, q, shs)
 							}
 							return nil, rerrors.NewComplexQueryError()
 						}

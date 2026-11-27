@@ -37,6 +37,7 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `router_port`        | The port number for the router.                   | Any valid port number  | (none)                |
 | `router_ro_port`     | The port number for the read-only queries router. | Any valid port number  | (none)                |
 | `admin_console_port` | The port number for the admin console.            | Any valid port number  | (none)                |
+| `grpc_api_host`      | The host address the gRPC API listens on. Falls back to `host` when unset. Note: an embedded coordinator still registers the router using `host`. | Any valid hostname | Inherits `host` |
 | `grpc_api_port`      | The port number for the gRPC API.                 | Any valid port number  | (none)                |
 | `metric_path`        | The path for prometheus metric exporter           | Any valid HTTP path    | `/metric`             |
 | `metric_port`        | The port for prometheus metric exporter           | Any valid port number  | (none)                |
@@ -73,6 +74,8 @@ Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.c
 | `pool_rollback`           | Specifies whether to execute a rollback on connections returned to the pool    | `true`, `false`          | `false` |
 | `pool_prepared_statement` | Indicates if prepared statements should be pooled                              | `true`, `false`          | `false` |
 | `pool_default`            | If set to true, uses the default pool settings defined elsewhere               | `true`, `false`          | `false` |
+
+Pinned connections always roll back unfinished transactions before being cached, regardless of `pool_rollback`. They do not run `DISCARD ALL`.
 
 ## Backend Rules
 

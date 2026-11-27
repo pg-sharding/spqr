@@ -70,6 +70,7 @@ type Router struct {
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
+	GrpcAPIHost      string `json:"grpc_api_host" toml:"grpc_api_host" yaml:"grpc_api_host"`
 	GrpcAPIPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	MetricPath       string `json:"metric_path" toml:"metric_path" yaml:"metric_path"`
 	MetricPort       string `json:"metric_port" toml:"metric_port" yaml:"metric_port"`
@@ -161,9 +162,19 @@ type Router struct {
 
 var _ Config = &Router{}
 
+// ApplyDefaults sets router config fields that have fixed defaults.
 func (r *Router) ApplyDefaults() {
 	r.LogMinDurationStatement = -1
 	r.DisplayGreeting = true
+}
+
+// GrpcListenHost returns the address the router gRPC API binds to:
+// grpc_api_host when set, otherwise host (empty host binds all interfaces).
+func (r *Router) GrpcListenHost() string {
+	if r.GrpcAPIHost != "" {
+		return r.GrpcAPIHost
+	}
+	return r.Host
 }
 
 func (r *Router) PostProcess() error {
