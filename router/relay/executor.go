@@ -1,7 +1,9 @@
 package relay
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"fmt"
 	"strings"
 	"time"
@@ -604,6 +606,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 	}
 	// Read delimiter from COPY options
 	delimiter := byte('\t')
+	csvFormat := false
 	for _, opt := range stmt.Options {
 		if opt == nil {
 			/* ???? */
@@ -619,6 +622,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 		if strings.ToLower(o.Name) == "format" {
 			if o.Arg.(*lyx.AExprSConst).Value == "csv" {
 				delimiter = ','
+				csvFormat = true
 			}
 		}
 	}
@@ -627,6 +631,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 	if attachedCopy {
 		return &pgcopy.CopyState{
 			Delimiter: delimiter,
+			CSV:       csvFormat,
 			Attached:  true,
 		}, nil
 	}
@@ -644,6 +649,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 
 		return &pgcopy.CopyState{
 			Scatter:          true,
+			CSV:              csvFormat,
 			ExecutionTargets: rr.ListStorageRoutes(),
 		}, nil
 	}
@@ -696,6 +702,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 
 	return &pgcopy.CopyState{
 		Delimiter: delimiter,
+		CSV:       csvFormat,
 		Krs:       krs,
 		RM: rmeta.NewRoutingMetadataContext(s.cl, s.cl.Rule(), "", nil /*XXX: fix this*/, nil, s.mgr, &rmeta.MetadataCache{
 			Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
@@ -707,6 +714,21 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 		SchemaColumns:  stmt.Columns,
 		SchemaColumnMp: schemaColMp,
 	}, nil
+}
+
+func parseCopyCSVField(data []byte, delimiter byte) ([]byte, error) {
+	reader := csv.NewReader(bytes.NewReader(data))
+	reader.Comma = rune(delimiter)
+	reader.FieldsPerRecord = -1
+
+	fields, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
+	if len(fields) != 1 {
+		return nil, fmt.Errorf("malformed CSV field")
+	}
+	return []byte(fields[0]), nil
 }
 
 // TODO : unit tests
@@ -742,18 +764,44 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	prevDelimiter := 0
 	prevLine := 0
 	attrIndx := 0
+	inCSVQuotes := false
+	consumeCSVQuote := false
 
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
 			prevLine = len(data.Data)
 			break
 		}
+		if cps.CSV && b == '"' {
+			if consumeCSVQuote {
+				consumeCSVQuote = false
+				continue
+			}
+			if inCSVQuotes && i+1 < len(data.Data) && data.Data[i+1] == '"' {
+				consumeCSVQuote = true
+				continue
+			}
+			inCSVQuotes = !inCSVQuotes
+		}
+
+		if inCSVQuotes {
+			continue
+		}
+
 		if b == '\n' || b == cps.Delimiter {
 			if attrIndx >= len(cps.SchemaColumns) {
 				return nil, fmt.Errorf("malformed data in copy")
 			}
 			if indx, ok := cps.SchemaColumnMp[cps.SchemaColumns[attrIndx]]; ok {
-				routingTupleItems[indx] = append(routingTupleItems[indx], data.Data[prevDelimiter:i])
+				value := data.Data[prevDelimiter:i]
+				if cps.CSV {
+					var err error
+					value, err = parseCopyCSVField(value, cps.Delimiter)
+					if err != nil {
+						return nil, fmt.Errorf("malformed data in copy: %w", err)
+					}
+				}
+				routingTupleItems[indx] = append(routingTupleItems[indx], value)
 			}
 
 			attrIndx++
@@ -823,6 +871,8 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
 		attrIndx = 0
 		prevLine = i + 1
+		inCSVQuotes = false
+		consumeCSVQuote = false
 	}
 
 	if prevLine != len(data.Data) {
