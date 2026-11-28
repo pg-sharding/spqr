@@ -37,7 +37,7 @@ type Conn struct {
 	allocTime time.Time
 	lifetime  time.Duration
 
-	dataPending bool
+	pendingExtended bool
 
 	txServed int64
 
@@ -128,7 +128,7 @@ func (sh *Conn) Sync() int64 {
 }
 
 func (sh *Conn) DataPending() bool {
-	return sh.dataPending
+	return sh.pendingExtended || sh.Sync() != 0
 }
 
 // TxServed returns the number of transactions served by the Conn struct.
@@ -201,14 +201,13 @@ func (sh *Conn) CancellableIDs() []uint32 {
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
 
-	sh.dataPending = true
-
 	switch query.(type) {
-	case *pgproto3.Query:
+	case *pgproto3.Query, *pgproto3.Sync:
 		sh.syncIn++
-	case *pgproto3.Sync:
-		sh.syncIn++
-	default:
+		sh.pendingExtended = false
+	case *pgproto3.Parse, *pgproto3.Bind, *pgproto3.Describe, *pgproto3.Execute, *pgproto3.Close:
+		// These messages belong to the cycle after any Query or Sync already sent.
+		sh.pendingExtended = true
 	}
 
 	spqrlog.Zero.Trace().
@@ -236,7 +235,6 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	}
 	switch v := msg.(type) {
 	case *pgproto3.ReadyForQuery:
-		sh.dataPending = false
 		sh.syncOut++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 		if sh.status == txstatus.TXIDLE {
