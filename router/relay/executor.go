@@ -66,6 +66,7 @@ func (s *QueryStateExecutorImpl) Close() {
 	for _, sh := range s.localConn {
 		_ = s.Client().Route().MultiShardPool().Put(sh)
 	}
+	clear(s.localConn)
 }
 
 // Discard implements [pool.ConnectionProvider].
@@ -95,6 +96,8 @@ func (s *QueryStateExecutorImpl) ConnectionWithTSA(params pool.ConnAllocParams, 
 	/* Connection are pinned - try to lookup local cache */
 	if guc.Get(s.Client()) {
 		if c, ok := s.localConn[key.Name]; ok {
+			/* The server owns the connection until cleanup. */
+			delete(s.localConn, key.Name)
 			return c, nil
 		}
 	}
