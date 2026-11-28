@@ -21,7 +21,8 @@ step s2_query { SELECT 1 /* __spqr__scatter_query: true */; }
 step s2_commit { COMMIT; }
 step s2_detach { SELECT __spqr__console_execute('DETACH CONTROL POINT 2pc_cleanup_cp'); }
 step s2_check { SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = 'cleanup_race_gid' /* __spqr__execute_on: sh1 */; }
+step s2_clear_after_check { SELECT __spqr__clear_2pc_data('cleanup_race_gid', true); }
 
 permutation
     s1_engine s1_strategy s1_cleanup s1_gid s1_begin s1_query s1_commit s1_age_tx
-    s2_attach s1_clean s2_clear s2_engine s2_strategy s2_cleanup s2_gid s2_begin s2_query s2_commit s2_detach s2_check
+    s2_attach s1_clean s2_clear s2_engine s2_strategy s2_cleanup s2_gid s2_begin s2_query s2_commit s2_detach s2_check s2_clear_after_check

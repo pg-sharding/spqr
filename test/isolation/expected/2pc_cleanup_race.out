@@ -1,6 +1,6 @@
 Parsed test spec with 2 sessions
 
-starting permutation: s1_engine s1_strategy s1_cleanup s1_gid s1_begin s1_query s1_commit s1_age_tx s2_attach s1_clean s2_clear s2_engine s2_strategy s2_cleanup s2_gid s2_begin s2_query s2_commit s2_detach s2_check
+starting permutation: s1_engine s1_strategy s1_cleanup s1_gid s1_begin s1_query s1_commit s1_age_tx s2_attach s1_clean s2_clear s2_engine s2_strategy s2_cleanup s2_gid s2_begin s2_query s2_commit s2_detach s2_check s2_clear_after_check
 step s1_engine: SET __spqr__engine_v2 TO on;
 step s1_strategy: SET __spqr__commit_strategy TO 2pc;
 step s1_cleanup: SET __spqr__eager_cleanup_2pc TO off;
@@ -52,9 +52,15 @@ DETACH CONTROL POINT
 (1 row)
 
 step s1_clean: <... completed>
-
 step s2_check: SELECT status FROM spqr_metadata.spqr_tx_status WHERE id = 'cleanup_race_gid' /* __spqr__execute_on: sh1 */;
-status
-------
-Done
+status   
+---------
+committed
 (1 row)
+
+step s2_clear_after_check: SELECT __spqr__clear_2pc_data('cleanup_race_gid', true);
+clear_2pc_data  
+----------------
+cleanup_race_gid
+(1 row)
+
