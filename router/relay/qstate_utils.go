@@ -82,9 +82,11 @@ func DispatchSlice(qd *QueryDesc,
 				}
 			}
 		} else {
-			/* this message is actually bind */
-			if err := serv.SendShard(qd.Msg, targ); err != nil {
-				return err
+			if !qd.executeOnly {
+				/* this message is actually bind */
+				if err := serv.SendShard(qd.Msg, targ); err != nil {
+					return err
+				}
 			}
 
 			if err := serv.SendShard(qd.exec, targ); err != nil {
