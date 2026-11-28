@@ -1,19 +1,64 @@
 package client_test
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	mockpool "github.com/pg-sharding/spqr/pkg/mock/pool"
+	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
+	"github.com/pg-sharding/spqr/router/server"
 	"go.uber.org/mock/gomock"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
 	mock_conn "github.com/pg-sharding/spqr/pkg/mock/conn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestShutdownKeepsServerForCleanup(t *testing.T) {
+	require := require.New(t)
+	ctrl := gomock.NewController(t)
+
+	rconn := mock_conn.NewMockRawConn(ctrl)
+	startup, err := (&pgproto3.StartupMessage{
+		ProtocolVersion: pgproto3.ProtocolVersion30,
+		Parameters: map[string]string{
+			"user":     "u",
+			"database": "d",
+		},
+	}).Encode(nil)
+	require.NoError(err)
+	rconn.EXPECT().Read(gomock.Any()).DoAndReturn(bytes.NewReader(startup).Read).Times(2)
+	rconn.EXPECT().Write(gomock.Any()).DoAndReturn(func(b []byte) (int, error) {
+		return len(b), nil
+	}).Times(2)
+	closed := rconn.EXPECT().Close().Return(nil)
+
+	cl := client.NewPsqlClient(rconn, port.DefaultRouterPortType, false, "")
+	require.NoError(cl.Init(nil))
+
+	p := mockpool.NewMockConnectionProvider(ctrl)
+	sh := mockshard.NewMockShardHostInstance(ctrl)
+	key := kr.ShardKey{Name: "sh1"}
+	p.EXPECT().ConnectionWithTSA(pool.ConnAllocParams{}, key).Return(sh, nil)
+	p.EXPECT().Put(sh).After(closed).Return(nil)
+
+	srv := server.NewShardServer(p)
+	require.NoError(srv.AllocateGangMember(pool.ConnAllocParams{}, key))
+	require.NoError(cl.AssignServerConn(srv))
+
+	require.NoError(cl.Shutdown())
+	require.Same(srv, cl.Server())
+	require.NoError(cl.Reset())
+	require.Nil(cl.Server())
+}
 
 func TestCancel(t *testing.T) {
 	assert := assert.New(t)
