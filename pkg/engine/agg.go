@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -140,7 +141,7 @@ func (s *SumAggregate) Finalize() any {
 var _ AggregateState = &SumAggregate{}
 
 func EngineV2AggregateFunction(n string) bool {
-	switch n {
+	switch strings.ToLower(n) {
 	case CountAgg, MaxAgg, MinAgg, SumAgg, ExistsAgg:
 		return true
 	default:
@@ -149,7 +150,7 @@ func EngineV2AggregateFunction(n string) bool {
 }
 
 func CreateAggregate(name string, _ []lyx.Node) (AggregateState, error) {
-	switch name {
+	switch strings.ToLower(name) {
 	case CountAgg:
 		return &CountAggregate{}, nil
 	case ExistsAgg:
