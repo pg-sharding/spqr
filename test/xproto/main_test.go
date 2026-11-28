@@ -254,6 +254,11 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
+
+	_, err = conn.Exec(context.Background(), "CREATE REFERENCE TABLE xproto_reparse;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
 }
 
 func CreateTables() {
