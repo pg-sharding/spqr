@@ -64,6 +64,20 @@ type ConnAllocParams struct {
 	Clid       uint
 	Tsa        tsa.TSA
 	HostFilter string
+
+	// DoReport enables reporting of connection allocation
+	// progress back to the client via ReplyNotice.
+	DoReport bool
+
+	// ReplyNotice reports allocation progress (e.g. acquired host)
+	// back to the client. Optional, may be nil.
+	ReplyNotice func(msg string) error
+}
+
+func (p *ConnAllocParams) ReportNotice(msg string) {
+	if p.DoReport && p.ReplyNotice != nil {
+		_ = p.ReplyNotice(msg)
+	}
 }
 
 type ConnectionProvider interface {
