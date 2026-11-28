@@ -175,7 +175,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT SUM(DISTINCT length(i)) FROM r_pp;
 ERROR:  in-router postprocessing for DISTINCT aggregate is not supported
 QUERY:  SELECT SUM(DISTINCT length(i)) FROM r_pp;
-
 -- XXX: support later?
 SELECT count(DISTINCT id) AS n FROM r_pp;
 ERROR:  in-router postprocessing for DISTINCT aggregate is not supported
