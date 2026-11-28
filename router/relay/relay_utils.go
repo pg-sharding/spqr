@@ -202,3 +202,52 @@ recvLoop:
 
 	return rd, nil
 }
+
+func sliceClosePortal(serv server.Server, closeMsg *pgproto3.Close) error {
+	if serv == nil {
+		return nil
+	}
+
+	// A portal may have been executed on any attached shard. PostgreSQL also
+	// accepts Close for absent portals, including those only bound locally.
+	for _, sh := range serv.Datashards() {
+		if err := serv.SendShard(closeMsg, sh.SHKey()); err != nil {
+			return err
+		}
+		if err := serv.SendShard(pgsync, sh.SHKey()); err != nil {
+			return err
+		}
+
+		closed := false
+		var closeErr error
+	recvLoop:
+		for {
+			msg, err := serv.ReceiveShard(sh.ID())
+			if err != nil {
+				return err
+			}
+			switch q := msg.(type) {
+			case *pgproto3.CloseComplete:
+				closed = true
+			case *pgproto3.ReadyForQuery:
+				// A suspended execution can leave a prefetched ReadyForQuery.
+				// Drain through the response to our Sync before returning.
+				if sh.Sync() == 0 {
+					break recvLoop
+				}
+			case *pgproto3.ErrorResponse:
+				closeErr = spqrerror.New(q.Code, q.Message)
+			case *pgproto3.NoticeResponse, *pgproto3.ParameterStatus:
+			default:
+				closeErr = fmt.Errorf("unexpected response while closing portal: %T", msg)
+			}
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		if !closed {
+			return fmt.Errorf("portal close was not acknowledged on shard %d", sh.ID())
+		}
+	}
+	return nil
+}
