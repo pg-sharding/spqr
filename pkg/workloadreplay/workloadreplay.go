@@ -163,83 +163,62 @@ func startNewSession(host string, port string, user string, db string,
 // - TimedMessage: the parsed message
 // - error: an error if there is an issue with reading or parsing the file
 //
-// TODO : unit tests
+// A clean end of file returns io.EOF; an incomplete record returns io.ErrUnexpectedEOF.
 func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
-	// 15 byte - timestamp
-	// 4 bytes - session number
-	// 1 byte - message header
-	// 4 bytes - message length (except header)
-	// ?? bytes - message bytes
+	const (
+		timestampSize = 15
+		sessionEnd    = timestampSize + 4
+		typeOffset    = sessionEnd
+		lengthOffset  = typeOffset + 1
+		headerSize    = lengthOffset + 4
+	)
 
-	tm := workloadlog.TimedMessage{
-		Timestamp: time.Now(),
-		Msg:       nil,
+	var empty workloadlog.TimedMessage
+
+	// Read the timestamp, session, message type, and length together so EOF
+	// is only returned when no bytes of the next record have been read.
+	var header [headerSize]byte
+	if _, err := io.ReadFull(f, header[:]); err != nil {
+		return empty, err
 	}
 
-	//timestamp
-	timeb := make([]byte, 15)
-	_, err := f.Read(timeb)
+	var timestamp time.Time
+	if err := timestamp.UnmarshalBinary(header[:timestampSize]); err != nil {
+		return empty, err
+	}
+	session := int(binary.BigEndian.Uint32(header[timestampSize:sessionEnd]))
+	length := binary.BigEndian.Uint32(header[lengthOffset:headerSize])
+	if length < 4 {
+		return empty, fmt.Errorf("invalid message length %d: must be at least 4", length)
+	}
+
+	var msg pgproto3.FrontendMessage
+	switch header[typeOffset] {
+	case 'Q':
+		msg = &pgproto3.Query{}
+	case 'X':
+		msg = &pgproto3.Terminate{}
+	default:
+		return empty, fmt.Errorf("unsupported message type %q", header[typeOffset])
+	}
+
+	payloadSize := int64(length - 4)
+	payload, err := io.ReadAll(io.LimitReader(f, payloadSize))
 	if err != nil {
-		return tm, err
+		return empty, err
 	}
-	var ti time.Time
-	err = ti.UnmarshalBinary(timeb)
-	if err != nil {
-		return tm, err
+	if int64(len(payload)) != payloadSize {
+		return empty, io.ErrUnexpectedEOF
 	}
-
-	//session
-	rawSes := make([]byte, 4)
-
-	_, err = f.Read(rawSes)
-	if err != nil {
-		return tm, err
+	if err := msg.Decode(payload); err != nil {
+		return empty, err
 	}
 
-	sesNum := int(binary.BigEndian.Uint32(rawSes) - 4)
-
-	//header
-	tip := make([]byte, 1)
-
-	_, err = f.Read(tip)
-	if err != nil {
-		return tm, err
-	}
-
-	//size
-	rawSize := make([]byte, 4)
-
-	_, err = f.Read(rawSize)
-	if err != nil {
-		return tm, err
-	}
-
-	msgSize := int(binary.BigEndian.Uint32(rawSize) - 4)
-
-	//message
-	msg := make([]byte, msgSize)
-	_, err = f.Read(msg)
-	if err != nil {
-		return tm, err
-	}
-
-	var fm pgproto3.FrontendMessage
-	switch string(tip) {
-	case "Q":
-		fm = &pgproto3.Query{}
-	case "X":
-		fm = &pgproto3.Terminate{}
-	}
-	err = fm.Decode(msg)
-	if err != nil {
-		return tm, err
-	}
-
-	tm.Timestamp = ti
-	tm.Msg = fm
-	tm.Session = sesNum
-
-	return tm, nil
+	return workloadlog.TimedMessage{
+		Timestamp: timestamp,
+		Session:   session,
+		Msg:       msg,
+	}, nil
 }
 
 // receiveBackend receives messages from the database frontend until a ReadyForQuery message is received.
