@@ -121,6 +121,13 @@ func (s *QueryStateExecutorImpl) CleanupConnection(p pool.MultiShardTSAPool, v s
 		return p.Put(v)
 	}
 
+	if v.Sync() != 0 || v.DataPending() {
+		// Discard unfinished responses before caching pinned connections.
+		// Cleanup could block waiting for the query or a missing Sync.
+		delete(s.localConn, v.ShardKeyName())
+		return p.Discard(v)
+	}
+
 	guc, err := s.Client().FindBoolGUC(session.SPQR_SESSION_CONNECTIONS_PIN)
 	if err != nil {
 		if err := s.Client().Route().MultiShardPool().Discard(v); err != nil {
