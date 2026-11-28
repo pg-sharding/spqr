@@ -83,7 +83,21 @@ func DispatchSlice(qd *QueryDesc,
 			}
 		} else {
 			/* this message is actually bind */
-			if err := serv.SendShard(qd.Msg, targ); err != nil {
+			msg := qd.Msg
+			if qd.preparedStatements != nil {
+				bind, ok := qd.Msg.(*pgproto3.Bind)
+				if !ok {
+					return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "expected Bind for rewritten query")
+				}
+				name, ok := qd.preparedStatements[targ.Name]
+				if !ok {
+					return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "missing rewritten prepared statement")
+				}
+				rewritten := *bind
+				rewritten.PreparedStatement = name
+				msg = &rewritten
+			}
+			if err := serv.SendShard(msg, targ); err != nil {
 				return err
 			}
 
