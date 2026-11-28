@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
@@ -376,6 +378,56 @@ func TestKeyRanges(t *testing.T) {
 	statements, err = memqdb.DropKeyRange(ctx, "nonexistentKeyRange")
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
+}
+
+func TestKeyRangeTimestamps(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		is := assert.New(t)
+		memqdb, err := qdb.RestoreQDB(MemQDBPath)
+		is.NoError(err)
+		ctx := context.Background()
+
+		createdAt := time.Now().UTC()
+		statements, err := memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
+			LowerBound: [][]byte{[]byte("1111")},
+			ShardID:    "sh1",
+			KeyRangeID: "krts1",
+		})
+		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
+
+		kr, err := memqdb.GetKeyRange(ctx, "krts1")
+		is.NoError(err)
+		is.Equal(&createdAt, kr.CreatedAt)
+		is.Equal(&createdAt, kr.UpdatedAt)
+
+		time.Sleep(time.Second)
+		renamedAt := time.Now().UTC()
+		is.NoError(memqdb.RenameKeyRange(ctx, "krts1", "krts1-renamed"))
+		kr, err = memqdb.GetKeyRange(ctx, "krts1-renamed")
+		is.NoError(err)
+		is.Equal(&createdAt, kr.CreatedAt)
+		is.Equal(&renamedAt, kr.UpdatedAt)
+
+		time.Sleep(time.Second)
+		updatedAt := time.Now().UTC()
+		kr.ShardID = "sh2"
+		statements, err = memqdb.UpdateKeyRange(ctx, kr)
+		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
+		kr, err = memqdb.GetKeyRange(ctx, "krts1-renamed")
+		is.NoError(err)
+		is.Equal(&createdAt, kr.CreatedAt)
+		is.Equal(&updatedAt, kr.UpdatedAt)
+
+		legacy := memqdb.State.Krs["krts1-renamed"]
+		legacy.CreatedAt, legacy.UpdatedAt = nil, nil
+		is.NoError(memqdb.RenameKeyRange(ctx, "krts1-renamed", "krts1-legacy"))
+		kr, err = memqdb.GetKeyRange(ctx, "krts1-legacy")
+		is.NoError(err)
+		is.Nil(kr.CreatedAt)
+		is.Equal(&updatedAt, kr.UpdatedAt)
+	})
 }
 
 func Test_MemQDB_GetKeyRange(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -123,6 +124,8 @@ type KeyRangeInfo struct {
 	ShardId        string                 `protobuf:"bytes,3,opt,name=shardId,proto3" json:"shardId,omitempty"`
 	DistributionId string                 `protobuf:"bytes,4,opt,name=distributionId,proto3" json:"distributionId,omitempty"`
 	Locked         bool                   `protobuf:"varint,5,opt,name=locked,proto3" json:"locked,omitempty"`
+	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -190,6 +193,20 @@ func (x *KeyRangeInfo) GetLocked() bool {
 		return x.Locked
 	}
 	return false
+}
+
+func (x *KeyRangeInfo) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *KeyRangeInfo) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
 }
 
 type ListKeyRangeRequest struct {
@@ -286,6 +303,7 @@ type SplitKeyRangeRequest struct {
 	Bound         []byte                 `protobuf:"bytes,2,opt,name=bound,proto3" json:"bound,omitempty"`
 	SourceId      string                 `protobuf:"bytes,3,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
 	SplitLeft     bool                   `protobuf:"varint,4,opt,name=split_left,json=splitLeft,proto3" json:"split_left,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -348,10 +366,18 @@ func (x *SplitKeyRangeRequest) GetSplitLeft() bool {
 	return false
 }
 
+func (x *SplitKeyRangeRequest) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
 type MergeKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BaseId        string                 `protobuf:"bytes,1,opt,name=base_id,json=baseId,proto3" json:"base_id,omitempty"`
 	AppendageId   string                 `protobuf:"bytes,2,opt,name=appendage_id,json=appendageId,proto3" json:"appendage_id,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -400,11 +426,19 @@ func (x *MergeKeyRangeRequest) GetAppendageId() string {
 	return ""
 }
 
+func (x *MergeKeyRangeRequest) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
 type MoveKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ToShardId     string                 `protobuf:"bytes,2,opt,name=toShardId,proto3" json:"toShardId,omitempty"`
 	MetaOnly      bool                   `protobuf:"varint,3,opt,name=metaOnly,proto3" json:"metaOnly,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -458,6 +492,13 @@ func (x *MoveKeyRangeRequest) GetMetaOnly() bool {
 		return x.MetaOnly
 	}
 	return false
+}
+
+func (x *MoveKeyRangeRequest) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
 }
 
 type DropKeyRangeRequest struct {
@@ -1104,6 +1145,7 @@ type RenameKeyRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyRangeId    string                 `protobuf:"bytes,1,opt,name=keyRangeId,proto3" json:"keyRangeId,omitempty"`
 	NewKeyRangeId string                 `protobuf:"bytes,2,opt,name=newKeyRangeId,proto3" json:"newKeyRangeId,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1152,34 +1194,51 @@ func (x *RenameKeyRangeRequest) GetNewKeyRangeId() string {
 	return ""
 }
 
+func (x *RenameKeyRangeRequest) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
 var File_protos_key_range_proto protoreflect.FileDescriptor
 
 const file_protos_key_range_proto_rawDesc = "" +
 	"\n" +
-	"\x16protos/key_range.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12protos/tasks.proto\"\xa7\x01\n" +
+	"\x16protos/key_range.proto\x12\x04spqr\x1a\x1bbuf/validate/validate.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12protos/tasks.proto\"\x9d\x02\n" +
 	"\fKeyRangeInfo\x12)\n" +
 	"\x05bound\x18\x01 \x01(\v2\x13.spqr.KeyRangeBoundR\x05bound\x12\x12\n" +
 	"\x04krid\x18\x02 \x01(\tR\x04krid\x12\x18\n" +
 	"\ashardId\x18\x03 \x01(\tR\ashardId\x12&\n" +
 	"\x0edistributionId\x18\x04 \x01(\tR\x0edistributionId\x12\x16\n" +
-	"\x06locked\x18\x05 \x01(\bR\x06locked\"A\n" +
+	"\x06locked\x18\x05 \x01(\bR\x06locked\x129\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"A\n" +
 	"\x13ListKeyRangeRequest\x12*\n" +
 	"\fdistribution\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fdistribution\"Y\n" +
 	"\x15CreateKeyRangeRequest\x12@\n" +
-	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoB\x06\xbaH\x03\xc8\x01\x01R\fkeyRangeInfo\"\x97\x01\n" +
+	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoB\x06\xbaH\x03\xc8\x01\x01R\fkeyRangeInfo\"\xd2\x01\n" +
 	"\x14SplitKeyRangeRequest\x12\x1d\n" +
 	"\x06new_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05newId\x12\x1c\n" +
 	"\x05bound\x18\x02 \x01(\fB\x06\xbaH\x03\xc8\x01\x01R\x05bound\x12#\n" +
 	"\tsource_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bsourceId\x12\x1d\n" +
 	"\n" +
-	"split_left\x18\x04 \x01(\bR\tsplitLeft\"b\n" +
+	"split_left\x18\x04 \x01(\bR\tsplitLeft\x129\n" +
+	"\n" +
+	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x9d\x01\n" +
 	"\x14MergeKeyRangeRequest\x12\x1f\n" +
 	"\abase_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06baseId\x12)\n" +
-	"\fappendage_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vappendageId\"o\n" +
+	"\fappendage_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vappendageId\x129\n" +
+	"\n" +
+	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xaa\x01\n" +
 	"\x13MoveKeyRangeRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12$\n" +
 	"\ttoShardId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ttoShardId\x12\x1a\n" +
-	"\bmetaOnly\x18\x03 \x01(\bR\bmetaOnly\"%\n" +
+	"\bmetaOnly\x18\x03 \x01(\bR\bmetaOnly\x129\n" +
+	"\n" +
+	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"%\n" +
 	"\x13DropKeyRangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x03(\tR\x02id\"K\n" +
 	"\x18DropAllKeyRangesResponse\x12/\n" +
@@ -1219,12 +1278,14 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\x05check\x18\x04 \x01(\bR\x05check\x12\x14\n" +
 	"\x05apply\x18\x05 \x01(\bR\x05apply\x12\x16\n" +
 	"\x06noWait\x18\x06 \x01(\bR\x06noWait\x12 \n" +
-	"\vtaskGroupId\x18\a \x01(\tR\vtaskGroupId\"m\n" +
+	"\vtaskGroupId\x18\a \x01(\tR\vtaskGroupId\"\xa8\x01\n" +
 	"\x15RenameKeyRangeRequest\x12&\n" +
 	"\n" +
 	"keyRangeId\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"keyRangeId\x12,\n" +
-	"\rnewKeyRangeId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rnewKeyRangeId*+\n" +
+	"\rnewKeyRangeId\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rnewKeyRangeId\x129\n" +
+	"\n" +
+	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt*+\n" +
 	"\x0eKeyRangeStatus\x12\n" +
 	"\n" +
 	"\x06LOCKED\x10\x00\x12\r\n" +
@@ -1288,55 +1349,62 @@ var file_protos_key_range_proto_goTypes = []any{
 	(*RedistributeKeyRangeRequest)(nil), // 19: spqr.RedistributeKeyRangeRequest
 	(*RenameKeyRangeRequest)(nil),       // 20: spqr.RenameKeyRangeRequest
 	(*KeyRangeBound)(nil),               // 21: spqr.KeyRangeBound
-	(SplitType)(0),                      // 22: spqr.SplitType
-	(*MoveTaskGroupIssuer)(nil),         // 23: spqr.MoveTaskGroupIssuer
-	(*emptypb.Empty)(nil),               // 24: google.protobuf.Empty
+	(*timestamppb.Timestamp)(nil),       // 22: google.protobuf.Timestamp
+	(SplitType)(0),                      // 23: spqr.SplitType
+	(*MoveTaskGroupIssuer)(nil),         // 24: spqr.MoveTaskGroupIssuer
+	(*emptypb.Empty)(nil),               // 25: google.protobuf.Empty
 }
 var file_protos_key_range_proto_depIdxs = []int32{
 	21, // 0: spqr.KeyRangeInfo.bound:type_name -> spqr.KeyRangeBound
-	2,  // 1: spqr.CreateKeyRangeRequest.key_range_info:type_name -> spqr.KeyRangeInfo
-	2,  // 2: spqr.DropAllKeyRangesResponse.key_range:type_name -> spqr.KeyRangeInfo
-	2,  // 3: spqr.KeyRangeReply.key_ranges_info:type_name -> spqr.KeyRangeInfo
-	1,  // 4: spqr.BatchMoveKeyRangeRequest.limitType:type_name -> spqr.RedistributeLimitType
-	22, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
-	23, // 6: spqr.BatchMoveKeyRangeRequest.issuer:type_name -> spqr.MoveTaskGroupIssuer
-	17, // 7: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
-	3,  // 8: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
-	24, // 9: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
-	24, // 10: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
-	10, // 11: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
-	4,  // 12: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
-	8,  // 13: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
-	24, // 14: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
-	11, // 15: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
-	5,  // 16: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
-	6,  // 17: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
-	7,  // 18: spqr.KeyRangeService.MoveKeyRange:input_type -> spqr.MoveKeyRangeRequest
-	15, // 19: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
-	18, // 20: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
-	19, // 21: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
-	20, // 22: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
-	12, // 23: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
-	12, // 24: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
-	12, // 25: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
-	13, // 26: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
-	14, // 27: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
-	14, // 28: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
-	14, // 29: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
-	9,  // 30: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
-	14, // 31: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
-	14, // 32: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
-	14, // 33: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
-	14, // 34: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
-	16, // 35: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
-	24, // 36: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
-	24, // 37: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
-	24, // 38: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
-	23, // [23:39] is the sub-list for method output_type
-	7,  // [7:23] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	22, // 1: spqr.KeyRangeInfo.created_at:type_name -> google.protobuf.Timestamp
+	22, // 2: spqr.KeyRangeInfo.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: spqr.CreateKeyRangeRequest.key_range_info:type_name -> spqr.KeyRangeInfo
+	22, // 4: spqr.SplitKeyRangeRequest.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 5: spqr.MergeKeyRangeRequest.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 6: spqr.MoveKeyRangeRequest.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 7: spqr.DropAllKeyRangesResponse.key_range:type_name -> spqr.KeyRangeInfo
+	2,  // 8: spqr.KeyRangeReply.key_ranges_info:type_name -> spqr.KeyRangeInfo
+	1,  // 9: spqr.BatchMoveKeyRangeRequest.limitType:type_name -> spqr.RedistributeLimitType
+	23, // 10: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
+	24, // 11: spqr.BatchMoveKeyRangeRequest.issuer:type_name -> spqr.MoveTaskGroupIssuer
+	22, // 12: spqr.RenameKeyRangeRequest.updated_at:type_name -> google.protobuf.Timestamp
+	17, // 13: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
+	3,  // 14: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
+	25, // 15: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
+	25, // 16: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
+	10, // 17: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
+	4,  // 18: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
+	8,  // 19: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
+	25, // 20: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
+	11, // 21: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
+	5,  // 22: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
+	6,  // 23: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
+	7,  // 24: spqr.KeyRangeService.MoveKeyRange:input_type -> spqr.MoveKeyRangeRequest
+	15, // 25: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
+	18, // 26: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
+	19, // 27: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
+	20, // 28: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
+	12, // 29: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
+	12, // 30: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
+	12, // 31: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
+	13, // 32: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
+	14, // 33: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
+	14, // 34: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
+	14, // 35: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
+	9,  // 36: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
+	14, // 37: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
+	14, // 38: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
+	14, // 39: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
+	14, // 40: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
+	16, // 41: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
+	25, // 42: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
+	25, // 43: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
+	25, // 44: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
+	29, // [29:45] is the sub-list for method output_type
+	13, // [13:29] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_protos_key_range_proto_init() }

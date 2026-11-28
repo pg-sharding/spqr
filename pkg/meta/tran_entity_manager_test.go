@@ -3,6 +3,7 @@ package meta_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -140,8 +141,9 @@ func TestTranGetDistribution(t *testing.T) {
 }
 func TestTranGetKeyRange(t *testing.T) {
 	is := assert.New(t)
+	now := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	ctx := qdb.WithKeyRangeWriteTime(context.Background(), now)
 	t.Run("test with save changes", func(_ *testing.T) {
-		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
@@ -187,6 +189,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		}
 
 		kr1.Version = 1
+		kr1.CreatedAt, kr1.UpdatedAt = &now, &now
 		kr2.Version = 1
 		kr2Ds2.Version = 1
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr1)
@@ -223,7 +226,6 @@ func TestTranGetKeyRange(t *testing.T) {
 	})
 
 	t.Run("test drop key range", func(_ *testing.T) {
-		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, topology.TopMgrFromMap(map[string]*topology.DataShard{}), false, nil, qdb.DefaultMaxTxnSize)
@@ -257,6 +259,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		//NO COMMIT QDB!!!
 
 		kr1.Version = 1
+		kr1.CreatedAt, kr1.UpdatedAt = &now, &now
 		kr2.Version = 1
 		//drop all kr one by one
 		actualList, err := tranMngr.ListKeyRanges(ctx, "ds1")

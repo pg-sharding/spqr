@@ -192,6 +192,7 @@ goimports
 gokrb
 golangci
 gomaxprocs
+gset
 gomock
 gomod
 goooal
@@ -282,6 +283,7 @@ krkey
 krmoves
 krmv
 krproto
+krts
 krsqb
 krsqdb
 krsql
@@ -589,6 +591,7 @@ subquery
 subselects
 SVFOP
 SVGID
+synctest
 syscache
 tablesample
 targ
@@ -611,6 +614,7 @@ textoid
 tfstate
 tgid
 timeb
+timestamppb
 timestamptz
 tle
 tlist

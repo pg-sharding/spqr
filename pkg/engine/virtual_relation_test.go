@@ -3,11 +3,22 @@ package engine
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb"
 )
+
+func TestFormatKeyRangeTimestamp(t *testing.T) {
+	if got := formatKeyRangeTimestamp(nil); got != "N/A" {
+		t.Errorf("formatKeyRangeTimestamp(nil) = %q, want N/A", got)
+	}
+	ts := time.Date(2026, 11, 3, 12, 0, 0, 0, time.FixedZone("UTC+1", 3600))
+	if got := formatKeyRangeTimestamp(&ts); got != "2026-11-03T11:00:00Z" {
+		t.Errorf("formatKeyRangeTimestamp(%v) = %q, want 2026-11-03T11:00:00Z", ts, got)
+	}
+}
 
 func TestKeyRangeVirtualRelationScanExtendedAllowsReplicatedDistribution(t *testing.T) {
 	keyRanges := []*kr.KeyRange{

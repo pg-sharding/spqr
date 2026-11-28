@@ -59,6 +59,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var txNotSupported = spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "Transactions are not supported in clustered coordinator")
@@ -915,8 +916,17 @@ func (qc *ClusteredCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID s
 // Split splits key range by req.bound
 // TODO : unit tests
 func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-	if err := qc.Coordinator.Split(ctx, req); err != nil {
+	if err := qc.Coordinator.Split(qdb.WithKeyRangeWriteTime(ctx, time.Now()), req); err != nil {
 		return fmt.Errorf("failed to split key range in coordinator: %s", err)
+	}
+	newRange, err := qc.db.GetKeyRange(ctx, req.KeyRangeID)
+	if err != nil {
+		return err
+	}
+	var updatedAt *timestamppb.Timestamp
+	// A retried split must use the original time even if the new range has since moved.
+	if newRange.CreatedAt != nil {
+		updatedAt = timestamppb.New(*newRange.CreatedAt)
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -926,6 +936,7 @@ func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange
 			SourceId:  req.SourceID,
 			NewId:     req.KeyRangeID,
 			SplitLeft: req.SplitLeft,
+			UpdatedAt: updatedAt,
 		})
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
@@ -971,7 +982,8 @@ func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) ([]
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	if err := qc.Coordinator.Unite(ctx, uniteKeyRange); err != nil {
+	updatedAt := time.Now()
+	if err := qc.Coordinator.Unite(qdb.WithKeyRangeWriteTime(ctx, updatedAt), uniteKeyRange); err != nil {
 		return err
 	}
 
@@ -980,6 +992,7 @@ func (qc *ClusteredCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.Uni
 		resp, err := cl.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
 			BaseId:      uniteKeyRange.BaseKeyRangeID,
 			AppendageId: uniteKeyRange.AppendageKeyRangeID,
+			UpdatedAt:   timestamppb.New(updatedAt),
 		})
 
 		spqrlog.Zero.Debug().Err(err).
@@ -1054,7 +1067,8 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 	}()
 
 	if req.MetaOnly {
-		if err := qc.Coordinator.Move(ctx, req, icpCH); err != nil {
+		updatedAt := time.Now()
+		if err := qc.Coordinator.Move(qdb.WithKeyRangeWriteTime(ctx, updatedAt), req, icpCH); err != nil {
 			return err
 		}
 		if config.CoordinatorConfig().UseSPQRGuard {
@@ -1072,6 +1086,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 				Id:        req.KeyRangeID,
 				ToShardId: req.ShardID,
 				MetaOnly:  req.MetaOnly,
+				UpdatedAt: timestamppb.New(updatedAt),
 			})
 			spqrlog.Zero.Debug().Err(err).
 				Interface("response", moveResp).
@@ -1213,6 +1228,14 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 			}
 			move.Status = qdb.MoveKeyRangeDataCoordMetaUpdated
 		case qdb.MoveKeyRangeDataCoordMetaUpdated:
+			storedRange, err := qc.db.GetKeyRange(ctx, move.KeyRangeID)
+			if err != nil {
+				return err
+			}
+			var updatedAt *timestamppb.Timestamp
+			if storedRange.UpdatedAt != nil {
+				updatedAt = timestamppb.New(*storedRange.UpdatedAt)
+			}
 			// Notify all routers about scheme changes.
 			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 				cl := proto.NewKeyRangeServiceClient(cc)
@@ -1220,6 +1243,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange, 
 					Id:        keyRange.ID,
 					ToShardId: keyRange.ShardID,
 					MetaOnly:  true,
+					UpdatedAt: updatedAt,
 				})
 				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).
@@ -2493,12 +2517,13 @@ func (qc *ClusteredCoordinator) RebalanceDistribution(_ context.Context, _ *kr.R
 // Returns:
 // - error: An error if renaming key range was unsuccessful.
 func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
-	if err := qc.Coordinator.RenameKeyRange(ctx, krID, krIDNew); err != nil {
+	updatedAt := time.Now()
+	if err := qc.Coordinator.RenameKeyRange(qdb.WithKeyRangeWriteTime(ctx, updatedAt), krID, krIDNew); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewKeyRangeServiceClient(cc)
-		_, err := cl.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{KeyRangeId: krID, NewKeyRangeId: krIDNew})
+		_, err := cl.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{KeyRangeId: krID, NewKeyRangeId: krIDNew, UpdatedAt: timestamppb.New(updatedAt)})
 
 		return err
 	})

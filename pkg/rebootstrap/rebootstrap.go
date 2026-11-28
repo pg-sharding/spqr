@@ -56,7 +56,7 @@ func MemQDBReBootstrap(ctx context.Context, memqdb *qdb.MemQDB, etcdConn *qdb.Et
 		ops := make([]qdb.QdbStatement, 0)
 		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {
-			krStmts, err := swapDb.CreateKeyRange(ctx, ckr)
+			krStmts, err := swapDb.RestoreKeyRange(ckr)
 			if err != nil {
 				return err
 			}
@@ -134,7 +134,7 @@ func MemQDBReBootstrapGRPC(ctx context.Context, memqdb *qdb.MemQDB, cc *grpc.Cli
 		ops := make([]qdb.QdbStatement, 0)
 		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {
-			krStmts, err := swapDb.CreateKeyRange(ctx, ckr)
+			krStmts, err := swapDb.RestoreKeyRange(ckr)
 			if err != nil {
 				return err
 			}

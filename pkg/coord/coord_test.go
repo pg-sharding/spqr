@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"testing"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -90,7 +91,8 @@ func TestSplitKeyRange(t *testing.T) {
 	})
 	t.Run("split happy path", func(t *testing.T) {
 		is := assert.New(t)
-		ctx := context.Background()
+		now := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+		ctx := qdb.WithKeyRangeWriteTime(context.Background(), now)
 		memqdb, err := prepareDB(ctx)
 		is.NoError(err)
 		mngr := NewLocalInstanceMetadataMgr(memqdb,
@@ -144,6 +146,9 @@ func TestSplitKeyRange(t *testing.T) {
 		is.Equal([]bool{false, false}, []bool{actual[0].IsLocked, actual[0].IsLocked})
 		actual[0].IsLocked = false
 		actual[1].IsLocked = false
+		for i := range expected {
+			expected[i].CreatedAt, expected[i].UpdatedAt = &now, &now
+		}
 		is.Equal(expected, []kr.KeyRange{*actual[0], *actual[1]})
 	})
 }

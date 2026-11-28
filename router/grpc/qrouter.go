@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type LocalQrouterServer struct {
@@ -389,6 +390,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Em
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
+	ctx = keyRangeWriteContext(ctx, request.GetUpdatedAt())
 	err := l.mgr.Move(ctx, &kr.MoveKeyRange{KeyRangeID: request.Id, ShardID: request.ToShardId, MetaOnly: request.MetaOnly}, nil)
 	if err != nil {
 		return nil, err
@@ -474,6 +476,7 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 
 // TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
+	ctx = keyRangeWriteContext(ctx, request.GetUpdatedAt())
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
 		KeyRangeID: request.NewId,
 		SourceID:   request.SourceId,
@@ -488,6 +491,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
+	ctx = keyRangeWriteContext(ctx, request.GetUpdatedAt())
 	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
 		BaseKeyRangeID:      request.GetBaseId(),
 		AppendageKeyRangeID: request.GetAppendageId(),
@@ -500,7 +504,15 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 
 // TODO: unit tests
 func (l *LocalQrouterServer) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
+	ctx = keyRangeWriteContext(ctx, request.GetUpdatedAt())
 	return nil, l.mgr.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
+}
+
+func keyRangeWriteContext(ctx context.Context, timestamp *timestamppb.Timestamp) context.Context {
+	if timestamp == nil {
+		return ctx
+	}
+	return qdb.WithKeyRangeWriteTime(ctx, timestamp.AsTime())
 }
 
 // TODO : unit tests

@@ -377,7 +377,13 @@ func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 }
 
 // TODO : unit tests
-func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *MemQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+	created := *keyRange
+	stampKeyRangeCreate(ctx, &created)
+	return q.RestoreKeyRange(&created)
+}
+
+func (q *MemQDB) RestoreKeyRange(keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
@@ -411,10 +417,12 @@ func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
+func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
 
-	return q.updateKeyRangeQdbStatements(keyRange)
+	updated := *keyRange
+	stampKeyRangeUpdate(ctx, &updated)
+	return q.updateKeyRangeQdbStatements(&updated)
 }
 
 // TODO : unit tests
@@ -675,27 +683,29 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
+func (q *MemQDB) RenameKeyRange(ctx context.Context, krID, krIDNew string) error {
 	spqrlog.Zero.Debug().
-		Str("id", krId).
-		Str("new id", krIdNew).
+		Str("id", krID).
+		Str("new id", krIDNew).
 		Msg("memqdb: rename key range")
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	kr, ok := q.State.Krs[krId]
+	kr, ok := q.State.Krs[krID]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krId))
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krID))
 	}
-	if _, ok = q.State.Krs[krIdNew]; ok {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	if _, ok = q.State.Krs[krIDNew]; ok {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIDNew))
 	}
 
-	kr.KeyRangeID = krIdNew
 	commands := make([]Command, 0)
-	commands = append(commands, q.dropKeyRangeCommands(krId)...)
-	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1))...)
+	commands = append(commands, q.dropKeyRangeCommands(krID)...)
+	renamed := keyRangeFromInternal(kr, false, 1)
+	renamed.KeyRangeID = krIDNew
+	stampKeyRangeUpdate(ctx, renamed)
+	commands = append(commands, q.createKeyRangeCommands(renamed)...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
 

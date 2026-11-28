@@ -3,6 +3,7 @@ package qdb_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,8 @@ func TestGetQDBStateHash(t *testing.T) {
 		relation,
 	}))
 
-	statements, err := memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
+	writeCtx := qdb.WithKeyRangeWriteTime(ctx, time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	statements, err := memqdb.CreateKeyRange(writeCtx, &qdb.KeyRange{
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
