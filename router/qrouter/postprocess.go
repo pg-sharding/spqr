@@ -27,12 +27,6 @@ func (qr *ProxyQrouter) addLimitToPlan(
 	rm *rmeta.RoutingMetadataContext,
 	p plan.Plan,
 ) (plan.Plan, error) {
-	scatterSlice, ok := p.(*plan.ScatterPlan)
-
-	if !ok {
-		return p, nil
-	}
-
 	spqrlog.Zero.Debug().
 		Msgf("plan select limit postprocessing %+v", p)
 
@@ -42,32 +36,105 @@ func (qr *ProxyQrouter) addLimitToPlan(
 			return p, nil
 		}
 
-		limitVal := int64(0)
+		limitVal, offsetVal := int64(-1), int64(0)
 		selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
 		if !ok {
 			return nil, rerrors.NewComplexQueryError()
 		}
 
-		q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
-
-		if !ok || selectLim.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
+		if selectLim.LimitOption == lyx.LIMIT_OPTION_WITH_TIES {
 			/* no support */
 			return p, nil
 		}
-		limitVal = q.Value
+		if selectLim.LimitCount != nil {
+			q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
+			if !ok || q.Value < 0 {
+				return p, nil
+			}
+			limitVal = q.Value
+		}
+		if selectLim.LimitOffset != nil {
+			q, ok := selectLim.LimitOffset.(*lyx.AExprIConst)
+			if !ok || q.Value < 0 {
+				return p, nil
+			}
+			offsetVal = q.Value
+		}
+		if limitVal < 0 && selectLim.LimitOffset == nil {
+			return p, nil
+		}
 
 		retSlice := &plan.VirtualPlan{
 			TTS: &tupleslot.TupleTableSlot{},
 		}
-
-		retSlice.SubPlan = scatterSlice
-
-		scatterSlice.OverwriteQuery = map[string]string{}
-
-		for _, sh := range scatterSlice.ExecTargets {
-			scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+		var scatterSlice *plan.ScatterPlan
+		switch v := p.(type) {
+		case *plan.ScatterPlan:
+			if v.RunF != nil && selectLim.LimitOffset != nil {
+				return nil, rerrors.NewComplexQueryError()
+			}
+			scatterSlice = v
+			retSlice.SubPlan = v
+		case *plan.VirtualPlan:
+			if selectLim.LimitOffset == nil {
+				return p, nil
+			}
+			var ok bool
+			scatterSlice, ok = v.SubPlan.(*plan.ScatterPlan)
+			if !ok {
+				return p, nil
+			}
+			retSlice = v
+		default:
+			return p, nil
 		}
 
+		suffix := ""
+		if selectLim.LimitOffset != nil {
+			loc := selectLim.OffsetLoc
+			if selectLim.CountLoc != lyx.ParseLocUnknown && selectLim.CountLoc < loc {
+				loc = selectLim.CountLoc
+			}
+			suffix = rm.Query[loc:]
+			tokens := lyx.NewStringTokenizer(suffix)
+			for token := tokens.LexT(); token != 0; token = tokens.LexT() {
+				switch token {
+				case lyx.LIMIT, lyx.OFFSET, lyx.ICONST, lyx.ALL, lyx.TSEMICOLON:
+				default:
+					return nil, rerrors.NewComplexQueryError()
+				}
+			}
+		}
+		if scatterSlice.OverwriteQuery == nil {
+			scatterSlice.OverwriteQuery = map[string]string{}
+		}
+		for _, sh := range scatterSlice.ExecTargets {
+			query, ok := scatterSlice.OverwriteQuery[sh.Name]
+			if !ok {
+				query = rm.Query
+			}
+			if !strings.HasSuffix(query, suffix) {
+				return nil, rerrors.NewComplexQueryError()
+			}
+			scatterSlice.OverwriteQuery[sh.Name] = strings.TrimSuffix(query, suffix)
+		}
+
+		applyLimit := func() {
+			retSlice.TTS.Raw = retSlice.TTS.Raw[min(offsetVal, int64(len(retSlice.TTS.Raw))):]
+			if limitVal >= 0 && int64(len(retSlice.TTS.Raw)) > limitVal {
+				retSlice.TTS.Raw = retSlice.TTS.Raw[:limitVal]
+			}
+		}
+		if run := scatterSlice.RunF; run != nil && retSlice == p {
+			scatterSlice.RunF = func(serv server.Server) error {
+				if err := run(serv); err != nil {
+					return err
+				}
+				applyLimit()
+				return nil
+			}
+			return retSlice, nil
+		}
 		scatterSlice.RunF = func(serv server.Server) error {
 			spqrlog.Zero.Debug().Msg("run bottom-level plan slice")
 			for _, sh := range serv.Datashards() {
@@ -100,7 +167,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 						errmsg = v
 					case *pgproto3.DataRow:
 
-						if len(retSlice.TTS.Raw) < int(limitVal) {
+						if limitVal < 0 || int64(len(retSlice.TTS.Raw))-offsetVal < limitVal {
 							retSlice.TTS.Raw = append(retSlice.TTS.Raw, xproto.CopyByteSlices(v.Values))
 						}
 
@@ -110,6 +177,7 @@ func (qr *ProxyQrouter) addLimitToPlan(
 				}
 			}
 
+			applyLimit()
 			return nil
 		}
 
@@ -221,10 +289,13 @@ func (qr *ProxyQrouter) addSortToPlan(
 
 				retSlice.SubPlan = scatterSlice
 
-				scatterSlice.OverwriteQuery = map[string]string{}
-
+				if scatterSlice.OverwriteQuery == nil {
+					scatterSlice.OverwriteQuery = map[string]string{}
+				}
 				for _, sh := range scatterSlice.ExecTargets {
-					scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+					if _, ok := scatterSlice.OverwriteQuery[sh.Name]; !ok {
+						scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+					}
 				}
 
 				scatterSlice.RunF = func(serv server.Server) error {

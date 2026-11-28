@@ -29,6 +29,10 @@ SELECT 1 AS tie FROM r_pp ORDER BY 1 FETCH FIRST 1 ROW WITH TIES;
 SELECT i FROM r_pp ORDER BY i;
 SELECT * FROM r_pp limit 2;
 
+SELECT i FROM r_pp ORDER BY i LIMIT 2 OFFSET 2;
+WITH vals(x) AS (VALUES ('a'), ('b'), ('c'), ('d'))
+SELECT 1 AS n FROM r_pp r JOIN vals v ON r.i = v.x OFFSET 1;
+
 SELECT count(1) FROM r_pp;
 SELECT count(*) FROM r_pp;
 SELECT count(i) FROM r_pp;
