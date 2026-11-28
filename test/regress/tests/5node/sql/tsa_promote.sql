@@ -9,7 +9,9 @@ SET __spqr__target_session_attrs TO 'read-write';
 SET __spqr__execute_host_filter TO ':6433';
 CREATE TABLE tsa_promote_test (i int);
 INSERT INTO tsa_promote_test VALUES (22);
-SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+SET __spqr__reply_notice TO true;
+SET __spqr__notice_message_format = '{shard}@{host}';
+SELECT count(*) FROM tsa_promote_test;
 
 -- A standby cannot serve a read-write request.
 SET __spqr__execute_host_filter TO ':6434';
@@ -20,21 +22,22 @@ SELECT count(*) FROM tsa_promote_test;
 \! bash /regress/tests/5node/sql/promote.sh
 
 -- The same read-write route must now accept the promoted host.
-SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+SELECT count(*) FROM tsa_promote_test;
 INSERT INTO tsa_promote_test VALUES (23);
-SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
 
 -- The unavailable replica must fail; the other replicas still serve reads.
 SET __spqr__target_session_attrs TO 'read-only';
 SET __spqr__execute_host_filter TO ':6435';
 SELECT count(*) FROM tsa_promote_test;
 SET __spqr__execute_host_filter TO ':6436';
-SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+SELECT count(*) FROM tsa_promote_test;
 SET __spqr__execute_host_filter TO ':6437';
-SELECT inet_server_port(), pg_is_in_recovery(), count(*) FROM tsa_promote_test;
+SELECT count(*) FROM tsa_promote_test;
 \! iptables -D INPUT -p tcp --dport 6435 -j REJECT
 
 -- Clean up both timelines.
+SET __spqr__reply_notice TO false;
+RESET __spqr__notice_message_format;
 SET __spqr__target_session_attrs TO 'read-write';
 SET __spqr__execute_host_filter TO ':6434';
 DROP TABLE tsa_promote_test;
